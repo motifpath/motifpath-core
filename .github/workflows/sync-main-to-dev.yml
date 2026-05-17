@@ -1,0 +1,10 @@
+name: Sync main → dev
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    uses: motifpath/motifpath-specs/.github/workflows/reusable-sync-main-to-dev.yml@main
+    secrets: inherit
