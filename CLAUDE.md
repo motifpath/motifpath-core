@@ -31,10 +31,9 @@ Core entities:
 - **StudentPath** — tracks node states (locked / unlocked / in_progress) per student
 - **ThresholdOverride** — a teacher-set custom threshold for a specific student on a specific node
 
-Seven domain events (JSON Schemas in motifpath-specs/events/):
+Seven tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
   lesson.started, lesson.resumed, lesson.completed
-  exercise.started, exercise.answer_sent, exercise.ended
-  node.unlocked
+  exercise.started, exercise.progress, exercise.answer_sent, exercise.ended
 
 Threshold logic: if a ThresholdOverride exists for a student+node pair, it takes
 precedence over the Node's default threshold. ALWAYS apply this rule in the application layer.
@@ -60,12 +59,18 @@ ALWAYS emit domain events through the application layer, never from adapters or 
 NEVER access the database directly from the domain layer.
 
 ## Makefile Targets
-- `make generate`   → regenerate oapi-codegen stubs from spec
-- `make test`       → run all unit tests
-- `make test:bdd`   → run godog BDD tests
-- `make test:int`   → run integration tests via testcontainers
-- `make lint`       → run golangci-lint
-- `make dev`        → start local dependencies via docker-compose
+- `make generate`      → regenerate oapi-codegen stubs from spec
+- `make migrate:diff`  → generate a versioned Atlas migration file from ent schema diff (ADR-010)
+- `make test`          → run all unit tests
+- `make test:bdd`      → run godog BDD tests
+- `make test:int`      → run integration tests via testcontainers
+- `make lint`          → run golangci-lint
+- `make dev`           → start local dependencies via docker-compose (Redpanda, Postgres, MongoDB)
+
+## Auth
+JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`
+at startup, injected into the HTTP middleware. NEVER implement custom JWKS fetch or cache logic —
+the SDK handles key rotation and cache refresh automatically.
 
 ## Monorepo Boundaries
 Two services share this repo — they must NOT share Go packages.

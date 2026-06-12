@@ -1,0 +1,6 @@
+go 1.23
+
+use (
+	./services/core-domain
+	./services/event-ingestion
+)
