@@ -4,7 +4,6 @@
     "go@1.23",
     "golangci-lint@1.62",
     "oapi-codegen@2.4",
-    "godog@0.15",
     "atlas@0.28"
   ],
   "shell": {

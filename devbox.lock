@@ -1,0 +1,201 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "atlas@0.28": {
+      "last_modified": "2024-11-28T07:51:56Z",
+      "resolved": "github:NixOS/nixpkgs/226216574ada4c3ecefcbbec41f39ce4655f78ef#atlas",
+      "source": "devbox-search",
+      "version": "0.28.1",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/i864jy69wd7ih7akgv88dcv2m70srvmg-atlas-0.28.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/i864jy69wd7ih7akgv88dcv2m70srvmg-atlas-0.28.1"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/8rj9xjqgiqnasakzvb0s9ybplgzh0g7f-atlas-0.28.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/8rj9xjqgiqnasakzvb0s9ybplgzh0g7f-atlas-0.28.1"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/9g3n6gb7pim26yzb1wp11kr71sf2fyzq-atlas-0.28.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/9g3n6gb7pim26yzb1wp11kr71sf2fyzq-atlas-0.28.1"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/dxr593rrxdczzcmvf5h7vby7nz44v4r3-atlas-0.28.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/dxr593rrxdczzcmvf5h7vby7nz44v4r3-atlas-0.28.1"
+        }
+      }
+    },
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2026-08-22T10:28:36Z",
+      "resolved": "github:NixOS/nixpkgs/c8f90650c15282fa8656a041bfbbd2403997a9a7?lastModified=1787394516&narHash=sha256-pRGOQSClnXNI2iLUG6DYpsGvYcuw0drOutVZFTJNw90%3D"
+    },
+    "go@1.23": {
+      "last_modified": "2025-08-08T08:05:48Z",
+      "resolved": "github:NixOS/nixpkgs/a3f3e3f2c983e957af6b07a1db98bafd1f87b7a1#go_1_23",
+      "source": "devbox-search",
+      "version": "1.23.12",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ls7j3c95gdy2s5zzlzy751zgly53gs4c-go-1.23.12",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ls7j3c95gdy2s5zzlzy751zgly53gs4c-go-1.23.12"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/482v99lr94jxbx0c44dyydhxjhzs8na1-go-1.23.12",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/482v99lr94jxbx0c44dyydhxjhzs8na1-go-1.23.12"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/4xnvg72xnfsyrm426wn91rb594s507ja-go-1.23.12",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/4xnvg72xnfsyrm426wn91rb594s507ja-go-1.23.12"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nmmw1c5mwf7mzlbk5rnpm1gxvzh6jjw4-go-1.23.12",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/nmmw1c5mwf7mzlbk5rnpm1gxvzh6jjw4-go-1.23.12"
+        }
+      }
+    },
+    "golangci-lint@1.62": {
+      "last_modified": "2024-12-23T21:10:33Z",
+      "resolved": "github:NixOS/nixpkgs/de1864217bfa9b5845f465e771e0ecb48b30e02d#golangci-lint",
+      "source": "devbox-search",
+      "version": "1.62.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/5liapbkl2xs5kww2wvs2yv8grhcaswwl-golangci-lint-1.62.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/5liapbkl2xs5kww2wvs2yv8grhcaswwl-golangci-lint-1.62.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/87ihwdp39vxi97q0bfv8isw2p1pyz257-golangci-lint-1.62.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/87ihwdp39vxi97q0bfv8isw2p1pyz257-golangci-lint-1.62.2"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/73jfn21by312v2jawvmb9rkjhls28ry7-golangci-lint-1.62.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/73jfn21by312v2jawvmb9rkjhls28ry7-golangci-lint-1.62.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/rzvlg3gzv8cgr4qpvsxx1q8pmgdl9j95-golangci-lint-1.62.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/rzvlg3gzv8cgr4qpvsxx1q8pmgdl9j95-golangci-lint-1.62.2"
+        }
+      }
+    },
+    "oapi-codegen@2.4": {
+      "last_modified": "2025-07-13T22:45:35Z",
+      "resolved": "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359#oapi-codegen",
+      "source": "devbox-search",
+      "version": "2.4.1",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nxwl2z4a2h484nwx3hyl94wnxgq1f94w-oapi-codegen-2.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/nxwl2z4a2h484nwx3hyl94wnxgq1f94w-oapi-codegen-2.4.1"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/mvmbnavlipc3wkhhsxdzwjqnnc37l76n-oapi-codegen-2.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/mvmbnavlipc3wkhhsxdzwjqnnc37l76n-oapi-codegen-2.4.1"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/04awanf27kb5b6s71zwgns26m89d9adb-oapi-codegen-2.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/04awanf27kb5b6s71zwgns26m89d9adb-oapi-codegen-2.4.1"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/kasv7av5n35wsc9lip9wgvmwi6vjfppf-oapi-codegen-2.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/kasv7av5n35wsc9lip9wgvmwi6vjfppf-oapi-codegen-2.4.1"
+        }
+      }
+    }
+  }
+}
