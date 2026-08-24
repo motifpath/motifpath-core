@@ -75,11 +75,11 @@ jobs:
       - name: Checkout specs (for feature files)
         uses: actions/checkout@v4
         with:
-          repository: your-org/motifpath-specs
+          repository: motifpath/motifpath-specs
           path: motifpath-specs
 
       - name: Run BDD tests
-        run: go test ./services/.../test/bdd/... -v
+        run: go test -v -tags integration ./services/.../internal/bdd/...
 
   test-integration:
     name: Integration Tests (testcontainers)
@@ -93,7 +93,7 @@ jobs:
           cache: true
 
       - name: Run integration tests
-        run: go test ./services/.../test/integration/... -v -timeout 120s
+        run: go test -v -tags integration -timeout 120s ./services/.../internal/adapters/...
 
   all-checks:
     name: All checks passed
