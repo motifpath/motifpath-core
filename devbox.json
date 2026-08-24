@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.5/.schema/devbox.schema.json",
+  "packages": [
+    "go@1.23",
+    "golangci-lint@1.62",
+    "oapi-codegen@2.4",
+    "atlas@0.28"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'motifpath-core dev environment ready'"
+    ],
+    "scripts": {
+      "generate": "make generate",
+      "test": "make test",
+      "lint": "make lint",
+      "dev": "make dev"
+    }
+  }
+}

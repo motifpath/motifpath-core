@@ -38,23 +38,54 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ## Prerequisites
 
-- [Go 1.23+](https://go.dev/dl/)
-- [Docker](https://docs.docker.com/get-docker/) — required for local dependencies and integration tests
-- [Devbox](https://www.jetpack.io/devbox/docs/installing_devbox/) — manages all tooling versions
+- [Docker](https://docs.docker.com/get-docker/) — runs local dependencies (Postgres, MongoDB, Redpanda) and integration tests
+- [Devbox](https://www.jetify.com/devbox) — manages the Go toolchain and CLI versions
+
+You do **not** need to install Go, golangci-lint, oapi-codegen, or atlas yourself — Devbox
+provides all of them, pinned to the exact versions declared in `devbox.json`.
+
+## Getting Started (first time on this repo)
+
+1. **Install Docker** if you don't already have it (link above).
+2. **Install Devbox:**
+   ```bash
+   curl -fsSL https://get.jetify.com/devbox | bash
+   ```
+   This also bootstraps [Nix](https://nixos.org) if it isn't present yet, and will prompt for
+   your `sudo` password once to do so. Run it in a real terminal — it needs an interactive
+   password prompt, so it won't work through a tool or script that can't answer one.
+3. **Enter the dev shell**, from the repo root:
+   ```bash
+   devbox shell
+   ```
+   The first run downloads the pinned toolchain (a couple of minutes, under 100 MB). Every run
+   after that is near-instant. You'll know it worked when you see `motifpath-core dev environment
+   ready`.
+4. **Start local dependencies** (from inside `devbox shell`, or via `devbox run -- make dev` from
+   outside it):
+   ```bash
+   make dev
+   ```
+   Starts Postgres, MongoDB, and Redpanda (local Kafka) via docker-compose and waits for their
+   healthchecks.
+5. **Sanity-check the toolchain:**
+   ```bash
+   go work sync
+   ```
+   Should complete with no output or errors.
+
+You're ready to build at that point. Note: until real service code exists (Phase 3/4 of the
+implementation plan), `make lint` and `make test` will report "no go files to analyze" for the
+currently-empty service packages — that's expected on a fresh scaffold, not a setup problem.
+
+## Local Setup (day to day)
 
 ```bash
-# Install all tools (Go, golangci-lint, oapi-codegen, godog, etc.)
+# Enter the pinned toolchain
 devbox shell
-```
 
-## Local Setup
-
-```bash
-# Start local dependencies (Postgres, MongoDB)
+# Start local dependencies (Postgres, MongoDB, Redpanda)
 make dev
-
-# Verify services are healthy
-make health
 ```
 
 ## Commands
