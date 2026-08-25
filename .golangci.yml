@@ -1,28 +1,40 @@
+version: "2"
 linters:
   enable:
-    - errcheck
-    - govet
-    - staticcheck
-    - unused
+    - exhaustive
+    - forbidigo
     - gocognit
     - gocyclo
     - misspell
-    - exhaustive
-    - forbidigo
-
-linters-settings:
-  gocognit:
-    min-complexity: 15
-  gocyclo:
-    min-complexity: 15
-  forbidigo:
-    forbid:
-      - p: "^fmt\\.Print"
-        msg: "use structured logging instead of fmt.Print"
-
-issues:
-  exclude-rules:
-    - path: "_test\\.go"
-      linters:
-        - gocognit
-        - gocyclo
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print
+          msg: use structured logging instead of fmt.Print
+    gocognit:
+      min-complexity: 15
+    gocyclo:
+      min-complexity: 15
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gocognit
+          - gocyclo
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
