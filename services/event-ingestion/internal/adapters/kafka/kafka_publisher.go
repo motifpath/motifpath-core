@@ -28,6 +28,13 @@ func NewKafkaEventPublisher(brokers []string) *KafkaEventPublisher {
 			Addr:     kafkago.TCP(brokers...),
 			Topic:    topic,
 			Balancer: &kafkago.Hash{},
+			// The broker being configured to auto-create topics (Redpanda's
+			// auto_create_topics_enabled, or MSK's equivalent) is not enough on its
+			// own — kafka-go's Writer only requests creation if this is also set,
+			// and defaults to false. Without it, publishing to a topic that hasn't
+			// been created yet fails with "Unknown Topic Or Partition" even though
+			// the broker would have been willing to create it.
+			AllowAutoTopicCreation: true,
 		},
 		brokers: brokers,
 	}
