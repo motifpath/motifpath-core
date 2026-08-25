@@ -17,7 +17,7 @@ linters-settings:
     min-complexity: 15
   forbidigo:
     forbid:
-      - pattern: "^fmt\\.Print"
+      - p: "^fmt\\.Print"
         msg: "use structured logging instead of fmt.Print"
 
 issues:
