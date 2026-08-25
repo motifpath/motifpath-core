@@ -53,99 +53,128 @@
       "last_modified": "2026-08-22T10:28:36Z",
       "resolved": "github:NixOS/nixpkgs/c8f90650c15282fa8656a041bfbbd2403997a9a7?lastModified=1787394516&narHash=sha256-pRGOQSClnXNI2iLUG6DYpsGvYcuw0drOutVZFTJNw90%3D"
     },
-    "go@1.23": {
-      "last_modified": "2025-08-08T08:05:48Z",
-      "resolved": "github:NixOS/nixpkgs/a3f3e3f2c983e957af6b07a1db98bafd1f87b7a1#go_1_23",
+    "go@1.26": {
+      "last_modified": "2026-08-12T11:28:58Z",
+      "resolved": "github:NixOS/nixpkgs/044bfe75bfe4c7bbe043dc17b5e42ea823b84a09#go",
       "source": "devbox-search",
-      "version": "1.23.12",
+      "version": "1.26.5",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/ls7j3c95gdy2s5zzlzy751zgly53gs4c-go-1.23.12",
+              "path": "/nix/store/4im44k446822ixjai0mdaizqskc90qxr-go-1.26.5",
               "default": true
             }
           ],
-          "store_path": "/nix/store/ls7j3c95gdy2s5zzlzy751zgly53gs4c-go-1.23.12"
+          "store_path": "/nix/store/4im44k446822ixjai0mdaizqskc90qxr-go-1.26.5"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/482v99lr94jxbx0c44dyydhxjhzs8na1-go-1.23.12",
+              "path": "/nix/store/yjifjy7qjzm9jli8xhzwy3y6fzw84405-go-1.26.5",
               "default": true
             }
           ],
-          "store_path": "/nix/store/482v99lr94jxbx0c44dyydhxjhzs8na1-go-1.23.12"
-        },
-        "x86_64-darwin": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/4xnvg72xnfsyrm426wn91rb594s507ja-go-1.23.12",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/4xnvg72xnfsyrm426wn91rb594s507ja-go-1.23.12"
+          "store_path": "/nix/store/yjifjy7qjzm9jli8xhzwy3y6fzw84405-go-1.26.5"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/nmmw1c5mwf7mzlbk5rnpm1gxvzh6jjw4-go-1.23.12",
+              "path": "/nix/store/xrgn6m0c5vbz06467q06zdwnk6qqdl7z-go-1.26.5",
               "default": true
             }
           ],
-          "store_path": "/nix/store/nmmw1c5mwf7mzlbk5rnpm1gxvzh6jjw4-go-1.23.12"
+          "store_path": "/nix/store/xrgn6m0c5vbz06467q06zdwnk6qqdl7z-go-1.26.5"
         }
       }
     },
-    "golangci-lint@1.62": {
-      "last_modified": "2024-12-23T21:10:33Z",
-      "resolved": "github:NixOS/nixpkgs/de1864217bfa9b5845f465e771e0ecb48b30e02d#golangci-lint",
+    "golangci-lint@2": {
+      "last_modified": "2026-08-12T11:28:58Z",
+      "resolved": "github:NixOS/nixpkgs/044bfe75bfe4c7bbe043dc17b5e42ea823b84a09#golangci-lint",
       "source": "devbox-search",
-      "version": "1.62.2",
+      "version": "2.12.2",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/5liapbkl2xs5kww2wvs2yv8grhcaswwl-golangci-lint-1.62.2",
+              "path": "/nix/store/cqawpcdr4iif6g81i9flza941zxzgac5-golangci-lint-2.12.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/5liapbkl2xs5kww2wvs2yv8grhcaswwl-golangci-lint-1.62.2"
+          "store_path": "/nix/store/cqawpcdr4iif6g81i9flza941zxzgac5-golangci-lint-2.12.2"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/87ihwdp39vxi97q0bfv8isw2p1pyz257-golangci-lint-1.62.2",
+              "path": "/nix/store/dyiky0qyz8p8z3c54rz5z2qdwbrf05c7-golangci-lint-2.12.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/87ihwdp39vxi97q0bfv8isw2p1pyz257-golangci-lint-1.62.2"
+          "store_path": "/nix/store/dyiky0qyz8p8z3c54rz5z2qdwbrf05c7-golangci-lint-2.12.2"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/73jfn21by312v2jawvmb9rkjhls28ry7-golangci-lint-1.62.2",
+              "path": "/nix/store/w8c3i6vmxnnj0xixvjsa9lva3rcd2rvs-golangci-lint-2.12.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/73jfn21by312v2jawvmb9rkjhls28ry7-golangci-lint-1.62.2"
+          "store_path": "/nix/store/w8c3i6vmxnnj0xixvjsa9lva3rcd2rvs-golangci-lint-2.12.2"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/rzvlg3gzv8cgr4qpvsxx1q8pmgdl9j95-golangci-lint-1.62.2",
+              "path": "/nix/store/yl3hlickshlf7smf4iql5lalmhi6hhqg-golangci-lint-2.12.2",
               "default": true
             }
           ],
-          "store_path": "/nix/store/rzvlg3gzv8cgr4qpvsxx1q8pmgdl9j95-golangci-lint-1.62.2"
+          "store_path": "/nix/store/yl3hlickshlf7smf4iql5lalmhi6hhqg-golangci-lint-2.12.2"
+        }
+      }
+    },
+    "nodejs@22": {
+      "last_modified": "2026-08-12T11:28:58Z",
+      "plugin_version": "0.0.4",
+      "resolved": "github:NixOS/nixpkgs/044bfe75bfe4c7bbe043dc17b5e42ea823b84a09#nodejs_22",
+      "source": "devbox-search",
+      "version": "22.23.2",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ns9a9c245s35mxq4arv4pyf3jvb2dh0i-nodejs-22.23.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ns9a9c245s35mxq4arv4pyf3jvb2dh0i-nodejs-22.23.2"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/3xbw25h18j51wl7xd28ini307d07wfrh-nodejs-22.23.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/3xbw25h18j51wl7xd28ini307d07wfrh-nodejs-22.23.2"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/hyw97nxddgxfc6ag6db87rnawss2pw1a-nodejs-22.23.2",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/hyw97nxddgxfc6ag6db87rnawss2pw1a-nodejs-22.23.2"
         }
       }
     },
