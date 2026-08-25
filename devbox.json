@@ -1,10 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.5/.schema/devbox.schema.json",
   "packages": [
-    "go@1.23",
-    "golangci-lint@1.62",
+    "go@1.24",
+    "golangci-lint@1.64",
     "oapi-codegen@2.4",
-    "atlas@0.28"
+    "atlas@0.28",
+    "nodejs@22"
   ],
   "shell": {
     "init_hook": [
