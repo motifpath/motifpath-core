@@ -39,6 +39,12 @@ func (r *MongoEventRepository) EnsureIndexes(ctx context.Context) error {
 	return err
 }
 
+// Ping reports whether the underlying MongoDB connection is reachable, for the
+// readiness probe.
+func (r *MongoEventRepository) Ping(ctx context.Context) error {
+	return r.collection.Database().Client().Ping(ctx, nil)
+}
+
 // Save inserts event as a new document. Idempotency comes from the unique index on
 // event_id, not from an update-style upsert: per ADR-008 the collection is
 // append-only, so a duplicate delivery must neither error nor modify the existing

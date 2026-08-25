@@ -9,17 +9,20 @@ import (
 	"github.com/motifpath/event-ingestion/internal/adapters/http/generated"
 	"github.com/motifpath/event-ingestion/internal/application"
 	"github.com/motifpath/event-ingestion/internal/domain"
+	"github.com/motifpath/event-ingestion/internal/ports"
 )
 
 // Handler implements generated.StrictServerInterface.
 type Handler struct {
-	service *application.IngestEventService
+	service     *application.IngestEventService
+	mongoPinger ports.Pinger
+	kafkaPinger ports.Pinger
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)
 
-func NewHandler(service *application.IngestEventService) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *application.IngestEventService, mongoPinger, kafkaPinger ports.Pinger) *Handler {
+	return &Handler{service: service, mongoPinger: mongoPinger, kafkaPinger: kafkaPinger}
 }
 
 func (h *Handler) IngestTrackingEvent(ctx context.Context, request generated.IngestTrackingEventRequestObject) (generated.IngestTrackingEventResponseObject, error) {
@@ -71,8 +74,28 @@ func (h *Handler) LivenessCheck(_ context.Context, _ generated.LivenessCheckRequ
 	return generated.LivenessCheck200JSONResponse{Status: "ok"}, nil
 }
 
-// ReadinessCheck is a placeholder until cmd/main.go wires in the Mongo and Kafka
-// clients this handler needs to report real dependency health (Phase 3.8).
-func (h *Handler) ReadinessCheck(_ context.Context, _ generated.ReadinessCheckRequestObject) (generated.ReadinessCheckResponseObject, error) {
-	return generated.ReadinessCheck200JSONResponse{Status: "ok"}, nil
+// ReadinessCheck pings MongoDB and the Kafka broker and reports per-dependency
+// status. The service is ready only when both succeed.
+func (h *Handler) ReadinessCheck(ctx context.Context, _ generated.ReadinessCheckRequestObject) (generated.ReadinessCheckResponseObject, error) {
+	checks := map[string]generated.HealthStatusChecks{}
+	ready := true
+
+	if err := h.mongoPinger.Ping(ctx); err != nil {
+		checks["mongodb"] = "fail"
+		ready = false
+	} else {
+		checks["mongodb"] = "ok"
+	}
+
+	if err := h.kafkaPinger.Ping(ctx); err != nil {
+		checks["kafka_producer"] = "fail"
+		ready = false
+	} else {
+		checks["kafka_producer"] = "ok"
+	}
+
+	if !ready {
+		return generated.ReadinessCheck503JSONResponse{Status: "degraded", Checks: &checks}, nil
+	}
+	return generated.ReadinessCheck200JSONResponse{Status: "ok", Checks: &checks}, nil
 }
