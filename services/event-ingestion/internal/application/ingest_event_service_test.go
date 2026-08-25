@@ -15,17 +15,19 @@ import (
 	"github.com/motifpath/event-ingestion/internal/domain"
 )
 
+var fakeReceivedAt = time.Date(2026, 8, 25, 12, 0, 5, 0, time.UTC)
+
 type fakeRepository struct {
 	saveErr error
 	saved   []domain.TrackingEvent
 }
 
-func (f *fakeRepository) Save(_ context.Context, event domain.TrackingEvent) error {
+func (f *fakeRepository) Save(_ context.Context, event domain.TrackingEvent) (time.Time, error) {
 	if f.saveErr != nil {
-		return f.saveErr
+		return time.Time{}, f.saveErr
 	}
 	f.saved = append(f.saved, event)
-	return nil
+	return fakeReceivedAt, nil
 }
 
 type fakePublisher struct {
@@ -105,9 +107,10 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 			svc := application.NewIngestEventService(repo, publisher, testLogger())
 			event := newEvent(eventType)
 
-			err := svc.Ingest(context.Background(), event)
+			receivedAt, err := svc.Ingest(context.Background(), event)
 
 			require.NoError(t, err)
+			assert.Equal(t, fakeReceivedAt, receivedAt)
 			require.Len(t, repo.saved, 1)
 			assert.Equal(t, event, repo.saved[0])
 			assert.Equal(t, event, waitForPublish(t, publisher.calls))
@@ -123,9 +126,9 @@ func TestIngestEventService_Ingest_Idempotency(t *testing.T) {
 	svc := application.NewIngestEventService(repo, publisher, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
-	err1 := svc.Ingest(context.Background(), event)
+	_, err1 := svc.Ingest(context.Background(), event)
 	waitForPublish(t, publisher.calls)
-	err2 := svc.Ingest(context.Background(), event)
+	_, err2 := svc.Ingest(context.Background(), event)
 	waitForPublish(t, publisher.calls)
 
 	require.NoError(t, err1)
@@ -138,7 +141,7 @@ func TestIngestEventService_Ingest_RepositoryFailure(t *testing.T) {
 	publisher := newFakePublisher(nil)
 	svc := application.NewIngestEventService(repo, publisher, testLogger())
 
-	err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
+	_, err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
 
 	require.Error(t, err)
 	select {
@@ -155,7 +158,7 @@ func TestIngestEventService_Ingest_PublishFailureDoesNotFailRequest(t *testing.T
 	publisher := newFakePublisher(errors.New("kafka unavailable"))
 	svc := application.NewIngestEventService(repo, publisher, testLogger())
 
-	err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
+	_, err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
 
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
