@@ -1,6 +1,7 @@
 go 1.25.0
 
 use (
+	./services/aggregation-worker
 	./services/core-domain
 	./services/event-ingestion
 )
