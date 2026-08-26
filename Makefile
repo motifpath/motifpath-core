@@ -1,4 +1,4 @@
-SERVICES := services/core-domain services/event-ingestion
+SERVICES := services/core-domain services/event-ingestion services/aggregation-worker
 SPECS_DIR := ../motifpath-specs
 
 .PHONY: generate migrate\:diff test test\:bdd test\:int lint dev
@@ -22,7 +22,7 @@ migrate\:diff:
 		--dev-url "docker://postgres/16/dev?search_path=public"
 
 test:
-	go test ./services/event-ingestion/... ./services/core-domain/...
+	go test ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
 
 test\:bdd:
 	go test -v -tags integration ./services/event-ingestion/internal/bdd/...
@@ -31,9 +31,10 @@ test\:bdd:
 test\:int:
 	go test -v -tags integration ./services/event-ingestion/internal/adapters/...
 	go test -v -tags integration ./services/core-domain/internal/adapters/...
+	go test -v -tags integration ./services/aggregation-worker/internal/adapters/...
 
 lint:
-	golangci-lint run ./services/event-ingestion/... ./services/core-domain/...
+	golangci-lint run ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
 
 dev:
 	docker compose up -d
