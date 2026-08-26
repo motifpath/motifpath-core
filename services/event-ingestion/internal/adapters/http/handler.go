@@ -15,14 +15,15 @@ import (
 // Handler implements generated.StrictServerInterface.
 type Handler struct {
 	service     *application.IngestEventService
+	adminOutbox *application.AdminOutboxService
 	mongoPinger ports.Pinger
 	kafkaPinger ports.Pinger
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)
 
-func NewHandler(service *application.IngestEventService, mongoPinger, kafkaPinger ports.Pinger) *Handler {
-	return &Handler{service: service, mongoPinger: mongoPinger, kafkaPinger: kafkaPinger}
+func NewHandler(service *application.IngestEventService, adminOutbox *application.AdminOutboxService, mongoPinger, kafkaPinger ports.Pinger) *Handler {
+	return &Handler{service: service, adminOutbox: adminOutbox, mongoPinger: mongoPinger, kafkaPinger: kafkaPinger}
 }
 
 func (h *Handler) IngestTrackingEvent(ctx context.Context, request generated.IngestTrackingEventRequestObject) (generated.IngestTrackingEventResponseObject, error) {

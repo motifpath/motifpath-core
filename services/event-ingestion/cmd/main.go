@@ -91,6 +91,11 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("ensure mongodb indexes: %w", err)
 	}
 
+	outboxRepo := repo.NewMongoPublishOutboxRepository(mongoClient.Database(cfg.mongoDatabase))
+	if err := outboxRepo.EnsureIndexes(ctx); err != nil {
+		return fmt.Errorf("ensure mongodb indexes: %w", err)
+	}
+
 	publisher := kafka.NewKafkaEventPublisher(cfg.kafkaBrokers)
 	defer func() {
 		if err := publisher.Close(); err != nil {
@@ -104,13 +109,20 @@ func run(logger *slog.Logger) error {
 	// key and resolves JWKS via Clerk's backend API itself.
 	clerk.SetKey(cfg.clerkSecretKey)
 
-	service := application.NewIngestEventService(eventRepo, publisher, logger)
-	handler := appHTTP.NewHandler(service, eventRepo, publisher)
+	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, logger)
+	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher)
+	handler := appHTTP.NewHandler(service, adminOutbox, eventRepo, publisher)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
 		Middlewares: []generated.MiddlewareFunc{appHTTP.ClerkAuthMiddleware},
 	})
+
+	// Retries publish_outbox entries a prior attempt failed to deliver, per
+	// ADR-012. Runs for the lifetime of the process; Run returns on its own
+	// once ctx is cancelled by the shutdown signal below.
+	retrySweep := application.NewRetrySweepService(outboxRepo, eventRepo, publisher, logger)
+	go retrySweep.Run(ctx)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.port,
