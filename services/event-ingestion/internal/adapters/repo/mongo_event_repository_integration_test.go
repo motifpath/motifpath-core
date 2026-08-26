@@ -61,8 +61,9 @@ func TestMongoEventRepository_Save_WritesCorrectFields(t *testing.T) {
 		},
 	}
 
-	receivedAt, err := repo.Save(ctx, event)
+	receivedAt, alreadyExisted, err := repo.Save(ctx, event)
 	require.NoError(t, err)
+	assert.False(t, alreadyExisted)
 	assert.WithinDuration(t, time.Now().UTC(), receivedAt, 5*time.Second)
 
 	var doc eventDocument
@@ -97,11 +98,13 @@ func TestMongoEventRepository_Save_IsIdempotentOnEventID(t *testing.T) {
 		ContentContext: domain.ContentContext{ContentNodeID: "44444444-4444-4444-4444-444444444444"},
 	}
 
-	_, err := repo.Save(ctx, event)
+	_, alreadyExisted1, err := repo.Save(ctx, event)
 	require.NoError(t, err)
+	assert.False(t, alreadyExisted1)
 
-	_, err = repo.Save(ctx, event)
+	_, alreadyExisted2, err := repo.Save(ctx, event)
 	require.NoError(t, err, "resubmitting the same event_id must not error")
+	assert.True(t, alreadyExisted2, "a duplicate event_id must report alreadyExisted")
 
 	count, err := repo.collection.CountDocuments(ctx, bson.D{{Key: "event_id", Value: event.EventID}})
 	require.NoError(t, err)
@@ -130,4 +133,71 @@ func TestMongoEventRepository_EnsureIndexes_CreatesExpectedIndexes(t *testing.T)
 func TestMongoEventRepository_Ping(t *testing.T) {
 	repo := setupMongoRepository(t)
 	assert.NoError(t, repo.Ping(context.Background()))
+}
+
+func TestMongoEventRepository_FindByEventID_RoundTripsLessonCompletedEvent(t *testing.T) {
+	repo := setupMongoRepository(t)
+	ctx := context.Background()
+
+	durationSeconds := 90
+	event := domain.LessonCompletedEvent{
+		TrackingEventBase: domain.TrackingEventBase{
+			EventID:    "77777777-7777-7777-7777-777777777777",
+			EventType:  domain.EventTypeLessonCompleted,
+			StudentID:  "22222222-2222-2222-2222-222222222222",
+			SessionID:  "33333333-3333-3333-3333-333333333333",
+			OccurredAt: time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC),
+		},
+		ContentContext: domain.ContentContext{
+			ContentNodeID: "44444444-4444-4444-4444-444444444444",
+			ContentType:   domain.ContentTypeArticle,
+			TeacherID:     "55555555-5555-5555-5555-555555555555",
+		},
+		DurationSeconds: &durationSeconds,
+	}
+
+	_, _, err := repo.Save(ctx, event)
+	require.NoError(t, err)
+
+	found, err := repo.FindByEventID(ctx, event.EventID)
+	require.NoError(t, err)
+	assert.Equal(t, event, found)
+}
+
+func TestMongoEventRepository_FindByEventID_RoundTripsExerciseAnswerSentEvent(t *testing.T) {
+	repo := setupMongoRepository(t)
+	ctx := context.Background()
+
+	event := domain.ExerciseAnswerSentEvent{
+		TrackingEventBase: domain.TrackingEventBase{
+			EventID:    "88888888-8888-8888-8888-888888888888",
+			EventType:  domain.EventTypeExerciseAnswerSent,
+			StudentID:  "22222222-2222-2222-2222-222222222222",
+			SessionID:  "33333333-3333-3333-3333-333333333333",
+			OccurredAt: time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC),
+		},
+		ExerciseID: "99999999-9999-9999-9999-999999999999",
+		TriggerContext: domain.TriggerContext{
+			Source:        domain.TriggerSourceChallengeSequence,
+			ContentNodeID: "44444444-4444-4444-4444-444444444444",
+			ChallengeID:   "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		},
+		AttemptNumber: 2,
+		AnswerPayload: map[string]any{"selected_option": "C"},
+	}
+
+	_, _, err := repo.Save(ctx, event)
+	require.NoError(t, err)
+
+	found, err := repo.FindByEventID(ctx, event.EventID)
+	require.NoError(t, err)
+	assert.Equal(t, event, found)
+}
+
+func TestMongoEventRepository_FindByEventID_NotFound(t *testing.T) {
+	repo := setupMongoRepository(t)
+
+	_, err := repo.FindByEventID(context.Background(), "does-not-exist")
+
+	require.Error(t, err)
 }

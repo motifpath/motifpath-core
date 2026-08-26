@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/motifpath/event-ingestion/internal/domain"
@@ -84,6 +85,95 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 	}
 
 	return doc
+}
+
+// fromDocument reconstructs the typed domain event a document represents, for
+// the retry sweep and admin endpoints to republish a previously stored event.
+// It is the inverse of toDocument.
+func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
+	base := domain.TrackingEventBase{
+		EventID:    doc.EventID,
+		EventType:  domain.EventType(doc.EventType),
+		StudentID:  doc.StudentID,
+		SessionID:  doc.SessionID,
+		OccurredAt: doc.OccurredAt,
+	}
+
+	switch base.EventType {
+	case domain.EventTypeLessonStarted:
+		return domain.LessonStartedEvent{
+			TrackingEventBase: base,
+			ContentContext:    fromContentContextDoc(doc.ContentContext),
+		}, nil
+	case domain.EventTypeLessonResumed:
+		return domain.LessonResumedEvent{
+			TrackingEventBase: base,
+			ContentContext:    fromContentContextDoc(doc.ContentContext),
+		}, nil
+	case domain.EventTypeLessonCompleted:
+		return domain.LessonCompletedEvent{
+			TrackingEventBase: base,
+			ContentContext:    fromContentContextDoc(doc.ContentContext),
+			DurationSeconds:   doc.DurationSeconds,
+		}, nil
+	case domain.EventTypeExerciseStarted:
+		return domain.ExerciseStartedEvent{
+			TrackingEventBase: base,
+			ExerciseID:        doc.ExerciseID,
+			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
+		}, nil
+	case domain.EventTypeExerciseProgress:
+		return domain.ExerciseProgressEvent{
+			TrackingEventBase: base,
+			ExerciseID:        doc.ExerciseID,
+			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
+			ElapsedSeconds:    doc.ElapsedSeconds,
+		}, nil
+	case domain.EventTypeExerciseAnswerSent:
+		var attemptNumber int
+		if doc.AttemptNumber != nil {
+			attemptNumber = *doc.AttemptNumber
+		}
+		return domain.ExerciseAnswerSentEvent{
+			TrackingEventBase: base,
+			ExerciseID:        doc.ExerciseID,
+			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
+			AttemptNumber:     attemptNumber,
+			AnswerPayload:     doc.AnswerPayload,
+		}, nil
+	case domain.EventTypeExerciseEnded:
+		return domain.ExerciseEndedEvent{
+			TrackingEventBase: base,
+			ExerciseID:        doc.ExerciseID,
+			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
+			Outcome:           domain.ExerciseOutcome(doc.Outcome),
+			FinalScore:        doc.FinalScore,
+		}, nil
+	default:
+		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, doc.EventType)
+	}
+}
+
+func fromContentContextDoc(d *contentContextDoc) domain.ContentContext {
+	if d == nil {
+		return domain.ContentContext{}
+	}
+	return domain.ContentContext{
+		ContentNodeID: d.ContentNodeID,
+		ContentType:   domain.ContentType(d.ContentType),
+		TeacherID:     d.TeacherID,
+	}
+}
+
+func fromTriggerContextDoc(d *triggerContextDoc) domain.TriggerContext {
+	if d == nil {
+		return domain.TriggerContext{}
+	}
+	return domain.TriggerContext{
+		Source:        domain.TriggerSource(d.Source),
+		ContentNodeID: d.ContentNodeID,
+		ChallengeID:   d.ChallengeID,
+	}
 }
 
 func toContentContextDoc(cc domain.ContentContext) *contentContextDoc {

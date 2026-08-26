@@ -80,6 +80,14 @@ const (
 	LessonStarted LessonStartedEventEventType = "lesson.started"
 )
 
+// Defines values for PublishOutboxEntryStatus.
+const (
+	Dead             PublishOutboxEntryStatus = "dead"
+	Pending          PublishOutboxEntryStatus = "pending"
+	Published        PublishOutboxEntryStatus = "published"
+	ResolvedManually PublishOutboxEntryStatus = "resolved_manually"
+)
+
 // Defines values for TrackingEventBaseEventType.
 const (
 	TrackingEventBaseEventTypeExerciseAnswerSent TrackingEventBaseEventType = "exercise.answer_sent"
@@ -290,6 +298,12 @@ type ExerciseStartedEvent struct {
 // ExerciseStartedEventEventType defines model for ExerciseStartedEvent.EventType.
 type ExerciseStartedEventEventType string
 
+// ForbiddenError Returned when the authenticated caller lacks permission for the requested operation.
+type ForbiddenError struct {
+	// Message Human-readable reason for the denial.
+	Message string `json:"message"`
+}
+
 // HealthStatus Response body for liveness and readiness probes.
 type HealthStatus struct {
 	// Checks Map of dependency name to its check result. Present on the readiness probe;
@@ -422,6 +436,45 @@ type LessonStartedEvent struct {
 // LessonStartedEventEventType defines model for LessonStartedEvent.EventType.
 type LessonStartedEventEventType string
 
+// NotFoundError Returned when the requested resource does not exist.
+type NotFoundError struct {
+	// Message Human-readable description of what was not found.
+	Message string `json:"message"`
+}
+
+// PublishOutboxEntry The retry-tracking record for a single tracking event's Kafka delivery.
+type PublishOutboxEntry struct {
+	// Attempts Number of publish attempts made so far, including the initial attempt.
+	Attempts int `json:"attempts"`
+
+	// EventId The event_id this entry tracks. Matches the corresponding events collection document.
+	EventId openapi_types.UUID `json:"event_id"`
+
+	// LastError Error message from the most recent failed publish attempt. Absent if no attempt has
+	// failed.
+	LastError *string `json:"last_error,omitempty"`
+
+	// Status pending — still eligible for the automatic retry sweep. published — Kafka confirmed
+	// receipt. dead — exhausted its automatic retry attempts and is awaiting manual action.
+	// resolved_manually — an operator marked this resolved without a confirmed publish.
+	Status PublishOutboxEntryStatus `json:"status"`
+
+	// UpdatedAt Timestamp at which this entry was last modified.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PublishOutboxEntryStatus pending — still eligible for the automatic retry sweep. published — Kafka confirmed
+// receipt. dead — exhausted its automatic retry attempts and is awaiting manual action.
+// resolved_manually — an operator marked this resolved without a confirmed publish.
+type PublishOutboxEntryStatus string
+
+// ResolvePublishOutboxEntryRequest Optional context for why an entry is being manually resolved.
+type ResolvePublishOutboxEntryRequest struct {
+	// Reason Human-readable explanation of why this entry no longer needs automatic retry,
+	// stored on the entry for audit purposes.
+	Reason *string `json:"reason,omitempty"`
+}
+
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
 // Exactly one event-specific schema applies, discriminated by event_type. The Event
 // Ingestion Service persists the raw payload to MongoDB and publishes it to the
@@ -508,6 +561,9 @@ type ValidationError struct {
 	// Message Human-readable summary of the validation failure.
 	Message string `json:"message"`
 }
+
+// ResolvePublishOutboxEntryJSONRequestBody defines body for ResolvePublishOutboxEntry for application/json ContentType.
+type ResolvePublishOutboxEntryJSONRequestBody = ResolvePublishOutboxEntryRequest
 
 // IngestTrackingEventJSONRequestBody defines body for IngestTrackingEvent for application/json ContentType.
 type IngestTrackingEventJSONRequestBody = TrackingEvent
@@ -849,6 +905,12 @@ func (t *TrackingEvent) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Mark a publish_outbox entry as manually resolved
+	// (POST /admin/publish-outbox/{event_id}/resolve)
+	ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID)
+	// Manually retry a failed Kafka publish
+	// (POST /admin/publish-outbox/{event_id}/retry)
+	RetryPublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID)
 	// Submit a student tracking event
 	// (POST /events)
 	IngestTrackingEvent(w http.ResponseWriter, r *http.Request)
@@ -863,6 +925,18 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Mark a publish_outbox entry as manually resolved
+// (POST /admin/publish-outbox/{event_id}/resolve)
+func (_ Unimplemented) ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Manually retry a failed Kafka publish
+// (POST /admin/publish-outbox/{event_id}/retry)
+func (_ Unimplemented) RetryPublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Submit a student tracking event
 // (POST /events)
@@ -890,6 +964,68 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ResolvePublishOutboxEntry operation middleware
+func (siw *ServerInterfaceWrapper) ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "event_id" -------------
+	var eventId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_id", chi.URLParam(r, "event_id"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "event_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolvePublishOutboxEntry(w, r, eventId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RetryPublishOutboxEntry operation middleware
+func (siw *ServerInterfaceWrapper) RetryPublishOutboxEntry(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "event_id" -------------
+	var eventId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "event_id", chi.URLParam(r, "event_id"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "event_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RetryPublishOutboxEntry(w, r, eventId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // IngestTrackingEvent operation middleware
 func (siw *ServerInterfaceWrapper) IngestTrackingEvent(w http.ResponseWriter, r *http.Request) {
@@ -1053,6 +1189,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/publish-outbox/{event_id}/resolve", wrapper.ResolvePublishOutboxEntry)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/admin/publish-outbox/{event_id}/retry", wrapper.RetryPublishOutboxEntry)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/events", wrapper.IngestTrackingEvent)
 	})
 	r.Group(func(r chi.Router) {
@@ -1063,6 +1205,95 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type ResolvePublishOutboxEntryRequestObject struct {
+	EventId openapi_types.UUID `json:"event_id"`
+	Body    *ResolvePublishOutboxEntryJSONRequestBody
+}
+
+type ResolvePublishOutboxEntryResponseObject interface {
+	VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error
+}
+
+type ResolvePublishOutboxEntry200JSONResponse PublishOutboxEntry
+
+func (response ResolvePublishOutboxEntry200JSONResponse) VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ResolvePublishOutboxEntry401JSONResponse UnauthorizedError
+
+func (response ResolvePublishOutboxEntry401JSONResponse) VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ResolvePublishOutboxEntry403JSONResponse ForbiddenError
+
+func (response ResolvePublishOutboxEntry403JSONResponse) VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ResolvePublishOutboxEntry404JSONResponse NotFoundError
+
+func (response ResolvePublishOutboxEntry404JSONResponse) VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetryPublishOutboxEntryRequestObject struct {
+	EventId openapi_types.UUID `json:"event_id"`
+}
+
+type RetryPublishOutboxEntryResponseObject interface {
+	VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error
+}
+
+type RetryPublishOutboxEntry200JSONResponse PublishOutboxEntry
+
+func (response RetryPublishOutboxEntry200JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetryPublishOutboxEntry401JSONResponse UnauthorizedError
+
+func (response RetryPublishOutboxEntry401JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetryPublishOutboxEntry403JSONResponse ForbiddenError
+
+func (response RetryPublishOutboxEntry403JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetryPublishOutboxEntry404JSONResponse NotFoundError
+
+func (response RetryPublishOutboxEntry404JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type IngestTrackingEventRequestObject struct {
@@ -1143,6 +1374,12 @@ func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Mark a publish_outbox entry as manually resolved
+	// (POST /admin/publish-outbox/{event_id}/resolve)
+	ResolvePublishOutboxEntry(ctx context.Context, request ResolvePublishOutboxEntryRequestObject) (ResolvePublishOutboxEntryResponseObject, error)
+	// Manually retry a failed Kafka publish
+	// (POST /admin/publish-outbox/{event_id}/retry)
+	RetryPublishOutboxEntry(ctx context.Context, request RetryPublishOutboxEntryRequestObject) (RetryPublishOutboxEntryResponseObject, error)
 	// Submit a student tracking event
 	// (POST /events)
 	IngestTrackingEvent(ctx context.Context, request IngestTrackingEventRequestObject) (IngestTrackingEventResponseObject, error)
@@ -1181,6 +1418,65 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ResolvePublishOutboxEntry operation middleware
+func (sh *strictHandler) ResolvePublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID) {
+	var request ResolvePublishOutboxEntryRequestObject
+
+	request.EventId = eventId
+
+	var body ResolvePublishOutboxEntryJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResolvePublishOutboxEntry(ctx, request.(ResolvePublishOutboxEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResolvePublishOutboxEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResolvePublishOutboxEntryResponseObject); ok {
+		if err := validResponse.VisitResolvePublishOutboxEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RetryPublishOutboxEntry operation middleware
+func (sh *strictHandler) RetryPublishOutboxEntry(w http.ResponseWriter, r *http.Request, eventId openapi_types.UUID) {
+	var request RetryPublishOutboxEntryRequestObject
+
+	request.EventId = eventId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RetryPublishOutboxEntry(ctx, request.(RetryPublishOutboxEntryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RetryPublishOutboxEntry")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RetryPublishOutboxEntryResponseObject); ok {
+		if err := validResponse.VisitRetryPublishOutboxEntryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // IngestTrackingEvent operation middleware

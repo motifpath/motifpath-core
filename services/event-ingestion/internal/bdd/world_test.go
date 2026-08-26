@@ -5,6 +5,7 @@ package bdd
 import (
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for deterministic test UUIDs, not security
+	"errors"
 	"io"
 	"log/slog"
 	"sync"
@@ -38,12 +39,25 @@ func newFakeRepository() *fakeRepository {
 
 var fixedReceivedAt = time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC)
 
-func (f *fakeRepository) Save(_ context.Context, event domain.TrackingEvent) (time.Time, error) {
+func (f *fakeRepository) Save(_ context.Context, event domain.TrackingEvent) (time.Time, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	_, alreadyExisted := f.saved[event.Base().EventID]
 	f.saved[event.Base().EventID] = event
-	return fixedReceivedAt, nil
+	return fixedReceivedAt, alreadyExisted, nil
 }
+
+func (f *fakeRepository) FindByEventID(_ context.Context, eventID string) (domain.TrackingEvent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	event, ok := f.saved[eventID]
+	if !ok {
+		return nil, errEventNotFound
+	}
+	return event, nil
+}
+
+var errEventNotFound = errors.New("event not found")
 
 type fakePublisher struct {
 	mu   sync.Mutex
@@ -65,10 +79,74 @@ func (f *fakePinger) Ping(_ context.Context) error {
 	return f.err
 }
 
+// fakeOutboxRepository stands in for MongoPublishOutboxRepository. No BDD
+// scenario exercises the admin outbox endpoints yet (ADR-012 Part 3) -- this
+// exists only so IngestEventService and Handler can be constructed.
+type fakeOutboxRepository struct {
+	mu      sync.Mutex
+	entries map[string]ports.OutboxEntry
+}
+
+func newFakeOutboxRepository() *fakeOutboxRepository {
+	return &fakeOutboxRepository{entries: make(map[string]ports.OutboxEntry)}
+}
+
+func (f *fakeOutboxRepository) Create(_ context.Context, eventID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.entries[eventID] = ports.OutboxEntry{EventID: eventID, Status: domain.OutboxStatusPending}
+	return nil
+}
+
+func (f *fakeOutboxRepository) Get(_ context.Context, eventID string) (ports.OutboxEntry, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	entry, found := f.entries[eventID]
+	return entry, found, nil
+}
+
+func (f *fakeOutboxRepository) MarkPublished(_ context.Context, eventID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	entry := f.entries[eventID]
+	entry.Status = domain.OutboxStatusPublished
+	f.entries[eventID] = entry
+	return nil
+}
+
+func (f *fakeOutboxRepository) Update(_ context.Context, entry ports.OutboxEntry) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.entries[entry.EventID] = entry
+	return nil
+}
+
+func (f *fakeOutboxRepository) MarkResolvedManually(_ context.Context, eventID string, _ string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	entry := f.entries[eventID]
+	entry.Status = domain.OutboxStatusResolvedManually
+	f.entries[eventID] = entry
+	return nil
+}
+
+func (f *fakeOutboxRepository) ListDueForRetry(_ context.Context, now time.Time) ([]ports.OutboxEntry, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var due []ports.OutboxEntry
+	for _, entry := range f.entries {
+		if entry.Status == domain.OutboxStatusPending && !entry.NextAttemptAt.After(now) {
+			due = append(due, entry)
+		}
+	}
+	return due, nil
+}
+
 var (
-	_ ports.EventRepository = (*fakeRepository)(nil)
-	_ ports.EventPublisher  = (*fakePublisher)(nil)
-	_ ports.Pinger          = (*fakePinger)(nil)
+	_ ports.EventRepository         = (*fakeRepository)(nil)
+	_ ports.EventPublisher          = (*fakePublisher)(nil)
+	_ ports.Pinger                  = (*fakePinger)(nil)
+	_ ports.PublishOutboxRepository = (*fakeOutboxRepository)(nil)
 )
 
 // exerciseAttempt records the trigger context established by a "has an active
@@ -91,6 +169,7 @@ func (a exerciseAttempt) triggerContext() generated.TriggerContext {
 // isolation without an explicit teardown step.
 type world struct {
 	repo        *fakeRepository
+	outbox      *fakeOutboxRepository
 	publisher   *fakePublisher
 	mongoPinger *fakePinger
 	kafkaPinger *fakePinger
@@ -115,13 +194,15 @@ type world struct {
 func newWorld() *world {
 	w := &world{
 		repo:             newFakeRepository(),
+		outbox:           newFakeOutboxRepository(),
 		publisher:        &fakePublisher{},
 		mongoPinger:      &fakePinger{},
 		kafkaPinger:      &fakePinger{},
 		exerciseAttempts: make(map[string]exerciseAttempt),
 	}
-	service := application.NewIngestEventService(w.repo, w.publisher, discardLogger())
-	w.handler = appHTTP.NewHandler(service, w.mongoPinger, w.kafkaPinger)
+	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, discardLogger())
+	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher)
+	w.handler = appHTTP.NewHandler(service, adminOutbox, w.mongoPinger, w.kafkaPinger)
 	return w
 }
 
