@@ -6,7 +6,7 @@ type contextKey int
 
 const (
 	studentIDContextKey contextKey = iota
-	roleContextKey
+	bearerTokenContextKey
 )
 
 // WithStudentID stores the authenticated student's ID (the JWT sub claim) in ctx.
@@ -22,14 +22,15 @@ func StudentIDFromContext(ctx context.Context) (string, bool) {
 	return studentID, ok
 }
 
-// WithRole stores the authenticated caller's role, decoded from the JWT's
-// custom "role" claim, in ctx. Populated by the Clerk JWT middleware; read
-// by the admin endpoints (ADR-012 Part 3) to authorize access.
-func WithRole(ctx context.Context, role string) context.Context {
-	return context.WithValue(ctx, roleContextKey, role)
+// WithBearerToken stores the raw, already-validated bearer token in ctx.
+// Populated by the Clerk JWT middleware; read by the outbox admin endpoints,
+// which forward it to the Core Domain Service to establish the caller's role
+// (ADR-013). No role claim is decoded from the token itself.
+func WithBearerToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, bearerTokenContextKey, token)
 }
 
-func RoleFromContext(ctx context.Context) (string, bool) {
-	role, ok := ctx.Value(roleContextKey).(string)
-	return role, ok
+func BearerTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(bearerTokenContextKey).(string)
+	return token, ok
 }

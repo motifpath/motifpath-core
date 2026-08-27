@@ -9,15 +9,18 @@ import (
 )
 
 // AdminOutboxService implements the manual-remediation operations from
-// ADR-012 Part 3, for the two admin-only endpoints.
+// ADR-012 Part 3, for the two admin-only endpoints. Per ADR-013 both
+// operations authorize the caller through AdminAuthorizer before touching
+// any outbox state.
 type AdminOutboxService struct {
-	outbox    ports.PublishOutboxRepository
-	events    ports.EventRepository
-	publisher ports.EventPublisher
+	outbox     ports.PublishOutboxRepository
+	events     ports.EventRepository
+	publisher  ports.EventPublisher
+	authorizer *AdminAuthorizer
 }
 
-func NewAdminOutboxService(outbox ports.PublishOutboxRepository, events ports.EventRepository, publisher ports.EventPublisher) *AdminOutboxService {
-	return &AdminOutboxService{outbox: outbox, events: events, publisher: publisher}
+func NewAdminOutboxService(outbox ports.PublishOutboxRepository, events ports.EventRepository, publisher ports.EventPublisher, authorizer *AdminAuthorizer) *AdminOutboxService {
+	return &AdminOutboxService{outbox: outbox, events: events, publisher: publisher, authorizer: authorizer}
 }
 
 // RetryEntry immediately attempts to publish eventID's event again,
@@ -25,7 +28,16 @@ func NewAdminOutboxService(outbox ports.PublishOutboxRepository, events ports.Ev
 // resolved_manually. A failed attempt leaves the entry dead rather than
 // pending -- it does not silently re-enable the automatic sweep; the
 // operator must call this endpoint again once ready.
-func (s *AdminOutboxService) RetryEntry(ctx context.Context, eventID string) (ports.OutboxEntry, error) {
+//
+// bearerToken is the caller's validated JWT, forwarded to the
+// identity/authorization capability to establish the caller's role. Returns
+// domain.ErrForbidden or domain.ErrAuthorizationUnavailable without touching
+// outbox state when authorization does not succeed.
+func (s *AdminOutboxService) RetryEntry(ctx context.Context, bearerToken, eventID string) (ports.OutboxEntry, error) {
+	if err := s.authorizer.RequireAdmin(ctx, bearerToken); err != nil {
+		return ports.OutboxEntry{}, err
+	}
+
 	entry, found, err := s.outbox.Get(ctx, eventID)
 	if err != nil {
 		return ports.OutboxEntry{}, err
@@ -63,7 +75,14 @@ func (s *AdminOutboxService) RetryEntry(ctx context.Context, eventID string) (po
 // ResolveEntry marks eventID's entry resolved_manually without attempting
 // to publish it again. A no-op if the entry is already published or
 // resolved_manually.
-func (s *AdminOutboxService) ResolveEntry(ctx context.Context, eventID string, reason string) (ports.OutboxEntry, error) {
+//
+// bearerToken is authorized exactly as in RetryEntry: a non-admin or
+// unestablished caller is rejected before any outbox state is read.
+func (s *AdminOutboxService) ResolveEntry(ctx context.Context, bearerToken, eventID string, reason string) (ports.OutboxEntry, error) {
+	if err := s.authorizer.RequireAdmin(ctx, bearerToken); err != nil {
+		return ports.OutboxEntry{}, err
+	}
+
 	entry, found, err := s.outbox.Get(ctx, eventID)
 	if err != nil {
 		return ports.OutboxEntry{}, err

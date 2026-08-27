@@ -11,18 +11,10 @@ import (
 	"github.com/motifpath/event-ingestion/internal/ports"
 )
 
-// adminRole is the value the "role" custom Clerk claim must carry for a
-// caller to use the admin endpoints. Sourced from the JWT directly rather
-// than Core Domain Service's own User.role model, which does not exist yet
-// -- see ADR-012 Part 3.
-const adminRole = "admin"
-
 func (h *Handler) ResolvePublishOutboxEntry(ctx context.Context, request generated.ResolvePublishOutboxEntryRequestObject) (generated.ResolvePublishOutboxEntryResponseObject, error) {
-	if !authenticated(ctx) {
+	token, ok := BearerTokenFromContext(ctx)
+	if !ok {
 		return generated.ResolvePublishOutboxEntry401JSONResponse{Message: "missing or invalid Bearer token"}, nil
-	}
-	if !isAdmin(ctx) {
-		return generated.ResolvePublishOutboxEntry403JSONResponse{Message: "the admin role is required for this operation"}, nil
 	}
 
 	var reason string
@@ -30,14 +22,18 @@ func (h *Handler) ResolvePublishOutboxEntry(ctx context.Context, request generat
 		reason = *request.Body.Reason
 	}
 
-	entry, err := h.adminOutbox.ResolveEntry(ctx, request.EventId.String(), reason)
+	entry, err := h.adminOutbox.ResolveEntry(ctx, token, request.EventId.String(), reason)
 	if err != nil {
-		if errors.Is(err, domain.ErrOutboxEntryNotFound) {
-			return generated.ResolvePublishOutboxEntry404JSONResponse{
-				Message: "no publish_outbox entry exists for this event_id",
-			}, nil
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.ResolvePublishOutboxEntry403JSONResponse{Message: adminForbiddenMessage}, nil
+		case errors.Is(err, domain.ErrAuthorizationUnavailable):
+			return generated.ResolvePublishOutboxEntry503JSONResponse{Message: authUnavailableMessage}, nil
+		case errors.Is(err, domain.ErrOutboxEntryNotFound):
+			return generated.ResolvePublishOutboxEntry404JSONResponse{Message: outboxNotFoundMessage}, nil
+		default:
+			return nil, err
 		}
-		return nil, err
 	}
 
 	resp, err := toGeneratedOutboxEntry(entry)
@@ -48,21 +44,23 @@ func (h *Handler) ResolvePublishOutboxEntry(ctx context.Context, request generat
 }
 
 func (h *Handler) RetryPublishOutboxEntry(ctx context.Context, request generated.RetryPublishOutboxEntryRequestObject) (generated.RetryPublishOutboxEntryResponseObject, error) {
-	if !authenticated(ctx) {
+	token, ok := BearerTokenFromContext(ctx)
+	if !ok {
 		return generated.RetryPublishOutboxEntry401JSONResponse{Message: "missing or invalid Bearer token"}, nil
 	}
-	if !isAdmin(ctx) {
-		return generated.RetryPublishOutboxEntry403JSONResponse{Message: "the admin role is required for this operation"}, nil
-	}
 
-	entry, err := h.adminOutbox.RetryEntry(ctx, request.EventId.String())
+	entry, err := h.adminOutbox.RetryEntry(ctx, token, request.EventId.String())
 	if err != nil {
-		if errors.Is(err, domain.ErrOutboxEntryNotFound) {
-			return generated.RetryPublishOutboxEntry404JSONResponse{
-				Message: "no publish_outbox entry exists for this event_id",
-			}, nil
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.RetryPublishOutboxEntry403JSONResponse{Message: adminForbiddenMessage}, nil
+		case errors.Is(err, domain.ErrAuthorizationUnavailable):
+			return generated.RetryPublishOutboxEntry503JSONResponse{Message: authUnavailableMessage}, nil
+		case errors.Is(err, domain.ErrOutboxEntryNotFound):
+			return generated.RetryPublishOutboxEntry404JSONResponse{Message: outboxNotFoundMessage}, nil
+		default:
+			return nil, err
 		}
-		return nil, err
 	}
 
 	resp, err := toGeneratedOutboxEntry(entry)
@@ -72,19 +70,11 @@ func (h *Handler) RetryPublishOutboxEntry(ctx context.Context, request generated
 	return generated.RetryPublishOutboxEntry200JSONResponse(resp), nil
 }
 
-// authenticated reuses StudentIDFromContext, which really just holds the
-// JWT sub claim regardless of caller role -- an admin's identity lands
-// there the same way a student's does. Its name reflects the endpoint it
-// was first built for, not a constraint on who it applies to.
-func authenticated(ctx context.Context) bool {
-	_, ok := StudentIDFromContext(ctx)
-	return ok
-}
-
-func isAdmin(ctx context.Context) bool {
-	role, _ := RoleFromContext(ctx)
-	return role == adminRole
-}
+const (
+	adminForbiddenMessage  = "the admin role is required for this operation"
+	authUnavailableMessage = "the caller's role could not be established: the Core Domain Service was unreachable"
+	outboxNotFoundMessage  = "no publish_outbox entry exists for this event_id"
+)
 
 func toGeneratedOutboxEntry(entry ports.OutboxEntry) (generated.PublishOutboxEntry, error) {
 	eventID, err := uuid.Parse(entry.EventID)

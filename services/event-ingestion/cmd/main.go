@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/motifpath/event-ingestion/internal/adapters/coredomain"
 	appHTTP "github.com/motifpath/event-ingestion/internal/adapters/http"
 	"github.com/motifpath/event-ingestion/internal/adapters/http/generated"
 	"github.com/motifpath/event-ingestion/internal/adapters/kafka"
@@ -36,11 +37,12 @@ func main() {
 }
 
 type config struct {
-	port           string
-	mongoURI       string
-	mongoDatabase  string
-	kafkaBrokers   []string
-	clerkSecretKey string
+	port              string
+	mongoURI          string
+	mongoDatabase     string
+	kafkaBrokers      []string
+	clerkSecretKey    string
+	coreDomainBaseURL string
 }
 
 func loadConfig() (config, error) {
@@ -56,12 +58,20 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	// Required: the outbox admin endpoints resolve the caller's role by calling
+	// the Core Domain Service (ADR-013). Absent this, the service fails to start
+	// rather than silently falling back to trusting a JWT claim.
+	coreDomainBaseURL, err := mustGetenv("CORE_DOMAIN_BASE_URL")
+	if err != nil {
+		return config{}, err
+	}
 	return config{
-		port:           getenvDefault("PORT", "8081"),
-		mongoURI:       mongoURI,
-		mongoDatabase:  getenvDefault("MONGO_DATABASE", "motifpath_events"),
-		kafkaBrokers:   strings.Split(kafkaBrokersRaw, ","),
-		clerkSecretKey: clerkSecretKey,
+		port:              getenvDefault("PORT", "8081"),
+		mongoURI:          mongoURI,
+		mongoDatabase:     getenvDefault("MONGO_DATABASE", "motifpath_events"),
+		kafkaBrokers:      strings.Split(kafkaBrokersRaw, ","),
+		clerkSecretKey:    clerkSecretKey,
+		coreDomainBaseURL: coreDomainBaseURL,
 	}, nil
 }
 
@@ -109,8 +119,11 @@ func run(logger *slog.Logger) error {
 	// key and resolves JWKS via Clerk's backend API itself.
 	clerk.SetKey(cfg.clerkSecretKey)
 
+	roleResolver := coredomain.NewRoleResolver(cfg.coreDomainBaseURL, nil)
+	adminAuthorizer := application.NewAdminAuthorizer(roleResolver)
+
 	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, logger)
-	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher)
+	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher, adminAuthorizer)
 	handler := appHTTP.NewHandler(service, adminOutbox, eventRepo, publisher)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
