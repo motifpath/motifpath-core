@@ -475,6 +475,14 @@ type ResolvePublishOutboxEntryRequest struct {
 	Reason *string `json:"reason,omitempty"`
 }
 
+// ServiceUnavailableError Returned when the service cannot complete the request because a dependency it
+// needs is temporarily unreachable. The request can be retried once the dependency
+// recovers.
+type ServiceUnavailableError struct {
+	// Message Human-readable description of which dependency was unavailable.
+	Message string `json:"message"`
+}
+
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
 // Exactly one event-specific schema applies, discriminated by event_type. The Event
 // Ingestion Service persists the raw payload to MongoDB and publishes it to the
@@ -1252,6 +1260,15 @@ func (response ResolvePublishOutboxEntry404JSONResponse) VisitResolvePublishOutb
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ResolvePublishOutboxEntry503JSONResponse ServiceUnavailableError
+
+func (response ResolvePublishOutboxEntry503JSONResponse) VisitResolvePublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type RetryPublishOutboxEntryRequestObject struct {
 	EventId openapi_types.UUID `json:"event_id"`
 }
@@ -1292,6 +1309,15 @@ type RetryPublishOutboxEntry404JSONResponse NotFoundError
 func (response RetryPublishOutboxEntry404JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetryPublishOutboxEntry503JSONResponse ServiceUnavailableError
+
+func (response RetryPublishOutboxEntry503JSONResponse) VisitRetryPublishOutboxEntryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 
 	return json.NewEncoder(w).Encode(response)
 }
