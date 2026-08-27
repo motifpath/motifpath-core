@@ -1357,6 +1357,15 @@ func (response IngestTrackingEvent401JSONResponse) VisitIngestTrackingEventRespo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type IngestTrackingEvent503JSONResponse ServiceUnavailableError
+
+func (response IngestTrackingEvent503JSONResponse) VisitIngestTrackingEventResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type LivenessCheckRequestObject struct {
 }
 
