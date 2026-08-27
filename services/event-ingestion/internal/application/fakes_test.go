@@ -187,27 +187,31 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-// fakeRoleResolver is a minimal in-memory ports.RoleResolver. It returns err
-// when set, otherwise role, and records the last bearer token it was given.
-type fakeRoleResolver struct {
-	role      string
+// fakeProfileResolver is a minimal in-memory ports.ProfileResolver. It returns
+// err when set, otherwise profile, and records the last bearer token given.
+type fakeProfileResolver struct {
+	profile   ports.Profile
 	err       error
 	lastToken string
 }
 
-func (f *fakeRoleResolver) ResolveRole(_ context.Context, bearerToken string) (string, error) {
+func (f *fakeProfileResolver) ResolveProfile(_ context.Context, bearerToken string) (ports.Profile, error) {
 	f.lastToken = bearerToken
 	if f.err != nil {
-		return "", f.err
+		return ports.Profile{}, f.err
 	}
-	return f.role, nil
+	return f.profile, nil
 }
 
 // adminAuthorizer builds an AdminAuthorizer that always resolves the caller as
 // an admin -- the default for outbox tests that are not about authorization.
 func adminAuthorizer() *application.AdminAuthorizer {
-	return application.NewAdminAuthorizer(&fakeRoleResolver{role: "admin"})
+	return application.NewAdminAuthorizer(&fakeProfileResolver{profile: ports.Profile{UserID: "admin-user", Role: "admin"}})
 }
+
+// callerUserID is the StudentID every test event helper stamps -- pass it as
+// IngestEventService.Ingest's callerUserID so the identity check passes.
+const callerUserID = "22222222-2222-2222-2222-222222222222"
 
 func newEvent(eventType domain.EventType) domain.TrackingEvent {
 	return newEventWithID(eventType, "11111111-1111-1111-1111-111111111111")
@@ -217,7 +221,7 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 	base := domain.TrackingEventBase{
 		EventID:    eventID,
 		EventType:  eventType,
-		StudentID:  "22222222-2222-2222-2222-222222222222",
+		StudentID:  callerUserID,
 		SessionID:  "33333333-3333-3333-3333-333333333333",
 		OccurredAt: time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC),
 	}

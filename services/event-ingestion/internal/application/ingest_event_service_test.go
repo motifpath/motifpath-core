@@ -32,7 +32,7 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 			svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 			event := newEvent(eventType)
 
-			receivedAt, err := svc.Ingest(context.Background(), event)
+			receivedAt, err := svc.Ingest(context.Background(), callerUserID, event)
 
 			require.NoError(t, err)
 			assert.Equal(t, fakeReceivedAt, receivedAt)
@@ -59,9 +59,9 @@ func TestIngestEventService_Ingest_DuplicateEventIDRepublishesButDoesNotRecreate
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
-	_, err1 := svc.Ingest(context.Background(), event)
+	_, err1 := svc.Ingest(context.Background(), callerUserID, event)
 	waitForPublish(t, publisher.calls)
-	_, err2 := svc.Ingest(context.Background(), event)
+	_, err2 := svc.Ingest(context.Background(), callerUserID, event)
 	waitForPublish(t, publisher.calls)
 
 	require.NoError(t, err1)
@@ -77,7 +77,7 @@ func TestIngestEventService_Ingest_RepositoryFailure(t *testing.T) {
 	publisher := newFakePublisher(nil)
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 
-	_, err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
+	_, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
 	require.Error(t, err)
 	assert.Zero(t, outbox.createCalls, "no outbox entry should be created when the durable write itself fails")
@@ -97,7 +97,7 @@ func TestIngestEventService_Ingest_PublishFailureDoesNotFailRequest(t *testing.T
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
-	_, err := svc.Ingest(context.Background(), event)
+	_, err := svc.Ingest(context.Background(), callerUserID, event)
 
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
@@ -120,7 +120,7 @@ func TestIngestEventService_Ingest_OutboxCreateFailureDoesNotFailRequest(t *test
 	publisher := newFakePublisher(nil)
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 
-	receivedAt, err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
+	receivedAt, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
 	require.NoError(t, err)
 	assert.Equal(t, fakeReceivedAt, receivedAt)
@@ -139,7 +139,7 @@ func TestIngestEventService_Ingest_PublishFailureWithNoOutboxEntryIsANoOp(t *tes
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
-	_, err := svc.Ingest(context.Background(), event)
+	_, err := svc.Ingest(context.Background(), callerUserID, event)
 
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
@@ -157,7 +157,7 @@ func TestIngestEventService_Ingest_RecordPublishFailure_GetErrorDoesNotPanic(t *
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
-	_, err := svc.Ingest(context.Background(), event)
+	_, err := svc.Ingest(context.Background(), callerUserID, event)
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
 
@@ -176,7 +176,7 @@ func TestIngestEventService_Ingest_RecordPublishFailure_UpdateErrorDoesNotPanic(
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	outbox.updateErr = errors.New("mongo unavailable")
-	_, err := svc.Ingest(context.Background(), event)
+	_, err := svc.Ingest(context.Background(), callerUserID, event)
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
 	time.Sleep(20 * time.Millisecond)
@@ -189,9 +189,27 @@ func TestIngestEventService_Ingest_MarkPublishedFailureDoesNotPanic(t *testing.T
 	publisher := newFakePublisher(nil)
 	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
 
-	_, err := svc.Ingest(context.Background(), newEvent(domain.EventTypeLessonStarted))
+	_, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
 	require.NoError(t, err)
 	waitForPublish(t, publisher.calls)
 	time.Sleep(20 * time.Millisecond)
+}
+
+func TestIngestEventService_Ingest_RejectsEventForAnotherStudent(t *testing.T) {
+	repo := newFakeRepository()
+	outbox := newFakeOutboxRepository()
+	publisher := newFakePublisher(nil)
+	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	event := newEvent(domain.EventTypeLessonStarted) // StudentID == callerUserID
+
+	_, err := svc.Ingest(context.Background(), "a-different-user-id", event)
+
+	require.ErrorIs(t, err, domain.ErrIdentityMismatch)
+	assert.Empty(t, repo.saved, "a mismatched event must not be stored")
+	select {
+	case <-publisher.calls:
+		t.Fatal("a mismatched event must not be published")
+	default:
+	}
 }

@@ -35,7 +35,16 @@ func NewIngestEventService(repo ports.EventRepository, outbox ports.PublishOutbo
 // reintroduce the silent-loss risk this design closes. A fresh (non-duplicate)
 // write additionally creates a publish_outbox entry, which is what makes a
 // failed publish retryable later instead of being lost.
-func (s *IngestEventService) Ingest(ctx context.Context, event domain.TrackingEvent) (time.Time, error) {
+//
+// callerUserID is the caller's resolved MotifPath user id (ADR-014). An event
+// whose student_id is not that value is rejected with domain.ErrIdentityMismatch
+// before any write -- the student_id carried into motifpath.events is always the
+// caller's own identity, which is what every downstream consumer keys on.
+func (s *IngestEventService) Ingest(ctx context.Context, callerUserID string, event domain.TrackingEvent) (time.Time, error) {
+	if event.Base().StudentID != callerUserID {
+		return time.Time{}, domain.ErrIdentityMismatch
+	}
+
 	receivedAt, alreadyExisted, err := s.repo.Save(ctx, event)
 	if err != nil {
 		return time.Time{}, err

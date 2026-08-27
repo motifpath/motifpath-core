@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/event-ingestion/internal/adapters/http/generated"
+	"github.com/motifpath/event-ingestion/internal/ports"
 )
 
 func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
@@ -22,6 +23,8 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has an active exercise attempt for exercise "([^"]+)"$`, w.hasActiveExerciseAttempt)
 	sc.Step(`^"([^"]+)" has already submitted a lesson\.started event with identifier "([^"]+)"$`, w.hasAlreadySubmittedLessonStarted)
 	sc.Step(`^no authentication token is provided$`, w.noAuthToken)
+	sc.Step(`^a caller holds a valid token whose identity has never been registered$`, w.callerTokenNeverRegistered)
+	sc.Step(`^the caller's MotifPath identity cannot currently be resolved$`, w.identityCannotBeResolved)
 
 	sc.Step(`^"([^"]+)" submits a lesson\.started event for video content node "([^"]+)"$`, w.submitLessonStarted)
 	sc.Step(`^"([^"]+)" submits a lesson\.completed event for content node "([^"]+)" with a duration of (\d+) seconds$`, w.submitLessonCompletedWithDuration)
@@ -33,6 +36,7 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a lesson\.started event whose content context includes an unrecognised field "([^"]+)"$`, w.submitLessonStartedWithExtraField)
 	sc.Step(`^"([^"]+)" submits an exercise\.progress event with (\d+) elapsed seconds$`, w.submitExerciseProgress)
 	sc.Step(`^an unauthenticated request submits a lesson\.started event$`, w.unauthenticatedSubmitLessonStarted)
+	sc.Step(`^that caller submits a lesson\.started event$`, w.unregisteredCallerSubmitsLessonStarted)
 	sc.Step(`^"([^"]+)" submits an event that identifies student "([^"]+)" as the author$`, w.submitEventWithMismatchedStudent)
 	sc.Step(`^"([^"]+)" submits an event with the event type field omitted$`, w.submitEventMissingEventType)
 	sc.Step(`^"([^"]+)" submits an event with event type "([^"]+)"$`, w.submitEventWithUnknownEventType)
@@ -45,6 +49,7 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the event is accepted without error$`, w.eventIsAcceptedAndStored)
 	sc.Step(`^the submission is refused with an authentication error$`, w.submissionRefusedAuthError)
 	sc.Step(`^the submission is rejected as invalid$`, w.submissionRejectedInvalid)
+	sc.Step(`^the submission is refused as temporarily unavailable$`, w.submissionRefusedTemporarilyUnavailable)
 	sc.Step(`^the rejection identifies "([^"]+)" as the source of the error$`, w.rejectionIdentifiesField)
 }
 
@@ -53,11 +58,24 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 func (w *world) studentIsAuthenticated(name string) error {
 	w.hasToken = true
 	w.tokenStudentID = studentID(name)
+	w.identityResolver.userID = studentID(name)
 	return nil
 }
 
 func (w *world) noAuthToken() error {
 	w.hasToken = false
+	return nil
+}
+
+func (w *world) callerTokenNeverRegistered() error {
+	w.hasToken = true
+	w.tokenStudentID = studentID("unregistered-caller")
+	w.identityResolver.err = ports.ErrIdentityNotRegistered
+	return nil
+}
+
+func (w *world) identityCannotBeResolved() error {
+	w.identityResolver.err = ports.ErrProfileUnavailable
 	return nil
 }
 
@@ -277,6 +295,12 @@ func (w *world) unauthenticatedSubmitLessonStarted() error {
 	return nil
 }
 
+func (w *world) unregisteredCallerSubmitsLessonStarted() error {
+	eventID := deterministicUUID("event", "unregistered-caller-submission")
+	w.submit(newTrackingEvent(newLessonStartedBody("unregistered-caller", eventID, "intro-to-chords")))
+	return nil
+}
+
 func (w *world) submitEventWithMismatchedStudent(callerName, claimedName string) error {
 	eventID := deterministicUUID("event", callerName+":claims:"+claimedName)
 	v := newLessonStartedBody(claimedName, eventID, "intro-to-chords")
@@ -347,6 +371,13 @@ func (w *world) submissionRefusedAuthError() error {
 func (w *world) submissionRejectedInvalid() error {
 	if _, ok := w.ingestResp.(generated.IngestTrackingEvent400JSONResponse); !ok {
 		return fmt.Errorf("expected a 400 response, got %#v (err=%v)", w.ingestResp, w.ingestErr)
+	}
+	return nil
+}
+
+func (w *world) submissionRefusedTemporarilyUnavailable() error {
+	if _, ok := w.ingestResp.(generated.IngestTrackingEvent503JSONResponse); !ok {
+		return fmt.Errorf("expected a 503 response, got %#v (err=%v)", w.ingestResp, w.ingestErr)
 	}
 	return nil
 }

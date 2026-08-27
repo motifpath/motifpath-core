@@ -13,8 +13,12 @@ import (
 	"github.com/motifpath/event-ingestion/internal/ports"
 )
 
+func adminProfile(role string) *fakeProfileResolver {
+	return &fakeProfileResolver{profile: ports.Profile{UserID: "caller-user", Role: role}}
+}
+
 func TestAdminAuthorizer_RequireAdmin_AllowsAdminRole(t *testing.T) {
-	authorizer := application.NewAdminAuthorizer(&fakeRoleResolver{role: "admin"})
+	authorizer := application.NewAdminAuthorizer(adminProfile("admin"))
 
 	err := authorizer.RequireAdmin(context.Background(), "token-abc")
 
@@ -22,7 +26,7 @@ func TestAdminAuthorizer_RequireAdmin_AllowsAdminRole(t *testing.T) {
 }
 
 func TestAdminAuthorizer_RequireAdmin_ForwardsTheBearerToken(t *testing.T) {
-	resolver := &fakeRoleResolver{role: "admin"}
+	resolver := adminProfile("admin")
 	authorizer := application.NewAdminAuthorizer(resolver)
 
 	err := authorizer.RequireAdmin(context.Background(), "token-abc")
@@ -34,7 +38,7 @@ func TestAdminAuthorizer_RequireAdmin_ForwardsTheBearerToken(t *testing.T) {
 func TestAdminAuthorizer_RequireAdmin_RejectsNonAdminRole(t *testing.T) {
 	for _, role := range []string{"student", "teacher", "", "administrator"} {
 		t.Run(role, func(t *testing.T) {
-			authorizer := application.NewAdminAuthorizer(&fakeRoleResolver{role: role})
+			authorizer := application.NewAdminAuthorizer(adminProfile(role))
 
 			err := authorizer.RequireAdmin(context.Background(), "token-abc")
 
@@ -44,15 +48,15 @@ func TestAdminAuthorizer_RequireAdmin_RejectsNonAdminRole(t *testing.T) {
 }
 
 func TestAdminAuthorizer_RequireAdmin_TreatsUnregisteredCallerAsForbidden(t *testing.T) {
-	authorizer := application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrIdentityNotRegistered})
+	authorizer := application.NewAdminAuthorizer(&fakeProfileResolver{err: ports.ErrIdentityNotRegistered})
 
 	err := authorizer.RequireAdmin(context.Background(), "token-abc")
 
 	require.ErrorIs(t, err, domain.ErrForbidden)
 }
 
-func TestAdminAuthorizer_RequireAdmin_FailsClosedWhenRoleUnavailable(t *testing.T) {
-	authorizer := application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrRoleUnavailable})
+func TestAdminAuthorizer_RequireAdmin_FailsClosedWhenProfileUnavailable(t *testing.T) {
+	authorizer := application.NewAdminAuthorizer(&fakeProfileResolver{err: ports.ErrProfileUnavailable})
 
 	err := authorizer.RequireAdmin(context.Background(), "token-abc")
 
@@ -60,7 +64,7 @@ func TestAdminAuthorizer_RequireAdmin_FailsClosedWhenRoleUnavailable(t *testing.
 }
 
 func TestAdminAuthorizer_RequireAdmin_FailsClosedOnAnUnexpectedResolverError(t *testing.T) {
-	authorizer := application.NewAdminAuthorizer(&fakeRoleResolver{err: errors.New("boom")})
+	authorizer := application.NewAdminAuthorizer(&fakeProfileResolver{err: errors.New("boom")})
 
 	err := authorizer.RequireAdmin(context.Background(), "token-abc")
 

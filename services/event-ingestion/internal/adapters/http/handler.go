@@ -16,14 +16,15 @@ import (
 type Handler struct {
 	service     *application.IngestEventService
 	adminOutbox *application.AdminOutboxService
+	identity    ports.IdentityResolver
 	mongoPinger ports.Pinger
 	kafkaPinger ports.Pinger
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)
 
-func NewHandler(service *application.IngestEventService, adminOutbox *application.AdminOutboxService, mongoPinger, kafkaPinger ports.Pinger) *Handler {
-	return &Handler{service: service, adminOutbox: adminOutbox, mongoPinger: mongoPinger, kafkaPinger: kafkaPinger}
+func NewHandler(service *application.IngestEventService, adminOutbox *application.AdminOutboxService, identity ports.IdentityResolver, mongoPinger, kafkaPinger ports.Pinger) *Handler {
+	return &Handler{service: service, adminOutbox: adminOutbox, identity: identity, mongoPinger: mongoPinger, kafkaPinger: kafkaPinger}
 }
 
 func (h *Handler) IngestTrackingEvent(ctx context.Context, request generated.IngestTrackingEventRequestObject) (generated.IngestTrackingEventResponseObject, error) {
@@ -32,15 +33,37 @@ func (h *Handler) IngestTrackingEvent(ctx context.Context, request generated.Ing
 		return validationErrorResponse(err), nil
 	}
 
-	authenticatedStudentID, ok := StudentIDFromContext(ctx)
-	if !ok || event.Base().StudentID != authenticatedStudentID {
+	sub, hasSub := StudentIDFromContext(ctx)
+	token, hasToken := BearerTokenFromContext(ctx)
+	if !hasSub || !hasToken {
 		return generated.IngestTrackingEvent401JSONResponse{
-			Message: "student_id does not match the authenticated session",
+			Message: "missing or invalid Bearer token",
 		}, nil
 	}
 
-	receivedAt, err := h.service.Ingest(ctx, event)
+	callerUserID, err := h.identity.ResolveUserID(ctx, sub, token)
 	if err != nil {
+		switch {
+		case errors.Is(err, ports.ErrIdentityNotRegistered):
+			return generated.IngestTrackingEvent401JSONResponse{
+				Message: "the authenticated identity is not a registered MotifPath user",
+			}, nil
+		case errors.Is(err, ports.ErrProfileUnavailable):
+			return generated.IngestTrackingEvent503JSONResponse{
+				Message: "the caller's identity could not be resolved: the Core Domain Service was unreachable",
+			}, nil
+		default:
+			return nil, err
+		}
+	}
+
+	receivedAt, err := h.service.Ingest(ctx, callerUserID, event)
+	if err != nil {
+		if errors.Is(err, domain.ErrIdentityMismatch) {
+			return generated.IngestTrackingEvent401JSONResponse{
+				Message: "student_id does not match the authenticated identity",
+			}, nil
+		}
 		return nil, err
 	}
 
