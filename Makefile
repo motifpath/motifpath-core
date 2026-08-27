@@ -16,10 +16,7 @@ generate:
 
 migrate\:diff:
 	@if [ -z "$(name)" ]; then echo "Usage: make migrate:diff name=<description>"; exit 1; fi
-	atlas migrate diff $(name) \
-		--dir "file://services/core-domain/internal/adapters/repo/ent/migrate/migrations" \
-		--to "ent://services/core-domain/internal/adapters/repo/ent/schema" \
-		--dev-url "docker://postgres/16/dev?search_path=public"
+	cd services/core-domain && go run ./cmd/entmigrate $(name)
 
 test:
 	go test ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
