@@ -14,7 +14,7 @@ import (
 )
 
 func TestAdminOutboxService_RetryEntry_ForwardsCallerTokenToAuthorization(t *testing.T) {
-	resolver := &fakeRoleResolver{role: "admin"}
+	resolver := &fakeProfileResolver{profile: ports.Profile{UserID: "caller-user", Role: "admin"}}
 	svc := application.NewAdminOutboxService(
 		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
 		application.NewAdminAuthorizer(resolver),
@@ -31,7 +31,7 @@ func TestAdminOutboxService_RetryEntry_RefusedForNonAdminBeforeTouchingState(t *
 	publisher := newFakePublisher(nil)
 	svc := application.NewAdminOutboxService(
 		outbox, newFakeRepository(), publisher,
-		application.NewAdminAuthorizer(&fakeRoleResolver{role: "student"}),
+		application.NewAdminAuthorizer(&fakeProfileResolver{profile: ports.Profile{UserID: "caller-user", Role: "student"}}),
 	)
 
 	_, err := svc.RetryEntry(context.Background(), "caller-token", "any-event")
@@ -47,7 +47,7 @@ func TestAdminOutboxService_RetryEntry_RefusedForNonAdminBeforeTouchingState(t *
 func TestAdminOutboxService_RetryEntry_FailsClosedWhenRoleUnavailable(t *testing.T) {
 	svc := application.NewAdminOutboxService(
 		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
-		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrRoleUnavailable}),
+		application.NewAdminAuthorizer(&fakeProfileResolver{err: ports.ErrProfileUnavailable}),
 	)
 
 	_, err := svc.RetryEntry(context.Background(), "caller-token", "any-event")
@@ -60,7 +60,7 @@ func TestAdminOutboxService_ResolveEntry_RefusedForNonAdminBeforeTouchingState(t
 	outbox.getErr = errors.New("outbox must not be read when authorization fails")
 	svc := application.NewAdminOutboxService(
 		outbox, newFakeRepository(), newFakePublisher(nil),
-		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrIdentityNotRegistered}),
+		application.NewAdminAuthorizer(&fakeProfileResolver{err: ports.ErrIdentityNotRegistered}),
 	)
 
 	_, err := svc.ResolveEntry(context.Background(), "caller-token", "any-event", "cleanup")
@@ -71,7 +71,7 @@ func TestAdminOutboxService_ResolveEntry_RefusedForNonAdminBeforeTouchingState(t
 func TestAdminOutboxService_ResolveEntry_FailsClosedWhenRoleUnavailable(t *testing.T) {
 	svc := application.NewAdminOutboxService(
 		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
-		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrRoleUnavailable}),
+		application.NewAdminAuthorizer(&fakeProfileResolver{err: ports.ErrProfileUnavailable}),
 	)
 
 	_, err := svc.ResolveEntry(context.Background(), "caller-token", "any-event", "")

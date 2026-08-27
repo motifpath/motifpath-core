@@ -26,4 +26,10 @@ var (
 	// was unreachable. Distinct from ErrForbidden: the answer is "unknown right
 	// now", not "no". Per ADR-013 the admin endpoints fail closed on this.
 	ErrAuthorizationUnavailable = errors.New("authorization could not be established")
+
+	// ErrIdentityMismatch is returned by IngestEventService.Ingest when an
+	// event's student_id is not the caller's own resolved MotifPath user id
+	// (ADR-014). The caller is authenticated but is claiming authorship for
+	// someone else.
+	ErrIdentityMismatch = errors.New("event student_id is not the caller's identity")
 )

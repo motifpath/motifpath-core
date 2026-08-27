@@ -9,8 +9,8 @@ import (
 )
 
 // adminRole is the role a caller's profile must carry to use the outbox admin
-// endpoints. Per ADR-013 it is read from the identity/authorization capability,
-// never from a claim in the caller's JWT.
+// endpoints. Per ADR-013 it is read from the Core Domain Service, never from a
+// claim in the caller's JWT.
 const adminRole = "admin"
 
 // AdminAuthorizer is the single authorization seam for the outbox admin
@@ -18,27 +18,27 @@ const adminRole = "admin"
 // RequireAdmin, so the check has exactly one place to evolve when role gives
 // way to a permission or group model.
 type AdminAuthorizer struct {
-	roles ports.RoleResolver
+	profiles ports.ProfileResolver
 }
 
-func NewAdminAuthorizer(roles ports.RoleResolver) *AdminAuthorizer {
-	return &AdminAuthorizer{roles: roles}
+func NewAdminAuthorizer(profiles ports.ProfileResolver) *AdminAuthorizer {
+	return &AdminAuthorizer{profiles: profiles}
 }
 
-// RequireAdmin resolves the caller's role from the identity/authorization
-// capability and returns nil only when it is the admin role. It returns
+// RequireAdmin resolves the caller's profile from the Core Domain Service and
+// returns nil only when its role is the admin role. It returns
 // domain.ErrForbidden when the caller is not an admin -- including a caller
 // with no registered profile -- and domain.ErrAuthorizationUnavailable when
-// the role could not be established right now, so callers fail closed.
+// the profile could not be established right now, so callers fail closed.
 func (a *AdminAuthorizer) RequireAdmin(ctx context.Context, bearerToken string) error {
-	role, err := a.roles.ResolveRole(ctx, bearerToken)
+	profile, err := a.profiles.ResolveProfile(ctx, bearerToken)
 	if err != nil {
 		if errors.Is(err, ports.ErrIdentityNotRegistered) {
 			return domain.ErrForbidden
 		}
 		return domain.ErrAuthorizationUnavailable
 	}
-	if role != adminRole {
+	if profile.Role != adminRole {
 		return domain.ErrForbidden
 	}
 	return nil

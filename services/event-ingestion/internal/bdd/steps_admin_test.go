@@ -77,13 +77,13 @@ func (w *world) eventIsDeadLettered(eventName string) error {
 
 func (w *world) callerIsAdministrator() error {
 	w.hasBearerToken = true
-	w.roleResolver.role = "admin"
+	w.profileResolver.profile.Role = "admin"
 	return nil
 }
 
 func (w *world) callerIsStudent() error {
 	w.hasBearerToken = true
-	w.roleResolver.role = "student"
+	w.profileResolver.profile.Role = "student"
 	return nil
 }
 
@@ -95,13 +95,13 @@ func (w *world) callerAuthenticatedWithAdminClaim() error {
 }
 
 func (w *world) platformRecognisesTeacher() error {
-	w.roleResolver.role = "teacher"
+	w.profileResolver.profile.Role = "teacher"
 	return nil
 }
 
 func (w *world) callerAuthenticatedButUnregistered() error {
 	w.hasBearerToken = true
-	w.roleResolver.err = ports.ErrIdentityNotRegistered
+	w.profileResolver.err = ports.ErrIdentityNotRegistered
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (w *world) callerIsAuthenticated() error {
 }
 
 func (w *world) roleCannotBeEstablished() error {
-	w.roleResolver.err = ports.ErrRoleUnavailable
+	w.profileResolver.err = ports.ErrProfileUnavailable
 	return nil
 }
 

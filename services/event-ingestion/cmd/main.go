@@ -119,12 +119,13 @@ func run(logger *slog.Logger) error {
 	// key and resolves JWKS via Clerk's backend API itself.
 	clerk.SetKey(cfg.clerkSecretKey)
 
-	roleResolver := coredomain.NewRoleResolver(cfg.coreDomainBaseURL, nil)
-	adminAuthorizer := application.NewAdminAuthorizer(roleResolver)
+	coreDomainClient := coredomain.NewClient(cfg.coreDomainBaseURL, nil)
+	adminAuthorizer := application.NewAdminAuthorizer(coreDomainClient)
+	identityResolver := coredomain.NewCachingIdentityResolver(coreDomainClient, coredomain.CacheOptions{})
 
 	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, logger)
 	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher, adminAuthorizer)
-	handler := appHTTP.NewHandler(service, adminOutbox, eventRepo, publisher)
+	handler := appHTTP.NewHandler(service, adminOutbox, identityResolver, eventRepo, publisher)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{

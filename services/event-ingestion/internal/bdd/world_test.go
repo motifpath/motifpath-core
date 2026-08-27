@@ -142,19 +142,34 @@ func (f *fakeOutboxRepository) ListDueForRetry(_ context.Context, now time.Time)
 	return due, nil
 }
 
-// fakeRoleResolver stands in for the Core Domain Service call the outbox admin
-// endpoints make to establish a caller's role (ADR-013). Scenarios set role or
-// err via the Given steps in steps_admin_test.go.
-type fakeRoleResolver struct {
-	role string
-	err  error
+// fakeProfileResolver stands in for the Core Domain Service call the outbox
+// admin endpoints make to establish a caller's role (ADR-013). Scenarios set
+// the role or err via the Given steps in steps_admin_test.go.
+type fakeProfileResolver struct {
+	profile ports.Profile
+	err     error
 }
 
-func (f *fakeRoleResolver) ResolveRole(_ context.Context, _ string) (string, error) {
+func (f *fakeProfileResolver) ResolveProfile(_ context.Context, _ string) (ports.Profile, error) {
+	if f.err != nil {
+		return ports.Profile{}, f.err
+	}
+	return f.profile, nil
+}
+
+// fakeIdentityResolver stands in for the cached sub -> user_id resolution
+// POST /events performs (ADR-014). The ingest "authenticated" steps set userID
+// to the token student's id; the identity-failure steps set err.
+type fakeIdentityResolver struct {
+	userID string
+	err    error
+}
+
+func (f *fakeIdentityResolver) ResolveUserID(_ context.Context, _, _ string) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}
-	return f.role, nil
+	return f.userID, nil
 }
 
 var (
@@ -162,7 +177,8 @@ var (
 	_ ports.EventPublisher          = (*fakePublisher)(nil)
 	_ ports.Pinger                  = (*fakePinger)(nil)
 	_ ports.PublishOutboxRepository = (*fakeOutboxRepository)(nil)
-	_ ports.RoleResolver            = (*fakeRoleResolver)(nil)
+	_ ports.ProfileResolver         = (*fakeProfileResolver)(nil)
+	_ ports.IdentityResolver        = (*fakeIdentityResolver)(nil)
 )
 
 // exerciseAttempt records the trigger context established by a "has an active
@@ -184,13 +200,14 @@ func (a exerciseAttempt) triggerContext() generated.TriggerContext {
 // InitializeScenario for every scenario godog runs, giving each scenario full
 // isolation without an explicit teardown step.
 type world struct {
-	repo         *fakeRepository
-	outbox       *fakeOutboxRepository
-	publisher    *fakePublisher
-	mongoPinger  *fakePinger
-	kafkaPinger  *fakePinger
-	roleResolver *fakeRoleResolver
-	handler      *appHTTP.Handler
+	repo             *fakeRepository
+	outbox           *fakeOutboxRepository
+	publisher        *fakePublisher
+	mongoPinger      *fakePinger
+	kafkaPinger      *fakePinger
+	profileResolver  *fakeProfileResolver
+	identityResolver *fakeIdentityResolver
+	handler          *appHTTP.Handler
 
 	hasToken       bool
 	tokenStudentID string
@@ -222,13 +239,14 @@ func newWorld() *world {
 		publisher:        &fakePublisher{},
 		mongoPinger:      &fakePinger{},
 		kafkaPinger:      &fakePinger{},
-		roleResolver:     &fakeRoleResolver{},
+		profileResolver:  &fakeProfileResolver{},
+		identityResolver: &fakeIdentityResolver{},
 		exerciseAttempts: make(map[string]exerciseAttempt),
 	}
 	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, discardLogger())
-	authorizer := application.NewAdminAuthorizer(w.roleResolver)
+	authorizer := application.NewAdminAuthorizer(w.profileResolver)
 	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher, authorizer)
-	w.handler = appHTTP.NewHandler(service, adminOutbox, w.mongoPinger, w.kafkaPinger)
+	w.handler = appHTTP.NewHandler(service, adminOutbox, w.identityResolver, w.mongoPinger, w.kafkaPinger)
 	return w
 }
 
@@ -238,6 +256,7 @@ func (w *world) submit(body *generated.TrackingEvent) {
 	ctx := context.Background()
 	if w.hasToken {
 		ctx = appHTTP.WithStudentID(ctx, w.tokenStudentID)
+		ctx = appHTTP.WithBearerToken(ctx, "bdd-token")
 	}
 	w.lastSubmittedBody = body
 	w.ingestResp, w.ingestErr = w.handler.IngestTrackingEvent(ctx, generated.IngestTrackingEventRequestObject{Body: body})
