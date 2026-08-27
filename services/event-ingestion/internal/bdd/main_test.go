@@ -33,4 +33,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerIngestSteps(sc, w)
 	registerHealthSteps(sc, w)
+	registerAdminSteps(sc, w)
 }

@@ -10,7 +10,74 @@ import (
 
 	"github.com/motifpath/event-ingestion/internal/application"
 	"github.com/motifpath/event-ingestion/internal/domain"
+	"github.com/motifpath/event-ingestion/internal/ports"
 )
+
+func TestAdminOutboxService_RetryEntry_ForwardsCallerTokenToAuthorization(t *testing.T) {
+	resolver := &fakeRoleResolver{role: "admin"}
+	svc := application.NewAdminOutboxService(
+		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
+		application.NewAdminAuthorizer(resolver),
+	)
+
+	_, _ = svc.RetryEntry(context.Background(), "caller-token-xyz", "any-event")
+
+	assert.Equal(t, "caller-token-xyz", resolver.lastToken)
+}
+
+func TestAdminOutboxService_RetryEntry_RefusedForNonAdminBeforeTouchingState(t *testing.T) {
+	outbox := newFakeOutboxRepository()
+	outbox.getErr = errors.New("outbox must not be read when authorization fails")
+	publisher := newFakePublisher(nil)
+	svc := application.NewAdminOutboxService(
+		outbox, newFakeRepository(), publisher,
+		application.NewAdminAuthorizer(&fakeRoleResolver{role: "student"}),
+	)
+
+	_, err := svc.RetryEntry(context.Background(), "caller-token", "any-event")
+
+	require.ErrorIs(t, err, domain.ErrForbidden)
+	select {
+	case <-publisher.calls:
+		t.Fatal("Publish must not be called when authorization fails")
+	default:
+	}
+}
+
+func TestAdminOutboxService_RetryEntry_FailsClosedWhenRoleUnavailable(t *testing.T) {
+	svc := application.NewAdminOutboxService(
+		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
+		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrRoleUnavailable}),
+	)
+
+	_, err := svc.RetryEntry(context.Background(), "caller-token", "any-event")
+
+	require.ErrorIs(t, err, domain.ErrAuthorizationUnavailable)
+}
+
+func TestAdminOutboxService_ResolveEntry_RefusedForNonAdminBeforeTouchingState(t *testing.T) {
+	outbox := newFakeOutboxRepository()
+	outbox.getErr = errors.New("outbox must not be read when authorization fails")
+	svc := application.NewAdminOutboxService(
+		outbox, newFakeRepository(), newFakePublisher(nil),
+		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrIdentityNotRegistered}),
+	)
+
+	_, err := svc.ResolveEntry(context.Background(), "caller-token", "any-event", "cleanup")
+
+	require.ErrorIs(t, err, domain.ErrForbidden)
+}
+
+func TestAdminOutboxService_ResolveEntry_FailsClosedWhenRoleUnavailable(t *testing.T) {
+	svc := application.NewAdminOutboxService(
+		newFakeOutboxRepository(), newFakeRepository(), newFakePublisher(nil),
+		application.NewAdminAuthorizer(&fakeRoleResolver{err: ports.ErrRoleUnavailable}),
+	)
+
+	_, err := svc.ResolveEntry(context.Background(), "caller-token", "any-event", "")
+
+	require.ErrorIs(t, err, domain.ErrAuthorizationUnavailable)
+}
 
 func TestAdminOutboxService_RetryEntry_SucceedsAndMarksPublished(t *testing.T) {
 	repo := newFakeRepository()
@@ -25,8 +92,8 @@ func TestAdminOutboxService_RetryEntry_SucceedsAndMarksPublished(t *testing.T) {
 	entryBeforeRetry.Status = domain.OutboxStatusDead
 	require.NoError(t, outbox.Update(context.Background(), entryBeforeRetry))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	entry, err := svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	entry, err := svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutboxStatusPublished, entry.Status)
@@ -47,8 +114,8 @@ func TestAdminOutboxService_RetryEntry_FailureLeavesEntryDead(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	entry, err := svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	entry, err := svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.NoError(t, err, "a failed manual retry is a handled outcome, not an application error")
 	assert.Equal(t, domain.OutboxStatusDead, entry.Status)
@@ -67,8 +134,8 @@ func TestAdminOutboxService_RetryEntry_NoOpWhenAlreadyPublished(t *testing.T) {
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 	require.NoError(t, outbox.MarkPublished(context.Background(), eventID))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	entry, err := svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	entry, err := svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutboxStatusPublished, entry.Status)
@@ -84,8 +151,8 @@ func TestAdminOutboxService_RetryEntry_NotFound(t *testing.T) {
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(nil)
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.RetryEntry(context.Background(), "does-not-exist")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.RetryEntry(context.Background(), "caller-token", "does-not-exist")
 
 	require.ErrorIs(t, err, domain.ErrOutboxEntryNotFound)
 }
@@ -100,8 +167,8 @@ func TestAdminOutboxService_ResolveEntry_MarksResolvedWithoutPublishing(t *testi
 	entry.Status = domain.OutboxStatusDead
 	require.NoError(t, outbox.Update(context.Background(), entry))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	result, err := svc.ResolveEntry(context.Background(), eventID, "verified delivered out of band")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	result, err := svc.ResolveEntry(context.Background(), "caller-token", eventID, "verified delivered out of band")
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutboxStatusResolvedManually, result.Status)
@@ -124,8 +191,8 @@ func TestAdminOutboxService_ResolveEntry_NoOpWhenAlreadyResolved(t *testing.T) {
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 	require.NoError(t, outbox.MarkResolvedManually(context.Background(), eventID, "first reason"))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	entry, err := svc.ResolveEntry(context.Background(), eventID, "second reason")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	entry, err := svc.ResolveEntry(context.Background(), "caller-token", eventID, "second reason")
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.OutboxStatusResolvedManually, entry.Status)
@@ -136,8 +203,8 @@ func TestAdminOutboxService_ResolveEntry_NotFound(t *testing.T) {
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(nil)
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.ResolveEntry(context.Background(), "does-not-exist", "")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.ResolveEntry(context.Background(), "caller-token", "does-not-exist", "")
 
 	require.ErrorIs(t, err, domain.ErrOutboxEntryNotFound)
 }
@@ -148,8 +215,8 @@ func TestAdminOutboxService_RetryEntry_PropagatesGetError(t *testing.T) {
 	outbox.getErr = errors.New("mongo unavailable")
 	publisher := newFakePublisher(nil)
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.RetryEntry(context.Background(), "some-event")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.RetryEntry(context.Background(), "caller-token", "some-event")
 
 	require.Error(t, err)
 	require.NotErrorIs(t, err, domain.ErrOutboxEntryNotFound)
@@ -163,8 +230,8 @@ func TestAdminOutboxService_RetryEntry_PropagatesFindEventError(t *testing.T) {
 	eventID := "some-event"
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.Error(t, err)
 }
@@ -180,8 +247,8 @@ func TestAdminOutboxService_RetryEntry_PropagatesUpdateErrorOnFailedPublish(t *t
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 	outbox.updateErr = errors.New("mongo unavailable")
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err = svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err = svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.Error(t, err)
 }
@@ -197,8 +264,8 @@ func TestAdminOutboxService_RetryEntry_PropagatesMarkPublishedError(t *testing.T
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 	outbox.markPublishedErr = errors.New("mongo unavailable")
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err = svc.RetryEntry(context.Background(), eventID)
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err = svc.RetryEntry(context.Background(), "caller-token", eventID)
 
 	require.Error(t, err)
 }
@@ -209,8 +276,8 @@ func TestAdminOutboxService_ResolveEntry_PropagatesGetError(t *testing.T) {
 	outbox.getErr = errors.New("mongo unavailable")
 	publisher := newFakePublisher(nil)
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.ResolveEntry(context.Background(), "some-event", "")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.ResolveEntry(context.Background(), "caller-token", "some-event", "")
 
 	require.Error(t, err)
 	require.NotErrorIs(t, err, domain.ErrOutboxEntryNotFound)
@@ -224,8 +291,8 @@ func TestAdminOutboxService_ResolveEntry_PropagatesMarkResolvedError(t *testing.
 	require.NoError(t, outbox.Create(context.Background(), eventID))
 	outbox.markResolvedErr = errors.New("mongo unavailable")
 
-	svc := application.NewAdminOutboxService(outbox, repo, publisher)
-	_, err := svc.ResolveEntry(context.Background(), eventID, "")
+	svc := application.NewAdminOutboxService(outbox, repo, publisher, adminAuthorizer())
+	_, err := svc.ResolveEntry(context.Background(), "caller-token", eventID, "")
 
 	require.Error(t, err)
 }

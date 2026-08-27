@@ -142,11 +142,27 @@ func (f *fakeOutboxRepository) ListDueForRetry(_ context.Context, now time.Time)
 	return due, nil
 }
 
+// fakeRoleResolver stands in for the Core Domain Service call the outbox admin
+// endpoints make to establish a caller's role (ADR-013). Scenarios set role or
+// err via the Given steps in steps_admin_test.go.
+type fakeRoleResolver struct {
+	role string
+	err  error
+}
+
+func (f *fakeRoleResolver) ResolveRole(_ context.Context, _ string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.role, nil
+}
+
 var (
 	_ ports.EventRepository         = (*fakeRepository)(nil)
 	_ ports.EventPublisher          = (*fakePublisher)(nil)
 	_ ports.Pinger                  = (*fakePinger)(nil)
 	_ ports.PublishOutboxRepository = (*fakeOutboxRepository)(nil)
+	_ ports.RoleResolver            = (*fakeRoleResolver)(nil)
 )
 
 // exerciseAttempt records the trigger context established by a "has an active
@@ -168,15 +184,23 @@ func (a exerciseAttempt) triggerContext() generated.TriggerContext {
 // InitializeScenario for every scenario godog runs, giving each scenario full
 // isolation without an explicit teardown step.
 type world struct {
-	repo        *fakeRepository
-	outbox      *fakeOutboxRepository
-	publisher   *fakePublisher
-	mongoPinger *fakePinger
-	kafkaPinger *fakePinger
-	handler     *appHTTP.Handler
+	repo         *fakeRepository
+	outbox       *fakeOutboxRepository
+	publisher    *fakePublisher
+	mongoPinger  *fakePinger
+	kafkaPinger  *fakePinger
+	roleResolver *fakeRoleResolver
+	handler      *appHTTP.Handler
 
 	hasToken       bool
 	tokenStudentID string
+
+	// admin (outbox remediation) scenario state
+	hasBearerToken          bool
+	adminStatusCode         int
+	adminBody               []byte
+	adminErr                error
+	publishCountBeforeAdmin int
 
 	exerciseAttempts map[string]exerciseAttempt
 
@@ -198,10 +222,12 @@ func newWorld() *world {
 		publisher:        &fakePublisher{},
 		mongoPinger:      &fakePinger{},
 		kafkaPinger:      &fakePinger{},
+		roleResolver:     &fakeRoleResolver{},
 		exerciseAttempts: make(map[string]exerciseAttempt),
 	}
 	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, discardLogger())
-	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher)
+	authorizer := application.NewAdminAuthorizer(w.roleResolver)
+	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher, authorizer)
 	w.handler = appHTTP.NewHandler(service, adminOutbox, w.mongoPinger, w.kafkaPinger)
 	return w
 }

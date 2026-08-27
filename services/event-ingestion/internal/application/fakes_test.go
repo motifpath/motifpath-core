@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/motifpath/event-ingestion/internal/application"
 	"github.com/motifpath/event-ingestion/internal/domain"
 	"github.com/motifpath/event-ingestion/internal/ports"
 )
@@ -184,6 +185,28 @@ func waitForPublish(t *testing.T, calls <-chan domain.TrackingEvent) domain.Trac
 
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// fakeRoleResolver is a minimal in-memory ports.RoleResolver. It returns err
+// when set, otherwise role, and records the last bearer token it was given.
+type fakeRoleResolver struct {
+	role      string
+	err       error
+	lastToken string
+}
+
+func (f *fakeRoleResolver) ResolveRole(_ context.Context, bearerToken string) (string, error) {
+	f.lastToken = bearerToken
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.role, nil
+}
+
+// adminAuthorizer builds an AdminAuthorizer that always resolves the caller as
+// an admin -- the default for outbox tests that are not about authorization.
+func adminAuthorizer() *application.AdminAuthorizer {
+	return application.NewAdminAuthorizer(&fakeRoleResolver{role: "admin"})
 }
 
 func newEvent(eventType domain.EventType) domain.TrackingEvent {
