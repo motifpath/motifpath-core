@@ -88,6 +88,39 @@ devbox shell
 make dev
 ```
 
+## Running the services locally
+
+With `make dev` up (Postgres, MongoDB, Redpanda), run each service from its own
+directory inside `devbox shell`. `core-domain` applies pending Atlas migrations on
+startup, so it must run from `services/core-domain/`.
+
+```bash
+# core-domain — http://localhost:8080
+cd services/core-domain
+DATABASE_URL="postgres://motifpath:motifpath@localhost:5432/core_domain?sslmode=disable" \
+MONGO_URI="mongodb://motifpath:motifpath@localhost:27017" \
+CLERK_SECRET_KEY="sk_test_..." \
+go run ./cmd
+
+# event-ingestion — http://localhost:8081
+cd services/event-ingestion
+MONGO_URI="mongodb://motifpath:motifpath@localhost:27017" \
+KAFKA_BROKERS="localhost:9092" \
+CLERK_SECRET_KEY="sk_test_..." \
+CORE_DOMAIN_BASE_URL="http://localhost:8080" \
+go run ./cmd
+```
+
+`CLERK_SECRET_KEY` is the secret key of the same Clerk instance the frontend uses
+(Clerk dashboard → API keys).
+
+### Browser (CORS) access
+
+Both services send CORS headers for the origins in `CORS_ALLOWED_ORIGINS`
+(comma-separated). It defaults to `http://localhost:5173` — the Vite dev server —
+so `motifpath-web` works against a local build with no extra configuration.
+Deployed environments set this explicitly.
+
 ## Commands
 
 ```bash
