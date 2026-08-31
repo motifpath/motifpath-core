@@ -37,13 +37,18 @@ func main() {
 }
 
 type config struct {
-	port              string
-	mongoURI          string
-	mongoDatabase     string
-	kafkaBrokers      []string
-	clerkSecretKey    string
-	coreDomainBaseURL string
+	port               string
+	mongoURI           string
+	mongoDatabase      string
+	kafkaBrokers       []string
+	clerkSecretKey     string
+	coreDomainBaseURL  string
+	corsAllowedOrigins []string
 }
+
+// defaultCORSOrigin is the local Vite dev server. Deployed environments override
+// this via CORS_ALLOWED_ORIGINS.
+const defaultCORSOrigin = "http://localhost:5173"
 
 func loadConfig() (config, error) {
 	mongoURI, err := mustGetenv("MONGO_URI")
@@ -66,12 +71,13 @@ func loadConfig() (config, error) {
 		return config{}, err
 	}
 	return config{
-		port:              getenvDefault("PORT", "8081"),
-		mongoURI:          mongoURI,
-		mongoDatabase:     getenvDefault("MONGO_DATABASE", "motifpath_events"),
-		kafkaBrokers:      strings.Split(kafkaBrokersRaw, ","),
-		clerkSecretKey:    clerkSecretKey,
-		coreDomainBaseURL: coreDomainBaseURL,
+		port:               getenvDefault("PORT", "8081"),
+		mongoURI:           mongoURI,
+		mongoDatabase:      getenvDefault("MONGO_DATABASE", "motifpath_events"),
+		kafkaBrokers:       strings.Split(kafkaBrokersRaw, ","),
+		clerkSecretKey:     clerkSecretKey,
+		coreDomainBaseURL:  coreDomainBaseURL,
+		corsAllowedOrigins: appHTTP.ParseAllowedOrigins(getenvDefault("CORS_ALLOWED_ORIGINS", defaultCORSOrigin)),
 	}, nil
 }
 
@@ -140,7 +146,7 @@ func run(logger *slog.Logger) error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.port,
-		Handler:           router,
+		Handler:           appHTTP.NewCORSMiddleware(cfg.corsAllowedOrigins)(router),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
