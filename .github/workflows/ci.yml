@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main, dev]
 
+env:
+  GO_VERSION: '1.26'
+  GOLANGCI_LINT_VERSION: v2.12.2
+  # internal/application packages, per module — the coverage-gated unit test set.
+  APP_MODULES: >-
+    ./services/core-domain/internal/application/...
+    ./services/event-ingestion/internal/application/...
+    ./services/aggregation-worker/internal/application/...
+
 jobs:
   lint:
     name: Lint
@@ -15,14 +24,16 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            services/*/go.sum
+            go.work.sum
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ env.GOLANGCI_LINT_VERSION }}
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --config=.golangci.yml ./...
+        run: make lint
 
   test:
     name: Unit Tests (service layer)
@@ -32,28 +43,23 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            services/*/go.sum
+            go.work.sum
 
       - name: Run service layer tests
-        run: |
-          go test ./services/.../internal/application/... \
-            -coverprofile=coverage.out \
-            -covermode=atomic \
-            -v
+        run: go test $APP_MODULES -coverprofile=coverage.out -covermode=atomic -v
 
       - name: Enforce coverage gate (80%)
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out \
-            | grep total \
-            | awk '{print $3}' \
-            | tr -d '%')
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Coverage: $COVERAGE%"
           if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "❌ Coverage $COVERAGE% is below the 80% threshold"
+            echo "Coverage $COVERAGE% is below the 80% threshold"
             exit 1
           fi
-          echo "✅ Coverage $COVERAGE% meets the 80% threshold"
+          echo "Coverage $COVERAGE% meets the 80% threshold"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -69,17 +75,26 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            services/*/go.sum
+            go.work.sum
 
       - name: Checkout specs (for feature files)
         uses: actions/checkout@v4
         with:
           repository: motifpath/motifpath-specs
-          path: motifpath-specs
+          path: _specs
+
+      # The BDD tests resolve feature files relative to their own package
+      # directory, expecting motifpath-specs as a sibling of this checkout —
+      # the same layout as a local dev machine. actions/checkout can only
+      # write inside the workspace, so relocate it here.
+      - name: Position specs as a sibling checkout
+        run: mv _specs "$(dirname "$GITHUB_WORKSPACE")/motifpath-specs"
 
       - name: Run BDD tests
-        run: go test -v -tags integration ./services/.../internal/bdd/...
+        run: make test:bdd
 
   test-integration:
     name: Integration Tests (testcontainers)
@@ -89,11 +104,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            services/*/go.sum
+            go.work.sum
 
       - name: Run integration tests
-        run: go test -v -tags integration -timeout 120s ./services/.../internal/adapters/...
+        run: make test:int
 
   all-checks:
     name: All checks passed
