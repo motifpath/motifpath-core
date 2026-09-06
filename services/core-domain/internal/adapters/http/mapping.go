@@ -82,12 +82,22 @@ func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
 	}
 }
 
+// optionalLabel maps an empty section label to nil so the field is omitted
+// from the JSON response rather than serialised as "".
+func optionalLabel(label string) *string {
+	if label == "" {
+		return nil
+	}
+	return &label
+}
+
 func toLearningPathItem(item domain.LearningPathItem) generated.LearningPathItem {
 	return generated.LearningPathItem{
 		Position:      item.Position,
 		ContentNodeId: mustUUID(item.ContentNodeID),
 		Title:         item.Title,
 		ContentType:   generated.LearningPathItemContentType(item.ContentType),
+		SectionLabel:  optionalLabel(item.SectionLabel),
 	}
 }
 
@@ -122,6 +132,7 @@ func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
 		Title:         item.Title,
 		ContentType:   generated.StudentPathItemContentType(item.ContentType),
 		Status:        generated.StudentPathItemStatus(item.Status),
+		SectionLabel:  optionalLabel(item.SectionLabel),
 	}
 }
 

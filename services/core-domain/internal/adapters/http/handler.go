@@ -291,12 +291,15 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		return generated.CreateLearningPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	contentNodeIDs := make([]string, len(request.Body.Items))
+	pathItems := make([]application.PathItemInput, len(request.Body.Items))
 	for i, item := range request.Body.Items {
-		contentNodeIDs[i] = item.ContentNodeId.String()
+		pathItems[i] = application.PathItemInput{ContentNodeID: item.ContentNodeId.String()}
+		if item.SectionLabel != nil {
+			pathItems[i].SectionLabel = *item.SectionLabel
+		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, request.Body.Title, contentNodeIDs)
+	path, err := h.path.CreateLearningPath(ctx, caller, request.Body.Title, pathItems)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

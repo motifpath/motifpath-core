@@ -115,7 +115,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, node.ID, challenge.ContentNodeID)
 
-	learningPath, err := p.path.CreateLearningPath(ctx, teacher, "Week 1", []string{node.ID})
+	learningPath, err := p.path.CreateLearningPath(ctx, teacher, "Week 1", []application.PathItemInput{{ContentNodeID: node.ID}})
 	require.NoError(t, err)
 
 	// AssignLearningPath needs the student to exist in the same Postgres
@@ -152,7 +152,7 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 
 	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, "s1", "c1", domain.DifficultyLevelBeginner)
 	require.NoError(t, err)
-	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []string{node1.ID})
+	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
 	require.NoError(t, err)
 
 	first, err := p.assignment.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
@@ -169,7 +169,7 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 
 	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, "s2", "c2", domain.DifficultyLevelBeginner)
 	require.NoError(t, err)
-	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []string{node2.ID})
+	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
 	require.NoError(t, err)
 
 	second, err := p.assignment.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
