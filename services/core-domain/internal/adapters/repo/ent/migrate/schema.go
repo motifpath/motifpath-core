@@ -114,6 +114,7 @@ var (
 		{Name: "learning_path_id", Type: field.TypeUUID},
 		{Name: "content_node_id", Type: field.TypeUUID},
 		{Name: "position", Type: field.TypeInt},
+		{Name: "section_label", Type: field.TypeString, Nullable: true},
 	}
 	// LearningPathItemsTable holds the schema information for the "learning_path_items" table.
 	LearningPathItemsTable = &schema.Table{

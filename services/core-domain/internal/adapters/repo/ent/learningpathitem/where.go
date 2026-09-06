@@ -68,6 +68,11 @@ func Position(v int) predicate.LearningPathItem {
 	return predicate.LearningPathItem(sql.FieldEQ(FieldPosition, v))
 }
 
+// SectionLabel applies equality check predicate on the "section_label" field. It's identical to SectionLabelEQ.
+func SectionLabel(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldEQ(FieldSectionLabel, v))
+}
+
 // LearningPathIDEQ applies the EQ predicate on the "learning_path_id" field.
 func LearningPathIDEQ(v uuid.UUID) predicate.LearningPathItem {
 	return predicate.LearningPathItem(sql.FieldEQ(FieldLearningPathID, v))
@@ -186,6 +191,81 @@ func PositionLT(v int) predicate.LearningPathItem {
 // PositionLTE applies the LTE predicate on the "position" field.
 func PositionLTE(v int) predicate.LearningPathItem {
 	return predicate.LearningPathItem(sql.FieldLTE(FieldPosition, v))
+}
+
+// SectionLabelEQ applies the EQ predicate on the "section_label" field.
+func SectionLabelEQ(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldEQ(FieldSectionLabel, v))
+}
+
+// SectionLabelNEQ applies the NEQ predicate on the "section_label" field.
+func SectionLabelNEQ(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldNEQ(FieldSectionLabel, v))
+}
+
+// SectionLabelIn applies the In predicate on the "section_label" field.
+func SectionLabelIn(vs ...string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldIn(FieldSectionLabel, vs...))
+}
+
+// SectionLabelNotIn applies the NotIn predicate on the "section_label" field.
+func SectionLabelNotIn(vs ...string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldNotIn(FieldSectionLabel, vs...))
+}
+
+// SectionLabelGT applies the GT predicate on the "section_label" field.
+func SectionLabelGT(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldGT(FieldSectionLabel, v))
+}
+
+// SectionLabelGTE applies the GTE predicate on the "section_label" field.
+func SectionLabelGTE(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldGTE(FieldSectionLabel, v))
+}
+
+// SectionLabelLT applies the LT predicate on the "section_label" field.
+func SectionLabelLT(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldLT(FieldSectionLabel, v))
+}
+
+// SectionLabelLTE applies the LTE predicate on the "section_label" field.
+func SectionLabelLTE(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldLTE(FieldSectionLabel, v))
+}
+
+// SectionLabelContains applies the Contains predicate on the "section_label" field.
+func SectionLabelContains(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldContains(FieldSectionLabel, v))
+}
+
+// SectionLabelHasPrefix applies the HasPrefix predicate on the "section_label" field.
+func SectionLabelHasPrefix(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldHasPrefix(FieldSectionLabel, v))
+}
+
+// SectionLabelHasSuffix applies the HasSuffix predicate on the "section_label" field.
+func SectionLabelHasSuffix(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldHasSuffix(FieldSectionLabel, v))
+}
+
+// SectionLabelIsNil applies the IsNil predicate on the "section_label" field.
+func SectionLabelIsNil() predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldIsNull(FieldSectionLabel))
+}
+
+// SectionLabelNotNil applies the NotNil predicate on the "section_label" field.
+func SectionLabelNotNil() predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldNotNull(FieldSectionLabel))
+}
+
+// SectionLabelEqualFold applies the EqualFold predicate on the "section_label" field.
+func SectionLabelEqualFold(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldEqualFold(FieldSectionLabel, v))
+}
+
+// SectionLabelContainsFold applies the ContainsFold predicate on the "section_label" field.
+func SectionLabelContainsFold(v string) predicate.LearningPathItem {
+	return predicate.LearningPathItem(sql.FieldContainsFold(FieldSectionLabel, v))
 }
 
 // And groups predicates with the AND operator between them.

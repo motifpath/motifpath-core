@@ -117,7 +117,8 @@ func articleNode(id string) domain.ContentNode {
 	return domain.ContentNode{ID: id, ContentType: domain.ContentTypeArticle}
 }
 
-func intPtr(v int) *int { return &v }
+func intPtr(v int) *int       { return &v }
+func strPtr(v string) *string { return &v }
 
 func TestContentService_CreateExpandedContent(t *testing.T) {
 	t.Run("a teacher adds an image to a video lesson at a specific timestamp", func(t *testing.T) {

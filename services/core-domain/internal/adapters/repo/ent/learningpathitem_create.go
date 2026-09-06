@@ -38,6 +38,20 @@ func (_c *LearningPathItemCreate) SetPosition(v int) *LearningPathItemCreate {
 	return _c
 }
 
+// SetSectionLabel sets the "section_label" field.
+func (_c *LearningPathItemCreate) SetSectionLabel(v string) *LearningPathItemCreate {
+	_c.mutation.SetSectionLabel(v)
+	return _c
+}
+
+// SetNillableSectionLabel sets the "section_label" field if the given value is not nil.
+func (_c *LearningPathItemCreate) SetNillableSectionLabel(v *string) *LearningPathItemCreate {
+	if v != nil {
+		_c.SetSectionLabel(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *LearningPathItemCreate) SetID(v uuid.UUID) *LearningPathItemCreate {
 	_c.mutation.SetID(v)
@@ -150,6 +164,10 @@ func (_c *LearningPathItemCreate) createSpec() (*LearningPathItem, *sqlgraph.Cre
 	if value, ok := _c.mutation.Position(); ok {
 		_spec.SetField(learningpathitem.FieldPosition, field.TypeInt, value)
 		_node.Position = value
+	}
+	if value, ok := _c.mutation.SectionLabel(); ok {
+		_spec.SetField(learningpathitem.FieldSectionLabel, field.TypeString, value)
+		_node.SectionLabel = &value
 	}
 	return _node, _spec
 }

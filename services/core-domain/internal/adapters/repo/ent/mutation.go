@@ -3303,6 +3303,7 @@ type LearningPathItemMutation struct {
 	content_node_id  *uuid.UUID
 	position         *int
 	addposition      *int
+	section_label    *string
 	clearedFields    map[string]struct{}
 	done             bool
 	oldValue         func(context.Context) (*LearningPathItem, error)
@@ -3541,6 +3542,55 @@ func (m *LearningPathItemMutation) ResetPosition() {
 	m.addposition = nil
 }
 
+// SetSectionLabel sets the "section_label" field.
+func (m *LearningPathItemMutation) SetSectionLabel(s string) {
+	m.section_label = &s
+}
+
+// SectionLabel returns the value of the "section_label" field in the mutation.
+func (m *LearningPathItemMutation) SectionLabel() (r string, exists bool) {
+	v := m.section_label
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSectionLabel returns the old "section_label" field's value of the LearningPathItem entity.
+// If the LearningPathItem object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathItemMutation) OldSectionLabel(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSectionLabel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSectionLabel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSectionLabel: %w", err)
+	}
+	return oldValue.SectionLabel, nil
+}
+
+// ClearSectionLabel clears the value of the "section_label" field.
+func (m *LearningPathItemMutation) ClearSectionLabel() {
+	m.section_label = nil
+	m.clearedFields[learningpathitem.FieldSectionLabel] = struct{}{}
+}
+
+// SectionLabelCleared returns if the "section_label" field was cleared in this mutation.
+func (m *LearningPathItemMutation) SectionLabelCleared() bool {
+	_, ok := m.clearedFields[learningpathitem.FieldSectionLabel]
+	return ok
+}
+
+// ResetSectionLabel resets all changes to the "section_label" field.
+func (m *LearningPathItemMutation) ResetSectionLabel() {
+	m.section_label = nil
+	delete(m.clearedFields, learningpathitem.FieldSectionLabel)
+}
+
 // Where appends a list predicates to the LearningPathItemMutation builder.
 func (m *LearningPathItemMutation) Where(ps ...predicate.LearningPathItem) {
 	m.predicates = append(m.predicates, ps...)
@@ -3575,7 +3625,7 @@ func (m *LearningPathItemMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LearningPathItemMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.learning_path_id != nil {
 		fields = append(fields, learningpathitem.FieldLearningPathID)
 	}
@@ -3584,6 +3634,9 @@ func (m *LearningPathItemMutation) Fields() []string {
 	}
 	if m.position != nil {
 		fields = append(fields, learningpathitem.FieldPosition)
+	}
+	if m.section_label != nil {
+		fields = append(fields, learningpathitem.FieldSectionLabel)
 	}
 	return fields
 }
@@ -3599,6 +3652,8 @@ func (m *LearningPathItemMutation) Field(name string) (ent.Value, bool) {
 		return m.ContentNodeID()
 	case learningpathitem.FieldPosition:
 		return m.Position()
+	case learningpathitem.FieldSectionLabel:
+		return m.SectionLabel()
 	}
 	return nil, false
 }
@@ -3614,6 +3669,8 @@ func (m *LearningPathItemMutation) OldField(ctx context.Context, name string) (e
 		return m.OldContentNodeID(ctx)
 	case learningpathitem.FieldPosition:
 		return m.OldPosition(ctx)
+	case learningpathitem.FieldSectionLabel:
+		return m.OldSectionLabel(ctx)
 	}
 	return nil, fmt.Errorf("unknown LearningPathItem field %s", name)
 }
@@ -3643,6 +3700,13 @@ func (m *LearningPathItemMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPosition(v)
+		return nil
+	case learningpathitem.FieldSectionLabel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSectionLabel(v)
 		return nil
 	}
 	return fmt.Errorf("unknown LearningPathItem field %s", name)
@@ -3688,7 +3752,11 @@ func (m *LearningPathItemMutation) AddField(name string, value ent.Value) error 
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *LearningPathItemMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(learningpathitem.FieldSectionLabel) {
+		fields = append(fields, learningpathitem.FieldSectionLabel)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -3701,6 +3769,11 @@ func (m *LearningPathItemMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *LearningPathItemMutation) ClearField(name string) error {
+	switch name {
+	case learningpathitem.FieldSectionLabel:
+		m.ClearSectionLabel()
+		return nil
+	}
 	return fmt.Errorf("unknown LearningPathItem nullable field %s", name)
 }
 
@@ -3716,6 +3789,9 @@ func (m *LearningPathItemMutation) ResetField(name string) error {
 		return nil
 	case learningpathitem.FieldPosition:
 		m.ResetPosition()
+		return nil
+	case learningpathitem.FieldSectionLabel:
+		m.ResetSectionLabel()
 		return nil
 	}
 	return fmt.Errorf("unknown LearningPathItem field %s", name)

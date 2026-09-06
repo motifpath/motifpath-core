@@ -58,7 +58,8 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 			SetID(uuid.New()).
 			SetLearningPathID(id).
 			SetContentNodeID(contentNodeID).
-			SetPosition(item.Position)
+			SetPosition(item.Position).
+			SetNillableSectionLabel(item.SectionLabel)
 	}
 	if _, err := tx.LearningPathItem.CreateBulk(itemBuilders...).Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -113,6 +114,7 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 			ContentNodeID: item.ContentNodeID.String(),
 			Title:         node.Title,
 			ContentType:   domain.ContentType(node.ContentType),
+			SectionLabel:  item.SectionLabel,
 		}
 	}
 

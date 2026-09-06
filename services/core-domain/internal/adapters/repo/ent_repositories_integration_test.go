@@ -146,10 +146,11 @@ func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
 	node1 := seedContentNode(t, ctx, nodeRepo)
 	node2 := seedContentNode(t, ctx, nodeRepo)
 
+	sectionLabel := "Open chords"
 	path := domain.LearningPath{
 		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Week 1",
 		Items: []domain.LearningPathItem{
-			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType},
+			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType, SectionLabel: &sectionLabel},
 			{Position: 2, ContentNodeID: node2.ID, Title: node2.Title, ContentType: node2.ContentType},
 		},
 		CreatedAt: fixedAt,
@@ -159,6 +160,11 @@ func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
 	got, err := repo.GetByID(ctx, path.ID)
 	require.NoError(t, err)
 	assert.Equal(t, path, got)
+	// section_label round-trips exactly — the set label on item 1 and the
+	// absent label on item 2 (stored NULL, read back as nil).
+	require.NotNil(t, got.Items[0].SectionLabel)
+	assert.Equal(t, "Open chords", *got.Items[0].SectionLabel)
+	assert.Nil(t, got.Items[1].SectionLabel)
 
 	_, err = repo.GetByID(ctx, uuid.NewString())
 	assert.ErrorIs(t, err, domain.ErrNotFound)

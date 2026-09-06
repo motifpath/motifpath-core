@@ -27,6 +27,14 @@ func (LearningPathItem) Fields() []ent.Field {
 
 		field.Int("position").
 			Immutable(),
+
+		// section_label optionally groups this item with its immediate
+		// neighbours under a named section in the path view. Nil means the
+		// item is ungrouped.
+		field.String("section_label").
+			Optional().
+			Nillable().
+			Immutable(),
 	}
 }
 

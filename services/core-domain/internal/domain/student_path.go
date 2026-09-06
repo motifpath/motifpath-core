@@ -22,6 +22,9 @@ type StudentPathItem struct {
 	Title         string
 	ContentType   ContentType
 	Status        CompletionStatus
+	// SectionLabel is carried through unchanged from the LearningPathItem;
+	// nil means the item is ungrouped.
+	SectionLabel *string
 }
 
 // BuildStudentPathItems combines a learning path's ordered items with a
@@ -60,6 +63,7 @@ func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionSt
 			Title:         item.Title,
 			ContentType:   item.ContentType,
 			Status:        status,
+			SectionLabel:  item.SectionLabel,
 		}
 
 		if !foundCurrent && status != CompletionStatusCompleted {
