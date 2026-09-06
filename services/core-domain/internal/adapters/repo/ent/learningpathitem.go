@@ -22,7 +22,9 @@ type LearningPathItem struct {
 	// ContentNodeID holds the value of the "content_node_id" field.
 	ContentNodeID uuid.UUID `json:"content_node_id,omitempty"`
 	// Position holds the value of the "position" field.
-	Position     int `json:"position,omitempty"`
+	Position int `json:"position,omitempty"`
+	// SectionLabel holds the value of the "section_label" field.
+	SectionLabel *string `json:"section_label,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -33,6 +35,8 @@ func (*LearningPathItem) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case learningpathitem.FieldPosition:
 			values[i] = new(sql.NullInt64)
+		case learningpathitem.FieldSectionLabel:
+			values[i] = new(sql.NullString)
 		case learningpathitem.FieldID, learningpathitem.FieldLearningPathID, learningpathitem.FieldContentNodeID:
 			values[i] = new(uuid.UUID)
 		default:
@@ -73,6 +77,13 @@ func (_m *LearningPathItem) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field position", values[i])
 			} else if value.Valid {
 				_m.Position = int(value.Int64)
+			}
+		case learningpathitem.FieldSectionLabel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field section_label", values[i])
+			} else if value.Valid {
+				_m.SectionLabel = new(string)
+				*_m.SectionLabel = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -118,6 +129,11 @@ func (_m *LearningPathItem) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("position=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Position))
+	builder.WriteString(", ")
+	if v := _m.SectionLabel; v != nil {
+		builder.WriteString("section_label=")
+		builder.WriteString(*v)
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }
