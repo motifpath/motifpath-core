@@ -293,9 +293,9 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 
 	pathItems := make([]application.PathItemInput, len(request.Body.Items))
 	for i, item := range request.Body.Items {
-		pathItems[i] = application.PathItemInput{ContentNodeID: item.ContentNodeId.String()}
-		if item.SectionLabel != nil {
-			pathItems[i].SectionLabel = *item.SectionLabel
+		pathItems[i] = application.PathItemInput{
+			ContentNodeID: item.ContentNodeId.String(),
+			SectionLabel:  item.SectionLabel,
 		}
 	}
 

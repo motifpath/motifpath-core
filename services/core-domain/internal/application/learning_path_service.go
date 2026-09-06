@@ -25,7 +25,7 @@ func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.Learn
 // content node it points at and its optional section label.
 type PathItemInput struct {
 	ContentNodeID string
-	SectionLabel  string
+	SectionLabel  *string
 }
 
 // CreateLearningPath creates a learning path from the given ordered items.

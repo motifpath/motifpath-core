@@ -55,19 +55,22 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 
 		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), "Rhythm Foundations",
 			[]application.PathItemInput{
-				{ContentNodeID: "node-01", SectionLabel: "Open chords"},
-				{ContentNodeID: "node-02", SectionLabel: "Open chords"},
-				{ContentNodeID: "node-03", SectionLabel: "Strumming patterns"},
+				{ContentNodeID: "node-01", SectionLabel: strPtr("Open chords")},
+				{ContentNodeID: "node-02", SectionLabel: strPtr("Open chords")},
+				{ContentNodeID: "node-03", SectionLabel: strPtr("Strumming patterns")},
 			})
 
 		require.NoError(t, err)
 		require.Len(t, path.Items, 3)
-		assert.Equal(t, "Open chords", path.Items[0].SectionLabel)
-		assert.Equal(t, "Open chords", path.Items[1].SectionLabel)
-		assert.Equal(t, "Strumming patterns", path.Items[2].SectionLabel)
+		require.NotNil(t, path.Items[0].SectionLabel)
+		assert.Equal(t, "Open chords", *path.Items[0].SectionLabel)
+		require.NotNil(t, path.Items[1].SectionLabel)
+		assert.Equal(t, "Open chords", *path.Items[1].SectionLabel)
+		require.NotNil(t, path.Items[2].SectionLabel)
+		assert.Equal(t, "Strumming patterns", *path.Items[2].SectionLabel)
 	})
 
-	t.Run("a learning path created without section labels has empty labels on every item", func(t *testing.T) {
+	t.Run("a learning path created without section labels has no label on any item", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
 		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
@@ -78,8 +81,8 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Len(t, path.Items, 2)
-		assert.Empty(t, path.Items[0].SectionLabel)
-		assert.Empty(t, path.Items[1].SectionLabel)
+		assert.Nil(t, path.Items[0].SectionLabel)
+		assert.Nil(t, path.Items[1].SectionLabel)
 	})
 
 	t.Run("an admin creates a learning path", func(t *testing.T) {

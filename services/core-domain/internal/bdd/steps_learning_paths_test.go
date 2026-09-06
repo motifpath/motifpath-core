@@ -64,7 +64,7 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 }
 
 func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3, sectionB string) error {
-	labels := map[string]string{n1: sectionA, n2: sectionA, n3: sectionB}
+	labels := map[string]*string{n1: &sectionA, n2: &sectionA, n3: &sectionB}
 	orderedSlugs := []string{n1, n2, n3}
 	items := make([]domain.LearningPathItem, len(orderedSlugs))
 	for i, n := range orderedSlugs {

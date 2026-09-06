@@ -58,10 +58,8 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 			SetID(uuid.New()).
 			SetLearningPathID(id).
 			SetContentNodeID(contentNodeID).
-			SetPosition(item.Position)
-		if item.SectionLabel != "" {
-			itemBuilders[i].SetSectionLabel(item.SectionLabel)
-		}
+			SetPosition(item.Position).
+			SetNillableSectionLabel(item.SectionLabel)
 	}
 	if _, err := tx.LearningPathItem.CreateBulk(itemBuilders...).Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -111,16 +109,12 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 		if !ok {
 			return domain.LearningPath{}, fmt.Errorf("learning path item %s references missing content node %s", item.ID, item.ContentNodeID)
 		}
-		sectionLabel := ""
-		if item.SectionLabel != nil {
-			sectionLabel = *item.SectionLabel
-		}
 		items[i] = domain.LearningPathItem{
 			Position:      item.Position,
 			ContentNodeID: item.ContentNodeID.String(),
 			Title:         node.Title,
 			ContentType:   domain.ContentType(node.ContentType),
-			SectionLabel:  sectionLabel,
+			SectionLabel:  item.SectionLabel,
 		}
 	}
 

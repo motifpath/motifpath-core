@@ -11,10 +11,10 @@ type LearningPathItem struct {
 	Title         string
 	ContentType   ContentType
 	// SectionLabel optionally groups this item with its immediate
-	// neighbours under a named section in the path view. Empty means the
+	// neighbours under a named section in the path view. Nil means the
 	// item is ungrouped. It names a competency or skill area, never a time
 	// period or schedule.
-	SectionLabel string
+	SectionLabel *string
 }
 
 // NewLearningPathItem is one resolved item the caller wants in a new
@@ -23,7 +23,7 @@ type LearningPathItem struct {
 // ContentType) plus its optional section label.
 type NewLearningPathItem struct {
 	Node         ContentNode
-	SectionLabel string
+	SectionLabel *string
 }
 
 // LearningPath is an ordered sequence of content nodes assigned to students

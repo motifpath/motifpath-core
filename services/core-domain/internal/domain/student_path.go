@@ -23,8 +23,8 @@ type StudentPathItem struct {
 	ContentType   ContentType
 	Status        CompletionStatus
 	// SectionLabel is carried through unchanged from the LearningPathItem;
-	// empty means the item is ungrouped.
-	SectionLabel string
+	// nil means the item is ungrouped.
+	SectionLabel *string
 }
 
 // BuildStudentPathItems combines a learning path's ordered items with a
