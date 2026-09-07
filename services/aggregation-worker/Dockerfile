@@ -20,4 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -C services/aggregation-worker -o /out/agg
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/aggregation-worker /aggregation-worker
 USER nonroot:nonroot
+# Health probes only (PB-30 / ADR-016) — the worker is otherwise a pure
+# Kafka consumer. Default PORT is 8082.
+EXPOSE 8082
 ENTRYPOINT ["/aggregation-worker"]
