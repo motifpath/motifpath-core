@@ -5,20 +5,26 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/motifpath/aggregation-worker/internal/adapters/health"
 	"github.com/motifpath/aggregation-worker/internal/adapters/kafka"
 	"github.com/motifpath/aggregation-worker/internal/adapters/repo"
 	"github.com/motifpath/aggregation-worker/internal/application"
 )
+
+const healthShutdownTimeout = 5 * time.Second
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -30,6 +36,7 @@ func main() {
 }
 
 type config struct {
+	port          string
 	mongoURI      string
 	mongoDatabase string
 	kafkaBrokers  []string
@@ -45,6 +52,9 @@ func loadConfig() (config, error) {
 		return config{}, err
 	}
 	return config{
+		// PORT with an 8082 default, matching core-domain (8080) and
+		// event-ingestion (8081); here it serves only the health probes.
+		port:          getenvDefault("PORT", "8082"),
 		mongoURI:      mongoURI,
 		mongoDatabase: getenvDefault("MONGO_DATABASE", "motifpath_events"),
 		kafkaBrokers:  strings.Split(kafkaBrokersRaw, ","),
@@ -82,6 +92,28 @@ func run(logger *slog.Logger) error {
 	defer func() {
 		if err := consumer.Close(); err != nil {
 			logger.Error("failed to close kafka reader", "error", err)
+		}
+	}()
+
+	// The health server runs alongside the consumer loop for the whole
+	// lifetime of run: consumer.Run blocks until shutdown or an unrecoverable
+	// error, and only then does this Shutdown fire — so /healthz stays
+	// answerable throughout, including after a consumer-loop failure.
+	healthSrv := health.NewServer(":"+cfg.port, []health.Check{
+		{Name: "mongodb", Pinger: completionRepo},
+		{Name: "kafka_broker", Pinger: consumer},
+	}, logger)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), healthShutdownTimeout)
+		defer cancel()
+		if err := healthSrv.Shutdown(shutdownCtx); err != nil {
+			logger.Error("failed to shut down health server", "error", err)
+		}
+	}()
+	go func() {
+		logger.Info("health server listening", "port", cfg.port)
+		if err := healthSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("health server failed", "error", err)
 		}
 	}()
 
