@@ -118,7 +118,7 @@ func TestPathAssignmentService_AssignLearningPath(t *testing.T) {
 func threeNodePath() domain.LearningPath {
 	return domain.LearningPath{
 		ID:    "path-1",
-		Title: "week-1-path",
+		Title: "Beginner Guitar",
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo},
 			{Position: 2, ContentNodeID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo},
