@@ -9,11 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -27,22 +23,8 @@ import (
 func TestMongoCompletionStateReader_ReadsAggregationWorkerShape(t *testing.T) {
 	ctx := context.Background()
 
-	container, err := mongodb.Run(ctx, "mongo:7")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, testcontainers.TerminateContainer(container))
-	})
-
-	connStr, err := container.ConnectionString(ctx)
-	require.NoError(t, err)
-	client, err := mongo.Connect(options.Client().ApplyURI(connStr))
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, client.Disconnect(context.Background()))
-	})
-
-	db := client.Database("motifpath_events_test")
-	_, err = db.Collection("aggregates").InsertMany(ctx, []any{
+	db := mongoDatabase(t)
+	_, err := db.Collection("aggregates").InsertMany(ctx, []any{
 		bson.D{{Key: "student_id", Value: "alice"}, {Key: "content_node_id", Value: "node-01"}, {Key: "status", Value: "completed"}, {Key: "updated_at", Value: time.Now().UTC()}},
 		bson.D{{Key: "student_id", Value: "alice"}, {Key: "content_node_id", Value: "node-02"}, {Key: "status", Value: "in_progress"}, {Key: "updated_at", Value: time.Now().UTC()}},
 		// Different student — must never leak into alice's result.
