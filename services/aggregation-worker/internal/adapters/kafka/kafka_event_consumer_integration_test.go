@@ -121,13 +121,18 @@ func TestKafkaEventConsumer_Run_DoesNotCommitOnHandlerFailure(t *testing.T) {
 	failingHandler := &fakeHandler{fail: true}
 	firstConsumer := NewKafkaEventConsumer([]string{broker}, failingHandler, testLogger())
 
-	firstCtx, firstCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Same budget as every other consumer-join wait in this file (and as the
+	// second consumer below): joining a Kafka consumer group means coordinator
+	// discovery plus a rebalance before the first fetch, and that latency is
+	// variable. This wait used to allow 8s against the others' 15s and was the
+	// one that flaked in CI — the consumer was simply still joining.
+	firstCtx, firstCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	go func() { _ = firstConsumer.Run(firstCtx) }()
 
 	require.Eventually(t, func() bool {
 		_, attempts := failingHandler.snapshot()
 		return attempts >= 1
-	}, 8*time.Second, 200*time.Millisecond, "handler must be invoked at least once before it is torn down")
+	}, 15*time.Second, 200*time.Millisecond, "handler must be invoked at least once before it is torn down")
 
 	firstCancel()
 	require.NoError(t, firstConsumer.Close())
