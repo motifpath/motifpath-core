@@ -18,6 +18,8 @@ const (
 	FieldContentNodeID = "content_node_id"
 	// FieldPosition holds the string denoting the position field in the database.
 	FieldPosition = "position"
+	// FieldSectionLabel holds the string denoting the section_label field in the database.
+	FieldSectionLabel = "section_label"
 	// Table holds the table name of the learningpathitem in the database.
 	Table = "learning_path_items"
 )
@@ -28,6 +30,7 @@ var Columns = []string{
 	FieldLearningPathID,
 	FieldContentNodeID,
 	FieldPosition,
+	FieldSectionLabel,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -66,4 +69,9 @@ func ByContentNodeID(opts ...sql.OrderTermOption) OrderOption {
 // ByPosition orders the results by the position field.
 func ByPosition(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPosition, opts...).ToFunc()
+}
+
+// BySectionLabel orders the results by the section_label field.
+func BySectionLabel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSectionLabel, opts...).ToFunc()
 }

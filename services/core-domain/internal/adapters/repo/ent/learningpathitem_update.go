@@ -68,6 +68,9 @@ func (_u *LearningPathItemUpdate) sqlSave(ctx context.Context) (_node int, err e
 			}
 		}
 	}
+	if _u.mutation.SectionLabelCleared() {
+		_spec.ClearField(learningpathitem.FieldSectionLabel, field.TypeString)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{learningpathitem.Label}
@@ -158,6 +161,9 @@ func (_u *LearningPathItemUpdateOne) sqlSave(ctx context.Context) (_node *Learni
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.SectionLabelCleared() {
+		_spec.ClearField(learningpathitem.FieldSectionLabel, field.TypeString)
 	}
 	_node = &LearningPathItem{config: _u.config}
 	_spec.Assign = _node.assignValues

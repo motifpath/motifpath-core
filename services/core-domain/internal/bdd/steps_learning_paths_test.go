@@ -14,11 +14,13 @@ import (
 
 func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)", "([^"]+)"$`, w.putLearningPathThreeItems)
+	sc.Step(`^a learning path "([^"]+)" exists with "([^"]+)" and "([^"]+)" in section "([^"]+)" and "([^"]+)" in section "([^"]+)"$`, w.putLearningPathThreeItemsWithSections)
 	sc.Step(`^a learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
 	sc.Step(`^a second learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
 
 	sc.Step(`^"([^"]+)" creates a learning path titled "([^"]+)"\s+with items in order: "([^"]+)", "([^"]+)", "([^"]+)"$`, w.createsLearningPathThreeItems)
 	sc.Step(`^"([^"]+)" creates a learning path titled "([^"]+)"\s+with items in order: "([^"]+)", "([^"]+)"$`, w.createsLearningPathTwoItems)
+	sc.Step(`^"([^"]+)" creates a learning path titled "([^"]+)"\s+with items in order: "([^"]+)" in section "([^"]+)", "([^"]+)" in section "([^"]+)", "([^"]+)" in section "([^"]+)"$`, w.createsLearningPathThreeItemsWithSections)
 	sc.Step(`^"([^"]+)" retrieves the learning path "([^"]+)"$`, w.retrievesLearningPath)
 	sc.Step(`^"([^"]+)" submits a create learning path request with the title field omitted$`, w.submitsLearningPathMissingTitle)
 	sc.Step(`^"([^"]+)" submits a create learning path request with an empty items array$`, w.submitsLearningPathEmptyItems)
@@ -32,6 +34,13 @@ func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the items are returned with positions 1, 2, and 3 respectively$`, w.itemsHavePositions123)
 	sc.Step(`^the path records "([^"]+)" as the owner$`, w.learningPathRecordsOwner)
 	sc.Step(`^the response returns the path title, owner, and ordered items$`, w.learningPathResponseComplete)
+	sc.Step(`^"([^"]+)" and "([^"]+)" are returned with section_label "([^"]+)"$`, w.createdItemsHaveSectionLabel)
+	sc.Step(`^"([^"]+)" is returned with section_label "([^"]+)"$`, w.createdItemHasSectionLabel)
+}
+
+type pathItemSpec struct {
+	slug         string
+	sectionLabel string
 }
 
 func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
@@ -49,6 +58,32 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 			{Position: 2, ContentNodeID: nodeID(n2).String(), Title: n2, ContentType: domain.ContentTypeVideo},
 			{Position: 3, ContentNodeID: nodeID(n3).String(), Title: n3, ContentType: domain.ContentTypeVideo},
 		},
+		CreatedAt: fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3, sectionB string) error {
+	labels := map[string]*string{n1: &sectionA, n2: &sectionA, n3: &sectionB}
+	orderedSlugs := []string{n1, n2, n3}
+	items := make([]domain.LearningPathItem, len(orderedSlugs))
+	for i, n := range orderedSlugs {
+		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
+			return err
+		}
+		items[i] = domain.LearningPathItem{
+			Position:      i + 1,
+			ContentNodeID: nodeID(n).String(),
+			Title:         n,
+			ContentType:   domain.ContentTypeVideo,
+			SectionLabel:  labels[n],
+		}
+	}
+	w.paths.put(domain.LearningPath{
+		ID:        pathID(slug).String(),
+		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		Title:     slug,
+		Items:     items,
 		CreatedAt: fixedNow,
 	})
 	return nil
@@ -78,16 +113,36 @@ func (w *world) createsLearningPathTwoItems(name, title, n1, n2 string) error {
 	return w.createsLearningPath(title, []string{n1, n2})
 }
 
-func (w *world) createsLearningPath(title string, nodeSlugs []string) error {
-	items := make([]struct {
-		ContentNodeId uuid.UUID `json:"content_node_id"`
-	}, len(nodeSlugs))
-	for i, slug := range nodeSlugs {
-		items[i].ContentNodeId = nodeID(slug)
-	}
-	resp, err := w.handler.CreateLearningPath(w.ctx(), generated.CreateLearningPathRequestObject{
-		Body: &generated.CreateLearningPathRequest{Title: title, Items: items},
+func (w *world) createsLearningPathThreeItemsWithSections(name, title, n1, s1, n2, s2, n3, s3 string) error {
+	return w.createsLearningPathWithSpecs(title, []pathItemSpec{
+		{slug: n1, sectionLabel: s1},
+		{slug: n2, sectionLabel: s2},
+		{slug: n3, sectionLabel: s3},
 	})
+}
+
+func (w *world) createsLearningPath(title string, nodeSlugs []string) error {
+	specs := make([]pathItemSpec, len(nodeSlugs))
+	for i, slug := range nodeSlugs {
+		specs[i] = pathItemSpec{slug: slug}
+	}
+	return w.createsLearningPathWithSpecs(title, specs)
+}
+
+func (w *world) createsLearningPathWithSpecs(title string, specs []pathItemSpec) error {
+	body := &generated.CreateLearningPathRequest{Title: title}
+	for _, spec := range specs {
+		item := struct {
+			ContentNodeId uuid.UUID `json:"content_node_id"`
+			SectionLabel  *string   `json:"section_label,omitempty"`
+		}{ContentNodeId: nodeID(spec.slug)}
+		if spec.sectionLabel != "" {
+			label := spec.sectionLabel
+			item.SectionLabel = &label
+		}
+		body.Items = append(body.Items, item)
+	}
+	resp, err := w.handler.CreateLearningPath(w.ctx(), generated.CreateLearningPathRequestObject{Body: body})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
@@ -148,6 +203,43 @@ func (w *world) itemsHavePositions123() error {
 		if item.Position != i+1 {
 			return fmt.Errorf("expected item %d to have position %d, got %d", i, i+1, item.Position)
 		}
+	}
+	return nil
+}
+
+func (w *world) createdSectionLabelFor(slug string) (string, error) {
+	resp, ok := w.lastResp.(generated.CreateLearningPath201JSONResponse)
+	if !ok {
+		return "", fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	want := nodeID(slug)
+	for _, item := range resp.Items {
+		if item.ContentNodeId == want {
+			if item.SectionLabel == nil {
+				return "", nil
+			}
+			return *item.SectionLabel, nil
+		}
+	}
+	return "", fmt.Errorf("no returned item references content node %q", slug)
+}
+
+func (w *world) createdItemsHaveSectionLabel(slugA, slugB, label string) error {
+	for _, slug := range []string{slugA, slugB} {
+		if err := w.createdItemHasSectionLabel(slug, label); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *world) createdItemHasSectionLabel(slug, label string) error {
+	got, err := w.createdSectionLabelFor(slug)
+	if err != nil {
+		return err
+	}
+	if got != label {
+		return fmt.Errorf("expected %q to have section_label %q, got %q", slug, label, got)
 	}
 	return nil
 }

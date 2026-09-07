@@ -317,6 +317,9 @@ type CreateLearningPathRequest struct {
 	Items []struct {
 		// ContentNodeId The ID of the content node at this position. Must exist in the system.
 		ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+		// SectionLabel Optional label grouping this item with its immediate neighbors under a named section in the resulting path view. Consecutive items that share the same label render together under that heading in the teacher, admin, and student path views; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area — never a time period or schedule.
+		SectionLabel *string `json:"section_label,omitempty"`
 	} `json:"items"`
 
 	// Title Human-readable name for this learning path, displayed to teachers and admins.
@@ -421,6 +424,9 @@ type LearningPathItem struct {
 	// Position 1-based position of this item within the learning path.
 	Position int `json:"position"`
 
+	// SectionLabel Optional label grouping this item with its immediate neighbors under a named section. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period.
+	SectionLabel *string `json:"section_label,omitempty"`
+
 	// Title Title of the content node, denormalised for display.
 	Title string `json:"title"`
 }
@@ -484,6 +490,9 @@ type StudentPathItem struct {
 
 	// Position 1-based position of this item within the learning path.
 	Position int `json:"position"`
+
+	// SectionLabel Optional label grouping this item with its immediate neighbors under a named section in the student's path view. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period.
+	SectionLabel *string `json:"section_label,omitempty"`
 
 	// Status The student's current progress state for this item. completed — finished.
 	// in_progress — started but not finished. not_started — not yet reached.

@@ -88,6 +88,7 @@ func toLearningPathItem(item domain.LearningPathItem) generated.LearningPathItem
 		ContentNodeId: mustUUID(item.ContentNodeID),
 		Title:         item.Title,
 		ContentType:   generated.LearningPathItemContentType(item.ContentType),
+		SectionLabel:  item.SectionLabel,
 	}
 }
 
@@ -122,6 +123,7 @@ func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
 		Title:         item.Title,
 		ContentType:   generated.StudentPathItemContentType(item.ContentType),
 		Status:        generated.StudentPathItemStatus(item.Status),
+		SectionLabel:  item.SectionLabel,
 	}
 }
 

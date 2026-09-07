@@ -28,6 +28,9 @@ func registerStudentPathViewSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^all three items have status "([^"]+)"$`, w.allItemsHaveStatus)
 	sc.Step(`^the current_position is (\d+)$`, w.currentPositionIs)
 	sc.Step(`^each item in the response includes a title and content_type$`, w.eachItemHasTitleAndContentType)
+	sc.Step(`^none of the items have a section_label$`, w.noItemsHaveSectionLabel)
+	sc.Step(`^"([^"]+)" and "([^"]+)" have section_label "([^"]+)"$`, w.itemsHaveSectionLabel)
+	sc.Step(`^"([^"]+)" has section_label "([^"]+)"$`, w.itemHasSectionLabel)
 }
 
 func (w *world) hasCompletedNode(name, nodeSlug string) error {
@@ -123,6 +126,55 @@ func (w *world) currentPositionIs(position int) error {
 	}
 	if resp.CurrentPosition != position {
 		return fmt.Errorf("expected current_position %d, got %d", position, resp.CurrentPosition)
+	}
+	return nil
+}
+
+func (w *world) sectionLabelFor(nodeSlug string) (string, bool, error) {
+	resp, err := w.studentPathView()
+	if err != nil {
+		return "", false, err
+	}
+	for _, item := range resp.Items {
+		if item.ContentNodeId == nodeID(nodeSlug) {
+			if item.SectionLabel == nil {
+				return "", false, nil
+			}
+			return *item.SectionLabel, true, nil
+		}
+	}
+	return "", false, fmt.Errorf("no item found for content node %q", nodeSlug)
+}
+
+func (w *world) noItemsHaveSectionLabel() error {
+	resp, err := w.studentPathView()
+	if err != nil {
+		return err
+	}
+	for _, item := range resp.Items {
+		if item.SectionLabel != nil {
+			return fmt.Errorf("expected no section_label on item at position %d, got %q", item.Position, *item.SectionLabel)
+		}
+	}
+	return nil
+}
+
+func (w *world) itemsHaveSectionLabel(slugA, slugB, label string) error {
+	for _, slug := range []string{slugA, slugB} {
+		if err := w.itemHasSectionLabel(slug, label); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *world) itemHasSectionLabel(nodeSlug, label string) error {
+	got, present, err := w.sectionLabelFor(nodeSlug)
+	if err != nil {
+		return err
+	}
+	if !present || got != label {
+		return fmt.Errorf("expected %q to have section_label %q, got %q (present=%t)", nodeSlug, label, got, present)
 	}
 	return nil
 }
