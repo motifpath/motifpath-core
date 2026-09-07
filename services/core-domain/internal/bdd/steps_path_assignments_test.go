@@ -104,9 +104,16 @@ func (w *world) attemptsAssignToSelf(name, pathSlug string) error {
 
 func (w *world) unauthAssignsPath() error {
 	w.noAuthToken() //nolint:errcheck // never errors
+	// The step this backs — "an unauthenticated request attempts to assign a
+	// learning path" — names no path, and authentication is refused before
+	// any path lookup, so the id is deliberately one no scenario seeds.
+	// Naming a real fixture here would couple this file to the fixture
+	// slugs in motifpath-specs, which CI checks out from its default branch
+	// (so a rename there would break this repo's dev build before the two
+	// changes could land together).
 	resp, err := w.handler.AssignLearningPath(w.ctx(), generated.AssignLearningPathRequestObject{
 		StudentId: deterministicUUID("motif-user", "alice"),
-		Body:      &generated.AssignLearningPathRequest{LearningPathId: pathID("week-1-path")},
+		Body:      &generated.AssignLearningPathRequest{LearningPathId: pathID("unauthenticated-request-path")},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
