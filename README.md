@@ -8,8 +8,9 @@ Go monorepo for MotifPath backend services.
 |---|---|---|---|
 | core-domain | `services/core-domain/` | PostgreSQL (ent ORM) | Learning graph, student paths, threshold logic |
 | event-ingestion | `services/event-ingestion/` | MongoDB Atlas | Domain event collection and storage |
+| aggregation-worker | `services/aggregation-worker/` | MongoDB Atlas | Kafka consumer deriving node-completion state (ADR-011) |
 
-Both services follow hexagonal architecture. Specs live in
+All three services follow hexagonal architecture. Specs live in
 [motifpath-specs](../motifpath-specs) — check there before implementing any feature.
 
 ## Onboarding
@@ -74,9 +75,7 @@ provides all of them, pinned to the exact versions declared in `devbox.json`.
    ```
    Should complete with no output or errors.
 
-You're ready to build at that point. Note: until real service code exists (Phase 3/4 of the
-implementation plan), `make lint` and `make test` will report "no go files to analyze" for the
-currently-empty service packages — that's expected on a fresh scaffold, not a setup problem.
+You're ready to build at that point.
 
 ## Local Setup (day to day)
 
@@ -90,29 +89,50 @@ make dev
 
 ## Running the services locally
 
-With `make dev` up (Postgres, MongoDB, Redpanda), run each service from its own
-directory inside `devbox shell`. `core-domain` applies pending Atlas migrations on
-startup, so it must run from `services/core-domain/`.
+The Go services run as `wgo`-reloaded processes managed by
+[process-compose](https://github.com/F1bonacc1/process-compose) (bundled with
+Devbox). The dependency containers stay in Docker Compose — `make dev` starts
+them, `devbox services up` does not touch them (ADR-016).
 
 ```bash
-# core-domain — http://localhost:8080
-cd services/core-domain
-DATABASE_URL="postgres://motifpath:motifpath@localhost:5432/core_domain?sslmode=disable" \
-MONGO_URI="mongodb://motifpath:motifpath@localhost:27017" \
-CLERK_SECRET_KEY="sk_test_..." \
-go run ./cmd
+# 1. One-time: copy the env templates and set a real Clerk secret key in each
+#    (Clerk dashboard → API keys — the same instance the SPA uses).
+cp services/core-domain/.env.example       services/core-domain/.env
+cp services/event-ingestion/.env.example   services/event-ingestion/.env
+cp services/aggregation-worker/.env.example services/aggregation-worker/.env
 
-# event-ingestion — http://localhost:8081
-cd services/event-ingestion
-MONGO_URI="mongodb://motifpath:motifpath@localhost:27017" \
-KAFKA_BROKERS="localhost:9092" \
-CLERK_SECRET_KEY="sk_test_..." \
-CORE_DOMAIN_BASE_URL="http://localhost:8080" \
-go run ./cmd
+# 2. Start the dependency containers (Postgres, MongoDB, Redpanda).
+make dev
+
+# 3. Backend inner loop — core-domain (:8080) + event-ingestion (:8081),
+#    each rebuilding on save. core-domain applies Atlas migrations on startup.
+devbox services up
 ```
 
-`CLERK_SECRET_KEY` is the secret key of the same Clerk instance the frontend uses
-(Clerk dashboard → API keys).
+`.env` files are gitignored. Each service reads its own `services/<name>/.env`.
+
+### Full stack (adds aggregation-worker + the web SPA)
+
+`aggregation-worker` (:8082, health probes only) and `web` are defined but not
+started by the bare command — name them to bring them up:
+
+```bash
+devbox services up core-domain event-ingestion aggregation-worker web
+```
+
+`web` runs `npm run dev` in `../motifpath-web`, so that repo must be checked out
+as a sibling with dependencies installed (`cd ../motifpath-web && npm install`).
+
+Every service exposes `GET /healthz` (liveness) and `GET /readyz` (readiness —
+dependency reachability); process-compose gates start-up on `/readyz`.
+
+### Raw `go run` (fallback, no process-compose)
+
+```bash
+cd services/core-domain
+set -a && . ./.env && set +a
+go run ./cmd
+```
 
 ### Browser (CORS) access
 
@@ -126,6 +146,11 @@ Deployed environments set this explicitly.
 ```bash
 # Regenerate oapi-codegen stubs from spec (run after spec changes)
 make generate
+
+# Build the three service images and smoke them against throwaway deps
+# (mirrors the image-smoke CI job — catches image-only failures go run hides)
+docker compose -f compose.images.yaml up --build --wait --wait-timeout 120
+docker compose -f compose.images.yaml down -v
 
 # Run service-layer unit tests with coverage report
 make test
