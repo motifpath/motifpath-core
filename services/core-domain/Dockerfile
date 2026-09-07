@@ -26,8 +26,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 	&& useradd --system --no-create-home --uid 65532 nonroot
 
 COPY --from=arigaio/atlas:1.3.2 /atlas /usr/local/bin/atlas
-COPY --from=build /out/core-domain /core-domain
+
+# cmd/main.go resolves the Atlas migrations dir relative to the working
+# directory (file://internal/adapters/repo/ent/migrate/migrations), so the
+# binary and that tree must sit under the same WORKDIR in the image, not just
+# in the build stage.
+WORKDIR /app
+COPY --from=build /out/core-domain /app/core-domain
+COPY --from=build /src/services/core-domain/internal/adapters/repo/ent/migrate/migrations /app/internal/adapters/repo/ent/migrate/migrations
 
 USER nonroot:nonroot
 EXPOSE 8080
-ENTRYPOINT ["/core-domain"]
+ENTRYPOINT ["/app/core-domain"]

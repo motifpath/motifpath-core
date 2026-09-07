@@ -225,6 +225,44 @@
           "store_path": "/nix/store/kasv7av5n35wsc9lip9wgvmwi6vjfppf-oapi-codegen-2.4.1"
         }
       }
+    },
+    "wgo@0.7": {
+      "last_modified": "2026-08-27T07:16:00Z",
+      "resolved": "github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410#wgo",
+      "source": "devbox-search",
+      "version": "0.7.1",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/5ly6kzs7xh2fnqgyrigl4wiv8i3wi4hs-wgo-0.7.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/5ly6kzs7xh2fnqgyrigl4wiv8i3wi4hs-wgo-0.7.1"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/r8m5mxgl44lwmhin0w0h7nsb7qslwswq-wgo-0.7.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/r8m5mxgl44lwmhin0w0h7nsb7qslwswq-wgo-0.7.1"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/zmhb6rc8vrsq77dsjkmb7wgwmjfk3mic-wgo-0.7.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/zmhb6rc8vrsq77dsjkmb7wgwmjfk3mic-wgo-0.7.1"
+        }
+      }
     }
   }
 }

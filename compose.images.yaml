@@ -1,0 +1,113 @@
+# compose.images.yaml — builds the three service images from their real
+# Dockerfiles and runs them against throwaway dependency containers. This is
+# the release-confidence check from ADR-016 §Decision.3: it catches
+# image-only failures `go run` masks (missing CA certs, the non-root user
+# unable to write, `atlas` not on the image PATH, a broken ENTRYPOINT).
+#
+# Not for day-to-day development — that is process-compose.yaml. Run by the
+# `image-smoke` CI job, or locally:
+#
+#   docker compose -f compose.images.yaml up --build --wait --wait-timeout 120
+#   curl -fsS localhost:8080/healthz && curl -fsS localhost:8080/readyz
+#   curl -fsS localhost:8081/healthz && curl -fsS localhost:8081/readyz
+#   curl -fsS localhost:8082/healthz && curl -fsS localhost:8082/readyz
+#   docker compose -f compose.images.yaml down -v
+#
+# No Clerk secret: the smoke stays on unauthenticated paths (ADR-016 Q4), so
+# CLERK_SECRET_KEY only has to be non-empty for the process to boot. The
+# service images are debian-slim / distroless with no curl or shell TCP, so
+# they carry no container healthcheck — the CI job asserts the endpoints from
+# the host instead, and `--wait` still fails if a service container exits.
+
+name: motifpath-image-smoke
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: motifpath
+      POSTGRES_PASSWORD: motifpath
+      POSTGRES_DB: core_domain
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U motifpath -d core_domain"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  mongodb:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: motifpath
+      MONGO_INITDB_ROOT_PASSWORD: motifpath
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --set redpanda.auto_create_topics_enabled=true
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  core-domain:
+    build:
+      context: .
+      dockerfile: services/core-domain/Dockerfile
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://motifpath:motifpath@postgres:5432/core_domain?sslmode=disable
+      MONGO_URI: mongodb://motifpath:motifpath@mongodb:27017/?authSource=admin
+      MONGO_DATABASE: motifpath_events
+      CLERK_SECRET_KEY: sk_test_dummy_for_image_smoke
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongodb: { condition: service_healthy }
+
+  event-ingestion:
+    build:
+      context: .
+      dockerfile: services/event-ingestion/Dockerfile
+    environment:
+      PORT: "8081"
+      MONGO_URI: mongodb://motifpath:motifpath@mongodb:27017/?authSource=admin
+      MONGO_DATABASE: motifpath_events
+      KAFKA_BROKERS: redpanda:9092
+      CLERK_SECRET_KEY: sk_test_dummy_for_image_smoke
+      CORE_DOMAIN_BASE_URL: http://core-domain:8080
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports: ["8081:8081"]
+    depends_on:
+      mongodb: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      core-domain: { condition: service_started }
+
+  aggregation-worker:
+    build:
+      context: .
+      dockerfile: services/aggregation-worker/Dockerfile
+    environment:
+      PORT: "8082"
+      MONGO_URI: mongodb://motifpath:motifpath@mongodb:27017/?authSource=admin
+      MONGO_DATABASE: motifpath_events
+      KAFKA_BROKERS: redpanda:9092
+    ports: ["8082:8082"]
+    depends_on:
+      mongodb: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
