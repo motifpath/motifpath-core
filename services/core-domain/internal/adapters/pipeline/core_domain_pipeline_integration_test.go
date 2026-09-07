@@ -16,12 +16,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/mongodb"
-	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	_ "github.com/lib/pq"
 
@@ -44,41 +40,14 @@ func setupPipeline(t *testing.T) *pipeline {
 	t.Helper()
 	ctx := context.Background()
 
-	pgContainer, err := tcpostgres.Run(ctx, "postgres:16-alpine",
-		tcpostgres.WithDatabase("core_domain_pipeline_test"),
-		tcpostgres.WithUsername("test"),
-		tcpostgres.WithPassword("test"),
-	)
-	require.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, testcontainers.TerminateContainer(pgContainer)) })
-
-	dsn, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
-	require.NoError(t, err)
-	entClient, err := ent.Open("postgres", dsn)
+	// Postgres and Mongo are one shared container each, waited out once in
+	// TestMain; every test gets its own fresh database off them.
+	entClient, err := ent.Open("postgres", newPostgresDSN(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, entClient.Close()) })
+	require.NoError(t, entClient.Schema.Create(ctx))
 
-	// See repo.setupPostgres for why this retries: Schema.Create's first
-	// act is a version query that can race the container's brief
-	// post-ready connection reset window.
-	for attempt := 0; ; attempt++ {
-		err = entClient.Schema.Create(ctx)
-		if err == nil || attempt >= 4 {
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	require.NoError(t, err)
-
-	mongoContainer, err := mongodb.Run(ctx, "mongo:7")
-	require.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, testcontainers.TerminateContainer(mongoContainer)) })
-	mongoConnStr, err := mongoContainer.ConnectionString(ctx)
-	require.NoError(t, err)
-	mongoClient, err := mongo.Connect(options.Client().ApplyURI(mongoConnStr))
-	require.NoError(t, err)
-	t.Cleanup(func() { assert.NoError(t, mongoClient.Disconnect(context.Background())) })
-	mongoDB := mongoClient.Database("motifpath_events_pipeline_test")
+	mongoDB := mongoDatabase(t)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
