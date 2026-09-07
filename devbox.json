@@ -5,7 +5,8 @@
     "golangci-lint@2",
     "oapi-codegen@2.4",
     "atlas@0.28",
-    "nodejs@22"
+    "nodejs@22",
+    "wgo@0.7"
   ],
   "shell": {
     "init_hook": [

@@ -1,0 +1,97 @@
+# process-compose — the MotifPath local inner loop (ADR-016).
+#
+# Runs the Go services as wgo-reloaded processes against the dependency
+# containers. process-compose does NOT manage those containers: `make dev`
+# starts Postgres / MongoDB / Redpanda via docker-compose, and this file only
+# waits for them (ADR-016 Decision 1, plan Q2).
+#
+#   cp services/core-domain/.env.example      services/core-domain/.env
+#   cp services/event-ingestion/.env.example  services/event-ingestion/.env
+#   cp services/aggregation-worker/.env.example services/aggregation-worker/.env
+#   # then set a real CLERK_SECRET_KEY in each
+#   make dev                          # once — starts the dependency containers
+#   devbox services up               # backend inner loop: core-domain + event-ingestion
+#
+# Full stack — also starts aggregation-worker and the web SPA (both marked
+# `disabled` so the bare command stays backend-only); naming them starts them:
+#   devbox services up core-domain event-ingestion aggregation-worker web
+#   (web needs motifpath-web checked out as a sibling with deps installed:
+#    `cd ../motifpath-web && npm install`)
+#
+# Each service loads its own services/<svc>/.env via `set -a && . ./.env`
+# rather than a process-compose env-file key, so the file works across
+# process-compose versions. A missing .env fails the process loudly.
+#
+# One service under a debugger: run it with `dlv` directly, the rest here.
+
+version: "0.5"
+
+processes:
+  # ── dependency gates ──────────────────────────────────────────────────
+  # One-shot: block until the container `make dev` started reports healthy in
+  # its `docker compose ps` STATUS, then exit 0. Fails loudly (timeout) if a
+  # container never comes up. Plain text match — no Go-template `{{ }}`, which
+  # process-compose would try to expand itself.
+  wait-postgres:
+    command: "timeout 180 sh -c 'until docker compose ps postgres 2>/dev/null | grep -q \"(healthy)\"; do sleep 2; done'"
+    availability: { restart: "no" }
+  wait-mongodb:
+    command: "timeout 180 sh -c 'until docker compose ps mongodb 2>/dev/null | grep -q \"(healthy)\"; do sleep 2; done'"
+    availability: { restart: "no" }
+  wait-redpanda:
+    command: "timeout 180 sh -c 'until docker compose ps redpanda 2>/dev/null | grep -q \"(healthy)\"; do sleep 2; done'"
+    availability: { restart: "no" }
+
+  # ── backend inner loop (default) ──────────────────────────────────────
+  core-domain:
+    command: "sh -c 'set -a && . ./.env && exec wgo run ./cmd'"
+    working_dir: "services/core-domain"
+    depends_on:
+      wait-postgres: { condition: process_completed_successfully }
+      wait-mongodb: { condition: process_completed_successfully }
+    readiness_probe:
+      http_get: { host: "127.0.0.1", scheme: "http", port: 8080, path: "/readyz" }
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 30
+
+  event-ingestion:
+    command: "sh -c 'set -a && . ./.env && exec wgo run ./cmd'"
+    working_dir: "services/event-ingestion"
+    depends_on:
+      wait-mongodb: { condition: process_completed_successfully }
+      wait-redpanda: { condition: process_completed_successfully }
+      # POST /events resolves the caller's identity and role from core-domain
+      # (ADR-013 / ADR-014), so start it once core-domain is serving.
+      core-domain: { condition: process_healthy }
+    readiness_probe:
+      http_get: { host: "127.0.0.1", scheme: "http", port: 8081, path: "/readyz" }
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 30
+
+  # ── full stack (disabled — name them on the `up` command to start) ────
+  aggregation-worker:
+    command: "sh -c 'set -a && . ./.env && exec wgo run ./cmd'"
+    working_dir: "services/aggregation-worker"
+    disabled: true
+    depends_on:
+      wait-mongodb: { condition: process_completed_successfully }
+      wait-redpanda: { condition: process_completed_successfully }
+    readiness_probe:
+      http_get: { host: "127.0.0.1", scheme: "http", port: 8082, path: "/readyz" }
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 30
+
+  web:
+    command: "npm run dev"
+    working_dir: "../motifpath-web"
+    disabled: true
+    depends_on:
+      core-domain: { condition: process_healthy }
+    readiness_probe:
+      http_get: { host: "127.0.0.1", scheme: "http", port: 5173, path: "/" }
+      initial_delay_seconds: 3
+      period_seconds: 3
+      failure_threshold: 40
