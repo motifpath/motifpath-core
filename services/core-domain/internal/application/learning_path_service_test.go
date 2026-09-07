@@ -85,6 +85,46 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		assert.Nil(t, path.Items[1].SectionLabel)
 	})
 
+	t.Run("section labels are stored trimmed", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
+		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), "Rhythm Foundations",
+			[]application.PathItemInput{
+				{ContentNodeID: "node-01", SectionLabel: strPtr("Open chords ")},
+				{ContentNodeID: "node-02", SectionLabel: strPtr(" Open chords")},
+			})
+
+		require.NoError(t, err)
+		require.Len(t, path.Items, 2)
+		require.NotNil(t, path.Items[0].SectionLabel)
+		require.NotNil(t, path.Items[1].SectionLabel)
+		// Both items name the same section — the API contract must not make
+		// them differ on whitespace alone.
+		assert.Equal(t, "Open chords", *path.Items[0].SectionLabel)
+		assert.Equal(t, "Open chords", *path.Items[1].SectionLabel)
+	})
+
+	t.Run("a blank section label is stored as no label", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
+		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), "Rhythm Foundations",
+			[]application.PathItemInput{
+				{ContentNodeID: "node-01", SectionLabel: strPtr("")},
+				{ContentNodeID: "node-02", SectionLabel: strPtr("   ")},
+			})
+
+		require.NoError(t, err)
+		require.Len(t, path.Items, 2)
+		assert.Nil(t, path.Items[0].SectionLabel)
+		assert.Nil(t, path.Items[1].SectionLabel)
+	})
+
 	t.Run("an admin creates a learning path", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
