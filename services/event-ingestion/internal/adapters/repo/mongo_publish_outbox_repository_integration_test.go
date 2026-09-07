@@ -9,10 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/mongodb"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/motifpath/event-ingestion/internal/domain"
 	"github.com/motifpath/event-ingestion/internal/ports"
@@ -20,25 +16,8 @@ import (
 
 func setupOutboxRepository(t *testing.T) *MongoPublishOutboxRepository {
 	t.Helper()
-	ctx := context.Background()
-
-	container, err := mongodb.Run(ctx, "mongo:7")
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, testcontainers.TerminateContainer(container))
-	})
-
-	connStr, err := container.ConnectionString(ctx)
-	require.NoError(t, err)
-
-	client, err := mongo.Connect(options.Client().ApplyURI(connStr))
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		assert.NoError(t, client.Disconnect(context.Background()))
-	})
-
-	repo := NewMongoPublishOutboxRepository(client.Database("motifpath_events_test"))
-	require.NoError(t, repo.EnsureIndexes(ctx))
+	repo := NewMongoPublishOutboxRepository(mongoDatabase(t))
+	require.NoError(t, repo.EnsureIndexes(context.Background()))
 	return repo
 }
 
