@@ -4,6 +4,7 @@ package bdd
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -323,3 +324,30 @@ func (f *fakeCompletionReader) set(studentID, contentNodeID string, status domai
 	}
 	f.statuses[studentID][contentNodeID] = status
 }
+
+// fakePinger backs the readiness probe. It is the one fake here with an
+// error knob — the service-health feature is entirely about how the probe
+// reports a dependency being reachable or not, so the down state has to be
+// injectable. Zero value = reachable.
+type fakePinger struct {
+	mu  sync.Mutex
+	err error
+}
+
+func (f *fakePinger) setReachable(reachable bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if reachable {
+		f.err = nil
+		return
+	}
+	f.err = errStoreUnreachable
+}
+
+func (f *fakePinger) Ping(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.err
+}
+
+var errStoreUnreachable = errors.New("store unreachable")

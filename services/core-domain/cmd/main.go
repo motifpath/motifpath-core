@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -93,10 +96,13 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
 
-	entClient, err := ent.Open("postgres", cfg.databaseURL)
+	// Open the *sql.DB explicitly (rather than ent.Open) so the readiness
+	// probe can ping the very pool ent queries through — see PostgresPinger.
+	sqlDB, err := sql.Open("postgres", cfg.databaseURL)
 	if err != nil {
 		return fmt.Errorf("connect to postgres: %w", err)
 	}
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, sqlDB)))
 	defer func() {
 		if err := entClient.Close(); err != nil {
 			logger.Error("failed to close postgres connection", "error", err)
@@ -125,6 +131,7 @@ func run(logger *slog.Logger) error {
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
 	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
 	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
+	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -135,7 +142,8 @@ func run(logger *slog.Logger) error {
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)
 
-	handler := appHTTP.NewHandler(identityService, contentService, challengeService, pathService, assignmentService)
+	handler := appHTTP.NewHandler(identityService, contentService, challengeService, pathService, assignmentService,
+		learningGraphPinger, completionReader)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{

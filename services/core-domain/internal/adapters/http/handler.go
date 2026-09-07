@@ -7,6 +7,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // Handler implements generated.StrictServerInterface — one method per
@@ -18,6 +19,11 @@ type Handler struct {
 	challenge  *application.ChallengeService
 	path       *application.LearningPathService
 	assignment *application.PathAssignmentService
+
+	// pingers back the readiness probe only; the health probes never touch
+	// the application services above.
+	learningGraphPinger   ports.Pinger
+	completionStatePinger ports.Pinger
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)
@@ -28,8 +34,18 @@ func NewHandler(
 	challenge *application.ChallengeService,
 	path *application.LearningPathService,
 	assignment *application.PathAssignmentService,
+	learningGraphPinger ports.Pinger,
+	completionStatePinger ports.Pinger,
 ) *Handler {
-	return &Handler{identity: identity, content: content, challenge: challenge, path: path, assignment: assignment}
+	return &Handler{
+		identity:              identity,
+		content:               content,
+		challenge:             challenge,
+		path:                  path,
+		assignment:            assignment,
+		learningGraphPinger:   learningGraphPinger,
+		completionStatePinger: completionStatePinger,
+	}
 }
 
 // resolveCaller returns the authenticated caller's User record, or ok=false
