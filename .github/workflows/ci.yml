@@ -112,9 +112,76 @@ jobs:
       - name: Run integration tests
         run: make test:int
 
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.filter.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            images:
+              - 'services/**'
+              - '**/Dockerfile'
+              - 'compose.images.yaml'
+              - '.github/workflows/ci.yml'
+
+  image-smoke:
+    name: Release Image Smoke
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the service images
+        run: docker compose -f compose.images.yaml build
+
+      - name: Bring the stack up
+        run: docker compose -f compose.images.yaml up --wait --wait-timeout 180
+
+      # Proves the real image boots, applies migrations, and serves — not just
+      # that `go run` works (ADR-016 §Decision.3).
+      - name: Probe liveness and readiness
+        run: |
+          set -euo pipefail
+          for port in 8080 8081 8082; do
+            curl -fsS "localhost:$port/healthz" > /dev/null
+            curl -fsS "localhost:$port/readyz"  > /dev/null
+            echo "port $port: /healthz + /readyz OK"
+          done
+
+      - name: Probe routing and auth middleware (expect 401)
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/users/me)
+          test "$code" = "401" || { echo "expected 401 from /users/me, got $code"; exit 1; }
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose -f compose.images.yaml logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f compose.images.yaml down -v
+
   all-checks:
     name: All checks passed
     runs-on: ubuntu-latest
-    needs: [lint, test, test-bdd, test-integration]
+    needs: [lint, test, test-bdd, test-integration, changes, image-smoke]
+    if: always()
     steps:
-      - run: echo "All CI checks passed"
+      - name: Verify required jobs succeeded
+        run: |
+          # image-smoke is path-filtered — "skipped" is an accepted result,
+          # a real failure is not.
+          [[ "${{ needs.changes.result }}"          == "success"             ]] || { echo "changes failed";          exit 1; }
+          [[ "${{ needs.lint.result }}"             == "success"             ]] || { echo "lint failed";             exit 1; }
+          [[ "${{ needs.test.result }}"             == "success"             ]] || { echo "test failed";             exit 1; }
+          [[ "${{ needs.test-bdd.result }}"         == "success"             ]] || { echo "test-bdd failed";         exit 1; }
+          [[ "${{ needs.test-integration.result }}" == "success"             ]] || { echo "test-integration failed"; exit 1; }
+          [[ "${{ needs.image-smoke.result }}"      =~ ^(success|skipped)$   ]] || { echo "image-smoke failed";      exit 1; }
+          echo "All required CI checks passed"
