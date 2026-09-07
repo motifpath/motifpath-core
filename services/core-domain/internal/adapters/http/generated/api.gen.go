@@ -75,6 +75,18 @@ const (
 	ExpandedContentContentTypeImage ExpandedContentContentType = "image"
 )
 
+// Defines values for HealthStatusChecks.
+const (
+	HealthStatusChecksFail HealthStatusChecks = "fail"
+	HealthStatusChecksOk   HealthStatusChecks = "ok"
+)
+
+// Defines values for HealthStatusStatus.
+const (
+	HealthStatusStatusDegraded HealthStatusStatus = "degraded"
+	HealthStatusStatusOk       HealthStatusStatus = "ok"
+)
+
 // Defines values for LearningPathItemContentType.
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
@@ -395,6 +407,26 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
+// HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
+// service that exposes an HTTP health surface so the contract cannot drift
+// between services.
+type HealthStatus struct {
+	// Checks Map of dependency name to its check result. Present on the readiness probe;
+	// omitted on the liveness probe (which has no dependency checks).
+	Checks *map[string]HealthStatusChecks `json:"checks,omitempty"`
+
+	// Status ok — all checks passed. degraded — one or more dependency checks failed;
+	// used only on the readiness probe when the service should be taken out of rotation.
+	Status HealthStatusStatus `json:"status"`
+}
+
+// HealthStatusChecks defines model for HealthStatus.Checks.
+type HealthStatusChecks string
+
+// HealthStatusStatus ok — all checks passed. degraded — one or more dependency checks failed;
+// used only on the readiness probe when the service should be taken out of rotation.
+type HealthStatusStatus string
+
 // LearningPath An ordered sequence of content nodes assigned to students as a structured curriculum.
 type LearningPath struct {
 	// CreatedAt Timestamp at which this learning path was created.
@@ -625,12 +657,18 @@ type ServerInterface interface {
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID)
+	// Liveness probe
+	// (GET /healthz)
+	LivenessCheck(w http.ResponseWriter, r *http.Request)
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(w http.ResponseWriter, r *http.Request)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// Readiness probe
+	// (GET /readyz)
+	ReadinessCheck(w http.ResponseWriter, r *http.Request)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(w http.ResponseWriter, r *http.Request)
@@ -703,6 +741,12 @@ func (_ Unimplemented) GetExpandedContent(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Liveness probe
+// (GET /healthz)
+func (_ Unimplemented) LivenessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Create a learning path
 // (POST /learning-paths)
 func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request) {
@@ -712,6 +756,12 @@ func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request
 // Get a learning path by ID
 // (GET /learning-paths/{learning_path_id})
 func (_ Unimplemented) GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Readiness probe
+// (GET /readyz)
+func (_ Unimplemented) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1016,6 +1066,20 @@ func (siw *ServerInterfaceWrapper) GetExpandedContent(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// LivenessCheck operation middleware
+func (siw *ServerInterfaceWrapper) LivenessCheck(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LivenessCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) CreateLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -1058,6 +1122,20 @@ func (siw *ServerInterfaceWrapper) GetLearningPath(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReadinessCheck operation middleware
+func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReadinessCheck(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1299,10 +1377,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/expanded-content/{expanded_content_id}", wrapper.GetExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/healthz", wrapper.LivenessCheck)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/learning-paths", wrapper.CreateLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.GetLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/path", wrapper.GetMyPath)
@@ -1707,6 +1791,22 @@ func (response GetExpandedContent404JSONResponse) VisitGetExpandedContentRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type LivenessCheckRequestObject struct {
+}
+
+type LivenessCheckResponseObject interface {
+	VisitLivenessCheckResponse(w http.ResponseWriter) error
+}
+
+type LivenessCheck200JSONResponse HealthStatus
+
+func (response LivenessCheck200JSONResponse) VisitLivenessCheckResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type CreateLearningPathRequestObject struct {
 	Body *CreateLearningPathJSONRequestBody
 }
@@ -1791,6 +1891,31 @@ type GetLearningPath404JSONResponse NotFoundError
 func (response GetLearningPath404JSONResponse) VisitGetLearningPathResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReadinessCheckRequestObject struct {
+}
+
+type ReadinessCheckResponseObject interface {
+	VisitReadinessCheckResponse(w http.ResponseWriter) error
+}
+
+type ReadinessCheck200JSONResponse HealthStatus
+
+func (response ReadinessCheck200JSONResponse) VisitReadinessCheckResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReadinessCheck503JSONResponse HealthStatus
+
+func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1999,12 +2124,18 @@ type StrictServerInterface interface {
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(ctx context.Context, request GetExpandedContentRequestObject) (GetExpandedContentResponseObject, error)
+	// Liveness probe
+	// (GET /healthz)
+	LivenessCheck(ctx context.Context, request LivenessCheckRequestObject) (LivenessCheckResponseObject, error)
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(ctx context.Context, request CreateLearningPathRequestObject) (CreateLearningPathResponseObject, error)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(ctx context.Context, request GetLearningPathRequestObject) (GetLearningPathResponseObject, error)
+	// Readiness probe
+	// (GET /readyz)
+	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(ctx context.Context, request GetMyPathRequestObject) (GetMyPathResponseObject, error)
@@ -2308,6 +2439,30 @@ func (sh *strictHandler) GetExpandedContent(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// LivenessCheck operation middleware
+func (sh *strictHandler) LivenessCheck(w http.ResponseWriter, r *http.Request) {
+	var request LivenessCheckRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LivenessCheck(ctx, request.(LivenessCheckRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LivenessCheck")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LivenessCheckResponseObject); ok {
+		if err := validResponse.VisitLivenessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateLearningPath operation middleware
 func (sh *strictHandler) CreateLearningPath(w http.ResponseWriter, r *http.Request) {
 	var request CreateLearningPathRequestObject
@@ -2358,6 +2513,30 @@ func (sh *strictHandler) GetLearningPath(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetLearningPathResponseObject); ok {
 		if err := validResponse.VisitGetLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReadinessCheck operation middleware
+func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	var request ReadinessCheckRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReadinessCheck(ctx, request.(ReadinessCheckRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReadinessCheck")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReadinessCheckResponseObject); ok {
+		if err := validResponse.VisitReadinessCheckResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

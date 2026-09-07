@@ -304,7 +304,9 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
-// HealthStatus Response body for liveness and readiness probes.
+// HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
+// service that exposes an HTTP health surface so the contract cannot drift
+// between services.
 type HealthStatus struct {
 	// Checks Map of dependency name to its check result. Present on the readiness probe;
 	// omitted on the liveness probe (which has no dependency checks).
