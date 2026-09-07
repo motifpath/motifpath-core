@@ -24,6 +24,15 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/learning-paths",
 			},
 			TestingT: t,
+			// Without this, godog reports an undefined step as a warning and
+			// still exits 0 — so a scenario merged to motifpath-specs with no
+			// step definition here passes CI silently. That is not
+			// hypothetical: the three section_label scenarios from
+			// motifpath-specs#24 sat undefined and green on dev until this
+			// branch implemented them. motifpath-specs is the contract source
+			// of truth and CI checks it out from its default branch, so an
+			// unimplemented scenario must fail the build, not whisper.
+			Strict: true,
 		},
 	}
 
