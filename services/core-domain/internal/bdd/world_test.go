@@ -30,7 +30,13 @@ type world struct {
 	paths       *fakeLearningPathRepo
 	assignments *fakePathAssignmentRepo
 	completion  *fakeCompletionReader
+	pgPinger    *fakePinger
+	mongoPinger *fakePinger
 	handler     *appHTTP.Handler
+
+	// health probe responses from the most recent "probe is checked" step
+	livenessResp  generated.LivenessCheckResponseObject
+	readinessResp generated.ReadinessCheckResponseObject
 
 	// userMotifID caches the server-generated user_id for each display name
 	// once registered — needed because, unlike the deterministic ids used
@@ -66,6 +72,8 @@ func newWorld() *world {
 		paths:       newFakeLearningPathRepo(),
 		assignments: newFakePathAssignmentRepo(),
 		completion:  newFakeCompletionReader(),
+		pgPinger:    &fakePinger{},
+		mongoPinger: &fakePinger{},
 		userMotifID: map[string]uuid.UUID{},
 	}
 
@@ -78,7 +86,7 @@ func newWorld() *world {
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.completion, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, path, assignment)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, path, assignment, w.pgPinger, w.mongoPinger)
 	return w
 }
 

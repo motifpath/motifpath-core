@@ -22,6 +22,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/user-registration",
 				featuresBase + "/content-management",
 				featuresBase + "/learning-paths",
+				featuresBase + "/core-domain",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -54,4 +55,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerLearningPathSteps(sc, w)
 	registerPathAssignmentSteps(sc, w)
 	registerStudentPathViewSteps(sc, w)
+	registerHealthSteps(sc, w)
 }
