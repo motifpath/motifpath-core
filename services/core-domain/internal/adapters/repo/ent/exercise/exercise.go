@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -15,26 +16,57 @@ const (
 	Label = "exercise"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldChallengeID holds the string denoting the challenge_id field in the database.
-	FieldChallengeID = "challenge_id"
-	// FieldExerciseType holds the string denoting the exercise_type field in the database.
-	FieldExerciseType = "exercise_type"
+	// FieldTitle holds the string denoting the title field in the database.
+	FieldTitle = "title"
 	// FieldPrompt holds the string denoting the prompt field in the database.
 	FieldPrompt = "prompt"
+	// FieldExerciseType holds the string denoting the exercise_type field in the database.
+	FieldExerciseType = "exercise_type"
+	// FieldSkillTags holds the string denoting the skill_tags field in the database.
+	FieldSkillTags = "skill_tags"
+	// FieldImageURL holds the string denoting the image_url field in the database.
+	FieldImageURL = "image_url"
+	// FieldAudioURL holds the string denoting the audio_url field in the database.
+	FieldAudioURL = "audio_url"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeChallenges holds the string denoting the challenges edge name in mutations.
+	EdgeChallenges = "challenges"
+	// EdgeOptions holds the string denoting the options edge name in mutations.
+	EdgeOptions = "options"
 	// Table holds the table name of the exercise in the database.
 	Table = "exercises"
+	// ChallengesTable is the table that holds the challenges relation/edge. The primary key declared below.
+	ChallengesTable = "exercise_challenges"
+	// ChallengesInverseTable is the table name for the Challenge entity.
+	// It exists in this package in order to avoid circular dependency with the "challenge" package.
+	ChallengesInverseTable = "challenges"
+	// OptionsTable is the table that holds the options relation/edge.
+	OptionsTable = "exercise_options"
+	// OptionsInverseTable is the table name for the ExerciseOption entity.
+	// It exists in this package in order to avoid circular dependency with the "exerciseoption" package.
+	OptionsInverseTable = "exercise_options"
+	// OptionsColumn is the table column denoting the options relation/edge.
+	OptionsColumn = "exercise_id"
 )
 
 // Columns holds all SQL columns for exercise fields.
 var Columns = []string{
 	FieldID,
-	FieldChallengeID,
-	FieldExerciseType,
+	FieldTitle,
 	FieldPrompt,
+	FieldExerciseType,
+	FieldSkillTags,
+	FieldImageURL,
+	FieldAudioURL,
 	FieldCreatedAt,
 }
+
+var (
+	// ChallengesPrimaryKey and ChallengesColumn2 are the table columns denoting the
+	// primary key for the challenges relation (M2M).
+	ChallengesPrimaryKey = []string{"exercise_id", "challenge_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -58,7 +90,10 @@ type ExerciseType string
 
 // ExerciseType values.
 const (
-	ExerciseTypeFretboardRegion ExerciseType = "fretboard_region"
+	ExerciseTypeTextResponse     ExerciseType = "text_response"
+	ExerciseTypeAudioRecognition ExerciseType = "audio_recognition"
+	ExerciseTypeImageRecognition ExerciseType = "image_recognition"
+	ExerciseTypeImageChoice      ExerciseType = "image_choice"
 )
 
 func (et ExerciseType) String() string {
@@ -68,7 +103,7 @@ func (et ExerciseType) String() string {
 // ExerciseTypeValidator is a validator for the "exercise_type" field enum values. It is called by the builders before save.
 func ExerciseTypeValidator(et ExerciseType) error {
 	switch et {
-	case ExerciseTypeFretboardRegion:
+	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice:
 		return nil
 	default:
 		return fmt.Errorf("exercise: invalid enum value for exercise_type field: %q", et)
@@ -83,14 +118,9 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByChallengeID orders the results by the challenge_id field.
-func ByChallengeID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldChallengeID, opts...).ToFunc()
-}
-
-// ByExerciseType orders the results by the exercise_type field.
-func ByExerciseType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldExerciseType, opts...).ToFunc()
+// ByTitle orders the results by the title field.
+func ByTitle(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTitle, opts...).ToFunc()
 }
 
 // ByPrompt orders the results by the prompt field.
@@ -98,7 +128,64 @@ func ByPrompt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPrompt, opts...).ToFunc()
 }
 
+// ByExerciseType orders the results by the exercise_type field.
+func ByExerciseType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExerciseType, opts...).ToFunc()
+}
+
+// ByImageURL orders the results by the image_url field.
+func ByImageURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldImageURL, opts...).ToFunc()
+}
+
+// ByAudioURL orders the results by the audio_url field.
+func ByAudioURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAudioURL, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByChallengesCount orders the results by challenges count.
+func ByChallengesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChallengesStep(), opts...)
+	}
+}
+
+// ByChallenges orders the results by challenges terms.
+func ByChallenges(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChallengesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByOptionsCount orders the results by options count.
+func ByOptionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newOptionsStep(), opts...)
+	}
+}
+
+// ByOptions orders the results by options terms.
+func ByOptions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newOptionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newChallengesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChallengesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ChallengesTable, ChallengesPrimaryKey...),
+	)
+}
+func newOptionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(OptionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, OptionsTable, OptionsColumn),
+	)
 }

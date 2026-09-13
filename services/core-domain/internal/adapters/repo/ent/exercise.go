@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -18,15 +19,53 @@ type Exercise struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// ChallengeID holds the value of the "challenge_id" field.
-	ChallengeID uuid.UUID `json:"challenge_id,omitempty"`
-	// ExerciseType holds the value of the "exercise_type" field.
-	ExerciseType exercise.ExerciseType `json:"exercise_type,omitempty"`
+	// Title holds the value of the "title" field.
+	Title string `json:"title,omitempty"`
 	// Prompt holds the value of the "prompt" field.
 	Prompt string `json:"prompt,omitempty"`
+	// ExerciseType holds the value of the "exercise_type" field.
+	ExerciseType exercise.ExerciseType `json:"exercise_type,omitempty"`
+	// SkillTags holds the value of the "skill_tags" field.
+	SkillTags []string `json:"skill_tags,omitempty"`
+	// ImageURL holds the value of the "image_url" field.
+	ImageURL *string `json:"image_url,omitempty"`
+	// AudioURL holds the value of the "audio_url" field.
+	AudioURL *string `json:"audio_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ExerciseQuery when eager-loading is set.
+	Edges        ExerciseEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// ExerciseEdges holds the relations/edges for other nodes in the graph.
+type ExerciseEdges struct {
+	// Challenges holds the value of the challenges edge.
+	Challenges []*Challenge `json:"challenges,omitempty"`
+	// Options holds the value of the options edge.
+	Options []*ExerciseOption `json:"options,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// ChallengesOrErr returns the Challenges value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ChallengesOrErr() ([]*Challenge, error) {
+	if e.loadedTypes[0] {
+		return e.Challenges, nil
+	}
+	return nil, &NotLoadedError{edge: "challenges"}
+}
+
+// OptionsOrErr returns the Options value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) OptionsOrErr() ([]*ExerciseOption, error) {
+	if e.loadedTypes[1] {
+		return e.Options, nil
+	}
+	return nil, &NotLoadedError{edge: "options"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -34,11 +73,13 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case exercise.FieldExerciseType, exercise.FieldPrompt:
+		case exercise.FieldSkillTags:
+			values[i] = new([]byte)
+		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL:
 			values[i] = new(sql.NullString)
 		case exercise.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case exercise.FieldID, exercise.FieldChallengeID:
+		case exercise.FieldID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -61,11 +102,17 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case exercise.FieldChallengeID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field challenge_id", values[i])
-			} else if value != nil {
-				_m.ChallengeID = *value
+		case exercise.FieldTitle:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field title", values[i])
+			} else if value.Valid {
+				_m.Title = value.String
+			}
+		case exercise.FieldPrompt:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field prompt", values[i])
+			} else if value.Valid {
+				_m.Prompt = value.String
 			}
 		case exercise.FieldExerciseType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -73,11 +120,27 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ExerciseType = exercise.ExerciseType(value.String)
 			}
-		case exercise.FieldPrompt:
+		case exercise.FieldSkillTags:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field skill_tags", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.SkillTags); err != nil {
+					return fmt.Errorf("unmarshal field skill_tags: %w", err)
+				}
+			}
+		case exercise.FieldImageURL:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field prompt", values[i])
+				return fmt.Errorf("unexpected type %T for field image_url", values[i])
 			} else if value.Valid {
-				_m.Prompt = value.String
+				_m.ImageURL = new(string)
+				*_m.ImageURL = value.String
+			}
+		case exercise.FieldAudioURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field audio_url", values[i])
+			} else if value.Valid {
+				_m.AudioURL = new(string)
+				*_m.AudioURL = value.String
 			}
 		case exercise.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -96,6 +159,16 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Exercise) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryChallenges queries the "challenges" edge of the Exercise entity.
+func (_m *Exercise) QueryChallenges() *ChallengeQuery {
+	return NewExerciseClient(_m.config).QueryChallenges(_m)
+}
+
+// QueryOptions queries the "options" edge of the Exercise entity.
+func (_m *Exercise) QueryOptions() *ExerciseOptionQuery {
+	return NewExerciseClient(_m.config).QueryOptions(_m)
 }
 
 // Update returns a builder for updating this Exercise.
@@ -121,14 +194,27 @@ func (_m *Exercise) String() string {
 	var builder strings.Builder
 	builder.WriteString("Exercise(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("challenge_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ChallengeID))
+	builder.WriteString("title=")
+	builder.WriteString(_m.Title)
+	builder.WriteString(", ")
+	builder.WriteString("prompt=")
+	builder.WriteString(_m.Prompt)
 	builder.WriteString(", ")
 	builder.WriteString("exercise_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ExerciseType))
 	builder.WriteString(", ")
-	builder.WriteString("prompt=")
-	builder.WriteString(_m.Prompt)
+	builder.WriteString("skill_tags=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SkillTags))
+	builder.WriteString(", ")
+	if v := _m.ImageURL; v != nil {
+		builder.WriteString("image_url=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.AudioURL; v != nil {
+		builder.WriteString("audio_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -45,6 +45,18 @@ func (f ExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseMutation", m)
 }
 
+// The ExerciseOptionFunc type is an adapter to allow the use of ordinary
+// function as ExerciseOption mutator.
+type ExerciseOptionFunc func(context.Context, *ent.ExerciseOptionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ExerciseOptionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ExerciseOptionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseOptionMutation", m)
+}
+
 // The ExpandedContentFunc type is an adapter to allow the use of ordinary
 // function as ExpandedContent mutator.
 type ExpandedContentFunc func(context.Context, *ent.ExpandedContentMutation) (ent.Value, error)

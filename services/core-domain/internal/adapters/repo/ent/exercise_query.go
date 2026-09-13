@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -12,17 +13,21 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
 // ExerciseQuery is the builder for querying Exercise entities.
 type ExerciseQuery struct {
 	config
-	ctx        *QueryContext
-	order      []exercise.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Exercise
+	ctx            *QueryContext
+	order          []exercise.OrderOption
+	inters         []Interceptor
+	predicates     []predicate.Exercise
+	withChallenges *ChallengeQuery
+	withOptions    *ExerciseOptionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +62,50 @@ func (_q *ExerciseQuery) Unique(unique bool) *ExerciseQuery {
 func (_q *ExerciseQuery) Order(o ...exercise.OrderOption) *ExerciseQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryChallenges chains the current query on the "challenges" edge.
+func (_q *ExerciseQuery) QueryChallenges() *ChallengeQuery {
+	query := (&ChallengeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
+			sqlgraph.To(challenge.Table, challenge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, exercise.ChallengesTable, exercise.ChallengesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryOptions chains the current query on the "options" edge.
+func (_q *ExerciseQuery) QueryOptions() *ExerciseOptionQuery {
+	query := (&ExerciseOptionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
+			sqlgraph.To(exerciseoption.Table, exerciseoption.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, exercise.OptionsTable, exercise.OptionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Exercise entity from the query.
@@ -246,15 +295,39 @@ func (_q *ExerciseQuery) Clone() *ExerciseQuery {
 		return nil
 	}
 	return &ExerciseQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]exercise.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.Exercise{}, _q.predicates...),
+		config:         _q.config,
+		ctx:            _q.ctx.Clone(),
+		order:          append([]exercise.OrderOption{}, _q.order...),
+		inters:         append([]Interceptor{}, _q.inters...),
+		predicates:     append([]predicate.Exercise{}, _q.predicates...),
+		withChallenges: _q.withChallenges.Clone(),
+		withOptions:    _q.withOptions.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithChallenges tells the query-builder to eager-load the nodes that are connected to
+// the "challenges" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ExerciseQuery) WithChallenges(opts ...func(*ChallengeQuery)) *ExerciseQuery {
+	query := (&ChallengeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withChallenges = query
+	return _q
+}
+
+// WithOptions tells the query-builder to eager-load the nodes that are connected to
+// the "options" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ExerciseQuery) WithOptions(opts ...func(*ExerciseOptionQuery)) *ExerciseQuery {
+	query := (&ExerciseOptionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withOptions = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -263,12 +336,12 @@ func (_q *ExerciseQuery) Clone() *ExerciseQuery {
 // Example:
 //
 //	var v []struct {
-//		ChallengeID uuid.UUID `json:"challenge_id,omitempty"`
+//		Title string `json:"title,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Exercise.Query().
-//		GroupBy(exercise.FieldChallengeID).
+//		GroupBy(exercise.FieldTitle).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *ExerciseQuery) GroupBy(field string, fields ...string) *ExerciseGroupBy {
@@ -286,11 +359,11 @@ func (_q *ExerciseQuery) GroupBy(field string, fields ...string) *ExerciseGroupB
 // Example:
 //
 //	var v []struct {
-//		ChallengeID uuid.UUID `json:"challenge_id,omitempty"`
+//		Title string `json:"title,omitempty"`
 //	}
 //
 //	client.Exercise.Query().
-//		Select(exercise.FieldChallengeID).
+//		Select(exercise.FieldTitle).
 //		Scan(ctx, &v)
 func (_q *ExerciseQuery) Select(fields ...string) *ExerciseSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -333,8 +406,12 @@ func (_q *ExerciseQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exercise, error) {
 	var (
-		nodes = []*Exercise{}
-		_spec = _q.querySpec()
+		nodes       = []*Exercise{}
+		_spec       = _q.querySpec()
+		loadedTypes = [2]bool{
+			_q.withChallenges != nil,
+			_q.withOptions != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Exercise).scanValues(nil, columns)
@@ -342,6 +419,7 @@ func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exe
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Exercise{config: _q.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +431,113 @@ func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exe
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withChallenges; query != nil {
+		if err := _q.loadChallenges(ctx, query, nodes,
+			func(n *Exercise) { n.Edges.Challenges = []*Challenge{} },
+			func(n *Exercise, e *Challenge) { n.Edges.Challenges = append(n.Edges.Challenges, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withOptions; query != nil {
+		if err := _q.loadOptions(ctx, query, nodes,
+			func(n *Exercise) { n.Edges.Options = []*ExerciseOption{} },
+			func(n *Exercise, e *ExerciseOption) { n.Edges.Options = append(n.Edges.Options, e) }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (_q *ExerciseQuery) loadChallenges(ctx context.Context, query *ChallengeQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *Challenge)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Exercise)
+	nids := make(map[uuid.UUID]map[*Exercise]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(exercise.ChallengesTable)
+		s.Join(joinT).On(s.C(challenge.FieldID), joinT.C(exercise.ChallengesPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(exercise.ChallengesPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(exercise.ChallengesPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Exercise]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Challenge](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "challenges" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *ExerciseQuery) loadOptions(ctx context.Context, query *ExerciseOptionQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *ExerciseOption)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Exercise)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(exerciseoption.FieldExerciseID)
+	}
+	query.Where(predicate.ExerciseOption(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(exercise.OptionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ExerciseID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "exercise_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
 }
 
 func (_q *ExerciseQuery) sqlCount(ctx context.Context) (int, error) {

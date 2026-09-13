@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 )
 
 // ChallengeCreate is the builder for creating a Challenge entity.
@@ -79,6 +80,21 @@ func (_c *ChallengeCreate) SetNillableID(v *uuid.UUID) *ChallengeCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
+func (_c *ChallengeCreate) AddExerciseIDs(ids ...uuid.UUID) *ChallengeCreate {
+	_c.mutation.AddExerciseIDs(ids...)
+	return _c
+}
+
+// AddExercises adds the "exercises" edges to the Exercise entity.
+func (_c *ChallengeCreate) AddExercises(v ...*Exercise) *ChallengeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddExerciseIDs(ids...)
 }
 
 // Mutation returns the ChallengeMutation object of the builder.
@@ -194,6 +210,22 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(challenge.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.ExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   challenge.ExercisesTable,
+			Columns: challenge.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

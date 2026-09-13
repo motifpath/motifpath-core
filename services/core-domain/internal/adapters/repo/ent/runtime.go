@@ -9,6 +9,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
@@ -44,13 +45,19 @@ func init() {
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
-	exerciseDescCreatedAt := exerciseFields[4].Descriptor()
+	exerciseDescCreatedAt := exerciseFields[7].Descriptor()
 	// exercise.DefaultCreatedAt holds the default value on creation for the created_at field.
 	exercise.DefaultCreatedAt = exerciseDescCreatedAt.Default.(func() time.Time)
 	// exerciseDescID is the schema descriptor for id field.
 	exerciseDescID := exerciseFields[0].Descriptor()
 	// exercise.DefaultID holds the default value on creation for the id field.
 	exercise.DefaultID = exerciseDescID.Default.(func() uuid.UUID)
+	exerciseoptionFields := schema.ExerciseOption{}.Fields()
+	_ = exerciseoptionFields
+	// exerciseoptionDescID is the schema descriptor for id field.
+	exerciseoptionDescID := exerciseoptionFields[0].Descriptor()
+	// exerciseoption.DefaultID holds the default value on creation for the id field.
+	exerciseoption.DefaultID = exerciseoptionDescID.Default.(func() uuid.UUID)
 	expandedcontentFields := schema.ExpandedContent{}.Fields()
 	_ = expandedcontentFields
 	// expandedcontentDescCreatedAt is the schema descriptor for created_at field.
