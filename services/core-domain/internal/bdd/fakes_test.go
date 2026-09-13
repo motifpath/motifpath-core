@@ -167,10 +167,46 @@ func (f *fakeExerciseRepo) GetByID(_ context.Context, id string) (domain.Exercis
 	return e, nil
 }
 
+func (f *fakeExerciseRepo) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ChallengeIDs = append(e.ChallengeIDs, challengeID)
+	f.byID[exerciseID] = e
+	return nil
+}
+
+func (f *fakeExerciseRepo) UnlinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(e.ChallengeIDs))
+	for _, id := range e.ChallengeIDs {
+		if id != challengeID {
+			remaining = append(remaining, id)
+		}
+	}
+	e.ChallengeIDs = remaining
+	f.byID[exerciseID] = e
+	return nil
+}
+
 func (f *fakeExerciseRepo) put(e domain.Exercise) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[e.ID] = e
+}
+
+func (f *fakeExerciseRepo) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID)
 }
 
 type fakeExpandedContentRepo struct {

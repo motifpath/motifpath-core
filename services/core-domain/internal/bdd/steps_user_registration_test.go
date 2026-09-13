@@ -29,7 +29,6 @@ func registerUserRegistrationSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response includes a stable user_id and the role "([^"]+)"$`, w.responseIncludesUserIDAndRole)
 	sc.Step(`^the response includes a registration timestamp$`, w.responseIncludesRegisteredAt)
 	sc.Step(`^the response returns "([^"]+)"'s user_id, role "([^"]+)", and registration timestamp$`, w.profileResponseMatches)
-	sc.Step(`^the request is refused with a conflict error$`, w.requestRefusedConflict)
 }
 
 func (w *world) hasAlreadyRegisteredAsStudent(name string) error {
@@ -133,13 +132,6 @@ func (w *world) profileResponseMatches(name, role string) error {
 	}
 	if resp.RegisteredAt.IsZero() {
 		return fmt.Errorf("expected a non-zero registered_at")
-	}
-	return nil
-}
-
-func (w *world) requestRefusedConflict() error {
-	if _, ok := w.lastResp.(generated.RegisterUser409JSONResponse); !ok {
-		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
 	return nil
 }

@@ -22,6 +22,7 @@ func registerCommonSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the request is refused with a forbidden error$`, w.requestRefusedForbidden)
 	sc.Step(`^the request is refused with a not-found error$`, w.requestRefusedNotFound)
+	sc.Step(`^the request is refused with a conflict error$`, w.requestRefusedConflict)
 	sc.Step(`^the request is refused with an authentication error$`, w.requestRefusedAuthError)
 	sc.Step(`^the request is rejected as invalid$`, w.requestRejectedInvalid)
 	sc.Step(`^the rejection identifies "([^"]+)" as the source of the error$`, w.rejectionIdentifiesField)
@@ -55,6 +56,8 @@ func (w *world) requestRefusedForbidden() error {
 	case generated.CreateContentNode403JSONResponse,
 		generated.CreateChallenge403JSONResponse,
 		generated.CreateExercise403JSONResponse,
+		generated.LinkExerciseToChallenge403JSONResponse,
+		generated.UnlinkExerciseFromChallenge403JSONResponse,
 		generated.CreateExpandedContent403JSONResponse,
 		generated.CreateLearningPath403JSONResponse,
 		generated.GetLearningPath403JSONResponse,
@@ -71,8 +74,9 @@ func (w *world) requestRefusedNotFound() error {
 	case generated.GetContentNode404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
 		generated.GetChallenge404JSONResponse,
-		generated.CreateExercise404JSONResponse,
 		generated.GetExercise404JSONResponse,
+		generated.LinkExerciseToChallenge404JSONResponse,
+		generated.UnlinkExerciseFromChallenge404JSONResponse,
 		generated.CreateExpandedContent404JSONResponse,
 		generated.ListExpandedContent404JSONResponse,
 		generated.GetExpandedContent404JSONResponse,
@@ -86,6 +90,16 @@ func (w *world) requestRefusedNotFound() error {
 	}
 }
 
+func (w *world) requestRefusedConflict() error {
+	switch w.lastResp.(type) {
+	case generated.RegisterUser409JSONResponse,
+		generated.LinkExerciseToChallenge409JSONResponse:
+		return nil
+	default:
+		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+}
+
 func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
@@ -96,6 +110,8 @@ func (w *world) requestRefusedAuthError() error {
 		generated.GetChallenge401JSONResponse,
 		generated.CreateExercise401JSONResponse,
 		generated.GetExercise401JSONResponse,
+		generated.LinkExerciseToChallenge401JSONResponse,
+		generated.UnlinkExerciseFromChallenge401JSONResponse,
 		generated.CreateExpandedContent401JSONResponse,
 		generated.ListExpandedContent401JSONResponse,
 		generated.GetExpandedContent401JSONResponse,
