@@ -138,11 +138,12 @@ func run(logger *slog.Logger) error {
 
 	identityService := application.NewIdentityService(userRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
-	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)
 
-	handler := appHTTP.NewHandler(identityService, contentService, challengeService, pathService, assignmentService,
+	handler := appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, pathService, assignmentService,
 		learningGraphPinger, completionReader)
 	strictHandler := generated.NewStrictHandler(handler, nil)
 

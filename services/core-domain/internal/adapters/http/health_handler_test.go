@@ -22,7 +22,7 @@ var errUnreachable = errors.New("dependency unreachable")
 // healthHandler builds a Handler with only the two pingers wired — the health
 // probes never touch the application services, so nil is safe for those.
 func healthHandler(pg, mongo error) *appHTTP.Handler {
-	return appHTTP.NewHandler(nil, nil, nil, nil, nil, stubPinger{pg}, stubPinger{mongo})
+	return appHTTP.NewHandler(nil, nil, nil, nil, nil, nil, stubPinger{pg}, stubPinger{mongo})
 }
 
 func TestLivenessCheck_alwaysReportsOK(t *testing.T) {

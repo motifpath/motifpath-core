@@ -192,6 +192,48 @@ func (f *fakeExerciseRepository) GetByID(_ context.Context, id string) (domain.E
 	return exercise, nil
 }
 
+func (f *fakeExerciseRepository) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	exercise, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	exercise.ChallengeIDs = append(exercise.ChallengeIDs, challengeID)
+	f.byID[exerciseID] = exercise
+	return nil
+}
+
+func (f *fakeExerciseRepository) UnlinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	exercise, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(exercise.ChallengeIDs))
+	for _, id := range exercise.ChallengeIDs {
+		if id != challengeID {
+			remaining = append(remaining, id)
+		}
+	}
+	exercise.ChallengeIDs = remaining
+	f.byID[exerciseID] = exercise
+	return nil
+}
+
+func (f *fakeExerciseRepository) put(exercise domain.Exercise) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[exercise.ID] = exercise
+}
+
+func (f *fakeExerciseRepository) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID)
+}
+
 // fakeExpandedContentRepository is a minimal in-memory
 // ports.ExpandedContentRepository.
 type fakeExpandedContentRepository struct {
