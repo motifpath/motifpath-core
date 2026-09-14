@@ -51,6 +51,12 @@ NEVER bypass with `//nolint` without an inline comment explaining the specific r
 Run `make lint` before committing — do not wait for CI to catch lint errors.
 ALWAYS handle errors explicitly — NEVER use blank identifier `_` on error returns.
 NEVER use `interface{}` or `any` — define explicit types.
+NEVER reference an ADR, backlog item (PB-NNN), ticket, or spec file by name/number in a code
+comment — state the invariant, constraint, or reason in the comment's own words instead. A doc
+reference goes stale the moment that document is archived or renumbered, and forces every future
+reader (human or AI) into an external lookup to understand code sitting in front of them. Doc
+references belong in commit messages and PR descriptions, which are allowed to age — never in
+the comment itself.
 
 ## Layering Rules
 NEVER put business logic in HTTP handlers — handlers call application services only.
