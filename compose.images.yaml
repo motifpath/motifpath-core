@@ -75,6 +75,12 @@ services:
       MONGO_DATABASE: motifpath_events
       CLERK_SECRET_KEY: sk_test_dummy_for_image_smoke
       CORS_ALLOWED_ORIGINS: http://localhost:5173
+      # No MinIO in this smoke stack — the AWS SDK client is constructed
+      # lazily and never makes a network call until an actual upload-URL
+      # request comes in, so a real S3/MinIO endpoint isn't needed just to
+      # boot and pass /healthz + /readyz.
+      MEDIA_S3_BUCKET: motifpath-content-media-smoke
+      MEDIA_PUBLIC_BASE_URL: http://localhost:9000/motifpath-content-media-smoke
     ports: ["8080:8080"]
     depends_on:
       postgres: { condition: service_healthy }
