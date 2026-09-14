@@ -84,10 +84,11 @@ func newWorld() *world {
 	content := application.NewContentService(w.nodes, w.expanded, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, newID, now)
+	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.completion, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, path, assignment, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, media, path, assignment, w.pgPinger, w.mongoPinger)
 	return w
 }
 

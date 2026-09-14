@@ -58,6 +58,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateExercise403JSONResponse,
 		generated.LinkExerciseToChallenge403JSONResponse,
 		generated.UnlinkExerciseFromChallenge403JSONResponse,
+		generated.CreateMediaUploadUrl403JSONResponse,
 		generated.CreateExpandedContent403JSONResponse,
 		generated.CreateLearningPath403JSONResponse,
 		generated.GetLearningPath403JSONResponse,
@@ -77,6 +78,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.GetExercise404JSONResponse,
 		generated.LinkExerciseToChallenge404JSONResponse,
 		generated.UnlinkExerciseFromChallenge404JSONResponse,
+		generated.CreateMediaUploadUrl404JSONResponse,
 		generated.CreateExpandedContent404JSONResponse,
 		generated.ListExpandedContent404JSONResponse,
 		generated.GetExpandedContent404JSONResponse,
@@ -112,6 +114,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.GetExercise401JSONResponse,
 		generated.LinkExerciseToChallenge401JSONResponse,
 		generated.UnlinkExerciseFromChallenge401JSONResponse,
+		generated.CreateMediaUploadUrl401JSONResponse,
 		generated.CreateExpandedContent401JSONResponse,
 		generated.ListExpandedContent401JSONResponse,
 		generated.GetExpandedContent401JSONResponse,
@@ -159,6 +162,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateExpandedContent400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateLearningPath400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateMediaUploadUrl400JSONResponse:
 		return resp.Errors, nil
 	case generated.AssignLearningPath400JSONResponse:
 		return resp.Errors, nil
