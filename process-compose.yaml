@@ -41,6 +41,12 @@ processes:
   wait-redpanda:
     command: "timeout 180 sh -c 'until docker compose ps redpanda 2>/dev/null | grep -q \"(healthy)\"; do sleep 2; done'"
     availability: { restart: "no" }
+  # minio-init (bucket creation, ADR-021) only runs after minio itself
+  # reports healthy, then exits 0 — waiting on minio-init's own container
+  # status covers both.
+  wait-minio:
+    command: "timeout 180 sh -c 'until docker compose ps minio-init 2>/dev/null | grep -q \"Exited (0)\"; do sleep 2; done'"
+    availability: { restart: "no" }
 
   # ── backend inner loop (default) ──────────────────────────────────────
   core-domain:
@@ -49,6 +55,7 @@ processes:
     depends_on:
       wait-postgres: { condition: process_completed_successfully }
       wait-mongodb: { condition: process_completed_successfully }
+      wait-minio: { condition: process_completed_successfully }
     readiness_probe:
       http_get: { host: "127.0.0.1", scheme: "http", port: 8080, path: "/readyz" }
       initial_delay_seconds: 3

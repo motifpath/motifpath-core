@@ -30,6 +30,41 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-08-29T01-40-52Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: motifpath
+      MINIO_ROOT_PASSWORD: motifpath
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: creates the content-media bucket MediaService uploads into
+  # (ADR-021), then exits. MinIO itself doesn't auto-create buckets — a real
+  # S3 bucket in production is provisioned by motifpath-infra instead, read
+  # through CloudFront rather than a public bucket policy. Public-read here
+  # is a dev-only stand-in for that so object_url is fetchable without
+  # signing, matching what MEDIA_PUBLIC_BASE_URL promises.
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 motifpath motifpath &&
+        mc mb --ignore-existing local/motifpath-content-media &&
+        mc anonymous set download local/motifpath-content-media
+      "
+
   redpanda:
     image: redpandadata/redpanda:v24.2.7
     command:
@@ -52,3 +87,4 @@ services:
 volumes:
   postgres_data:
   mongo_data:
+  minio_data:
