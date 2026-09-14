@@ -45,7 +45,7 @@ processes:
   # healthy, then exits 0 — waiting on minio-init's own container status
   # covers both.
   wait-minio:
-    command: "timeout 180 sh -c 'until docker compose ps minio-init 2>/dev/null | grep -q \"Exited (0)\"; do sleep 2; done'"
+    command: "timeout 180 sh -c 'until docker compose ps -a minio-init 2>/dev/null | grep -q \"Exited (0)\"; do sleep 2; done'"
     availability: { restart: "no" }
 
   # ── backend inner loop (default) ──────────────────────────────────────
