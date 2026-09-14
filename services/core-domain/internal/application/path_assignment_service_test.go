@@ -229,19 +229,34 @@ func TestPathAssignmentService_GetMyPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("a teacher cannot access the student path view", func(t *testing.T) {
+	t.Run("a teacher with an active assignment retrieves their own path", func(t *testing.T) {
+		users := newFakeUserRepository()
+		paths := newFakeLearningPathRepository()
+		paths.put(threeNodePath())
+		assignments := newFakePathAssignmentRepository()
+		teacher := teacherCaller()
+		require.NoError(t, assignments.ReplaceActive(context.Background(), domain.PathAssignment{ID: "a-1", StudentID: teacher.ID, LearningPathID: "path-1"}))
+		svc := newPathAssignmentService(users, paths, assignments, newFakeCompletionStateReader())
+
+		view, err := svc.GetMyPath(context.Background(), teacher)
+
+		require.NoError(t, err)
+		require.Len(t, view.Items, 3)
+	})
+
+	t.Run("a teacher with no active path assignment gets not found", func(t *testing.T) {
 		svc := newPathAssignmentService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakePathAssignmentRepository(), newFakeCompletionStateReader())
 
 		_, err := svc.GetMyPath(context.Background(), teacherCaller())
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("an admin cannot access the student path view", func(t *testing.T) {
+	t.Run("an admin with no active path assignment gets not found", func(t *testing.T) {
 		svc := newPathAssignmentService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakePathAssignmentRepository(), newFakeCompletionStateReader())
 
 		_, err := svc.GetMyPath(context.Background(), adminCaller())
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
