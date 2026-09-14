@@ -87,14 +87,11 @@ type StudentPathView struct {
 
 // GetMyPath returns caller's active learning path assignment together with
 // per-item progress state, composing PathAssignmentRepository +
-// LearningPathRepository + CompletionStateReader per ADR-011/Phase 4.4.
-// Only students may access this. Returns domain.ErrNotFound if caller has
-// no active assignment.
+// LearningPathRepository + CompletionStateReader.
+// Accessible by any authenticated role — each caller only ever sees their
+// own assignment, keyed by their own id. Returns domain.ErrNotFound if
+// caller has no active assignment.
 func (s *PathAssignmentService) GetMyPath(ctx context.Context, caller domain.User) (StudentPathView, error) {
-	if caller.Role != domain.RoleStudent {
-		return StudentPathView{}, domain.ErrForbidden
-	}
-
 	assignment, err := s.assignments.GetActiveByStudentID(ctx, caller.ID)
 	if err != nil {
 		return StudentPathView{}, err

@@ -2380,15 +2380,6 @@ func (response GetMyPath401JSONResponse) VisitGetMyPathResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetMyPath403JSONResponse ForbiddenError
-
-func (response GetMyPath403JSONResponse) VisitGetMyPathResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type GetMyPath404JSONResponse NotFoundError
 
 func (response GetMyPath404JSONResponse) VisitGetMyPathResponse(w http.ResponseWriter) error {

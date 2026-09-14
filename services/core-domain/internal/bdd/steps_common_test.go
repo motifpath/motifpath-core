@@ -62,8 +62,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateExpandedContent403JSONResponse,
 		generated.CreateLearningPath403JSONResponse,
 		generated.GetLearningPath403JSONResponse,
-		generated.AssignLearningPath403JSONResponse,
-		generated.GetMyPath403JSONResponse:
+		generated.AssignLearningPath403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)

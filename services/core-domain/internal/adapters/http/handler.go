@@ -471,11 +471,9 @@ func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObj
 	if err != nil {
 		kind, _ := classify(err)
 		switch kind {
-		case errKindForbidden:
-			return generated.GetMyPath403JSONResponse(forbiddenError("only students may access this endpoint")), nil
 		case errKindNotFound:
-			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated student has no active path assignment")), nil
-		case errKindValidation, errKindOther:
+			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no active path assignment")), nil
+		case errKindForbidden, errKindValidation, errKindOther:
 			return nil, err
 		}
 	}
