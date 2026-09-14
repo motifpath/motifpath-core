@@ -16,6 +16,10 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -50,6 +54,13 @@ type config struct {
 	mongoDatabase      string
 	clerkSecretKey     string
 	corsAllowedOrigins []string
+
+	mediaS3Bucket      string
+	mediaS3Region      string
+	mediaS3Endpoint    string // empty = real AWS S3; set = MinIO or another S3-compatible endpoint
+	mediaS3AccessKeyID string // only used when mediaS3Endpoint is set
+	mediaS3SecretKey   string // only used when mediaS3Endpoint is set
+	mediaPublicBaseURL string
 }
 
 // defaultCORSOrigin is the local Vite dev server. Deployed environments override
@@ -69,6 +80,14 @@ func loadConfig() (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	mediaS3Bucket, err := mustGetenv("MEDIA_S3_BUCKET")
+	if err != nil {
+		return config{}, err
+	}
+	mediaPublicBaseURL, err := mustGetenv("MEDIA_PUBLIC_BASE_URL")
+	if err != nil {
+		return config{}, err
+	}
 	return config{
 		port:               getenvDefault("PORT", "8080"),
 		databaseURL:        databaseURL,
@@ -76,6 +95,13 @@ func loadConfig() (config, error) {
 		mongoDatabase:      getenvDefault("MONGO_DATABASE", "motifpath_events"),
 		clerkSecretKey:     clerkSecretKey,
 		corsAllowedOrigins: appHTTP.ParseAllowedOrigins(getenvDefault("CORS_ALLOWED_ORIGINS", defaultCORSOrigin)),
+
+		mediaS3Bucket:      mediaS3Bucket,
+		mediaS3Region:      getenvDefault("MEDIA_S3_REGION", "us-east-1"),
+		mediaS3Endpoint:    os.Getenv("MEDIA_S3_ENDPOINT"),
+		mediaS3AccessKeyID: os.Getenv("MEDIA_S3_ACCESS_KEY_ID"),
+		mediaS3SecretKey:   os.Getenv("MEDIA_S3_SECRET_ACCESS_KEY"),
+		mediaPublicBaseURL: mediaPublicBaseURL,
 	}, nil
 }
 
@@ -96,55 +122,20 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
 
-	// Open the *sql.DB explicitly (rather than ent.Open) so the readiness
-	// probe can ping the very pool ent queries through — see PostgresPinger.
-	sqlDB, err := sql.Open("postgres", cfg.databaseURL)
+	sqlDB, entClient, mongoClient, closeStores, err := connectStores(cfg, logger)
 	if err != nil {
-		return fmt.Errorf("connect to postgres: %w", err)
+		return err
 	}
-	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, sqlDB)))
-	defer func() {
-		if err := entClient.Close(); err != nil {
-			logger.Error("failed to close postgres connection", "error", err)
-		}
-	}()
-
-	mongoClient, err := mongo.Connect(options.Client().ApplyURI(cfg.mongoURI))
-	if err != nil {
-		return fmt.Errorf("connect to mongodb: %w", err)
-	}
-	defer func() {
-		if err := mongoClient.Disconnect(context.Background()); err != nil {
-			logger.Error("failed to disconnect mongodb client", "error", err)
-		}
-	}()
+	defer closeStores()
 
 	// JWKS fetching, in-memory caching, and refresh are handled internally
 	// by the SDK from this point on — see ADR-007/ADR-009.
 	clerk.SetKey(cfg.clerkSecretKey)
 
-	userRepo := repo.NewEntUserRepository(entClient)
-	nodeRepo := repo.NewEntContentNodeRepository(entClient)
-	challengeRepo := repo.NewEntChallengeRepository(entClient)
-	exerciseRepo := repo.NewEntExerciseRepository(entClient)
-	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
-	pathRepo := repo.NewEntLearningPathRepository(entClient)
-	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
-	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
-	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
-
-	newID := uuid.NewString
-	now := func() time.Time { return time.Now().UTC() }
-
-	identityService := application.NewIdentityService(userRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
-	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, newID, now)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)
-
-	handler := appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, pathService, assignmentService,
-		learningGraphPinger, completionReader)
+	handler, err := buildHandler(ctx, cfg, entClient, sqlDB, mongoClient)
+	if err != nil {
+		return err
+	}
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
@@ -201,6 +192,100 @@ func applyMigrations(ctx context.Context, databaseURL string) error {
 		return fmt.Errorf("%w: %s", err, output)
 	}
 	return nil
+}
+
+// connectStores opens Postgres (via *sql.DB, so the readiness probe can
+// ping the same pool ent queries through — see PostgresPinger) and MongoDB,
+// returning a single cleanup func that closes both, logging any close
+// failure rather than returning it (there's nothing left to do differently
+// at shutdown time).
+func connectStores(cfg config, logger *slog.Logger) (*sql.DB, *ent.Client, *mongo.Client, func(), error) {
+	sqlDB, err := sql.Open("postgres", cfg.databaseURL)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("connect to postgres: %w", err)
+	}
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, sqlDB)))
+
+	mongoClient, err := mongo.Connect(options.Client().ApplyURI(cfg.mongoURI))
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("connect to mongodb: %w", err)
+	}
+
+	cleanup := func() {
+		if err := entClient.Close(); err != nil {
+			logger.Error("failed to close postgres connection", "error", err)
+		}
+		if err := mongoClient.Disconnect(context.Background()); err != nil {
+			logger.Error("failed to disconnect mongodb client", "error", err)
+		}
+	}
+	return sqlDB, entClient, mongoClient, cleanup, nil
+}
+
+// buildHandler wires every repository and application service into the
+// HTTP handler. Split out of run so the resource-lifecycle concerns there
+// (connect, defer-close, apply migrations, start the server) stay separate
+// from dependency wiring.
+func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB *sql.DB, mongoClient *mongo.Client) (*appHTTP.Handler, error) {
+	s3Client, err := newS3Client(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("configure media storage client: %w", err)
+	}
+	mediaStorage := repo.NewS3MediaStorage(s3Client, cfg.mediaS3Bucket, cfg.mediaPublicBaseURL)
+
+	userRepo := repo.NewEntUserRepository(entClient)
+	nodeRepo := repo.NewEntContentNodeRepository(entClient)
+	challengeRepo := repo.NewEntChallengeRepository(entClient)
+	exerciseRepo := repo.NewEntExerciseRepository(entClient)
+	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
+	pathRepo := repo.NewEntLearningPathRepository(entClient)
+	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
+	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
+	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
+
+	newID := uuid.NewString
+	now := func() time.Time { return time.Now().UTC() }
+
+	identityService := application.NewIdentityService(userRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, newID, now)
+	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
+	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)
+
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, mediaService, pathService, assignmentService,
+		learningGraphPinger, completionReader), nil
+}
+
+// newS3Client builds the client MediaService's presigned uploads go
+// through. With cfg.mediaS3Endpoint unset, it uses the AWS SDK's default
+// credential chain and endpoint resolution — real S3 in production. With it
+// set (local dev), it points at MinIO instead: a fixed endpoint, static
+// credentials, and path-style addressing (MinIO doesn't support the
+// virtual-hosted-style bucket subdomains real S3 uses). Per ADR-021, the
+// upload/presign code path itself never branches on environment — only
+// this construction does.
+func newS3Client(ctx context.Context, cfg config) (*s3.Client, error) {
+	if cfg.mediaS3Endpoint == "" {
+		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.mediaS3Region))
+		if err != nil {
+			return nil, err
+		}
+		return s3.NewFromConfig(awsCfg), nil
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(cfg.mediaS3Region),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.mediaS3AccessKeyID, cfg.mediaS3SecretKey, "")),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(cfg.mediaS3Endpoint)
+		o.UsePathStyle = true
+	}), nil
 }
 
 func getenvDefault(name, def string) string {

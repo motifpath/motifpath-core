@@ -125,6 +125,14 @@ func toDomainOptions(options []generated.Option) []domain.Option {
 	return result
 }
 
+func toMediaUploadURL(u domain.MediaUploadURL) generated.MediaUploadUrl {
+	return generated.MediaUploadUrl{
+		UploadUrl: u.UploadURL,
+		ObjectUrl: u.ObjectURL,
+		ExpiresAt: u.ExpiresAt,
+	}
+}
+
 func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
 	return generated.ExpandedContent{
 		ExpandedContentId:  mustUUID(item.ID),

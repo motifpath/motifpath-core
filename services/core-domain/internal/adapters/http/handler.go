@@ -18,6 +18,7 @@ type Handler struct {
 	content    *application.ContentService
 	challenge  *application.ChallengeService
 	exercise   *application.ExerciseService
+	media      *application.MediaService
 	path       *application.LearningPathService
 	assignment *application.PathAssignmentService
 
@@ -34,6 +35,7 @@ func NewHandler(
 	content *application.ContentService,
 	challenge *application.ChallengeService,
 	exercise *application.ExerciseService,
+	media *application.MediaService,
 	path *application.LearningPathService,
 	assignment *application.PathAssignmentService,
 	learningGraphPinger ports.Pinger,
@@ -44,6 +46,7 @@ func NewHandler(
 		content:               content,
 		challenge:             challenge,
 		exercise:              exercise,
+		media:                 media,
 		path:                  path,
 		assignment:            assignment,
 		learningGraphPinger:   learningGraphPinger,
@@ -288,12 +291,35 @@ func (h *Handler) UnlinkExerciseFromChallenge(ctx context.Context, request gener
 	return generated.UnlinkExerciseFromChallenge204Response{}, nil
 }
 
-// CreateMediaUploadUrl is not yet implemented — ADR-021's presigned-PUT
-// upload flow (S3 in production, MinIO locally) has no backing
-// infrastructure in this service yet. Tracked separately from PB-40; the
-// spec was merged ahead of this endpoint's own implementation work.
-func (h *Handler) CreateMediaUploadUrl(_ context.Context, _ generated.CreateMediaUploadUrlRequestObject) (generated.CreateMediaUploadUrlResponseObject, error) {
-	return nil, errors.New("CreateMediaUploadUrl is not implemented")
+func (h *Handler) CreateMediaUploadUrl(ctx context.Context, request generated.CreateMediaUploadUrlRequestObject) (generated.CreateMediaUploadUrlResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateMediaUploadUrl401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var exerciseID *string
+	if body.ExerciseId != nil {
+		s := body.ExerciseId.String()
+		exerciseID = &s
+	}
+	url, err := h.media.CreateUploadURL(ctx, caller, domain.MediaUploadPurpose(body.Purpose), exerciseID,
+		domain.MediaContentType(body.ContentType), body.FileName)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateMediaUploadUrl400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateMediaUploadUrl403JSONResponse(forbiddenError("only teachers and admins may request an upload URL")), nil
+		case errKindNotFound:
+			return generated.CreateMediaUploadUrl404JSONResponse(notFoundError("purpose is exercise_asset but no exercise exists with the given exercise_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateMediaUploadUrl201JSONResponse(toMediaUploadURL(url)), nil
 }
 
 func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.CreateExpandedContentRequestObject) (generated.CreateExpandedContentResponseObject, error) {

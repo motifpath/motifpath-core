@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -375,6 +376,33 @@ func (f *fakeCompletionStateReader) set(studentID, contentNodeID string, status 
 		f.statuses[studentID] = map[string]domain.CompletionStatus{}
 	}
 	f.statuses[studentID][contentNodeID] = status
+}
+
+// fakeMediaStorage is a minimal in-memory ports.MediaStorage.
+type fakeMediaStorage struct {
+	mu          sync.Mutex
+	presignErr  error
+	lastKey     string
+	lastContent domain.MediaContentType
+}
+
+func newFakeMediaStorage() *fakeMediaStorage {
+	return &fakeMediaStorage{}
+}
+
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, contentType domain.MediaContentType) (domain.MediaUploadURL, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.presignErr != nil {
+		return domain.MediaUploadURL{}, f.presignErr
+	}
+	f.lastKey = objectKey
+	f.lastContent = contentType
+	return domain.MediaUploadURL{
+		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
+		ObjectURL: "https://cdn.example.com/" + objectKey,
+		ExpiresAt: fixedCreatedAt.Add(15 * time.Minute),
+	}, nil
 }
 
 // idSequence returns a deterministic newID func for tests: "id-1", "id-2", ...
