@@ -47,12 +47,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot: creates the content-media bucket MediaService uploads into
-  # (ADR-021), then exits. MinIO itself doesn't auto-create buckets — a real
-  # S3 bucket in production is provisioned by motifpath-infra instead, read
-  # through CloudFront rather than a public bucket policy. Public-read here
-  # is a dev-only stand-in for that so object_url is fetchable without
-  # signing, matching what MEDIA_PUBLIC_BASE_URL promises.
+  # One-shot: creates the content-media bucket MediaService uploads into,
+  # then exits. MinIO itself doesn't auto-create buckets — a real S3 bucket
+  # in production is provisioned by motifpath-infra instead, read through a
+  # CDN rather than a public bucket policy. Public-read here is a dev-only
+  # stand-in for that so object_url is fetchable without signing, matching
+  # what MEDIA_PUBLIC_BASE_URL promises.
   minio-init:
     image: quay.io/minio/mc:latest
     depends_on:

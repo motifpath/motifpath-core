@@ -11,13 +11,13 @@ import (
 )
 
 // presignTTL is how long an issued upload URL remains valid. Short-lived by
-// design (ADR-021) — the browser is expected to PUT immediately after
-// requesting it, not hold the URL for later use.
+// design — the browser is expected to PUT immediately after requesting it,
+// not hold the URL for later use.
 const presignTTL = 15 * time.Minute
 
 // S3MediaStorage issues presigned upload URLs via the S3 API — the same
-// client works against real S3 in production and MinIO in local dev
-// (ADR-021), differing only in how the *s3.Client was constructed.
+// client works against real S3 in production and MinIO in local dev,
+// differing only in how the *s3.Client was constructed.
 type S3MediaStorage struct {
 	presign       *s3.PresignClient
 	bucket        string

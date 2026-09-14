@@ -8,9 +8,9 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// MediaService issues presigned upload URLs for content-authoring media
-// (ADR-021). It never touches the uploaded bytes — the caller PUTs directly
-// to the returned upload_url.
+// MediaService issues presigned upload URLs for content-authoring media. It
+// never touches the uploaded bytes — the caller PUTs directly to the
+// returned upload_url.
 type MediaService struct {
 	exercises ports.ExerciseRepository
 	storage   ports.MediaStorage
@@ -43,7 +43,7 @@ func (s *MediaService) CreateUploadURL(ctx context.Context, caller domain.User, 
 	return s.storage.PresignUpload(ctx, s.objectKey(req), req.ContentType)
 }
 
-// objectKey lays objects out per ADR-021: exercises/{exercise_id}/... for
+// objectKey lays objects out as exercises/{exercise_id}/... for
 // exercise-specific uploads, library/... for the shared image-picker
 // library. The stored key never reuses the caller's file name — only its
 // extension — so two uploads with the same original name never collide.

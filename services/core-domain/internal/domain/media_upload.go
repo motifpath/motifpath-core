@@ -3,7 +3,7 @@ package domain
 import "time"
 
 // MediaUploadPurpose identifies what an uploaded object is for, which
-// determines where it is stored (ADR-021's bucket layout).
+// determines where it is stored.
 type MediaUploadPurpose string
 
 const (
@@ -30,7 +30,8 @@ type MediaUploadRequest struct {
 }
 
 // MediaUploadURL is a presigned upload URL and the object's eventual read
-// URL, per ADR-021's presigned-PUT flow.
+// URL: the caller PUTs the file to UploadURL, then reads it back from
+// ObjectURL.
 type MediaUploadURL struct {
 	UploadURL string
 	ObjectURL string

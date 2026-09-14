@@ -41,9 +41,9 @@ processes:
   wait-redpanda:
     command: "timeout 180 sh -c 'until docker compose ps redpanda 2>/dev/null | grep -q \"(healthy)\"; do sleep 2; done'"
     availability: { restart: "no" }
-  # minio-init (bucket creation, ADR-021) only runs after minio itself
-  # reports healthy, then exits 0 — waiting on minio-init's own container
-  # status covers both.
+  # minio-init (bucket creation) only runs after minio itself reports
+  # healthy, then exits 0 — waiting on minio-init's own container status
+  # covers both.
   wait-minio:
     command: "timeout 180 sh -c 'until docker compose ps minio-init 2>/dev/null | grep -q \"Exited (0)\"; do sleep 2; done'"
     availability: { restart: "no" }

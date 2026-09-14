@@ -263,9 +263,9 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 // credential chain and endpoint resolution — real S3 in production. With it
 // set (local dev), it points at MinIO instead: a fixed endpoint, static
 // credentials, and path-style addressing (MinIO doesn't support the
-// virtual-hosted-style bucket subdomains real S3 uses). Per ADR-021, the
-// upload/presign code path itself never branches on environment — only
-// this construction does.
+// virtual-hosted-style bucket subdomains real S3 uses). The upload/presign
+// code path itself never branches on environment — only this construction
+// does.
 func newS3Client(ctx context.Context, cfg config) (*s3.Client, error) {
 	if cfg.mediaS3Endpoint == "" {
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.mediaS3Region))
