@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -387,3 +388,16 @@ func (f *fakePinger) Ping(context.Context) error {
 }
 
 var errStoreUnreachable = errors.New("store unreachable")
+
+// fakeMediaStorage backs ports.MediaStorage. Presigning always succeeds —
+// the media-upload feature is about request validation and authorization,
+// not storage-provider failure modes.
+type fakeMediaStorage struct{}
+
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ domain.MediaContentType) (domain.MediaUploadURL, error) {
+	return domain.MediaUploadURL{
+		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
+		ObjectURL: "https://cdn.example.com/" + objectKey,
+		ExpiresAt: fixedNow.Add(15 * time.Minute),
+	}, nil
+}
