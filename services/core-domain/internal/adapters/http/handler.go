@@ -17,6 +17,8 @@ type Handler struct {
 	identity   *application.IdentityService
 	content    *application.ContentService
 	challenge  *application.ChallengeService
+	exercise   *application.ExerciseService
+	media      *application.MediaService
 	path       *application.LearningPathService
 	assignment *application.PathAssignmentService
 
@@ -32,6 +34,8 @@ func NewHandler(
 	identity *application.IdentityService,
 	content *application.ContentService,
 	challenge *application.ChallengeService,
+	exercise *application.ExerciseService,
+	media *application.MediaService,
 	path *application.LearningPathService,
 	assignment *application.PathAssignmentService,
 	learningGraphPinger ports.Pinger,
@@ -41,6 +45,8 @@ func NewHandler(
 		identity:              identity,
 		content:               content,
 		challenge:             challenge,
+		exercise:              exercise,
+		media:                 media,
 		path:                  path,
 		assignment:            assignment,
 		learningGraphPinger:   learningGraphPinger,
@@ -203,8 +209,13 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 		return generated.CreateExercise401JSONResponse(unauthorizedError()), nil
 	}
 
-	exercise, err := h.challenge.CreateExercise(ctx, caller, request.ChallengeId.String(),
-		domain.ExerciseType(request.Body.ExerciseType), request.Body.Prompt)
+	body := request.Body
+	var skillTags []string
+	if body.SkillTags != nil {
+		skillTags = *body.SkillTags
+	}
+	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, body.Prompt,
+		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -212,9 +223,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 			return generated.CreateExercise400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindForbidden:
 			return generated.CreateExercise403JSONResponse(forbiddenError("only teachers and admins may create exercises")), nil
-		case errKindNotFound:
-			return generated.CreateExercise404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
-		case errKindOther:
+		case errKindNotFound, errKindOther:
 			return nil, err
 		}
 	}
@@ -227,7 +236,7 @@ func (h *Handler) GetExercise(ctx context.Context, request generated.GetExercise
 		return generated.GetExercise401JSONResponse(unauthorizedError()), nil
 	}
 
-	exercise, err := h.challenge.GetExercise(ctx, request.ExerciseId.String())
+	exercise, err := h.exercise.GetExercise(ctx, request.ExerciseId.String())
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindNotFound {
 			return generated.GetExercise404JSONResponse(notFoundError("no exercise exists with the given id")), nil
@@ -236,6 +245,81 @@ func (h *Handler) GetExercise(ctx context.Context, request generated.GetExercise
 	}
 
 	return generated.GetExercise200JSONResponse(toExercise(exercise)), nil
+}
+
+func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated.LinkExerciseToChallengeRequestObject) (generated.LinkExerciseToChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.LinkExerciseToChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercise, err := h.exercise.LinkExerciseToChallenge(ctx, caller, request.ChallengeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.LinkExerciseToChallenge403JSONResponse(forbiddenError("only teachers and admins may link exercises to challenges")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.LinkExerciseToChallenge404JSONResponse(notFoundError("no challenge exists with challenge_id, or no exercise exists with exercise_id")), nil
+		case errors.Is(err, domain.ErrAlreadyExists):
+			return generated.LinkExerciseToChallenge409JSONResponse(conflictError("the exercise is already linked to this challenge")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.LinkExerciseToChallenge201JSONResponse(toExercise(exercise)), nil
+}
+
+func (h *Handler) UnlinkExerciseFromChallenge(ctx context.Context, request generated.UnlinkExerciseFromChallengeRequestObject) (generated.UnlinkExerciseFromChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnlinkExerciseFromChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.exercise.UnlinkExerciseFromChallenge(ctx, caller, request.ChallengeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnlinkExerciseFromChallenge403JSONResponse(forbiddenError("only teachers and admins may unlink exercises from challenges")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnlinkExerciseFromChallenge404JSONResponse(notFoundError("no challenge exists with challenge_id, no exercise exists with exercise_id, or the exercise is not currently linked to this challenge")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.UnlinkExerciseFromChallenge204Response{}, nil
+}
+
+func (h *Handler) CreateMediaUploadUrl(ctx context.Context, request generated.CreateMediaUploadUrlRequestObject) (generated.CreateMediaUploadUrlResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateMediaUploadUrl401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var exerciseID *string
+	if body.ExerciseId != nil {
+		s := body.ExerciseId.String()
+		exerciseID = &s
+	}
+	url, err := h.media.CreateUploadURL(ctx, caller, domain.MediaUploadPurpose(body.Purpose), exerciseID,
+		domain.MediaContentType(body.ContentType), body.FileName)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateMediaUploadUrl400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateMediaUploadUrl403JSONResponse(forbiddenError("only teachers and admins may request an upload URL")), nil
+		case errKindNotFound:
+			return generated.CreateMediaUploadUrl404JSONResponse(notFoundError("purpose is exercise_asset but no exercise exists with the given exercise_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateMediaUploadUrl201JSONResponse(toMediaUploadURL(url)), nil
 }
 
 func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.CreateExpandedContentRequestObject) (generated.CreateExpandedContentResponseObject, error) {

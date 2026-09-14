@@ -55,7 +55,10 @@ const (
 
 // Defines values for CreateExerciseRequestExerciseType.
 const (
-	CreateExerciseRequestExerciseTypeFretboardRegion CreateExerciseRequestExerciseType = "fretboard_region"
+	CreateExerciseRequestExerciseTypeAudioRecognition CreateExerciseRequestExerciseType = "audio_recognition"
+	CreateExerciseRequestExerciseTypeImageChoice      CreateExerciseRequestExerciseType = "image_choice"
+	CreateExerciseRequestExerciseTypeImageRecognition CreateExerciseRequestExerciseType = "image_recognition"
+	CreateExerciseRequestExerciseTypeTextResponse     CreateExerciseRequestExerciseType = "text_response"
 )
 
 // Defines values for CreateExpandedContentRequestContentType.
@@ -64,15 +67,30 @@ const (
 	CreateExpandedContentRequestContentTypeImage CreateExpandedContentRequestContentType = "image"
 )
 
+// Defines values for CreateMediaUploadUrlRequestContentType.
+const (
+	CreateMediaUploadUrlRequestContentTypeAudio CreateMediaUploadUrlRequestContentType = "audio"
+	CreateMediaUploadUrlRequestContentTypeImage CreateMediaUploadUrlRequestContentType = "image"
+)
+
+// Defines values for CreateMediaUploadUrlRequestPurpose.
+const (
+	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
+	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
+)
+
 // Defines values for ExerciseExerciseType.
 const (
-	ExerciseExerciseTypeFretboardRegion ExerciseExerciseType = "fretboard_region"
+	ExerciseExerciseTypeAudioRecognition ExerciseExerciseType = "audio_recognition"
+	ExerciseExerciseTypeImageChoice      ExerciseExerciseType = "image_choice"
+	ExerciseExerciseTypeImageRecognition ExerciseExerciseType = "image_recognition"
+	ExerciseExerciseTypeTextResponse     ExerciseExerciseType = "text_response"
 )
 
 // Defines values for ExpandedContentContentType.
 const (
-	ExpandedContentContentTypeGif   ExpandedContentContentType = "gif"
-	ExpandedContentContentTypeImage ExpandedContentContentType = "image"
+	Gif   ExpandedContentContentType = "gif"
+	Image ExpandedContentContentType = "image"
 )
 
 // Defines values for HealthStatusChecks.
@@ -91,6 +109,12 @@ const (
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
 	LearningPathItemContentTypeVideo   LearningPathItemContentType = "video"
+)
+
+// Defines values for OptionRegionShape.
+const (
+	Circle    OptionRegionShape = "circle"
+	Rectangle OptionRegionShape = "rectangle"
 )
 
 // Defines values for RegisterUserRequestRole.
@@ -269,23 +293,49 @@ type CreateContentNodeRequest struct {
 // CreateContentNodeRequestContentType The media format of this content node.
 type CreateContentNodeRequestContentType string
 
-// CreateExerciseRequest Payload for creating a pre-defined exercise within a challenge.
+// CreateExerciseRequest Payload for creating a standalone, reusable exercise.
 type CreateExerciseRequest struct {
-	// ExerciseType The type of practice interaction. For MVP the only supported type is
-	// fretboard_region — a fretboard image with clickable regions where
-	// the student taps to identify the correct position. Additional types
-	// may be added in future without breaking this contract.
+	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
+	// is audio_recognition; absent otherwise.
+	AudioUrl *string `json:"audio_url,omitempty"`
+
+	// ExerciseType The type of practice interaction, which determines how its
+	// options are authored and rendered. text_response and
+	// audio_recognition options carry a text label; image_recognition
+	// options carry a region on image_url; image_choice options each
+	// carry their own image_url.
 	ExerciseType CreateExerciseRequestExerciseType `json:"exercise_type"`
+
+	// ImageUrl The stimulus image for this exercise. Required when exercise_type
+	// is image_recognition; absent otherwise.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// Options The exercise's selectable answer choices. At least one option
+	// must have is_correct set to true — an exercise with no correct
+	// option cannot be graded.
+	Options []Option `json:"options"`
 
 	// Prompt The instruction displayed to the student for this exercise
 	// (e.g. "Identify the root position of a C major triad").
 	Prompt string `json:"prompt"`
+
+	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
+	// targets (e.g. "alternate_picking"), used to classify and discover
+	// the exercise independent of any challenge. Each tag must be a
+	// non-empty string.
+	SkillTags *[]string `json:"skill_tags,omitempty"`
+
+	// Title A short, authoring-only name for this exercise (e.g. "Alternate
+	// picking — descending run"), used to identify it in authoring
+	// tools. Not shown to students.
+	Title string `json:"title"`
 }
 
-// CreateExerciseRequestExerciseType The type of practice interaction. For MVP the only supported type is
-// fretboard_region — a fretboard image with clickable regions where
-// the student taps to identify the correct position. Additional types
-// may be added in future without breaking this contract.
+// CreateExerciseRequestExerciseType The type of practice interaction, which determines how its
+// options are authored and rendered. text_response and
+// audio_recognition options carry a text label; image_recognition
+// options carry a region on image_url; image_choice options each
+// carry their own image_url.
 type CreateExerciseRequestExerciseType string
 
 // CreateExpandedContentRequest Payload for attaching an expositive media item to a content node.
@@ -338,13 +388,50 @@ type CreateLearningPathRequest struct {
 	Title string `json:"title"`
 }
 
-// Exercise A pre-defined practice item within a challenge. The exercise_id is the
-// value the SPA supplies in exercise-family tracking events. For MVP all
-// exercises are fretboard region interactions with a binary correct/incorrect
-// outcome.
+// CreateMediaUploadUrlRequest Payload requesting a presigned URL to upload a content-authoring media
+// asset (exercise/prompt image or audio, or an addition to the shared
+// image-picker library).
+type CreateMediaUploadUrlRequest struct {
+	// ContentType The media type of the file being uploaded.
+	ContentType CreateMediaUploadUrlRequestContentType `json:"content_type"`
+
+	// ExerciseId The exercise this upload belongs to. Required when purpose is
+	// exercise_asset; must be absent when purpose is library_asset.
+	ExerciseId *openapi_types.UUID `json:"exercise_id,omitempty"`
+
+	// FileName The original file name, used to derive the stored object's file
+	// extension. Not used as the object's storage key.
+	FileName string `json:"file_name"`
+
+	// Purpose What the uploaded object is for. exercise_asset requires
+	// exercise_id and stores the object under that exercise's prefix.
+	// library_asset stores the object under the shared, predefined
+	// image-picker library's prefix.
+	Purpose CreateMediaUploadUrlRequestPurpose `json:"purpose"`
+}
+
+// CreateMediaUploadUrlRequestContentType The media type of the file being uploaded.
+type CreateMediaUploadUrlRequestContentType string
+
+// CreateMediaUploadUrlRequestPurpose What the uploaded object is for. exercise_asset requires
+// exercise_id and stores the object under that exercise's prefix.
+// library_asset stores the object under the shared, predefined
+// image-picker library's prefix.
+type CreateMediaUploadUrlRequestPurpose string
+
+// Exercise A reusable, standalone practice item classified by skill tags and
+// independent of any single challenge. The exercise_id is the value
+// the SPA supplies in exercise-family tracking events. An exercise is
+// checked by option selection: the student's selected option ID(s)
+// must match the option(s) marked is_correct.
 type Exercise struct {
-	// ChallengeId The challenge this exercise belongs to.
-	ChallengeId openapi_types.UUID `json:"challenge_id"`
+	// AudioUrl The stimulus audio for this exercise, present when exercise_type is audio_recognition.
+	AudioUrl *string `json:"audio_url,omitempty"`
+
+	// ChallengeIds The challenges this exercise is currently linked to. May be
+	// empty — an exercise can exist without being linked to any
+	// challenge.
+	ChallengeIds []openapi_types.UUID `json:"challenge_ids"`
 
 	// CreatedAt Timestamp at which the exercise was created.
 	CreatedAt time.Time `json:"created_at"`
@@ -355,8 +442,20 @@ type Exercise struct {
 	// ExerciseType The type of practice interaction.
 	ExerciseType ExerciseExerciseType `json:"exercise_type"`
 
+	// ImageUrl The stimulus image for this exercise, present when exercise_type is image_recognition.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// Options The exercise's selectable answer choices.
+	Options []Option `json:"options"`
+
 	// Prompt The instruction displayed to the student for this exercise.
 	Prompt string `json:"prompt"`
+
+	// SkillTags Freeform tags naming the skill(s) this exercise targets.
+	SkillTags *[]string `json:"skill_tags,omitempty"`
+
+	// Title Short, authoring-only name for this exercise. Not shown to students.
+	Title string `json:"title"`
 }
 
 // ExerciseExerciseType The type of practice interaction.
@@ -466,11 +565,78 @@ type LearningPathItem struct {
 // LearningPathItemContentType Media format of the content node, denormalised for display.
 type LearningPathItemContentType string
 
+// MediaUploadUrl A presigned upload URL and the object's eventual read URL. The caller
+// performs an HTTP PUT of the file's raw bytes to upload_url, then stores
+// object_url in the relevant media_url / image_url / audio_url field.
+type MediaUploadUrl struct {
+	// ExpiresAt The time after which upload_url can no longer be used.
+	ExpiresAt time.Time `json:"expires_at"`
+
+	// ObjectUrl The URL the uploaded object is readable at once the upload
+	// completes (a CloudFront URL in production, the local object
+	// store's equivalent in development).
+	ObjectUrl string `json:"object_url"`
+
+	// UploadUrl Short-lived presigned URL to PUT the file's raw bytes to. Expires
+	// at expires_at.
+	UploadUrl string `json:"upload_url"`
+}
+
 // NotFoundError Returned when the requested resource does not exist.
 type NotFoundError struct {
 	// Message Human-readable description of what was not found.
 	Message string `json:"message"`
 }
+
+// Option One selectable answer choice within an exercise. An exercise's
+// correct answer is expressed by marking one or more options as
+// is_correct. The fields expected beyond option_id and is_correct
+// depend on the parent exercise's exercise_type: image_recognition
+// options carry region, image_choice options carry image_url, and
+// text_response / audio_recognition options carry label.
+type Option struct {
+	// ImageUrl The image shown for this option. Required for image_choice
+	// options; absent otherwise.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// IsCorrect Whether selecting this option counts as a correct answer.
+	IsCorrect bool `json:"is_correct"`
+
+	// Label The text shown for this option. Required for text_response and
+	// audio_recognition options; absent otherwise.
+	Label *string `json:"label,omitempty"`
+
+	// OptionId Stable identifier for this option.
+	OptionId openapi_types.UUID `json:"option_id"`
+
+	// Region A rectangular or circular region on the parent exercise's image_url,
+	// used by image_recognition options — selecting the region is
+	// selecting the option.
+	Region *OptionRegion `json:"region,omitempty"`
+}
+
+// OptionRegion A rectangular or circular region on the parent exercise's image_url,
+// used by image_recognition options — selecting the region is
+// selecting the option.
+type OptionRegion struct {
+	// Height Region height, as a fraction (0-1) of the image height.
+	Height float32 `json:"height"`
+
+	// Shape The rendered shape of the region.
+	Shape OptionRegionShape `json:"shape"`
+
+	// Width Region width, as a fraction (0-1) of the image width.
+	Width float32 `json:"width"`
+
+	// X Horizontal position of the region's top-left corner, as a fraction (0-1) of the image width.
+	X float32 `json:"x"`
+
+	// Y Vertical position of the region's top-left corner, as a fraction (0-1) of the image height.
+	Y float32 `json:"y"`
+}
+
+// OptionRegionShape The rendered shape of the region.
+type OptionRegionShape string
 
 // PathAssignment A record of a learning path being assigned to a student. One active
 // assignment exists per student at any time for MVP.
@@ -607,9 +773,6 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
-// CreateExerciseJSONRequestBody defines body for CreateExercise for application/json ContentType.
-type CreateExerciseJSONRequestBody = CreateExerciseRequest
-
 // CreateContentNodeJSONRequestBody defines body for CreateContentNode for application/json ContentType.
 type CreateContentNodeJSONRequestBody = CreateContentNodeRequest
 
@@ -619,8 +782,14 @@ type CreateChallengeJSONRequestBody = CreateChallengeRequest
 // CreateExpandedContentJSONRequestBody defines body for CreateExpandedContent for application/json ContentType.
 type CreateExpandedContentJSONRequestBody = CreateExpandedContentRequest
 
+// CreateExerciseJSONRequestBody defines body for CreateExercise for application/json ContentType.
+type CreateExerciseJSONRequestBody = CreateExerciseRequest
+
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
+
+// CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
+type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
 // AssignLearningPathJSONRequestBody defines body for AssignLearningPath for application/json ContentType.
 type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
@@ -633,9 +802,12 @@ type ServerInterface interface {
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
-	// Create an exercise within a challenge
-	// (POST /challenges/{challenge_id}/exercises)
-	CreateExercise(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
+	// Unlink an exercise from a challenge
+	// (DELETE /challenges/{challenge_id}/exercises/{exercise_id})
+	UnlinkExerciseFromChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
+	// Link an existing exercise to a challenge
+	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
+	LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
 	// Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(w http.ResponseWriter, r *http.Request)
@@ -651,6 +823,9 @@ type ServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// Create a standalone exercise
+	// (POST /exercises)
+	CreateExercise(w http.ResponseWriter, r *http.Request)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID)
@@ -666,6 +841,9 @@ type ServerInterface interface {
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// Request a presigned URL to upload a content-authoring media asset
+	// (POST /media/upload-url)
+	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
@@ -693,9 +871,15 @@ func (_ Unimplemented) GetChallenge(w http.ResponseWriter, r *http.Request, chal
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Create an exercise within a challenge
-// (POST /challenges/{challenge_id}/exercises)
-func (_ Unimplemented) CreateExercise(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
+// Unlink an exercise from a challenge
+// (DELETE /challenges/{challenge_id}/exercises/{exercise_id})
+func (_ Unimplemented) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Link an existing exercise to a challenge
+// (POST /challenges/{challenge_id}/exercises/{exercise_id})
+func (_ Unimplemented) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -729,6 +913,12 @@ func (_ Unimplemented) CreateExpandedContent(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Create a standalone exercise
+// (POST /exercises)
+func (_ Unimplemented) CreateExercise(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get an exercise by ID
 // (GET /exercises/{exercise_id})
 func (_ Unimplemented) GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID) {
@@ -756,6 +946,12 @@ func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request
 // Get a learning path by ID
 // (GET /learning-paths/{learning_path_id})
 func (_ Unimplemented) GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Request a presigned URL to upload a content-authoring media asset
+// (POST /media/upload-url)
+func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -829,8 +1025,8 @@ func (siw *ServerInterfaceWrapper) GetChallenge(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
-// CreateExercise operation middleware
-func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http.Request) {
+// UnlinkExerciseFromChallenge operation middleware
+func (siw *ServerInterfaceWrapper) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
@@ -843,6 +1039,15 @@ func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http
 		return
 	}
 
+	// ------------- Path parameter "exercise_id" -------------
+	var exerciseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "exercise_id", chi.URLParam(r, "exercise_id"), &exerciseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "exercise_id", Err: err})
+		return
+	}
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
@@ -850,7 +1055,47 @@ func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateExercise(w, r, challengeId)
+		siw.Handler.UnlinkExerciseFromChallenge(w, r, challengeId, exerciseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LinkExerciseToChallenge operation middleware
+func (siw *ServerInterfaceWrapper) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "challenge_id" -------------
+	var challengeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "challenge_id", chi.URLParam(r, "challenge_id"), &challengeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "challenge_id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "exercise_id" -------------
+	var exerciseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "exercise_id", chi.URLParam(r, "exercise_id"), &exerciseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "exercise_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LinkExerciseToChallenge(w, r, challengeId, exerciseId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1004,6 +1249,26 @@ func (siw *ServerInterfaceWrapper) CreateExpandedContent(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// CreateExercise operation middleware
+func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateExercise(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetExercise operation middleware
 func (siw *ServerInterfaceWrapper) GetExercise(w http.ResponseWriter, r *http.Request) {
 
@@ -1122,6 +1387,26 @@ func (siw *ServerInterfaceWrapper) GetLearningPath(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMediaUploadUrl operation middleware
+func (siw *ServerInterfaceWrapper) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMediaUploadUrl(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1353,7 +1638,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/challenges/{challenge_id}", wrapper.GetChallenge)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises", wrapper.CreateExercise)
+		r.Delete(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.UnlinkExerciseFromChallenge)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.LinkExerciseToChallenge)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/content-nodes", wrapper.CreateContentNode)
@@ -1371,6 +1659,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/expanded-content", wrapper.CreateExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/exercises", wrapper.CreateExercise)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises/{exercise_id}", wrapper.GetExercise)
 	})
 	r.Group(func(r chi.Router) {
@@ -1384,6 +1675,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.GetLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/media/upload-url", wrapper.CreateMediaUploadUrl)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
@@ -1439,56 +1733,100 @@ func (response GetChallenge404JSONResponse) VisitGetChallengeResponse(w http.Res
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateExerciseRequestObject struct {
+type UnlinkExerciseFromChallengeRequestObject struct {
 	ChallengeId openapi_types.UUID `json:"challenge_id"`
-	Body        *CreateExerciseJSONRequestBody
+	ExerciseId  openapi_types.UUID `json:"exercise_id"`
 }
 
-type CreateExerciseResponseObject interface {
-	VisitCreateExerciseResponse(w http.ResponseWriter) error
+type UnlinkExerciseFromChallengeResponseObject interface {
+	VisitUnlinkExerciseFromChallengeResponse(w http.ResponseWriter) error
 }
 
-type CreateExercise201JSONResponse Exercise
-
-func (response CreateExercise201JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
+type UnlinkExerciseFromChallenge204Response struct {
 }
 
-type CreateExercise400JSONResponse ValidationError
-
-func (response CreateExercise400JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
+func (response UnlinkExerciseFromChallenge204Response) VisitUnlinkExerciseFromChallengeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
 }
 
-type CreateExercise401JSONResponse UnauthorizedError
+type UnlinkExerciseFromChallenge401JSONResponse UnauthorizedError
 
-func (response CreateExercise401JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+func (response UnlinkExerciseFromChallenge401JSONResponse) VisitUnlinkExerciseFromChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateExercise403JSONResponse ForbiddenError
+type UnlinkExerciseFromChallenge403JSONResponse ForbiddenError
 
-func (response CreateExercise403JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+func (response UnlinkExerciseFromChallenge403JSONResponse) VisitUnlinkExerciseFromChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type CreateExercise404JSONResponse NotFoundError
+type UnlinkExerciseFromChallenge404JSONResponse NotFoundError
 
-func (response CreateExercise404JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+func (response UnlinkExerciseFromChallenge404JSONResponse) VisitUnlinkExerciseFromChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LinkExerciseToChallengeRequestObject struct {
+	ChallengeId openapi_types.UUID `json:"challenge_id"`
+	ExerciseId  openapi_types.UUID `json:"exercise_id"`
+}
+
+type LinkExerciseToChallengeResponseObject interface {
+	VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error
+}
+
+type LinkExerciseToChallenge201JSONResponse Exercise
+
+func (response LinkExerciseToChallenge201JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LinkExerciseToChallenge401JSONResponse UnauthorizedError
+
+func (response LinkExerciseToChallenge401JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LinkExerciseToChallenge403JSONResponse ForbiddenError
+
+func (response LinkExerciseToChallenge403JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LinkExerciseToChallenge404JSONResponse NotFoundError
+
+func (response LinkExerciseToChallenge404JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type LinkExerciseToChallenge409JSONResponse ConflictError
+
+func (response LinkExerciseToChallenge409JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -1721,6 +2059,50 @@ func (response CreateExpandedContent404JSONResponse) VisitCreateExpandedContentR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreateExerciseRequestObject struct {
+	Body *CreateExerciseJSONRequestBody
+}
+
+type CreateExerciseResponseObject interface {
+	VisitCreateExerciseResponse(w http.ResponseWriter) error
+}
+
+type CreateExercise201JSONResponse Exercise
+
+func (response CreateExercise201JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateExercise400JSONResponse ValidationError
+
+func (response CreateExercise400JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateExercise401JSONResponse UnauthorizedError
+
+func (response CreateExercise401JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateExercise403JSONResponse ForbiddenError
+
+func (response CreateExercise403JSONResponse) VisitCreateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetExerciseRequestObject struct {
 	ExerciseId openapi_types.UUID `json:"exercise_id"`
 }
@@ -1889,6 +2271,59 @@ func (response GetLearningPath403JSONResponse) VisitGetLearningPathResponse(w ht
 type GetLearningPath404JSONResponse NotFoundError
 
 func (response GetLearningPath404JSONResponse) VisitGetLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMediaUploadUrlRequestObject struct {
+	Body *CreateMediaUploadUrlJSONRequestBody
+}
+
+type CreateMediaUploadUrlResponseObject interface {
+	VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error
+}
+
+type CreateMediaUploadUrl201JSONResponse MediaUploadUrl
+
+func (response CreateMediaUploadUrl201JSONResponse) VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMediaUploadUrl400JSONResponse ValidationError
+
+func (response CreateMediaUploadUrl400JSONResponse) VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMediaUploadUrl401JSONResponse UnauthorizedError
+
+func (response CreateMediaUploadUrl401JSONResponse) VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMediaUploadUrl403JSONResponse ForbiddenError
+
+func (response CreateMediaUploadUrl403JSONResponse) VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMediaUploadUrl404JSONResponse NotFoundError
+
+func (response CreateMediaUploadUrl404JSONResponse) VisitCreateMediaUploadUrlResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -2100,9 +2535,12 @@ type StrictServerInterface interface {
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(ctx context.Context, request GetChallengeRequestObject) (GetChallengeResponseObject, error)
-	// Create an exercise within a challenge
-	// (POST /challenges/{challenge_id}/exercises)
-	CreateExercise(ctx context.Context, request CreateExerciseRequestObject) (CreateExerciseResponseObject, error)
+	// Unlink an exercise from a challenge
+	// (DELETE /challenges/{challenge_id}/exercises/{exercise_id})
+	UnlinkExerciseFromChallenge(ctx context.Context, request UnlinkExerciseFromChallengeRequestObject) (UnlinkExerciseFromChallengeResponseObject, error)
+	// Link an existing exercise to a challenge
+	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
+	LinkExerciseToChallenge(ctx context.Context, request LinkExerciseToChallengeRequestObject) (LinkExerciseToChallengeResponseObject, error)
 	// Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(ctx context.Context, request CreateContentNodeRequestObject) (CreateContentNodeResponseObject, error)
@@ -2118,6 +2556,9 @@ type StrictServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(ctx context.Context, request CreateExpandedContentRequestObject) (CreateExpandedContentResponseObject, error)
+	// Create a standalone exercise
+	// (POST /exercises)
+	CreateExercise(ctx context.Context, request CreateExerciseRequestObject) (CreateExerciseResponseObject, error)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(ctx context.Context, request GetExerciseRequestObject) (GetExerciseResponseObject, error)
@@ -2133,6 +2574,9 @@ type StrictServerInterface interface {
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(ctx context.Context, request GetLearningPathRequestObject) (GetLearningPathResponseObject, error)
+	// Request a presigned URL to upload a content-authoring media asset
+	// (POST /media/upload-url)
+	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
@@ -2205,32 +2649,53 @@ func (sh *strictHandler) GetChallenge(w http.ResponseWriter, r *http.Request, ch
 	}
 }
 
-// CreateExercise operation middleware
-func (sh *strictHandler) CreateExercise(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
-	var request CreateExerciseRequestObject
+// UnlinkExerciseFromChallenge operation middleware
+func (sh *strictHandler) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
+	var request UnlinkExerciseFromChallengeRequestObject
 
 	request.ChallengeId = challengeId
-
-	var body CreateExerciseJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
+	request.ExerciseId = exerciseId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateExercise(ctx, request.(CreateExerciseRequestObject))
+		return sh.ssi.UnlinkExerciseFromChallenge(ctx, request.(UnlinkExerciseFromChallengeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateExercise")
+		handler = middleware(handler, "UnlinkExerciseFromChallenge")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateExerciseResponseObject); ok {
-		if err := validResponse.VisitCreateExerciseResponse(w); err != nil {
+	} else if validResponse, ok := response.(UnlinkExerciseFromChallengeResponseObject); ok {
+		if err := validResponse.VisitUnlinkExerciseFromChallengeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// LinkExerciseToChallenge operation middleware
+func (sh *strictHandler) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
+	var request LinkExerciseToChallengeRequestObject
+
+	request.ChallengeId = challengeId
+	request.ExerciseId = exerciseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LinkExerciseToChallenge(ctx, request.(LinkExerciseToChallengeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LinkExerciseToChallenge")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LinkExerciseToChallengeResponseObject); ok {
+		if err := validResponse.VisitLinkExerciseToChallengeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2387,6 +2852,37 @@ func (sh *strictHandler) CreateExpandedContent(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// CreateExercise operation middleware
+func (sh *strictHandler) CreateExercise(w http.ResponseWriter, r *http.Request) {
+	var request CreateExerciseRequestObject
+
+	var body CreateExerciseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateExercise(ctx, request.(CreateExerciseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateExercise")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateExerciseResponseObject); ok {
+		if err := validResponse.VisitCreateExerciseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetExercise operation middleware
 func (sh *strictHandler) GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID) {
 	var request GetExerciseRequestObject
@@ -2513,6 +3009,37 @@ func (sh *strictHandler) GetLearningPath(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetLearningPathResponseObject); ok {
 		if err := validResponse.VisitGetLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMediaUploadUrl operation middleware
+func (sh *strictHandler) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
+	var request CreateMediaUploadUrlRequestObject
+
+	var body CreateMediaUploadUrlJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMediaUploadUrl(ctx, request.(CreateMediaUploadUrlRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMediaUploadUrl")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateMediaUploadUrlResponseObject); ok {
+		if err := validResponse.VisitCreateMediaUploadUrlResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

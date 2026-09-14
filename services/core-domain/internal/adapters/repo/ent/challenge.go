@@ -27,8 +27,29 @@ type Challenge struct {
 	// RemediationTargetContentNodeID holds the value of the "remediation_target_content_node_id" field.
 	RemediationTargetContentNodeID *uuid.UUID `json:"remediation_target_content_node_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ChallengeQuery when eager-loading is set.
+	Edges        ChallengeEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// ChallengeEdges holds the relations/edges for other nodes in the graph.
+type ChallengeEdges struct {
+	// Exercises holds the value of the exercises edge.
+	Exercises []*Exercise `json:"exercises,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// ExercisesOrErr returns the Exercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChallengeEdges) ExercisesOrErr() ([]*Exercise, error) {
+	if e.loadedTypes[0] {
+		return e.Exercises, nil
+	}
+	return nil, &NotLoadedError{edge: "exercises"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -109,6 +130,11 @@ func (_m *Challenge) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Challenge) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryExercises queries the "exercises" edge of the Challenge entity.
+func (_m *Challenge) QueryExercises() *ExerciseQuery {
+	return NewChallengeClient(_m.config).QueryExercises(_m)
 }
 
 // Update returns a builder for updating this Challenge.

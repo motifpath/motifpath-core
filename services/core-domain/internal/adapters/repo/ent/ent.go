@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
@@ -83,6 +84,7 @@ func checkColumn(t, c string) error {
 			challenge.Table:        challenge.ValidColumn,
 			contentnode.Table:      contentnode.ValidColumn,
 			exercise.Table:         exercise.ValidColumn,
+			exerciseoption.Table:   exerciseoption.ValidColumn,
 			expandedcontent.Table:  expandedcontent.ValidColumn,
 			learningpath.Table:     learningpath.ValidColumn,
 			learningpathitem.Table: learningpathitem.ValidColumn,

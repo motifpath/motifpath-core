@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"entgo.io/ent/schema/index"
+
 	"github.com/google/uuid"
 )
 
-// Exercise is a pre-defined practice item within a challenge. For MVP, all
-// exercises are fretboard region interactions with a binary correct/
-// incorrect outcome.
+// Exercise is a reusable, standalone practice item classified by skill tags
+// and independent of any single challenge — it may be linked to zero, one,
+// or many challenges via the many-to-many "challenges" edge.
 type Exercise struct {
 	ent.Schema
 }
@@ -22,14 +23,23 @@ func (Exercise) Fields() []ent.Field {
 			Default(uuid.New).
 			Immutable(),
 
-		field.UUID("challenge_id", uuid.UUID{}).
-			Immutable(),
+		field.String("title"),
+		field.Text("prompt"),
 
 		field.Enum("exercise_type").
-			Values("fretboard_region").
+			Values("text_response", "audio_recognition", "image_recognition", "image_choice").
 			Immutable(),
 
-		field.Text("prompt"),
+		field.JSON("skill_tags", []string{}).
+			Optional(),
+
+		field.String("image_url").
+			Optional().
+			Nillable(),
+
+		field.String("audio_url").
+			Optional().
+			Nillable(),
 
 		field.Time("created_at").
 			Immutable().
@@ -37,8 +47,9 @@ func (Exercise) Fields() []ent.Field {
 	}
 }
 
-func (Exercise) Indexes() []ent.Index {
-	return []ent.Index{
-		index.Fields("challenge_id"),
+func (Exercise) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("challenges", Challenge.Type),
+		edge.To("options", ExerciseOption.Type),
 	}
 }

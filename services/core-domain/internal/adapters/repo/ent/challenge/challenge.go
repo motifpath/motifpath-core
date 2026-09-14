@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -24,8 +25,15 @@ const (
 	FieldRemediationTargetContentNodeID = "remediation_target_content_node_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeExercises holds the string denoting the exercises edge name in mutations.
+	EdgeExercises = "exercises"
 	// Table holds the table name of the challenge in the database.
 	Table = "challenges"
+	// ExercisesTable is the table that holds the exercises relation/edge. The primary key declared below.
+	ExercisesTable = "exercise_challenges"
+	// ExercisesInverseTable is the table name for the Exercise entity.
+	// It exists in this package in order to avoid circular dependency with the "exercise" package.
+	ExercisesInverseTable = "exercises"
 )
 
 // Columns holds all SQL columns for challenge fields.
@@ -37,6 +45,12 @@ var Columns = []string{
 	FieldRemediationTargetContentNodeID,
 	FieldCreatedAt,
 }
+
+var (
+	// ExercisesPrimaryKey and ExercisesColumn2 are the table columns denoting the
+	// primary key for the exercises relation (M2M).
+	ExercisesPrimaryKey = []string{"exercise_id", "challenge_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -86,4 +100,25 @@ func ByRemediationTargetContentNodeID(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByExercisesCount orders the results by exercises count.
+func ByExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExercisesStep(), opts...)
+	}
+}
+
+// ByExercises orders the results by exercises terms.
+func ByExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ExercisesTable, ExercisesPrimaryKey...),
+	)
 }

@@ -15,6 +15,9 @@ type ContentNode func(*sql.Selector)
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)
 
+// ExerciseOption is the predicate function for exerciseoption builders.
+type ExerciseOption func(*sql.Selector)
+
 // ExpandedContent is the predicate function for expandedcontent builders.
 type ExpandedContent func(*sql.Selector)
 

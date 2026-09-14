@@ -11,7 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 )
 
 // ExerciseCreate is the builder for creating a Exercise entity.
@@ -21,9 +23,15 @@ type ExerciseCreate struct {
 	hooks    []Hook
 }
 
-// SetChallengeID sets the "challenge_id" field.
-func (_c *ExerciseCreate) SetChallengeID(v uuid.UUID) *ExerciseCreate {
-	_c.mutation.SetChallengeID(v)
+// SetTitle sets the "title" field.
+func (_c *ExerciseCreate) SetTitle(v string) *ExerciseCreate {
+	_c.mutation.SetTitle(v)
+	return _c
+}
+
+// SetPrompt sets the "prompt" field.
+func (_c *ExerciseCreate) SetPrompt(v string) *ExerciseCreate {
+	_c.mutation.SetPrompt(v)
 	return _c
 }
 
@@ -33,9 +41,37 @@ func (_c *ExerciseCreate) SetExerciseType(v exercise.ExerciseType) *ExerciseCrea
 	return _c
 }
 
-// SetPrompt sets the "prompt" field.
-func (_c *ExerciseCreate) SetPrompt(v string) *ExerciseCreate {
-	_c.mutation.SetPrompt(v)
+// SetSkillTags sets the "skill_tags" field.
+func (_c *ExerciseCreate) SetSkillTags(v []string) *ExerciseCreate {
+	_c.mutation.SetSkillTags(v)
+	return _c
+}
+
+// SetImageURL sets the "image_url" field.
+func (_c *ExerciseCreate) SetImageURL(v string) *ExerciseCreate {
+	_c.mutation.SetImageURL(v)
+	return _c
+}
+
+// SetNillableImageURL sets the "image_url" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableImageURL(v *string) *ExerciseCreate {
+	if v != nil {
+		_c.SetImageURL(*v)
+	}
+	return _c
+}
+
+// SetAudioURL sets the "audio_url" field.
+func (_c *ExerciseCreate) SetAudioURL(v string) *ExerciseCreate {
+	_c.mutation.SetAudioURL(v)
+	return _c
+}
+
+// SetNillableAudioURL sets the "audio_url" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableAudioURL(v *string) *ExerciseCreate {
+	if v != nil {
+		_c.SetAudioURL(*v)
+	}
 	return _c
 }
 
@@ -65,6 +101,36 @@ func (_c *ExerciseCreate) SetNillableID(v *uuid.UUID) *ExerciseCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
+func (_c *ExerciseCreate) AddChallengeIDs(ids ...uuid.UUID) *ExerciseCreate {
+	_c.mutation.AddChallengeIDs(ids...)
+	return _c
+}
+
+// AddChallenges adds the "challenges" edges to the Challenge entity.
+func (_c *ExerciseCreate) AddChallenges(v ...*Challenge) *ExerciseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChallengeIDs(ids...)
+}
+
+// AddOptionIDs adds the "options" edge to the ExerciseOption entity by IDs.
+func (_c *ExerciseCreate) AddOptionIDs(ids ...uuid.UUID) *ExerciseCreate {
+	_c.mutation.AddOptionIDs(ids...)
+	return _c
+}
+
+// AddOptions adds the "options" edges to the ExerciseOption entity.
+func (_c *ExerciseCreate) AddOptions(v ...*ExerciseOption) *ExerciseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddOptionIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -114,8 +180,11 @@ func (_c *ExerciseCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ExerciseCreate) check() error {
-	if _, ok := _c.mutation.ChallengeID(); !ok {
-		return &ValidationError{Name: "challenge_id", err: errors.New(`ent: missing required field "Exercise.challenge_id"`)}
+	if _, ok := _c.mutation.Title(); !ok {
+		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "Exercise.title"`)}
+	}
+	if _, ok := _c.mutation.Prompt(); !ok {
+		return &ValidationError{Name: "prompt", err: errors.New(`ent: missing required field "Exercise.prompt"`)}
 	}
 	if _, ok := _c.mutation.ExerciseType(); !ok {
 		return &ValidationError{Name: "exercise_type", err: errors.New(`ent: missing required field "Exercise.exercise_type"`)}
@@ -124,9 +193,6 @@ func (_c *ExerciseCreate) check() error {
 		if err := exercise.ExerciseTypeValidator(v); err != nil {
 			return &ValidationError{Name: "exercise_type", err: fmt.Errorf(`ent: validator failed for field "Exercise.exercise_type": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.Prompt(); !ok {
-		return &ValidationError{Name: "prompt", err: errors.New(`ent: missing required field "Exercise.prompt"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Exercise.created_at"`)}
@@ -166,21 +232,65 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.ChallengeID(); ok {
-		_spec.SetField(exercise.FieldChallengeID, field.TypeUUID, value)
-		_node.ChallengeID = value
-	}
-	if value, ok := _c.mutation.ExerciseType(); ok {
-		_spec.SetField(exercise.FieldExerciseType, field.TypeEnum, value)
-		_node.ExerciseType = value
+	if value, ok := _c.mutation.Title(); ok {
+		_spec.SetField(exercise.FieldTitle, field.TypeString, value)
+		_node.Title = value
 	}
 	if value, ok := _c.mutation.Prompt(); ok {
 		_spec.SetField(exercise.FieldPrompt, field.TypeString, value)
 		_node.Prompt = value
 	}
+	if value, ok := _c.mutation.ExerciseType(); ok {
+		_spec.SetField(exercise.FieldExerciseType, field.TypeEnum, value)
+		_node.ExerciseType = value
+	}
+	if value, ok := _c.mutation.SkillTags(); ok {
+		_spec.SetField(exercise.FieldSkillTags, field.TypeJSON, value)
+		_node.SkillTags = value
+	}
+	if value, ok := _c.mutation.ImageURL(); ok {
+		_spec.SetField(exercise.FieldImageURL, field.TypeString, value)
+		_node.ImageURL = &value
+	}
+	if value, ok := _c.mutation.AudioURL(); ok {
+		_spec.SetField(exercise.FieldAudioURL, field.TypeString, value)
+		_node.AudioURL = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.ChallengesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ChallengesTable,
+			Columns: exercise.ChallengesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challenge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.OptionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   exercise.OptionsTable,
+			Columns: []string{exercise.OptionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseoption.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -55,9 +56,9 @@ func IDLTE(id uuid.UUID) predicate.Exercise {
 	return predicate.Exercise(sql.FieldLTE(FieldID, id))
 }
 
-// ChallengeID applies equality check predicate on the "challenge_id" field. It's identical to ChallengeIDEQ.
-func ChallengeID(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldEQ(FieldChallengeID, v))
+// Title applies equality check predicate on the "title" field. It's identical to TitleEQ.
+func Title(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldTitle, v))
 }
 
 // Prompt applies equality check predicate on the "prompt" field. It's identical to PromptEQ.
@@ -65,69 +66,84 @@ func Prompt(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldPrompt, v))
 }
 
+// ImageURL applies equality check predicate on the "image_url" field. It's identical to ImageURLEQ.
+func ImageURL(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldImageURL, v))
+}
+
+// AudioURL applies equality check predicate on the "audio_url" field. It's identical to AudioURLEQ.
+func AudioURL(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldAudioURL, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
 }
 
-// ChallengeIDEQ applies the EQ predicate on the "challenge_id" field.
-func ChallengeIDEQ(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldEQ(FieldChallengeID, v))
+// TitleEQ applies the EQ predicate on the "title" field.
+func TitleEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldTitle, v))
 }
 
-// ChallengeIDNEQ applies the NEQ predicate on the "challenge_id" field.
-func ChallengeIDNEQ(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldNEQ(FieldChallengeID, v))
+// TitleNEQ applies the NEQ predicate on the "title" field.
+func TitleNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldTitle, v))
 }
 
-// ChallengeIDIn applies the In predicate on the "challenge_id" field.
-func ChallengeIDIn(vs ...uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldIn(FieldChallengeID, vs...))
+// TitleIn applies the In predicate on the "title" field.
+func TitleIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldTitle, vs...))
 }
 
-// ChallengeIDNotIn applies the NotIn predicate on the "challenge_id" field.
-func ChallengeIDNotIn(vs ...uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldNotIn(FieldChallengeID, vs...))
+// TitleNotIn applies the NotIn predicate on the "title" field.
+func TitleNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldTitle, vs...))
 }
 
-// ChallengeIDGT applies the GT predicate on the "challenge_id" field.
-func ChallengeIDGT(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldGT(FieldChallengeID, v))
+// TitleGT applies the GT predicate on the "title" field.
+func TitleGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldTitle, v))
 }
 
-// ChallengeIDGTE applies the GTE predicate on the "challenge_id" field.
-func ChallengeIDGTE(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldGTE(FieldChallengeID, v))
+// TitleGTE applies the GTE predicate on the "title" field.
+func TitleGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldTitle, v))
 }
 
-// ChallengeIDLT applies the LT predicate on the "challenge_id" field.
-func ChallengeIDLT(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldLT(FieldChallengeID, v))
+// TitleLT applies the LT predicate on the "title" field.
+func TitleLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldTitle, v))
 }
 
-// ChallengeIDLTE applies the LTE predicate on the "challenge_id" field.
-func ChallengeIDLTE(v uuid.UUID) predicate.Exercise {
-	return predicate.Exercise(sql.FieldLTE(FieldChallengeID, v))
+// TitleLTE applies the LTE predicate on the "title" field.
+func TitleLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldTitle, v))
 }
 
-// ExerciseTypeEQ applies the EQ predicate on the "exercise_type" field.
-func ExerciseTypeEQ(v ExerciseType) predicate.Exercise {
-	return predicate.Exercise(sql.FieldEQ(FieldExerciseType, v))
+// TitleContains applies the Contains predicate on the "title" field.
+func TitleContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldTitle, v))
 }
 
-// ExerciseTypeNEQ applies the NEQ predicate on the "exercise_type" field.
-func ExerciseTypeNEQ(v ExerciseType) predicate.Exercise {
-	return predicate.Exercise(sql.FieldNEQ(FieldExerciseType, v))
+// TitleHasPrefix applies the HasPrefix predicate on the "title" field.
+func TitleHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldTitle, v))
 }
 
-// ExerciseTypeIn applies the In predicate on the "exercise_type" field.
-func ExerciseTypeIn(vs ...ExerciseType) predicate.Exercise {
-	return predicate.Exercise(sql.FieldIn(FieldExerciseType, vs...))
+// TitleHasSuffix applies the HasSuffix predicate on the "title" field.
+func TitleHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldTitle, v))
 }
 
-// ExerciseTypeNotIn applies the NotIn predicate on the "exercise_type" field.
-func ExerciseTypeNotIn(vs ...ExerciseType) predicate.Exercise {
-	return predicate.Exercise(sql.FieldNotIn(FieldExerciseType, vs...))
+// TitleEqualFold applies the EqualFold predicate on the "title" field.
+func TitleEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldTitle, v))
+}
+
+// TitleContainsFold applies the ContainsFold predicate on the "title" field.
+func TitleContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldTitle, v))
 }
 
 // PromptEQ applies the EQ predicate on the "prompt" field.
@@ -195,6 +211,186 @@ func PromptContainsFold(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldContainsFold(FieldPrompt, v))
 }
 
+// ExerciseTypeEQ applies the EQ predicate on the "exercise_type" field.
+func ExerciseTypeEQ(v ExerciseType) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldExerciseType, v))
+}
+
+// ExerciseTypeNEQ applies the NEQ predicate on the "exercise_type" field.
+func ExerciseTypeNEQ(v ExerciseType) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldExerciseType, v))
+}
+
+// ExerciseTypeIn applies the In predicate on the "exercise_type" field.
+func ExerciseTypeIn(vs ...ExerciseType) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldExerciseType, vs...))
+}
+
+// ExerciseTypeNotIn applies the NotIn predicate on the "exercise_type" field.
+func ExerciseTypeNotIn(vs ...ExerciseType) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldExerciseType, vs...))
+}
+
+// SkillTagsIsNil applies the IsNil predicate on the "skill_tags" field.
+func SkillTagsIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldSkillTags))
+}
+
+// SkillTagsNotNil applies the NotNil predicate on the "skill_tags" field.
+func SkillTagsNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldSkillTags))
+}
+
+// ImageURLEQ applies the EQ predicate on the "image_url" field.
+func ImageURLEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldImageURL, v))
+}
+
+// ImageURLNEQ applies the NEQ predicate on the "image_url" field.
+func ImageURLNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldImageURL, v))
+}
+
+// ImageURLIn applies the In predicate on the "image_url" field.
+func ImageURLIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldImageURL, vs...))
+}
+
+// ImageURLNotIn applies the NotIn predicate on the "image_url" field.
+func ImageURLNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldImageURL, vs...))
+}
+
+// ImageURLGT applies the GT predicate on the "image_url" field.
+func ImageURLGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldImageURL, v))
+}
+
+// ImageURLGTE applies the GTE predicate on the "image_url" field.
+func ImageURLGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldImageURL, v))
+}
+
+// ImageURLLT applies the LT predicate on the "image_url" field.
+func ImageURLLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldImageURL, v))
+}
+
+// ImageURLLTE applies the LTE predicate on the "image_url" field.
+func ImageURLLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldImageURL, v))
+}
+
+// ImageURLContains applies the Contains predicate on the "image_url" field.
+func ImageURLContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldImageURL, v))
+}
+
+// ImageURLHasPrefix applies the HasPrefix predicate on the "image_url" field.
+func ImageURLHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldImageURL, v))
+}
+
+// ImageURLHasSuffix applies the HasSuffix predicate on the "image_url" field.
+func ImageURLHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldImageURL, v))
+}
+
+// ImageURLIsNil applies the IsNil predicate on the "image_url" field.
+func ImageURLIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldImageURL))
+}
+
+// ImageURLNotNil applies the NotNil predicate on the "image_url" field.
+func ImageURLNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldImageURL))
+}
+
+// ImageURLEqualFold applies the EqualFold predicate on the "image_url" field.
+func ImageURLEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldImageURL, v))
+}
+
+// ImageURLContainsFold applies the ContainsFold predicate on the "image_url" field.
+func ImageURLContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldImageURL, v))
+}
+
+// AudioURLEQ applies the EQ predicate on the "audio_url" field.
+func AudioURLEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldAudioURL, v))
+}
+
+// AudioURLNEQ applies the NEQ predicate on the "audio_url" field.
+func AudioURLNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldAudioURL, v))
+}
+
+// AudioURLIn applies the In predicate on the "audio_url" field.
+func AudioURLIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldAudioURL, vs...))
+}
+
+// AudioURLNotIn applies the NotIn predicate on the "audio_url" field.
+func AudioURLNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldAudioURL, vs...))
+}
+
+// AudioURLGT applies the GT predicate on the "audio_url" field.
+func AudioURLGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldAudioURL, v))
+}
+
+// AudioURLGTE applies the GTE predicate on the "audio_url" field.
+func AudioURLGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldAudioURL, v))
+}
+
+// AudioURLLT applies the LT predicate on the "audio_url" field.
+func AudioURLLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldAudioURL, v))
+}
+
+// AudioURLLTE applies the LTE predicate on the "audio_url" field.
+func AudioURLLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldAudioURL, v))
+}
+
+// AudioURLContains applies the Contains predicate on the "audio_url" field.
+func AudioURLContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldAudioURL, v))
+}
+
+// AudioURLHasPrefix applies the HasPrefix predicate on the "audio_url" field.
+func AudioURLHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldAudioURL, v))
+}
+
+// AudioURLHasSuffix applies the HasSuffix predicate on the "audio_url" field.
+func AudioURLHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldAudioURL, v))
+}
+
+// AudioURLIsNil applies the IsNil predicate on the "audio_url" field.
+func AudioURLIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldAudioURL))
+}
+
+// AudioURLNotNil applies the NotNil predicate on the "audio_url" field.
+func AudioURLNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldAudioURL))
+}
+
+// AudioURLEqualFold applies the EqualFold predicate on the "audio_url" field.
+func AudioURLEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldAudioURL, v))
+}
+
+// AudioURLContainsFold applies the ContainsFold predicate on the "audio_url" field.
+func AudioURLContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldAudioURL, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
@@ -233,6 +429,52 @@ func CreatedAtLT(v time.Time) predicate.Exercise {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// HasChallenges applies the HasEdge predicate on the "challenges" edge.
+func HasChallenges() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, ChallengesTable, ChallengesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChallengesWith applies the HasEdge predicate on the "challenges" edge with a given conditions (other predicates).
+func HasChallengesWith(preds ...predicate.Challenge) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newChallengesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasOptions applies the HasEdge predicate on the "options" edge.
+func HasOptions() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, OptionsTable, OptionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasOptionsWith applies the HasEdge predicate on the "options" edge with a given conditions (other predicates).
+func HasOptionsWith(preds ...predicate.ExerciseOption) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newOptionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

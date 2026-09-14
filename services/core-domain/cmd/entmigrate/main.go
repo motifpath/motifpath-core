@@ -68,6 +68,12 @@ func main() {
 		schema.WithMigrationMode(schema.ModeReplay),
 		schema.WithDialect(dialect.Postgres),
 		schema.WithFormatter(sqltool.GolangMigrateFormatter),
+		// A field or index removed from the ent schema is meant to be gone —
+		// rollback here is redeploying the previous image, never a schema
+		// rollback, so there is no scenario where a dropped column needs to
+		// still exist for an old binary to read.
+		entmigrate.WithDropColumn(true),
+		entmigrate.WithDropIndex(true),
 	}
 
 	if err := entmigrate.NamedDiff(ctx, devURL, name, opts...); err != nil {

@@ -58,12 +58,78 @@ func toChallenge(c domain.Challenge) generated.Challenge {
 }
 
 func toExercise(e domain.Exercise) generated.Exercise {
-	return generated.Exercise{
+	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
+	for i, id := range e.ChallengeIDs {
+		challengeIDs[i] = mustUUID(id)
+	}
+	options := make([]generated.Option, len(e.Options))
+	for i, opt := range e.Options {
+		options[i] = toOption(opt)
+	}
+
+	exercise := generated.Exercise{
 		ExerciseId:   mustUUID(e.ID),
-		ChallengeId:  mustUUID(e.ChallengeID),
-		ExerciseType: generated.ExerciseExerciseType(e.ExerciseType),
+		Title:        e.Title,
 		Prompt:       e.Prompt,
+		ExerciseType: generated.ExerciseExerciseType(e.ExerciseType),
+		ImageUrl:     e.ImageURL,
+		AudioUrl:     e.AudioURL,
+		Options:      options,
+		ChallengeIds: challengeIDs,
 		CreatedAt:    e.CreatedAt,
+	}
+	if len(e.SkillTags) > 0 {
+		exercise.SkillTags = &e.SkillTags
+	}
+	return exercise
+}
+
+func toOption(o domain.Option) generated.Option {
+	option := generated.Option{
+		OptionId:  mustUUID(o.ID),
+		IsCorrect: o.IsCorrect,
+		Label:     o.Label,
+		ImageUrl:  o.ImageURL,
+	}
+	if o.Region != nil {
+		option.Region = &generated.OptionRegion{
+			X:      float32(o.Region.X),
+			Y:      float32(o.Region.Y),
+			Width:  float32(o.Region.Width),
+			Height: float32(o.Region.Height),
+			Shape:  generated.OptionRegionShape(o.Region.Shape),
+		}
+	}
+	return option
+}
+
+func toDomainOptions(options []generated.Option) []domain.Option {
+	result := make([]domain.Option, len(options))
+	for i, opt := range options {
+		result[i] = domain.Option{
+			ID:        opt.OptionId.String(),
+			IsCorrect: opt.IsCorrect,
+			Label:     opt.Label,
+			ImageURL:  opt.ImageUrl,
+		}
+		if opt.Region != nil {
+			result[i].Region = &domain.OptionRegion{
+				X:      float64(opt.Region.X),
+				Y:      float64(opt.Region.Y),
+				Width:  float64(opt.Region.Width),
+				Height: float64(opt.Region.Height),
+				Shape:  domain.OptionRegionShape(opt.Region.Shape),
+			}
+		}
+	}
+	return result
+}
+
+func toMediaUploadURL(u domain.MediaUploadURL) generated.MediaUploadUrl {
+	return generated.MediaUploadUrl{
+		UploadUrl: u.UploadURL,
+		ObjectUrl: u.ObjectURL,
+		ExpiresAt: u.ExpiresAt,
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
@@ -41,5 +42,11 @@ func (Challenge) Fields() []ent.Field {
 func (Challenge) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("content_node_id"),
+	}
+}
+
+func (Challenge) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("exercises", Exercise.Type).Ref("challenges"),
 	}
 }

@@ -51,9 +51,12 @@ var (
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "challenge_id", Type: field.TypeUUID},
-		{Name: "exercise_type", Type: field.TypeEnum, Enums: []string{"fretboard_region"}},
+		{Name: "title", Type: field.TypeString},
 		{Name: "prompt", Type: field.TypeString, Size: 2147483647},
+		{Name: "exercise_type", Type: field.TypeEnum, Enums: []string{"text_response", "audio_recognition", "image_recognition", "image_choice"}},
+		{Name: "skill_tags", Type: field.TypeJSON, Nullable: true},
+		{Name: "image_url", Type: field.TypeString, Nullable: true},
+		{Name: "audio_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.
@@ -61,11 +64,38 @@ var (
 		Name:       "exercises",
 		Columns:    ExercisesColumns,
 		PrimaryKey: []*schema.Column{ExercisesColumns[0]},
+	}
+	// ExerciseOptionsColumns holds the columns for the "exercise_options" table.
+	ExerciseOptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "is_correct", Type: field.TypeBool},
+		{Name: "label", Type: field.TypeString, Nullable: true},
+		{Name: "image_url", Type: field.TypeString, Nullable: true},
+		{Name: "region_x", Type: field.TypeFloat64, Nullable: true},
+		{Name: "region_y", Type: field.TypeFloat64, Nullable: true},
+		{Name: "region_width", Type: field.TypeFloat64, Nullable: true},
+		{Name: "region_height", Type: field.TypeFloat64, Nullable: true},
+		{Name: "region_shape", Type: field.TypeEnum, Nullable: true, Enums: []string{"rectangle", "circle"}},
+		{Name: "exercise_id", Type: field.TypeUUID},
+	}
+	// ExerciseOptionsTable holds the schema information for the "exercise_options" table.
+	ExerciseOptionsTable = &schema.Table{
+		Name:       "exercise_options",
+		Columns:    ExerciseOptionsColumns,
+		PrimaryKey: []*schema.Column{ExerciseOptionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "exercise_options_exercises_options",
+				Columns:    []*schema.Column{ExerciseOptionsColumns[9]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "exercise_challenge_id",
+				Name:    "exerciseoption_exercise_id",
 				Unique:  false,
-				Columns: []*schema.Column{ExercisesColumns[1]},
+				Columns: []*schema.Column{ExerciseOptionsColumns[9]},
 			},
 		},
 	}
@@ -156,18 +186,48 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// ExerciseChallengesColumns holds the columns for the "exercise_challenges" table.
+	ExerciseChallengesColumns = []*schema.Column{
+		{Name: "exercise_id", Type: field.TypeUUID},
+		{Name: "challenge_id", Type: field.TypeUUID},
+	}
+	// ExerciseChallengesTable holds the schema information for the "exercise_challenges" table.
+	ExerciseChallengesTable = &schema.Table{
+		Name:       "exercise_challenges",
+		Columns:    ExerciseChallengesColumns,
+		PrimaryKey: []*schema.Column{ExerciseChallengesColumns[0], ExerciseChallengesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "exercise_challenges_exercise_id",
+				Columns:    []*schema.Column{ExerciseChallengesColumns[0]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "exercise_challenges_challenge_id",
+				Columns:    []*schema.Column{ExerciseChallengesColumns[1]},
+				RefColumns: []*schema.Column{ChallengesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChallengesTable,
 		ContentNodesTable,
 		ExercisesTable,
+		ExerciseOptionsTable,
 		ExpandedContentsTable,
 		LearningPathsTable,
 		LearningPathItemsTable,
 		PathAssignmentsTable,
 		UsersTable,
+		ExerciseChallengesTable,
 	}
 )
 
 func init() {
+	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
+	ExerciseChallengesTable.ForeignKeys[0].RefTable = ExercisesTable
+	ExerciseChallengesTable.ForeignKeys[1].RefTable = ChallengesTable
 }

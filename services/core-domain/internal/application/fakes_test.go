@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -192,6 +193,48 @@ func (f *fakeExerciseRepository) GetByID(_ context.Context, id string) (domain.E
 	return exercise, nil
 }
 
+func (f *fakeExerciseRepository) LinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	exercise, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	exercise.ChallengeIDs = append(exercise.ChallengeIDs, challengeID)
+	f.byID[exerciseID] = exercise
+	return nil
+}
+
+func (f *fakeExerciseRepository) UnlinkChallenge(_ context.Context, exerciseID, challengeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	exercise, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(exercise.ChallengeIDs))
+	for _, id := range exercise.ChallengeIDs {
+		if id != challengeID {
+			remaining = append(remaining, id)
+		}
+	}
+	exercise.ChallengeIDs = remaining
+	f.byID[exerciseID] = exercise
+	return nil
+}
+
+func (f *fakeExerciseRepository) put(exercise domain.Exercise) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[exercise.ID] = exercise
+}
+
+func (f *fakeExerciseRepository) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID)
+}
+
 // fakeExpandedContentRepository is a minimal in-memory
 // ports.ExpandedContentRepository.
 type fakeExpandedContentRepository struct {
@@ -333,6 +376,33 @@ func (f *fakeCompletionStateReader) set(studentID, contentNodeID string, status 
 		f.statuses[studentID] = map[string]domain.CompletionStatus{}
 	}
 	f.statuses[studentID][contentNodeID] = status
+}
+
+// fakeMediaStorage is a minimal in-memory ports.MediaStorage.
+type fakeMediaStorage struct {
+	mu          sync.Mutex
+	presignErr  error
+	lastKey     string
+	lastContent domain.MediaContentType
+}
+
+func newFakeMediaStorage() *fakeMediaStorage {
+	return &fakeMediaStorage{}
+}
+
+func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, contentType domain.MediaContentType) (domain.MediaUploadURL, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.presignErr != nil {
+		return domain.MediaUploadURL{}, f.presignErr
+	}
+	f.lastKey = objectKey
+	f.lastContent = contentType
+	return domain.MediaUploadURL{
+		UploadURL: "https://storage.example.com/" + objectKey + "?presigned=1",
+		ObjectURL: "https://cdn.example.com/" + objectKey,
+		ExpiresAt: fixedCreatedAt.Add(15 * time.Minute),
+	}, nil
 }
 
 // idSequence returns a deterministic newID func for tests: "id-1", "id-2", ...
