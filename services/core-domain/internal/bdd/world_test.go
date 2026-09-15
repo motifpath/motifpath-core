@@ -53,12 +53,18 @@ type world struct {
 	hasToken bool
 	clerkSub string // the "sub" claim of whichever identity is currently authenticated
 
+	// lastResp holds whichever generated ...ResponseObject the most recent
+	// handler call returned — one of dozens of distinct generated types
+	// across every operation this world drives, so `any` here is the
+	// existing, deliberate exception to the "never use any" rule: BDD step
+	// assertions type-switch on it, same as every other feature file's
+	// steps already do.
 	lastResp any
 	lastErr  error
 
-	// multiResp collects responses from a "does X twice" or "does X and Y"
-	// step (repeated list calls, two generated practice sessions) — shared
-	// across features rather than one dedicated field per scenario shape.
+	// multiResp is lastResp's repeated-call counterpart, for a "does X
+	// twice" or "does X and Y" step (repeated list calls, two generated
+	// practice sessions) — same `any` exception as lastResp, same reason.
 	multiResp []any
 
 	// multiCreateIDs collects the ids returned by a "creates three X" step,
