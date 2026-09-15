@@ -53,6 +53,8 @@ func (Challenge) Indexes() []ent.Index {
 
 func (Challenge) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("exercises", Exercise.Type).Ref("challenges"),
+		edge.From("exercises", Exercise.Type).
+			Ref("challenges").
+			Through("challenge_exercises", ChallengeExercise.Type),
 	}
 }

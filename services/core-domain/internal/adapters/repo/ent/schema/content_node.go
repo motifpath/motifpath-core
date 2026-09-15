@@ -53,6 +53,8 @@ func (ContentNode) Fields() []ent.Field {
 
 func (ContentNode) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("path_exercises", Exercise.Type).Ref("content_nodes"),
+		edge.From("path_exercises", Exercise.Type).
+			Ref("content_nodes").
+			Through("content_node_exercises", ContentNodeExercise.Type),
 	}
 }

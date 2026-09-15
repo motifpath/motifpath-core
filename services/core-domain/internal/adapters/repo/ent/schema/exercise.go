@@ -53,8 +53,10 @@ func (Exercise) Fields() []ent.Field {
 
 func (Exercise) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("challenges", Challenge.Type),
-		edge.To("content_nodes", ContentNode.Type),
+		edge.To("challenges", Challenge.Type).
+			Through("challenge_exercises", ChallengeExercise.Type),
+		edge.To("content_nodes", ContentNode.Type).
+			Through("content_node_exercises", ContentNodeExercise.Type),
 		edge.To("options", ExerciseOption.Type),
 	}
 }
