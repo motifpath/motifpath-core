@@ -18,6 +18,12 @@ import (
 
 var fixedNow = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
 
+// noShuffle is a shuffle func that never reorders anything — the BDD world's
+// default, since most scenarios assert deterministic order. Shuffle-specific
+// scenarios construct their own ExerciseService directly with a different
+// shuffle func rather than going through world.handler.
+func noShuffle(int, func(i, j int)) {}
+
 // world holds all state for a single scenario. A fresh instance is created
 // by InitializeScenario for every scenario godog runs, giving each scenario
 // full isolation without an explicit teardown step.
@@ -49,6 +55,11 @@ type world struct {
 
 	lastResp any
 	lastErr  error
+
+	// multiResp collects responses from a "does X twice" or "does X and Y"
+	// step (repeated list calls, two generated practice sessions) — shared
+	// across features rather than one dedicated field per scenario shape.
+	multiResp []any
 
 	// multiCreateIDs collects the ids returned by a "creates three X" step,
 	// for the "three distinct identifiers are returned" assertion shared by
@@ -83,7 +94,7 @@ func newWorld() *world {
 	identity := application.NewIdentityService(w.users, newID, now)
 	content := application.NewContentService(w.nodes, w.expanded, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, newID, now)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, newID, now, noShuffle)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.completion, newID, now)

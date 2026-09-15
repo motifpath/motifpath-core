@@ -37,6 +37,27 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" attempts to link exercise "([^"]+)" to "([^"]+)"$`, w.linksExerciseToChallenge)
 	sc.Step(`^"([^"]+)" attempts to unlink exercise "([^"]+)" from "([^"]+)"$`, w.unlinksExerciseFromChallenge)
 
+	sc.Step(`^"([^"]+)" lists the exercises for challenge "([^"]+)"$`, w.listsChallengeExercises)
+	sc.Step(`^"([^"]+)" lists the exercises for challenge "([^"]+)" twice$`, w.listsChallengeExercisesTwice)
+	sc.Step(`^"([^"]+)" lists the exercises for a challenge ID that does not exist$`, w.listsChallengeExercisesMissing)
+	sc.Step(`^an unauthenticated request attempts to list the exercises for challenge "([^"]+)"$`, w.unauthListsChallengeExercises)
+	sc.Step(`^a challenge "([^"]+)" exists for content node "([^"]+)" with exercise shuffling disabled$`, w.putChallengeNoShuffle)
+	sc.Step(`^a challenge "([^"]+)" exists for content node "([^"]+)" with exercise shuffling and option shuffling enabled$`, w.putChallengeShuffled)
+	sc.Step(`^(\d+) exercises are linked to "([^"]+)" in a known order$`, w.linksNExercisesToChallenge)
+
+	sc.Step(`^"([^"]+)" links exercise "([^"]+)" to content node "([^"]+)" as a path exercise$`, w.linksExerciseToContentNode)
+	sc.Step(`^"([^"]+)" has linked exercise "([^"]+)" to content node "([^"]+)" as a path exercise$`, w.linksExerciseToContentNode)
+	sc.Step(`^"([^"]+)" attempts to link exercise "([^"]+)" to content node "([^"]+)" as a path exercise$`, w.linksExerciseToContentNode)
+	sc.Step(`^"([^"]+)" unlinks exercise "([^"]+)" from content node "([^"]+)"$`, w.unlinksExerciseFromContentNode)
+	sc.Step(`^"([^"]+)" attempts to unlink exercise "([^"]+)" from content node "([^"]+)"$`, w.unlinksExerciseFromContentNode)
+	sc.Step(`^"([^"]+)" links an exercise ID that does not exist to content node "([^"]+)" as a path exercise$`, w.linksMissingExerciseToContentNode)
+	sc.Step(`^"([^"]+)" links exercise "([^"]+)" to a content node ID that does not exist as a path exercise$`, w.linksExerciseToMissingContentNode)
+	sc.Step(`^"([^"]+)" lists the path exercises for content node "([^"]+)"$`, w.listsPathExercises)
+	sc.Step(`^"([^"]+)" lists the path exercises for content node "([^"]+)" twice$`, w.listsPathExercisesTwice)
+	sc.Step(`^"([^"]+)" lists the path exercises for a content node ID that does not exist$`, w.listsPathExercisesMissing)
+	sc.Step(`^an unauthenticated request attempts to link an exercise to content node "([^"]+)"\s+as a path exercise$`, w.unauthLinksPathExercise)
+	sc.Step(`^an unauthenticated request attempts to list the path exercises for content node "([^"]+)"$`, w.unauthListsPathExercises)
+
 	sc.Step(`^the exercise is created and assigned a stable identifier$`, w.exerciseCreated)
 	sc.Step(`^the exercise's type is recorded as (\S+)$`, w.exerciseTypeRecorded)
 	sc.Step(`^the exercise carries skill tags "([^"]+)"$`, w.exerciseCarriesSkillTags)
@@ -46,6 +67,15 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the exercise records both "([^"]+)" and "([^"]+)" among its linked challenges$`, w.exerciseRecordsBothLinkedChallenges)
 	sc.Step(`^exactly one exercise "([^"]+)" exists in the system$`, w.exactlyOneExerciseExists)
 	sc.Step(`^the exercise no longer records "([^"]+)" among its linked challenges$`, w.exerciseNoLongerRecordsLinkedChallenge)
+	sc.Step(`^each returned exercise's options report whether they are correct$`, w.optionsReportCorrectness)
+	sc.Step(`^both responses return the exercises in the same, link order$`, w.bothResponsesExercisesSameOrder)
+	sc.Step(`^both responses return the same set of exercises$`, w.bothResponsesSameSetOfExercises)
+	sc.Step(`^the two responses are not required to return them in the same order$`, func() error { return nil })
+
+	sc.Step(`^the exercise records "([^"]+)" among its linked content nodes$`, w.exerciseRecordsLinkedContentNode)
+	sc.Step(`^the exercise no longer records "([^"]+)" among its linked content nodes$`, w.exerciseNoLongerRecordsLinkedContentNode)
+	sc.Step(`^both responses include "([^"]+)"$`, w.bothResponsesIncludePathExercise)
+	sc.Step(`^both responses return the path exercises in the same, link order$`, w.bothResponsesPathExercisesSameOrder)
 }
 
 func (w *world) putExercise(slug string) error {
@@ -353,6 +383,302 @@ func (w *world) exactlyOneExerciseExists(slug string) error {
 func (w *world) exerciseNoLongerRecordsLinkedChallenge(challengeSlug string) error {
 	if _, ok := w.lastResp.(generated.UnlinkExerciseFromChallenge204Response); !ok {
 		return fmt.Errorf("expected a 204 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return nil
+}
+
+func (w *world) listsChallengeExercises(name, challengeSlug string) error {
+	resp, err := w.handler.ListChallengeExercises(w.ctx(), generated.ListChallengeExercisesRequestObject{ChallengeId: challengeID(challengeSlug)})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsChallengeExercisesTwice(name, challengeSlug string) error {
+	w.multiResp = nil
+	if err := w.listsChallengeExercises(name, challengeSlug); err != nil {
+		return err
+	}
+	w.multiResp = append(w.multiResp, w.lastResp)
+	if err := w.listsChallengeExercises(name, challengeSlug); err != nil {
+		return err
+	}
+	w.multiResp = append(w.multiResp, w.lastResp)
+	return nil
+}
+
+func (w *world) listsChallengeExercisesMissing(string) error {
+	resp, err := w.handler.ListChallengeExercises(w.ctx(), generated.ListChallengeExercisesRequestObject{ChallengeId: deterministicUUID("challenge", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthListsChallengeExercises(challengeSlug string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsChallengeExercises("", challengeSlug)
+}
+
+func (w *world) putChallengeNoShuffle(challengeSlug, nodeSlug string) error {
+	w.challenges.put(domain.Challenge{
+		ID:            challengeID(challengeSlug).String(),
+		ContentNodeID: nodeID(nodeSlug).String(),
+		SubjectTag:    "subject-" + challengeSlug,
+		PassThreshold: 70,
+		CreatedAt:     fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putChallengeShuffled(challengeSlug, nodeSlug string) error {
+	w.challenges.put(domain.Challenge{
+		ID:               challengeID(challengeSlug).String(),
+		ContentNodeID:    nodeID(nodeSlug).String(),
+		SubjectTag:       "subject-" + challengeSlug,
+		PassThreshold:    70,
+		ShuffleExercises: true,
+		ShuffleOptions:   true,
+		CreatedAt:        fixedNow,
+	})
+	return nil
+}
+
+func (w *world) linksNExercisesToChallenge(countStr, challengeSlug string) error {
+	count, err := parseInt(countStr)
+	if err != nil {
+		return err
+	}
+	for i := 1; i <= count; i++ {
+		slug := fmt.Sprintf("%s-ex-%d", challengeSlug, i)
+		label := "option-" + slug
+		w.exercises.put(domain.Exercise{
+			ID:             exerciseID(slug).String(),
+			Title:          "title-" + slug,
+			Prompt:         "prompt-" + slug,
+			ExerciseType:   domain.ExerciseTypeTextResponse,
+			Options:        []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}, {ID: uuid.NewString(), IsCorrect: false, Label: &label}},
+			ChallengeIDs:   []string{challengeID(challengeSlug).String()},
+			ContentNodeIDs: []string{},
+			CreatedAt:      fixedNow,
+		})
+	}
+	return nil
+}
+
+func (w *world) optionsReportCorrectness() error {
+	resp, ok := w.lastResp.(generated.ListChallengeExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	for _, e := range resp {
+		if len(e.Options) == 0 {
+			return fmt.Errorf("expected exercise %s to have options, got none", e.ExerciseId)
+		}
+	}
+	return nil
+}
+
+func (w *world) bothResponsesExercisesSameOrder() error {
+	if len(w.multiResp) != 2 {
+		return fmt.Errorf("expected 2 recorded responses, got %d", len(w.multiResp))
+	}
+	first, ok := w.multiResp[0].(generated.ListChallengeExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a list-exercises response, got %#v", w.multiResp[0])
+	}
+	second, ok := w.multiResp[1].(generated.ListChallengeExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a list-exercises response, got %#v", w.multiResp[1])
+	}
+	if len(first) != len(second) {
+		return fmt.Errorf("expected both responses to have the same length, got %d and %d", len(first), len(second))
+	}
+	for i := range first {
+		if first[i].ExerciseId != second[i].ExerciseId {
+			return fmt.Errorf("expected the same order across both responses, got %v and %v", idsOfExercises(first), idsOfExercises(second))
+		}
+	}
+	return nil
+}
+
+func (w *world) bothResponsesSameSetOfExercises() error {
+	if len(w.multiResp) != 2 {
+		return fmt.Errorf("expected 2 recorded responses, got %d", len(w.multiResp))
+	}
+	first, ok := w.multiResp[0].(generated.ListChallengeExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a list-exercises response, got %#v", w.multiResp[0])
+	}
+	second, ok := w.multiResp[1].(generated.ListChallengeExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a list-exercises response, got %#v", w.multiResp[1])
+	}
+	firstSet, secondSet := map[uuid.UUID]bool{}, map[uuid.UUID]bool{}
+	for _, e := range first {
+		firstSet[e.ExerciseId] = true
+	}
+	for _, e := range second {
+		secondSet[e.ExerciseId] = true
+	}
+	if len(firstSet) != len(secondSet) {
+		return fmt.Errorf("expected the same set of exercises, got %v and %v", idsOfExercises(first), idsOfExercises(second))
+	}
+	for id := range firstSet {
+		if !secondSet[id] {
+			return fmt.Errorf("expected the same set of exercises, got %v and %v", idsOfExercises(first), idsOfExercises(second))
+		}
+	}
+	return nil
+}
+
+func idsOfExercises(exercises []generated.Exercise) []uuid.UUID {
+	ids := make([]uuid.UUID, len(exercises))
+	for i, e := range exercises {
+		ids[i] = e.ExerciseId
+	}
+	return ids
+}
+
+func (w *world) linksExerciseToContentNode(name, exerciseSlug, nodeSlug string) error {
+	resp, err := w.handler.LinkExerciseToContentNode(w.ctx(), generated.LinkExerciseToContentNodeRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		ExerciseId:    exerciseID(exerciseSlug),
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unlinksExerciseFromContentNode(name, exerciseSlug, nodeSlug string) error {
+	resp, err := w.handler.UnlinkExerciseFromContentNode(w.ctx(), generated.UnlinkExerciseFromContentNodeRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		ExerciseId:    exerciseID(exerciseSlug),
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) linksMissingExerciseToContentNode(name, nodeSlug string) error {
+	resp, err := w.handler.LinkExerciseToContentNode(w.ctx(), generated.LinkExerciseToContentNodeRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		ExerciseId:    deterministicUUID("exercise", "does-not-exist"),
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) linksExerciseToMissingContentNode(name, exerciseSlug string) error {
+	resp, err := w.handler.LinkExerciseToContentNode(w.ctx(), generated.LinkExerciseToContentNodeRequestObject{
+		ContentNodeId: deterministicUUID("node", "does-not-exist"),
+		ExerciseId:    exerciseID(exerciseSlug),
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsPathExercises(name, nodeSlug string) error {
+	resp, err := w.handler.ListContentNodePathExercises(w.ctx(), generated.ListContentNodePathExercisesRequestObject{ContentNodeId: nodeID(nodeSlug)})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsPathExercisesTwice(name, nodeSlug string) error {
+	w.multiResp = nil
+	if err := w.listsPathExercises(name, nodeSlug); err != nil {
+		return err
+	}
+	w.multiResp = append(w.multiResp, w.lastResp)
+	if err := w.listsPathExercises(name, nodeSlug); err != nil {
+		return err
+	}
+	w.multiResp = append(w.multiResp, w.lastResp)
+	return nil
+}
+
+func (w *world) listsPathExercisesMissing(string) error {
+	resp, err := w.handler.ListContentNodePathExercises(w.ctx(), generated.ListContentNodePathExercisesRequestObject{ContentNodeId: deterministicUUID("node", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthLinksPathExercise(nodeSlug string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.linksExerciseToContentNode("", "does-not-exist", nodeSlug)
+}
+
+func (w *world) unauthListsPathExercises(nodeSlug string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsPathExercises("", nodeSlug)
+}
+
+func (w *world) exerciseRecordsLinkedContentNode(nodeSlug string) error {
+	want := nodeID(nodeSlug)
+	switch resp := w.lastResp.(type) {
+	case generated.LinkExerciseToContentNode201JSONResponse:
+		for _, id := range resp.ContentNodeIds {
+			if id == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected content_node_ids to contain %s, got %v", want, resp.ContentNodeIds)
+	case generated.LinkExerciseToChallenge201JSONResponse:
+		for _, id := range resp.ContentNodeIds {
+			if id == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected content_node_ids to contain %s, got %v", want, resp.ContentNodeIds)
+	default:
+		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	}
+}
+
+func (w *world) exerciseNoLongerRecordsLinkedContentNode(nodeSlug string) error {
+	if _, ok := w.lastResp.(generated.UnlinkExerciseFromContentNode204Response); !ok {
+		return fmt.Errorf("expected a 204 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return nil
+}
+
+func (w *world) bothResponsesIncludePathExercise(slug string) error {
+	if len(w.multiResp) != 2 {
+		return fmt.Errorf("expected 2 recorded responses, got %d", len(w.multiResp))
+	}
+	want := exerciseID(slug)
+	for i, r := range w.multiResp {
+		resp, ok := r.(generated.ListContentNodePathExercises200JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected a path-exercises list response at index %d, got %#v", i, r)
+		}
+		found := false
+		for _, e := range resp {
+			if e.ExerciseId == want {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("expected response %d to include %s, got %v", i, want, resp)
+		}
+	}
+	return nil
+}
+
+func (w *world) bothResponsesPathExercisesSameOrder() error {
+	if len(w.multiResp) != 2 {
+		return fmt.Errorf("expected 2 recorded responses, got %d", len(w.multiResp))
+	}
+	first, ok := w.multiResp[0].(generated.ListContentNodePathExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a path-exercises list response, got %#v", w.multiResp[0])
+	}
+	second, ok := w.multiResp[1].(generated.ListContentNodePathExercises200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a path-exercises list response, got %#v", w.multiResp[1])
+	}
+	if len(first) != len(second) {
+		return fmt.Errorf("expected both responses to have the same length, got %d and %d", len(first), len(second))
+	}
+	for i := range first {
+		if first[i].ExerciseId != second[i].ExerciseId {
+			return fmt.Errorf("expected the same order across both responses")
+		}
 	}
 	return nil
 }

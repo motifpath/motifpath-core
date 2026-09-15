@@ -29,6 +29,54 @@ func registerCommonSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^three distinct exercise identifiers are returned$`, w.threeDistinctIdentifiersReturned)
 	sc.Step(`^three distinct expanded content identifiers are returned$`, w.threeDistinctIdentifiersReturned)
+
+	// Shared across the challenges and exercises features: both list a
+	// resource by parent ID and assert membership/emptiness the same way.
+	sc.Step(`^the response includes "([^"]+)"$`, w.responseIncludes)
+	sc.Step(`^the response is an empty list$`, w.responseIsEmptyList)
+}
+
+func (w *world) responseIncludes(slug string) error {
+	switch resp := w.lastResp.(type) {
+	case generated.ListContentNodeChallenges200JSONResponse:
+		want := challengeID(slug)
+		for _, c := range resp {
+			if c.ChallengeId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected challenges to include %s, got %+v", want, resp)
+	case generated.ListChallengeExercises200JSONResponse:
+		want := exerciseID(slug)
+		for _, e := range resp {
+			if e.ExerciseId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
+	default:
+		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
+	}
+}
+
+func (w *world) responseIsEmptyList() error {
+	switch resp := w.lastResp.(type) {
+	case generated.ListContentNodeChallenges200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d challenges", len(resp))
+		}
+	case generated.ListChallengeExercises200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d exercises", len(resp))
+		}
+	case generated.ListContentNodePathExercises200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d path exercises", len(resp))
+		}
+	default:
+		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
+	}
+	return nil
 }
 
 func (w *world) threeDistinctIdentifiersReturned() error {
@@ -58,6 +106,8 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateExercise403JSONResponse,
 		generated.LinkExerciseToChallenge403JSONResponse,
 		generated.UnlinkExerciseFromChallenge403JSONResponse,
+		generated.LinkExerciseToContentNode403JSONResponse,
+		generated.UnlinkExerciseFromContentNode403JSONResponse,
 		generated.CreateMediaUploadUrl403JSONResponse,
 		generated.CreateExpandedContent403JSONResponse,
 		generated.CreateLearningPath403JSONResponse,
@@ -74,9 +124,14 @@ func (w *world) requestRefusedNotFound() error {
 	case generated.GetContentNode404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
 		generated.GetChallenge404JSONResponse,
+		generated.ListContentNodeChallenges404JSONResponse,
 		generated.GetExercise404JSONResponse,
 		generated.LinkExerciseToChallenge404JSONResponse,
 		generated.UnlinkExerciseFromChallenge404JSONResponse,
+		generated.ListChallengeExercises404JSONResponse,
+		generated.ListContentNodePathExercises404JSONResponse,
+		generated.LinkExerciseToContentNode404JSONResponse,
+		generated.UnlinkExerciseFromContentNode404JSONResponse,
 		generated.CreateMediaUploadUrl404JSONResponse,
 		generated.CreateExpandedContent404JSONResponse,
 		generated.ListExpandedContent404JSONResponse,
@@ -94,7 +149,8 @@ func (w *world) requestRefusedNotFound() error {
 func (w *world) requestRefusedConflict() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser409JSONResponse,
-		generated.LinkExerciseToChallenge409JSONResponse:
+		generated.LinkExerciseToChallenge409JSONResponse,
+		generated.LinkExerciseToContentNode409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -109,10 +165,16 @@ func (w *world) requestRefusedAuthError() error {
 		generated.GetContentNode401JSONResponse,
 		generated.CreateChallenge401JSONResponse,
 		generated.GetChallenge401JSONResponse,
+		generated.ListContentNodeChallenges401JSONResponse,
 		generated.CreateExercise401JSONResponse,
 		generated.GetExercise401JSONResponse,
 		generated.LinkExerciseToChallenge401JSONResponse,
 		generated.UnlinkExerciseFromChallenge401JSONResponse,
+		generated.ListChallengeExercises401JSONResponse,
+		generated.ListContentNodePathExercises401JSONResponse,
+		generated.LinkExerciseToContentNode401JSONResponse,
+		generated.UnlinkExerciseFromContentNode401JSONResponse,
+		generated.StartPracticeSession401JSONResponse,
 		generated.CreateMediaUploadUrl401JSONResponse,
 		generated.CreateExpandedContent401JSONResponse,
 		generated.ListExpandedContent401JSONResponse,
@@ -151,6 +213,8 @@ func (w *world) validationErrors() ([]struct {
 }, error) {
 	switch resp := w.lastResp.(type) {
 	case generated.RegisterUser400JSONResponse:
+		return resp.Errors, nil
+	case generated.StartPracticeSession400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateContentNode400JSONResponse:
 		return resp.Errors, nil
