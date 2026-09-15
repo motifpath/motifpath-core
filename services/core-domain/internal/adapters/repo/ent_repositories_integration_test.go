@@ -182,6 +182,53 @@ func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 	assert.Empty(t, empty)
 }
 
+// TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder guards
+// against relying on incidental Postgres row order: an implicit ent
+// many-to-many join table carries no sequence column, so a plain
+// "WHERE challenge_id = ..." SELECT has no ordering guarantee at all. This
+// links enough exercises, in a deliberately non-ID-sorted order, that a
+// query without a real ORDER BY would very likely (though not
+// deterministically) return them out of order.
+func TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	challengeRepo := NewEntChallengeRepository(client)
+	repo := NewEntExerciseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, challenge))
+
+	label := "A major"
+	const linkCount = 8
+	linkedIDs := make([]string, linkCount)
+	for i := range linkCount {
+		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+		require.NoError(t, repo.Create(ctx, ex))
+		linkedIDs[i] = ex.ID
+	}
+	// Link in reverse-ID order so link order and ID order disagree —
+	// otherwise an accidental "ORDER BY id" fallback in Postgres could mask
+	// a missing real ORDER BY.
+	for i := linkCount - 1; i >= 0; i-- {
+		require.NoError(t, repo.LinkChallenge(ctx, linkedIDs[i], challenge.ID))
+	}
+	wantOrder := make([]string, linkCount)
+	for i, id := range linkedIDs {
+		wantOrder[linkCount-1-i] = id
+	}
+
+	list, err := repo.ListByChallengeID(ctx, challenge.ID)
+	require.NoError(t, err)
+	require.Len(t, list, linkCount)
+	gotOrder := make([]string, linkCount)
+	for i, ex := range list {
+		gotOrder[i] = ex.ID
+	}
+	assert.Equal(t, wantOrder, gotOrder)
+}
+
 func TestEntExerciseRepository_LinkAndUnlinkContentNode(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -212,6 +259,44 @@ func TestEntExerciseRepository_LinkAndUnlinkContentNode(t *testing.T) {
 	got, err = repo.GetByID(ctx, exercise.ID)
 	require.NoError(t, err)
 	assert.Equal(t, []string{nodeB.ID}, got.ContentNodeIDs)
+}
+
+// TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder mirrors
+// TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder for path
+// exercises — a teacher-authored sequence, so link order must be a real
+// queried column, not incidental Postgres row order.
+func TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntExerciseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+
+	label := "A major"
+	const linkCount = 8
+	linkedIDs := make([]string, linkCount)
+	for i := range linkCount {
+		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+		require.NoError(t, repo.Create(ctx, ex))
+		linkedIDs[i] = ex.ID
+	}
+	for i := linkCount - 1; i >= 0; i-- {
+		require.NoError(t, repo.LinkContentNode(ctx, linkedIDs[i], node.ID))
+	}
+	wantOrder := make([]string, linkCount)
+	for i, id := range linkedIDs {
+		wantOrder[linkCount-1-i] = id
+	}
+
+	list, err := repo.ListByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	require.Len(t, list, linkCount)
+	gotOrder := make([]string, linkCount)
+	for i, ex := range list {
+		gotOrder[i] = ex.ID
+	}
+	assert.Equal(t, wantOrder, gotOrder)
 }
 
 func TestEntExerciseRepository_ListBySkillTag(t *testing.T) {
