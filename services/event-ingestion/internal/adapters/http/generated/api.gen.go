@@ -103,6 +103,8 @@ const (
 const (
 	ChallengeSequence TriggerContextSource = "challenge_sequence"
 	FreePractice      TriggerContextSource = "free_practice"
+	PathExercise      TriggerContextSource = "path_exercise"
+	PracticeSession   TriggerContextSource = "practice_session"
 	Remediation       TriggerContextSource = "remediation"
 )
 
@@ -537,18 +539,39 @@ type TriggerContext struct {
 	ChallengeId *openapi_types.UUID `json:"challenge_id,omitempty"`
 
 	// ContentNodeId ID of the ContentNode in whose context the exercise was triggered. Present when
-	// source is challenge_sequence or remediation. May be omitted for free_practice.
+	// source is challenge_sequence, path_exercise, or remediation. Absent for
+	// practice_session and free_practice, which are not tied to a single node.
 	ContentNodeId *openapi_types.UUID `json:"content_node_id,omitempty"`
 
+	// PracticeSessionId ID of the generated practice session this exercise belongs to.
+	// Present only when source is practice_session. Groups the exercise.*
+	// events emitted for one GET /practice-sessions call, since the
+	// session itself is not a stored resource.
+	PracticeSessionId *openapi_types.UUID `json:"practice_session_id,omitempty"`
+
+	// SkillTag The skill tag this exercise was selected for. Present only when
+	// source is practice_session — the tag passed to
+	// GET /practice-sessions. Lets the Aggregation Worker compute
+	// per-skill accuracy for the recommendation engine.
+	SkillTag *string `json:"skill_tag,omitempty"`
+
 	// Source What triggered this exercise session. challenge_sequence = part of a
-	// ContentExpansionSettings challenge; free_practice = student initiated independently;
-	// remediation = surfaced by the recommendation engine as a remediation target.
+	// node's challenge; path_exercise = one of a node's static,
+	// teacher-curated introductory exercises; practice_session = a
+	// randomized, skill-targeted session started via GET /practice-sessions
+	// — the primary between-lessons practice loop; free_practice = student
+	// initiated independently, outside any of the above; remediation =
+	// surfaced by the recommendation engine as a remediation target.
 	Source TriggerContextSource `json:"source"`
 }
 
 // TriggerContextSource What triggered this exercise session. challenge_sequence = part of a
-// ContentExpansionSettings challenge; free_practice = student initiated independently;
-// remediation = surfaced by the recommendation engine as a remediation target.
+// node's challenge; path_exercise = one of a node's static,
+// teacher-curated introductory exercises; practice_session = a
+// randomized, skill-targeted session started via GET /practice-sessions
+// — the primary between-lessons practice loop; free_practice = student
+// initiated independently, outside any of the above; remediation =
+// surfaced by the recommendation engine as a remediation target.
 type TriggerContextSource string
 
 // UnauthorizedError Returned when the Bearer token is missing or invalid.
