@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 )
 
@@ -50,6 +51,34 @@ func (_c *ChallengeCreate) SetRemediationTargetContentNodeID(v uuid.UUID) *Chall
 func (_c *ChallengeCreate) SetNillableRemediationTargetContentNodeID(v *uuid.UUID) *ChallengeCreate {
 	if v != nil {
 		_c.SetRemediationTargetContentNodeID(*v)
+	}
+	return _c
+}
+
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_c *ChallengeCreate) SetShuffleExercises(v bool) *ChallengeCreate {
+	_c.mutation.SetShuffleExercises(v)
+	return _c
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableShuffleExercises(v *bool) *ChallengeCreate {
+	if v != nil {
+		_c.SetShuffleExercises(*v)
+	}
+	return _c
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_c *ChallengeCreate) SetShuffleOptions(v bool) *ChallengeCreate {
+	_c.mutation.SetShuffleOptions(v)
+	return _c
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableShuffleOptions(v *bool) *ChallengeCreate {
+	if v != nil {
+		_c.SetShuffleOptions(*v)
 	}
 	return _c
 }
@@ -97,6 +126,21 @@ func (_c *ChallengeCreate) AddExercises(v ...*Exercise) *ChallengeCreate {
 	return _c.AddExerciseIDs(ids...)
 }
 
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_c *ChallengeCreate) AddChallengeExerciseIDs(ids ...int) *ChallengeCreate {
+	_c.mutation.AddChallengeExerciseIDs(ids...)
+	return _c
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_c *ChallengeCreate) AddChallengeExercises(v ...*ChallengeExercise) *ChallengeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChallengeExerciseIDs(ids...)
+}
+
 // Mutation returns the ChallengeMutation object of the builder.
 func (_c *ChallengeCreate) Mutation() *ChallengeMutation {
 	return _c.mutation
@@ -132,6 +176,14 @@ func (_c *ChallengeCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *ChallengeCreate) defaults() {
+	if _, ok := _c.mutation.ShuffleExercises(); !ok {
+		v := challenge.DefaultShuffleExercises
+		_c.mutation.SetShuffleExercises(v)
+	}
+	if _, ok := _c.mutation.ShuffleOptions(); !ok {
+		v := challenge.DefaultShuffleOptions
+		_c.mutation.SetShuffleOptions(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := challenge.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -152,6 +204,12 @@ func (_c *ChallengeCreate) check() error {
 	}
 	if _, ok := _c.mutation.PassThreshold(); !ok {
 		return &ValidationError{Name: "pass_threshold", err: errors.New(`ent: missing required field "Challenge.pass_threshold"`)}
+	}
+	if _, ok := _c.mutation.ShuffleExercises(); !ok {
+		return &ValidationError{Name: "shuffle_exercises", err: errors.New(`ent: missing required field "Challenge.shuffle_exercises"`)}
+	}
+	if _, ok := _c.mutation.ShuffleOptions(); !ok {
+		return &ValidationError{Name: "shuffle_options", err: errors.New(`ent: missing required field "Challenge.shuffle_options"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Challenge.created_at"`)}
@@ -207,6 +265,14 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 		_spec.SetField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID, value)
 		_node.RemediationTargetContentNodeID = &value
 	}
+	if value, ok := _c.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+		_node.ShuffleExercises = value
+	}
+	if value, ok := _c.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
+		_node.ShuffleOptions = value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(challenge.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -220,6 +286,26 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ChallengeExerciseCreate{config: _c.config, mutation: newChallengeExerciseMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

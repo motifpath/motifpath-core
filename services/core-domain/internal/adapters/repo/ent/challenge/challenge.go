@@ -23,17 +23,30 @@ const (
 	FieldPassThreshold = "pass_threshold"
 	// FieldRemediationTargetContentNodeID holds the string denoting the remediation_target_content_node_id field in the database.
 	FieldRemediationTargetContentNodeID = "remediation_target_content_node_id"
+	// FieldShuffleExercises holds the string denoting the shuffle_exercises field in the database.
+	FieldShuffleExercises = "shuffle_exercises"
+	// FieldShuffleOptions holds the string denoting the shuffle_options field in the database.
+	FieldShuffleOptions = "shuffle_options"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeExercises holds the string denoting the exercises edge name in mutations.
 	EdgeExercises = "exercises"
+	// EdgeChallengeExercises holds the string denoting the challenge_exercises edge name in mutations.
+	EdgeChallengeExercises = "challenge_exercises"
 	// Table holds the table name of the challenge in the database.
 	Table = "challenges"
 	// ExercisesTable is the table that holds the exercises relation/edge. The primary key declared below.
-	ExercisesTable = "exercise_challenges"
+	ExercisesTable = "challenge_exercises"
 	// ExercisesInverseTable is the table name for the Exercise entity.
 	// It exists in this package in order to avoid circular dependency with the "exercise" package.
 	ExercisesInverseTable = "exercises"
+	// ChallengeExercisesTable is the table that holds the challenge_exercises relation/edge.
+	ChallengeExercisesTable = "challenge_exercises"
+	// ChallengeExercisesInverseTable is the table name for the ChallengeExercise entity.
+	// It exists in this package in order to avoid circular dependency with the "challengeexercise" package.
+	ChallengeExercisesInverseTable = "challenge_exercises"
+	// ChallengeExercisesColumn is the table column denoting the challenge_exercises relation/edge.
+	ChallengeExercisesColumn = "challenge_id"
 )
 
 // Columns holds all SQL columns for challenge fields.
@@ -43,6 +56,8 @@ var Columns = []string{
 	FieldSubjectTag,
 	FieldPassThreshold,
 	FieldRemediationTargetContentNodeID,
+	FieldShuffleExercises,
+	FieldShuffleOptions,
 	FieldCreatedAt,
 }
 
@@ -63,6 +78,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultShuffleExercises holds the default value on creation for the "shuffle_exercises" field.
+	DefaultShuffleExercises bool
+	// DefaultShuffleOptions holds the default value on creation for the "shuffle_options" field.
+	DefaultShuffleOptions bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -97,6 +116,16 @@ func ByRemediationTargetContentNodeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemediationTargetContentNodeID, opts...).ToFunc()
 }
 
+// ByShuffleExercises orders the results by the shuffle_exercises field.
+func ByShuffleExercises(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShuffleExercises, opts...).ToFunc()
+}
+
+// ByShuffleOptions orders the results by the shuffle_options field.
+func ByShuffleOptions(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShuffleOptions, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
@@ -115,10 +144,31 @@ func ByExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByChallengeExercisesCount orders the results by challenge_exercises count.
+func ByChallengeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChallengeExercisesStep(), opts...)
+	}
+}
+
+// ByChallengeExercises orders the results by challenge_exercises terms.
+func ByChallengeExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChallengeExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ExercisesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, ExercisesTable, ExercisesPrimaryKey...),
+	)
+}
+func newChallengeExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChallengeExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ChallengeExercisesTable, ChallengeExercisesColumn),
 	)
 }

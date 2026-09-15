@@ -9,8 +9,14 @@ import (
 // Challenge is the predicate function for challenge builders.
 type Challenge func(*sql.Selector)
 
+// ChallengeExercise is the predicate function for challengeexercise builders.
+type ChallengeExercise func(*sql.Selector)
+
 // ContentNode is the predicate function for contentnode builders.
 type ContentNode func(*sql.Selector)
+
+// ContentNodeExercise is the predicate function for contentnodeexercise builders.
+type ContentNodeExercise func(*sql.Selector)
 
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)

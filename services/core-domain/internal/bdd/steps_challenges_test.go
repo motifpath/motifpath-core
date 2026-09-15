@@ -16,7 +16,11 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)"\s+and pass threshold (\d+)$`, w.createsChallenge)
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)",\s+pass threshold (\d+), and remediation target "([^"]+)"$`, w.createsChallengeWithRemediation)
+	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)",\s+pass threshold (\d+), shuffled exercises, and shuffled options$`, w.createsChallengeWithShuffle)
 	sc.Step(`^"([^"]+)" retrieves the challenge "([^"]+)"$`, w.retrievesChallenge)
+	sc.Step(`^"([^"]+)" lists the challenges for content node "([^"]+)"$`, w.listsContentNodeChallenges)
+	sc.Step(`^"([^"]+)" lists the challenges for a content node ID that does not exist$`, w.listsContentNodeChallengesMissing)
+	sc.Step(`^an unauthenticated request attempts to list the challenges for content node "([^"]+)"$`, w.unauthListsContentNodeChallenges)
 	sc.Step(`^"([^"]+)" submits a create challenge request with the subject_tag field omitted$`, w.submitsChallengeMissingSubjectTag)
 	sc.Step(`^"([^"]+)" submits a create challenge request with the pass_threshold field omitted$`, w.submitsChallengeMissingPassThreshold)
 	sc.Step(`^"([^"]+)" submits a create challenge request with pass_threshold (\d+)$`, w.submitsChallengeWithPassThreshold)
@@ -28,6 +32,8 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the challenge is created and assigned a stable identifier$`, w.challengeCreated)
 	sc.Step(`^the challenge records "([^"]+)" as its parent content node$`, w.challengeRecordsParent)
 	sc.Step(`^the challenge is created with the remediation target recorded$`, w.challengeRecordsRemediation)
+	sc.Step(`^the challenge is created with exercise shuffling and option shuffling both enabled$`, w.challengeShuffleEnabled)
+	sc.Step(`^the challenge is created with exercise shuffling and option shuffling both disabled$`, w.challengeShuffleDisabled)
 	sc.Step(`^the response returns the challenge's subject tag, threshold, and parent content node$`, w.challengeResponseComplete)
 }
 
@@ -176,4 +182,60 @@ func (w *world) challengeResponseComplete() error {
 		return fmt.Errorf("expected a fully populated challenge, got %+v", resp)
 	}
 	return nil
+}
+
+func (w *world) createsChallengeWithShuffle(name, nodeSlug, subjectTag, passThresholdStr string) error {
+	passThreshold, err := parseInt(passThresholdStr)
+	if err != nil {
+		return err
+	}
+	shuffle := true
+	resp, err := w.handler.CreateChallenge(w.ctx(), generated.CreateChallengeRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		Body: &generated.CreateChallengeRequest{
+			SubjectTag: subjectTag, PassThreshold: passThreshold,
+			ShuffleExercises: &shuffle, ShuffleOptions: &shuffle,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) challengeShuffleEnabled() error {
+	resp, ok := w.lastResp.(generated.CreateChallenge201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	}
+	if !resp.ShuffleExercises || !resp.ShuffleOptions {
+		return fmt.Errorf("expected both shuffle flags enabled, got %+v", resp)
+	}
+	return nil
+}
+
+func (w *world) challengeShuffleDisabled() error {
+	resp, ok := w.lastResp.(generated.CreateChallenge201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	}
+	if resp.ShuffleExercises || resp.ShuffleOptions {
+		return fmt.Errorf("expected both shuffle flags disabled, got %+v", resp)
+	}
+	return nil
+}
+
+func (w *world) listsContentNodeChallenges(name, nodeSlug string) error {
+	resp, err := w.handler.ListContentNodeChallenges(w.ctx(), generated.ListContentNodeChallengesRequestObject{ContentNodeId: nodeID(nodeSlug)})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsContentNodeChallengesMissing(string) error {
+	resp, err := w.handler.ListContentNodeChallenges(w.ctx(), generated.ListContentNodeChallengesRequestObject{ContentNodeId: deterministicUUID("node", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthListsContentNodeChallenges(nodeSlug string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsContentNodeChallenges("", nodeSlug)
 }

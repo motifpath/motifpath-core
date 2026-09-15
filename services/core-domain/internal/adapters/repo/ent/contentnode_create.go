@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 )
 
 // ContentNodeCreate is the builder for creating a ContentNode entity.
@@ -97,6 +99,36 @@ func (_c *ContentNodeCreate) SetNillableID(v *uuid.UUID) *ContentNodeCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by IDs.
+func (_c *ContentNodeCreate) AddPathExerciseIDs(ids ...uuid.UUID) *ContentNodeCreate {
+	_c.mutation.AddPathExerciseIDs(ids...)
+	return _c
+}
+
+// AddPathExercises adds the "path_exercises" edges to the Exercise entity.
+func (_c *ContentNodeCreate) AddPathExercises(v ...*Exercise) *ContentNodeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPathExerciseIDs(ids...)
+}
+
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_c *ContentNodeCreate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeCreate {
+	_c.mutation.AddContentNodeExerciseIDs(ids...)
+	return _c
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_c *ContentNodeCreate) AddContentNodeExercises(v ...*ContentNodeExercise) *ContentNodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeExerciseIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -255,6 +287,42 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(contentnode.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.PathExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   contentnode.PathExercisesTable,
+			Columns: contentnode.PathExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _c.config, mutation: newContentNodeExerciseMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

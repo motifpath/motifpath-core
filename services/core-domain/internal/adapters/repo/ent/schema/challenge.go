@@ -33,6 +33,12 @@ func (Challenge) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		field.Bool("shuffle_exercises").
+			Default(false),
+
+		field.Bool("shuffle_options").
+			Default(false),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
@@ -47,6 +53,8 @@ func (Challenge) Indexes() []ent.Index {
 
 func (Challenge) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("exercises", Exercise.Type).Ref("challenges"),
+		edge.From("exercises", Exercise.Type).
+			Ref("challenges").
+			Through("challenge_exercises", ChallengeExercise.Type),
 	}
 }

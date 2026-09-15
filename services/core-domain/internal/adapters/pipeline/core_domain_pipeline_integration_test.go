@@ -79,7 +79,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, "triad-shapes", "chord-theory", domain.DifficultyLevelBeginner)
 	require.NoError(t, err)
 
-	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, "triad-shapes", 70, nil)
+	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, "triad-shapes", 70, nil, false, false)
 	require.NoError(t, err)
 	assert.Equal(t, node.ID, challenge.ContentNodeID)
 

@@ -76,6 +76,16 @@ func RemediationTargetContentNodeID(v uuid.UUID) predicate.Challenge {
 	return predicate.Challenge(sql.FieldEQ(FieldRemediationTargetContentNodeID, v))
 }
 
+// ShuffleExercises applies equality check predicate on the "shuffle_exercises" field. It's identical to ShuffleExercisesEQ.
+func ShuffleExercises(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldShuffleExercises, v))
+}
+
+// ShuffleOptions applies equality check predicate on the "shuffle_options" field. It's identical to ShuffleOptionsEQ.
+func ShuffleOptions(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldShuffleOptions, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Challenge {
 	return predicate.Challenge(sql.FieldEQ(FieldCreatedAt, v))
@@ -276,6 +286,26 @@ func RemediationTargetContentNodeIDNotNil() predicate.Challenge {
 	return predicate.Challenge(sql.FieldNotNull(FieldRemediationTargetContentNodeID))
 }
 
+// ShuffleExercisesEQ applies the EQ predicate on the "shuffle_exercises" field.
+func ShuffleExercisesEQ(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldShuffleExercises, v))
+}
+
+// ShuffleExercisesNEQ applies the NEQ predicate on the "shuffle_exercises" field.
+func ShuffleExercisesNEQ(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNEQ(FieldShuffleExercises, v))
+}
+
+// ShuffleOptionsEQ applies the EQ predicate on the "shuffle_options" field.
+func ShuffleOptionsEQ(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldShuffleOptions, v))
+}
+
+// ShuffleOptionsNEQ applies the NEQ predicate on the "shuffle_options" field.
+func ShuffleOptionsNEQ(v bool) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNEQ(FieldShuffleOptions, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Challenge {
 	return predicate.Challenge(sql.FieldEQ(FieldCreatedAt, v))
@@ -331,6 +361,29 @@ func HasExercises() predicate.Challenge {
 func HasExercisesWith(preds ...predicate.Exercise) predicate.Challenge {
 	return predicate.Challenge(func(s *sql.Selector) {
 		step := newExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasChallengeExercises applies the HasEdge predicate on the "challenge_exercises" edge.
+func HasChallengeExercises() predicate.Challenge {
+	return predicate.Challenge(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ChallengeExercisesTable, ChallengeExercisesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasChallengeExercisesWith applies the HasEdge predicate on the "challenge_exercises" edge with a given conditions (other predicates).
+func HasChallengeExercisesWith(preds ...predicate.ChallengeExercise) predicate.Challenge {
+	return predicate.Challenge(func(s *sql.Selector) {
+		step := newChallengeExercisesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

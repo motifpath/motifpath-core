@@ -13,4 +13,9 @@ type ChallengeRepository interface {
 	// GetByID returns domain.ErrNotFound if no challenge exists with the
 	// given id.
 	GetByID(ctx context.Context, id string) (domain.Challenge, error)
+
+	// ListByContentNodeID returns the challenges attached to contentNodeID,
+	// or an empty slice if it has none. Does not itself verify the content
+	// node exists — callers check that separately.
+	ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Challenge, error)
 }

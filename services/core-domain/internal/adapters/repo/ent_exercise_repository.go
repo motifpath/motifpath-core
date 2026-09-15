@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -40,6 +42,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
+		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		SetCreatedAt(ex.CreatedAt)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -85,6 +88,7 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 	row, err := r.client.Exercise.Query().
 		Where(exercise.ID(parsed)).
 		WithChallenges().
+		WithContentNodes().
 		WithOptions().
 		Only(ctx)
 	if err != nil {
@@ -96,6 +100,13 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 	return toDomainExercise(row), nil
 }
 
+// LinkChallenge links exerciseID into challengeID via the ChallengeExercise
+// join entity — an implicit ent many-to-many join table carries no order of
+// its own, and Postgres makes no row-order guarantee over an unordered
+// SELECT, so link order has to be real and queryable. ChallengeExercise's
+// auto-incrementing id, assigned atomically by Postgres on insert, already
+// gives that for free — no separate position column or read-before-write
+// needed.
 func (r *EntExerciseRepository) LinkChallenge(ctx context.Context, exerciseID, challengeID string) error {
 	exID, err := uuid.Parse(exerciseID)
 	if err != nil {
@@ -105,7 +116,10 @@ func (r *EntExerciseRepository) LinkChallenge(ctx context.Context, exerciseID, c
 	if err != nil {
 		return err
 	}
-	return r.client.Exercise.UpdateOneID(exID).AddChallengeIDs(chID).Exec(ctx)
+	return r.client.ChallengeExercise.Create().
+		SetChallengeID(chID).
+		SetExerciseID(exID).
+		Exec(ctx)
 }
 
 func (r *EntExerciseRepository) UnlinkChallenge(ctx context.Context, exerciseID, challengeID string) error {
@@ -117,13 +131,155 @@ func (r *EntExerciseRepository) UnlinkChallenge(ctx context.Context, exerciseID,
 	if err != nil {
 		return err
 	}
-	return r.client.Exercise.UpdateOneID(exID).RemoveChallengeIDs(chID).Exec(ctx)
+	_, err = r.client.ChallengeExercise.Delete().
+		Where(challengeexercise.ExerciseID(exID), challengeexercise.ChallengeID(chID)).
+		Exec(ctx)
+	return err
+}
+
+func (r *EntExerciseRepository) ListByChallengeID(ctx context.Context, challengeID string) ([]domain.Exercise, error) {
+	parsed, err := uuid.Parse(challengeID)
+	if err != nil {
+		return nil, domain.ErrNotFound
+	}
+	links, err := r.client.ChallengeExercise.Query().
+		Where(challengeexercise.ChallengeID(parsed)).
+		Order(challengeexercise.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(links))
+	for i, link := range links {
+		ids[i] = link.ExerciseID
+	}
+	return r.exercisesInOrder(ctx, ids)
+}
+
+// LinkContentNode links exerciseID into contentNodeID as a path exercise,
+// via the ContentNodeExercise join entity — see LinkChallenge for why its
+// auto-incrementing id column is enough for link order on its own.
+func (r *EntExerciseRepository) LinkContentNode(ctx context.Context, exerciseID, contentNodeID string) error {
+	exID, err := uuid.Parse(exerciseID)
+	if err != nil {
+		return err
+	}
+	nodeID, err := uuid.Parse(contentNodeID)
+	if err != nil {
+		return err
+	}
+	return r.client.ContentNodeExercise.Create().
+		SetContentNodeID(nodeID).
+		SetExerciseID(exID).
+		Exec(ctx)
+}
+
+func (r *EntExerciseRepository) UnlinkContentNode(ctx context.Context, exerciseID, contentNodeID string) error {
+	exID, err := uuid.Parse(exerciseID)
+	if err != nil {
+		return err
+	}
+	nodeID, err := uuid.Parse(contentNodeID)
+	if err != nil {
+		return err
+	}
+	_, err = r.client.ContentNodeExercise.Delete().
+		Where(contentnodeexercise.ExerciseID(exID), contentnodeexercise.ContentNodeID(nodeID)).
+		Exec(ctx)
+	return err
+}
+
+func (r *EntExerciseRepository) ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Exercise, error) {
+	parsed, err := uuid.Parse(contentNodeID)
+	if err != nil {
+		return nil, domain.ErrNotFound
+	}
+	links, err := r.client.ContentNodeExercise.Query().
+		Where(contentnodeexercise.ContentNodeID(parsed)).
+		Order(contentnodeexercise.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(links))
+	for i, link := range links {
+		ids[i] = link.ExerciseID
+	}
+	return r.exercisesInOrder(ctx, ids)
+}
+
+// exercisesInOrder fetches the exercises with the given ids and returns
+// them in exactly that order. A single WHERE id IN (...) query returns rows
+// in no particular order, so the requested sequence (link order, from
+// ListByChallengeID/ListByContentNodeID) is reapplied in Go rather than
+// relied upon from SQL.
+func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid.UUID) ([]domain.Exercise, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.client.Exercise.Query().
+		Where(exercise.IDIn(ids...)).
+		WithChallenges().
+		WithContentNodes().
+		WithOptions().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[uuid.UUID]*ent.Exercise, len(rows))
+	for _, row := range rows {
+		byID[row.ID] = row
+	}
+	ordered := make([]*ent.Exercise, 0, len(ids))
+	for _, id := range ids {
+		if row, ok := byID[id]; ok {
+			ordered = append(ordered, row)
+		}
+	}
+	return toDomainExercises(ordered), nil
+}
+
+// ListBySkillTag filters in Go rather than in the query — skill_tags is a
+// JSON array field with no generated "contains element" predicate, and MVP
+// catalog scale doesn't warrant a schema change to support one yet.
+func (r *EntExerciseRepository) ListBySkillTag(ctx context.Context, skillTag string) ([]domain.Exercise, error) {
+	rows, err := r.client.Exercise.Query().
+		WithChallenges().
+		WithContentNodes().
+		WithOptions().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var matched []*ent.Exercise
+	for _, row := range rows {
+		for _, tag := range row.SkillTags {
+			if tag == skillTag {
+				matched = append(matched, row)
+				break
+			}
+		}
+	}
+	return toDomainExercises(matched), nil
+}
+
+func toDomainExercises(rows []*ent.Exercise) []domain.Exercise {
+	result := make([]domain.Exercise, len(rows))
+	for i, row := range rows {
+		result[i] = toDomainExercise(row)
+	}
+	return result
 }
 
 func toDomainExercise(row *ent.Exercise) domain.Exercise {
 	challengeIDs := make([]string, len(row.Edges.Challenges))
 	for i, c := range row.Edges.Challenges {
 		challengeIDs[i] = c.ID.String()
+	}
+	contentNodeIDs := make([]string, len(row.Edges.ContentNodes))
+	for i, n := range row.Edges.ContentNodes {
+		contentNodeIDs[i] = n.ID.String()
 	}
 
 	options := make([]domain.Option, len(row.Edges.Options))
@@ -132,16 +288,18 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 	}
 
 	return domain.Exercise{
-		ID:           row.ID.String(),
-		Title:        row.Title,
-		Prompt:       row.Prompt,
-		ExerciseType: domain.ExerciseType(row.ExerciseType),
-		SkillTags:    row.SkillTags,
-		ImageURL:     row.ImageURL,
-		AudioURL:     row.AudioURL,
-		Options:      options,
-		ChallengeIDs: challengeIDs,
-		CreatedAt:    row.CreatedAt,
+		ID:                       row.ID.String(),
+		Title:                    row.Title,
+		Prompt:                   row.Prompt,
+		ExerciseType:             domain.ExerciseType(row.ExerciseType),
+		SkillTags:                row.SkillTags,
+		ImageURL:                 row.ImageURL,
+		AudioURL:                 row.AudioURL,
+		EstimatedDurationSeconds: row.EstimatedDurationSeconds,
+		Options:                  options,
+		ChallengeIDs:             challengeIDs,
+		ContentNodeIDs:           contentNodeIDs,
+		CreatedAt:                row.CreatedAt,
 	}
 }
 

@@ -51,6 +51,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerContentNodeSteps(sc, w)
 	registerChallengeSteps(sc, w)
 	registerExerciseSteps(sc, w)
+	registerPracticeSessionSteps(sc, w)
 	registerMediaUploadSteps(sc, w)
 	registerExpandedContentSteps(sc, w)
 	registerLearningPathSteps(sc, w)

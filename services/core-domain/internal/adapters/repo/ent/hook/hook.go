@@ -21,6 +21,18 @@ func (f ChallengeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChallengeMutation", m)
 }
 
+// The ChallengeExerciseFunc type is an adapter to allow the use of ordinary
+// function as ChallengeExercise mutator.
+type ChallengeExerciseFunc func(context.Context, *ent.ChallengeExerciseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChallengeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChallengeExerciseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChallengeExerciseMutation", m)
+}
+
 // The ContentNodeFunc type is an adapter to allow the use of ordinary
 // function as ContentNode mutator.
 type ContentNodeFunc func(context.Context, *ent.ContentNodeMutation) (ent.Value, error)
@@ -31,6 +43,18 @@ func (f ContentNodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeMutation", m)
+}
+
+// The ContentNodeExerciseFunc type is an adapter to allow the use of ordinary
+// function as ContentNodeExercise mutator.
+type ContentNodeExerciseFunc func(context.Context, *ent.ContentNodeExerciseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ContentNodeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ContentNodeExerciseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeExerciseMutation", m)
 }
 
 // The ExerciseFunc type is an adapter to allow the use of ordinary

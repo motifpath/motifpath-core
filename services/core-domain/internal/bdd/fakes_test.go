@@ -142,13 +142,35 @@ func (f *fakeChallengeRepo) put(c domain.Challenge) {
 	f.byID[c.ID] = c
 }
 
+func (f *fakeChallengeRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.Challenge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.Challenge
+	for _, c := range f.byID {
+		if c.ContentNodeID == contentNodeID {
+			result = append(result, c)
+		}
+	}
+	return result, nil
+}
+
+// fakeExerciseRepo tracks link order per challenge/node separately from
+// each exercise's own ChallengeIDs/ContentNodeIDs slice, since two
+// different challenges/nodes can share exercises linked in different
+// orders — needed for scenarios asserting stable or shuffled order.
 type fakeExerciseRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.Exercise
+	mu               sync.Mutex
+	byID             map[string]domain.Exercise
+	byChallengeOrder map[string][]string
+	byNodeOrder      map[string][]string
 }
 
 func newFakeExerciseRepo() *fakeExerciseRepo {
-	return &fakeExerciseRepo{byID: map[string]domain.Exercise{}}
+	return &fakeExerciseRepo{
+		byID:             map[string]domain.Exercise{},
+		byChallengeOrder: map[string][]string{},
+		byNodeOrder:      map[string][]string{},
+	}
 }
 
 func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise) error {
@@ -177,6 +199,7 @@ func (f *fakeExerciseRepo) LinkChallenge(_ context.Context, exerciseID, challeng
 	}
 	e.ChallengeIDs = append(e.ChallengeIDs, challengeID)
 	f.byID[exerciseID] = e
+	f.byChallengeOrder[challengeID] = append(f.byChallengeOrder[challengeID], exerciseID)
 	return nil
 }
 
@@ -195,13 +218,105 @@ func (f *fakeExerciseRepo) UnlinkChallenge(_ context.Context, exerciseID, challe
 	}
 	e.ChallengeIDs = remaining
 	f.byID[exerciseID] = e
+
+	remainingOrder := make([]string, 0, len(f.byChallengeOrder[challengeID]))
+	for _, id := range f.byChallengeOrder[challengeID] {
+		if id != exerciseID {
+			remainingOrder = append(remainingOrder, id)
+		}
+	}
+	f.byChallengeOrder[challengeID] = remainingOrder
 	return nil
 }
 
+func (f *fakeExerciseRepo) ListByChallengeID(_ context.Context, challengeID string) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Exercise, 0, len(f.byChallengeOrder[challengeID]))
+	for _, id := range f.byChallengeOrder[challengeID] {
+		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) LinkContentNode(_ context.Context, exerciseID, contentNodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ContentNodeIDs = append(e.ContentNodeIDs, contentNodeID)
+	f.byID[exerciseID] = e
+	f.byNodeOrder[contentNodeID] = append(f.byNodeOrder[contentNodeID], exerciseID)
+	return nil
+}
+
+func (f *fakeExerciseRepo) UnlinkContentNode(_ context.Context, exerciseID, contentNodeID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[exerciseID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	remaining := make([]string, 0, len(e.ContentNodeIDs))
+	for _, id := range e.ContentNodeIDs {
+		if id != contentNodeID {
+			remaining = append(remaining, id)
+		}
+	}
+	e.ContentNodeIDs = remaining
+	f.byID[exerciseID] = e
+
+	remainingOrder := make([]string, 0, len(f.byNodeOrder[contentNodeID]))
+	for _, id := range f.byNodeOrder[contentNodeID] {
+		if id != exerciseID {
+			remainingOrder = append(remainingOrder, id)
+		}
+	}
+	f.byNodeOrder[contentNodeID] = remainingOrder
+	return nil
+}
+
+func (f *fakeExerciseRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Exercise, 0, len(f.byNodeOrder[contentNodeID]))
+	for _, id := range f.byNodeOrder[contentNodeID] {
+		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) ListBySkillTag(_ context.Context, skillTag string) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.Exercise
+	for _, e := range f.byID {
+		for _, tag := range e.SkillTags {
+			if tag == skillTag {
+				result = append(result, e)
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+// put seeds e directly, also indexing it under its pre-set
+// ChallengeIDs/ContentNodeIDs so steps that construct an already-linked
+// domain.Exercise literal work with ListByChallengeID/ListByContentNodeID
+// without going through LinkChallenge/LinkContentNode first.
 func (f *fakeExerciseRepo) put(e domain.Exercise) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[e.ID] = e
+	for _, challengeID := range e.ChallengeIDs {
+		f.byChallengeOrder[challengeID] = append(f.byChallengeOrder[challengeID], e.ID)
+	}
+	for _, nodeID := range e.ContentNodeIDs {
+		f.byNodeOrder[nodeID] = append(f.byNodeOrder[nodeID], e.ID)
+	}
 }
 
 func (f *fakeExerciseRepo) count() int {

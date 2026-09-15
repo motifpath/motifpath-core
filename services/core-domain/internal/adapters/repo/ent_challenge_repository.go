@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -33,6 +34,8 @@ func (r *EntChallengeRepository) Create(ctx context.Context, challenge domain.Ch
 		SetContentNodeID(contentNodeID).
 		SetSubjectTag(challenge.SubjectTag).
 		SetPassThreshold(challenge.PassThreshold).
+		SetShuffleExercises(challenge.ShuffleExercises).
+		SetShuffleOptions(challenge.ShuffleOptions).
 		SetCreatedAt(challenge.CreatedAt)
 
 	if challenge.RemediationTargetContentNodeID != nil {
@@ -62,13 +65,33 @@ func (r *EntChallengeRepository) GetByID(ctx context.Context, id string) (domain
 	return toDomainChallenge(row), nil
 }
 
+func (r *EntChallengeRepository) ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Challenge, error) {
+	parsed, err := uuid.Parse(contentNodeID)
+	if err != nil {
+		return nil, domain.ErrNotFound
+	}
+	rows, err := r.client.Challenge.Query().
+		Where(challenge.ContentNodeID(parsed)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Challenge, len(rows))
+	for i, row := range rows {
+		result[i] = toDomainChallenge(row)
+	}
+	return result, nil
+}
+
 func toDomainChallenge(row *ent.Challenge) domain.Challenge {
 	challenge := domain.Challenge{
-		ID:            row.ID.String(),
-		ContentNodeID: row.ContentNodeID.String(),
-		SubjectTag:    row.SubjectTag,
-		PassThreshold: row.PassThreshold,
-		CreatedAt:     row.CreatedAt,
+		ID:               row.ID.String(),
+		ContentNodeID:    row.ContentNodeID.String(),
+		SubjectTag:       row.SubjectTag,
+		PassThreshold:    row.PassThreshold,
+		ShuffleExercises: row.ShuffleExercises,
+		ShuffleOptions:   row.ShuffleOptions,
+		CreatedAt:        row.CreatedAt,
 	}
 	if row.RemediationTargetContentNodeID != nil {
 		target := row.RemediationTargetContentNodeID.String()

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -84,6 +85,34 @@ func (_u *ChallengeUpdate) ClearRemediationTargetContentNodeID() *ChallengeUpdat
 	return _u
 }
 
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_u *ChallengeUpdate) SetShuffleExercises(v bool) *ChallengeUpdate {
+	_u.mutation.SetShuffleExercises(v)
+	return _u
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableShuffleExercises(v *bool) *ChallengeUpdate {
+	if v != nil {
+		_u.SetShuffleExercises(*v)
+	}
+	return _u
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_u *ChallengeUpdate) SetShuffleOptions(v bool) *ChallengeUpdate {
+	_u.mutation.SetShuffleOptions(v)
+	return _u
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableShuffleOptions(v *bool) *ChallengeUpdate {
+	if v != nil {
+		_u.SetShuffleOptions(*v)
+	}
+	return _u
+}
+
 // AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
 func (_u *ChallengeUpdate) AddExerciseIDs(ids ...uuid.UUID) *ChallengeUpdate {
 	_u.mutation.AddExerciseIDs(ids...)
@@ -97,6 +126,21 @@ func (_u *ChallengeUpdate) AddExercises(v ...*Exercise) *ChallengeUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseIDs(ids...)
+}
+
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_u *ChallengeUpdate) AddChallengeExerciseIDs(ids ...int) *ChallengeUpdate {
+	_u.mutation.AddChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ChallengeUpdate) AddChallengeExercises(v ...*ChallengeExercise) *ChallengeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChallengeExerciseIDs(ids...)
 }
 
 // Mutation returns the ChallengeMutation object of the builder.
@@ -123,6 +167,27 @@ func (_u *ChallengeUpdate) RemoveExercises(v ...*Exercise) *ChallengeUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseIDs(ids...)
+}
+
+// ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ChallengeUpdate) ClearChallengeExercises() *ChallengeUpdate {
+	_u.mutation.ClearChallengeExercises()
+	return _u
+}
+
+// RemoveChallengeExerciseIDs removes the "challenge_exercises" edge to ChallengeExercise entities by IDs.
+func (_u *ChallengeUpdate) RemoveChallengeExerciseIDs(ids ...int) *ChallengeUpdate {
+	_u.mutation.RemoveChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveChallengeExercises removes "challenge_exercises" edges to ChallengeExercise entities.
+func (_u *ChallengeUpdate) RemoveChallengeExercises(v ...*ChallengeExercise) *ChallengeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChallengeExerciseIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -176,6 +241,12 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RemediationTargetContentNodeIDCleared() {
 		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
 	}
+	if value, ok := _u.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
+	}
 	if _u.mutation.ExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -187,6 +258,10 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedExercisesIDs(); len(nodes) > 0 && !_u.mutation.ExercisesCleared() {
@@ -203,6 +278,10 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.ExercisesIDs(); len(nodes) > 0 {
@@ -214,6 +293,55 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChallengeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -296,6 +424,34 @@ func (_u *ChallengeUpdateOne) ClearRemediationTargetContentNodeID() *ChallengeUp
 	return _u
 }
 
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_u *ChallengeUpdateOne) SetShuffleExercises(v bool) *ChallengeUpdateOne {
+	_u.mutation.SetShuffleExercises(v)
+	return _u
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableShuffleExercises(v *bool) *ChallengeUpdateOne {
+	if v != nil {
+		_u.SetShuffleExercises(*v)
+	}
+	return _u
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_u *ChallengeUpdateOne) SetShuffleOptions(v bool) *ChallengeUpdateOne {
+	_u.mutation.SetShuffleOptions(v)
+	return _u
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableShuffleOptions(v *bool) *ChallengeUpdateOne {
+	if v != nil {
+		_u.SetShuffleOptions(*v)
+	}
+	return _u
+}
+
 // AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
 func (_u *ChallengeUpdateOne) AddExerciseIDs(ids ...uuid.UUID) *ChallengeUpdateOne {
 	_u.mutation.AddExerciseIDs(ids...)
@@ -309,6 +465,21 @@ func (_u *ChallengeUpdateOne) AddExercises(v ...*Exercise) *ChallengeUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseIDs(ids...)
+}
+
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_u *ChallengeUpdateOne) AddChallengeExerciseIDs(ids ...int) *ChallengeUpdateOne {
+	_u.mutation.AddChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ChallengeUpdateOne) AddChallengeExercises(v ...*ChallengeExercise) *ChallengeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChallengeExerciseIDs(ids...)
 }
 
 // Mutation returns the ChallengeMutation object of the builder.
@@ -335,6 +506,27 @@ func (_u *ChallengeUpdateOne) RemoveExercises(v ...*Exercise) *ChallengeUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseIDs(ids...)
+}
+
+// ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ChallengeUpdateOne) ClearChallengeExercises() *ChallengeUpdateOne {
+	_u.mutation.ClearChallengeExercises()
+	return _u
+}
+
+// RemoveChallengeExerciseIDs removes the "challenge_exercises" edge to ChallengeExercise entities by IDs.
+func (_u *ChallengeUpdateOne) RemoveChallengeExerciseIDs(ids ...int) *ChallengeUpdateOne {
+	_u.mutation.RemoveChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveChallengeExercises removes "challenge_exercises" edges to ChallengeExercise entities.
+func (_u *ChallengeUpdateOne) RemoveChallengeExercises(v ...*ChallengeExercise) *ChallengeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChallengeExerciseIDs(ids...)
 }
 
 // Where appends a list predicates to the ChallengeUpdate builder.
@@ -418,6 +610,12 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 	if _u.mutation.RemediationTargetContentNodeIDCleared() {
 		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
 	}
+	if value, ok := _u.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
+	}
 	if _u.mutation.ExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -429,6 +627,10 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedExercisesIDs(); len(nodes) > 0 && !_u.mutation.ExercisesCleared() {
@@ -445,6 +647,10 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.ExercisesIDs(); len(nodes) > 0 {
@@ -456,6 +662,55 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChallengeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

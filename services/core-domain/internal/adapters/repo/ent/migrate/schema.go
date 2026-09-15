@@ -15,6 +15,8 @@ var (
 		{Name: "subject_tag", Type: field.TypeString},
 		{Name: "pass_threshold", Type: field.TypeInt},
 		{Name: "remediation_target_content_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "shuffle_exercises", Type: field.TypeBool, Default: false},
+		{Name: "shuffle_options", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ChallengesTable holds the schema information for the "challenges" table.
@@ -27,6 +29,40 @@ var (
 				Name:    "challenge_content_node_id",
 				Unique:  false,
 				Columns: []*schema.Column{ChallengesColumns[1]},
+			},
+		},
+	}
+	// ChallengeExercisesColumns holds the columns for the "challenge_exercises" table.
+	ChallengeExercisesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "challenge_id", Type: field.TypeUUID},
+		{Name: "exercise_id", Type: field.TypeUUID},
+	}
+	// ChallengeExercisesTable holds the schema information for the "challenge_exercises" table.
+	ChallengeExercisesTable = &schema.Table{
+		Name:       "challenge_exercises",
+		Columns:    ChallengeExercisesColumns,
+		PrimaryKey: []*schema.Column{ChallengeExercisesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "challenge_exercises_challenges_challenge",
+				Columns:    []*schema.Column{ChallengeExercisesColumns[2]},
+				RefColumns: []*schema.Column{ChallengesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "challenge_exercises_exercises_exercise",
+				Columns:    []*schema.Column{ChallengeExercisesColumns[3]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "challengeexercise_challenge_id_exercise_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChallengeExercisesColumns[2], ChallengeExercisesColumns[3]},
 			},
 		},
 	}
@@ -48,6 +84,40 @@ var (
 		Columns:    ContentNodesColumns,
 		PrimaryKey: []*schema.Column{ContentNodesColumns[0]},
 	}
+	// ContentNodeExercisesColumns holds the columns for the "content_node_exercises" table.
+	ContentNodeExercisesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "content_node_id", Type: field.TypeUUID},
+		{Name: "exercise_id", Type: field.TypeUUID},
+	}
+	// ContentNodeExercisesTable holds the schema information for the "content_node_exercises" table.
+	ContentNodeExercisesTable = &schema.Table{
+		Name:       "content_node_exercises",
+		Columns:    ContentNodeExercisesColumns,
+		PrimaryKey: []*schema.Column{ContentNodeExercisesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "content_node_exercises_content_nodes_content_node",
+				Columns:    []*schema.Column{ContentNodeExercisesColumns[2]},
+				RefColumns: []*schema.Column{ContentNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "content_node_exercises_exercises_exercise",
+				Columns:    []*schema.Column{ContentNodeExercisesColumns[3]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "contentnodeexercise_content_node_id_exercise_id",
+				Unique:  true,
+				Columns: []*schema.Column{ContentNodeExercisesColumns[2], ContentNodeExercisesColumns[3]},
+			},
+		},
+	}
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -57,6 +127,7 @@ var (
 		{Name: "skill_tags", Type: field.TypeJSON, Nullable: true},
 		{Name: "image_url", Type: field.TypeString, Nullable: true},
 		{Name: "audio_url", Type: field.TypeString, Nullable: true},
+		{Name: "estimated_duration_seconds", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.
@@ -186,35 +257,12 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
-	// ExerciseChallengesColumns holds the columns for the "exercise_challenges" table.
-	ExerciseChallengesColumns = []*schema.Column{
-		{Name: "exercise_id", Type: field.TypeUUID},
-		{Name: "challenge_id", Type: field.TypeUUID},
-	}
-	// ExerciseChallengesTable holds the schema information for the "exercise_challenges" table.
-	ExerciseChallengesTable = &schema.Table{
-		Name:       "exercise_challenges",
-		Columns:    ExerciseChallengesColumns,
-		PrimaryKey: []*schema.Column{ExerciseChallengesColumns[0], ExerciseChallengesColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "exercise_challenges_exercise_id",
-				Columns:    []*schema.Column{ExerciseChallengesColumns[0]},
-				RefColumns: []*schema.Column{ExercisesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "exercise_challenges_challenge_id",
-				Columns:    []*schema.Column{ExerciseChallengesColumns[1]},
-				RefColumns: []*schema.Column{ChallengesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChallengesTable,
+		ChallengeExercisesTable,
 		ContentNodesTable,
+		ContentNodeExercisesTable,
 		ExercisesTable,
 		ExerciseOptionsTable,
 		ExpandedContentsTable,
@@ -222,12 +270,13 @@ var (
 		LearningPathItemsTable,
 		PathAssignmentsTable,
 		UsersTable,
-		ExerciseChallengesTable,
 	}
 )
 
 func init() {
+	ChallengeExercisesTable.ForeignKeys[0].RefTable = ChallengesTable
+	ChallengeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
+	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable
+	ContentNodeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
-	ExerciseChallengesTable.ForeignKeys[0].RefTable = ExercisesTable
-	ExerciseChallengesTable.ForeignKeys[1].RefTable = ChallengesTable
 }

@@ -13,6 +13,9 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -117,6 +120,33 @@ func (_u *ExerciseUpdate) ClearAudioURL() *ExerciseUpdate {
 	return _u
 }
 
+// SetEstimatedDurationSeconds sets the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdate) SetEstimatedDurationSeconds(v int) *ExerciseUpdate {
+	_u.mutation.ResetEstimatedDurationSeconds()
+	_u.mutation.SetEstimatedDurationSeconds(v)
+	return _u
+}
+
+// SetNillableEstimatedDurationSeconds sets the "estimated_duration_seconds" field if the given value is not nil.
+func (_u *ExerciseUpdate) SetNillableEstimatedDurationSeconds(v *int) *ExerciseUpdate {
+	if v != nil {
+		_u.SetEstimatedDurationSeconds(*v)
+	}
+	return _u
+}
+
+// AddEstimatedDurationSeconds adds value to the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdate) AddEstimatedDurationSeconds(v int) *ExerciseUpdate {
+	_u.mutation.AddEstimatedDurationSeconds(v)
+	return _u
+}
+
+// ClearEstimatedDurationSeconds clears the value of the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdate) ClearEstimatedDurationSeconds() *ExerciseUpdate {
+	_u.mutation.ClearEstimatedDurationSeconds()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdate) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdate {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -132,6 +162,21 @@ func (_u *ExerciseUpdate) AddChallenges(v ...*Challenge) *ExerciseUpdate {
 	return _u.AddChallengeIDs(ids...)
 }
 
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by IDs.
+func (_u *ExerciseUpdate) AddContentNodeIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.AddContentNodeIDs(ids...)
+	return _u
+}
+
+// AddContentNodes adds the "content_nodes" edges to the ContentNode entity.
+func (_u *ExerciseUpdate) AddContentNodes(v ...*ContentNode) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeIDs(ids...)
+}
+
 // AddOptionIDs adds the "options" edge to the ExerciseOption entity by IDs.
 func (_u *ExerciseUpdate) AddOptionIDs(ids ...uuid.UUID) *ExerciseUpdate {
 	_u.mutation.AddOptionIDs(ids...)
@@ -145,6 +190,36 @@ func (_u *ExerciseUpdate) AddOptions(v ...*ExerciseOption) *ExerciseUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddOptionIDs(ids...)
+}
+
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_u *ExerciseUpdate) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.AddChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ExerciseUpdate) AddChallengeExercises(v ...*ChallengeExercise) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChallengeExerciseIDs(ids...)
+}
+
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_u *ExerciseUpdate) AddContentNodeExerciseIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.AddContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ExerciseUpdate) AddContentNodeExercises(v ...*ContentNodeExercise) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeExerciseIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -173,6 +248,27 @@ func (_u *ExerciseUpdate) RemoveChallenges(v ...*Challenge) *ExerciseUpdate {
 	return _u.RemoveChallengeIDs(ids...)
 }
 
+// ClearContentNodes clears all "content_nodes" edges to the ContentNode entity.
+func (_u *ExerciseUpdate) ClearContentNodes() *ExerciseUpdate {
+	_u.mutation.ClearContentNodes()
+	return _u
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to ContentNode entities by IDs.
+func (_u *ExerciseUpdate) RemoveContentNodeIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.RemoveContentNodeIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodes removes "content_nodes" edges to ContentNode entities.
+func (_u *ExerciseUpdate) RemoveContentNodes(v ...*ContentNode) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeIDs(ids...)
+}
+
 // ClearOptions clears all "options" edges to the ExerciseOption entity.
 func (_u *ExerciseUpdate) ClearOptions() *ExerciseUpdate {
 	_u.mutation.ClearOptions()
@@ -192,6 +288,48 @@ func (_u *ExerciseUpdate) RemoveOptions(v ...*ExerciseOption) *ExerciseUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveOptionIDs(ids...)
+}
+
+// ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ExerciseUpdate) ClearChallengeExercises() *ExerciseUpdate {
+	_u.mutation.ClearChallengeExercises()
+	return _u
+}
+
+// RemoveChallengeExerciseIDs removes the "challenge_exercises" edge to ChallengeExercise entities by IDs.
+func (_u *ExerciseUpdate) RemoveChallengeExerciseIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.RemoveChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveChallengeExercises removes "challenge_exercises" edges to ChallengeExercise entities.
+func (_u *ExerciseUpdate) RemoveChallengeExercises(v ...*ChallengeExercise) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChallengeExerciseIDs(ids...)
+}
+
+// ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ExerciseUpdate) ClearContentNodeExercises() *ExerciseUpdate {
+	_u.mutation.ClearContentNodeExercises()
+	return _u
+}
+
+// RemoveContentNodeExerciseIDs removes the "content_node_exercises" edge to ContentNodeExercise entities by IDs.
+func (_u *ExerciseUpdate) RemoveContentNodeExerciseIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.RemoveContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeExercises removes "content_node_exercises" edges to ContentNodeExercise entities.
+func (_u *ExerciseUpdate) RemoveContentNodeExercises(v ...*ContentNodeExercise) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeExerciseIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -259,6 +397,15 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.AudioURLCleared() {
 		_spec.ClearField(exercise.FieldAudioURL, field.TypeString)
 	}
+	if value, ok := _u.mutation.EstimatedDurationSeconds(); ok {
+		_spec.SetField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedEstimatedDurationSeconds(); ok {
+		_spec.AddField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
+	}
+	if _u.mutation.EstimatedDurationSecondsCleared() {
+		_spec.ClearField(exercise.FieldEstimatedDurationSeconds, field.TypeInt)
+	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -270,6 +417,10 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				IDSpec: sqlgraph.NewFieldSpec(challenge.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedChallengesIDs(); len(nodes) > 0 && !_u.mutation.ChallengesCleared() {
@@ -286,6 +437,10 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.ChallengesIDs(); len(nodes) > 0 {
@@ -302,6 +457,67 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.OptionsCleared() {
@@ -342,6 +558,96 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseoption.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChallengeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -455,6 +761,33 @@ func (_u *ExerciseUpdateOne) ClearAudioURL() *ExerciseUpdateOne {
 	return _u
 }
 
+// SetEstimatedDurationSeconds sets the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdateOne) SetEstimatedDurationSeconds(v int) *ExerciseUpdateOne {
+	_u.mutation.ResetEstimatedDurationSeconds()
+	_u.mutation.SetEstimatedDurationSeconds(v)
+	return _u
+}
+
+// SetNillableEstimatedDurationSeconds sets the "estimated_duration_seconds" field if the given value is not nil.
+func (_u *ExerciseUpdateOne) SetNillableEstimatedDurationSeconds(v *int) *ExerciseUpdateOne {
+	if v != nil {
+		_u.SetEstimatedDurationSeconds(*v)
+	}
+	return _u
+}
+
+// AddEstimatedDurationSeconds adds value to the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdateOne) AddEstimatedDurationSeconds(v int) *ExerciseUpdateOne {
+	_u.mutation.AddEstimatedDurationSeconds(v)
+	return _u
+}
+
+// ClearEstimatedDurationSeconds clears the value of the "estimated_duration_seconds" field.
+func (_u *ExerciseUpdateOne) ClearEstimatedDurationSeconds() *ExerciseUpdateOne {
+	_u.mutation.ClearEstimatedDurationSeconds()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -470,6 +803,21 @@ func (_u *ExerciseUpdateOne) AddChallenges(v ...*Challenge) *ExerciseUpdateOne {
 	return _u.AddChallengeIDs(ids...)
 }
 
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by IDs.
+func (_u *ExerciseUpdateOne) AddContentNodeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.AddContentNodeIDs(ids...)
+	return _u
+}
+
+// AddContentNodes adds the "content_nodes" edges to the ContentNode entity.
+func (_u *ExerciseUpdateOne) AddContentNodes(v ...*ContentNode) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeIDs(ids...)
+}
+
 // AddOptionIDs adds the "options" edge to the ExerciseOption entity by IDs.
 func (_u *ExerciseUpdateOne) AddOptionIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
 	_u.mutation.AddOptionIDs(ids...)
@@ -483,6 +831,36 @@ func (_u *ExerciseUpdateOne) AddOptions(v ...*ExerciseOption) *ExerciseUpdateOne
 		ids[i] = v[i].ID
 	}
 	return _u.AddOptionIDs(ids...)
+}
+
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_u *ExerciseUpdateOne) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.AddChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ExerciseUpdateOne) AddChallengeExercises(v ...*ChallengeExercise) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddChallengeExerciseIDs(ids...)
+}
+
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_u *ExerciseUpdateOne) AddContentNodeExerciseIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.AddContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ExerciseUpdateOne) AddContentNodeExercises(v ...*ContentNodeExercise) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeExerciseIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -511,6 +889,27 @@ func (_u *ExerciseUpdateOne) RemoveChallenges(v ...*Challenge) *ExerciseUpdateOn
 	return _u.RemoveChallengeIDs(ids...)
 }
 
+// ClearContentNodes clears all "content_nodes" edges to the ContentNode entity.
+func (_u *ExerciseUpdateOne) ClearContentNodes() *ExerciseUpdateOne {
+	_u.mutation.ClearContentNodes()
+	return _u
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to ContentNode entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveContentNodeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.RemoveContentNodeIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodes removes "content_nodes" edges to ContentNode entities.
+func (_u *ExerciseUpdateOne) RemoveContentNodes(v ...*ContentNode) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeIDs(ids...)
+}
+
 // ClearOptions clears all "options" edges to the ExerciseOption entity.
 func (_u *ExerciseUpdateOne) ClearOptions() *ExerciseUpdateOne {
 	_u.mutation.ClearOptions()
@@ -530,6 +929,48 @@ func (_u *ExerciseUpdateOne) RemoveOptions(v ...*ExerciseOption) *ExerciseUpdate
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveOptionIDs(ids...)
+}
+
+// ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
+func (_u *ExerciseUpdateOne) ClearChallengeExercises() *ExerciseUpdateOne {
+	_u.mutation.ClearChallengeExercises()
+	return _u
+}
+
+// RemoveChallengeExerciseIDs removes the "challenge_exercises" edge to ChallengeExercise entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveChallengeExerciseIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.RemoveChallengeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveChallengeExercises removes "challenge_exercises" edges to ChallengeExercise entities.
+func (_u *ExerciseUpdateOne) RemoveChallengeExercises(v ...*ChallengeExercise) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveChallengeExerciseIDs(ids...)
+}
+
+// ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ExerciseUpdateOne) ClearContentNodeExercises() *ExerciseUpdateOne {
+	_u.mutation.ClearContentNodeExercises()
+	return _u
+}
+
+// RemoveContentNodeExerciseIDs removes the "content_node_exercises" edge to ContentNodeExercise entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveContentNodeExerciseIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.RemoveContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeExercises removes "content_node_exercises" edges to ContentNodeExercise entities.
+func (_u *ExerciseUpdateOne) RemoveContentNodeExercises(v ...*ContentNodeExercise) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeExerciseIDs(ids...)
 }
 
 // Where appends a list predicates to the ExerciseUpdate builder.
@@ -627,6 +1068,15 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	if _u.mutation.AudioURLCleared() {
 		_spec.ClearField(exercise.FieldAudioURL, field.TypeString)
 	}
+	if value, ok := _u.mutation.EstimatedDurationSeconds(); ok {
+		_spec.SetField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedEstimatedDurationSeconds(); ok {
+		_spec.AddField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
+	}
+	if _u.mutation.EstimatedDurationSecondsCleared() {
+		_spec.ClearField(exercise.FieldEstimatedDurationSeconds, field.TypeInt)
+	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -638,6 +1088,10 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 				IDSpec: sqlgraph.NewFieldSpec(challenge.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedChallengesIDs(); len(nodes) > 0 && !_u.mutation.ChallengesCleared() {
@@ -654,6 +1108,10 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.ChallengesIDs(); len(nodes) > 0 {
@@ -670,6 +1128,67 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _u.config, mutation: newChallengeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.OptionsCleared() {
@@ -710,6 +1229,96 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseoption.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedChallengeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ChallengeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

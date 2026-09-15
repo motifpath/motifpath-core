@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -13,8 +14,25 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
+// noShuffle is a shuffle func that never reorders anything — the default for
+// tests that don't exercise shuffling, so their expected order stays
+// deterministic without depending on shuffle behavior.
+func noShuffle(int, func(i, j int)) {}
+
+// reverseShuffle reverses element order deterministically — used by tests
+// that need to observe "shuffling happened" without real randomness.
+func reverseShuffle(n int, swap func(i, j int)) {
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
+}
+
 func newExerciseService(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, idSequence(), func() time.Time { return fixedCreatedAt })
+	return newExerciseServiceWithNodes(challenges, exercises, newFakeContentNodeRepository())
+}
+
+func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository) *application.ExerciseService {
+	return application.NewExerciseService(challenges, exercises, nodes, idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 }
 
 func imageRecognitionOptions() []domain.Option {
@@ -39,7 +57,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Root position of a C major triad", "Identify the root position of a C major triad",
-			domain.ExerciseTypeImageRecognition, nil, &imageURL, nil, imageRecognitionOptions())
+			domain.ExerciseTypeImageRecognition, nil, &imageURL, nil, imageRecognitionOptions(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Root position of a C major triad", exercise.Title)
@@ -51,7 +69,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), adminCaller(),
 			"Name the interval", "Name the interval between the open low E and the 5th fret",
-			domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions())
+			domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil)
 
 		require.NoError(t, err)
 	})
@@ -62,7 +80,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Alternate picking — descending run", "Play the descending run cleanly",
-			domain.ExerciseTypeImageRecognition, []string{"alternate_picking", "technique"}, &imageURL, nil, imageRecognitionOptions())
+			domain.ExerciseTypeImageRecognition, []string{"alternate_picking", "technique"}, &imageURL, nil, imageRecognitionOptions(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"alternate_picking", "technique"}, exercise.SkillTags)
@@ -72,7 +90,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"", "prompt", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions())
+			"", "prompt", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -83,7 +101,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", "", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions())
+			"title", "", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -94,7 +112,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", "prompt", "", nil, nil, nil, textResponseOptions())
+			"title", "prompt", "", nil, nil, nil, textResponseOptions(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -105,7 +123,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", "prompt", domain.ExerciseType("multiple_choice"), nil, nil, nil, textResponseOptions())
+			"title", "prompt", domain.ExerciseType("multiple_choice"), nil, nil, nil, textResponseOptions(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -118,7 +136,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", "prompt", domain.ExerciseTypeTextResponse, nil, nil, nil,
-			[]domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}})
+			[]domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -129,7 +147,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", "prompt", domain.ExerciseTypeTextResponse, []string{"technique", ""}, nil, nil, textResponseOptions())
+			"title", "prompt", domain.ExerciseTypeTextResponse, []string{"technique", ""}, nil, nil, textResponseOptions(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -140,7 +158,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), studentCaller(),
-			"title", "prompt", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions())
+			"title", "prompt", domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -270,5 +288,333 @@ func TestExerciseService_UnlinkExerciseFromChallenge(t *testing.T) {
 		err := svc.UnlinkExerciseFromChallenge(context.Background(), studentCaller(), "challenge-1", "exercise-1")
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
+	t.Run("a student lists the exercises linked to a challenge", func(t *testing.T) {
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1"})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ChallengeIDs: []string{"challenge-1"}, Options: textResponseOptions()})
+		svc := newExerciseService(challenges, exercises)
+
+		got, err := svc.ListExercisesForChallenge(context.Background(), "challenge-1")
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "exercise-1", got[0].ID)
+	})
+
+	t.Run("a student lists the exercises for a challenge with none linked", func(t *testing.T) {
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1"})
+		svc := newExerciseService(challenges, newFakeExerciseRepository())
+
+		got, err := svc.ListExercisesForChallenge(context.Background(), "challenge-1")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("listing exercises for a challenge that does not exist returns not found", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.ListExercisesForChallenge(context.Background(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a challenge with shuffling disabled always returns exercises in link order", func(t *testing.T) {
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "ordered-challenge", ShuffleExercises: false})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
+		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
+		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+
+		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
+		require.NoError(t, err)
+		second, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
+		require.NoError(t, err)
+
+		wantOrder := []string{"ex-1", "ex-2", "ex-3"}
+		assert.Equal(t, wantOrder, idsOf(first))
+		assert.Equal(t, wantOrder, idsOf(second))
+	})
+
+	t.Run("a challenge with shuffling enabled reorders exercises per the injected shuffle", func(t *testing.T) {
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "shuffled-challenge", ShuffleExercises: true, ShuffleOptions: true})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
+		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
+		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+
+		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ex-3", "ex-2", "ex-1"}, idsOf(got))
+		assert.Equal(t, "opt-2", got[0].Options[0].ID)
+	})
+}
+
+func idsOf(exercises []domain.Exercise) []string {
+	ids := make([]string, len(exercises))
+	for i, e := range exercises {
+		ids[i] = e.ID
+	}
+	return ids
+}
+
+func TestExerciseService_LinkExerciseToContentNode(t *testing.T) {
+	t.Run("a teacher links an existing exercise into a content node as a path exercise", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		exercise, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"node-1"}, exercise.ContentNodeIDs)
+	})
+
+	t.Run("an exercise can be a path exercise on a node and linked to a challenge at the same time", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1"})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ChallengeIDs: []string{}, ContentNodeIDs: []string{}})
+		svc := newExerciseServiceWithNodes(challenges, exercises, nodes)
+		_, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
+		require.NoError(t, err)
+
+		exercise, err := svc.LinkExerciseToChallenge(context.Background(), teacherCaller(), "challenge-1", "exercise-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"node-1"}, exercise.ContentNodeIDs)
+		assert.Equal(t, []string{"challenge-1"}, exercise.ChallengeIDs)
+	})
+
+	t.Run("linking an exercise that is already a path exercise on the node is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{"node-1"}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		_, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
+
+		assert.ErrorIs(t, err, domain.ErrAlreadyExists)
+	})
+
+	t.Run("linking a non-existent exercise to a content node as a path exercise returns not found", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), newFakeExerciseRepository(), nodes)
+
+		_, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "node-1", "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("linking an exercise as a path exercise to a non-existent content node returns not found", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository())
+
+		_, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "missing", "exercise-1")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a student cannot link an exercise to a content node as a path exercise", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		_, err := svc.LinkExerciseToContentNode(context.Background(), studentCaller(), "node-1", "exercise-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestExerciseService_UnlinkExerciseFromContentNode(t *testing.T) {
+	t.Run("a teacher unlinks a path exercise from a content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{"node-1"}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		err := svc.UnlinkExerciseFromContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
+		require.NoError(t, err)
+
+		exercise, err := svc.GetExercise(context.Background(), "exercise-1")
+		require.NoError(t, err)
+		assert.Empty(t, exercise.ContentNodeIDs)
+	})
+
+	t.Run("unlinking a path exercise that is not linked to the node returns not found", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		err := svc.UnlinkExerciseFromContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a student cannot unlink a path exercise from a content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", ContentNodeIDs: []string{"node-1"}})
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), exercises, nodes)
+
+		err := svc.UnlinkExerciseFromContentNode(context.Background(), studentCaller(), "node-1", "exercise-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
+	t.Run("a student lists the path exercises for a node that has some, always in link order", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
+		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+
+		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
+		require.NoError(t, err)
+		second, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"ex-1", "ex-2"}, idsOf(first))
+		assert.Equal(t, []string{"ex-1", "ex-2"}, idsOf(second))
+	})
+
+	t.Run("a student lists the path exercises for a node that has none", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), newFakeExerciseRepository(), nodes)
+
+		got, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("listing path exercises for a content node that does not exist returns not found", func(t *testing.T) {
+		svc := newExerciseServiceWithNodes(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository())
+
+		_, err := svc.ListPathExercisesForContentNode(context.Background(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestExerciseService_StartPracticeSession(t *testing.T) {
+	putTagged := func(exercises *fakeExerciseRepository, id, tag string) {
+		exercises.put(domain.Exercise{ID: id, SkillTags: []string{tag}, Options: textResponseOptions()})
+	}
+
+	t.Run("a student starts a practice session for a skill with enough tagged exercises", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		for i := 1; i <= 12; i++ {
+			putTagged(exercises, "ex-"+strconv.Itoa(i), "alternate_picking")
+		}
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		session, err := svc.StartPracticeSession(context.Background(), "alternate_picking", 10)
+
+		require.NoError(t, err)
+		assert.Len(t, session.Exercises, 10)
+		assert.Equal(t, "alternate_picking", session.SkillTag)
+		assert.NotEmpty(t, session.ID)
+		for _, e := range session.Exercises {
+			assert.Contains(t, e.SkillTags, "alternate_picking")
+		}
+	})
+
+	t.Run("a practice session returns fewer exercises when the tagged pool is smaller than requested", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		for i := 1; i <= 3; i++ {
+			putTagged(exercises, "ex-"+strconv.Itoa(i), "hybrid_picking")
+		}
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		session, err := svc.StartPracticeSession(context.Background(), "hybrid_picking", 10)
+
+		require.NoError(t, err)
+		assert.Len(t, session.Exercises, 3)
+	})
+
+	t.Run("starting a practice session for a skill tag with no matching exercises returns an empty session", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		session, err := svc.StartPracticeSession(context.Background(), "nonexistent-skill", 10)
+
+		require.NoError(t, err)
+		assert.Empty(t, session.Exercises)
+	})
+
+	t.Run("two practice sessions for the same skill tag may differ in composition and order", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		for i := 1; i <= 12; i++ {
+			putTagged(exercises, "ex-"+strconv.Itoa(i), "alternate_picking")
+		}
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		first, err := svc.StartPracticeSession(context.Background(), "alternate_picking", 10)
+		require.NoError(t, err)
+		second, err := svc.StartPracticeSession(context.Background(), "alternate_picking", 10)
+		require.NoError(t, err)
+
+		assert.NotEqual(t, first.ID, second.ID)
+	})
+
+	t.Run("starting a practice session without a skill tag is rejected", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.StartPracticeSession(context.Background(), "", 10)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "skill_tag")
+	})
+
+	t.Run("starting a practice session with a count above the maximum is rejected", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.StartPracticeSession(context.Background(), "alternate_picking", 51)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "count")
+	})
+
+	t.Run("a practice session shuffles exercise and option order per the injected shuffle", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		putTagged(exercises, "ex-1", "alternate_picking")
+		putTagged(exercises, "ex-2", "alternate_picking")
+		putTagged(exercises, "ex-3", "alternate_picking")
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+
+		session, err := svc.StartPracticeSession(context.Background(), "alternate_picking", 10)
+
+		require.NoError(t, err)
+		assert.Equal(t, "opt-2", session.Exercises[0].Options[0].ID)
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -413,6 +414,52 @@ func CreatedAtLT(v time.Time) predicate.ContentNode {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// HasPathExercises applies the HasEdge predicate on the "path_exercises" edge.
+func HasPathExercises() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, PathExercisesTable, PathExercisesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPathExercisesWith applies the HasEdge predicate on the "path_exercises" edge with a given conditions (other predicates).
+func HasPathExercisesWith(preds ...predicate.Exercise) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newPathExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeExercises applies the HasEdge predicate on the "content_node_exercises" edge.
+func HasContentNodeExercises() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeExercisesTable, ContentNodeExercisesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeExercisesWith applies the HasEdge predicate on the "content_node_exercises" edge with a given conditions (other predicates).
+func HasContentNodeExercisesWith(preds ...predicate.ContentNodeExercise) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.
