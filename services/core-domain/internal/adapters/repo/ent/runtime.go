@@ -24,8 +24,16 @@ import (
 func init() {
 	challengeFields := schema.Challenge{}.Fields()
 	_ = challengeFields
+	// challengeDescShuffleExercises is the schema descriptor for shuffle_exercises field.
+	challengeDescShuffleExercises := challengeFields[5].Descriptor()
+	// challenge.DefaultShuffleExercises holds the default value on creation for the shuffle_exercises field.
+	challenge.DefaultShuffleExercises = challengeDescShuffleExercises.Default.(bool)
+	// challengeDescShuffleOptions is the schema descriptor for shuffle_options field.
+	challengeDescShuffleOptions := challengeFields[6].Descriptor()
+	// challenge.DefaultShuffleOptions holds the default value on creation for the shuffle_options field.
+	challenge.DefaultShuffleOptions = challengeDescShuffleOptions.Default.(bool)
 	// challengeDescCreatedAt is the schema descriptor for created_at field.
-	challengeDescCreatedAt := challengeFields[5].Descriptor()
+	challengeDescCreatedAt := challengeFields[7].Descriptor()
 	// challenge.DefaultCreatedAt holds the default value on creation for the created_at field.
 	challenge.DefaultCreatedAt = challengeDescCreatedAt.Default.(func() time.Time)
 	// challengeDescID is the schema descriptor for id field.
@@ -45,7 +53,7 @@ func init() {
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
-	exerciseDescCreatedAt := exerciseFields[7].Descriptor()
+	exerciseDescCreatedAt := exerciseFields[8].Descriptor()
 	// exercise.DefaultCreatedAt holds the default value on creation for the created_at field.
 	exercise.DefaultCreatedAt = exerciseDescCreatedAt.Default.(func() time.Time)
 	// exerciseDescID is the schema descriptor for id field.

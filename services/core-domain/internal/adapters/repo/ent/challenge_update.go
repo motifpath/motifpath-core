@@ -84,6 +84,34 @@ func (_u *ChallengeUpdate) ClearRemediationTargetContentNodeID() *ChallengeUpdat
 	return _u
 }
 
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_u *ChallengeUpdate) SetShuffleExercises(v bool) *ChallengeUpdate {
+	_u.mutation.SetShuffleExercises(v)
+	return _u
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableShuffleExercises(v *bool) *ChallengeUpdate {
+	if v != nil {
+		_u.SetShuffleExercises(*v)
+	}
+	return _u
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_u *ChallengeUpdate) SetShuffleOptions(v bool) *ChallengeUpdate {
+	_u.mutation.SetShuffleOptions(v)
+	return _u
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableShuffleOptions(v *bool) *ChallengeUpdate {
+	if v != nil {
+		_u.SetShuffleOptions(*v)
+	}
+	return _u
+}
+
 // AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
 func (_u *ChallengeUpdate) AddExerciseIDs(ids ...uuid.UUID) *ChallengeUpdate {
 	_u.mutation.AddExerciseIDs(ids...)
@@ -175,6 +203,12 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RemediationTargetContentNodeIDCleared() {
 		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
 	}
 	if _u.mutation.ExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -293,6 +327,34 @@ func (_u *ChallengeUpdateOne) SetNillableRemediationTargetContentNodeID(v *uuid.
 // ClearRemediationTargetContentNodeID clears the value of the "remediation_target_content_node_id" field.
 func (_u *ChallengeUpdateOne) ClearRemediationTargetContentNodeID() *ChallengeUpdateOne {
 	_u.mutation.ClearRemediationTargetContentNodeID()
+	return _u
+}
+
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_u *ChallengeUpdateOne) SetShuffleExercises(v bool) *ChallengeUpdateOne {
+	_u.mutation.SetShuffleExercises(v)
+	return _u
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableShuffleExercises(v *bool) *ChallengeUpdateOne {
+	if v != nil {
+		_u.SetShuffleExercises(*v)
+	}
+	return _u
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_u *ChallengeUpdateOne) SetShuffleOptions(v bool) *ChallengeUpdateOne {
+	_u.mutation.SetShuffleOptions(v)
+	return _u
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableShuffleOptions(v *bool) *ChallengeUpdateOne {
+	if v != nil {
+		_u.SetShuffleOptions(*v)
+	}
 	return _u
 }
 
@@ -417,6 +479,12 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 	}
 	if _u.mutation.RemediationTargetContentNodeIDCleared() {
 		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
 	}
 	if _u.mutation.ExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{

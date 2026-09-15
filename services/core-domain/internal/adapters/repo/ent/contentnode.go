@@ -33,8 +33,29 @@ type ContentNode struct {
 	// ReviewState holds the value of the "review_state" field.
 	ReviewState contentnode.ReviewState `json:"review_state,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ContentNodeQuery when eager-loading is set.
+	Edges        ContentNodeEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// ContentNodeEdges holds the relations/edges for other nodes in the graph.
+type ContentNodeEdges struct {
+	// PathExercises holds the value of the path_exercises edge.
+	PathExercises []*Exercise `json:"path_exercises,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// PathExercisesOrErr returns the PathExercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) PathExercisesOrErr() ([]*Exercise, error) {
+	if e.loadedTypes[0] {
+		return e.PathExercises, nil
+	}
+	return nil, &NotLoadedError{edge: "path_exercises"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -128,6 +149,11 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *ContentNode) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryPathExercises queries the "path_exercises" edge of the ContentNode entity.
+func (_m *ContentNode) QueryPathExercises() *ExerciseQuery {
+	return NewContentNodeClient(_m.config).QueryPathExercises(_m)
 }
 
 // Update returns a builder for updating this ContentNode.

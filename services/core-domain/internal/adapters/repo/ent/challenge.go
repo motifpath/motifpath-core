@@ -26,6 +26,10 @@ type Challenge struct {
 	PassThreshold int `json:"pass_threshold,omitempty"`
 	// RemediationTargetContentNodeID holds the value of the "remediation_target_content_node_id" field.
 	RemediationTargetContentNodeID *uuid.UUID `json:"remediation_target_content_node_id,omitempty"`
+	// ShuffleExercises holds the value of the "shuffle_exercises" field.
+	ShuffleExercises bool `json:"shuffle_exercises,omitempty"`
+	// ShuffleOptions holds the value of the "shuffle_options" field.
+	ShuffleOptions bool `json:"shuffle_options,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -59,6 +63,8 @@ func (*Challenge) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case challenge.FieldRemediationTargetContentNodeID:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
+		case challenge.FieldShuffleExercises, challenge.FieldShuffleOptions:
+			values[i] = new(sql.NullBool)
 		case challenge.FieldPassThreshold:
 			values[i] = new(sql.NullInt64)
 		case challenge.FieldSubjectTag:
@@ -112,6 +118,18 @@ func (_m *Challenge) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RemediationTargetContentNodeID = new(uuid.UUID)
 				*_m.RemediationTargetContentNodeID = *value.S.(*uuid.UUID)
+			}
+		case challenge.FieldShuffleExercises:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field shuffle_exercises", values[i])
+			} else if value.Valid {
+				_m.ShuffleExercises = value.Bool
+			}
+		case challenge.FieldShuffleOptions:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field shuffle_options", values[i])
+			} else if value.Valid {
+				_m.ShuffleOptions = value.Bool
 			}
 		case challenge.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -173,6 +191,12 @@ func (_m *Challenge) String() string {
 		builder.WriteString("remediation_target_content_node_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("shuffle_exercises=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ShuffleExercises))
+	builder.WriteString(", ")
+	builder.WriteString("shuffle_options=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ShuffleOptions))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

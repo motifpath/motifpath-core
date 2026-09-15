@@ -55,6 +55,8 @@ type ChallengeMutation struct {
 	pass_threshold                     *int
 	addpass_threshold                  *int
 	remediation_target_content_node_id *uuid.UUID
+	shuffle_exercises                  *bool
+	shuffle_options                    *bool
 	created_at                         *time.Time
 	clearedFields                      map[string]struct{}
 	exercises                          map[uuid.UUID]struct{}
@@ -346,6 +348,78 @@ func (m *ChallengeMutation) ResetRemediationTargetContentNodeID() {
 	delete(m.clearedFields, challenge.FieldRemediationTargetContentNodeID)
 }
 
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (m *ChallengeMutation) SetShuffleExercises(b bool) {
+	m.shuffle_exercises = &b
+}
+
+// ShuffleExercises returns the value of the "shuffle_exercises" field in the mutation.
+func (m *ChallengeMutation) ShuffleExercises() (r bool, exists bool) {
+	v := m.shuffle_exercises
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShuffleExercises returns the old "shuffle_exercises" field's value of the Challenge entity.
+// If the Challenge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChallengeMutation) OldShuffleExercises(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShuffleExercises is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShuffleExercises requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShuffleExercises: %w", err)
+	}
+	return oldValue.ShuffleExercises, nil
+}
+
+// ResetShuffleExercises resets all changes to the "shuffle_exercises" field.
+func (m *ChallengeMutation) ResetShuffleExercises() {
+	m.shuffle_exercises = nil
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (m *ChallengeMutation) SetShuffleOptions(b bool) {
+	m.shuffle_options = &b
+}
+
+// ShuffleOptions returns the value of the "shuffle_options" field in the mutation.
+func (m *ChallengeMutation) ShuffleOptions() (r bool, exists bool) {
+	v := m.shuffle_options
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShuffleOptions returns the old "shuffle_options" field's value of the Challenge entity.
+// If the Challenge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChallengeMutation) OldShuffleOptions(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShuffleOptions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShuffleOptions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShuffleOptions: %w", err)
+	}
+	return oldValue.ShuffleOptions, nil
+}
+
+// ResetShuffleOptions resets all changes to the "shuffle_options" field.
+func (m *ChallengeMutation) ResetShuffleOptions() {
+	m.shuffle_options = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ChallengeMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -470,7 +544,7 @@ func (m *ChallengeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChallengeMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 7)
 	if m.content_node_id != nil {
 		fields = append(fields, challenge.FieldContentNodeID)
 	}
@@ -482,6 +556,12 @@ func (m *ChallengeMutation) Fields() []string {
 	}
 	if m.remediation_target_content_node_id != nil {
 		fields = append(fields, challenge.FieldRemediationTargetContentNodeID)
+	}
+	if m.shuffle_exercises != nil {
+		fields = append(fields, challenge.FieldShuffleExercises)
+	}
+	if m.shuffle_options != nil {
+		fields = append(fields, challenge.FieldShuffleOptions)
 	}
 	if m.created_at != nil {
 		fields = append(fields, challenge.FieldCreatedAt)
@@ -502,6 +582,10 @@ func (m *ChallengeMutation) Field(name string) (ent.Value, bool) {
 		return m.PassThreshold()
 	case challenge.FieldRemediationTargetContentNodeID:
 		return m.RemediationTargetContentNodeID()
+	case challenge.FieldShuffleExercises:
+		return m.ShuffleExercises()
+	case challenge.FieldShuffleOptions:
+		return m.ShuffleOptions()
 	case challenge.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -521,6 +605,10 @@ func (m *ChallengeMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldPassThreshold(ctx)
 	case challenge.FieldRemediationTargetContentNodeID:
 		return m.OldRemediationTargetContentNodeID(ctx)
+	case challenge.FieldShuffleExercises:
+		return m.OldShuffleExercises(ctx)
+	case challenge.FieldShuffleOptions:
+		return m.OldShuffleOptions(ctx)
 	case challenge.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -559,6 +647,20 @@ func (m *ChallengeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRemediationTargetContentNodeID(v)
+		return nil
+	case challenge.FieldShuffleExercises:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShuffleExercises(v)
+		return nil
+	case challenge.FieldShuffleOptions:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShuffleOptions(v)
 		return nil
 	case challenge.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -651,6 +753,12 @@ func (m *ChallengeMutation) ResetField(name string) error {
 		return nil
 	case challenge.FieldRemediationTargetContentNodeID:
 		m.ResetRemediationTargetContentNodeID()
+		return nil
+	case challenge.FieldShuffleExercises:
+		m.ResetShuffleExercises()
+		return nil
+	case challenge.FieldShuffleOptions:
+		m.ResetShuffleOptions()
 		return nil
 	case challenge.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -746,21 +854,24 @@ func (m *ChallengeMutation) ResetEdge(name string) error {
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.
 type ContentNodeMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	teacher_id       *uuid.UUID
-	title            *string
-	content_type     *contentnode.ContentType
-	skill            *string
-	concept          *string
-	difficulty_level *contentnode.DifficultyLevel
-	review_state     *contentnode.ReviewState
-	created_at       *time.Time
-	clearedFields    map[string]struct{}
-	done             bool
-	oldValue         func(context.Context) (*ContentNode, error)
-	predicates       []predicate.ContentNode
+	op                    Op
+	typ                   string
+	id                    *uuid.UUID
+	teacher_id            *uuid.UUID
+	title                 *string
+	content_type          *contentnode.ContentType
+	skill                 *string
+	concept               *string
+	difficulty_level      *contentnode.DifficultyLevel
+	review_state          *contentnode.ReviewState
+	created_at            *time.Time
+	clearedFields         map[string]struct{}
+	path_exercises        map[uuid.UUID]struct{}
+	removedpath_exercises map[uuid.UUID]struct{}
+	clearedpath_exercises bool
+	done                  bool
+	oldValue              func(context.Context) (*ContentNode, error)
+	predicates            []predicate.ContentNode
 }
 
 var _ ent.Mutation = (*ContentNodeMutation)(nil)
@@ -1155,6 +1266,60 @@ func (m *ContentNodeMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by ids.
+func (m *ContentNodeMutation) AddPathExerciseIDs(ids ...uuid.UUID) {
+	if m.path_exercises == nil {
+		m.path_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.path_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPathExercises clears the "path_exercises" edge to the Exercise entity.
+func (m *ContentNodeMutation) ClearPathExercises() {
+	m.clearedpath_exercises = true
+}
+
+// PathExercisesCleared reports if the "path_exercises" edge to the Exercise entity was cleared.
+func (m *ContentNodeMutation) PathExercisesCleared() bool {
+	return m.clearedpath_exercises
+}
+
+// RemovePathExerciseIDs removes the "path_exercises" edge to the Exercise entity by IDs.
+func (m *ContentNodeMutation) RemovePathExerciseIDs(ids ...uuid.UUID) {
+	if m.removedpath_exercises == nil {
+		m.removedpath_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.path_exercises, ids[i])
+		m.removedpath_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPathExercises returns the removed IDs of the "path_exercises" edge to the Exercise entity.
+func (m *ContentNodeMutation) RemovedPathExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedpath_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PathExercisesIDs returns the "path_exercises" edge IDs in the mutation.
+func (m *ContentNodeMutation) PathExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.path_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPathExercises resets all changes to the "path_exercises" edge.
+func (m *ContentNodeMutation) ResetPathExercises() {
+	m.path_exercises = nil
+	m.clearedpath_exercises = false
+	m.removedpath_exercises = nil
+}
+
 // Where appends a list predicates to the ContentNodeMutation builder.
 func (m *ContentNodeMutation) Where(ps ...predicate.ContentNode) {
 	m.predicates = append(m.predicates, ps...)
@@ -1407,76 +1572,117 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ContentNodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.path_exercises != nil {
+		edges = append(edges, contentnode.EdgePathExercises)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case contentnode.EdgePathExercises:
+		ids := make([]ent.Value, 0, len(m.path_exercises))
+		for id := range m.path_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ContentNodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedpath_exercises != nil {
+		edges = append(edges, contentnode.EdgePathExercises)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case contentnode.EdgePathExercises:
+		ids := make([]ent.Value, 0, len(m.removedpath_exercises))
+		for id := range m.removedpath_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ContentNodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedpath_exercises {
+		edges = append(edges, contentnode.EdgePathExercises)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *ContentNodeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case contentnode.EdgePathExercises:
+		return m.clearedpath_exercises
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *ContentNodeMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown ContentNode unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *ContentNodeMutation) ResetEdge(name string) error {
+	switch name {
+	case contentnode.EdgePathExercises:
+		m.ResetPathExercises()
+		return nil
+	}
 	return fmt.Errorf("unknown ContentNode edge %s", name)
 }
 
 // ExerciseMutation represents an operation that mutates the Exercise nodes in the graph.
 type ExerciseMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	title             *string
-	prompt            *string
-	exercise_type     *exercise.ExerciseType
-	skill_tags        *[]string
-	appendskill_tags  []string
-	image_url         *string
-	audio_url         *string
-	created_at        *time.Time
-	clearedFields     map[string]struct{}
-	challenges        map[uuid.UUID]struct{}
-	removedchallenges map[uuid.UUID]struct{}
-	clearedchallenges bool
-	options           map[uuid.UUID]struct{}
-	removedoptions    map[uuid.UUID]struct{}
-	clearedoptions    bool
-	done              bool
-	oldValue          func(context.Context) (*Exercise, error)
-	predicates        []predicate.Exercise
+	op                            Op
+	typ                           string
+	id                            *uuid.UUID
+	title                         *string
+	prompt                        *string
+	exercise_type                 *exercise.ExerciseType
+	skill_tags                    *[]string
+	appendskill_tags              []string
+	image_url                     *string
+	audio_url                     *string
+	estimated_duration_seconds    *int
+	addestimated_duration_seconds *int
+	created_at                    *time.Time
+	clearedFields                 map[string]struct{}
+	challenges                    map[uuid.UUID]struct{}
+	removedchallenges             map[uuid.UUID]struct{}
+	clearedchallenges             bool
+	content_nodes                 map[uuid.UUID]struct{}
+	removedcontent_nodes          map[uuid.UUID]struct{}
+	clearedcontent_nodes          bool
+	options                       map[uuid.UUID]struct{}
+	removedoptions                map[uuid.UUID]struct{}
+	clearedoptions                bool
+	done                          bool
+	oldValue                      func(context.Context) (*Exercise, error)
+	predicates                    []predicate.Exercise
 }
 
 var _ ent.Mutation = (*ExerciseMutation)(nil)
@@ -1854,6 +2060,76 @@ func (m *ExerciseMutation) ResetAudioURL() {
 	delete(m.clearedFields, exercise.FieldAudioURL)
 }
 
+// SetEstimatedDurationSeconds sets the "estimated_duration_seconds" field.
+func (m *ExerciseMutation) SetEstimatedDurationSeconds(i int) {
+	m.estimated_duration_seconds = &i
+	m.addestimated_duration_seconds = nil
+}
+
+// EstimatedDurationSeconds returns the value of the "estimated_duration_seconds" field in the mutation.
+func (m *ExerciseMutation) EstimatedDurationSeconds() (r int, exists bool) {
+	v := m.estimated_duration_seconds
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEstimatedDurationSeconds returns the old "estimated_duration_seconds" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldEstimatedDurationSeconds(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEstimatedDurationSeconds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEstimatedDurationSeconds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEstimatedDurationSeconds: %w", err)
+	}
+	return oldValue.EstimatedDurationSeconds, nil
+}
+
+// AddEstimatedDurationSeconds adds i to the "estimated_duration_seconds" field.
+func (m *ExerciseMutation) AddEstimatedDurationSeconds(i int) {
+	if m.addestimated_duration_seconds != nil {
+		*m.addestimated_duration_seconds += i
+	} else {
+		m.addestimated_duration_seconds = &i
+	}
+}
+
+// AddedEstimatedDurationSeconds returns the value that was added to the "estimated_duration_seconds" field in this mutation.
+func (m *ExerciseMutation) AddedEstimatedDurationSeconds() (r int, exists bool) {
+	v := m.addestimated_duration_seconds
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearEstimatedDurationSeconds clears the value of the "estimated_duration_seconds" field.
+func (m *ExerciseMutation) ClearEstimatedDurationSeconds() {
+	m.estimated_duration_seconds = nil
+	m.addestimated_duration_seconds = nil
+	m.clearedFields[exercise.FieldEstimatedDurationSeconds] = struct{}{}
+}
+
+// EstimatedDurationSecondsCleared returns if the "estimated_duration_seconds" field was cleared in this mutation.
+func (m *ExerciseMutation) EstimatedDurationSecondsCleared() bool {
+	_, ok := m.clearedFields[exercise.FieldEstimatedDurationSeconds]
+	return ok
+}
+
+// ResetEstimatedDurationSeconds resets all changes to the "estimated_duration_seconds" field.
+func (m *ExerciseMutation) ResetEstimatedDurationSeconds() {
+	m.estimated_duration_seconds = nil
+	m.addestimated_duration_seconds = nil
+	delete(m.clearedFields, exercise.FieldEstimatedDurationSeconds)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ExerciseMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -1944,6 +2220,60 @@ func (m *ExerciseMutation) ResetChallenges() {
 	m.removedchallenges = nil
 }
 
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
+func (m *ExerciseMutation) AddContentNodeIDs(ids ...uuid.UUID) {
+	if m.content_nodes == nil {
+		m.content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
+func (m *ExerciseMutation) ClearContentNodes() {
+	m.clearedcontent_nodes = true
+}
+
+// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
+func (m *ExerciseMutation) ContentNodesCleared() bool {
+	return m.clearedcontent_nodes
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
+func (m *ExerciseMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedcontent_nodes == nil {
+		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.content_nodes, ids[i])
+		m.removedcontent_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
+func (m *ExerciseMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcontent_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
+func (m *ExerciseMutation) ContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodes resets all changes to the "content_nodes" edge.
+func (m *ExerciseMutation) ResetContentNodes() {
+	m.content_nodes = nil
+	m.clearedcontent_nodes = false
+	m.removedcontent_nodes = nil
+}
+
 // AddOptionIDs adds the "options" edge to the ExerciseOption entity by ids.
 func (m *ExerciseMutation) AddOptionIDs(ids ...uuid.UUID) {
 	if m.options == nil {
@@ -2032,7 +2362,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -2050,6 +2380,9 @@ func (m *ExerciseMutation) Fields() []string {
 	}
 	if m.audio_url != nil {
 		fields = append(fields, exercise.FieldAudioURL)
+	}
+	if m.estimated_duration_seconds != nil {
+		fields = append(fields, exercise.FieldEstimatedDurationSeconds)
 	}
 	if m.created_at != nil {
 		fields = append(fields, exercise.FieldCreatedAt)
@@ -2074,6 +2407,8 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.ImageURL()
 	case exercise.FieldAudioURL:
 		return m.AudioURL()
+	case exercise.FieldEstimatedDurationSeconds:
+		return m.EstimatedDurationSeconds()
 	case exercise.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -2097,6 +2432,8 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldImageURL(ctx)
 	case exercise.FieldAudioURL:
 		return m.OldAudioURL(ctx)
+	case exercise.FieldEstimatedDurationSeconds:
+		return m.OldEstimatedDurationSeconds(ctx)
 	case exercise.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -2150,6 +2487,13 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAudioURL(v)
 		return nil
+	case exercise.FieldEstimatedDurationSeconds:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEstimatedDurationSeconds(v)
+		return nil
 	case exercise.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -2164,13 +2508,21 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ExerciseMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addestimated_duration_seconds != nil {
+		fields = append(fields, exercise.FieldEstimatedDurationSeconds)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ExerciseMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case exercise.FieldEstimatedDurationSeconds:
+		return m.AddedEstimatedDurationSeconds()
+	}
 	return nil, false
 }
 
@@ -2179,6 +2531,13 @@ func (m *ExerciseMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ExerciseMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case exercise.FieldEstimatedDurationSeconds:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddEstimatedDurationSeconds(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Exercise numeric field %s", name)
 }
@@ -2195,6 +2554,9 @@ func (m *ExerciseMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(exercise.FieldAudioURL) {
 		fields = append(fields, exercise.FieldAudioURL)
+	}
+	if m.FieldCleared(exercise.FieldEstimatedDurationSeconds) {
+		fields = append(fields, exercise.FieldEstimatedDurationSeconds)
 	}
 	return fields
 }
@@ -2218,6 +2580,9 @@ func (m *ExerciseMutation) ClearField(name string) error {
 		return nil
 	case exercise.FieldAudioURL:
 		m.ClearAudioURL()
+		return nil
+	case exercise.FieldEstimatedDurationSeconds:
+		m.ClearEstimatedDurationSeconds()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise nullable field %s", name)
@@ -2245,6 +2610,9 @@ func (m *ExerciseMutation) ResetField(name string) error {
 	case exercise.FieldAudioURL:
 		m.ResetAudioURL()
 		return nil
+	case exercise.FieldEstimatedDurationSeconds:
+		m.ResetEstimatedDurationSeconds()
+		return nil
 	case exercise.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
@@ -2254,9 +2622,12 @@ func (m *ExerciseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ExerciseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.challenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
+	}
+	if m.content_nodes != nil {
+		edges = append(edges, exercise.EdgeContentNodes)
 	}
 	if m.options != nil {
 		edges = append(edges, exercise.EdgeOptions)
@@ -2274,6 +2645,12 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.content_nodes))
+		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeOptions:
 		ids := make([]ent.Value, 0, len(m.options))
 		for id := range m.options {
@@ -2286,9 +2663,12 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ExerciseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedchallenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
+	}
+	if m.removedcontent_nodes != nil {
+		edges = append(edges, exercise.EdgeContentNodes)
 	}
 	if m.removedoptions != nil {
 		edges = append(edges, exercise.EdgeOptions)
@@ -2306,6 +2686,12 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
+		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeOptions:
 		ids := make([]ent.Value, 0, len(m.removedoptions))
 		for id := range m.removedoptions {
@@ -2318,9 +2704,12 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ExerciseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedchallenges {
 		edges = append(edges, exercise.EdgeChallenges)
+	}
+	if m.clearedcontent_nodes {
+		edges = append(edges, exercise.EdgeContentNodes)
 	}
 	if m.clearedoptions {
 		edges = append(edges, exercise.EdgeOptions)
@@ -2334,6 +2723,8 @@ func (m *ExerciseMutation) EdgeCleared(name string) bool {
 	switch name {
 	case exercise.EdgeChallenges:
 		return m.clearedchallenges
+	case exercise.EdgeContentNodes:
+		return m.clearedcontent_nodes
 	case exercise.EdgeOptions:
 		return m.clearedoptions
 	}
@@ -2354,6 +2745,9 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 	switch name {
 	case exercise.EdgeChallenges:
 		m.ResetChallenges()
+		return nil
+	case exercise.EdgeContentNodes:
+		m.ResetContentNodes()
 		return nil
 	case exercise.EdgeOptions:
 		m.ResetOptions()

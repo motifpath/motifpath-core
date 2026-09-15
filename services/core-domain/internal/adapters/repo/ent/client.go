@@ -529,6 +529,22 @@ func (c *ContentNodeClient) GetX(ctx context.Context, id uuid.UUID) *ContentNode
 	return obj
 }
 
+// QueryPathExercises queries the path_exercises edge of a ContentNode.
+func (c *ContentNodeClient) QueryPathExercises(_m *ContentNode) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, contentnode.PathExercisesTable, contentnode.PathExercisesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ContentNodeClient) Hooks() []Hook {
 	return c.hooks.ContentNode
@@ -671,6 +687,22 @@ func (c *ExerciseClient) QueryChallenges(_m *Exercise) *ChallengeQuery {
 			sqlgraph.From(exercise.Table, exercise.FieldID, id),
 			sqlgraph.To(challenge.Table, challenge.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, exercise.ChallengesTable, exercise.ChallengesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodes queries the content_nodes edge of a Exercise.
+func (c *ExerciseClient) QueryContentNodes(_m *Exercise) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, exercise.ContentNodesTable, exercise.ContentNodesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

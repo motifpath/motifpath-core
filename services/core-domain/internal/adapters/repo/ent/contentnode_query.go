@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -13,16 +14,18 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
 // ContentNodeQuery is the builder for querying ContentNode entities.
 type ContentNodeQuery struct {
 	config
-	ctx        *QueryContext
-	order      []contentnode.OrderOption
-	inters     []Interceptor
-	predicates []predicate.ContentNode
+	ctx               *QueryContext
+	order             []contentnode.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.ContentNode
+	withPathExercises *ExerciseQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +60,28 @@ func (_q *ContentNodeQuery) Unique(unique bool) *ContentNodeQuery {
 func (_q *ContentNodeQuery) Order(o ...contentnode.OrderOption) *ContentNodeQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryPathExercises chains the current query on the "path_exercises" edge.
+func (_q *ContentNodeQuery) QueryPathExercises() *ExerciseQuery {
+	query := (&ExerciseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, contentnode.PathExercisesTable, contentnode.PathExercisesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first ContentNode entity from the query.
@@ -246,15 +271,27 @@ func (_q *ContentNodeQuery) Clone() *ContentNodeQuery {
 		return nil
 	}
 	return &ContentNodeQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]contentnode.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.ContentNode{}, _q.predicates...),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]contentnode.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.ContentNode{}, _q.predicates...),
+		withPathExercises: _q.withPathExercises.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithPathExercises tells the query-builder to eager-load the nodes that are connected to
+// the "path_exercises" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ContentNodeQuery) WithPathExercises(opts ...func(*ExerciseQuery)) *ContentNodeQuery {
+	query := (&ExerciseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPathExercises = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -333,8 +370,11 @@ func (_q *ContentNodeQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*ContentNode, error) {
 	var (
-		nodes = []*ContentNode{}
-		_spec = _q.querySpec()
+		nodes       = []*ContentNode{}
+		_spec       = _q.querySpec()
+		loadedTypes = [1]bool{
+			_q.withPathExercises != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*ContentNode).scanValues(nil, columns)
@@ -342,6 +382,7 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &ContentNode{config: _q.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +394,76 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withPathExercises; query != nil {
+		if err := _q.loadPathExercises(ctx, query, nodes,
+			func(n *ContentNode) { n.Edges.PathExercises = []*Exercise{} },
+			func(n *ContentNode, e *Exercise) { n.Edges.PathExercises = append(n.Edges.PathExercises, e) }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *ExerciseQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *Exercise)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*ContentNode)
+	nids := make(map[uuid.UUID]map[*ContentNode]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(contentnode.PathExercisesTable)
+		s.Join(joinT).On(s.C(exercise.FieldID), joinT.C(contentnode.PathExercisesPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(contentnode.PathExercisesPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(contentnode.PathExercisesPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*ContentNode]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Exercise](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "path_exercises" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
 }
 
 func (_q *ContentNodeQuery) sqlCount(ctx context.Context) (int, error) {

@@ -54,6 +54,34 @@ func (_c *ChallengeCreate) SetNillableRemediationTargetContentNodeID(v *uuid.UUI
 	return _c
 }
 
+// SetShuffleExercises sets the "shuffle_exercises" field.
+func (_c *ChallengeCreate) SetShuffleExercises(v bool) *ChallengeCreate {
+	_c.mutation.SetShuffleExercises(v)
+	return _c
+}
+
+// SetNillableShuffleExercises sets the "shuffle_exercises" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableShuffleExercises(v *bool) *ChallengeCreate {
+	if v != nil {
+		_c.SetShuffleExercises(*v)
+	}
+	return _c
+}
+
+// SetShuffleOptions sets the "shuffle_options" field.
+func (_c *ChallengeCreate) SetShuffleOptions(v bool) *ChallengeCreate {
+	_c.mutation.SetShuffleOptions(v)
+	return _c
+}
+
+// SetNillableShuffleOptions sets the "shuffle_options" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableShuffleOptions(v *bool) *ChallengeCreate {
+	if v != nil {
+		_c.SetShuffleOptions(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ChallengeCreate) SetCreatedAt(v time.Time) *ChallengeCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -132,6 +160,14 @@ func (_c *ChallengeCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *ChallengeCreate) defaults() {
+	if _, ok := _c.mutation.ShuffleExercises(); !ok {
+		v := challenge.DefaultShuffleExercises
+		_c.mutation.SetShuffleExercises(v)
+	}
+	if _, ok := _c.mutation.ShuffleOptions(); !ok {
+		v := challenge.DefaultShuffleOptions
+		_c.mutation.SetShuffleOptions(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := challenge.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -152,6 +188,12 @@ func (_c *ChallengeCreate) check() error {
 	}
 	if _, ok := _c.mutation.PassThreshold(); !ok {
 		return &ValidationError{Name: "pass_threshold", err: errors.New(`ent: missing required field "Challenge.pass_threshold"`)}
+	}
+	if _, ok := _c.mutation.ShuffleExercises(); !ok {
+		return &ValidationError{Name: "shuffle_exercises", err: errors.New(`ent: missing required field "Challenge.shuffle_exercises"`)}
+	}
+	if _, ok := _c.mutation.ShuffleOptions(); !ok {
+		return &ValidationError{Name: "shuffle_options", err: errors.New(`ent: missing required field "Challenge.shuffle_options"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Challenge.created_at"`)}
@@ -206,6 +248,14 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RemediationTargetContentNodeID(); ok {
 		_spec.SetField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID, value)
 		_node.RemediationTargetContentNodeID = &value
+	}
+	if value, ok := _c.mutation.ShuffleExercises(); ok {
+		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
+		_node.ShuffleExercises = value
+	}
+	if value, ok := _c.mutation.ShuffleOptions(); ok {
+		_spec.SetField(challenge.FieldShuffleOptions, field.TypeBool, value)
+		_node.ShuffleOptions = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(challenge.FieldCreatedAt, field.TypeTime, value)

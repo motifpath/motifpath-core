@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 )
@@ -75,6 +76,20 @@ func (_c *ExerciseCreate) SetNillableAudioURL(v *string) *ExerciseCreate {
 	return _c
 }
 
+// SetEstimatedDurationSeconds sets the "estimated_duration_seconds" field.
+func (_c *ExerciseCreate) SetEstimatedDurationSeconds(v int) *ExerciseCreate {
+	_c.mutation.SetEstimatedDurationSeconds(v)
+	return _c
+}
+
+// SetNillableEstimatedDurationSeconds sets the "estimated_duration_seconds" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableEstimatedDurationSeconds(v *int) *ExerciseCreate {
+	if v != nil {
+		_c.SetEstimatedDurationSeconds(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ExerciseCreate) SetCreatedAt(v time.Time) *ExerciseCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -116,6 +131,21 @@ func (_c *ExerciseCreate) AddChallenges(v ...*Challenge) *ExerciseCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddChallengeIDs(ids...)
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by IDs.
+func (_c *ExerciseCreate) AddContentNodeIDs(ids ...uuid.UUID) *ExerciseCreate {
+	_c.mutation.AddContentNodeIDs(ids...)
+	return _c
+}
+
+// AddContentNodes adds the "content_nodes" edges to the ContentNode entity.
+func (_c *ExerciseCreate) AddContentNodes(v ...*ContentNode) *ExerciseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeIDs(ids...)
 }
 
 // AddOptionIDs adds the "options" edge to the ExerciseOption entity by IDs.
@@ -256,6 +286,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 		_spec.SetField(exercise.FieldAudioURL, field.TypeString, value)
 		_node.AudioURL = &value
 	}
+	if value, ok := _c.mutation.EstimatedDurationSeconds(); ok {
+		_spec.SetField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
+		_node.EstimatedDurationSeconds = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -269,6 +303,22 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(challenge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ContentNodesTable,
+			Columns: exercise.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

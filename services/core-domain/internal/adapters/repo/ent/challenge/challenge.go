@@ -23,6 +23,10 @@ const (
 	FieldPassThreshold = "pass_threshold"
 	// FieldRemediationTargetContentNodeID holds the string denoting the remediation_target_content_node_id field in the database.
 	FieldRemediationTargetContentNodeID = "remediation_target_content_node_id"
+	// FieldShuffleExercises holds the string denoting the shuffle_exercises field in the database.
+	FieldShuffleExercises = "shuffle_exercises"
+	// FieldShuffleOptions holds the string denoting the shuffle_options field in the database.
+	FieldShuffleOptions = "shuffle_options"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeExercises holds the string denoting the exercises edge name in mutations.
@@ -43,6 +47,8 @@ var Columns = []string{
 	FieldSubjectTag,
 	FieldPassThreshold,
 	FieldRemediationTargetContentNodeID,
+	FieldShuffleExercises,
+	FieldShuffleOptions,
 	FieldCreatedAt,
 }
 
@@ -63,6 +69,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultShuffleExercises holds the default value on creation for the "shuffle_exercises" field.
+	DefaultShuffleExercises bool
+	// DefaultShuffleOptions holds the default value on creation for the "shuffle_options" field.
+	DefaultShuffleOptions bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -95,6 +105,16 @@ func ByPassThreshold(opts ...sql.OrderTermOption) OrderOption {
 // ByRemediationTargetContentNodeID orders the results by the remediation_target_content_node_id field.
 func ByRemediationTargetContentNodeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemediationTargetContentNodeID, opts...).ToFunc()
+}
+
+// ByShuffleExercises orders the results by the shuffle_exercises field.
+func ByShuffleExercises(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShuffleExercises, opts...).ToFunc()
+}
+
+// ByShuffleOptions orders the results by the shuffle_options field.
+func ByShuffleOptions(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShuffleOptions, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

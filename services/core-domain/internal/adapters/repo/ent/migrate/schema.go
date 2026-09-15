@@ -15,6 +15,8 @@ var (
 		{Name: "subject_tag", Type: field.TypeString},
 		{Name: "pass_threshold", Type: field.TypeInt},
 		{Name: "remediation_target_content_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "shuffle_exercises", Type: field.TypeBool, Default: false},
+		{Name: "shuffle_options", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ChallengesTable holds the schema information for the "challenges" table.
@@ -57,6 +59,7 @@ var (
 		{Name: "skill_tags", Type: field.TypeJSON, Nullable: true},
 		{Name: "image_url", Type: field.TypeString, Nullable: true},
 		{Name: "audio_url", Type: field.TypeString, Nullable: true},
+		{Name: "estimated_duration_seconds", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.
@@ -211,6 +214,31 @@ var (
 			},
 		},
 	}
+	// ExerciseContentNodesColumns holds the columns for the "exercise_content_nodes" table.
+	ExerciseContentNodesColumns = []*schema.Column{
+		{Name: "exercise_id", Type: field.TypeUUID},
+		{Name: "content_node_id", Type: field.TypeUUID},
+	}
+	// ExerciseContentNodesTable holds the schema information for the "exercise_content_nodes" table.
+	ExerciseContentNodesTable = &schema.Table{
+		Name:       "exercise_content_nodes",
+		Columns:    ExerciseContentNodesColumns,
+		PrimaryKey: []*schema.Column{ExerciseContentNodesColumns[0], ExerciseContentNodesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "exercise_content_nodes_exercise_id",
+				Columns:    []*schema.Column{ExerciseContentNodesColumns[0]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "exercise_content_nodes_content_node_id",
+				Columns:    []*schema.Column{ExerciseContentNodesColumns[1]},
+				RefColumns: []*schema.Column{ContentNodesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChallengesTable,
@@ -223,6 +251,7 @@ var (
 		PathAssignmentsTable,
 		UsersTable,
 		ExerciseChallengesTable,
+		ExerciseContentNodesTable,
 	}
 )
 
@@ -230,4 +259,6 @@ func init() {
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseChallengesTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseChallengesTable.ForeignKeys[1].RefTable = ChallengesTable
+	ExerciseContentNodesTable.ForeignKeys[0].RefTable = ExercisesTable
+	ExerciseContentNodesTable.ForeignKeys[1].RefTable = ContentNodesTable
 }

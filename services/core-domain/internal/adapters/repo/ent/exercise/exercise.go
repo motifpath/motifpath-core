@@ -28,10 +28,14 @@ const (
 	FieldImageURL = "image_url"
 	// FieldAudioURL holds the string denoting the audio_url field in the database.
 	FieldAudioURL = "audio_url"
+	// FieldEstimatedDurationSeconds holds the string denoting the estimated_duration_seconds field in the database.
+	FieldEstimatedDurationSeconds = "estimated_duration_seconds"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeChallenges holds the string denoting the challenges edge name in mutations.
 	EdgeChallenges = "challenges"
+	// EdgeContentNodes holds the string denoting the content_nodes edge name in mutations.
+	EdgeContentNodes = "content_nodes"
 	// EdgeOptions holds the string denoting the options edge name in mutations.
 	EdgeOptions = "options"
 	// Table holds the table name of the exercise in the database.
@@ -41,6 +45,11 @@ const (
 	// ChallengesInverseTable is the table name for the Challenge entity.
 	// It exists in this package in order to avoid circular dependency with the "challenge" package.
 	ChallengesInverseTable = "challenges"
+	// ContentNodesTable is the table that holds the content_nodes relation/edge. The primary key declared below.
+	ContentNodesTable = "exercise_content_nodes"
+	// ContentNodesInverseTable is the table name for the ContentNode entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnode" package.
+	ContentNodesInverseTable = "content_nodes"
 	// OptionsTable is the table that holds the options relation/edge.
 	OptionsTable = "exercise_options"
 	// OptionsInverseTable is the table name for the ExerciseOption entity.
@@ -59,6 +68,7 @@ var Columns = []string{
 	FieldSkillTags,
 	FieldImageURL,
 	FieldAudioURL,
+	FieldEstimatedDurationSeconds,
 	FieldCreatedAt,
 }
 
@@ -66,6 +76,9 @@ var (
 	// ChallengesPrimaryKey and ChallengesColumn2 are the table columns denoting the
 	// primary key for the challenges relation (M2M).
 	ChallengesPrimaryKey = []string{"exercise_id", "challenge_id"}
+	// ContentNodesPrimaryKey and ContentNodesColumn2 are the table columns denoting the
+	// primary key for the content_nodes relation (M2M).
+	ContentNodesPrimaryKey = []string{"exercise_id", "content_node_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -143,6 +156,11 @@ func ByAudioURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAudioURL, opts...).ToFunc()
 }
 
+// ByEstimatedDurationSeconds orders the results by the estimated_duration_seconds field.
+func ByEstimatedDurationSeconds(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEstimatedDurationSeconds, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
@@ -159,6 +177,20 @@ func ByChallengesCount(opts ...sql.OrderTermOption) OrderOption {
 func ByChallenges(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newChallengesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByContentNodesCount orders the results by content_nodes count.
+func ByContentNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodesStep(), opts...)
+	}
+}
+
+// ByContentNodes orders the results by content_nodes terms.
+func ByContentNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -180,6 +212,13 @@ func newChallengesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChallengesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ChallengesTable, ChallengesPrimaryKey...),
+	)
+}
+func newContentNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ContentNodesTable, ContentNodesPrimaryKey...),
 	)
 }
 func newOptionsStep() *sqlgraph.Step {

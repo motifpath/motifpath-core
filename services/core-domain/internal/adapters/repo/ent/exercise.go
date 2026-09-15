@@ -31,6 +31,8 @@ type Exercise struct {
 	ImageURL *string `json:"image_url,omitempty"`
 	// AudioURL holds the value of the "audio_url" field.
 	AudioURL *string `json:"audio_url,omitempty"`
+	// EstimatedDurationSeconds holds the value of the "estimated_duration_seconds" field.
+	EstimatedDurationSeconds *int `json:"estimated_duration_seconds,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -43,11 +45,13 @@ type Exercise struct {
 type ExerciseEdges struct {
 	// Challenges holds the value of the challenges edge.
 	Challenges []*Challenge `json:"challenges,omitempty"`
+	// ContentNodes holds the value of the content_nodes edge.
+	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
 	// Options holds the value of the options edge.
 	Options []*ExerciseOption `json:"options,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // ChallengesOrErr returns the Challenges value or an error if the edge
@@ -59,10 +63,19 @@ func (e ExerciseEdges) ChallengesOrErr() ([]*Challenge, error) {
 	return nil, &NotLoadedError{edge: "challenges"}
 }
 
+// ContentNodesOrErr returns the ContentNodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ContentNodesOrErr() ([]*ContentNode, error) {
+	if e.loadedTypes[1] {
+		return e.ContentNodes, nil
+	}
+	return nil, &NotLoadedError{edge: "content_nodes"}
+}
+
 // OptionsOrErr returns the Options value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) OptionsOrErr() ([]*ExerciseOption, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Options, nil
 	}
 	return nil, &NotLoadedError{edge: "options"}
@@ -75,6 +88,8 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case exercise.FieldSkillTags:
 			values[i] = new([]byte)
+		case exercise.FieldEstimatedDurationSeconds:
+			values[i] = new(sql.NullInt64)
 		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL:
 			values[i] = new(sql.NullString)
 		case exercise.FieldCreatedAt:
@@ -142,6 +157,13 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 				_m.AudioURL = new(string)
 				*_m.AudioURL = value.String
 			}
+		case exercise.FieldEstimatedDurationSeconds:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field estimated_duration_seconds", values[i])
+			} else if value.Valid {
+				_m.EstimatedDurationSeconds = new(int)
+				*_m.EstimatedDurationSeconds = int(value.Int64)
+			}
 		case exercise.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -164,6 +186,11 @@ func (_m *Exercise) Value(name string) (ent.Value, error) {
 // QueryChallenges queries the "challenges" edge of the Exercise entity.
 func (_m *Exercise) QueryChallenges() *ChallengeQuery {
 	return NewExerciseClient(_m.config).QueryChallenges(_m)
+}
+
+// QueryContentNodes queries the "content_nodes" edge of the Exercise entity.
+func (_m *Exercise) QueryContentNodes() *ContentNodeQuery {
+	return NewExerciseClient(_m.config).QueryContentNodes(_m)
 }
 
 // QueryOptions queries the "options" edge of the Exercise entity.
@@ -214,6 +241,11 @@ func (_m *Exercise) String() string {
 	if v := _m.AudioURL; v != nil {
 		builder.WriteString("audio_url=")
 		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.EstimatedDurationSeconds; v != nil {
+		builder.WriteString("estimated_duration_seconds=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")

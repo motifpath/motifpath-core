@@ -76,6 +76,11 @@ func AudioURL(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldAudioURL, v))
 }
 
+// EstimatedDurationSeconds applies equality check predicate on the "estimated_duration_seconds" field. It's identical to EstimatedDurationSecondsEQ.
+func EstimatedDurationSeconds(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldEstimatedDurationSeconds, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
@@ -391,6 +396,56 @@ func AudioURLContainsFold(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldContainsFold(FieldAudioURL, v))
 }
 
+// EstimatedDurationSecondsEQ applies the EQ predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsEQ(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsNEQ applies the NEQ predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsNEQ(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsIn applies the In predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsIn(vs ...int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldEstimatedDurationSeconds, vs...))
+}
+
+// EstimatedDurationSecondsNotIn applies the NotIn predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsNotIn(vs ...int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldEstimatedDurationSeconds, vs...))
+}
+
+// EstimatedDurationSecondsGT applies the GT predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsGT(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsGTE applies the GTE predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsGTE(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsLT applies the LT predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsLT(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsLTE applies the LTE predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsLTE(v int) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldEstimatedDurationSeconds, v))
+}
+
+// EstimatedDurationSecondsIsNil applies the IsNil predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldEstimatedDurationSeconds))
+}
+
+// EstimatedDurationSecondsNotNil applies the NotNil predicate on the "estimated_duration_seconds" field.
+func EstimatedDurationSecondsNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldEstimatedDurationSeconds))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
@@ -446,6 +501,29 @@ func HasChallenges() predicate.Exercise {
 func HasChallengesWith(preds ...predicate.Challenge) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newChallengesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodes applies the HasEdge predicate on the "content_nodes" edge.
+func HasContentNodes() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, ContentNodesTable, ContentNodesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodesWith applies the HasEdge predicate on the "content_nodes" edge with a given conditions (other predicates).
+func HasContentNodesWith(preds ...predicate.ContentNode) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newContentNodesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
