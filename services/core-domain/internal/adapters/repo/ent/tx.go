@@ -14,8 +14,12 @@ type Tx struct {
 	config
 	// Challenge is the client for interacting with the Challenge builders.
 	Challenge *ChallengeClient
+	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
+	ChallengeExercise *ChallengeExerciseClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
+	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
+	ContentNodeExercise *ContentNodeExerciseClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
@@ -162,7 +166,9 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Challenge = NewChallengeClient(tx.config)
+	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
+	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)

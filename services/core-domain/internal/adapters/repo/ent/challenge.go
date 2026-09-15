@@ -42,9 +42,11 @@ type Challenge struct {
 type ChallengeEdges struct {
 	// Exercises holds the value of the exercises edge.
 	Exercises []*Exercise `json:"exercises,omitempty"`
+	// ChallengeExercises holds the value of the challenge_exercises edge.
+	ChallengeExercises []*ChallengeExercise `json:"challenge_exercises,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // ExercisesOrErr returns the Exercises value or an error if the edge
@@ -54,6 +56,15 @@ func (e ChallengeEdges) ExercisesOrErr() ([]*Exercise, error) {
 		return e.Exercises, nil
 	}
 	return nil, &NotLoadedError{edge: "exercises"}
+}
+
+// ChallengeExercisesOrErr returns the ChallengeExercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ChallengeEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
+	if e.loadedTypes[1] {
+		return e.ChallengeExercises, nil
+	}
+	return nil, &NotLoadedError{edge: "challenge_exercises"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -153,6 +164,11 @@ func (_m *Challenge) Value(name string) (ent.Value, error) {
 // QueryExercises queries the "exercises" edge of the Challenge entity.
 func (_m *Challenge) QueryExercises() *ExerciseQuery {
 	return NewChallengeClient(_m.config).QueryExercises(_m)
+}
+
+// QueryChallengeExercises queries the "challenge_exercises" edge of the Challenge entity.
+func (_m *Challenge) QueryChallengeExercises() *ChallengeExerciseQuery {
+	return NewChallengeClient(_m.config).QueryChallengeExercises(_m)
 }
 
 // Update returns a builder for updating this Challenge.

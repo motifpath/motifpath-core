@@ -44,9 +44,11 @@ type ContentNode struct {
 type ContentNodeEdges struct {
 	// PathExercises holds the value of the path_exercises edge.
 	PathExercises []*Exercise `json:"path_exercises,omitempty"`
+	// ContentNodeExercises holds the value of the content_node_exercises edge.
+	ContentNodeExercises []*ContentNodeExercise `json:"content_node_exercises,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // PathExercisesOrErr returns the PathExercises value or an error if the edge
@@ -56,6 +58,15 @@ func (e ContentNodeEdges) PathExercisesOrErr() ([]*Exercise, error) {
 		return e.PathExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "path_exercises"}
+}
+
+// ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
+	if e.loadedTypes[1] {
+		return e.ContentNodeExercises, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_exercises"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -154,6 +165,11 @@ func (_m *ContentNode) Value(name string) (ent.Value, error) {
 // QueryPathExercises queries the "path_exercises" edge of the ContentNode entity.
 func (_m *ContentNode) QueryPathExercises() *ExerciseQuery {
 	return NewContentNodeClient(_m.config).QueryPathExercises(_m)
+}
+
+// QueryContentNodeExercises queries the "content_node_exercises" edge of the ContentNode entity.
+func (_m *ContentNode) QueryContentNodeExercises() *ContentNodeExerciseQuery {
+	return NewContentNodeClient(_m.config).QueryContentNodeExercises(_m)
 }
 
 // Update returns a builder for updating this ContentNode.

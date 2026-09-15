@@ -7,7 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
@@ -40,6 +42,12 @@ func init() {
 	challengeDescID := challengeFields[0].Descriptor()
 	// challenge.DefaultID holds the default value on creation for the id field.
 	challenge.DefaultID = challengeDescID.Default.(func() uuid.UUID)
+	challengeexerciseFields := schema.ChallengeExercise{}.Fields()
+	_ = challengeexerciseFields
+	// challengeexerciseDescLinkedAt is the schema descriptor for linked_at field.
+	challengeexerciseDescLinkedAt := challengeexerciseFields[3].Descriptor()
+	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
@@ -50,6 +58,12 @@ func init() {
 	contentnodeDescID := contentnodeFields[0].Descriptor()
 	// contentnode.DefaultID holds the default value on creation for the id field.
 	contentnode.DefaultID = contentnodeDescID.Default.(func() uuid.UUID)
+	contentnodeexerciseFields := schema.ContentNodeExercise{}.Fields()
+	_ = contentnodeexerciseFields
+	// contentnodeexerciseDescLinkedAt is the schema descriptor for linked_at field.
+	contentnodeexerciseDescLinkedAt := contentnodeexerciseFields[3].Descriptor()
+	// contentnodeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	contentnodeexercise.DefaultLinkedAt = contentnodeexerciseDescLinkedAt.Default.(func() time.Time)
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.

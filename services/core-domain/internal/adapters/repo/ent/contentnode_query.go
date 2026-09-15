@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -21,11 +22,12 @@ import (
 // ContentNodeQuery is the builder for querying ContentNode entities.
 type ContentNodeQuery struct {
 	config
-	ctx               *QueryContext
-	order             []contentnode.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.ContentNode
-	withPathExercises *ExerciseQuery
+	ctx                      *QueryContext
+	order                    []contentnode.OrderOption
+	inters                   []Interceptor
+	predicates               []predicate.ContentNode
+	withPathExercises        *ExerciseQuery
+	withContentNodeExercises *ContentNodeExerciseQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -77,6 +79,28 @@ func (_q *ContentNodeQuery) QueryPathExercises() *ExerciseQuery {
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
 			sqlgraph.To(exercise.Table, exercise.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, contentnode.PathExercisesTable, contentnode.PathExercisesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryContentNodeExercises chains the current query on the "content_node_exercises" edge.
+func (_q *ContentNodeQuery) QueryContentNodeExercises() *ContentNodeExerciseQuery {
+	query := (&ContentNodeExerciseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
+			sqlgraph.To(contentnodeexercise.Table, contentnodeexercise.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeExercisesTable, contentnode.ContentNodeExercisesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -271,12 +295,13 @@ func (_q *ContentNodeQuery) Clone() *ContentNodeQuery {
 		return nil
 	}
 	return &ContentNodeQuery{
-		config:            _q.config,
-		ctx:               _q.ctx.Clone(),
-		order:             append([]contentnode.OrderOption{}, _q.order...),
-		inters:            append([]Interceptor{}, _q.inters...),
-		predicates:        append([]predicate.ContentNode{}, _q.predicates...),
-		withPathExercises: _q.withPathExercises.Clone(),
+		config:                   _q.config,
+		ctx:                      _q.ctx.Clone(),
+		order:                    append([]contentnode.OrderOption{}, _q.order...),
+		inters:                   append([]Interceptor{}, _q.inters...),
+		predicates:               append([]predicate.ContentNode{}, _q.predicates...),
+		withPathExercises:        _q.withPathExercises.Clone(),
+		withContentNodeExercises: _q.withContentNodeExercises.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -291,6 +316,17 @@ func (_q *ContentNodeQuery) WithPathExercises(opts ...func(*ExerciseQuery)) *Con
 		opt(query)
 	}
 	_q.withPathExercises = query
+	return _q
+}
+
+// WithContentNodeExercises tells the query-builder to eager-load the nodes that are connected to
+// the "content_node_exercises" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ContentNodeQuery) WithContentNodeExercises(opts ...func(*ContentNodeExerciseQuery)) *ContentNodeQuery {
+	query := (&ContentNodeExerciseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withContentNodeExercises = query
 	return _q
 }
 
@@ -372,8 +408,9 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	var (
 		nodes       = []*ContentNode{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withPathExercises != nil,
+			_q.withContentNodeExercises != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -398,6 +435,15 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		if err := _q.loadPathExercises(ctx, query, nodes,
 			func(n *ContentNode) { n.Edges.PathExercises = []*Exercise{} },
 			func(n *ContentNode, e *Exercise) { n.Edges.PathExercises = append(n.Edges.PathExercises, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withContentNodeExercises; query != nil {
+		if err := _q.loadContentNodeExercises(ctx, query, nodes,
+			func(n *ContentNode) { n.Edges.ContentNodeExercises = []*ContentNodeExercise{} },
+			func(n *ContentNode, e *ContentNodeExercise) {
+				n.Edges.ContentNodeExercises = append(n.Edges.ContentNodeExercises, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -462,6 +508,36 @@ func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *Exerci
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *ContentNodeQuery) loadContentNodeExercises(ctx context.Context, query *ContentNodeExerciseQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *ContentNodeExercise)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*ContentNode)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(contentnodeexercise.FieldContentNodeID)
+	}
+	query.Where(predicate.ContentNodeExercise(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(contentnode.ContentNodeExercisesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ContentNodeID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "content_node_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

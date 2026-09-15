@@ -17,7 +17,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
@@ -34,8 +36,12 @@ type Client struct {
 	Schema *migrate.Schema
 	// Challenge is the client for interacting with the Challenge builders.
 	Challenge *ChallengeClient
+	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
+	ChallengeExercise *ChallengeExerciseClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
+	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
+	ContentNodeExercise *ContentNodeExerciseClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
@@ -62,7 +68,9 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Challenge = NewChallengeClient(c.config)
+	c.ChallengeExercise = NewChallengeExerciseClient(c.config)
 	c.ContentNode = NewContentNodeClient(c.config)
+	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseOption = NewExerciseOptionClient(c.config)
 	c.ExpandedContent = NewExpandedContentClient(c.config)
@@ -160,17 +168,19 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		Challenge:        NewChallengeClient(cfg),
-		ContentNode:      NewContentNodeClient(cfg),
-		Exercise:         NewExerciseClient(cfg),
-		ExerciseOption:   NewExerciseOptionClient(cfg),
-		ExpandedContent:  NewExpandedContentClient(cfg),
-		LearningPath:     NewLearningPathClient(cfg),
-		LearningPathItem: NewLearningPathItemClient(cfg),
-		PathAssignment:   NewPathAssignmentClient(cfg),
-		User:             NewUserClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		Challenge:           NewChallengeClient(cfg),
+		ChallengeExercise:   NewChallengeExerciseClient(cfg),
+		ContentNode:         NewContentNodeClient(cfg),
+		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
+		Exercise:            NewExerciseClient(cfg),
+		ExerciseOption:      NewExerciseOptionClient(cfg),
+		ExpandedContent:     NewExpandedContentClient(cfg),
+		LearningPath:        NewLearningPathClient(cfg),
+		LearningPathItem:    NewLearningPathItemClient(cfg),
+		PathAssignment:      NewPathAssignmentClient(cfg),
+		User:                NewUserClient(cfg),
 	}, nil
 }
 
@@ -188,17 +198,19 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		Challenge:        NewChallengeClient(cfg),
-		ContentNode:      NewContentNodeClient(cfg),
-		Exercise:         NewExerciseClient(cfg),
-		ExerciseOption:   NewExerciseOptionClient(cfg),
-		ExpandedContent:  NewExpandedContentClient(cfg),
-		LearningPath:     NewLearningPathClient(cfg),
-		LearningPathItem: NewLearningPathItemClient(cfg),
-		PathAssignment:   NewPathAssignmentClient(cfg),
-		User:             NewUserClient(cfg),
+		ctx:                 ctx,
+		config:              cfg,
+		Challenge:           NewChallengeClient(cfg),
+		ChallengeExercise:   NewChallengeExerciseClient(cfg),
+		ContentNode:         NewContentNodeClient(cfg),
+		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
+		Exercise:            NewExerciseClient(cfg),
+		ExerciseOption:      NewExerciseOptionClient(cfg),
+		ExpandedContent:     NewExpandedContentClient(cfg),
+		LearningPath:        NewLearningPathClient(cfg),
+		LearningPathItem:    NewLearningPathItemClient(cfg),
+		PathAssignment:      NewPathAssignmentClient(cfg),
+		User:                NewUserClient(cfg),
 	}, nil
 }
 
@@ -228,8 +240,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Challenge, c.ContentNode, c.Exercise, c.ExerciseOption, c.ExpandedContent,
-		c.LearningPath, c.LearningPathItem, c.PathAssignment, c.User,
+		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeExercise,
+		c.Exercise, c.ExerciseOption, c.ExpandedContent, c.LearningPath,
+		c.LearningPathItem, c.PathAssignment, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -239,8 +252,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Challenge, c.ContentNode, c.Exercise, c.ExerciseOption, c.ExpandedContent,
-		c.LearningPath, c.LearningPathItem, c.PathAssignment, c.User,
+		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeExercise,
+		c.Exercise, c.ExerciseOption, c.ExpandedContent, c.LearningPath,
+		c.LearningPathItem, c.PathAssignment, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -251,8 +265,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *ChallengeMutation:
 		return c.Challenge.mutate(ctx, m)
+	case *ChallengeExerciseMutation:
+		return c.ChallengeExercise.mutate(ctx, m)
 	case *ContentNodeMutation:
 		return c.ContentNode.mutate(ctx, m)
+	case *ContentNodeExerciseMutation:
+		return c.ContentNodeExercise.mutate(ctx, m)
 	case *ExerciseMutation:
 		return c.Exercise.mutate(ctx, m)
 	case *ExerciseOptionMutation:
@@ -396,6 +414,22 @@ func (c *ChallengeClient) QueryExercises(_m *Challenge) *ExerciseQuery {
 	return query
 }
 
+// QueryChallengeExercises queries the challenge_exercises edge of a Challenge.
+func (c *ChallengeClient) QueryChallengeExercises(_m *Challenge) *ChallengeExerciseQuery {
+	query := (&ChallengeExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(challenge.Table, challenge.FieldID, id),
+			sqlgraph.To(challengeexercise.Table, challengeexercise.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, challenge.ChallengeExercisesTable, challenge.ChallengeExercisesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ChallengeClient) Hooks() []Hook {
 	return c.hooks.Challenge
@@ -418,6 +452,171 @@ func (c *ChallengeClient) mutate(ctx context.Context, m *ChallengeMutation) (Val
 		return (&ChallengeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Challenge mutation op: %q", m.Op())
+	}
+}
+
+// ChallengeExerciseClient is a client for the ChallengeExercise schema.
+type ChallengeExerciseClient struct {
+	config
+}
+
+// NewChallengeExerciseClient returns a client for the ChallengeExercise from the given config.
+func NewChallengeExerciseClient(c config) *ChallengeExerciseClient {
+	return &ChallengeExerciseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `challengeexercise.Hooks(f(g(h())))`.
+func (c *ChallengeExerciseClient) Use(hooks ...Hook) {
+	c.hooks.ChallengeExercise = append(c.hooks.ChallengeExercise, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `challengeexercise.Intercept(f(g(h())))`.
+func (c *ChallengeExerciseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChallengeExercise = append(c.inters.ChallengeExercise, interceptors...)
+}
+
+// Create returns a builder for creating a ChallengeExercise entity.
+func (c *ChallengeExerciseClient) Create() *ChallengeExerciseCreate {
+	mutation := newChallengeExerciseMutation(c.config, OpCreate)
+	return &ChallengeExerciseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChallengeExercise entities.
+func (c *ChallengeExerciseClient) CreateBulk(builders ...*ChallengeExerciseCreate) *ChallengeExerciseCreateBulk {
+	return &ChallengeExerciseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChallengeExerciseClient) MapCreateBulk(slice any, setFunc func(*ChallengeExerciseCreate, int)) *ChallengeExerciseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChallengeExerciseCreateBulk{err: fmt.Errorf("calling to ChallengeExerciseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChallengeExerciseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChallengeExerciseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChallengeExercise.
+func (c *ChallengeExerciseClient) Update() *ChallengeExerciseUpdate {
+	mutation := newChallengeExerciseMutation(c.config, OpUpdate)
+	return &ChallengeExerciseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChallengeExerciseClient) UpdateOne(_m *ChallengeExercise) *ChallengeExerciseUpdateOne {
+	mutation := newChallengeExerciseMutation(c.config, OpUpdateOne, withChallengeExercise(_m))
+	return &ChallengeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChallengeExerciseClient) UpdateOneID(id int) *ChallengeExerciseUpdateOne {
+	mutation := newChallengeExerciseMutation(c.config, OpUpdateOne, withChallengeExerciseID(id))
+	return &ChallengeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChallengeExercise.
+func (c *ChallengeExerciseClient) Delete() *ChallengeExerciseDelete {
+	mutation := newChallengeExerciseMutation(c.config, OpDelete)
+	return &ChallengeExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChallengeExerciseClient) DeleteOne(_m *ChallengeExercise) *ChallengeExerciseDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChallengeExerciseClient) DeleteOneID(id int) *ChallengeExerciseDeleteOne {
+	builder := c.Delete().Where(challengeexercise.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChallengeExerciseDeleteOne{builder}
+}
+
+// Query returns a query builder for ChallengeExercise.
+func (c *ChallengeExerciseClient) Query() *ChallengeExerciseQuery {
+	return &ChallengeExerciseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChallengeExercise},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChallengeExercise entity by its id.
+func (c *ChallengeExerciseClient) Get(ctx context.Context, id int) (*ChallengeExercise, error) {
+	return c.Query().Where(challengeexercise.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChallengeExerciseClient) GetX(ctx context.Context, id int) *ChallengeExercise {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChallenge queries the challenge edge of a ChallengeExercise.
+func (c *ChallengeExerciseClient) QueryChallenge(_m *ChallengeExercise) *ChallengeQuery {
+	query := (&ChallengeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(challengeexercise.Table, challengeexercise.FieldID, id),
+			sqlgraph.To(challenge.Table, challenge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, challengeexercise.ChallengeTable, challengeexercise.ChallengeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExercise queries the exercise edge of a ChallengeExercise.
+func (c *ChallengeExerciseClient) QueryExercise(_m *ChallengeExercise) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(challengeexercise.Table, challengeexercise.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, challengeexercise.ExerciseTable, challengeexercise.ExerciseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChallengeExerciseClient) Hooks() []Hook {
+	return c.hooks.ChallengeExercise
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChallengeExerciseClient) Interceptors() []Interceptor {
+	return c.inters.ChallengeExercise
+}
+
+func (c *ChallengeExerciseClient) mutate(ctx context.Context, m *ChallengeExerciseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChallengeExerciseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChallengeExerciseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChallengeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChallengeExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChallengeExercise mutation op: %q", m.Op())
 	}
 }
 
@@ -545,6 +744,22 @@ func (c *ContentNodeClient) QueryPathExercises(_m *ContentNode) *ExerciseQuery {
 	return query
 }
 
+// QueryContentNodeExercises queries the content_node_exercises edge of a ContentNode.
+func (c *ContentNodeClient) QueryContentNodeExercises(_m *ContentNode) *ContentNodeExerciseQuery {
+	query := (&ContentNodeExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
+			sqlgraph.To(contentnodeexercise.Table, contentnodeexercise.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeExercisesTable, contentnode.ContentNodeExercisesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ContentNodeClient) Hooks() []Hook {
 	return c.hooks.ContentNode
@@ -567,6 +782,171 @@ func (c *ContentNodeClient) mutate(ctx context.Context, m *ContentNodeMutation) 
 		return (&ContentNodeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ContentNode mutation op: %q", m.Op())
+	}
+}
+
+// ContentNodeExerciseClient is a client for the ContentNodeExercise schema.
+type ContentNodeExerciseClient struct {
+	config
+}
+
+// NewContentNodeExerciseClient returns a client for the ContentNodeExercise from the given config.
+func NewContentNodeExerciseClient(c config) *ContentNodeExerciseClient {
+	return &ContentNodeExerciseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `contentnodeexercise.Hooks(f(g(h())))`.
+func (c *ContentNodeExerciseClient) Use(hooks ...Hook) {
+	c.hooks.ContentNodeExercise = append(c.hooks.ContentNodeExercise, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `contentnodeexercise.Intercept(f(g(h())))`.
+func (c *ContentNodeExerciseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ContentNodeExercise = append(c.inters.ContentNodeExercise, interceptors...)
+}
+
+// Create returns a builder for creating a ContentNodeExercise entity.
+func (c *ContentNodeExerciseClient) Create() *ContentNodeExerciseCreate {
+	mutation := newContentNodeExerciseMutation(c.config, OpCreate)
+	return &ContentNodeExerciseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ContentNodeExercise entities.
+func (c *ContentNodeExerciseClient) CreateBulk(builders ...*ContentNodeExerciseCreate) *ContentNodeExerciseCreateBulk {
+	return &ContentNodeExerciseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ContentNodeExerciseClient) MapCreateBulk(slice any, setFunc func(*ContentNodeExerciseCreate, int)) *ContentNodeExerciseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ContentNodeExerciseCreateBulk{err: fmt.Errorf("calling to ContentNodeExerciseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ContentNodeExerciseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ContentNodeExerciseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ContentNodeExercise.
+func (c *ContentNodeExerciseClient) Update() *ContentNodeExerciseUpdate {
+	mutation := newContentNodeExerciseMutation(c.config, OpUpdate)
+	return &ContentNodeExerciseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ContentNodeExerciseClient) UpdateOne(_m *ContentNodeExercise) *ContentNodeExerciseUpdateOne {
+	mutation := newContentNodeExerciseMutation(c.config, OpUpdateOne, withContentNodeExercise(_m))
+	return &ContentNodeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ContentNodeExerciseClient) UpdateOneID(id int) *ContentNodeExerciseUpdateOne {
+	mutation := newContentNodeExerciseMutation(c.config, OpUpdateOne, withContentNodeExerciseID(id))
+	return &ContentNodeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ContentNodeExercise.
+func (c *ContentNodeExerciseClient) Delete() *ContentNodeExerciseDelete {
+	mutation := newContentNodeExerciseMutation(c.config, OpDelete)
+	return &ContentNodeExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ContentNodeExerciseClient) DeleteOne(_m *ContentNodeExercise) *ContentNodeExerciseDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ContentNodeExerciseClient) DeleteOneID(id int) *ContentNodeExerciseDeleteOne {
+	builder := c.Delete().Where(contentnodeexercise.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ContentNodeExerciseDeleteOne{builder}
+}
+
+// Query returns a query builder for ContentNodeExercise.
+func (c *ContentNodeExerciseClient) Query() *ContentNodeExerciseQuery {
+	return &ContentNodeExerciseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeContentNodeExercise},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ContentNodeExercise entity by its id.
+func (c *ContentNodeExerciseClient) Get(ctx context.Context, id int) (*ContentNodeExercise, error) {
+	return c.Query().Where(contentnodeexercise.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ContentNodeExerciseClient) GetX(ctx context.Context, id int) *ContentNodeExercise {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryContentNode queries the content_node edge of a ContentNodeExercise.
+func (c *ContentNodeExerciseClient) QueryContentNode(_m *ContentNodeExercise) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnodeexercise.Table, contentnodeexercise.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, contentnodeexercise.ContentNodeTable, contentnodeexercise.ContentNodeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExercise queries the exercise edge of a ContentNodeExercise.
+func (c *ContentNodeExerciseClient) QueryExercise(_m *ContentNodeExercise) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnodeexercise.Table, contentnodeexercise.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, contentnodeexercise.ExerciseTable, contentnodeexercise.ExerciseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ContentNodeExerciseClient) Hooks() []Hook {
+	return c.hooks.ContentNodeExercise
+}
+
+// Interceptors returns the client interceptors.
+func (c *ContentNodeExerciseClient) Interceptors() []Interceptor {
+	return c.inters.ContentNodeExercise
+}
+
+func (c *ContentNodeExerciseClient) mutate(ctx context.Context, m *ContentNodeExerciseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ContentNodeExerciseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ContentNodeExerciseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ContentNodeExerciseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ContentNodeExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ContentNodeExercise mutation op: %q", m.Op())
 	}
 }
 
@@ -719,6 +1099,38 @@ func (c *ExerciseClient) QueryOptions(_m *Exercise) *ExerciseOptionQuery {
 			sqlgraph.From(exercise.Table, exercise.FieldID, id),
 			sqlgraph.To(exerciseoption.Table, exerciseoption.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, exercise.OptionsTable, exercise.OptionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChallengeExercises queries the challenge_exercises edge of a Exercise.
+func (c *ExerciseClient) QueryChallengeExercises(_m *Exercise) *ChallengeExerciseQuery {
+	query := (&ChallengeExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(challengeexercise.Table, challengeexercise.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ChallengeExercisesTable, exercise.ChallengeExercisesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodeExercises queries the content_node_exercises edge of a Exercise.
+func (c *ExerciseClient) QueryContentNodeExercises(_m *Exercise) *ContentNodeExerciseQuery {
+	query := (&ContentNodeExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(contentnodeexercise.Table, contentnodeexercise.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ContentNodeExercisesTable, exercise.ContentNodeExercisesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1568,11 +1980,13 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Challenge, ContentNode, Exercise, ExerciseOption, ExpandedContent, LearningPath,
-		LearningPathItem, PathAssignment, User []ent.Hook
+		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise, Exercise,
+		ExerciseOption, ExpandedContent, LearningPath, LearningPathItem,
+		PathAssignment, User []ent.Hook
 	}
 	inters struct {
-		Challenge, ContentNode, Exercise, ExerciseOption, ExpandedContent, LearningPath,
-		LearningPathItem, PathAssignment, User []ent.Interceptor
+		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise, Exercise,
+		ExerciseOption, ExpandedContent, LearningPath, LearningPathItem,
+		PathAssignment, User []ent.Interceptor
 	}
 )

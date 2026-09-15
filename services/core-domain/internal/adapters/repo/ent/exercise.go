@@ -49,9 +49,13 @@ type ExerciseEdges struct {
 	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
 	// Options holds the value of the options edge.
 	Options []*ExerciseOption `json:"options,omitempty"`
+	// ChallengeExercises holds the value of the challenge_exercises edge.
+	ChallengeExercises []*ChallengeExercise `json:"challenge_exercises,omitempty"`
+	// ContentNodeExercises holds the value of the content_node_exercises edge.
+	ContentNodeExercises []*ContentNodeExercise `json:"content_node_exercises,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [5]bool
 }
 
 // ChallengesOrErr returns the Challenges value or an error if the edge
@@ -79,6 +83,24 @@ func (e ExerciseEdges) OptionsOrErr() ([]*ExerciseOption, error) {
 		return e.Options, nil
 	}
 	return nil, &NotLoadedError{edge: "options"}
+}
+
+// ChallengeExercisesOrErr returns the ChallengeExercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
+	if e.loadedTypes[3] {
+		return e.ChallengeExercises, nil
+	}
+	return nil, &NotLoadedError{edge: "challenge_exercises"}
+}
+
+// ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
+	if e.loadedTypes[4] {
+		return e.ContentNodeExercises, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_exercises"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -196,6 +218,16 @@ func (_m *Exercise) QueryContentNodes() *ContentNodeQuery {
 // QueryOptions queries the "options" edge of the Exercise entity.
 func (_m *Exercise) QueryOptions() *ExerciseOptionQuery {
 	return NewExerciseClient(_m.config).QueryOptions(_m)
+}
+
+// QueryChallengeExercises queries the "challenge_exercises" edge of the Exercise entity.
+func (_m *Exercise) QueryChallengeExercises() *ChallengeExerciseQuery {
+	return NewExerciseClient(_m.config).QueryChallengeExercises(_m)
+}
+
+// QueryContentNodeExercises queries the "content_node_exercises" edge of the Exercise entity.
+func (_m *Exercise) QueryContentNodeExercises() *ContentNodeExerciseQuery {
+	return NewExerciseClient(_m.config).QueryContentNodeExercises(_m)
 }
 
 // Update returns a builder for updating this Exercise.

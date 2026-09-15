@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -114,6 +115,21 @@ func (_u *ContentNodeUpdate) AddPathExercises(v ...*Exercise) *ContentNodeUpdate
 	return _u.AddPathExerciseIDs(ids...)
 }
 
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_u *ContentNodeUpdate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.AddContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ContentNodeUpdate) AddContentNodeExercises(v ...*ContentNodeExercise) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
 // Mutation returns the ContentNodeMutation object of the builder.
 func (_u *ContentNodeUpdate) Mutation() *ContentNodeMutation {
 	return _u.mutation
@@ -138,6 +154,27 @@ func (_u *ContentNodeUpdate) RemovePathExercises(v ...*Exercise) *ContentNodeUpd
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePathExerciseIDs(ids...)
+}
+
+// ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ContentNodeUpdate) ClearContentNodeExercises() *ContentNodeUpdate {
+	_u.mutation.ClearContentNodeExercises()
+	return _u
+}
+
+// RemoveContentNodeExerciseIDs removes the "content_node_exercises" edge to ContentNodeExercise entities by IDs.
+func (_u *ContentNodeUpdate) RemoveContentNodeExerciseIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.RemoveContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeExercises removes "content_node_exercises" edges to ContentNodeExercise entities.
+func (_u *ContentNodeUpdate) RemoveContentNodeExercises(v ...*ContentNodeExercise) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeExerciseIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -220,6 +257,10 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedPathExercisesIDs(); len(nodes) > 0 && !_u.mutation.PathExercisesCleared() {
@@ -236,6 +277,10 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.PathExercisesIDs(); len(nodes) > 0 {
@@ -247,6 +292,55 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -359,6 +453,21 @@ func (_u *ContentNodeUpdateOne) AddPathExercises(v ...*Exercise) *ContentNodeUpd
 	return _u.AddPathExerciseIDs(ids...)
 }
 
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_u *ContentNodeUpdateOne) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.AddContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ContentNodeUpdateOne) AddContentNodeExercises(v ...*ContentNodeExercise) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
 // Mutation returns the ContentNodeMutation object of the builder.
 func (_u *ContentNodeUpdateOne) Mutation() *ContentNodeMutation {
 	return _u.mutation
@@ -383,6 +492,27 @@ func (_u *ContentNodeUpdateOne) RemovePathExercises(v ...*Exercise) *ContentNode
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePathExerciseIDs(ids...)
+}
+
+// ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_u *ContentNodeUpdateOne) ClearContentNodeExercises() *ContentNodeUpdateOne {
+	_u.mutation.ClearContentNodeExercises()
+	return _u
+}
+
+// RemoveContentNodeExerciseIDs removes the "content_node_exercises" edge to ContentNodeExercise entities by IDs.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeExerciseIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.RemoveContentNodeExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeExercises removes "content_node_exercises" edges to ContentNodeExercise entities.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeExercises(v ...*ContentNodeExercise) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeExerciseIDs(ids...)
 }
 
 // Where appends a list predicates to the ContentNodeUpdate builder.
@@ -495,6 +625,10 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
 			},
 		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.RemovedPathExercisesIDs(); len(nodes) > 0 && !_u.mutation.PathExercisesCleared() {
@@ -511,6 +645,10 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := _u.mutation.PathExercisesIDs(); len(nodes) > 0 {
@@ -522,6 +660,55 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeExerciseCreate{config: _u.config, mutation: newContentNodeExerciseMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeExercisesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeExercisesTable,
+			Columns: []string{contentnode.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

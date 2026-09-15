@@ -13,7 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
@@ -81,15 +83,17 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			challenge.Table:        challenge.ValidColumn,
-			contentnode.Table:      contentnode.ValidColumn,
-			exercise.Table:         exercise.ValidColumn,
-			exerciseoption.Table:   exerciseoption.ValidColumn,
-			expandedcontent.Table:  expandedcontent.ValidColumn,
-			learningpath.Table:     learningpath.ValidColumn,
-			learningpathitem.Table: learningpathitem.ValidColumn,
-			pathassignment.Table:   pathassignment.ValidColumn,
-			user.Table:             user.ValidColumn,
+			challenge.Table:           challenge.ValidColumn,
+			challengeexercise.Table:   challengeexercise.ValidColumn,
+			contentnode.Table:         contentnode.ValidColumn,
+			contentnodeexercise.Table: contentnodeexercise.ValidColumn,
+			exercise.Table:            exercise.ValidColumn,
+			exerciseoption.Table:      exerciseoption.ValidColumn,
+			expandedcontent.Table:     expandedcontent.ValidColumn,
+			learningpath.Table:        learningpath.ValidColumn,
+			learningpathitem.Table:    learningpathitem.ValidColumn,
+			pathassignment.Table:      pathassignment.ValidColumn,
+			user.Table:                user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

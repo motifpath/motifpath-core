@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 )
 
@@ -123,6 +124,21 @@ func (_c *ChallengeCreate) AddExercises(v ...*Exercise) *ChallengeCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddExerciseIDs(ids...)
+}
+
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_c *ChallengeCreate) AddChallengeExerciseIDs(ids ...int) *ChallengeCreate {
+	_c.mutation.AddChallengeExerciseIDs(ids...)
+	return _c
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_c *ChallengeCreate) AddChallengeExercises(v ...*ChallengeExercise) *ChallengeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChallengeExerciseIDs(ids...)
 }
 
 // Mutation returns the ChallengeMutation object of the builder.
@@ -270,6 +286,26 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ChallengeExerciseCreate{config: _c.config, mutation: newChallengeExerciseMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   challenge.ChallengeExercisesTable,
+			Columns: []string{challenge.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -38,15 +38,19 @@ const (
 	EdgeContentNodes = "content_nodes"
 	// EdgeOptions holds the string denoting the options edge name in mutations.
 	EdgeOptions = "options"
+	// EdgeChallengeExercises holds the string denoting the challenge_exercises edge name in mutations.
+	EdgeChallengeExercises = "challenge_exercises"
+	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
+	EdgeContentNodeExercises = "content_node_exercises"
 	// Table holds the table name of the exercise in the database.
 	Table = "exercises"
 	// ChallengesTable is the table that holds the challenges relation/edge. The primary key declared below.
-	ChallengesTable = "exercise_challenges"
+	ChallengesTable = "challenge_exercises"
 	// ChallengesInverseTable is the table name for the Challenge entity.
 	// It exists in this package in order to avoid circular dependency with the "challenge" package.
 	ChallengesInverseTable = "challenges"
 	// ContentNodesTable is the table that holds the content_nodes relation/edge. The primary key declared below.
-	ContentNodesTable = "exercise_content_nodes"
+	ContentNodesTable = "content_node_exercises"
 	// ContentNodesInverseTable is the table name for the ContentNode entity.
 	// It exists in this package in order to avoid circular dependency with the "contentnode" package.
 	ContentNodesInverseTable = "content_nodes"
@@ -57,6 +61,20 @@ const (
 	OptionsInverseTable = "exercise_options"
 	// OptionsColumn is the table column denoting the options relation/edge.
 	OptionsColumn = "exercise_id"
+	// ChallengeExercisesTable is the table that holds the challenge_exercises relation/edge.
+	ChallengeExercisesTable = "challenge_exercises"
+	// ChallengeExercisesInverseTable is the table name for the ChallengeExercise entity.
+	// It exists in this package in order to avoid circular dependency with the "challengeexercise" package.
+	ChallengeExercisesInverseTable = "challenge_exercises"
+	// ChallengeExercisesColumn is the table column denoting the challenge_exercises relation/edge.
+	ChallengeExercisesColumn = "exercise_id"
+	// ContentNodeExercisesTable is the table that holds the content_node_exercises relation/edge.
+	ContentNodeExercisesTable = "content_node_exercises"
+	// ContentNodeExercisesInverseTable is the table name for the ContentNodeExercise entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeexercise" package.
+	ContentNodeExercisesInverseTable = "content_node_exercises"
+	// ContentNodeExercisesColumn is the table column denoting the content_node_exercises relation/edge.
+	ContentNodeExercisesColumn = "exercise_id"
 )
 
 // Columns holds all SQL columns for exercise fields.
@@ -207,6 +225,34 @@ func ByOptions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newOptionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByChallengeExercisesCount orders the results by challenge_exercises count.
+func ByChallengeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newChallengeExercisesStep(), opts...)
+	}
+}
+
+// ByChallengeExercises orders the results by challenge_exercises terms.
+func ByChallengeExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newChallengeExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByContentNodeExercisesCount orders the results by content_node_exercises count.
+func ByContentNodeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeExercisesStep(), opts...)
+	}
+}
+
+// ByContentNodeExercises orders the results by content_node_exercises terms.
+func ByContentNodeExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newChallengesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -226,5 +272,19 @@ func newOptionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OptionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, OptionsTable, OptionsColumn),
+	)
+}
+func newChallengeExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ChallengeExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ChallengeExercisesTable, ChallengeExercisesColumn),
+	)
+}
+func newContentNodeExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeExercisesTable, ContentNodeExercisesColumn),
 	)
 }

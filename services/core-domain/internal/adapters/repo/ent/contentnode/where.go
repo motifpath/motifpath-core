@@ -439,6 +439,29 @@ func HasPathExercisesWith(preds ...predicate.Exercise) predicate.ContentNode {
 	})
 }
 
+// HasContentNodeExercises applies the HasEdge predicate on the "content_node_exercises" edge.
+func HasContentNodeExercises() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeExercisesTable, ContentNodeExercisesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeExercisesWith applies the HasEdge predicate on the "content_node_exercises" edge with a given conditions (other predicates).
+func HasContentNodeExercisesWith(preds ...predicate.ContentNodeExercise) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.ContentNode) predicate.ContentNode {
 	return predicate.ContentNode(sql.AndPredicates(predicates...))

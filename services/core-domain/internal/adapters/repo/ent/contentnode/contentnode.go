@@ -34,13 +34,22 @@ const (
 	FieldCreatedAt = "created_at"
 	// EdgePathExercises holds the string denoting the path_exercises edge name in mutations.
 	EdgePathExercises = "path_exercises"
+	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
+	EdgeContentNodeExercises = "content_node_exercises"
 	// Table holds the table name of the contentnode in the database.
 	Table = "content_nodes"
 	// PathExercisesTable is the table that holds the path_exercises relation/edge. The primary key declared below.
-	PathExercisesTable = "exercise_content_nodes"
+	PathExercisesTable = "content_node_exercises"
 	// PathExercisesInverseTable is the table name for the Exercise entity.
 	// It exists in this package in order to avoid circular dependency with the "exercise" package.
 	PathExercisesInverseTable = "exercises"
+	// ContentNodeExercisesTable is the table that holds the content_node_exercises relation/edge.
+	ContentNodeExercisesTable = "content_node_exercises"
+	// ContentNodeExercisesInverseTable is the table name for the ContentNodeExercise entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeexercise" package.
+	ContentNodeExercisesInverseTable = "content_node_exercises"
+	// ContentNodeExercisesColumn is the table column denoting the content_node_exercises relation/edge.
+	ContentNodeExercisesColumn = "content_node_id"
 )
 
 // Columns holds all SQL columns for contentnode fields.
@@ -214,10 +223,31 @@ func ByPathExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newPathExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByContentNodeExercisesCount orders the results by content_node_exercises count.
+func ByContentNodeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeExercisesStep(), opts...)
+	}
+}
+
+// ByContentNodeExercises orders the results by content_node_exercises terms.
+func ByContentNodeExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newPathExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PathExercisesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, PathExercisesTable, PathExercisesPrimaryKey...),
+	)
+}
+func newContentNodeExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeExercisesTable, ContentNodeExercisesColumn),
 	)
 }

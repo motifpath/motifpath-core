@@ -12,7 +12,9 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 )
@@ -163,6 +165,36 @@ func (_c *ExerciseCreate) AddOptions(v ...*ExerciseOption) *ExerciseCreate {
 	return _c.AddOptionIDs(ids...)
 }
 
+// AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
+func (_c *ExerciseCreate) AddChallengeExerciseIDs(ids ...int) *ExerciseCreate {
+	_c.mutation.AddChallengeExerciseIDs(ids...)
+	return _c
+}
+
+// AddChallengeExercises adds the "challenge_exercises" edges to the ChallengeExercise entity.
+func (_c *ExerciseCreate) AddChallengeExercises(v ...*ChallengeExercise) *ExerciseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddChallengeExerciseIDs(ids...)
+}
+
+// AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
+func (_c *ExerciseCreate) AddContentNodeExerciseIDs(ids ...int) *ExerciseCreate {
+	_c.mutation.AddContentNodeExerciseIDs(ids...)
+	return _c
+}
+
+// AddContentNodeExercises adds the "content_node_exercises" edges to the ContentNodeExercise entity.
+func (_c *ExerciseCreate) AddContentNodeExercises(v ...*ContentNodeExercise) *ExerciseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeExerciseIDs(ids...)
+}
+
 // Mutation returns the ExerciseMutation object of the builder.
 func (_c *ExerciseCreate) Mutation() *ExerciseMutation {
 	return _c.mutation
@@ -308,6 +340,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ChallengeExerciseCreate{config: _c.config, mutation: newChallengeExerciseMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ContentNodesIDs(); len(nodes) > 0 {
@@ -324,6 +360,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		createE := &ContentNodeExerciseCreate{config: _c.config, mutation: newContentNodeExerciseMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.OptionsIDs(); len(nodes) > 0 {
@@ -335,6 +375,38 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseoption.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ChallengeExercisesTable,
+			Columns: []string{exercise.ChallengeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ContentNodeExercisesTable,
+			Columns: []string{exercise.ContentNodeExercisesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
