@@ -11,14 +11,19 @@ type Challenge struct {
 	SubjectTag                     string
 	PassThreshold                  int
 	RemediationTargetContentNodeID *string
-	CreatedAt                      time.Time
+	// ShuffleExercises and ShuffleOptions control whether this challenge's
+	// exercises, and each exercise's options, are returned in a fresh random
+	// order on every ListChallengeExercises call, or always in link order.
+	ShuffleExercises bool
+	ShuffleOptions   bool
+	CreatedAt        time.Time
 }
 
 // NewChallenge validates and constructs a Challenge. Whether ContentNodeID
 // and RemediationTargetContentNodeID refer to content nodes that actually
 // exist is an application-layer concern — it requires a repository
 // round-trip this constructor can't perform.
-func NewChallenge(id, contentNodeID, subjectTag string, passThreshold int, remediationTarget *string, createdAt time.Time) (Challenge, error) {
+func NewChallenge(id, contentNodeID, subjectTag string, passThreshold int, remediationTarget *string, shuffleExercises, shuffleOptions bool, createdAt time.Time) (Challenge, error) {
 	var errs []FieldError
 
 	if subjectTag == "" {
@@ -38,6 +43,8 @@ func NewChallenge(id, contentNodeID, subjectTag string, passThreshold int, remed
 		SubjectTag:                     subjectTag,
 		PassThreshold:                  passThreshold,
 		RemediationTargetContentNodeID: remediationTarget,
+		ShuffleExercises:               shuffleExercises,
+		ShuffleOptions:                 shuffleOptions,
 		CreatedAt:                      createdAt,
 	}, nil
 }

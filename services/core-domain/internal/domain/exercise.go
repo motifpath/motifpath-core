@@ -48,26 +48,31 @@ type Option struct {
 // selection: the student's selected option ID(s) must match the option(s)
 // marked correct.
 type Exercise struct {
-	ID           string
-	Title        string
-	Prompt       string
-	ExerciseType ExerciseType
-	SkillTags    []string
-	ImageURL     *string
-	AudioURL     *string
-	Options      []Option
+	ID                       string
+	Title                    string
+	Prompt                   string
+	ExerciseType             ExerciseType
+	SkillTags                []string
+	ImageURL                 *string
+	AudioURL                 *string
+	Options                  []Option
+	EstimatedDurationSeconds *int
 	// ChallengeIDs are the challenges this exercise is currently linked to.
 	// Managed exclusively through LinkChallenge/UnlinkChallenge — never set
 	// directly by NewExercise beyond the empty slice a brand-new exercise
 	// starts with.
 	ChallengeIDs []string
-	CreatedAt    time.Time
+	// ContentNodeIDs are the content nodes this exercise is currently linked
+	// to as a path exercise. Managed exclusively through
+	// LinkContentNode/UnlinkContentNode, independent of ChallengeIDs.
+	ContentNodeIDs []string
+	CreatedAt      time.Time
 }
 
 // NewExercise validates and constructs a standalone Exercise, not yet linked
-// to any challenge. Whether it later gets linked to a challenge that exists
-// is an application-layer concern.
-func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, createdAt time.Time) (Exercise, error) {
+// to any challenge or content node. Whether it later gets linked to a
+// challenge or node that exists is an application-layer concern.
+func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
 	var errs []FieldError
 
 	if title == "" {
@@ -80,22 +85,27 @@ func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags 
 	errs = append(errs, validateSkillTags(skillTags)...)
 	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
 	errs = append(errs, validateOptions(exerciseType, options)...)
+	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
+		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
+	}
 
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
 
 	return Exercise{
-		ID:           id,
-		Title:        title,
-		Prompt:       prompt,
-		ExerciseType: exerciseType,
-		SkillTags:    skillTags,
-		ImageURL:     imageURL,
-		AudioURL:     audioURL,
-		Options:      options,
-		ChallengeIDs: []string{},
-		CreatedAt:    createdAt,
+		ID:                       id,
+		Title:                    title,
+		Prompt:                   prompt,
+		ExerciseType:             exerciseType,
+		SkillTags:                skillTags,
+		ImageURL:                 imageURL,
+		AudioURL:                 audioURL,
+		Options:                  options,
+		EstimatedDurationSeconds: estimatedDurationSeconds,
+		ChallengeIDs:             []string{},
+		ContentNodeIDs:           []string{},
+		CreatedAt:                createdAt,
 	}, nil
 }
 
