@@ -13,8 +13,10 @@ import (
 
 // ContentNodeExercise is the join entity behind ContentNode's and
 // Exercise's many-to-many "path_exercises"/"content_nodes" edges — a path
-// exercise's order is a stable, teacher-authored sequence, so link order is
-// a real, queried column (position) rather than incidental row order.
+// exercise's order is a stable, teacher-authored sequence, so link order
+// must be real and queryable. Its auto-incrementing id column is assigned
+// atomically by Postgres on insert (no read-then-write race), and already
+// sorts rows in link order with no extra column or query needed.
 type ContentNodeExercise struct {
 	ent.Schema
 }
@@ -25,13 +27,6 @@ func (ContentNodeExercise) Fields() []ent.Field {
 			Immutable(),
 
 		field.UUID("exercise_id", uuid.UUID{}).
-			Immutable(),
-
-		// Position is assigned at link time, one greater than the highest
-		// position already linked to this content node — 0 for the first
-		// exercise linked, monotonically increasing after that, never
-		// reused when a link is removed.
-		field.Int("position").
 			Immutable(),
 
 		field.Time("linked_at").
@@ -59,6 +54,5 @@ func (ContentNodeExercise) Edges() []ent.Edge {
 func (ContentNodeExercise) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("content_node_id", "exercise_id").Unique(),
-		index.Fields("content_node_id", "position"),
 	}
 }

@@ -13,9 +13,10 @@ import (
 
 // ChallengeExercise is the join entity behind Challenge's and Exercise's
 // many-to-many "exercises"/"challenges" edges. It exists as its own entity,
-// rather than an implicit ent join table, so link order is a real, queried
-// column (position) instead of relying on incidental row order — Postgres
-// makes no ordering guarantee over an unordered SELECT.
+// rather than an implicit ent join table, so link order is real and
+// queryable — its auto-incrementing id column is assigned atomically by
+// Postgres on insert (no read-then-write race), and already sorts rows in
+// link order with no extra column or query needed.
 type ChallengeExercise struct {
 	ent.Schema
 }
@@ -26,13 +27,6 @@ func (ChallengeExercise) Fields() []ent.Field {
 			Immutable(),
 
 		field.UUID("exercise_id", uuid.UUID{}).
-			Immutable(),
-
-		// Position is assigned at link time, one greater than the highest
-		// position already linked to this challenge — 0 for the first
-		// exercise linked, monotonically increasing after that, never
-		// reused when a link is removed.
-		field.Int("position").
 			Immutable(),
 
 		field.Time("linked_at").
@@ -60,6 +54,5 @@ func (ChallengeExercise) Edges() []ent.Edge {
 func (ChallengeExercise) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("challenge_id", "exercise_id").Unique(),
-		index.Fields("challenge_id", "position"),
 	}
 }
