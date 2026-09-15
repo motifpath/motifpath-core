@@ -35,12 +35,6 @@ func (_c *ContentNodeExerciseCreate) SetExerciseID(v uuid.UUID) *ContentNodeExer
 	return _c
 }
 
-// SetPosition sets the "position" field.
-func (_c *ContentNodeExerciseCreate) SetPosition(v int) *ContentNodeExerciseCreate {
-	_c.mutation.SetPosition(v)
-	return _c
-}
-
 // SetLinkedAt sets the "linked_at" field.
 func (_c *ContentNodeExerciseCreate) SetLinkedAt(v time.Time) *ContentNodeExerciseCreate {
 	_c.mutation.SetLinkedAt(v)
@@ -114,9 +108,6 @@ func (_c *ContentNodeExerciseCreate) check() error {
 	if _, ok := _c.mutation.ExerciseID(); !ok {
 		return &ValidationError{Name: "exercise_id", err: errors.New(`ent: missing required field "ContentNodeExercise.exercise_id"`)}
 	}
-	if _, ok := _c.mutation.Position(); !ok {
-		return &ValidationError{Name: "position", err: errors.New(`ent: missing required field "ContentNodeExercise.position"`)}
-	}
 	if _, ok := _c.mutation.LinkedAt(); !ok {
 		return &ValidationError{Name: "linked_at", err: errors.New(`ent: missing required field "ContentNodeExercise.linked_at"`)}
 	}
@@ -152,10 +143,6 @@ func (_c *ContentNodeExerciseCreate) createSpec() (*ContentNodeExercise, *sqlgra
 		_node = &ContentNodeExercise{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(contentnodeexercise.Table, sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt))
 	)
-	if value, ok := _c.mutation.Position(); ok {
-		_spec.SetField(contentnodeexercise.FieldPosition, field.TypeInt, value)
-		_node.Position = value
-	}
 	if value, ok := _c.mutation.LinkedAt(); ok {
 		_spec.SetField(contentnodeexercise.FieldLinkedAt, field.TypeTime, value)
 		_node.LinkedAt = value

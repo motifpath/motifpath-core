@@ -35,7 +35,6 @@ var (
 	// ChallengeExercisesColumns holds the columns for the "challenge_exercises" table.
 	ChallengeExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "position", Type: field.TypeInt},
 		{Name: "linked_at", Type: field.TypeTime},
 		{Name: "challenge_id", Type: field.TypeUUID},
 		{Name: "exercise_id", Type: field.TypeUUID},
@@ -48,13 +47,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "challenge_exercises_challenges_challenge",
-				Columns:    []*schema.Column{ChallengeExercisesColumns[3]},
+				Columns:    []*schema.Column{ChallengeExercisesColumns[2]},
 				RefColumns: []*schema.Column{ChallengesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "challenge_exercises_exercises_exercise",
-				Columns:    []*schema.Column{ChallengeExercisesColumns[4]},
+				Columns:    []*schema.Column{ChallengeExercisesColumns[3]},
 				RefColumns: []*schema.Column{ExercisesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -63,12 +62,7 @@ var (
 			{
 				Name:    "challengeexercise_challenge_id_exercise_id",
 				Unique:  true,
-				Columns: []*schema.Column{ChallengeExercisesColumns[3], ChallengeExercisesColumns[4]},
-			},
-			{
-				Name:    "challengeexercise_challenge_id_position",
-				Unique:  false,
-				Columns: []*schema.Column{ChallengeExercisesColumns[3], ChallengeExercisesColumns[1]},
+				Columns: []*schema.Column{ChallengeExercisesColumns[2], ChallengeExercisesColumns[3]},
 			},
 		},
 	}
@@ -93,7 +87,6 @@ var (
 	// ContentNodeExercisesColumns holds the columns for the "content_node_exercises" table.
 	ContentNodeExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "position", Type: field.TypeInt},
 		{Name: "linked_at", Type: field.TypeTime},
 		{Name: "content_node_id", Type: field.TypeUUID},
 		{Name: "exercise_id", Type: field.TypeUUID},
@@ -106,13 +99,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "content_node_exercises_content_nodes_content_node",
-				Columns:    []*schema.Column{ContentNodeExercisesColumns[3]},
+				Columns:    []*schema.Column{ContentNodeExercisesColumns[2]},
 				RefColumns: []*schema.Column{ContentNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "content_node_exercises_exercises_exercise",
-				Columns:    []*schema.Column{ContentNodeExercisesColumns[4]},
+				Columns:    []*schema.Column{ContentNodeExercisesColumns[3]},
 				RefColumns: []*schema.Column{ExercisesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -121,12 +114,7 @@ var (
 			{
 				Name:    "contentnodeexercise_content_node_id_exercise_id",
 				Unique:  true,
-				Columns: []*schema.Column{ContentNodeExercisesColumns[3], ContentNodeExercisesColumns[4]},
-			},
-			{
-				Name:    "contentnodeexercise_content_node_id_position",
-				Unique:  false,
-				Columns: []*schema.Column{ContentNodeExercisesColumns[3], ContentNodeExercisesColumns[1]},
+				Columns: []*schema.Column{ContentNodeExercisesColumns[2], ContentNodeExercisesColumns[3]},
 			},
 		},
 	}

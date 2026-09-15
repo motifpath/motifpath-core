@@ -24,8 +24,6 @@ type ChallengeExercise struct {
 	ChallengeID uuid.UUID `json:"challenge_id,omitempty"`
 	// ExerciseID holds the value of the "exercise_id" field.
 	ExerciseID uuid.UUID `json:"exercise_id,omitempty"`
-	// Position holds the value of the "position" field.
-	Position int `json:"position,omitempty"`
 	// LinkedAt holds the value of the "linked_at" field.
 	LinkedAt time.Time `json:"linked_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -72,7 +70,7 @@ func (*ChallengeExercise) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case challengeexercise.FieldID, challengeexercise.FieldPosition:
+		case challengeexercise.FieldID:
 			values[i] = new(sql.NullInt64)
 		case challengeexercise.FieldLinkedAt:
 			values[i] = new(sql.NullTime)
@@ -110,12 +108,6 @@ func (_m *ChallengeExercise) assignValues(columns []string, values []any) error 
 				return fmt.Errorf("unexpected type %T for field exercise_id", values[i])
 			} else if value != nil {
 				_m.ExerciseID = *value
-			}
-		case challengeexercise.FieldPosition:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field position", values[i])
-			} else if value.Valid {
-				_m.Position = int(value.Int64)
 			}
 		case challengeexercise.FieldLinkedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -174,9 +166,6 @@ func (_m *ChallengeExercise) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("exercise_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ExerciseID))
-	builder.WriteString(", ")
-	builder.WriteString("position=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Position))
 	builder.WriteString(", ")
 	builder.WriteString("linked_at=")
 	builder.WriteString(_m.LinkedAt.Format(time.ANSIC))

@@ -18,8 +18,6 @@ const (
 	FieldChallengeID = "challenge_id"
 	// FieldExerciseID holds the string denoting the exercise_id field in the database.
 	FieldExerciseID = "exercise_id"
-	// FieldPosition holds the string denoting the position field in the database.
-	FieldPosition = "position"
 	// FieldLinkedAt holds the string denoting the linked_at field in the database.
 	FieldLinkedAt = "linked_at"
 	// EdgeChallenge holds the string denoting the challenge edge name in mutations.
@@ -49,7 +47,6 @@ var Columns = []string{
 	FieldID,
 	FieldChallengeID,
 	FieldExerciseID,
-	FieldPosition,
 	FieldLinkedAt,
 }
 
@@ -84,11 +81,6 @@ func ByChallengeID(opts ...sql.OrderTermOption) OrderOption {
 // ByExerciseID orders the results by the exercise_id field.
 func ByExerciseID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExerciseID, opts...).ToFunc()
-}
-
-// ByPosition orders the results by the position field.
-func ByPosition(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPosition, opts...).ToFunc()
 }
 
 // ByLinkedAt orders the results by the linked_at field.

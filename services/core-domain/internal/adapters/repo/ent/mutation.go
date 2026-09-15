@@ -944,8 +944,6 @@ type ChallengeExerciseMutation struct {
 	op               Op
 	typ              string
 	id               *int
-	position         *int
-	addposition      *int
 	linked_at        *time.Time
 	clearedFields    map[string]struct{}
 	challenge        *uuid.UUID
@@ -1127,62 +1125,6 @@ func (m *ChallengeExerciseMutation) ResetExerciseID() {
 	m.exercise = nil
 }
 
-// SetPosition sets the "position" field.
-func (m *ChallengeExerciseMutation) SetPosition(i int) {
-	m.position = &i
-	m.addposition = nil
-}
-
-// Position returns the value of the "position" field in the mutation.
-func (m *ChallengeExerciseMutation) Position() (r int, exists bool) {
-	v := m.position
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPosition returns the old "position" field's value of the ChallengeExercise entity.
-// If the ChallengeExercise object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChallengeExerciseMutation) OldPosition(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPosition is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPosition requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPosition: %w", err)
-	}
-	return oldValue.Position, nil
-}
-
-// AddPosition adds i to the "position" field.
-func (m *ChallengeExerciseMutation) AddPosition(i int) {
-	if m.addposition != nil {
-		*m.addposition += i
-	} else {
-		m.addposition = &i
-	}
-}
-
-// AddedPosition returns the value that was added to the "position" field in this mutation.
-func (m *ChallengeExerciseMutation) AddedPosition() (r int, exists bool) {
-	v := m.addposition
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetPosition resets all changes to the "position" field.
-func (m *ChallengeExerciseMutation) ResetPosition() {
-	m.position = nil
-	m.addposition = nil
-}
-
 // SetLinkedAt sets the "linked_at" field.
 func (m *ChallengeExerciseMutation) SetLinkedAt(t time.Time) {
 	m.linked_at = &t
@@ -1307,15 +1249,12 @@ func (m *ChallengeExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChallengeExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 3)
 	if m.challenge != nil {
 		fields = append(fields, challengeexercise.FieldChallengeID)
 	}
 	if m.exercise != nil {
 		fields = append(fields, challengeexercise.FieldExerciseID)
-	}
-	if m.position != nil {
-		fields = append(fields, challengeexercise.FieldPosition)
 	}
 	if m.linked_at != nil {
 		fields = append(fields, challengeexercise.FieldLinkedAt)
@@ -1332,8 +1271,6 @@ func (m *ChallengeExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.ChallengeID()
 	case challengeexercise.FieldExerciseID:
 		return m.ExerciseID()
-	case challengeexercise.FieldPosition:
-		return m.Position()
 	case challengeexercise.FieldLinkedAt:
 		return m.LinkedAt()
 	}
@@ -1349,8 +1286,6 @@ func (m *ChallengeExerciseMutation) OldField(ctx context.Context, name string) (
 		return m.OldChallengeID(ctx)
 	case challengeexercise.FieldExerciseID:
 		return m.OldExerciseID(ctx)
-	case challengeexercise.FieldPosition:
-		return m.OldPosition(ctx)
 	case challengeexercise.FieldLinkedAt:
 		return m.OldLinkedAt(ctx)
 	}
@@ -1376,13 +1311,6 @@ func (m *ChallengeExerciseMutation) SetField(name string, value ent.Value) error
 		}
 		m.SetExerciseID(v)
 		return nil
-	case challengeexercise.FieldPosition:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPosition(v)
-		return nil
 	case challengeexercise.FieldLinkedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1397,21 +1325,13 @@ func (m *ChallengeExerciseMutation) SetField(name string, value ent.Value) error
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ChallengeExerciseMutation) AddedFields() []string {
-	var fields []string
-	if m.addposition != nil {
-		fields = append(fields, challengeexercise.FieldPosition)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ChallengeExerciseMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case challengeexercise.FieldPosition:
-		return m.AddedPosition()
-	}
 	return nil, false
 }
 
@@ -1420,13 +1340,6 @@ func (m *ChallengeExerciseMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ChallengeExerciseMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case challengeexercise.FieldPosition:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddPosition(v)
-		return nil
 	}
 	return fmt.Errorf("unknown ChallengeExercise numeric field %s", name)
 }
@@ -1459,9 +1372,6 @@ func (m *ChallengeExerciseMutation) ResetField(name string) error {
 		return nil
 	case challengeexercise.FieldExerciseID:
 		m.ResetExerciseID()
-		return nil
-	case challengeexercise.FieldPosition:
-		m.ResetPosition()
 		return nil
 	case challengeexercise.FieldLinkedAt:
 		m.ResetLinkedAt()
@@ -2454,8 +2364,6 @@ type ContentNodeExerciseMutation struct {
 	op                  Op
 	typ                 string
 	id                  *int
-	position            *int
-	addposition         *int
 	linked_at           *time.Time
 	clearedFields       map[string]struct{}
 	content_node        *uuid.UUID
@@ -2637,62 +2545,6 @@ func (m *ContentNodeExerciseMutation) ResetExerciseID() {
 	m.exercise = nil
 }
 
-// SetPosition sets the "position" field.
-func (m *ContentNodeExerciseMutation) SetPosition(i int) {
-	m.position = &i
-	m.addposition = nil
-}
-
-// Position returns the value of the "position" field in the mutation.
-func (m *ContentNodeExerciseMutation) Position() (r int, exists bool) {
-	v := m.position
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPosition returns the old "position" field's value of the ContentNodeExercise entity.
-// If the ContentNodeExercise object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ContentNodeExerciseMutation) OldPosition(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPosition is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPosition requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPosition: %w", err)
-	}
-	return oldValue.Position, nil
-}
-
-// AddPosition adds i to the "position" field.
-func (m *ContentNodeExerciseMutation) AddPosition(i int) {
-	if m.addposition != nil {
-		*m.addposition += i
-	} else {
-		m.addposition = &i
-	}
-}
-
-// AddedPosition returns the value that was added to the "position" field in this mutation.
-func (m *ContentNodeExerciseMutation) AddedPosition() (r int, exists bool) {
-	v := m.addposition
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetPosition resets all changes to the "position" field.
-func (m *ContentNodeExerciseMutation) ResetPosition() {
-	m.position = nil
-	m.addposition = nil
-}
-
 // SetLinkedAt sets the "linked_at" field.
 func (m *ContentNodeExerciseMutation) SetLinkedAt(t time.Time) {
 	m.linked_at = &t
@@ -2817,15 +2669,12 @@ func (m *ContentNodeExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 3)
 	if m.content_node != nil {
 		fields = append(fields, contentnodeexercise.FieldContentNodeID)
 	}
 	if m.exercise != nil {
 		fields = append(fields, contentnodeexercise.FieldExerciseID)
-	}
-	if m.position != nil {
-		fields = append(fields, contentnodeexercise.FieldPosition)
 	}
 	if m.linked_at != nil {
 		fields = append(fields, contentnodeexercise.FieldLinkedAt)
@@ -2842,8 +2691,6 @@ func (m *ContentNodeExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.ContentNodeID()
 	case contentnodeexercise.FieldExerciseID:
 		return m.ExerciseID()
-	case contentnodeexercise.FieldPosition:
-		return m.Position()
 	case contentnodeexercise.FieldLinkedAt:
 		return m.LinkedAt()
 	}
@@ -2859,8 +2706,6 @@ func (m *ContentNodeExerciseMutation) OldField(ctx context.Context, name string)
 		return m.OldContentNodeID(ctx)
 	case contentnodeexercise.FieldExerciseID:
 		return m.OldExerciseID(ctx)
-	case contentnodeexercise.FieldPosition:
-		return m.OldPosition(ctx)
 	case contentnodeexercise.FieldLinkedAt:
 		return m.OldLinkedAt(ctx)
 	}
@@ -2886,13 +2731,6 @@ func (m *ContentNodeExerciseMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetExerciseID(v)
 		return nil
-	case contentnodeexercise.FieldPosition:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPosition(v)
-		return nil
 	case contentnodeexercise.FieldLinkedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -2907,21 +2745,13 @@ func (m *ContentNodeExerciseMutation) SetField(name string, value ent.Value) err
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ContentNodeExerciseMutation) AddedFields() []string {
-	var fields []string
-	if m.addposition != nil {
-		fields = append(fields, contentnodeexercise.FieldPosition)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ContentNodeExerciseMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case contentnodeexercise.FieldPosition:
-		return m.AddedPosition()
-	}
 	return nil, false
 }
 
@@ -2930,13 +2760,6 @@ func (m *ContentNodeExerciseMutation) AddedField(name string) (ent.Value, bool) 
 // type.
 func (m *ContentNodeExerciseMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case contentnodeexercise.FieldPosition:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddPosition(v)
-		return nil
 	}
 	return fmt.Errorf("unknown ContentNodeExercise numeric field %s", name)
 }
@@ -2969,9 +2792,6 @@ func (m *ContentNodeExerciseMutation) ResetField(name string) error {
 		return nil
 	case contentnodeexercise.FieldExerciseID:
 		m.ResetExerciseID()
-		return nil
-	case contentnodeexercise.FieldPosition:
-		m.ResetPosition()
 		return nil
 	case contentnodeexercise.FieldLinkedAt:
 		m.ResetLinkedAt()

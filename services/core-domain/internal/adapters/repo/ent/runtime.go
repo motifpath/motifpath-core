@@ -45,7 +45,7 @@ func init() {
 	challengeexerciseFields := schema.ChallengeExercise{}.Fields()
 	_ = challengeexerciseFields
 	// challengeexerciseDescLinkedAt is the schema descriptor for linked_at field.
-	challengeexerciseDescLinkedAt := challengeexerciseFields[3].Descriptor()
+	challengeexerciseDescLinkedAt := challengeexerciseFields[2].Descriptor()
 	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
 	contentnodeFields := schema.ContentNode{}.Fields()
@@ -61,7 +61,7 @@ func init() {
 	contentnodeexerciseFields := schema.ContentNodeExercise{}.Fields()
 	_ = contentnodeexerciseFields
 	// contentnodeexerciseDescLinkedAt is the schema descriptor for linked_at field.
-	contentnodeexerciseDescLinkedAt := contentnodeexerciseFields[3].Descriptor()
+	contentnodeexerciseDescLinkedAt := contentnodeexerciseFields[2].Descriptor()
 	// contentnodeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	contentnodeexercise.DefaultLinkedAt = contentnodeexerciseDescLinkedAt.Default.(func() time.Time)
 	exerciseFields := schema.Exercise{}.Fields()

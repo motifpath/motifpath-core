@@ -35,12 +35,6 @@ func (_c *ChallengeExerciseCreate) SetExerciseID(v uuid.UUID) *ChallengeExercise
 	return _c
 }
 
-// SetPosition sets the "position" field.
-func (_c *ChallengeExerciseCreate) SetPosition(v int) *ChallengeExerciseCreate {
-	_c.mutation.SetPosition(v)
-	return _c
-}
-
 // SetLinkedAt sets the "linked_at" field.
 func (_c *ChallengeExerciseCreate) SetLinkedAt(v time.Time) *ChallengeExerciseCreate {
 	_c.mutation.SetLinkedAt(v)
@@ -114,9 +108,6 @@ func (_c *ChallengeExerciseCreate) check() error {
 	if _, ok := _c.mutation.ExerciseID(); !ok {
 		return &ValidationError{Name: "exercise_id", err: errors.New(`ent: missing required field "ChallengeExercise.exercise_id"`)}
 	}
-	if _, ok := _c.mutation.Position(); !ok {
-		return &ValidationError{Name: "position", err: errors.New(`ent: missing required field "ChallengeExercise.position"`)}
-	}
 	if _, ok := _c.mutation.LinkedAt(); !ok {
 		return &ValidationError{Name: "linked_at", err: errors.New(`ent: missing required field "ChallengeExercise.linked_at"`)}
 	}
@@ -152,10 +143,6 @@ func (_c *ChallengeExerciseCreate) createSpec() (*ChallengeExercise, *sqlgraph.C
 		_node = &ChallengeExercise{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(challengeexercise.Table, sqlgraph.NewFieldSpec(challengeexercise.FieldID, field.TypeInt))
 	)
-	if value, ok := _c.mutation.Position(); ok {
-		_spec.SetField(challengeexercise.FieldPosition, field.TypeInt, value)
-		_node.Position = value
-	}
 	if value, ok := _c.mutation.LinkedAt(); ok {
 		_spec.SetField(challengeexercise.FieldLinkedAt, field.TypeTime, value)
 		_node.LinkedAt = value
