@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -47,5 +48,11 @@ func (ContentNode) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+	}
+}
+
+func (ContentNode) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("path_exercises", Exercise.Type).Ref("content_nodes"),
 	}
 }

@@ -33,6 +33,12 @@ func (Challenge) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		field.Bool("shuffle_exercises").
+			Default(false),
+
+		field.Bool("shuffle_options").
+			Default(false),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
