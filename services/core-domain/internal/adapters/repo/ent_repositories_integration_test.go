@@ -87,20 +87,56 @@ func TestEntChallengeRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, challenge, got)
 }
 
+func TestEntChallengeRepository_CreateWithShufflingAndListByContentNodeID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntChallengeRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	otherNode := seedContentNode(t, ctx, nodeRepo)
+
+	shuffled := domain.Challenge{
+		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70,
+		ShuffleExercises: true, ShuffleOptions: true, CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, shuffled))
+	require.NoError(t, repo.Create(ctx, domain.Challenge{
+		ID: uuid.NewString(), ContentNodeID: otherNode.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt,
+	}))
+
+	got, err := repo.GetByID(ctx, shuffled.ID)
+	require.NoError(t, err)
+	assert.True(t, got.ShuffleExercises)
+	assert.True(t, got.ShuffleOptions)
+
+	list, err := repo.ListByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, shuffled.ID, list[0].ID)
+
+	empty, err := repo.ListByContentNodeID(ctx, uuid.NewString())
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}
+
 func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	ctx := context.Background()
 	imageURL := "https://cdn.example.com/fretboard/c-major-triad.png"
+	duration := 45
 	repo := NewEntExerciseRepository(setupPostgres(t))
 
 	exercise := domain.Exercise{
 		ID: uuid.NewString(), Title: "Root position of a C major triad", Prompt: "Identify the chord",
 		ExerciseType: domain.ExerciseTypeImageRecognition, SkillTags: []string{"triad-shapes"}, ImageURL: &imageURL,
+		EstimatedDurationSeconds: &duration,
 		Options: []domain.Option{
 			{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.2, Y: 0.3, Width: 0.1, Height: 0.1, Shape: domain.OptionRegionShapeRectangle}},
 			{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.5, Y: 0.3, Width: 0.1, Height: 0.1, Shape: domain.OptionRegionShapeRectangle}},
 		},
-		ChallengeIDs: []string{},
-		CreatedAt:    fixedAt,
+		ChallengeIDs:   []string{},
+		ContentNodeIDs: []string{},
+		CreatedAt:      fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, exercise))
 
@@ -109,8 +145,93 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, exercise.Title, got.Title)
 	assert.Equal(t, exercise.ExerciseType, got.ExerciseType)
 	assert.Equal(t, exercise.SkillTags, got.SkillTags)
+	assert.Equal(t, exercise.EstimatedDurationSeconds, got.EstimatedDurationSeconds)
 	assert.ElementsMatch(t, exercise.Options, got.Options)
 	assert.Empty(t, got.ChallengeIDs)
+	assert.Empty(t, got.ContentNodeIDs)
+}
+
+func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	challengeRepo := NewEntChallengeRepository(client)
+	repo := NewEntExerciseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, challenge))
+	otherChallenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, otherChallenge))
+
+	label := "A major"
+	linked := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: "Name this chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, linked))
+	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Name another chord", Prompt: "Name this other chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, unlinked))
+	require.NoError(t, repo.LinkChallenge(ctx, linked.ID, challenge.ID))
+	require.NoError(t, repo.LinkChallenge(ctx, unlinked.ID, otherChallenge.ID))
+
+	list, err := repo.ListByChallengeID(ctx, challenge.ID)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, linked.ID, list[0].ID)
+
+	empty, err := repo.ListByChallengeID(ctx, uuid.NewString())
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}
+
+func TestEntExerciseRepository_LinkAndUnlinkContentNode(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntExerciseRepository(client)
+
+	nodeA := seedContentNode(t, ctx, nodeRepo)
+	nodeB := seedContentNode(t, ctx, nodeRepo)
+
+	label := "A major"
+	exercise := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: "Name this chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	require.NoError(t, repo.LinkContentNode(ctx, exercise.ID, nodeA.ID))
+	require.NoError(t, repo.LinkContentNode(ctx, exercise.ID, nodeB.ID))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{nodeA.ID, nodeB.ID}, got.ContentNodeIDs)
+
+	listA, err := repo.ListByContentNodeID(ctx, nodeA.ID)
+	require.NoError(t, err)
+	require.Len(t, listA, 1)
+	assert.Equal(t, exercise.ID, listA[0].ID)
+
+	require.NoError(t, repo.UnlinkContentNode(ctx, exercise.ID, nodeA.ID))
+
+	got, err = repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{nodeB.ID}, got.ContentNodeIDs)
+}
+
+func TestEntExerciseRepository_ListBySkillTag(t *testing.T) {
+	ctx := context.Background()
+	repo := NewEntExerciseRepository(setupPostgres(t))
+
+	label := "A major"
+	tagged := domain.Exercise{ID: uuid.NewString(), Title: "Tagged", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"alternate_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, tagged))
+	untagged := domain.Exercise{ID: uuid.NewString(), Title: "Untagged", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"hybrid_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, untagged))
+
+	list, err := repo.ListBySkillTag(ctx, "alternate_picking")
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, tagged.ID, list[0].ID)
+
+	empty, err := repo.ListBySkillTag(ctx, "nonexistent-skill")
+	require.NoError(t, err)
+	assert.Empty(t, empty)
 }
 
 func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
