@@ -23,7 +23,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 
-		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, nil)
+		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, nil, false, false)
 
 		require.NoError(t, err)
 		assert.Equal(t, "node-1", challenge.ContentNodeID)
@@ -36,7 +36,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 		target := "node-remediation"
 
-		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, &target)
+		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, &target, false, false)
 
 		require.NoError(t, err)
 		require.NotNil(t, challenge.RemediationTargetContentNodeID)
@@ -48,7 +48,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), adminCaller(), "node-1", "chord-theory", 80, nil)
+		_, err := svc.CreateChallenge(context.Background(), adminCaller(), "node-1", "chord-theory", 80, nil, false, false)
 
 		require.NoError(t, err)
 	})
@@ -58,7 +58,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "", 70, nil)
+		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "", 70, nil, false, false)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -70,7 +70,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 0, nil)
+		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 0, nil, false, false)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -80,7 +80,7 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 	t.Run("creating a challenge for a non-existent content node returns not found", func(t *testing.T) {
 		svc := newChallengeService(newFakeContentNodeRepository(), newFakeChallengeRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "missing", "triad-shapes", 70, nil)
+		_, err := svc.CreateChallenge(context.Background(), teacherCaller(), "missing", "triad-shapes", 70, nil, false, false)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -90,9 +90,68 @@ func TestChallengeService_CreateChallenge(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newChallengeService(nodes, newFakeChallengeRepository())
 
-		_, err := svc.CreateChallenge(context.Background(), studentCaller(), "node-1", "triad-shapes", 70, nil)
+		_, err := svc.CreateChallenge(context.Background(), studentCaller(), "node-1", "triad-shapes", 70, nil, false, false)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher creates a challenge with shuffled exercises and options", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newChallengeService(nodes, newFakeChallengeRepository())
+
+		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, nil, true, true)
+
+		require.NoError(t, err)
+		assert.True(t, challenge.ShuffleExercises)
+		assert.True(t, challenge.ShuffleOptions)
+	})
+
+	t.Run("a teacher creates a challenge without specifying shuffling", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newChallengeService(nodes, newFakeChallengeRepository())
+
+		challenge, err := svc.CreateChallenge(context.Background(), teacherCaller(), "node-1", "triad-shapes", 70, nil, false, false)
+
+		require.NoError(t, err)
+		assert.False(t, challenge.ShuffleExercises)
+		assert.False(t, challenge.ShuffleOptions)
+	})
+}
+
+func TestChallengeService_ListChallengesForContentNode(t *testing.T) {
+	t.Run("a student lists the challenges for a node that has one", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1"})
+		svc := newChallengeService(nodes, challenges)
+
+		got, err := svc.ListChallengesForContentNode(context.Background(), "node-1")
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "challenge-1", got[0].ID)
+	})
+
+	t.Run("a student lists the challenges for a node that has none", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("silent-node"))
+		svc := newChallengeService(nodes, newFakeChallengeRepository())
+
+		got, err := svc.ListChallengesForContentNode(context.Background(), "silent-node")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("listing challenges for a content node that does not exist returns not found", func(t *testing.T) {
+		svc := newChallengeService(newFakeContentNodeRepository(), newFakeChallengeRepository())
+
+		_, err := svc.ListChallengesForContentNode(context.Background(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
 

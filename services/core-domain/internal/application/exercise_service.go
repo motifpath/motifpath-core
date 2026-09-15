@@ -9,26 +9,39 @@ import (
 )
 
 // ExerciseService manages Exercise — a reusable, standalone practice item
-// that may be linked to any number of Challenges.
+// that may be linked to any number of Challenges and ContentNodes (as a path
+// exercise), and selected into practice sessions by skill tag.
 type ExerciseService struct {
 	challenges ports.ChallengeRepository
 	exercises  ports.ExerciseRepository
+	nodes      ports.ContentNodeRepository
 	newID      func() string
 	now        func() time.Time
+	// shuffle randomizes n elements in place via swap, matching
+	// math/rand.Shuffle's signature — injected so tests can supply a
+	// deterministic permutation instead of a real random one.
+	shuffle func(n int, swap func(i, j int))
 }
 
-func NewExerciseService(challenges ports.ChallengeRepository, exercises ports.ExerciseRepository, newID func() string, now func() time.Time) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, newID: newID, now: now}
+func NewExerciseService(
+	challenges ports.ChallengeRepository,
+	exercises ports.ExerciseRepository,
+	nodes ports.ContentNodeRepository,
+	newID func() string,
+	now func() time.Time,
+	shuffle func(n int, swap func(i, j int)),
+) *ExerciseService {
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, newID: newID, now: now, shuffle: shuffle}
 }
 
-// CreateExercise creates a standalone exercise, not linked to any challenge.
-// Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title, prompt string, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option) (domain.Exercise, error) {
+// CreateExercise creates a standalone exercise, not linked to any challenge
+// or content node. Only teachers and admins may create exercises.
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title, prompt string, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, s.now())
+	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, s.now())
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -99,4 +112,143 @@ func (s *ExerciseService) UnlinkExerciseFromChallenge(ctx context.Context, calle
 	}
 
 	return s.exercises.UnlinkChallenge(ctx, exerciseID, challengeID)
+}
+
+// ListExercisesForChallenge returns challengeID's linked exercises, in the
+// order (and with the option order) the challenge's shuffle settings call
+// for. Returns domain.ErrNotFound if no such challenge exists. Any
+// authenticated user may list a challenge's exercises.
+func (s *ExerciseService) ListExercisesForChallenge(ctx context.Context, challengeID string) ([]domain.Exercise, error) {
+	challenge, err := s.challenges.GetByID(ctx, challengeID)
+	if err != nil {
+		return nil, err
+	}
+
+	exercises, err := s.exercises.ListByChallengeID(ctx, challengeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if challenge.ShuffleExercises {
+		s.shuffle(len(exercises), func(i, j int) { exercises[i], exercises[j] = exercises[j], exercises[i] })
+	}
+	if challenge.ShuffleOptions {
+		for i := range exercises {
+			s.shuffleOptions(exercises[i].Options)
+		}
+	}
+	return exercises, nil
+}
+
+// LinkExerciseToContentNode links an existing exercise into a content node
+// as a path exercise. Only teachers and admins may link exercises. Returns
+// domain.ErrAlreadyExists if the exercise is already a path exercise on the
+// node.
+func (s *ExerciseService) LinkExerciseToContentNode(ctx context.Context, caller domain.User, contentNodeID, exerciseID string) (domain.Exercise, error) {
+	if !canManageContent(caller.Role) {
+		return domain.Exercise{}, domain.ErrForbidden
+	}
+
+	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+		return domain.Exercise{}, err
+	}
+	exercise, err := s.exercises.GetByID(ctx, exerciseID)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+	for _, id := range exercise.ContentNodeIDs {
+		if id == contentNodeID {
+			return domain.Exercise{}, domain.ErrAlreadyExists
+		}
+	}
+
+	if err := s.exercises.LinkContentNode(ctx, exerciseID, contentNodeID); err != nil {
+		return domain.Exercise{}, err
+	}
+	return s.exercises.GetByID(ctx, exerciseID)
+}
+
+// UnlinkExerciseFromContentNode removes the path-exercise link between an
+// exercise and a content node. Only teachers and admins may unlink
+// exercises. Returns domain.ErrNotFound if the exercise is not currently
+// linked to the node.
+func (s *ExerciseService) UnlinkExerciseFromContentNode(ctx context.Context, caller domain.User, contentNodeID, exerciseID string) error {
+	if !canManageContent(caller.Role) {
+		return domain.ErrForbidden
+	}
+
+	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+		return err
+	}
+	exercise, err := s.exercises.GetByID(ctx, exerciseID)
+	if err != nil {
+		return err
+	}
+	linked := false
+	for _, id := range exercise.ContentNodeIDs {
+		if id == contentNodeID {
+			linked = true
+			break
+		}
+	}
+	if !linked {
+		return domain.ErrNotFound
+	}
+
+	return s.exercises.UnlinkContentNode(ctx, exerciseID, contentNodeID)
+}
+
+// ListPathExercisesForContentNode returns contentNodeID's path exercises,
+// always in link order. Returns domain.ErrNotFound if no such content node
+// exists. Any authenticated user may list a node's path exercises.
+func (s *ExerciseService) ListPathExercisesForContentNode(ctx context.Context, contentNodeID string) ([]domain.Exercise, error) {
+	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+		return nil, err
+	}
+	return s.exercises.ListByContentNodeID(ctx, contentNodeID)
+}
+
+// PracticeSession is a generated, skill-targeted set of exercises for
+// self-directed practice. It is never persisted — StartPracticeSession
+// returns a fresh selection and ID on every call.
+type PracticeSession struct {
+	ID        string
+	SkillTag  string
+	Exercises []domain.Exercise
+}
+
+// StartPracticeSession selects up to count exercises tagged with skillTag,
+// in random order with each exercise's options also randomized, under a
+// fresh session ID. Returns fewer than count exercises if the tagged pool
+// is smaller. Any authenticated user may start a practice session.
+func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillTag string, count int) (PracticeSession, error) {
+	var errs []domain.FieldError
+	if skillTag == "" {
+		errs = append(errs, domain.FieldError{Field: "skill_tag", Reason: "must not be empty"})
+	}
+	if count < 1 || count > 50 {
+		errs = append(errs, domain.FieldError{Field: "count", Reason: "must be between 1 and 50"})
+	}
+	if len(errs) > 0 {
+		return PracticeSession{}, &domain.ValidationError{Fields: errs}
+	}
+
+	pool, err := s.exercises.ListBySkillTag(ctx, skillTag)
+	if err != nil {
+		return PracticeSession{}, err
+	}
+
+	s.shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+	if len(pool) > count {
+		pool = pool[:count]
+	}
+	for i := range pool {
+		s.shuffleOptions(pool[i].Options)
+	}
+
+	return PracticeSession{ID: s.newID(), SkillTag: skillTag, Exercises: pool}, nil
+}
+
+func (s *ExerciseService) shuffleOptions(options []domain.Option) {
+	s.shuffle(len(options), func(i, j int) { options[i], options[j] = options[j], options[i] })
 }

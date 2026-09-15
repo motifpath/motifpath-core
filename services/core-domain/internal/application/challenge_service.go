@@ -24,7 +24,7 @@ func NewChallengeService(nodes ports.ContentNodeRepository, challenges ports.Cha
 
 // CreateChallenge creates a challenge attached to contentNodeID. Only
 // teachers and admins may create challenges.
-func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.User, contentNodeID, subjectTag string, passThreshold int, remediationTarget *string) (domain.Challenge, error) {
+func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.User, contentNodeID, subjectTag string, passThreshold int, remediationTarget *string, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Challenge{}, domain.ErrForbidden
 	}
@@ -33,7 +33,7 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.Us
 		return domain.Challenge{}, err
 	}
 
-	challenge, err := domain.NewChallenge(s.newID(), contentNodeID, subjectTag, passThreshold, remediationTarget, s.now())
+	challenge, err := domain.NewChallenge(s.newID(), contentNodeID, subjectTag, passThreshold, remediationTarget, shuffleExercises, shuffleOptions, s.now())
 	if err != nil {
 		return domain.Challenge{}, err
 	}
@@ -47,4 +47,14 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.Us
 // user may retrieve a challenge.
 func (s *ChallengeService) GetChallenge(ctx context.Context, id string) (domain.Challenge, error) {
 	return s.challenges.GetByID(ctx, id)
+}
+
+// ListChallengesForContentNode returns the challenges attached to
+// contentNodeID, or domain.ErrNotFound if no such content node exists. Any
+// authenticated user may list a node's challenges.
+func (s *ChallengeService) ListChallengesForContentNode(ctx context.Context, contentNodeID string) ([]domain.Challenge, error) {
+	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+		return nil, err
+	}
+	return s.challenges.ListByContentNodeID(ctx, contentNodeID)
 }
