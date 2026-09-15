@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 
-	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
@@ -102,10 +101,12 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 }
 
 // LinkChallenge links exerciseID into challengeID via the ChallengeExercise
-// join entity, at the position one past the challenge's current highest —
-// an implicit ent many-to-many join table carries no order of its own, and
-// Postgres makes no row-order guarantee over an unordered SELECT, so link
-// order has to be a real, queried column.
+// join entity — an implicit ent many-to-many join table carries no order of
+// its own, and Postgres makes no row-order guarantee over an unordered
+// SELECT, so link order has to be real and queryable. ChallengeExercise's
+// auto-incrementing id, assigned atomically by Postgres on insert, already
+// gives that for free — no separate position column or read-before-write
+// needed.
 func (r *EntExerciseRepository) LinkChallenge(ctx context.Context, exerciseID, challengeID string) error {
 	exID, err := uuid.Parse(exerciseID)
 	if err != nil {
@@ -115,14 +116,9 @@ func (r *EntExerciseRepository) LinkChallenge(ctx context.Context, exerciseID, c
 	if err != nil {
 		return err
 	}
-	position, err := nextChallengeExercisePosition(ctx, r.client, chID)
-	if err != nil {
-		return err
-	}
 	return r.client.ChallengeExercise.Create().
 		SetChallengeID(chID).
 		SetExerciseID(exID).
-		SetPosition(position).
 		Exec(ctx)
 }
 
@@ -148,7 +144,7 @@ func (r *EntExerciseRepository) ListByChallengeID(ctx context.Context, challenge
 	}
 	links, err := r.client.ChallengeExercise.Query().
 		Where(challengeexercise.ChallengeID(parsed)).
-		Order(challengeexercise.ByPosition()).
+		Order(challengeexercise.ByID()).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -161,8 +157,8 @@ func (r *EntExerciseRepository) ListByChallengeID(ctx context.Context, challenge
 }
 
 // LinkContentNode links exerciseID into contentNodeID as a path exercise,
-// via the ContentNodeExercise join entity — see LinkChallenge for why
-// position is a real column rather than incidental row order.
+// via the ContentNodeExercise join entity — see LinkChallenge for why its
+// auto-incrementing id column is enough for link order on its own.
 func (r *EntExerciseRepository) LinkContentNode(ctx context.Context, exerciseID, contentNodeID string) error {
 	exID, err := uuid.Parse(exerciseID)
 	if err != nil {
@@ -172,14 +168,9 @@ func (r *EntExerciseRepository) LinkContentNode(ctx context.Context, exerciseID,
 	if err != nil {
 		return err
 	}
-	position, err := nextContentNodeExercisePosition(ctx, r.client, nodeID)
-	if err != nil {
-		return err
-	}
 	return r.client.ContentNodeExercise.Create().
 		SetContentNodeID(nodeID).
 		SetExerciseID(exID).
-		SetPosition(position).
 		Exec(ctx)
 }
 
@@ -205,7 +196,7 @@ func (r *EntExerciseRepository) ListByContentNodeID(ctx context.Context, content
 	}
 	links, err := r.client.ContentNodeExercise.Query().
 		Where(contentnodeexercise.ContentNodeID(parsed)).
-		Order(contentnodeexercise.ByPosition()).
+		Order(contentnodeexercise.ByID()).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -247,39 +238,6 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 	}
 	return toDomainExercises(ordered), nil
 }
-
-// nextChallengeExercisePosition returns one past the highest position
-// currently linked to challengeID, or 0 if it has none yet.
-func nextChallengeExercisePosition(ctx context.Context, client *ent.Client, challengeID uuid.UUID) (int, error) {
-	last, err := client.ChallengeExercise.Query().
-		Where(challengeexercise.ChallengeID(challengeID)).
-		Order(challengeexercise.ByPosition(sql.OrderDesc())).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return last.Position + 1, nil
-}
-
-// nextContentNodeExercisePosition returns one past the highest position
-// currently linked to contentNodeID, or 0 if it has none yet.
-func nextContentNodeExercisePosition(ctx context.Context, client *ent.Client, contentNodeID uuid.UUID) (int, error) {
-	last, err := client.ContentNodeExercise.Query().
-		Where(contentnodeexercise.ContentNodeID(contentNodeID)).
-		Order(contentnodeexercise.ByPosition(sql.OrderDesc())).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return last.Position + 1, nil
-}
-
 
 // ListBySkillTag filters in Go rather than in the query — skill_tags is a
 // JSON array field with no generated "contains element" predicate, and MVP
