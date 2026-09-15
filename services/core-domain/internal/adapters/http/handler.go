@@ -168,8 +168,16 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 		remediationTarget = &s
 	}
 
+	var shuffleExercises, shuffleOptions bool
+	if request.Body.ShuffleExercises != nil {
+		shuffleExercises = *request.Body.ShuffleExercises
+	}
+	if request.Body.ShuffleOptions != nil {
+		shuffleOptions = *request.Body.ShuffleOptions
+	}
+
 	challenge, err := h.challenge.CreateChallenge(ctx, caller, request.ContentNodeId.String(),
-		request.Body.SubjectTag, request.Body.PassThreshold, remediationTarget)
+		request.Body.SubjectTag, request.Body.PassThreshold, remediationTarget, shuffleExercises, shuffleOptions)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -215,7 +223,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 		skillTags = *body.SkillTags
 	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, body.Prompt,
-		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options))
+		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -479,4 +487,117 @@ func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObj
 	}
 
 	return generated.GetMyPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ListContentNodeChallenges(ctx context.Context, request generated.ListContentNodeChallengesRequestObject) (generated.ListContentNodeChallengesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListContentNodeChallenges401JSONResponse(unauthorizedError()), nil
+	}
+
+	challenges, err := h.challenge.ListChallengesForContentNode(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListContentNodeChallenges404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListContentNodeChallenges200JSONResponse(toChallenges(challenges)), nil
+}
+
+func (h *Handler) ListChallengeExercises(ctx context.Context, request generated.ListChallengeExercisesRequestObject) (generated.ListChallengeExercisesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListChallengeExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercises, err := h.exercise.ListExercisesForChallenge(ctx, request.ChallengeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListChallengeExercises404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListChallengeExercises200JSONResponse(toExercises(exercises)), nil
+}
+
+func (h *Handler) ListContentNodePathExercises(ctx context.Context, request generated.ListContentNodePathExercisesRequestObject) (generated.ListContentNodePathExercisesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListContentNodePathExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercises, err := h.exercise.ListPathExercisesForContentNode(ctx, request.ContentNodeId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.ListContentNodePathExercises404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListContentNodePathExercises200JSONResponse(toExercises(exercises)), nil
+}
+
+func (h *Handler) LinkExerciseToContentNode(ctx context.Context, request generated.LinkExerciseToContentNodeRequestObject) (generated.LinkExerciseToContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.LinkExerciseToContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	exercise, err := h.exercise.LinkExerciseToContentNode(ctx, caller, request.ContentNodeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.LinkExerciseToContentNode403JSONResponse(forbiddenError("only teachers and admins may link exercises to content nodes")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.LinkExerciseToContentNode404JSONResponse(notFoundError("no content node exists with content_node_id, or no exercise exists with exercise_id")), nil
+		case errors.Is(err, domain.ErrAlreadyExists):
+			return generated.LinkExerciseToContentNode409JSONResponse(conflictError("the exercise is already linked to this content node")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.LinkExerciseToContentNode201JSONResponse(toExercise(exercise)), nil
+}
+
+func (h *Handler) UnlinkExerciseFromContentNode(ctx context.Context, request generated.UnlinkExerciseFromContentNodeRequestObject) (generated.UnlinkExerciseFromContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnlinkExerciseFromContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.exercise.UnlinkExerciseFromContentNode(ctx, caller, request.ContentNodeId.String(), request.ExerciseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnlinkExerciseFromContentNode403JSONResponse(forbiddenError("only teachers and admins may unlink exercises from content nodes")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnlinkExerciseFromContentNode404JSONResponse(notFoundError("no content node exists with content_node_id, no exercise exists with exercise_id, or the exercise is not currently linked to this content node")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.UnlinkExerciseFromContentNode204Response{}, nil
+}
+
+func (h *Handler) StartPracticeSession(ctx context.Context, request generated.StartPracticeSessionRequestObject) (generated.StartPracticeSessionResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.StartPracticeSession401JSONResponse(unauthorizedError()), nil
+	}
+
+	count := 10
+	if request.Params.Count != nil {
+		count = *request.Params.Count
+	}
+
+	session, err := h.exercise.StartPracticeSession(ctx, request.Params.SkillTag, count)
+	if err != nil {
+		if kind, valErr := classify(err); kind == errKindValidation {
+			return generated.StartPracticeSession400JSONResponse(validationErrorResponse(valErr)), nil
+		}
+		return nil, err
+	}
+
+	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session)), nil
 }

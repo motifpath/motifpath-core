@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -249,7 +250,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	identityService := application.NewIdentityService(userRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, newID, now)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, mathrand.Shuffle)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)

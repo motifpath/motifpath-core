@@ -44,11 +44,13 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 
 func toChallenge(c domain.Challenge) generated.Challenge {
 	challenge := generated.Challenge{
-		ChallengeId:   mustUUID(c.ID),
-		ContentNodeId: mustUUID(c.ContentNodeID),
-		SubjectTag:    c.SubjectTag,
-		PassThreshold: c.PassThreshold,
-		CreatedAt:     c.CreatedAt,
+		ChallengeId:      mustUUID(c.ID),
+		ContentNodeId:    mustUUID(c.ContentNodeID),
+		SubjectTag:       c.SubjectTag,
+		PassThreshold:    c.PassThreshold,
+		ShuffleExercises: c.ShuffleExercises,
+		ShuffleOptions:   c.ShuffleOptions,
+		CreatedAt:        c.CreatedAt,
 	}
 	if c.RemediationTargetContentNodeID != nil {
 		target := mustUUID(*c.RemediationTargetContentNodeID)
@@ -57,10 +59,22 @@ func toChallenge(c domain.Challenge) generated.Challenge {
 	return challenge
 }
 
+func toChallenges(challenges []domain.Challenge) []generated.Challenge {
+	result := make([]generated.Challenge, len(challenges))
+	for i, c := range challenges {
+		result[i] = toChallenge(c)
+	}
+	return result
+}
+
 func toExercise(e domain.Exercise) generated.Exercise {
 	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
 	for i, id := range e.ChallengeIDs {
 		challengeIDs[i] = mustUUID(id)
+	}
+	contentNodeIDs := make([]uuid.UUID, len(e.ContentNodeIDs))
+	for i, id := range e.ContentNodeIDs {
+		contentNodeIDs[i] = mustUUID(id)
 	}
 	options := make([]generated.Option, len(e.Options))
 	for i, opt := range e.Options {
@@ -68,20 +82,38 @@ func toExercise(e domain.Exercise) generated.Exercise {
 	}
 
 	exercise := generated.Exercise{
-		ExerciseId:   mustUUID(e.ID),
-		Title:        e.Title,
-		Prompt:       e.Prompt,
-		ExerciseType: generated.ExerciseExerciseType(e.ExerciseType),
-		ImageUrl:     e.ImageURL,
-		AudioUrl:     e.AudioURL,
-		Options:      options,
-		ChallengeIds: challengeIDs,
-		CreatedAt:    e.CreatedAt,
+		ExerciseId:               mustUUID(e.ID),
+		Title:                    e.Title,
+		Prompt:                   e.Prompt,
+		ExerciseType:             generated.ExerciseExerciseType(e.ExerciseType),
+		ImageUrl:                 e.ImageURL,
+		AudioUrl:                 e.AudioURL,
+		Options:                  options,
+		ChallengeIds:             challengeIDs,
+		ContentNodeIds:           contentNodeIDs,
+		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
+		CreatedAt:                e.CreatedAt,
 	}
 	if len(e.SkillTags) > 0 {
 		exercise.SkillTags = &e.SkillTags
 	}
 	return exercise
+}
+
+func toExercises(exercises []domain.Exercise) []generated.Exercise {
+	result := make([]generated.Exercise, len(exercises))
+	for i, e := range exercises {
+		result[i] = toExercise(e)
+	}
+	return result
+}
+
+func toPracticeSession(session application.PracticeSession) generated.PracticeSession {
+	return generated.PracticeSession{
+		PracticeSessionId: mustUUID(session.ID),
+		SkillTag:          session.SkillTag,
+		Exercises:         toExercises(session.Exercises),
+	}
 }
 
 func toOption(o domain.Option) generated.Option {
