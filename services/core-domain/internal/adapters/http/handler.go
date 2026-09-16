@@ -255,6 +255,62 @@ func (h *Handler) GetExercise(ctx context.Context, request generated.GetExercise
 	return generated.GetExercise200JSONResponse(toExercise(exercise)), nil
 }
 
+func (h *Handler) ListExercises(ctx context.Context, request generated.ListExercisesRequestObject) (generated.ListExercisesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListExercises401JSONResponse(unauthorizedError()), nil
+	}
+
+	var skillTag string
+	if request.Params.SkillTag != nil {
+		skillTag = *request.Params.SkillTag
+	}
+	var exerciseType domain.ExerciseType
+	if request.Params.ExerciseType != nil {
+		exerciseType = domain.ExerciseType(*request.Params.ExerciseType)
+	}
+
+	exercises, err := h.exercise.ListExercises(ctx, caller, skillTag, exerciseType)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListExercises200JSONResponse(toExercises(exercises)), nil
+}
+
+func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateExerciseRequestObject) (generated.UpdateExerciseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateExercise401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var skillTags []string
+	if body.SkillTags != nil {
+		skillTags = *body.SkillTags
+	}
+	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, body.Prompt,
+		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateExercise400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateExercise403JSONResponse(forbiddenError("only teachers and admins may update exercises")), nil
+		case errKindNotFound:
+			return generated.UpdateExercise404JSONResponse(notFoundError("no exercise exists with the given exercise_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateExercise200JSONResponse(toExercise(exercise)), nil
+}
+
 func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated.LinkExerciseToChallengeRequestObject) (generated.LinkExerciseToChallengeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {

@@ -264,6 +264,108 @@ func (r *EntExerciseRepository) ListBySkillTag(ctx context.Context, skillTag str
 	return toDomainExercises(matched), nil
 }
 
+// List returns exercises from the whole pool, optionally narrowed by
+// skillTag and/or exerciseType. exerciseType filters in the query itself;
+// skillTag filters in Go, same as ListBySkillTag, since skill_tags is a JSON
+// array field with no generated "contains element" predicate and MVP
+// catalog scale doesn't warrant a schema change to support one yet.
+func (r *EntExerciseRepository) List(ctx context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+	query := r.client.Exercise.Query().
+		WithChallenges().
+		WithContentNodes().
+		WithOptions().
+		Order(exercise.ByCreatedAt())
+	if exerciseType != "" {
+		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(exerciseType)))
+	}
+
+	rows, err := query.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if skillTag == "" {
+		return toDomainExercises(rows), nil
+	}
+
+	var matched []*ent.Exercise
+	for _, row := range rows {
+		for _, tag := range row.SkillTags {
+			if tag == skillTag {
+				matched = append(matched, row)
+				break
+			}
+		}
+	}
+	return toDomainExercises(matched), nil
+}
+
+// Update replaces ex's mutable fields (title, prompt, skill_tags, image_url,
+// audio_url, estimated_duration_seconds) and fully replaces its options —
+// the existing ExerciseOption rows are deleted and the new set is bulk
+// created, the same way Create establishes them initially, since options
+// arrive from the caller as a complete replacement set rather than a diff.
+func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) error {
+	id, err := uuid.Parse(ex.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exercise.UpdateOneID(id).
+		SetTitle(ex.Title).
+		SetPrompt(ex.Prompt).
+		SetSkillTags(ex.SkillTags).
+		SetNillableImageURL(ex.ImageURL).
+		SetNillableAudioURL(ex.AudioURL).
+		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return rollback(tx, domain.ErrNotFound)
+		}
+		return rollback(tx, err)
+	}
+
+	if _, err := tx.ExerciseOption.Delete().Where(exerciseoption.ExerciseID(id)).Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+
+	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
+	for i, opt := range ex.Options {
+		optionID, err := uuid.Parse(opt.ID)
+		if err != nil {
+			return rollback(tx, err)
+		}
+		optBuilder := tx.ExerciseOption.Create().
+			SetID(optionID).
+			SetExerciseID(id).
+			SetIsCorrect(opt.IsCorrect).
+			SetNillableLabel(opt.Label).
+			SetNillableImageURL(opt.ImageURL)
+		if opt.Region != nil {
+			optBuilder = optBuilder.
+				SetRegionX(opt.Region.X).
+				SetRegionY(opt.Region.Y).
+				SetRegionWidth(opt.Region.Width).
+				SetRegionHeight(opt.Region.Height).
+				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
+		}
+		optionBuilders[i] = optBuilder
+	}
+	if len(optionBuilders) > 0 {
+		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
+			return rollback(tx, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 func toDomainExercises(rows []*ent.Exercise) []domain.Exercise {
 	result := make([]domain.Exercise, len(rows))
 	for i, row := range rows {

@@ -73,22 +73,8 @@ type Exercise struct {
 // to any challenge or content node. Whether it later gets linked to a
 // challenge or node that exists is an application-layer concern.
 func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
-	var errs []FieldError
-
-	if title == "" {
-		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
-	}
-	if prompt == "" {
-		errs = append(errs, FieldError{Field: "prompt", Reason: "must not be empty"})
-	}
-	errs = append(errs, validateExerciseType(exerciseType)...)
-	errs = append(errs, validateSkillTags(skillTags)...)
-	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
-	errs = append(errs, validateOptions(exerciseType, options)...)
-	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
-		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
-	}
-
+	errs := validateExerciseType(exerciseType)
+	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -107,6 +93,52 @@ func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags 
 		ContentNodeIDs:           []string{},
 		CreatedAt:                createdAt,
 	}, nil
+}
+
+// Update validates and returns a copy of e with its authored content
+// replaced: title, prompt, skill tags, stimulus media, options, and
+// estimated duration. ID, ExerciseType, ChallengeIDs, ContentNodeIDs, and
+// CreatedAt carry over unchanged — exercise_type cannot change after
+// creation since it determines the option shape (region vs. text vs.
+// image), and links are managed exclusively through the exercise's
+// Link/Unlink operations, not through an update.
+func (e Exercise) Update(title, prompt string, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) (Exercise, error) {
+	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+	if len(errs) > 0 {
+		return Exercise{}, &ValidationError{Fields: errs}
+	}
+
+	updated := e
+	updated.Title = title
+	updated.Prompt = prompt
+	updated.SkillTags = skillTags
+	updated.ImageURL = imageURL
+	updated.AudioURL = audioURL
+	updated.Options = options
+	updated.EstimatedDurationSeconds = estimatedDurationSeconds
+	return updated, nil
+}
+
+// validateExerciseContent checks the fields shared by creation and update —
+// everything except exercise_type itself, which only creation sets and only
+// creation validates.
+func validateExerciseContent(title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) []FieldError {
+	var errs []FieldError
+
+	if title == "" {
+		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
+	}
+	if prompt == "" {
+		errs = append(errs, FieldError{Field: "prompt", Reason: "must not be empty"})
+	}
+	errs = append(errs, validateSkillTags(skillTags)...)
+	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
+	errs = append(errs, validateOptions(exerciseType, options)...)
+	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
+		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
+	}
+
+	return errs
 }
 
 func validateExerciseType(exerciseType ExerciseType) []FieldError {

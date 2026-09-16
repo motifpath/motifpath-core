@@ -144,6 +144,14 @@ const (
 	UserProfileRoleTeacher UserProfileRole = "teacher"
 )
 
+// Defines values for ListExercisesParamsExerciseType.
+const (
+	AudioRecognition ListExercisesParamsExerciseType = "audio_recognition"
+	ImageChoice      ListExercisesParamsExerciseType = "image_choice"
+	ImageRecognition ListExercisesParamsExerciseType = "image_recognition"
+	TextResponse     ListExercisesParamsExerciseType = "text_response"
+)
+
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
 type AssignLearningPathRequest struct {
 	// LearningPathId The ID of the learning path to assign. Must exist in the system.
@@ -788,6 +796,43 @@ type UnauthorizedError struct {
 	Message string `json:"message"`
 }
 
+// UpdateExerciseRequest Payload for replacing an existing exercise's authored content.
+// exercise_type is not present here — it cannot be changed after
+// creation. options fully replaces the exercise's current options, the
+// same way CreateExerciseRequest.options establishes them initially; a
+// caller that only wants to change one option must resend the full set.
+type UpdateExerciseRequest struct {
+	// AudioUrl The stimulus audio for this exercise. Required when the
+	// exercise's exercise_type is audio_recognition; absent otherwise.
+	AudioUrl *string `json:"audio_url,omitempty"`
+
+	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
+	// exercise once. Optional — used to fit practice sessions and
+	// challenges to a student's available time.
+	EstimatedDurationSeconds *int `json:"estimated_duration_seconds,omitempty"`
+
+	// ImageUrl The stimulus image for this exercise. Required when the
+	// exercise's exercise_type is image_recognition; absent otherwise.
+	ImageUrl *string `json:"image_url,omitempty"`
+
+	// Options The exercise's selectable answer choices, replacing its current
+	// set. At least one option must have is_correct set to true — an
+	// exercise with no correct option cannot be graded.
+	Options []Option `json:"options"`
+
+	// Prompt The instruction displayed to the student for this exercise.
+	Prompt string `json:"prompt"`
+
+	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
+	// targets, replacing its current set. Each tag must be a non-empty
+	// string.
+	SkillTags *[]string `json:"skill_tags,omitempty"`
+
+	// Title A short, authoring-only name for this exercise, used to identify
+	// it in authoring tools. Not shown to students.
+	Title string `json:"title"`
+}
+
 // UserProfile The stable MotifPath identity for a registered user. The user_id is the
 // value that other services (e.g. Event Ingestion Service) use to identify
 // this user in payloads and JWT claim validation.
@@ -825,6 +870,19 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
+// ListExercisesParams defines parameters for ListExercises.
+type ListExercisesParams struct {
+	// SkillTag When given, only exercises carrying this exact skill tag are
+	// returned.
+	SkillTag *string `form:"skill_tag,omitempty" json:"skill_tag,omitempty"`
+
+	// ExerciseType When given, only exercises of this type are returned.
+	ExerciseType *ListExercisesParamsExerciseType `form:"exercise_type,omitempty" json:"exercise_type,omitempty"`
+}
+
+// ListExercisesParamsExerciseType defines parameters for ListExercises.
+type ListExercisesParamsExerciseType string
+
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
 	// SkillTag The skill or technique tag to select exercises for (e.g. "alternate_picking").
@@ -846,6 +904,9 @@ type CreateExpandedContentJSONRequestBody = CreateExpandedContentRequest
 
 // CreateExerciseJSONRequestBody defines body for CreateExercise for application/json ContentType.
 type CreateExerciseJSONRequestBody = CreateExerciseRequest
+
+// UpdateExerciseJSONRequestBody defines body for UpdateExercise for application/json ContentType.
+type UpdateExerciseJSONRequestBody = UpdateExerciseRequest
 
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
@@ -900,12 +961,18 @@ type ServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// List standalone exercises for authoring
+	// (GET /exercises)
+	ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams)
 	// Create a standalone exercise
 	// (POST /exercises)
 	CreateExercise(w http.ResponseWriter, r *http.Request)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID)
+	// Replace an exercise's authored content
+	// (PUT /exercises/{exercise_id})
+	UpdateExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID)
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID)
@@ -1023,6 +1090,12 @@ func (_ Unimplemented) CreateExpandedContent(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List standalone exercises for authoring
+// (GET /exercises)
+func (_ Unimplemented) ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Create a standalone exercise
 // (POST /exercises)
 func (_ Unimplemented) CreateExercise(w http.ResponseWriter, r *http.Request) {
@@ -1032,6 +1105,12 @@ func (_ Unimplemented) CreateExercise(w http.ResponseWriter, r *http.Request) {
 // Get an exercise by ID
 // (GET /exercises/{exercise_id})
 func (_ Unimplemented) GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace an exercise's authored content
+// (PUT /exercises/{exercise_id})
+func (_ Unimplemented) UpdateExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1538,6 +1617,47 @@ func (siw *ServerInterfaceWrapper) CreateExpandedContent(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// ListExercises operation middleware
+func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListExercisesParams
+
+	// ------------- Optional query parameter "skill_tag" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_tag", r.URL.Query(), &params.SkillTag)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_tag", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "exercise_type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "exercise_type", r.URL.Query(), &params.ExerciseType)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "exercise_type", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListExercises(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateExercise operation middleware
 func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http.Request) {
 
@@ -1580,6 +1700,37 @@ func (siw *ServerInterfaceWrapper) GetExercise(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetExercise(w, r, exerciseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateExercise operation middleware
+func (siw *ServerInterfaceWrapper) UpdateExercise(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "exercise_id" -------------
+	var exerciseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "exercise_id", chi.URLParam(r, "exercise_id"), &exerciseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "exercise_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateExercise(w, r, exerciseId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2011,10 +2162,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/expanded-content", wrapper.CreateExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/exercises", wrapper.ListExercises)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/exercises", wrapper.CreateExercise)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises/{exercise_id}", wrapper.GetExercise)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/exercises/{exercise_id}", wrapper.UpdateExercise)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/expanded-content/{expanded_content_id}", wrapper.GetExpandedContent)
@@ -2617,6 +2774,41 @@ func (response CreateExpandedContent404JSONResponse) VisitCreateExpandedContentR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListExercisesRequestObject struct {
+	Params ListExercisesParams
+}
+
+type ListExercisesResponseObject interface {
+	VisitListExercisesResponse(w http.ResponseWriter) error
+}
+
+type ListExercises200JSONResponse []Exercise
+
+func (response ListExercises200JSONResponse) VisitListExercisesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExercises401JSONResponse UnauthorizedError
+
+func (response ListExercises401JSONResponse) VisitListExercisesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExercises403JSONResponse ForbiddenError
+
+func (response ListExercises403JSONResponse) VisitListExercisesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type CreateExerciseRequestObject struct {
 	Body *CreateExerciseJSONRequestBody
 }
@@ -2690,6 +2882,60 @@ func (response GetExercise401JSONResponse) VisitGetExerciseResponse(w http.Respo
 type GetExercise404JSONResponse NotFoundError
 
 func (response GetExercise404JSONResponse) VisitGetExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExerciseRequestObject struct {
+	ExerciseId openapi_types.UUID `json:"exercise_id"`
+	Body       *UpdateExerciseJSONRequestBody
+}
+
+type UpdateExerciseResponseObject interface {
+	VisitUpdateExerciseResponse(w http.ResponseWriter) error
+}
+
+type UpdateExercise200JSONResponse Exercise
+
+func (response UpdateExercise200JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExercise400JSONResponse ValidationError
+
+func (response UpdateExercise400JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExercise401JSONResponse UnauthorizedError
+
+func (response UpdateExercise401JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExercise403JSONResponse ForbiddenError
+
+func (response UpdateExercise403JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExercise404JSONResponse NotFoundError
+
+func (response UpdateExercise404JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -3155,12 +3401,18 @@ type StrictServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(ctx context.Context, request CreateExpandedContentRequestObject) (CreateExpandedContentResponseObject, error)
+	// List standalone exercises for authoring
+	// (GET /exercises)
+	ListExercises(ctx context.Context, request ListExercisesRequestObject) (ListExercisesResponseObject, error)
 	// Create a standalone exercise
 	// (POST /exercises)
 	CreateExercise(ctx context.Context, request CreateExerciseRequestObject) (CreateExerciseResponseObject, error)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(ctx context.Context, request GetExerciseRequestObject) (GetExerciseResponseObject, error)
+	// Replace an exercise's authored content
+	// (PUT /exercises/{exercise_id})
+	UpdateExercise(ctx context.Context, request UpdateExerciseRequestObject) (UpdateExerciseResponseObject, error)
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(ctx context.Context, request GetExpandedContentRequestObject) (GetExpandedContentResponseObject, error)
@@ -3586,6 +3838,32 @@ func (sh *strictHandler) CreateExpandedContent(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// ListExercises operation middleware
+func (sh *strictHandler) ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams) {
+	var request ListExercisesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListExercises(ctx, request.(ListExercisesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListExercises")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListExercisesResponseObject); ok {
+		if err := validResponse.VisitListExercisesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateExercise operation middleware
 func (sh *strictHandler) CreateExercise(w http.ResponseWriter, r *http.Request) {
 	var request CreateExerciseRequestObject
@@ -3636,6 +3914,39 @@ func (sh *strictHandler) GetExercise(w http.ResponseWriter, r *http.Request, exe
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetExerciseResponseObject); ok {
 		if err := validResponse.VisitGetExerciseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateExercise operation middleware
+func (sh *strictHandler) UpdateExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID) {
+	var request UpdateExerciseRequestObject
+
+	request.ExerciseId = exerciseId
+
+	var body UpdateExerciseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateExercise(ctx, request.(UpdateExerciseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateExercise")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateExerciseResponseObject); ok {
+		if err := validResponse.VisitUpdateExerciseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

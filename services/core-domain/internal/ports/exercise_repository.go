@@ -52,4 +52,19 @@ type ExerciseRepository interface {
 	// that skill. Selecting and randomizing a subset is an
 	// application-layer concern.
 	ListBySkillTag(ctx context.Context, skillTag string) ([]domain.Exercise, error)
+
+	// List returns exercises from the whole pool, optionally narrowed by
+	// skillTag and/or exerciseType — an empty string on either means no
+	// filter on that dimension. Order is stable but otherwise unspecified.
+	List(ctx context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error)
+
+	// Update replaces exercise's title, prompt, skill_tags, image_url,
+	// audio_url, options, and estimated_duration_seconds. exercise.ID
+	// identifies which row to update; exercise.ExerciseType,
+	// exercise.ChallengeIDs, and exercise.ContentNodeIDs are not applied —
+	// exercise_type cannot change after creation and links are managed
+	// exclusively through LinkChallenge/UnlinkChallenge and
+	// LinkContentNode/UnlinkContentNode. Returns domain.ErrNotFound if no
+	// exercise exists with the given id.
+	Update(ctx context.Context, exercise domain.Exercise) error
 }

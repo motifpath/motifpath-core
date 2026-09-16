@@ -328,6 +328,41 @@ func (f *fakeExerciseRepository) ListBySkillTag(_ context.Context, skillTag stri
 	return result, nil
 }
 
+func (f *fakeExerciseRepository) List(_ context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.Exercise
+	for _, ex := range f.byID {
+		if exerciseType != "" && ex.ExerciseType != exerciseType {
+			continue
+		}
+		if skillTag != "" {
+			matched := false
+			for _, tag := range ex.SkillTags {
+				if tag == skillTag {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		result = append(result, ex)
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepository) Update(_ context.Context, exercise domain.Exercise) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[exercise.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[exercise.ID] = exercise
+	return nil
+}
+
 // put seeds exercise directly, also indexing it under its pre-set
 // ChallengeIDs/ContentNodeIDs (in the order they appear there) so tests that
 // construct an already-linked domain.Exercise literal work with
