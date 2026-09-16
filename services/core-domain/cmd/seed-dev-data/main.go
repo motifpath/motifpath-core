@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -83,6 +84,8 @@ func run() error {
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
 	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
+	challengeRepo := repo.NewEntChallengeRepository(entClient)
+	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -90,6 +93,8 @@ func run() error {
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nil, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {
@@ -99,6 +104,35 @@ func run() error {
 
 	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
 
+	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, assignmentService, mongoClient.Database(mongoDatabase))
+	if err != nil {
+		return err
+	}
+
+	// A challenge + exercises on the in-progress node (nodeIDs[2]) so
+	// /path/nodes/:nodeId/practice has something real to run against.
+	practiceNodeID := nodeIDs[2]
+	if err := seedPracticeChallenge(ctx, teacher, challengeService, exerciseService, practiceNodeID); err != nil {
+		return fmt.Errorf("seed practice challenge: %w", err)
+	}
+	log.Printf("seeded a challenge + exercises on content node %s", practiceNodeID)
+
+	log.Println("done — reload the SPA's /path view to see it")
+	return nil
+}
+
+// seedPathAndProgress creates the six-node learning path, assigns it to
+// student, and seeds Mongo completion aggregates so the first two nodes show
+// completed and the third shows in-progress. Returns the created content
+// node ids in path order.
+func seedPathAndProgress(
+	ctx context.Context,
+	teacher, student domain.User,
+	contentService *application.ContentService,
+	pathService *application.LearningPathService,
+	assignmentService *application.PathAssignmentService,
+	mongoDB *mongo.Database,
+) ([]string, error) {
 	type nodeSpec struct {
 		title, skill, concept string
 		difficulty            domain.DifficultyLevel
@@ -118,7 +152,7 @@ func run() error {
 	for _, spec := range specs {
 		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, spec.skill, spec.concept, spec.difficulty)
 		if err != nil {
-			return fmt.Errorf("create content node %q: %w", spec.title, err)
+			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
 		section := spec.section
 		items = append(items, application.PathItemInput{ContentNodeID: node.ID, SectionLabel: &section})
@@ -127,12 +161,12 @@ func run() error {
 
 	path, err := pathService.CreateLearningPath(ctx, teacher, "Blues Guitar Foundations", items)
 	if err != nil {
-		return fmt.Errorf("create learning path: %w", err)
+		return nil, fmt.Errorf("create learning path: %w", err)
 	}
 	log.Printf("created learning path %s with %d items", path.ID, len(path.Items))
 
 	if _, err := assignmentService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
-		return fmt.Errorf("assign learning path: %w", err)
+		return nil, fmt.Errorf("assign learning path: %w", err)
 	}
 	log.Printf("assigned path %s to student %s", path.ID, student.ID)
 
@@ -144,12 +178,61 @@ func run() error {
 		nodeIDs[1]: "completed",
 		nodeIDs[2]: "in_progress",
 	}
-	if err := seedCompletionStatuses(ctx, mongoClient.Database(mongoDatabase), student.ID, statuses); err != nil {
-		return fmt.Errorf("seed completion statuses: %w", err)
+	if err := seedCompletionStatuses(ctx, mongoDB, student.ID, statuses); err != nil {
+		return nil, fmt.Errorf("seed completion statuses: %w", err)
 	}
 	log.Printf("seeded %d completion statuses in MongoDB aggregates", len(statuses))
 
-	log.Println("done — reload the SPA's /path view to see it")
+	return nodeIDs, nil
+}
+
+func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeService *application.ChallengeService, exerciseService *application.ExerciseService, contentNodeID string) error {
+	challenge, err := challengeService.CreateChallenge(ctx, teacher, contentNodeID, "Pentatonic fingerings", 70, nil, false, false)
+	if err != nil {
+		return fmt.Errorf("create challenge: %w", err)
+	}
+
+	label := func(s string) *string { return &s }
+	type exerciseSpec struct {
+		prompt  string
+		options []domain.Option
+	}
+	specs := []exerciseSpec{
+		{
+			prompt: "Which fret marks the root note of minor pentatonic shape 1 on the low E string?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("5th fret")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("3rd fret")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("7th fret")},
+			},
+		},
+		{
+			prompt: "How many notes per string does minor pentatonic shape 1 use?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Three")},
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("Two")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Four")},
+			},
+		},
+		{
+			prompt: "Shifting shape 1 up twelve frets lands on the same shape an octave higher — true or false?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("True")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("False")},
+			},
+		},
+	}
+
+	for _, spec := range specs {
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, spec.prompt, domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil)
+		if err != nil {
+			return fmt.Errorf("create exercise: %w", err)
+		}
+		if _, err := exerciseService.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
+			return fmt.Errorf("link exercise %s to challenge %s: %w", exercise.ID, challenge.ID, err)
+		}
+	}
+
 	return nil
 }
 
