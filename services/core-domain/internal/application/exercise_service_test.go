@@ -174,6 +174,158 @@ func TestExerciseService_GetExercise(t *testing.T) {
 	})
 }
 
+func TestExerciseService_ListExercises(t *testing.T) {
+	t.Run("a teacher lists all exercises in the reusable pool", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeImageRecognition})
+		exercises.put(domain.Exercise{ID: "picking-drill-01", ExerciseType: domain.ExerciseTypeTextResponse})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", "")
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"triad-exercise-01", "picking-drill-01"}, idsOf(got))
+	})
+
+	t.Run("an admin lists all exercises in the reusable pool", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01"})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		got, err := svc.ListExercises(context.Background(), adminCaller(), "", "")
+
+		require.NoError(t, err)
+		assert.Len(t, got, 1)
+	})
+
+	t.Run("a teacher filters the exercise list by skill tag", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", SkillTags: []string{"triad-shapes"}})
+		exercises.put(domain.Exercise{ID: "picking-drill-01", SkillTags: []string{"alternate_picking"}})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), "alternate_picking", "")
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"picking-drill-01"}, idsOf(got))
+	})
+
+	t.Run("a teacher filters the exercise list by exercise type", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeImageRecognition})
+		exercises.put(domain.Exercise{ID: "chord-name-01", ExerciseType: domain.ExerciseTypeTextResponse})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", domain.ExerciseTypeTextResponse)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"chord-name-01"}, idsOf(got))
+	})
+
+	t.Run("listing exercises when none exist returns an empty list", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", "")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a student cannot list all exercises", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.ListExercises(context.Background(), studentCaller(), "", "")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestExerciseService_UpdateExercise(t *testing.T) {
+	t.Run("a teacher updates an exercise's title, prompt, and options", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "old title", Prompt: "old prompt", Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
+			"Root position, revised", "Identify the root position, now with a cleaner prompt", nil, nil, nil, textResponseOptions(), nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Root position, revised", exercise.Title)
+		assert.Equal(t, "Identify the root position, now with a cleaner prompt", exercise.Prompt)
+	})
+
+	t.Run("a teacher replaces an exercise's skill tags", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "picking-drill-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: "p", SkillTags: []string{"alternate_picking"}, Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "picking-drill-01",
+			"t", "p", []string{"hybrid_picking", "technique"}, nil, nil, textResponseOptions(), nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"hybrid_picking", "technique"}, exercise.SkillTags)
+	})
+
+	t.Run("updating an exercise does not change its links to challenges or content nodes", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: "p", ChallengeIDs: []string{"triad-challenge"}, Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
+			"Root position, revised", "p", nil, nil, nil, textResponseOptions(), nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"triad-challenge"}, exercise.ChallengeIDs)
+	})
+
+	t.Run("updating an exercise without a title is rejected", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: "p", Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
+			"", "p", nil, nil, nil, textResponseOptions(), nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "title")
+	})
+
+	t.Run("updating an exercise with zero correct options is rejected", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: "p", Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+		label := "A major"
+
+		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
+			"t", "p", nil, nil, nil, []domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "options")
+	})
+
+	t.Run("updating an exercise that does not exist returns not found", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "missing",
+			"t", "p", nil, nil, nil, textResponseOptions(), nil)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a student cannot update an exercise", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: "p", Options: textResponseOptions()})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		_, err := svc.UpdateExercise(context.Background(), studentCaller(), "triad-exercise-01",
+			"Hijacked title", "p", nil, nil, nil, textResponseOptions(), nil)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
 func TestExerciseService_LinkExerciseToChallenge(t *testing.T) {
 	t.Run("a teacher links an existing exercise into a challenge", func(t *testing.T) {
 		challenges := newFakeChallengeRepository()

@@ -57,6 +57,44 @@ func (s *ExerciseService) GetExercise(ctx context.Context, id string) (domain.Ex
 	return s.exercises.GetByID(ctx, id)
 }
 
+// ListExercises returns exercises from the reusable pool, optionally
+// narrowed by skillTag and/or exerciseType (either may be "" for "no
+// filter"). Only teachers and admins may list exercises — the pool is an
+// authoring surface, unlike GetExercise which any authenticated user may
+// call for a specific known id.
+func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	return s.exercises.List(ctx, skillTag, exerciseType)
+}
+
+// UpdateExercise replaces the given exercise's title, prompt, skill tags,
+// stimulus media, options, and estimated duration. exercise_type cannot be
+// changed, and the exercise's challenge/content-node links are untouched.
+// Only teachers and admins may update an exercise. Returns
+// domain.ErrNotFound if no exercise exists with the given id.
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title, prompt string, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+	if !canManageContent(caller.Role) {
+		return domain.Exercise{}, domain.ErrForbidden
+	}
+
+	existing, err := s.exercises.GetByID(ctx, id)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+
+	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+
+	if err := s.exercises.Update(ctx, updated); err != nil {
+		return domain.Exercise{}, err
+	}
+	return s.exercises.GetByID(ctx, id)
+}
+
 // LinkExerciseToChallenge links an existing exercise into a challenge. Only
 // teachers and admins may link exercises. Returns domain.ErrAlreadyExists if
 // the exercise is already linked to the challenge.
