@@ -29,6 +29,26 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" attempts to create an exercise$`, w.attemptsCreateExercise)
 	sc.Step(`^an unauthenticated request attempts to create an exercise$`, w.unauthCreatesExercise)
 
+	sc.Step(`^an exercise "([^"]+)" exists with skill tags "([^"]+)"$`, w.putExerciseWithSkillTags)
+	sc.Step(`^an exercise "([^"]+)" exists with type (\S+)$`, w.putExerciseWithType)
+	sc.Step(`^"([^"]+)" lists all exercises$`, w.listsAllExercises)
+	sc.Step(`^"([^"]+)" attempts to list all exercises$`, w.listsAllExercises)
+	sc.Step(`^an unauthenticated request attempts to list all exercises$`, w.unauthListsAllExercises)
+	sc.Step(`^"([^"]+)" lists exercises filtered by skill tag "([^"]+)"$`, w.listsExercisesBySkillTag)
+	sc.Step(`^"([^"]+)" lists exercises filtered by exercise_type "([^"]+)"$`, w.listsExercisesByType)
+
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with title "([^"]+)" and prompt "([^"]+)" and one correct option$`, w.updatesExerciseFull)
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with skill tags "([^"]+)"$`, w.updatesExerciseSkillTags)
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with title "([^"]+)"$`, w.updatesExerciseTitleOnly)
+	sc.Step(`^"([^"]+)" attempts to update exercise "([^"]+)" with title "([^"]+)"$`, w.updatesExerciseTitleOnly)
+	sc.Step(`^an unauthenticated request attempts to update exercise "([^"]+)" with title "([^"]+)"$`, w.unauthUpdatesExercise)
+	sc.Step(`^"([^"]+)" submits an update exercise request for "([^"]+)" with the title field omitted$`, w.submitsUpdateMissingTitle)
+	sc.Step(`^"([^"]+)" submits an update exercise request for "([^"]+)" whose options have no option marked correct$`, w.submitsUpdateNoCorrectOption)
+	sc.Step(`^"([^"]+)" attempts to update an exercise with an ID that does not exist$`, w.attemptsUpdateMissingExercise)
+	sc.Step(`^the exercise's title is "([^"]+)"$`, w.exerciseTitleIs)
+	sc.Step(`^the exercise's prompt is "([^"]+)"$`, w.exercisePromptIs)
+	sc.Step(`^the exercise no longer carries skill tag "([^"]+)"$`, w.exerciseNoLongerCarriesSkillTag)
+
 	sc.Step(`^"([^"]+)" links exercise "([^"]+)" to "([^"]+)"$`, w.linksExerciseToChallenge)
 	sc.Step(`^"([^"]+)" has linked exercise "([^"]+)" to "([^"]+)"$`, w.hasLinkedExerciseToChallenge)
 	sc.Step(`^"([^"]+)" unlinks exercise "([^"]+)" from "([^"]+)"$`, w.unlinksExerciseFromChallenge)
@@ -85,6 +105,35 @@ func (w *world) putExercise(slug string) error {
 		Title:        "title-" + slug,
 		Prompt:       "prompt-" + slug,
 		ExerciseType: domain.ExerciseTypeTextResponse,
+		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
+		ChallengeIDs: []string{},
+		CreatedAt:    fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putExerciseWithSkillTags(slug, tagsCSV string) error {
+	label := "option-" + slug
+	w.exercises.put(domain.Exercise{
+		ID:           exerciseID(slug).String(),
+		Title:        "title-" + slug,
+		Prompt:       "prompt-" + slug,
+		ExerciseType: domain.ExerciseTypeTextResponse,
+		SkillTags:    splitCSV(tagsCSV),
+		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
+		ChallengeIDs: []string{},
+		CreatedAt:    fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putExerciseWithType(slug, exerciseType string) error {
+	label := "option-" + slug
+	w.exercises.put(domain.Exercise{
+		ID:           exerciseID(slug).String(),
+		Title:        "title-" + slug,
+		Prompt:       "prompt-" + slug,
+		ExerciseType: domain.ExerciseType(exerciseType),
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
 		ChallengeIDs: []string{},
 		CreatedAt:    fixedNow,
@@ -252,6 +301,157 @@ func (w *world) unauthCreatesExercise() error {
 	return w.attemptsCreateExercise("")
 }
 
+func (w *world) listsAllExercises(name string) error {
+	resp, err := w.handler.ListExercises(w.ctx(), generated.ListExercisesRequestObject{})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthListsAllExercises() error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsAllExercises("")
+}
+
+func (w *world) listsExercisesBySkillTag(name, skillTag string) error {
+	resp, err := w.handler.ListExercises(w.ctx(), generated.ListExercisesRequestObject{
+		Params: generated.ListExercisesParams{SkillTag: &skillTag},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsExercisesByType(name, exerciseType string) error {
+	et := generated.ListExercisesParamsExerciseType(exerciseType)
+	resp, err := w.handler.ListExercises(w.ctx(), generated.ListExercisesRequestObject{
+		Params: generated.ListExercisesParams{ExerciseType: &et},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseFull(name, exerciseSlug, title, prompt string) error {
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: title, Prompt: prompt,
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseSkillTags(name, exerciseSlug, tagsCSV string) error {
+	label := "correct option"
+	tags := splitCSV(tagsCSV)
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title", Prompt: "prompt",
+			SkillTags: &tags,
+			Options:   []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseTitleOnly(name, exerciseSlug, title string) error {
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: title, Prompt: "prompt",
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthUpdatesExercise(exerciseSlug, title string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.updatesExerciseTitleOnly("", exerciseSlug, title)
+}
+
+func (w *world) submitsUpdateMissingTitle(name, exerciseSlug string) error {
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Prompt:  "prompt",
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) submitsUpdateNoCorrectOption(name, exerciseSlug string) error {
+	label := "an option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title", Prompt: "prompt",
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) attemptsUpdateMissingExercise(name string) error {
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: deterministicUUID("exercise", "does-not-exist"),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title", Prompt: "prompt",
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) exerciseTitleIs(want string) error {
+	resp, ok := w.lastResp.(generated.UpdateExercise200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.Title != want {
+		return fmt.Errorf("expected title %q, got %q", want, resp.Title)
+	}
+	return nil
+}
+
+func (w *world) exercisePromptIs(want string) error {
+	resp, ok := w.lastResp.(generated.UpdateExercise200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.Prompt != want {
+		return fmt.Errorf("expected prompt %q, got %q", want, resp.Prompt)
+	}
+	return nil
+}
+
+func (w *world) exerciseNoLongerCarriesSkillTag(tag string) error {
+	resp, ok := w.lastResp.(generated.UpdateExercise200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.SkillTags == nil {
+		return nil
+	}
+	for _, got := range *resp.SkillTags {
+		if got == tag {
+			return fmt.Errorf("expected skill_tags not to contain %q, got %v", tag, *resp.SkillTags)
+		}
+	}
+	return nil
+}
+
 func (w *world) linksExerciseToChallenge(name, exerciseSlug, challengeSlug string) error {
 	resp, err := w.handler.LinkExerciseToChallenge(w.ctx(), generated.LinkExerciseToChallengeRequestObject{
 		ChallengeId: challengeID(challengeSlug),
@@ -311,15 +511,20 @@ func (w *world) exerciseTypeRecorded(exerciseType string) error {
 }
 
 func (w *world) exerciseCarriesSkillTags(tagsCSV string) error {
-	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	var skillTags *[]string
+	switch resp := w.lastResp.(type) {
+	case generated.CreateExercise201JSONResponse:
+		skillTags = resp.SkillTags
+	case generated.UpdateExercise200JSONResponse:
+		skillTags = resp.SkillTags
+	default:
+		return fmt.Errorf("expected a 201 or 200 response, got %#v", w.lastResp)
 	}
-	if resp.SkillTags == nil {
+	if skillTags == nil {
 		return fmt.Errorf("expected skill_tags to be set")
 	}
 	want := splitCSV(tagsCSV)
-	got := *resp.SkillTags
+	got := *skillTags
 	if len(want) != len(got) {
 		return fmt.Errorf("expected skill_tags %v, got %v", want, got)
 	}
@@ -354,16 +559,21 @@ func (w *world) exerciseResponseComplete() error {
 }
 
 func (w *world) exerciseRecordsLinkedChallenge(challengeSlug string) error {
-	resp, ok := w.lastResp.(generated.LinkExerciseToChallenge201JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	var challengeIDs []uuid.UUID
+	switch resp := w.lastResp.(type) {
+	case generated.LinkExerciseToChallenge201JSONResponse:
+		challengeIDs = resp.ChallengeIds
+	case generated.UpdateExercise200JSONResponse:
+		challengeIDs = resp.ChallengeIds
+	default:
+		return fmt.Errorf("expected a 201 or 200 response, got %#v", w.lastResp)
 	}
-	for _, id := range resp.ChallengeIds {
+	for _, id := range challengeIDs {
 		if id == challengeID(challengeSlug) {
 			return nil
 		}
 	}
-	return fmt.Errorf("expected challenge_ids to contain %s, got %v", challengeID(challengeSlug), resp.ChallengeIds)
+	return fmt.Errorf("expected challenge_ids to contain %s, got %v", challengeID(challengeSlug), challengeIDs)
 }
 
 func (w *world) exerciseRecordsBothLinkedChallenges(slugA, slugB string) error {

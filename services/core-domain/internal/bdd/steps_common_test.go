@@ -33,6 +33,8 @@ func registerCommonSteps(sc *godog.ScenarioContext, w *world) {
 	// Shared across the challenges and exercises features: both list a
 	// resource by parent ID and assert membership/emptiness the same way.
 	sc.Step(`^the response includes "([^"]+)"$`, w.responseIncludes)
+	sc.Step(`^the response includes "([^"]+)" and "([^"]+)"$`, w.responseIncludesTwo)
+	sc.Step(`^the response does not include "([^"]+)"$`, w.responseDoesNotInclude)
 	sc.Step(`^the response is an empty list$`, w.responseIsEmptyList)
 }
 
@@ -54,6 +56,36 @@ func (w *world) responseIncludes(slug string) error {
 			}
 		}
 		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
+	case generated.ListExercises200JSONResponse:
+		want := exerciseID(slug)
+		for _, e := range resp {
+			if e.ExerciseId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
+	default:
+		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
+	}
+}
+
+func (w *world) responseIncludesTwo(slugA, slugB string) error {
+	if err := w.responseIncludes(slugA); err != nil {
+		return err
+	}
+	return w.responseIncludes(slugB)
+}
+
+func (w *world) responseDoesNotInclude(slug string) error {
+	switch resp := w.lastResp.(type) {
+	case generated.ListExercises200JSONResponse:
+		want := exerciseID(slug)
+		for _, e := range resp {
+			if e.ExerciseId == want {
+				return fmt.Errorf("expected exercises not to include %s, got %+v", want, resp)
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
 	}
@@ -72,6 +104,10 @@ func (w *world) responseIsEmptyList() error {
 	case generated.ListContentNodePathExercises200JSONResponse:
 		if len(resp) != 0 {
 			return fmt.Errorf("expected an empty list, got %d path exercises", len(resp))
+		}
+	case generated.ListExercises200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d exercises", len(resp))
 		}
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
@@ -104,6 +140,8 @@ func (w *world) requestRefusedForbidden() error {
 	case generated.CreateContentNode403JSONResponse,
 		generated.CreateChallenge403JSONResponse,
 		generated.CreateExercise403JSONResponse,
+		generated.ListExercises403JSONResponse,
+		generated.UpdateExercise403JSONResponse,
 		generated.LinkExerciseToChallenge403JSONResponse,
 		generated.UnlinkExerciseFromChallenge403JSONResponse,
 		generated.LinkExerciseToContentNode403JSONResponse,
@@ -126,6 +164,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.GetChallenge404JSONResponse,
 		generated.ListContentNodeChallenges404JSONResponse,
 		generated.GetExercise404JSONResponse,
+		generated.UpdateExercise404JSONResponse,
 		generated.LinkExerciseToChallenge404JSONResponse,
 		generated.UnlinkExerciseFromChallenge404JSONResponse,
 		generated.ListChallengeExercises404JSONResponse,
@@ -168,6 +207,8 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListContentNodeChallenges401JSONResponse,
 		generated.CreateExercise401JSONResponse,
 		generated.GetExercise401JSONResponse,
+		generated.ListExercises401JSONResponse,
+		generated.UpdateExercise401JSONResponse,
 		generated.LinkExerciseToChallenge401JSONResponse,
 		generated.UnlinkExerciseFromChallenge401JSONResponse,
 		generated.ListChallengeExercises401JSONResponse,
@@ -221,6 +262,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateChallenge400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateExercise400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateExercise400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateExpandedContent400JSONResponse:
 		return resp.Errors, nil
