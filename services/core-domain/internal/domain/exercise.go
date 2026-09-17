@@ -91,13 +91,18 @@ const (
 	PromptMarkTypeStrike    PromptMarkType = "strike"
 	PromptMarkTypeHighlight PromptMarkType = "highlight"
 	PromptMarkTypeLink      PromptMarkType = "link"
+	// PromptMarkTypeTextStyle carries a chosen font color, background
+	// color, or both, via its Attrs.Color and Attrs.BackgroundColor.
+	PromptMarkTypeTextStyle PromptMarkType = "textStyle"
 )
 
 // PromptMarkAttrs holds the type-specific attributes a PromptMark may
 // carry. Which fields are set depends on the mark's Type; the rest stay
 // nil.
 type PromptMarkAttrs struct {
-	Href *string `json:"href,omitempty"`
+	Href            *string `json:"href,omitempty"`
+	Color           *string `json:"color,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
 }
 
 // PromptMark is an inline formatting mark applied to a PromptNode.
@@ -278,7 +283,7 @@ func promptNodeError(node PromptNode) string {
 // promptMarkError reports the reason mark is invalid, or "" if it's valid.
 func promptMarkError(mark PromptMark) string {
 	switch mark.Type {
-	case PromptMarkTypeBold, PromptMarkTypeItalic, PromptMarkTypeStrike, PromptMarkTypeHighlight, PromptMarkTypeLink:
+	case PromptMarkTypeBold, PromptMarkTypeItalic, PromptMarkTypeStrike, PromptMarkTypeHighlight, PromptMarkTypeLink, PromptMarkTypeTextStyle:
 		return ""
 	default:
 		return "contains an unsupported mark type \"" + string(mark.Type) + "\""

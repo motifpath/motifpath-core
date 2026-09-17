@@ -131,6 +131,7 @@ const (
 	Italic    PromptMarkType = "italic"
 	Link      PromptMarkType = "link"
 	Strike    PromptMarkType = "strike"
+	TextStyle PromptMarkType = "textStyle"
 )
 
 // Defines values for PromptNodeType.
@@ -778,15 +779,22 @@ type PromptDocumentType string
 
 // PromptMark An inline formatting mark applied to a prompt document's text node.
 type PromptMark struct {
-	// Attrs Mark-specific attributes (e.g. link's href). Absent when the
+	// Attrs Mark-specific attributes (e.g. link's href; textStyle's color
+	// and/or backgroundColor as CSS color strings). Absent when the
 	// mark type has none set.
 	Attrs *map[string]interface{} `json:"attrs,omitempty"`
 
-	// Type The kind of mark this is.
+	// Type The kind of mark this is. textStyle carries a chosen font color,
+	// background color, or both — never both fixed and absent at
+	// once; highlight remains the separate, single-color emphasis
+	// mark it already was.
 	Type PromptMarkType `json:"type"`
 }
 
-// PromptMarkType The kind of mark this is.
+// PromptMarkType The kind of mark this is. textStyle carries a chosen font color,
+// background color, or both — never both fixed and absent at
+// once; highlight remains the separate, single-color emphasis
+// mark it already was.
 type PromptMarkType string
 
 // PromptNode A single node in a prompt document's tree. Container node types

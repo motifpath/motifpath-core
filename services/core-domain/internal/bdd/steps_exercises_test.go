@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,6 +32,8 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^an unauthenticated request attempts to create an exercise$`, w.unauthCreatesExercise)
 
 	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt formatted as a heading, a bulleted list, a table, and an image, and one correct option$`, w.createsExerciseWithRichPrompt)
+	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt whose text has a custom font color and background color, and one correct option$`, w.createsExerciseWithTextStylePrompt)
+	sc.Step(`^the exercise's prompt preserves its font color and background color$`, w.exercisePromptMatchesLastSent)
 	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt containing a single unformatted paragraph and one correct option$`, w.createsExerciseWithPlainParagraphPrompt)
 	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt is a plain string instead of a structured document$`, w.submitsExerciseUnstructuredPrompt)
 	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt document contains a video node$`, w.submitsExerciseUnsupportedPromptNode)
@@ -325,6 +328,57 @@ func boldBulletListPromptDoc() generated.PromptDocument {
 
 func (w *world) createsExerciseWithRichPrompt(name, title string) error {
 	w.lastPromptSent = richPromptDoc()
+	et := generated.CreateExerciseRequestExerciseTypeTextResponse
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
+			Options: optionsFor(et),
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// textStyleMark builds a generated.PromptMark of type textStyle carrying
+// color and backgroundColor, via a JSON round trip so this file never
+// writes the generic map type generated.PromptMark.Attrs holds.
+func textStyleMark(color, backgroundColor string) generated.PromptMark {
+	type attrs struct {
+		Color           string `json:"color"`
+		BackgroundColor string `json:"backgroundColor"`
+	}
+	wire := struct {
+		Type  string `json:"type"`
+		Attrs attrs  `json:"attrs"`
+	}{Type: "textStyle", Attrs: attrs{Color: color, BackgroundColor: backgroundColor}}
+
+	data, err := json.Marshal(wire)
+	if err != nil {
+		panic(err)
+	}
+	var mark generated.PromptMark
+	if err := json.Unmarshal(data, &mark); err != nil {
+		panic(err)
+	}
+	return mark
+}
+
+func (w *world) createsExerciseWithTextStylePrompt(name, title string) error {
+	w.lastPromptSent = generated.PromptDocument{
+		Type: generated.Doc,
+		Content: []generated.PromptNode{
+			{
+				Type: generated.PromptNodeTypeParagraph,
+				Content: &[]generated.PromptNode{
+					{
+						Type:  generated.PromptNodeTypeText,
+						Text:  &title,
+						Marks: &[]generated.PromptMark{textStyleMark("#6d28e0", "#f3ecff")},
+					},
+				},
+			},
+		},
+	}
 	et := generated.CreateExerciseRequestExerciseTypeTextResponse
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{

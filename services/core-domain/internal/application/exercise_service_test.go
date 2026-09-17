@@ -49,6 +49,7 @@ func richlyFormattedPrompt() domain.PromptDocument {
 	href := "https://example.com/circle-of-fifths"
 	src := "https://cdn.example.com/library/circle-of-fifths.png"
 	alt := "Circle of fifths diagram"
+	color := "#6d28e0"
 
 	return domain.PromptDocument{
 		Type: "doc",
@@ -72,6 +73,7 @@ func richlyFormattedPrompt() domain.PromptDocument {
 							{Type: domain.PromptMarkTypeStrike},
 							{Type: domain.PromptMarkTypeHighlight},
 							{Type: domain.PromptMarkTypeLink, Attrs: &domain.PromptMarkAttrs{Href: &href}},
+							{Type: domain.PromptMarkTypeTextStyle, Attrs: &domain.PromptMarkAttrs{Color: &color}},
 						},
 					},
 				},
@@ -171,6 +173,34 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, richPrompt, exercise.Prompt)
+	})
+
+	t.Run("a teacher creates an exercise with a prompt using a custom font color and background color", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+		color, background := "#6d28e0", "#f3ecff"
+		prompt := domain.PromptDocument{
+			Type: "doc",
+			Content: []domain.PromptNode{
+				{
+					Type: domain.PromptNodeTypeParagraph,
+					Content: []domain.PromptNode{
+						{
+							Type: domain.PromptNodeTypeText,
+							Text: "Circle of fifths",
+							Marks: []domain.PromptMark{
+								{Type: domain.PromptMarkTypeTextStyle, Attrs: &domain.PromptMarkAttrs{Color: &color, BackgroundColor: &background}},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
+			"Circle of fifths", prompt, domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, prompt, exercise.Prompt)
 	})
 
 	t.Run("a teacher creates an exercise with a plain, unformatted prompt", func(t *testing.T) {
