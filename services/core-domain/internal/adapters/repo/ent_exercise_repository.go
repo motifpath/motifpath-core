@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 
@@ -28,6 +29,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	promptJSON, err := marshalPrompt(ex.Prompt)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -37,7 +42,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	builder := tx.Exercise.Create().
 		SetID(id).
 		SetTitle(ex.Title).
-		SetPrompt(ex.Prompt).
+		SetPrompt(promptJSON).
 		SetExerciseType(exercise.ExerciseType(ex.ExerciseType)).
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
@@ -311,6 +316,10 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return domain.ErrNotFound
 	}
+	promptJSON, err := marshalPrompt(ex.Prompt)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -319,7 +328,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 
 	_, err = tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
-		SetPrompt(ex.Prompt).
+		SetPrompt(promptJSON).
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
@@ -394,7 +403,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 	return domain.Exercise{
 		ID:                       row.ID.String(),
 		Title:                    row.Title,
-		Prompt:                   row.Prompt,
+		Prompt:                   unmarshalPrompt(row.Prompt),
 		ExerciseType:             domain.ExerciseType(row.ExerciseType),
 		SkillTags:                row.SkillTags,
 		ImageURL:                 row.ImageURL,
@@ -432,4 +441,27 @@ func valueOrZero(v *float64) float64 {
 		return 0
 	}
 	return *v
+}
+
+// marshalPrompt serializes prompt to the JSON text stored in the exercise
+// table's prompt column.
+func marshalPrompt(prompt domain.PromptDocument) (string, error) {
+	data, err := json.Marshal(prompt)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// unmarshalPrompt parses the exercise table's prompt column back into a
+// domain.PromptDocument. A row written before prompts became structured
+// documents holds its original plain text, which is not valid
+// PromptDocument JSON — such a value is wrapped as a single-paragraph
+// document instead of failing the read.
+func unmarshalPrompt(stored string) domain.PromptDocument {
+	var prompt domain.PromptDocument
+	if err := json.Unmarshal([]byte(stored), &prompt); err != nil {
+		return domain.NewPlainTextPrompt(stored)
+	}
+	return prompt
 }

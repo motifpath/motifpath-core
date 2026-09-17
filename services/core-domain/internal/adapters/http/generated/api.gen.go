@@ -91,8 +91,8 @@ const (
 
 // Defines values for ExpandedContentContentType.
 const (
-	Gif   ExpandedContentContentType = "gif"
-	Image ExpandedContentContentType = "image"
+	ExpandedContentContentTypeGif   ExpandedContentContentType = "gif"
+	ExpandedContentContentTypeImage ExpandedContentContentType = "image"
 )
 
 // Defines values for HealthStatusChecks.
@@ -117,6 +117,35 @@ const (
 const (
 	Circle    OptionRegionShape = "circle"
 	Rectangle OptionRegionShape = "rectangle"
+)
+
+// Defines values for PromptDocumentType.
+const (
+	Doc PromptDocumentType = "doc"
+)
+
+// Defines values for PromptMarkType.
+const (
+	Bold      PromptMarkType = "bold"
+	Highlight PromptMarkType = "highlight"
+	Italic    PromptMarkType = "italic"
+	Link      PromptMarkType = "link"
+	Strike    PromptMarkType = "strike"
+)
+
+// Defines values for PromptNodeType.
+const (
+	PromptNodeTypeBulletList  PromptNodeType = "bulletList"
+	PromptNodeTypeHeading     PromptNodeType = "heading"
+	PromptNodeTypeImage       PromptNodeType = "image"
+	PromptNodeTypeListItem    PromptNodeType = "listItem"
+	PromptNodeTypeOrderedList PromptNodeType = "orderedList"
+	PromptNodeTypeParagraph   PromptNodeType = "paragraph"
+	PromptNodeTypeTable       PromptNodeType = "table"
+	PromptNodeTypeTableCell   PromptNodeType = "tableCell"
+	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
+	PromptNodeTypeTableRow    PromptNodeType = "tableRow"
+	PromptNodeTypeText        PromptNodeType = "text"
 )
 
 // Defines values for RegisterUserRequestRole.
@@ -348,9 +377,11 @@ type CreateExerciseRequest struct {
 	// option cannot be graded.
 	Options []Option `json:"options"`
 
-	// Prompt The instruction displayed to the student for this exercise
-	// (e.g. "Identify the root position of a C major triad").
-	Prompt string `json:"prompt"`
+	// Prompt A structured rich-text document for an exercise's prompt, authored
+	// with the exercise-prompt rich-text editor and persisted exactly as
+	// the editor produces it. Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	Prompt PromptDocument `json:"prompt"`
 
 	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
 	// targets (e.g. "alternate_picking"), used to classify and discover
@@ -494,8 +525,11 @@ type Exercise struct {
 	// Options The exercise's selectable answer choices.
 	Options []Option `json:"options"`
 
-	// Prompt The instruction displayed to the student for this exercise.
-	Prompt string `json:"prompt"`
+	// Prompt A structured rich-text document for an exercise's prompt, authored
+	// with the exercise-prompt rich-text editor and persisted exactly as
+	// the editor produces it. Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	Prompt PromptDocument `json:"prompt"`
 
 	// SkillTags Freeform tags naming the skill(s) this exercise targets.
 	SkillTags *[]string `json:"skill_tags,omitempty"`
@@ -727,6 +761,65 @@ type PracticeSession struct {
 	SkillTag string `json:"skill_tag"`
 }
 
+// PromptDocument A structured rich-text document for an exercise's prompt, authored
+// with the exercise-prompt rich-text editor and persisted exactly as
+// the editor produces it. Always has type "doc" at the root, with the
+// document's block-level content nested beneath it.
+type PromptDocument struct {
+	// Content The document's top-level block nodes, in reading order.
+	Content []PromptNode `json:"content"`
+
+	// Type Discriminates this object as a prompt document's root node.
+	Type PromptDocumentType `json:"type"`
+}
+
+// PromptDocumentType Discriminates this object as a prompt document's root node.
+type PromptDocumentType string
+
+// PromptMark An inline formatting mark applied to a prompt document's text node.
+type PromptMark struct {
+	// Attrs Mark-specific attributes (e.g. link's href). Absent when the
+	// mark type has none set.
+	Attrs *map[string]interface{} `json:"attrs,omitempty"`
+
+	// Type The kind of mark this is.
+	Type PromptMarkType `json:"type"`
+}
+
+// PromptMarkType The kind of mark this is.
+type PromptMarkType string
+
+// PromptNode A single node in a prompt document's tree. Container node types
+// (heading, paragraph, list and table nodes) nest further nodes under
+// content; the text node is a leaf that carries the literal string
+// under text and any inline marks under marks. attrs holds
+// type-specific attributes (e.g. heading's level, paragraph/heading's
+// text alignment, image's src and alt, table cell's colspan and
+// rowspan) and is validated by the authoring editor, not by this
+// schema.
+type PromptNode struct {
+	// Attrs Type-specific attributes for this node. Absent when the node
+	// type has none set.
+	Attrs *map[string]interface{} `json:"attrs,omitempty"`
+
+	// Content Child nodes, present on container node types. Absent on leaf
+	// node types (text, image).
+	Content *[]PromptNode `json:"content,omitempty"`
+
+	// Marks Inline formatting marks applied to this node. Present only on
+	// text nodes that carry at least one mark.
+	Marks *[]PromptMark `json:"marks,omitempty"`
+
+	// Text The literal text content. Present only when type is text.
+	Text *string `json:"text,omitempty"`
+
+	// Type The kind of node this is.
+	Type PromptNodeType `json:"type"`
+}
+
+// PromptNodeType The kind of node this is.
+type PromptNodeType string
+
 // RegisterUserRequest Payload for registering a new MotifPath user.
 type RegisterUserRequest struct {
 	// Role The role this Clerk identity will hold in the platform. A student
@@ -830,8 +923,11 @@ type UpdateExerciseRequest struct {
 	// exercise with no correct option cannot be graded.
 	Options []Option `json:"options"`
 
-	// Prompt The instruction displayed to the student for this exercise.
-	Prompt string `json:"prompt"`
+	// Prompt A structured rich-text document for an exercise's prompt, authored
+	// with the exercise-prompt rich-text editor and persisted exactly as
+	// the editor produces it. Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	Prompt PromptDocument `json:"prompt"`
 
 	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
 	// targets, replacing its current set. Each tag must be a non-empty

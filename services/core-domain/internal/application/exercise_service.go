@@ -36,7 +36,7 @@ func NewExerciseService(
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title, prompt string, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -74,7 +74,7 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 // changed, and the exercise's challenge/content-node links are untouched.
 // Only teachers and admins may update an exercise. Returns
 // domain.ErrNotFound if no exercise exists with the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title, prompt string, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}

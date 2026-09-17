@@ -39,7 +39,7 @@ func (w *world) putNExercisesTagged(countStr, skillTag string) error {
 		w.exercises.put(domain.Exercise{
 			ID:             exerciseID(slug).String(),
 			Title:          "title-" + slug,
-			Prompt:         "prompt-" + slug,
+			Prompt:         domain.NewPlainTextPrompt("prompt-" + slug),
 			ExerciseType:   domain.ExerciseTypeTextResponse,
 			SkillTags:      []string{skillTag},
 			Options:        []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}, {ID: uuid.NewString(), IsCorrect: false, Label: &label}},
