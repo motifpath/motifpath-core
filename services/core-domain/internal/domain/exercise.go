@@ -24,17 +24,18 @@ type PromptDocument struct {
 }
 
 // NewPlainTextPrompt builds a PromptDocument holding text as a single,
-// unformatted paragraph — the minimal valid document.
+// unformatted paragraph — the minimal valid document. An empty text
+// produces an empty paragraph (no text node) — ProseMirror rejects
+// zero-length text nodes as invalid.
 func NewPlainTextPrompt(text string) PromptDocument {
+	content := []PromptNode{}
+	if text != "" {
+		content = []PromptNode{{Type: PromptNodeTypeText, Text: text}}
+	}
 	return PromptDocument{
 		Type: "doc",
 		Content: []PromptNode{
-			{
-				Type: PromptNodeTypeParagraph,
-				Content: []PromptNode{
-					{Type: PromptNodeTypeText, Text: text},
-				},
-			},
+			{Type: PromptNodeTypeParagraph, Content: content},
 		},
 	}
 }
