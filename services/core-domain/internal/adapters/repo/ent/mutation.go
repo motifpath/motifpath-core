@@ -4169,6 +4169,7 @@ type ExerciseOptionMutation struct {
 	is_correct       *bool
 	label            *string
 	image_url        *string
+	audio_url        *string
 	region_x         *float64
 	addregion_x      *float64
 	region_y         *float64
@@ -4458,6 +4459,55 @@ func (m *ExerciseOptionMutation) ImageURLCleared() bool {
 func (m *ExerciseOptionMutation) ResetImageURL() {
 	m.image_url = nil
 	delete(m.clearedFields, exerciseoption.FieldImageURL)
+}
+
+// SetAudioURL sets the "audio_url" field.
+func (m *ExerciseOptionMutation) SetAudioURL(s string) {
+	m.audio_url = &s
+}
+
+// AudioURL returns the value of the "audio_url" field in the mutation.
+func (m *ExerciseOptionMutation) AudioURL() (r string, exists bool) {
+	v := m.audio_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAudioURL returns the old "audio_url" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldAudioURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAudioURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAudioURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAudioURL: %w", err)
+	}
+	return oldValue.AudioURL, nil
+}
+
+// ClearAudioURL clears the value of the "audio_url" field.
+func (m *ExerciseOptionMutation) ClearAudioURL() {
+	m.audio_url = nil
+	m.clearedFields[exerciseoption.FieldAudioURL] = struct{}{}
+}
+
+// AudioURLCleared returns if the "audio_url" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) AudioURLCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldAudioURL]
+	return ok
+}
+
+// ResetAudioURL resets all changes to the "audio_url" field.
+func (m *ExerciseOptionMutation) ResetAudioURL() {
+	m.audio_url = nil
+	delete(m.clearedFields, exerciseoption.FieldAudioURL)
 }
 
 // SetRegionX sets the "region_x" field.
@@ -4850,7 +4900,7 @@ func (m *ExerciseOptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseOptionMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.exercise != nil {
 		fields = append(fields, exerciseoption.FieldExerciseID)
 	}
@@ -4862,6 +4912,9 @@ func (m *ExerciseOptionMutation) Fields() []string {
 	}
 	if m.image_url != nil {
 		fields = append(fields, exerciseoption.FieldImageURL)
+	}
+	if m.audio_url != nil {
+		fields = append(fields, exerciseoption.FieldAudioURL)
 	}
 	if m.region_x != nil {
 		fields = append(fields, exerciseoption.FieldRegionX)
@@ -4894,6 +4947,8 @@ func (m *ExerciseOptionMutation) Field(name string) (ent.Value, bool) {
 		return m.Label()
 	case exerciseoption.FieldImageURL:
 		return m.ImageURL()
+	case exerciseoption.FieldAudioURL:
+		return m.AudioURL()
 	case exerciseoption.FieldRegionX:
 		return m.RegionX()
 	case exerciseoption.FieldRegionY:
@@ -4921,6 +4976,8 @@ func (m *ExerciseOptionMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldLabel(ctx)
 	case exerciseoption.FieldImageURL:
 		return m.OldImageURL(ctx)
+	case exerciseoption.FieldAudioURL:
+		return m.OldAudioURL(ctx)
 	case exerciseoption.FieldRegionX:
 		return m.OldRegionX(ctx)
 	case exerciseoption.FieldRegionY:
@@ -4967,6 +5024,13 @@ func (m *ExerciseOptionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetImageURL(v)
+		return nil
+	case exerciseoption.FieldAudioURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAudioURL(v)
 		return nil
 	case exerciseoption.FieldRegionX:
 		v, ok := value.(float64)
@@ -5090,6 +5154,9 @@ func (m *ExerciseOptionMutation) ClearedFields() []string {
 	if m.FieldCleared(exerciseoption.FieldImageURL) {
 		fields = append(fields, exerciseoption.FieldImageURL)
 	}
+	if m.FieldCleared(exerciseoption.FieldAudioURL) {
+		fields = append(fields, exerciseoption.FieldAudioURL)
+	}
 	if m.FieldCleared(exerciseoption.FieldRegionX) {
 		fields = append(fields, exerciseoption.FieldRegionX)
 	}
@@ -5125,6 +5192,9 @@ func (m *ExerciseOptionMutation) ClearField(name string) error {
 	case exerciseoption.FieldImageURL:
 		m.ClearImageURL()
 		return nil
+	case exerciseoption.FieldAudioURL:
+		m.ClearAudioURL()
+		return nil
 	case exerciseoption.FieldRegionX:
 		m.ClearRegionX()
 		return nil
@@ -5159,6 +5229,9 @@ func (m *ExerciseOptionMutation) ResetField(name string) error {
 		return nil
 	case exerciseoption.FieldImageURL:
 		m.ResetImageURL()
+		return nil
+	case exerciseoption.FieldAudioURL:
+		m.ResetAudioURL()
 		return nil
 	case exerciseoption.FieldRegionX:
 		m.ResetRegionX()

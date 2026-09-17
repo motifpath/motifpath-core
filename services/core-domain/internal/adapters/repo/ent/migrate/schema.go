@@ -123,7 +123,7 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString},
 		{Name: "prompt", Type: field.TypeString, Size: 2147483647},
-		{Name: "exercise_type", Type: field.TypeEnum, Enums: []string{"text_response", "audio_recognition", "image_recognition", "image_choice"}},
+		{Name: "exercise_type", Type: field.TypeEnum, Enums: []string{"text_response", "audio_recognition", "image_recognition", "image_choice", "audio_selection"}},
 		{Name: "skill_tags", Type: field.TypeJSON, Nullable: true},
 		{Name: "image_url", Type: field.TypeString, Nullable: true},
 		{Name: "audio_url", Type: field.TypeString, Nullable: true},
@@ -142,6 +142,7 @@ var (
 		{Name: "is_correct", Type: field.TypeBool},
 		{Name: "label", Type: field.TypeString, Nullable: true},
 		{Name: "image_url", Type: field.TypeString, Nullable: true},
+		{Name: "audio_url", Type: field.TypeString, Nullable: true},
 		{Name: "region_x", Type: field.TypeFloat64, Nullable: true},
 		{Name: "region_y", Type: field.TypeFloat64, Nullable: true},
 		{Name: "region_width", Type: field.TypeFloat64, Nullable: true},
@@ -157,7 +158,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "exercise_options_exercises_options",
-				Columns:    []*schema.Column{ExerciseOptionsColumns[9]},
+				Columns:    []*schema.Column{ExerciseOptionsColumns[10]},
 				RefColumns: []*schema.Column{ExercisesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -166,7 +167,7 @@ var (
 			{
 				Name:    "exerciseoption_exercise_id",
 				Unique:  false,
-				Columns: []*schema.Column{ExerciseOptionsColumns[9]},
+				Columns: []*schema.Column{ExerciseOptionsColumns[10]},
 			},
 		},
 	}

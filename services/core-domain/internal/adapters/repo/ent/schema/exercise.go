@@ -27,7 +27,7 @@ func (Exercise) Fields() []ent.Field {
 		field.Text("prompt"),
 
 		field.Enum("exercise_type").
-			Values("text_response", "audio_recognition", "image_recognition", "image_choice").
+			Values("text_response", "audio_recognition", "image_recognition", "image_choice", "audio_selection").
 			Immutable(),
 
 		field.JSON("skill_tags", []string{}).

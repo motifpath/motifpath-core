@@ -59,7 +59,8 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 			SetExerciseID(id).
 			SetIsCorrect(opt.IsCorrect).
 			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL)
+			SetNillableImageURL(opt.ImageURL).
+			SetNillableAudioURL(opt.AudioURL)
 		if opt.Region != nil {
 			shape := exerciseoption.RegionShape(opt.Region.Shape)
 			optBuilder = optBuilder.
@@ -346,7 +347,8 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 			SetExerciseID(id).
 			SetIsCorrect(opt.IsCorrect).
 			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL)
+			SetNillableImageURL(opt.ImageURL).
+			SetNillableAudioURL(opt.AudioURL)
 		if opt.Region != nil {
 			optBuilder = optBuilder.
 				SetRegionX(opt.Region.X).
@@ -411,6 +413,7 @@ func toDomainOption(row *ent.ExerciseOption) domain.Option {
 		IsCorrect: row.IsCorrect,
 		Label:     row.Label,
 		ImageURL:  row.ImageURL,
+		AudioURL:  row.AudioURL,
 	}
 	if row.RegionShape != nil {
 		opt.Region = &domain.OptionRegion{

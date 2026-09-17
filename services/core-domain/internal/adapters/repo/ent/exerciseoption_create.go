@@ -61,6 +61,20 @@ func (_c *ExerciseOptionCreate) SetNillableImageURL(v *string) *ExerciseOptionCr
 	return _c
 }
 
+// SetAudioURL sets the "audio_url" field.
+func (_c *ExerciseOptionCreate) SetAudioURL(v string) *ExerciseOptionCreate {
+	_c.mutation.SetAudioURL(v)
+	return _c
+}
+
+// SetNillableAudioURL sets the "audio_url" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableAudioURL(v *string) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetAudioURL(*v)
+	}
+	return _c
+}
+
 // SetRegionX sets the "region_x" field.
 func (_c *ExerciseOptionCreate) SetRegionX(v float64) *ExerciseOptionCreate {
 	_c.mutation.SetRegionX(v)
@@ -253,6 +267,10 @@ func (_c *ExerciseOptionCreate) createSpec() (*ExerciseOption, *sqlgraph.CreateS
 	if value, ok := _c.mutation.ImageURL(); ok {
 		_spec.SetField(exerciseoption.FieldImageURL, field.TypeString, value)
 		_node.ImageURL = &value
+	}
+	if value, ok := _c.mutation.AudioURL(); ok {
+		_spec.SetField(exerciseoption.FieldAudioURL, field.TypeString, value)
+		_node.AudioURL = &value
 	}
 	if value, ok := _c.mutation.RegionX(); ok {
 		_spec.SetField(exerciseoption.FieldRegionX, field.TypeFloat64, value)

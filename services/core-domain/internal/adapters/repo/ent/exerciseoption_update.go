@@ -97,6 +97,26 @@ func (_u *ExerciseOptionUpdate) ClearImageURL() *ExerciseOptionUpdate {
 	return _u
 }
 
+// SetAudioURL sets the "audio_url" field.
+func (_u *ExerciseOptionUpdate) SetAudioURL(v string) *ExerciseOptionUpdate {
+	_u.mutation.SetAudioURL(v)
+	return _u
+}
+
+// SetNillableAudioURL sets the "audio_url" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableAudioURL(v *string) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetAudioURL(*v)
+	}
+	return _u
+}
+
+// ClearAudioURL clears the value of the "audio_url" field.
+func (_u *ExerciseOptionUpdate) ClearAudioURL() *ExerciseOptionUpdate {
+	_u.mutation.ClearAudioURL()
+	return _u
+}
+
 // SetRegionX sets the "region_x" field.
 func (_u *ExerciseOptionUpdate) SetRegionX(v float64) *ExerciseOptionUpdate {
 	_u.mutation.ResetRegionX()
@@ -308,6 +328,12 @@ func (_u *ExerciseOptionUpdate) sqlSave(ctx context.Context) (_node int, err err
 	if _u.mutation.ImageURLCleared() {
 		_spec.ClearField(exerciseoption.FieldImageURL, field.TypeString)
 	}
+	if value, ok := _u.mutation.AudioURL(); ok {
+		_spec.SetField(exerciseoption.FieldAudioURL, field.TypeString, value)
+	}
+	if _u.mutation.AudioURLCleared() {
+		_spec.ClearField(exerciseoption.FieldAudioURL, field.TypeString)
+	}
 	if value, ok := _u.mutation.RegionX(); ok {
 		_spec.SetField(exerciseoption.FieldRegionX, field.TypeFloat64, value)
 	}
@@ -464,6 +490,26 @@ func (_u *ExerciseOptionUpdateOne) SetNillableImageURL(v *string) *ExerciseOptio
 // ClearImageURL clears the value of the "image_url" field.
 func (_u *ExerciseOptionUpdateOne) ClearImageURL() *ExerciseOptionUpdateOne {
 	_u.mutation.ClearImageURL()
+	return _u
+}
+
+// SetAudioURL sets the "audio_url" field.
+func (_u *ExerciseOptionUpdateOne) SetAudioURL(v string) *ExerciseOptionUpdateOne {
+	_u.mutation.SetAudioURL(v)
+	return _u
+}
+
+// SetNillableAudioURL sets the "audio_url" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableAudioURL(v *string) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetAudioURL(*v)
+	}
+	return _u
+}
+
+// ClearAudioURL clears the value of the "audio_url" field.
+func (_u *ExerciseOptionUpdateOne) ClearAudioURL() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearAudioURL()
 	return _u
 }
 
@@ -707,6 +753,12 @@ func (_u *ExerciseOptionUpdateOne) sqlSave(ctx context.Context) (_node *Exercise
 	}
 	if _u.mutation.ImageURLCleared() {
 		_spec.ClearField(exerciseoption.FieldImageURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.AudioURL(); ok {
+		_spec.SetField(exerciseoption.FieldAudioURL, field.TypeString, value)
+	}
+	if _u.mutation.AudioURLCleared() {
+		_spec.ClearField(exerciseoption.FieldAudioURL, field.TypeString)
 	}
 	if value, ok := _u.mutation.RegionX(); ok {
 		_spec.SetField(exerciseoption.FieldRegionX, field.TypeFloat64, value)
