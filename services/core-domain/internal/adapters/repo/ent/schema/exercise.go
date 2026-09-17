@@ -24,6 +24,11 @@ func (Exercise) Fields() []ent.Field {
 			Immutable(),
 
 		field.String("title"),
+		// prompt stores marshaled PromptDocument JSON as text rather than
+		// using a JSON-typed field, so a row written before prompts became
+		// structured documents (plain, non-JSON text) still loads without
+		// error — the repository layer detects and shims that case on read
+		// instead of the column type rejecting it.
 		field.Text("prompt"),
 
 		field.Enum("exercise_type").

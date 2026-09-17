@@ -62,6 +62,12 @@ type world struct {
 	lastResp any
 	lastErr  error
 
+	// lastPromptSent holds whichever prompt document the most recent
+	// create/update exercise step built, so a following "the exercise's
+	// prompt preserves its ... structure" step can assert the response
+	// echoes it back unchanged.
+	lastPromptSent generated.PromptDocument
+
 	// multiResp is lastResp's repeated-call counterpart, for a "does X
 	// twice" or "does X and Y" step (repeated list calls, two generated
 	// practice sessions) — same `any` exception as lastResp, same reason.

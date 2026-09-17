@@ -1,6 +1,8 @@
 package http
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
@@ -67,6 +69,42 @@ func toChallenges(challenges []domain.Challenge) []generated.Challenge {
 	return result
 }
 
+// toGeneratedPromptDocument converts a domain.PromptDocument to its wire
+// shape via a JSON round trip. generated.PromptNode.Attrs is a generic map
+// and domain.PromptNode.Attrs is a typed struct sharing the same JSON field
+// names, so encoding/json bridges the two without either side reading the
+// map's values directly. Marshaling a value of this shape and unmarshaling
+// it into the structurally compatible target cannot fail; a failure here
+// means one of the two types drifted out of sync with the other, which
+// panicking surfaces immediately rather than silently.
+func toGeneratedPromptDocument(prompt domain.PromptDocument) generated.PromptDocument {
+	data, err := json.Marshal(prompt)
+	if err != nil {
+		panic(err)
+	}
+	var out generated.PromptDocument
+	if err := json.Unmarshal(data, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// toDomainPromptDocument converts a generated.PromptDocument, as already
+// decoded from a request body into its generated Go shape, to its domain
+// shape — the reverse of toGeneratedPromptDocument, with the same
+// unreachable-failure reasoning.
+func toDomainPromptDocument(prompt generated.PromptDocument) domain.PromptDocument {
+	data, err := json.Marshal(prompt)
+	if err != nil {
+		panic(err)
+	}
+	var out domain.PromptDocument
+	if err := json.Unmarshal(data, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
 func toExercise(e domain.Exercise) generated.Exercise {
 	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
 	for i, id := range e.ChallengeIDs {
@@ -84,7 +122,7 @@ func toExercise(e domain.Exercise) generated.Exercise {
 	exercise := generated.Exercise{
 		ExerciseId:               mustUUID(e.ID),
 		Title:                    e.Title,
-		Prompt:                   e.Prompt,
+		Prompt:                   toGeneratedPromptDocument(e.Prompt),
 		ExerciseType:             generated.ExerciseExerciseType(e.ExerciseType),
 		ImageUrl:                 e.ImageURL,
 		AudioUrl:                 e.AudioURL,

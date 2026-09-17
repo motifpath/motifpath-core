@@ -127,7 +127,7 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	repo := NewEntExerciseRepository(setupPostgres(t))
 
 	exercise := domain.Exercise{
-		ID: uuid.NewString(), Title: "Root position of a C major triad", Prompt: "Identify the chord",
+		ID: uuid.NewString(), Title: "Root position of a C major triad", Prompt: domain.NewPlainTextPrompt("Identify the chord"),
 		ExerciseType: domain.ExerciseTypeImageRecognition, SkillTags: []string{"triad-shapes"}, ImageURL: &imageURL,
 		EstimatedDurationSeconds: &duration,
 		Options: []domain.Option{
@@ -151,6 +151,31 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	assert.Empty(t, got.ContentNodeIDs)
 }
 
+// TestEntExerciseRepository_LegacyPlainTextPromptShim writes a prompt column
+// value directly, bypassing Create's JSON marshaling — the shape a row
+// written before prompts became structured documents would still have.
+// GetByID must still succeed, wrapping that plain text as a single-paragraph
+// document instead of failing to parse it as JSON.
+func TestEntExerciseRepository_LegacyPlainTextPromptShim(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+
+	id := uuid.New()
+	const legacyPrompt = "Identify the root position of a C major triad"
+	require.NoError(t, client.Exercise.Create().
+		SetID(id).
+		SetTitle("Root position of a C major triad").
+		SetPrompt(legacyPrompt).
+		SetExerciseType("text_response").
+		SetCreatedAt(fixedAt).
+		Exec(ctx))
+
+	got, err := repo.GetByID(ctx, id.String())
+	require.NoError(t, err)
+	assert.Equal(t, domain.NewPlainTextPrompt(legacyPrompt), got.Prompt)
+}
+
 func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -165,9 +190,9 @@ func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 	require.NoError(t, challengeRepo.Create(ctx, otherChallenge))
 
 	label := "A major"
-	linked := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: "Name this chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	linked := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, linked))
-	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Name another chord", Prompt: "Name this other chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Name another chord", Prompt: domain.NewPlainTextPrompt("Name this other chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, unlinked))
 	require.NoError(t, repo.LinkChallenge(ctx, linked.ID, challenge.ID))
 	require.NoError(t, repo.LinkChallenge(ctx, unlinked.ID, otherChallenge.ID))
@@ -204,7 +229,7 @@ func TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder(t *testing.T
 	const linkCount = 8
 	linkedIDs := make([]string, linkCount)
 	for i := range linkCount {
-		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 		require.NoError(t, repo.Create(ctx, ex))
 		linkedIDs[i] = ex.ID
 	}
@@ -239,7 +264,7 @@ func TestEntExerciseRepository_LinkAndUnlinkContentNode(t *testing.T) {
 	nodeB := seedContentNode(t, ctx, nodeRepo)
 
 	label := "A major"
-	exercise := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: "Name this chord", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	exercise := domain.Exercise{ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, exercise))
 
 	require.NoError(t, repo.LinkContentNode(ctx, exercise.ID, nodeA.ID))
@@ -277,7 +302,7 @@ func TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder(t *testing
 	const linkCount = 8
 	linkedIDs := make([]string, linkCount)
 	for i := range linkCount {
-		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+		ex := domain.Exercise{ID: uuid.NewString(), Title: "Exercise", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 		require.NoError(t, repo.Create(ctx, ex))
 		linkedIDs[i] = ex.ID
 	}
@@ -304,9 +329,9 @@ func TestEntExerciseRepository_ListBySkillTag(t *testing.T) {
 	repo := NewEntExerciseRepository(setupPostgres(t))
 
 	label := "A major"
-	tagged := domain.Exercise{ID: uuid.NewString(), Title: "Tagged", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"alternate_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	tagged := domain.Exercise{ID: uuid.NewString(), Title: "Tagged", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"alternate_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, tagged))
-	untagged := domain.Exercise{ID: uuid.NewString(), Title: "Untagged", Prompt: "Prompt", ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"hybrid_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	untagged := domain.Exercise{ID: uuid.NewString(), Title: "Untagged", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"hybrid_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, untagged))
 
 	list, err := repo.ListBySkillTag(ctx, "alternate_picking")
@@ -334,7 +359,7 @@ func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
 
 	label := "A major"
 	exercise := domain.Exercise{
-		ID: uuid.NewString(), Title: "Name the chord", Prompt: "Name this chord",
+		ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"),
 		ExerciseType: domain.ExerciseTypeTextResponse,
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
 		ChallengeIDs: []string{},

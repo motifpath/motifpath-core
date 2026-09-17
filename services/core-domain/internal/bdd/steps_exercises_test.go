@@ -3,7 +3,9 @@
 package bdd
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -29,6 +31,14 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" attempts to create an exercise$`, w.attemptsCreateExercise)
 	sc.Step(`^an unauthenticated request attempts to create an exercise$`, w.unauthCreatesExercise)
 
+	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt formatted as a heading, a bulleted list, a table, and an image, and one correct option$`, w.createsExerciseWithRichPrompt)
+	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt whose text has a custom font color and background color, and one correct option$`, w.createsExerciseWithTextStylePrompt)
+	sc.Step(`^the exercise's prompt preserves its font color and background color$`, w.exercisePromptMatchesLastSent)
+	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt containing a single unformatted paragraph and one correct option$`, w.createsExerciseWithPlainParagraphPrompt)
+	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt is a plain string instead of a structured document$`, w.submitsExerciseUnstructuredPrompt)
+	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt document contains a video node$`, w.submitsExerciseUnsupportedPromptNode)
+	sc.Step(`^the exercise's prompt preserves its heading, bulleted list, table, and image structure$`, w.exercisePromptMatchesLastSent)
+
 	sc.Step(`^an exercise "([^"]+)" exists with skill tags "([^"]+)"$`, w.putExerciseWithSkillTags)
 	sc.Step(`^an exercise "([^"]+)" exists with type (\S+)$`, w.putExerciseWithType)
 	sc.Step(`^"([^"]+)" lists all exercises$`, w.listsAllExercises)
@@ -48,6 +58,10 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the exercise's title is "([^"]+)"$`, w.exerciseTitleIs)
 	sc.Step(`^the exercise's prompt is "([^"]+)"$`, w.exercisePromptIs)
 	sc.Step(`^the exercise no longer carries skill tag "([^"]+)"$`, w.exerciseNoLongerCarriesSkillTag)
+
+	sc.Step(`^an exercise "([^"]+)" exists with a plain, unformatted prompt$`, w.putExercise)
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with a prompt formatted as bold text and a bulleted list, and one correct option$`, w.updatesExerciseWithFormattedPrompt)
+	sc.Step(`^the exercise's prompt preserves its bold text and bulleted list structure$`, w.exercisePromptMatchesLastSent)
 
 	sc.Step(`^"([^"]+)" links exercise "([^"]+)" to "([^"]+)"$`, w.linksExerciseToChallenge)
 	sc.Step(`^"([^"]+)" has linked exercise "([^"]+)" to "([^"]+)"$`, w.hasLinkedExerciseToChallenge)
@@ -103,7 +117,7 @@ func (w *world) putExercise(slug string) error {
 	w.exercises.put(domain.Exercise{
 		ID:           exerciseID(slug).String(),
 		Title:        "title-" + slug,
-		Prompt:       "prompt-" + slug,
+		Prompt:       domain.NewPlainTextPrompt("prompt-" + slug),
 		ExerciseType: domain.ExerciseTypeTextResponse,
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
 		ChallengeIDs: []string{},
@@ -117,7 +131,7 @@ func (w *world) putExerciseWithSkillTags(slug, tagsCSV string) error {
 	w.exercises.put(domain.Exercise{
 		ID:           exerciseID(slug).String(),
 		Title:        "title-" + slug,
-		Prompt:       "prompt-" + slug,
+		Prompt:       domain.NewPlainTextPrompt("prompt-" + slug),
 		ExerciseType: domain.ExerciseTypeTextResponse,
 		SkillTags:    splitCSV(tagsCSV),
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
@@ -132,13 +146,52 @@ func (w *world) putExerciseWithType(slug, exerciseType string) error {
 	w.exercises.put(domain.Exercise{
 		ID:           exerciseID(slug).String(),
 		Title:        "title-" + slug,
-		Prompt:       "prompt-" + slug,
+		Prompt:       domain.NewPlainTextPrompt("prompt-" + slug),
 		ExerciseType: domain.ExerciseType(exerciseType),
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
 		ChallengeIDs: []string{},
 		CreatedAt:    fixedNow,
 	})
 	return nil
+}
+
+// promptDocFor builds a single-paragraph generated.PromptDocument holding
+// text, the shape the exercise-prompt editor would produce for unformatted
+// input.
+func promptDocFor(text string) generated.PromptDocument {
+	return generated.PromptDocument{
+		Type: generated.Doc,
+		Content: []generated.PromptNode{
+			{
+				Type: generated.PromptNodeTypeParagraph,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeText, Text: &text},
+				},
+			},
+		},
+	}
+}
+
+// promptPlainText concatenates every text node in doc's tree, depth-first —
+// enough to assert against a single-paragraph, unformatted prompt document
+// without asserting on its full structure.
+func promptPlainText(doc generated.PromptDocument) string {
+	var sb strings.Builder
+	for _, node := range doc.Content {
+		writePromptNodeText(&sb, node)
+	}
+	return sb.String()
+}
+
+func writePromptNodeText(sb *strings.Builder, node generated.PromptNode) {
+	if node.Text != nil {
+		sb.WriteString(*node.Text)
+	}
+	if node.Content != nil {
+		for _, child := range *node.Content {
+			writePromptNodeText(sb, child)
+		}
+	}
 }
 
 func optionsFor(exerciseType generated.CreateExerciseRequestExerciseType) []generated.Option {
@@ -175,7 +228,7 @@ func (w *world) createsExercise(name, exerciseType, title, prompt string) error 
 	imageURL, audioURL := mediaFieldsFor(et)
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: title, Prompt: prompt, ExerciseType: et,
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
 			ImageUrl: imageURL, AudioUrl: audioURL,
 			Options: optionsFor(et),
 		},
@@ -190,7 +243,7 @@ func (w *world) createsExerciseWithSkillTags(name, exerciseType, title, prompt, 
 	tags := splitCSV(tagsCSV)
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: title, Prompt: prompt, ExerciseType: et,
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
 			ImageUrl: imageURL, AudioUrl: audioURL,
 			SkillTags: &tags,
 			Options:   optionsFor(et),
@@ -198,6 +251,226 @@ func (w *world) createsExerciseWithSkillTags(name, exerciseType, title, prompt, 
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
+}
+
+// richPromptDoc builds a generated.PromptDocument exercising a heading, a
+// bulleted list, a table, and an image — the node types the "richly
+// formatted prompt" scenario names.
+func richPromptDoc() generated.PromptDocument {
+	heading, item, key, cMajor := "Circle of fifths", "Major keys", "Key", "C major"
+
+	return generated.PromptDocument{
+		Type: generated.Doc,
+		Content: []generated.PromptNode{
+			{
+				Type: generated.PromptNodeTypeHeading,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeText, Text: &heading},
+				},
+			},
+			{
+				Type: generated.PromptNodeTypeBulletList,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeListItem, Content: &[]generated.PromptNode{
+						{Type: generated.PromptNodeTypeParagraph, Content: &[]generated.PromptNode{
+							{Type: generated.PromptNodeTypeText, Text: &item},
+						}},
+					}},
+				},
+			},
+			{
+				Type: generated.PromptNodeTypeTable,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeTableRow, Content: &[]generated.PromptNode{
+						{Type: generated.PromptNodeTypeTableHeader, Content: &[]generated.PromptNode{
+							{Type: generated.PromptNodeTypeText, Text: &key},
+						}},
+						{Type: generated.PromptNodeTypeTableCell, Content: &[]generated.PromptNode{
+							{Type: generated.PromptNodeTypeText, Text: &cMajor},
+						}},
+					}},
+				},
+			},
+			{
+				Type: generated.PromptNodeTypeImage,
+			},
+		},
+	}
+}
+
+// boldBulletListPromptDoc builds a generated.PromptDocument exercising bold
+// text and a bulleted list — the node/mark types the "add formatting"
+// update scenario names.
+func boldBulletListPromptDoc() generated.PromptDocument {
+	bold, item := "bold text", "a list item"
+	return generated.PromptDocument{
+		Type: generated.Doc,
+		Content: []generated.PromptNode{
+			{
+				Type: generated.PromptNodeTypeParagraph,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeText, Text: &bold, Marks: &[]generated.PromptMark{{Type: generated.Bold}}},
+				},
+			},
+			{
+				Type: generated.PromptNodeTypeBulletList,
+				Content: &[]generated.PromptNode{
+					{Type: generated.PromptNodeTypeListItem, Content: &[]generated.PromptNode{
+						{Type: generated.PromptNodeTypeParagraph, Content: &[]generated.PromptNode{
+							{Type: generated.PromptNodeTypeText, Text: &item},
+						}},
+					}},
+				},
+			},
+		},
+	}
+}
+
+func (w *world) createsExerciseWithRichPrompt(name, title string) error {
+	w.lastPromptSent = richPromptDoc()
+	et := generated.CreateExerciseRequestExerciseTypeTextResponse
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
+			Options: optionsFor(et),
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// textStyleMark builds a generated.PromptMark of type textStyle carrying
+// color and backgroundColor, via a JSON round trip so this file never
+// writes the generic map type generated.PromptMark.Attrs holds.
+func textStyleMark(color, backgroundColor string) generated.PromptMark {
+	type attrs struct {
+		Color           string `json:"color"`
+		BackgroundColor string `json:"backgroundColor"`
+	}
+	wire := struct {
+		Type  string `json:"type"`
+		Attrs attrs  `json:"attrs"`
+	}{Type: "textStyle", Attrs: attrs{Color: color, BackgroundColor: backgroundColor}}
+
+	data, err := json.Marshal(wire)
+	if err != nil {
+		panic(err)
+	}
+	var mark generated.PromptMark
+	if err := json.Unmarshal(data, &mark); err != nil {
+		panic(err)
+	}
+	return mark
+}
+
+func (w *world) createsExerciseWithTextStylePrompt(name, title string) error {
+	w.lastPromptSent = generated.PromptDocument{
+		Type: generated.Doc,
+		Content: []generated.PromptNode{
+			{
+				Type: generated.PromptNodeTypeParagraph,
+				Content: &[]generated.PromptNode{
+					{
+						Type:  generated.PromptNodeTypeText,
+						Text:  &title,
+						Marks: &[]generated.PromptMark{textStyleMark("#6d28e0", "#f3ecff")},
+					},
+				},
+			},
+		},
+	}
+	et := generated.CreateExerciseRequestExerciseTypeTextResponse
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
+			Options: optionsFor(et),
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsExerciseWithPlainParagraphPrompt(name, title string) error {
+	w.lastPromptSent = promptDocFor("A single unformatted paragraph.")
+	et := generated.CreateExerciseRequestExerciseTypeTextResponse
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
+			Options: optionsFor(et),
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// submitsExerciseUnstructuredPrompt submits a prompt that is not a proper
+// document (a zero-value PromptDocument — no "doc" type, no content) —
+// this test harness calls the handler with already Go-typed request
+// objects rather than raw JSON, so it cannot literally construct a request
+// whose prompt field is a bare JSON string; a malformed-but-structurally-
+// present document is the closest equivalent reachable at this layer, and
+// it exercises the same domain-level rejection a wire-level type mismatch
+// would eventually hit after JSON decoding.
+func (w *world) submitsExerciseUnstructuredPrompt(string) error {
+	label := "correct option"
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: "title", Prompt: generated.PromptDocument{}, ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) submitsExerciseUnsupportedPromptNode(string) error {
+	label := "correct option"
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: "title",
+			Prompt: generated.PromptDocument{
+				Type:    generated.Doc,
+				Content: []generated.PromptNode{{Type: generated.PromptNodeType("video")}},
+			},
+			ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options:      []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseWithFormattedPrompt(name, exerciseSlug string) error {
+	w.lastPromptSent = boldBulletListPromptDoc()
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title-" + exerciseSlug, Prompt: w.lastPromptSent,
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// exercisePromptMatchesLastSent asserts w.lastResp's prompt equals
+// w.lastPromptSent — shared by both the create-with-rich-prompt and
+// update-with-formatted-prompt scenarios.
+func (w *world) exercisePromptMatchesLastSent() error {
+	var got generated.PromptDocument
+	switch resp := w.lastResp.(type) {
+	case generated.CreateExercise201JSONResponse:
+		got = resp.Prompt
+	case generated.UpdateExercise200JSONResponse:
+		got = resp.Prompt
+	default:
+		return fmt.Errorf("expected a 201 or 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if !reflect.DeepEqual(got, w.lastPromptSent) {
+		return fmt.Errorf("expected prompt %+v, got %+v", w.lastPromptSent, got)
+	}
+	return nil
 }
 
 func splitCSV(csv string) []string {
@@ -219,7 +492,7 @@ func (w *world) submitsExerciseMissingTitle(string) error {
 	label := "correct option"
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Prompt: "prompt", ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -243,7 +516,7 @@ func (w *world) submitsExerciseMissingType(string) error {
 	label := "correct option"
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: "title", Prompt: "prompt",
+			Title: "title", Prompt: promptDocFor("prompt"),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -255,7 +528,7 @@ func (w *world) submitsExerciseWithType(name, exerciseType string) error {
 	label := "correct option"
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: "title", Prompt: "prompt", ExerciseType: generated.CreateExerciseRequestExerciseType(exerciseType),
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseType(exerciseType),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -267,7 +540,7 @@ func (w *world) submitsExerciseNoCorrectOption(string) error {
 	label := "an option"
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: "title", Prompt: "prompt", ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
 		},
 	})
@@ -280,7 +553,7 @@ func (w *world) submitsExerciseEmptySkillTag(string) error {
 	tags := []string{"technique", ""}
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
-			Title: "title", Prompt: "prompt", ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
 			SkillTags: &tags,
 			Options:   []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
@@ -337,7 +610,7 @@ func (w *world) updatesExerciseFull(name, exerciseSlug, title, prompt string) er
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Title: title, Prompt: prompt,
+			Title: title, Prompt: promptDocFor(prompt),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -351,7 +624,7 @@ func (w *world) updatesExerciseSkillTags(name, exerciseSlug, tagsCSV string) err
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Title: "title", Prompt: "prompt",
+			Title: "title", Prompt: promptDocFor("prompt"),
 			SkillTags: &tags,
 			Options:   []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
@@ -365,7 +638,7 @@ func (w *world) updatesExerciseTitleOnly(name, exerciseSlug, title string) error
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Title: title, Prompt: "prompt",
+			Title: title, Prompt: promptDocFor("prompt"),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -383,7 +656,7 @@ func (w *world) submitsUpdateMissingTitle(name, exerciseSlug string) error {
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Prompt:  "prompt",
+			Prompt:  promptDocFor("prompt"),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -396,7 +669,7 @@ func (w *world) submitsUpdateNoCorrectOption(name, exerciseSlug string) error {
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Title: "title", Prompt: "prompt",
+			Title: "title", Prompt: promptDocFor("prompt"),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
 		},
 	})
@@ -409,7 +682,7 @@ func (w *world) attemptsUpdateMissingExercise(name string) error {
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: deterministicUUID("exercise", "does-not-exist"),
 		Body: &generated.UpdateExerciseRequest{
-			Title: "title", Prompt: "prompt",
+			Title: "title", Prompt: promptDocFor("prompt"),
 			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
 		},
 	})
@@ -433,8 +706,8 @@ func (w *world) exercisePromptIs(want string) error {
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if resp.Prompt != want {
-		return fmt.Errorf("expected prompt %q, got %q", want, resp.Prompt)
+	if got := promptPlainText(resp.Prompt); got != want {
+		return fmt.Errorf("expected prompt %q, got %q", want, got)
 	}
 	return nil
 }
@@ -555,7 +828,7 @@ func (w *world) exerciseResponseComplete() error {
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if resp.Title == "" || resp.Prompt == "" || resp.ExerciseType == "" || resp.Options == nil || resp.ChallengeIds == nil {
+	if resp.Title == "" || len(resp.Prompt.Content) == 0 || resp.ExerciseType == "" || resp.Options == nil || resp.ChallengeIds == nil {
 		return fmt.Errorf("expected a fully populated exercise, got %+v", resp)
 	}
 	return nil
@@ -665,7 +938,7 @@ func (w *world) linksNExercisesToChallenge(countStr, challengeSlug string) error
 		w.exercises.put(domain.Exercise{
 			ID:             exerciseID(slug).String(),
 			Title:          "title-" + slug,
-			Prompt:         "prompt-" + slug,
+			Prompt:         domain.NewPlainTextPrompt("prompt-" + slug),
 			ExerciseType:   domain.ExerciseTypeTextResponse,
 			Options:        []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}, {ID: uuid.NewString(), IsCorrect: false, Label: &label}},
 			ChallengeIDs:   []string{challengeID(challengeSlug).String()},

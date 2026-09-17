@@ -222,7 +222,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
-	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, body.Prompt,
+	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
 		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -292,7 +292,7 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
-	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, body.Prompt,
+	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
 		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
 	if err != nil {
 		kind, valErr := classify(err)

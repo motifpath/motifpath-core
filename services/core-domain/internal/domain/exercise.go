@@ -15,6 +15,104 @@ const (
 	ExerciseTypeAudioSelection   ExerciseType = "audio_selection"
 )
 
+// PromptDocument is a structured rich-text document for an exercise's
+// prompt, produced by the exercise-prompt rich-text editor and persisted
+// exactly as the editor produces it.
+type PromptDocument struct {
+	Type    string       `json:"type"`
+	Content []PromptNode `json:"content"`
+}
+
+// NewPlainTextPrompt builds a PromptDocument holding text as a single,
+// unformatted paragraph — the minimal valid document. An empty text
+// produces an empty paragraph (no text node) — ProseMirror rejects
+// zero-length text nodes as invalid.
+func NewPlainTextPrompt(text string) PromptDocument {
+	content := []PromptNode{}
+	if text != "" {
+		content = []PromptNode{{Type: PromptNodeTypeText, Text: text}}
+	}
+	return PromptDocument{
+		Type: "doc",
+		Content: []PromptNode{
+			{Type: PromptNodeTypeParagraph, Content: content},
+		},
+	}
+}
+
+// PromptNodeType identifies the kind of a PromptNode. Only the node types
+// the exercise-prompt editor can actually produce are valid here.
+type PromptNodeType string
+
+const (
+	PromptNodeTypeHeading     PromptNodeType = "heading"
+	PromptNodeTypeParagraph   PromptNodeType = "paragraph"
+	PromptNodeTypeText        PromptNodeType = "text"
+	PromptNodeTypeBulletList  PromptNodeType = "bulletList"
+	PromptNodeTypeOrderedList PromptNodeType = "orderedList"
+	PromptNodeTypeListItem    PromptNodeType = "listItem"
+	PromptNodeTypeTable       PromptNodeType = "table"
+	PromptNodeTypeTableRow    PromptNodeType = "tableRow"
+	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
+	PromptNodeTypeTableCell   PromptNodeType = "tableCell"
+	PromptNodeTypeImage       PromptNodeType = "image"
+)
+
+// PromptNodeAttrs holds the type-specific attributes a PromptNode may
+// carry. Which fields are set depends on the node's Type; the rest stay
+// nil.
+type PromptNodeAttrs struct {
+	Level           *int    `json:"level,omitempty"`
+	TextAlign       *string `json:"textAlign,omitempty"`
+	Src             *string `json:"src,omitempty"`
+	Alt             *string `json:"alt,omitempty"`
+	Colspan         *int    `json:"colspan,omitempty"`
+	Rowspan         *int    `json:"rowspan,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
+	BorderColor     *string `json:"borderColor,omitempty"`
+}
+
+// PromptNode is a single node in a PromptDocument's tree. Container node
+// types nest further nodes under Content; Text is a leaf carrying the
+// literal string, with any inline formatting under Marks.
+type PromptNode struct {
+	Type    PromptNodeType   `json:"type"`
+	Attrs   *PromptNodeAttrs `json:"attrs,omitempty"`
+	Content []PromptNode     `json:"content,omitempty"`
+	Text    string           `json:"text,omitempty"`
+	Marks   []PromptMark     `json:"marks,omitempty"`
+}
+
+// PromptMarkType identifies the kind of an inline PromptMark. Only the mark
+// types the exercise-prompt editor can actually produce are valid here.
+type PromptMarkType string
+
+const (
+	PromptMarkTypeBold      PromptMarkType = "bold"
+	PromptMarkTypeItalic    PromptMarkType = "italic"
+	PromptMarkTypeStrike    PromptMarkType = "strike"
+	PromptMarkTypeHighlight PromptMarkType = "highlight"
+	PromptMarkTypeLink      PromptMarkType = "link"
+	// PromptMarkTypeTextStyle carries a chosen font color, background
+	// color, or both, via its Attrs.Color and Attrs.BackgroundColor.
+	PromptMarkTypeTextStyle PromptMarkType = "textStyle"
+)
+
+// PromptMarkAttrs holds the type-specific attributes a PromptMark may
+// carry. Which fields are set depends on the mark's Type; the rest stay
+// nil.
+type PromptMarkAttrs struct {
+	Href            *string `json:"href,omitempty"`
+	Color           *string `json:"color,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
+}
+
+// PromptMark is an inline formatting mark applied to a PromptNode.
+type PromptMark struct {
+	Type  PromptMarkType   `json:"type"`
+	Attrs *PromptMarkAttrs `json:"attrs,omitempty"`
+}
+
 // OptionRegionShape is the rendered shape of an OptionRegion.
 type OptionRegionShape string
 
@@ -52,7 +150,7 @@ type Option struct {
 type Exercise struct {
 	ID                       string
 	Title                    string
-	Prompt                   string
+	Prompt                   PromptDocument
 	ExerciseType             ExerciseType
 	SkillTags                []string
 	ImageURL                 *string
@@ -74,7 +172,7 @@ type Exercise struct {
 // NewExercise validates and constructs a standalone Exercise, not yet linked
 // to any challenge or content node. Whether it later gets linked to a
 // challenge or node that exists is an application-layer concern.
-func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
 	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)...)
 	if len(errs) > 0 {
@@ -104,7 +202,7 @@ func NewExercise(id, title, prompt string, exerciseType ExerciseType, skillTags 
 // creation since it determines the option shape (region vs. text vs.
 // image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title, prompt string, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) (Exercise, error) {
+func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) (Exercise, error) {
 	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
@@ -124,15 +222,13 @@ func (e Exercise) Update(title, prompt string, skillTags []string, imageURL, aud
 // validateExerciseContent checks the fields shared by creation and update —
 // everything except exercise_type itself, which only creation sets and only
 // creation validates.
-func validateExerciseContent(title, prompt string, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) []FieldError {
+func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
-	if prompt == "" {
-		errs = append(errs, FieldError{Field: "prompt", Reason: "must not be empty"})
-	}
+	errs = append(errs, validatePromptDocument(prompt)...)
 	errs = append(errs, validateSkillTags(skillTags)...)
 	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
 	errs = append(errs, validateOptions(exerciseType, options)...)
@@ -141,6 +237,59 @@ func validateExerciseContent(title, prompt string, exerciseType ExerciseType, sk
 	}
 
 	return errs
+}
+
+// validatePromptDocument checks that prompt is a well-formed document
+// (a "doc" root with at least one block node) using only the node and mark
+// types the exercise-prompt editor can actually produce.
+func validatePromptDocument(prompt PromptDocument) []FieldError {
+	if prompt.Type != "doc" {
+		return []FieldError{{Field: "prompt", Reason: "must be a structured document with type \"doc\""}}
+	}
+	if len(prompt.Content) == 0 {
+		return []FieldError{{Field: "prompt", Reason: "must not be empty"}}
+	}
+	for _, node := range prompt.Content {
+		if reason := promptNodeError(node); reason != "" {
+			return []FieldError{{Field: "prompt", Reason: reason}}
+		}
+	}
+	return nil
+}
+
+// promptNodeError reports the reason node (and, recursively, its content
+// and marks) is invalid, or "" if it's valid.
+func promptNodeError(node PromptNode) string {
+	switch node.Type {
+	case PromptNodeTypeHeading, PromptNodeTypeParagraph, PromptNodeTypeText,
+		PromptNodeTypeBulletList, PromptNodeTypeOrderedList, PromptNodeTypeListItem,
+		PromptNodeTypeTable, PromptNodeTypeTableRow, PromptNodeTypeTableHeader, PromptNodeTypeTableCell,
+		PromptNodeTypeImage:
+	default:
+		return "contains an unsupported node type \"" + string(node.Type) + "\""
+	}
+
+	for _, child := range node.Content {
+		if reason := promptNodeError(child); reason != "" {
+			return reason
+		}
+	}
+	for _, mark := range node.Marks {
+		if reason := promptMarkError(mark); reason != "" {
+			return reason
+		}
+	}
+	return ""
+}
+
+// promptMarkError reports the reason mark is invalid, or "" if it's valid.
+func promptMarkError(mark PromptMark) string {
+	switch mark.Type {
+	case PromptMarkTypeBold, PromptMarkTypeItalic, PromptMarkTypeStrike, PromptMarkTypeHighlight, PromptMarkTypeLink, PromptMarkTypeTextStyle:
+		return ""
+	default:
+		return "contains an unsupported mark type \"" + string(mark.Type) + "\""
+	}
 }
 
 func validateExerciseType(exerciseType ExerciseType) []FieldError {
