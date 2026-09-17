@@ -50,6 +50,8 @@ func richlyFormattedPrompt() domain.PromptDocument {
 	src := "https://cdn.example.com/library/circle-of-fifths.png"
 	alt := "Circle of fifths diagram"
 	color := "#6d28e0"
+	cellBackground := "#f3ecff"
+	cellBorder := "transparent"
 
 	return domain.PromptDocument{
 		Type: "doc",
@@ -105,9 +107,13 @@ func richlyFormattedPrompt() domain.PromptDocument {
 						{Type: domain.PromptNodeTypeTableHeader, Content: []domain.PromptNode{
 							{Type: domain.PromptNodeTypeText, Text: "Key"},
 						}},
-						{Type: domain.PromptNodeTypeTableCell, Content: []domain.PromptNode{
-							{Type: domain.PromptNodeTypeText, Text: "C major"},
-						}},
+						{
+							Type:  domain.PromptNodeTypeTableCell,
+							Attrs: &domain.PromptNodeAttrs{BackgroundColor: &cellBackground, BorderColor: &cellBorder},
+							Content: []domain.PromptNode{
+								{Type: domain.PromptNodeTypeText, Text: "C major"},
+							},
+						},
 					}},
 				},
 			},

@@ -62,12 +62,14 @@ const (
 // carry. Which fields are set depends on the node's Type; the rest stay
 // nil.
 type PromptNodeAttrs struct {
-	Level     *int    `json:"level,omitempty"`
-	TextAlign *string `json:"textAlign,omitempty"`
-	Src       *string `json:"src,omitempty"`
-	Alt       *string `json:"alt,omitempty"`
-	Colspan   *int    `json:"colspan,omitempty"`
-	Rowspan   *int    `json:"rowspan,omitempty"`
+	Level           *int    `json:"level,omitempty"`
+	TextAlign       *string `json:"textAlign,omitempty"`
+	Src             *string `json:"src,omitempty"`
+	Alt             *string `json:"alt,omitempty"`
+	Colspan         *int    `json:"colspan,omitempty"`
+	Rowspan         *int    `json:"rowspan,omitempty"`
+	BackgroundColor *string `json:"backgroundColor,omitempty"`
+	BorderColor     *string `json:"borderColor,omitempty"`
 }
 
 // PromptNode is a single node in a PromptDocument's tree. Container node
