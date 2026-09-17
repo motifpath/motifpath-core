@@ -11,8 +11,8 @@ import (
 
 // ExerciseOption is one selectable answer choice within an Exercise. It is
 // its own entity (not embedded JSON on Exercise) so options are queryable
-// and updatable individually. Which of Label, ImageURL, or the Region*
-// fields is populated depends on the parent exercise's exercise_type.
+// and updatable individually. Which of Label, ImageURL, AudioURL, or the
+// Region* fields is populated depends on the parent exercise's exercise_type.
 type ExerciseOption struct {
 	ent.Schema
 }
@@ -32,6 +32,10 @@ func (ExerciseOption) Fields() []ent.Field {
 			Nillable(),
 
 		field.String("image_url").
+			Optional().
+			Nillable(),
+
+		field.String("audio_url").
 			Optional().
 			Nillable(),
 

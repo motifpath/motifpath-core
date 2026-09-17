@@ -26,6 +26,8 @@ type ExerciseOption struct {
 	Label *string `json:"label,omitempty"`
 	// ImageURL holds the value of the "image_url" field.
 	ImageURL *string `json:"image_url,omitempty"`
+	// AudioURL holds the value of the "audio_url" field.
+	AudioURL *string `json:"audio_url,omitempty"`
 	// RegionX holds the value of the "region_x" field.
 	RegionX *float64 `json:"region_x,omitempty"`
 	// RegionY holds the value of the "region_y" field.
@@ -71,7 +73,7 @@ func (*ExerciseOption) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case exerciseoption.FieldRegionX, exerciseoption.FieldRegionY, exerciseoption.FieldRegionWidth, exerciseoption.FieldRegionHeight:
 			values[i] = new(sql.NullFloat64)
-		case exerciseoption.FieldLabel, exerciseoption.FieldImageURL, exerciseoption.FieldRegionShape:
+		case exerciseoption.FieldLabel, exerciseoption.FieldImageURL, exerciseoption.FieldAudioURL, exerciseoption.FieldRegionShape:
 			values[i] = new(sql.NullString)
 		case exerciseoption.FieldID, exerciseoption.FieldExerciseID:
 			values[i] = new(uuid.UUID)
@@ -121,6 +123,13 @@ func (_m *ExerciseOption) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ImageURL = new(string)
 				*_m.ImageURL = value.String
+			}
+		case exerciseoption.FieldAudioURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field audio_url", values[i])
+			} else if value.Valid {
+				_m.AudioURL = new(string)
+				*_m.AudioURL = value.String
 			}
 		case exerciseoption.FieldRegionX:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -211,6 +220,11 @@ func (_m *ExerciseOption) String() string {
 	builder.WriteString(", ")
 	if v := _m.ImageURL; v != nil {
 		builder.WriteString("image_url=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.AudioURL; v != nil {
+		builder.WriteString("audio_url=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

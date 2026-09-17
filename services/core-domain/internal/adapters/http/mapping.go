@@ -122,6 +122,7 @@ func toOption(o domain.Option) generated.Option {
 		IsCorrect: o.IsCorrect,
 		Label:     o.Label,
 		ImageUrl:  o.ImageURL,
+		AudioUrl:  o.AudioURL,
 	}
 	if o.Region != nil {
 		option.Region = &generated.OptionRegion{
@@ -143,6 +144,7 @@ func toDomainOptions(options []generated.Option) []domain.Option {
 			IsCorrect: opt.IsCorrect,
 			Label:     opt.Label,
 			ImageURL:  opt.ImageUrl,
+			AudioURL:  opt.AudioUrl,
 		}
 		if opt.Region != nil {
 			result[i].Region = &domain.OptionRegion{

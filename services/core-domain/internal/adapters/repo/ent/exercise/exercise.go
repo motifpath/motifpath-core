@@ -125,6 +125,7 @@ const (
 	ExerciseTypeAudioRecognition ExerciseType = "audio_recognition"
 	ExerciseTypeImageRecognition ExerciseType = "image_recognition"
 	ExerciseTypeImageChoice      ExerciseType = "image_choice"
+	ExerciseTypeAudioSelection   ExerciseType = "audio_selection"
 )
 
 func (et ExerciseType) String() string {
@@ -134,7 +135,7 @@ func (et ExerciseType) String() string {
 // ExerciseTypeValidator is a validator for the "exercise_type" field enum values. It is called by the builders before save.
 func ExerciseTypeValidator(et ExerciseType) error {
 	switch et {
-	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice:
+	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice, ExerciseTypeAudioSelection:
 		return nil
 	default:
 		return fmt.Errorf("exercise: invalid enum value for exercise_type field: %q", et)

@@ -149,6 +149,9 @@ func optionsFor(exerciseType generated.CreateExerciseRequestExerciseType) []gene
 	case generated.CreateExerciseRequestExerciseTypeImageChoice:
 		imageURL := "https://cdn.example.com/library/option.png"
 		return []generated.Option{{OptionId: uuid.New(), IsCorrect: true, ImageUrl: &imageURL}}
+	case generated.CreateExerciseRequestExerciseTypeAudioSelection:
+		audioURL := "https://cdn.example.com/library/option.mp3"
+		return []generated.Option{{OptionId: uuid.New(), IsCorrect: true, AudioUrl: &audioURL}}
 	default:
 		return []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}}
 	}

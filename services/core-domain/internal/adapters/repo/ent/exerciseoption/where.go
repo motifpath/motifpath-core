@@ -69,6 +69,11 @@ func ImageURL(v string) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldImageURL, v))
 }
 
+// AudioURL applies equality check predicate on the "audio_url" field. It's identical to AudioURLEQ.
+func AudioURL(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldAudioURL, v))
+}
+
 // RegionX applies equality check predicate on the "region_x" field. It's identical to RegionXEQ.
 func RegionX(v float64) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldRegionX, v))
@@ -267,6 +272,81 @@ func ImageURLEqualFold(v string) predicate.ExerciseOption {
 // ImageURLContainsFold applies the ContainsFold predicate on the "image_url" field.
 func ImageURLContainsFold(v string) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldContainsFold(FieldImageURL, v))
+}
+
+// AudioURLEQ applies the EQ predicate on the "audio_url" field.
+func AudioURLEQ(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldAudioURL, v))
+}
+
+// AudioURLNEQ applies the NEQ predicate on the "audio_url" field.
+func AudioURLNEQ(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldAudioURL, v))
+}
+
+// AudioURLIn applies the In predicate on the "audio_url" field.
+func AudioURLIn(vs ...string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldAudioURL, vs...))
+}
+
+// AudioURLNotIn applies the NotIn predicate on the "audio_url" field.
+func AudioURLNotIn(vs ...string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldAudioURL, vs...))
+}
+
+// AudioURLGT applies the GT predicate on the "audio_url" field.
+func AudioURLGT(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldAudioURL, v))
+}
+
+// AudioURLGTE applies the GTE predicate on the "audio_url" field.
+func AudioURLGTE(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldAudioURL, v))
+}
+
+// AudioURLLT applies the LT predicate on the "audio_url" field.
+func AudioURLLT(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldAudioURL, v))
+}
+
+// AudioURLLTE applies the LTE predicate on the "audio_url" field.
+func AudioURLLTE(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldAudioURL, v))
+}
+
+// AudioURLContains applies the Contains predicate on the "audio_url" field.
+func AudioURLContains(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldContains(FieldAudioURL, v))
+}
+
+// AudioURLHasPrefix applies the HasPrefix predicate on the "audio_url" field.
+func AudioURLHasPrefix(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldHasPrefix(FieldAudioURL, v))
+}
+
+// AudioURLHasSuffix applies the HasSuffix predicate on the "audio_url" field.
+func AudioURLHasSuffix(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldHasSuffix(FieldAudioURL, v))
+}
+
+// AudioURLIsNil applies the IsNil predicate on the "audio_url" field.
+func AudioURLIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldAudioURL))
+}
+
+// AudioURLNotNil applies the NotNil predicate on the "audio_url" field.
+func AudioURLNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldAudioURL))
+}
+
+// AudioURLEqualFold applies the EqualFold predicate on the "audio_url" field.
+func AudioURLEqualFold(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEqualFold(FieldAudioURL, v))
+}
+
+// AudioURLContainsFold applies the ContainsFold predicate on the "audio_url" field.
+func AudioURLContainsFold(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldContainsFold(FieldAudioURL, v))
 }
 
 // RegionXEQ applies the EQ predicate on the "region_x" field.

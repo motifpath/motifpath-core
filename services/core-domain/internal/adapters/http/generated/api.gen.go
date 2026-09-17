@@ -56,6 +56,7 @@ const (
 // Defines values for CreateExerciseRequestExerciseType.
 const (
 	CreateExerciseRequestExerciseTypeAudioRecognition CreateExerciseRequestExerciseType = "audio_recognition"
+	CreateExerciseRequestExerciseTypeAudioSelection   CreateExerciseRequestExerciseType = "audio_selection"
 	CreateExerciseRequestExerciseTypeImageChoice      CreateExerciseRequestExerciseType = "image_choice"
 	CreateExerciseRequestExerciseTypeImageRecognition CreateExerciseRequestExerciseType = "image_recognition"
 	CreateExerciseRequestExerciseTypeTextResponse     CreateExerciseRequestExerciseType = "text_response"
@@ -82,6 +83,7 @@ const (
 // Defines values for ExerciseExerciseType.
 const (
 	ExerciseExerciseTypeAudioRecognition ExerciseExerciseType = "audio_recognition"
+	ExerciseExerciseTypeAudioSelection   ExerciseExerciseType = "audio_selection"
 	ExerciseExerciseTypeImageChoice      ExerciseExerciseType = "image_choice"
 	ExerciseExerciseTypeImageRecognition ExerciseExerciseType = "image_recognition"
 	ExerciseExerciseTypeTextResponse     ExerciseExerciseType = "text_response"
@@ -147,6 +149,7 @@ const (
 // Defines values for ListExercisesParamsExerciseType.
 const (
 	AudioRecognition ListExercisesParamsExerciseType = "audio_recognition"
+	AudioSelection   ListExercisesParamsExerciseType = "audio_selection"
 	ImageChoice      ListExercisesParamsExerciseType = "image_choice"
 	ImageRecognition ListExercisesParamsExerciseType = "image_recognition"
 	TextResponse     ListExercisesParamsExerciseType = "text_response"
@@ -332,7 +335,8 @@ type CreateExerciseRequest struct {
 	// options are authored and rendered. text_response and
 	// audio_recognition options carry a text label; image_recognition
 	// options carry a region on image_url; image_choice options each
-	// carry their own image_url.
+	// carry their own image_url; audio_selection options each carry
+	// their own audio_url.
 	ExerciseType CreateExerciseRequestExerciseType `json:"exercise_type"`
 
 	// ImageUrl The stimulus image for this exercise. Required when exercise_type
@@ -364,7 +368,8 @@ type CreateExerciseRequest struct {
 // options are authored and rendered. text_response and
 // audio_recognition options carry a text label; image_recognition
 // options carry a region on image_url; image_choice options each
-// carry their own image_url.
+// carry their own image_url; audio_selection options each carry
+// their own audio_url.
 type CreateExerciseRequestExerciseType string
 
 // CreateExpandedContentRequest Payload for attaching an expositive media item to a content node.
@@ -633,9 +638,14 @@ type NotFoundError struct {
 // correct answer is expressed by marking one or more options as
 // is_correct. The fields expected beyond option_id and is_correct
 // depend on the parent exercise's exercise_type: image_recognition
-// options carry region, image_choice options carry image_url, and
-// text_response / audio_recognition options carry label.
+// options carry region, image_choice options carry image_url,
+// audio_selection options carry audio_url, and text_response /
+// audio_recognition options carry label.
 type Option struct {
+	// AudioUrl The audio clip shown for this option. Required for
+	// audio_selection options; absent otherwise.
+	AudioUrl *string `json:"audio_url,omitempty"`
+
 	// ImageUrl The image shown for this option. Required for image_choice
 	// options; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`

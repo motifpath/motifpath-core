@@ -23,6 +23,8 @@ const (
 	FieldLabel = "label"
 	// FieldImageURL holds the string denoting the image_url field in the database.
 	FieldImageURL = "image_url"
+	// FieldAudioURL holds the string denoting the audio_url field in the database.
+	FieldAudioURL = "audio_url"
 	// FieldRegionX holds the string denoting the region_x field in the database.
 	FieldRegionX = "region_x"
 	// FieldRegionY holds the string denoting the region_y field in the database.
@@ -53,6 +55,7 @@ var Columns = []string{
 	FieldIsCorrect,
 	FieldLabel,
 	FieldImageURL,
+	FieldAudioURL,
 	FieldRegionX,
 	FieldRegionY,
 	FieldRegionWidth,
@@ -124,6 +127,11 @@ func ByLabel(opts ...sql.OrderTermOption) OrderOption {
 // ByImageURL orders the results by the image_url field.
 func ByImageURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldImageURL, opts...).ToFunc()
+}
+
+// ByAudioURL orders the results by the audio_url field.
+func ByAudioURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAudioURL, opts...).ToFunc()
 }
 
 // ByRegionX orders the results by the region_x field.

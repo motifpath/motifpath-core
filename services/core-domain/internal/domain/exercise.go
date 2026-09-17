@@ -12,6 +12,7 @@ const (
 	ExerciseTypeAudioRecognition ExerciseType = "audio_recognition"
 	ExerciseTypeImageRecognition ExerciseType = "image_recognition"
 	ExerciseTypeImageChoice      ExerciseType = "image_choice"
+	ExerciseTypeAudioSelection   ExerciseType = "audio_selection"
 )
 
 // OptionRegionShape is the rendered shape of an OptionRegion.
@@ -33,13 +34,14 @@ type OptionRegion struct {
 }
 
 // Option is one selectable answer choice within an Exercise. Which of Label,
-// ImageURL, or Region is populated depends on the parent exercise's
+// ImageURL, AudioURL, or Region is populated depends on the parent exercise's
 // ExerciseType.
 type Option struct {
 	ID        string
 	IsCorrect bool
 	Label     *string
 	ImageURL  *string
+	AudioURL  *string
 	Region    *OptionRegion
 }
 
@@ -143,10 +145,10 @@ func validateExerciseContent(title, prompt string, exerciseType ExerciseType, sk
 
 func validateExerciseType(exerciseType ExerciseType) []FieldError {
 	switch exerciseType {
-	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice:
+	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition, ExerciseTypeImageRecognition, ExerciseTypeImageChoice, ExerciseTypeAudioSelection:
 		return nil
 	default:
-		return []FieldError{{Field: "exercise_type", Reason: "must be one of text_response, audio_recognition, image_recognition, image_choice"}}
+		return []FieldError{{Field: "exercise_type", Reason: "must be one of text_response, audio_recognition, image_recognition, image_choice, audio_selection"}}
 	}
 }
 
@@ -199,7 +201,8 @@ func validateOptions(exerciseType ExerciseType, options []Option) []FieldError {
 // optionShapeError reports the reason opt's shape is invalid for
 // exerciseType, or "" if it's valid. image_recognition options select a
 // region on the exercise's image; image_choice options each carry their own
-// image; text_response and audio_recognition options carry a text label.
+// image; audio_selection options each carry their own audio clip;
+// text_response and audio_recognition options carry a text label.
 func optionShapeError(exerciseType ExerciseType, opt Option) string {
 	switch exerciseType {
 	case ExerciseTypeImageRecognition:
@@ -209,6 +212,10 @@ func optionShapeError(exerciseType ExerciseType, opt Option) string {
 	case ExerciseTypeImageChoice:
 		if opt.ImageURL == nil || *opt.ImageURL == "" {
 			return "image_choice options must carry an image_url"
+		}
+	case ExerciseTypeAudioSelection:
+		if opt.AudioURL == nil || *opt.AudioURL == "" {
+			return "audio_selection options must carry an audio_url"
 		}
 	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition:
 		if opt.Label == nil || *opt.Label == "" {
