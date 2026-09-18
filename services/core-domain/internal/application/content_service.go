@@ -44,6 +44,43 @@ func (s *ContentService) GetContentNode(ctx context.Context, id string) (domain.
 	return s.nodes.GetByID(ctx, id)
 }
 
+// ListContentNodes returns content nodes from the library, optionally
+// narrowed by contentType, skill, and/or difficulty (any may be "" for "no
+// filter"). Only teachers and admins may list content nodes — the library is
+// an authoring surface, unlike GetContentNode which any authenticated user
+// may call for a specific known id.
+func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.User, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	return s.nodes.List(ctx, contentType, skill, difficulty)
+}
+
+// UpdateContentNode replaces the given content node's title and
+// classification. content_type and the classification's review state are
+// untouched. Only teachers and admins may update a content node. Returns
+// domain.ErrNotFound if no content node exists with the given id.
+func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id, title, skill, concept string, difficulty domain.DifficultyLevel) (domain.ContentNode, error) {
+	if !canManageContent(caller.Role) {
+		return domain.ContentNode{}, domain.ErrForbidden
+	}
+
+	existing, err := s.nodes.GetByID(ctx, id)
+	if err != nil {
+		return domain.ContentNode{}, err
+	}
+
+	updated, err := existing.Update(title, skill, concept, difficulty)
+	if err != nil {
+		return domain.ContentNode{}, err
+	}
+
+	if err := s.nodes.Update(ctx, updated); err != nil {
+		return domain.ContentNode{}, err
+	}
+	return s.nodes.GetByID(ctx, id)
+}
+
 // CreateExpandedContent attaches an expositive media item to the content
 // node identified by contentNodeID. Only teachers and admins may add
 // expanded content.

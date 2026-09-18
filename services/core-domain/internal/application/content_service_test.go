@@ -109,6 +109,160 @@ func TestContentService_GetContentNode(t *testing.T) {
 	})
 }
 
+func TestContentService_ListContentNodes(t *testing.T) {
+	t.Run("a teacher lists all content nodes", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		nodes.put(articleNode("node-2"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "", "")
+
+		require.NoError(t, err)
+		assert.Len(t, got, 2)
+	})
+
+	t.Run("an admin lists all content nodes", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), adminCaller(), "", "", "")
+
+		require.NoError(t, err)
+		assert.Len(t, got, 1)
+	})
+
+	t.Run("filters by content type", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		nodes.put(articleNode("node-2"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentTypeArticle, "", "")
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "node-2", got[0].ID)
+	})
+
+	t.Run("filters by skill", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-1", Classification: domain.Classification{Skill: "triad-shapes"}})
+		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Skill: "sweep-picking"}})
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "sweep-picking", "")
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "node-2", got[0].ID)
+	})
+
+	t.Run("listing when none exist returns an empty list", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "", "")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a student cannot list content nodes", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		_, err := svc.ListContentNodes(context.Background(), studentCaller(), "", "", "")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestContentService_UpdateContentNode(t *testing.T) {
+	t.Run("a teacher updates a content node's title and classification", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{
+			ID: "node-1", ContentType: domain.ContentTypeVideo,
+			Classification: domain.Classification{Skill: "triad-shapes", Concept: "chord-theory", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
+		})
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title",
+			"triad-shapes", "chord-theory", domain.DifficultyLevelIntermediate)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Revised title", got.Title)
+		assert.Equal(t, domain.DifficultyLevelIntermediate, got.Classification.DifficultyLevel)
+	})
+
+	t.Run("updating does not change content type", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title",
+			"skill", "concept", domain.DifficultyLevelBeginner)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.ContentTypeVideo, got.ContentType)
+	})
+
+	t.Run("updating does not reset an admin-confirmed review state", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{
+			ID: "node-1", ContentType: domain.ContentTypeVideo,
+			Classification: domain.Classification{Skill: "s", Concept: "c", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
+		})
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title", "s", "c", domain.DifficultyLevelBeginner)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.ReviewStateConfirmed, got.Classification.ReviewState)
+	})
+
+	t.Run("updating without a title is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "", "skill", "concept", domain.DifficultyLevelBeginner)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "title")
+	})
+
+	t.Run("updating without classification is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Title", "", "", "")
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "classification")
+	})
+
+	t.Run("a student cannot update a content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.UpdateContentNode(context.Background(), studentCaller(), "node-1", "Hijacked title", "skill", "concept", domain.DifficultyLevelBeginner)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("updating a content node that does not exist returns not found", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "missing", "Title", "skill", "concept", domain.DifficultyLevelBeginner)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
 func videoNode(id string) domain.ContentNode {
 	return domain.ContentNode{ID: id, ContentType: domain.ContentTypeVideo}
 }

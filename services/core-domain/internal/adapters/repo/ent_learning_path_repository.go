@@ -127,6 +127,75 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 	}, nil
 }
 
+func (r *EntLearningPathRepository) List(ctx context.Context) ([]domain.LearningPath, error) {
+	pathRows, err := r.client.LearningPath.Query().All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]domain.LearningPath, 0, len(pathRows))
+	for _, pathRow := range pathRows {
+		path, err := r.GetByID(ctx, pathRow.ID.String())
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, path)
+	}
+	return result, nil
+}
+
+// Replace deletes path's current items and inserts path.Items in their
+// place, in one transaction, then updates the path's own title. Items are
+// immutable once created (see LearningPathItem's schema), so a replace is
+// expressed as delete-then-recreate rather than a per-item update.
+func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.LearningPath) error {
+	id, err := uuid.Parse(path.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.LearningPath.UpdateOneID(id).
+		SetTitle(path.Title).
+		Save(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return rollback(tx, domain.ErrNotFound)
+		}
+		return rollback(tx, err)
+	}
+
+	if _, err := tx.LearningPathItem.Delete().
+		Where(learningpathitem.LearningPathID(id)).
+		Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+
+	itemBuilders := make([]*ent.LearningPathItemCreate, len(path.Items))
+	for i, item := range path.Items {
+		contentNodeID, err := uuid.Parse(item.ContentNodeID)
+		if err != nil {
+			return rollback(tx, err)
+		}
+		itemBuilders[i] = tx.LearningPathItem.Create().
+			SetID(uuid.New()).
+			SetLearningPathID(id).
+			SetContentNodeID(contentNodeID).
+			SetPosition(item.Position).
+			SetNillableSectionLabel(item.SectionLabel)
+	}
+	if len(itemBuilders) > 0 {
+		if _, err := tx.LearningPathItem.CreateBulk(itemBuilders...).Save(ctx); err != nil {
+			return rollback(tx, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // rollback rolls tx back and folds any rollback failure into the original
 // error rather than discarding it silently.
 func rollback(tx *ent.Tx, err error) error {

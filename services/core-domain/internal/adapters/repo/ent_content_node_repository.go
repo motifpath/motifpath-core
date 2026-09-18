@@ -82,6 +82,49 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 	return result, nil
 }
 
+func (r *EntContentNodeRepository) List(ctx context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	query := r.client.ContentNode.Query()
+	if contentType != "" {
+		query = query.Where(contentnode.ContentTypeEQ(contentnode.ContentType(contentType)))
+	}
+	if skill != "" {
+		query = query.Where(contentnode.SkillEQ(skill))
+	}
+	if difficulty != "" {
+		query = query.Where(contentnode.DifficultyLevelEQ(contentnode.DifficultyLevel(difficulty)))
+	}
+
+	rows, err := query.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.ContentNode, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, toDomainContentNode(row))
+	}
+	return result, nil
+}
+
+func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.ContentNode) error {
+	id, err := uuid.Parse(node.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	_, err = r.client.ContentNode.UpdateOneID(id).
+		SetTitle(node.Title).
+		SetSkill(node.Classification.Skill).
+		SetConcept(node.Classification.Concept).
+		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 	return domain.ContentNode{
 		ID:          row.ID.String(),

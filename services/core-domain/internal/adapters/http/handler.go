@@ -156,6 +156,62 @@ func (h *Handler) GetContentNode(ctx context.Context, request generated.GetConte
 	return generated.GetContentNode200JSONResponse(toContentNode(node)), nil
 }
 
+func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListContentNodesRequestObject) (generated.ListContentNodesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodes401JSONResponse(unauthorizedError()), nil
+	}
+
+	var contentType domain.ContentType
+	if request.Params.ContentType != nil {
+		contentType = domain.ContentType(*request.Params.ContentType)
+	}
+	var skill string
+	if request.Params.Skill != nil {
+		skill = *request.Params.Skill
+	}
+	var difficulty domain.DifficultyLevel
+	if request.Params.DifficultyLevel != nil {
+		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
+	}
+
+	nodes, err := h.content.ListContentNodes(ctx, caller, contentType, skill, difficulty)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListContentNodes200JSONResponse(toContentNodes(nodes)), nil
+}
+
+func (h *Handler) UpdateContentNode(ctx context.Context, request generated.UpdateContentNodeRequestObject) (generated.UpdateContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
+		body.Classification.Skill, body.Classification.Concept, domain.DifficultyLevel(body.Classification.DifficultyLevel))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateContentNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may update this content node")), nil
+		case errKindNotFound:
+			return generated.UpdateContentNode404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateContentNode200JSONResponse(toContentNode(node)), nil
+}
+
 func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateChallengeRequestObject) (generated.CreateChallengeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -499,6 +555,55 @@ func (h *Handler) GetLearningPath(ctx context.Context, request generated.GetLear
 	}
 
 	return generated.GetLearningPath200JSONResponse(toLearningPath(path)), nil
+}
+
+func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListLearningPathsRequestObject) (generated.ListLearningPathsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListLearningPaths401JSONResponse(unauthorizedError()), nil
+	}
+
+	paths, err := h.path.ListLearningPaths(ctx, caller)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListLearningPaths200JSONResponse(toLearningPaths(paths)), nil
+}
+
+func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.ReplaceLearningPathRequestObject) (generated.ReplaceLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	pathItems := make([]application.PathItemInput, len(request.Body.Items))
+	for i, item := range request.Body.Items {
+		pathItems[i] = application.PathItemInput{
+			ContentNodeID: item.ContentNodeId.String(),
+			SectionLabel:  item.SectionLabel,
+		}
+	}
+
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), request.Body.Title, pathItems)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceLearningPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ReplaceLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this learning path")), nil
+		case errKindNotFound:
+			return generated.ReplaceLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path)), nil
 }
 
 func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {

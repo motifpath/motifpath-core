@@ -44,6 +44,14 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 	}
 }
 
+func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
+	result := make([]generated.ContentNode, 0, len(nodes))
+	for _, n := range nodes {
+		result = append(result, toContentNode(n))
+	}
+	return result
+}
+
 func toChallenge(c domain.Challenge) generated.Challenge {
 	challenge := generated.Challenge{
 		ChallengeId:      mustUUID(c.ID),
@@ -242,6 +250,14 @@ func toLearningPath(p domain.LearningPath) generated.LearningPath {
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
 	}
+}
+
+func toLearningPaths(paths []domain.LearningPath) []generated.LearningPath {
+	result := make([]generated.LearningPath, 0, len(paths))
+	for _, p := range paths {
+		result = append(result, toLearningPath(p))
+	}
+	return result
 }
 
 func toPathAssignment(a domain.PathAssignment) generated.PathAssignment {

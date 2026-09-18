@@ -116,3 +116,49 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 		CreatedAt: createdAt,
 	}, nil
 }
+
+// Update validates and returns a copy of n with its title and classification
+// replaced. ContentType and Classification.ReviewState carry over unchanged
+// — content_type cannot change after creation since it determines which
+// ExpandedContent trigger fields are valid for items already attached to
+// this node, and an edit does not reset or require re-confirming an admin's
+// prior review.
+func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyLevel) (ContentNode, error) {
+	var errs []FieldError
+
+	if title == "" {
+		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
+	}
+
+	difficultyValid := false
+	switch difficulty {
+	case DifficultyLevelBeginner, DifficultyLevelIntermediate, DifficultyLevelAdvanced:
+		difficultyValid = true
+	}
+
+	switch {
+	case skill == "" && concept == "" && difficulty == "":
+		errs = append(errs, FieldError{Field: "classification", Reason: "must not be empty"})
+	default:
+		if skill == "" {
+			errs = append(errs, FieldError{Field: "skill", Reason: "must not be empty"})
+		}
+		if concept == "" {
+			errs = append(errs, FieldError{Field: "concept", Reason: "must not be empty"})
+		}
+		if !difficultyValid {
+			errs = append(errs, FieldError{Field: "difficulty_level", Reason: "must be beginner, intermediate, or advanced"})
+		}
+	}
+
+	if len(errs) > 0 {
+		return ContentNode{}, &ValidationError{Fields: errs}
+	}
+
+	updated := n
+	updated.Title = title
+	updated.Classification.Skill = skill
+	updated.Classification.Concept = concept
+	updated.Classification.DifficultyLevel = difficulty
+	return updated, nil
+}

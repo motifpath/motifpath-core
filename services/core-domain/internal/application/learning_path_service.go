@@ -75,3 +75,59 @@ func (s *LearningPathService) GetLearningPath(ctx context.Context, caller domain
 	}
 	return s.paths.GetByID(ctx, id)
 }
+
+// ListLearningPaths returns every learning path in the library. Teachers and
+// admins may list learning paths; students may not browse paths directly —
+// their view is through PathAssignmentService.GetMyPath.
+func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller domain.User) ([]domain.LearningPath, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	return s.paths.List(ctx)
+}
+
+// ReplaceLearningPath replaces the given path's title and items wholesale —
+// the same way CreateLearningPath establishes them initially, reusing
+// domain.NewLearningPath to recompute item positions from scratch. The
+// path's id, owner, and creation time are preserved. A content_node_id that
+// doesn't exist is a validation failure (400), matching CreateLearningPath.
+// Only teachers and admins may replace a learning path. Returns
+// domain.ErrNotFound if no path exists with the given id.
+func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller domain.User, id, title string, pathItems []PathItemInput) (domain.LearningPath, error) {
+	if !canManageContent(caller.Role) {
+		return domain.LearningPath{}, domain.ErrForbidden
+	}
+
+	existing, err := s.paths.GetByID(ctx, id)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+
+	contentNodeIDs := make([]string, len(pathItems))
+	for i, item := range pathItems {
+		contentNodeIDs[i] = item.ContentNodeID
+	}
+
+	found, err := s.nodes.GetByIDs(ctx, contentNodeIDs)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+
+	items := make([]domain.NewLearningPathItem, 0, len(pathItems))
+	for _, item := range pathItems {
+		node, ok := found[item.ContentNodeID]
+		if !ok {
+			return domain.LearningPath{}, domain.NewValidationError("content_node_id", "references a content node that does not exist: "+item.ContentNodeID)
+		}
+		items = append(items, domain.NewLearningPathItem{Node: node, SectionLabel: item.SectionLabel})
+	}
+
+	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, title, items, existing.CreatedAt)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if err := s.paths.Replace(ctx, replaced); err != nil {
+		return domain.LearningPath{}, err
+	}
+	return replaced, nil
+}

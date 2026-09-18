@@ -207,3 +207,134 @@ func TestLearningPathService_GetLearningPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
+
+func TestLearningPathService_ListLearningPaths(t *testing.T) {
+	t.Run("a teacher lists all learning paths", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", Title: "Week 1"})
+		paths.put(domain.LearningPath{ID: "path-2", Title: "Week 2"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller())
+
+		require.NoError(t, err)
+		assert.Len(t, got, 2)
+	})
+
+	t.Run("an admin lists all learning paths", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		got, err := svc.ListLearningPaths(context.Background(), adminCaller())
+
+		require.NoError(t, err)
+		assert.Len(t, got, 1)
+	})
+
+	t.Run("listing when none exist returns an empty list", func(t *testing.T) {
+		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
+
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller())
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a student cannot list learning paths", func(t *testing.T) {
+		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
+
+		_, err := svc.ListLearningPaths(context.Background(), studentCaller())
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
+	t.Run("a teacher reorders a learning path's items", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
+		nodes.put(domain.ContentNode{ID: "node-03", Title: "Three", ContentType: domain.ContentTypeArticle})
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Beginner Guitar",
+			Items: []domain.LearningPathItem{
+				{Position: 1, ContentNodeID: "node-01"},
+				{Position: 2, ContentNodeID: "node-02"},
+				{Position: 3, ContentNodeID: "node-03"},
+			}, CreatedAt: fixedCreatedAt})
+		svc := newLearningPathService(nodes, paths)
+
+		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "Beginner Guitar",
+			pathItems("node-02", "node-01", "node-03"))
+
+		require.NoError(t, err)
+		require.Len(t, got.Items, 3)
+		assert.Equal(t, "node-02", got.Items[0].ContentNodeID)
+		assert.Equal(t, 1, got.Items[0].Position)
+		assert.Equal(t, "node-01", got.Items[1].ContentNodeID)
+		assert.Equal(t, 2, got.Items[1].Position)
+	})
+
+	t.Run("replacing preserves the path's id, owner, and creation time", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "original-teacher", Title: "Old title",
+			Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}},
+			CreatedAt: fixedCreatedAt})
+		svc := newLearningPathService(nodes, paths)
+
+		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "New title", pathItems("node-01"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "path-1", got.ID)
+		assert.Equal(t, "original-teacher", got.TeacherID)
+		assert.Equal(t, "New title", got.Title)
+		assert.Equal(t, fixedCreatedAt, got.CreatedAt)
+	})
+
+	t.Run("replacing with an empty items array is rejected", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "Title", nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "items")
+	})
+
+	t.Run("replacing with an item referencing a non-existent content node is rejected", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "Title", pathItems("missing"))
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "content_node_id")
+	})
+
+	t.Run("a student cannot replace a learning path", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		_, err := svc.ReplaceLearningPath(context.Background(), studentCaller(), "path-1", "Title", pathItems("node-01"))
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("replacing a learning path that does not exist returns not found", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01"})
+		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "missing", "Title", pathItems("node-01"))
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
