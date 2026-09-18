@@ -64,6 +64,22 @@ func (w *world) responseIncludes(slug string) error {
 			}
 		}
 		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
+	case generated.ListContentNodes200JSONResponse:
+		want := nodeID(slug)
+		for _, n := range resp {
+			if n.ContentNodeId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected content nodes to include %s, got %+v", want, resp)
+	case generated.ListLearningPaths200JSONResponse:
+		want := pathID(slug)
+		for _, p := range resp {
+			if p.LearningPathId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected learning paths to include %s, got %+v", want, resp)
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
 	}
@@ -83,6 +99,14 @@ func (w *world) responseDoesNotInclude(slug string) error {
 		for _, e := range resp {
 			if e.ExerciseId == want {
 				return fmt.Errorf("expected exercises not to include %s, got %+v", want, resp)
+			}
+		}
+		return nil
+	case generated.ListContentNodes200JSONResponse:
+		want := nodeID(slug)
+		for _, n := range resp {
+			if n.ContentNodeId == want {
+				return fmt.Errorf("expected content nodes not to include %s, got %+v", want, resp)
 			}
 		}
 		return nil
@@ -108,6 +132,14 @@ func (w *world) responseIsEmptyList() error {
 	case generated.ListExercises200JSONResponse:
 		if len(resp) != 0 {
 			return fmt.Errorf("expected an empty list, got %d exercises", len(resp))
+		}
+	case generated.ListContentNodes200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d content nodes", len(resp))
+		}
+	case generated.ListLearningPaths200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d learning paths", len(resp))
 		}
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
@@ -150,7 +182,14 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateExpandedContent403JSONResponse,
 		generated.CreateLearningPath403JSONResponse,
 		generated.GetLearningPath403JSONResponse,
-		generated.AssignLearningPath403JSONResponse:
+		generated.AssignLearningPath403JSONResponse,
+		generated.ListContentNodes403JSONResponse,
+		generated.UpdateContentNode403JSONResponse,
+		generated.UpdateChallenge403JSONResponse,
+		generated.UpdateExpandedContent403JSONResponse,
+		generated.DeleteExpandedContent403JSONResponse,
+		generated.ListLearningPaths403JSONResponse,
+		generated.ReplaceLearningPath403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -178,7 +217,12 @@ func (w *world) requestRefusedNotFound() error {
 		generated.GetLearningPath404JSONResponse,
 		generated.AssignLearningPath404JSONResponse,
 		generated.GetMyPath404JSONResponse,
-		generated.GetMyProfile404JSONResponse:
+		generated.GetMyProfile404JSONResponse,
+		generated.UpdateContentNode404JSONResponse,
+		generated.UpdateChallenge404JSONResponse,
+		generated.UpdateExpandedContent404JSONResponse,
+		generated.DeleteExpandedContent404JSONResponse,
+		generated.ReplaceLearningPath404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -223,7 +267,14 @@ func (w *world) requestRefusedAuthError() error {
 		generated.CreateLearningPath401JSONResponse,
 		generated.GetLearningPath401JSONResponse,
 		generated.AssignLearningPath401JSONResponse,
-		generated.GetMyPath401JSONResponse:
+		generated.GetMyPath401JSONResponse,
+		generated.ListContentNodes401JSONResponse,
+		generated.UpdateContentNode401JSONResponse,
+		generated.UpdateChallenge401JSONResponse,
+		generated.UpdateExpandedContent401JSONResponse,
+		generated.DeleteExpandedContent401JSONResponse,
+		generated.ListLearningPaths401JSONResponse,
+		generated.ReplaceLearningPath401JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 401 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -272,6 +323,14 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateMediaUploadUrl400JSONResponse:
 		return resp.Errors, nil
 	case generated.AssignLearningPath400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateContentNode400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateChallenge400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateExpandedContent400JSONResponse:
+		return resp.Errors, nil
+	case generated.ReplaceLearningPath400JSONResponse:
 		return resp.Errors, nil
 	default:
 		return nil, fmt.Errorf("expected a 400 response with validation errors, got %#v (err=%v)", w.lastResp, w.lastErr)

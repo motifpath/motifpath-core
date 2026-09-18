@@ -110,6 +110,273 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the exercise no longer records "([^"]+)" among its linked content nodes$`, w.exerciseNoLongerRecordsLinkedContentNode)
 	sc.Step(`^both responses include "([^"]+)"$`, w.bothResponsesIncludePathExercise)
 	sc.Step(`^both responses return the path exercises in the same, link order$`, w.bothResponsesPathExercisesSameOrder)
+
+	sc.Step(`^an exercise "([^"]+)" exists with an estimated duration of (\d+) seconds$`, w.putExerciseWithDuration)
+	sc.Step(`^an exercise "([^"]+)" exists with no estimated duration$`, w.putExercise)
+
+	sc.Step(`^an exercise "([^"]+)" exists with a remediation target that is content node "([^"]+)"$`, w.putExerciseWithRemediationTargetNode)
+	sc.Step(`^"([^"]+)" creates a(?:n)? (\S+) exercise titled "([^"]+)" with prompt "([^"]+)" and one correct option and a remediation target that is content node "([^"]+)"$`, w.createsExerciseWithRemediationTargetNode)
+	sc.Step(`^"([^"]+)" creates a(?:n)? (\S+) exercise titled "([^"]+)" with prompt "([^"]+)" and one correct option and a remediation target with rich content and caption "([^"]+)"$`, w.createsExerciseWithRemediationTargetRichContent)
+	sc.Step(`^"([^"]+)" creates a(?:n)? (\S+) exercise titled "([^"]+)" with prompt "([^"]+)" and one correct option and remediation targets in order: content node "([^"]+)", then rich content with caption "([^"]+)"$`, w.createsExerciseWithRemediationTargetsInOrder)
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with a remediation target that is content node "([^"]+)"$`, w.updatesExerciseWithRemediationTargetNode)
+	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with the remediation_targets field omitted$`, w.updatesExerciseRemediationOmitted)
+	sc.Step(`^"([^"]+)" submits a create exercise request with a remediation target carrying both content_node_id and rich_content$`, w.submitsExerciseRemediationBoth)
+	sc.Step(`^"([^"]+)" submits a create exercise request with a remediation target carrying neither content_node_id nor rich_content$`, w.submitsExerciseRemediationNeither)
+	sc.Step(`^"([^"]+)" creates an exercise with a remediation target referencing a content node ID that does not exist$`, w.createsExerciseRemediationMissingNode)
+	sc.Step(`^the exercise records no remediation targets$`, w.exerciseRecordsNoRemediationTargets)
+	sc.Step(`^the exercise records one remediation target$`, w.exerciseRecordsOneRemediationTarget)
+	sc.Step(`^the exercise records (\d+) remediation targets in that order$`, w.exerciseRecordsNRemediationTargetsInOrder)
+	sc.Step(`^that remediation target is content node "([^"]+)"$`, w.remediationTargetIsContentNode)
+	sc.Step(`^that remediation target carries rich content with caption "([^"]+)"$`, w.remediationTargetCarriesRichContentCaption)
+}
+
+func (w *world) putExerciseWithDuration(slug, durationStr string) error {
+	duration, err := parseInt(durationStr)
+	if err != nil {
+		return err
+	}
+	label := "option-" + slug
+	w.exercises.put(domain.Exercise{
+		ID:                       exerciseID(slug).String(),
+		Title:                    "title-" + slug,
+		Prompt:                   domain.NewPlainTextPrompt("prompt-" + slug),
+		ExerciseType:             domain.ExerciseTypeTextResponse,
+		Options:                  []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
+		EstimatedDurationSeconds: &duration,
+		ChallengeIDs:             []string{},
+		ContentNodeIDs:           []string{},
+		CreatedAt:                fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putExerciseWithRemediationTargetNode(slug, nodeSlug string) error {
+	label := "option-" + slug
+	nodeID := nodeID(nodeSlug).String()
+	w.exercises.put(domain.Exercise{
+		ID:           exerciseID(slug).String(),
+		Title:        "title-" + slug,
+		Prompt:       domain.NewPlainTextPrompt("prompt-" + slug),
+		ExerciseType: domain.ExerciseTypeTextResponse,
+		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
+		RemediationTargets: []domain.RemediationTarget{
+			{ContentNodeID: &nodeID},
+		},
+		ChallengeIDs:   []string{},
+		ContentNodeIDs: []string{},
+		CreatedAt:      fixedNow,
+	})
+	return nil
+}
+
+// remediationRichContentDoc builds a minimal valid generated.PromptDocument
+// for a remediation target's inline rich content.
+func remediationRichContentDoc() generated.PromptDocument {
+	return promptDocFor("Remediation content.")
+}
+
+func (w *world) createsExerciseWithRemediationTargetNode(name, exerciseType, title, prompt, nodeSlug string) error {
+	et := generated.CreateExerciseRequestExerciseType(exerciseType)
+	imageURL, audioURL := mediaFieldsFor(et)
+	nodeUUID := nodeID(nodeSlug)
+	targets := []generated.RemediationTarget{{ContentNodeId: &nodeUUID}}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
+			ImageUrl: imageURL, AudioUrl: audioURL,
+			Options:            optionsFor(et),
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsExerciseWithRemediationTargetRichContent(name, exerciseType, title, prompt, caption string) error {
+	et := generated.CreateExerciseRequestExerciseType(exerciseType)
+	imageURL, audioURL := mediaFieldsFor(et)
+	rich := remediationRichContentDoc()
+	targets := []generated.RemediationTarget{{RichContent: &rich, Caption: &caption}}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
+			ImageUrl: imageURL, AudioUrl: audioURL,
+			Options:            optionsFor(et),
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsExerciseWithRemediationTargetsInOrder(name, exerciseType, title, prompt, nodeSlug, caption string) error {
+	et := generated.CreateExerciseRequestExerciseType(exerciseType)
+	imageURL, audioURL := mediaFieldsFor(et)
+	nodeUUID := nodeID(nodeSlug)
+	rich := remediationRichContentDoc()
+	targets := []generated.RemediationTarget{
+		{ContentNodeId: &nodeUUID},
+		{RichContent: &rich, Caption: &caption},
+	}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
+			ImageUrl: imageURL, AudioUrl: audioURL,
+			Options:            optionsFor(et),
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseWithRemediationTargetNode(name, exerciseSlug, nodeSlug string) error {
+	label := "correct option"
+	nodeUUID := nodeID(nodeSlug)
+	targets := []generated.RemediationTarget{{ContentNodeId: &nodeUUID}}
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title-" + exerciseSlug, Prompt: promptDocFor("prompt"),
+			Options:            []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) updatesExerciseRemediationOmitted(name, exerciseSlug string) error {
+	label := "correct option"
+	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
+		ExerciseId: exerciseID(exerciseSlug),
+		Body: &generated.UpdateExerciseRequest{
+			Title: "title-" + exerciseSlug, Prompt: promptDocFor("prompt"),
+			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) submitsExerciseRemediationBoth(string) error {
+	label := "correct option"
+	nodeUUID := nodeID("triad-remediation")
+	rich := remediationRichContentDoc()
+	targets := []generated.RemediationTarget{{ContentNodeId: &nodeUUID, RichContent: &rich}}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options:            []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) submitsExerciseRemediationNeither(string) error {
+	label := "correct option"
+	targets := []generated.RemediationTarget{{}}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options:            []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsExerciseRemediationMissingNode(string) error {
+	label := "correct option"
+	nodeUUID := deterministicUUID("node", "does-not-exist")
+	targets := []generated.RemediationTarget{{ContentNodeId: &nodeUUID}}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options:            []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			RemediationTargets: &targets,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) exerciseRemediationTargets() ([]generated.RemediationTarget, error) {
+	switch resp := w.lastResp.(type) {
+	case generated.CreateExercise201JSONResponse:
+		return resp.RemediationTargets, nil
+	case generated.UpdateExercise200JSONResponse:
+		return resp.RemediationTargets, nil
+	default:
+		return nil, fmt.Errorf("expected a 201 or 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+}
+
+func (w *world) exerciseRecordsNoRemediationTargets() error {
+	targets, err := w.exerciseRemediationTargets()
+	if err != nil {
+		return err
+	}
+	if len(targets) != 0 {
+		return fmt.Errorf("expected no remediation targets, got %+v", targets)
+	}
+	return nil
+}
+
+func (w *world) exerciseRecordsOneRemediationTarget() error {
+	targets, err := w.exerciseRemediationTargets()
+	if err != nil {
+		return err
+	}
+	if len(targets) != 1 {
+		return fmt.Errorf("expected exactly 1 remediation target, got %d: %+v", len(targets), targets)
+	}
+	return nil
+}
+
+func (w *world) exerciseRecordsNRemediationTargetsInOrder(countStr string) error {
+	count, err := parseInt(countStr)
+	if err != nil {
+		return err
+	}
+	targets, err := w.exerciseRemediationTargets()
+	if err != nil {
+		return err
+	}
+	if len(targets) != count {
+		return fmt.Errorf("expected %d remediation targets, got %d: %+v", count, len(targets), targets)
+	}
+	return nil
+}
+
+func (w *world) remediationTargetIsContentNode(nodeSlug string) error {
+	targets, err := w.exerciseRemediationTargets()
+	if err != nil {
+		return err
+	}
+	want := nodeID(nodeSlug)
+	for _, t := range targets {
+		if t.ContentNodeId != nil && *t.ContentNodeId == want {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected a remediation target with content_node_id %s, got %+v", want, targets)
+}
+
+func (w *world) remediationTargetCarriesRichContentCaption(caption string) error {
+	targets, err := w.exerciseRemediationTargets()
+	if err != nil {
+		return err
+	}
+	for _, t := range targets {
+		if t.RichContent != nil && t.Caption != nil && *t.Caption == caption {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected a remediation target with rich_content and caption %q, got %+v", caption, targets)
 }
 
 func (w *world) putExercise(slug string) error {
@@ -423,6 +690,11 @@ func (w *world) submitsExerciseUnstructuredPrompt(string) error {
 	return err
 }
 
+// submitsExerciseUnsupportedPromptNode submits a prompt document containing
+// a node type this domain has never supported ("footnote"), not "video" —
+// video and audio prompt nodes are now valid everywhere a rich-content
+// document is accepted, so a real unsupported type is needed to still
+// exercise this rejection.
 func (w *world) submitsExerciseUnsupportedPromptNode(string) error {
 	label := "correct option"
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
@@ -430,7 +702,7 @@ func (w *world) submitsExerciseUnsupportedPromptNode(string) error {
 			Title: "title",
 			Prompt: generated.PromptDocument{
 				Type:    generated.Doc,
-				Content: []generated.PromptNode{{Type: generated.PromptNodeType("video")}},
+				Content: []generated.PromptNode{{Type: generated.PromptNodeType("footnote")}},
 			},
 			ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
 			Options:      []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
@@ -729,6 +1001,7 @@ func (w *world) exerciseNoLongerCarriesSkillTag(tag string) error {
 }
 
 func (w *world) linksExerciseToChallenge(name, exerciseSlug, challengeSlug string) error {
+	w.lastExerciseSlug = exerciseSlug
 	resp, err := w.handler.LinkExerciseToChallenge(w.ctx(), generated.LinkExerciseToChallengeRequestObject{
 		ChallengeId: challengeID(challengeSlug),
 		ExerciseId:  exerciseID(exerciseSlug),
@@ -842,7 +1115,22 @@ func (w *world) exerciseRecordsLinkedChallenge(challengeSlug string) error {
 	case generated.UpdateExercise200JSONResponse:
 		challengeIDs = resp.ChallengeIds
 	default:
-		return fmt.Errorf("expected a 201 or 200 response, got %#v", w.lastResp)
+		// The most recent action (e.g. updating the challenge itself) did
+		// not return an exercise-shaped response — fall back to a fresh
+		// GetExercise for the most recently linked exercise, to assert its
+		// links were left untouched by that action.
+		if w.lastExerciseSlug == "" {
+			return fmt.Errorf("expected a 201 or 200 exercise response, got %#v", w.lastResp)
+		}
+		getResp, err := w.handler.GetExercise(w.ctx(), generated.GetExerciseRequestObject{ExerciseId: exerciseID(w.lastExerciseSlug)})
+		if err != nil {
+			return err
+		}
+		exResp, ok := getResp.(generated.GetExercise200JSONResponse)
+		if !ok {
+			return fmt.Errorf("expected a 200 response, got %#v", getResp)
+		}
+		challengeIDs = exResp.ChallengeIds
 	}
 	for _, id := range challengeIDs {
 		if id == challengeID(challengeSlug) {
