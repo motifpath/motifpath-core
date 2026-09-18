@@ -20,10 +20,23 @@ func mustUUID(id string) uuid.UUID {
 	return uuid.MustParse(id)
 }
 
+func toGeneratedLanguage(l domain.Language) generated.Language {
+	return generated.Language{Code: l.Code, Name: l.Name}
+}
+
+func toGeneratedLanguages(languages []domain.Language) []generated.Language {
+	result := make([]generated.Language, len(languages))
+	for i, l := range languages {
+		result[i] = toGeneratedLanguage(l)
+	}
+	return result
+}
+
 func toUserProfile(u domain.User) generated.UserProfile {
 	return generated.UserProfile{
 		UserId:       mustUUID(u.ID),
 		Role:         generated.UserProfileRole(u.Role),
+		Locale:       toGeneratedLanguage(u.Locale),
 		RegisteredAt: u.RegisteredAt,
 	}
 }
@@ -40,6 +53,7 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 			DifficultyLevel: generated.ClassificationDifficultyLevel(n.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(n.Classification.ReviewState),
 		},
+		Languages: toGeneratedLanguages(n.Languages),
 		CreatedAt: n.CreatedAt,
 	}
 }
@@ -129,6 +143,7 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		Options:                  options,
 		ChallengeIds:             challengeIDs,
 		ContentNodeIds:           contentNodeIDs,
+		Languages:                toGeneratedLanguages(e.Languages),
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
 		CreatedAt:                e.CreatedAt,
 	}

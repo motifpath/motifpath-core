@@ -140,7 +140,7 @@ func run(logger *slog.Logger) error {
 	strictHandler := generated.NewStrictHandler(handler, nil)
 
 	router := generated.HandlerWithOptions(strictHandler, generated.ChiServerOptions{
-		Middlewares: []generated.MiddlewareFunc{appHTTP.ClerkAuthMiddleware},
+		Middlewares: []generated.MiddlewareFunc{appHTTP.ClerkAuthMiddleware, appHTTP.AcceptLanguageMiddleware},
 	})
 
 	srv := &http.Server{
@@ -235,6 +235,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	mediaStorage := repo.NewS3MediaStorage(s3Client, cfg.mediaS3Bucket, cfg.mediaPublicBaseURL)
 
 	userRepo := repo.NewEntUserRepository(entClient)
+	languageRepo := repo.NewEntLanguageRepository(entClient)
 	nodeRepo := repo.NewEntContentNodeRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
@@ -247,13 +248,13 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
 
-	identityService := application.NewIdentityService(userRepo, newID, now)
+	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, mathrand.Shuffle)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, completionReader, newID, now)
+	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, mediaService, pathService, assignmentService,
 		learningGraphPinger, completionReader), nil
