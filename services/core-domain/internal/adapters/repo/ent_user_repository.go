@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -24,10 +25,18 @@ func (r *EntUserRepository) Create(ctx context.Context, u domain.User) error {
 	if err != nil {
 		return err
 	}
+	localeRow, err := r.client.Language.Query().Where(language.Code(u.Locale.Code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.NewValidationError("locale", "must be a known language code")
+		}
+		return err
+	}
 	_, err = r.client.User.Create().
 		SetID(id).
 		SetClerkUserID(u.ClerkUserID).
 		SetRole(user.Role(u.Role)).
+		SetLocaleID(localeRow.ID).
 		SetRegisteredAt(u.RegisteredAt).
 		Save(ctx)
 	if err != nil {
@@ -40,7 +49,7 @@ func (r *EntUserRepository) Create(ctx context.Context, u domain.User) error {
 }
 
 func (r *EntUserRepository) GetByClerkUserID(ctx context.Context, clerkUserID string) (domain.User, error) {
-	row, err := r.client.User.Query().Where(user.ClerkUserID(clerkUserID)).Only(ctx)
+	row, err := r.client.User.Query().Where(user.ClerkUserID(clerkUserID)).WithLocale().Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.User{}, domain.ErrNotFound
@@ -55,7 +64,7 @@ func (r *EntUserRepository) GetByID(ctx context.Context, id string) (domain.User
 	if err != nil {
 		return domain.User{}, domain.ErrNotFound
 	}
-	row, err := r.client.User.Get(ctx, parsed)
+	row, err := r.client.User.Query().Where(user.ID(parsed)).WithLocale().Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.User{}, domain.ErrNotFound
@@ -65,11 +74,38 @@ func (r *EntUserRepository) GetByID(ctx context.Context, id string) (domain.User
 	return toDomainUser(row), nil
 }
 
+func (r *EntUserRepository) UpdateLocale(ctx context.Context, id, locale string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	localeRow, err := r.client.Language.Query().Where(language.Code(locale)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.NewValidationError("locale", "must be a known language code")
+		}
+		return err
+	}
+	_, err = r.client.User.UpdateOneID(parsed).SetLocaleID(localeRow.ID).Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 func toDomainUser(row *ent.User) domain.User {
+	var locale domain.Language
+	if row.Edges.Locale != nil {
+		locale = domain.Language{Code: row.Edges.Locale.Code, Name: row.Edges.Locale.Name}
+	}
 	return domain.User{
 		ID:           row.ID.String(),
 		ClerkUserID:  row.ClerkUserID,
 		Role:         domain.Role(row.Role),
+		Locale:       locale,
 		RegisteredAt: row.RegisteredAt,
 	}
 }

@@ -39,6 +39,11 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
+	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return rollback(tx, err)
+	}
+
 	builder := tx.Exercise.Create().
 		SetID(id).
 		SetTitle(ex.Title).
@@ -48,42 +53,51 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
-		SetCreatedAt(ex.CreatedAt)
+		SetCreatedAt(ex.CreatedAt).
+		AddLanguageIDs(langIDs...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
+	if err := saveExerciseOptions(ctx, tx, id, ex.Options); err != nil {
+		return rollback(tx, err)
+	}
+
+	return tx.Commit()
+}
+
+// saveExerciseOptions bulk-creates exerciseID's ExerciseOption rows, shared
+// by Create and Update (which first deletes the existing set) since both
+// establish options from a complete replacement slice the same way.
+func saveExerciseOptions(ctx context.Context, tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) error {
+	optionBuilders := make([]*ent.ExerciseOptionCreate, len(options))
+	for i, opt := range options {
 		optionID, err := uuid.Parse(opt.ID)
 		if err != nil {
-			return rollback(tx, err)
+			return err
 		}
 		optBuilder := tx.ExerciseOption.Create().
 			SetID(optionID).
-			SetExerciseID(id).
+			SetExerciseID(exerciseID).
 			SetIsCorrect(opt.IsCorrect).
 			SetNillableLabel(opt.Label).
 			SetNillableImageURL(opt.ImageURL).
 			SetNillableAudioURL(opt.AudioURL)
 		if opt.Region != nil {
-			shape := exerciseoption.RegionShape(opt.Region.Shape)
 			optBuilder = optBuilder.
 				SetRegionX(opt.Region.X).
 				SetRegionY(opt.Region.Y).
 				SetRegionWidth(opt.Region.Width).
 				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(shape)
+				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
 		}
 		optionBuilders[i] = optBuilder
 	}
-	if len(optionBuilders) > 0 {
-		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
-			return rollback(tx, err)
-		}
+	if len(optionBuilders) == 0 {
+		return nil
 	}
-
-	return tx.Commit()
+	_, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx)
+	return err
 }
 
 func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.Exercise, error) {
@@ -96,6 +110,7 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -228,6 +243,7 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -253,6 +269,7 @@ func (r *EntExerciseRepository) ListBySkillTag(ctx context.Context, skillTag str
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -280,6 +297,7 @@ func (r *EntExerciseRepository) List(ctx context.Context, skillTag string, exerc
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		Order(exercise.ByCreatedAt())
 	if exerciseType != "" {
 		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(exerciseType)))
@@ -326,6 +344,11 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
+	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return rollback(tx, err)
+	}
+
 	_, err = tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
@@ -333,6 +356,8 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
+		ClearLanguages().
+		AddLanguageIDs(langIDs...).
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -345,33 +370,8 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
-		optionID, err := uuid.Parse(opt.ID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(id).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
-		}
-		optionBuilders[i] = optBuilder
-	}
-	if len(optionBuilders) > 0 {
-		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
-			return rollback(tx, err)
-		}
+	if err := saveExerciseOptions(ctx, tx, id, ex.Options); err != nil {
+		return rollback(tx, err)
 	}
 
 	return tx.Commit()
@@ -400,6 +400,11 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		options[i] = toDomainOption(opt)
 	}
 
+	languages := make([]domain.Language, len(row.Edges.Languages))
+	for i, lang := range row.Edges.Languages {
+		languages[i] = domain.Language{Code: lang.Code, Name: lang.Name}
+	}
+
 	return domain.Exercise{
 		ID:                       row.ID.String(),
 		Title:                    row.Title,
@@ -412,6 +417,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		Options:                  options,
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
+		Languages:                languages,
 		CreatedAt:                row.CreatedAt,
 	}
 }

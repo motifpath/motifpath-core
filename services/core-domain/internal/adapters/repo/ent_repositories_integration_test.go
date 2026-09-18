@@ -21,7 +21,7 @@ func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEntUserRepository(client)
 
-	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleStudent, RegisteredAt: fixedAt}
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en", Name: "English"}, RegisteredAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, user))
 
 	byClerk, err := repo.GetByClerkUserID(ctx, "clerk-alice")
@@ -32,10 +32,38 @@ func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, user, byID)
 
-	err = repo.Create(ctx, domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleTeacher, RegisteredAt: fixedAt})
+	err = repo.Create(ctx, domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleTeacher, Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt})
 	assert.ErrorIs(t, err, domain.ErrAlreadyExists)
 
 	_, err = repo.GetByID(ctx, uuid.NewString())
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntUserRepository_Create_UnknownLocaleRejected(t *testing.T) {
+	repo := NewEntUserRepository(setupPostgres(t))
+
+	err := repo.Create(context.Background(), domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-bob", Role: domain.RoleStudent, Locale: domain.Language{Code: "xx"}, RegisteredAt: fixedAt})
+
+	var valErr *domain.ValidationError
+	require.ErrorAs(t, err, &valErr)
+	assert.Equal(t, "locale", valErr.Fields[0].Field)
+}
+
+func TestEntUserRepository_UpdateLocale(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntUserRepository(client)
+
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-carol", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, user))
+
+	require.NoError(t, repo.UpdateLocale(ctx, user.ID, "pt_BR"))
+
+	got, err := repo.GetByID(ctx, user.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.Language{Code: "pt_BR", Name: "Portuguese (Brazil)"}, got.Locale)
+
+	err = repo.UpdateLocale(ctx, uuid.NewString(), "en")
 	assert.ErrorIs(t, err, domain.ErrNotFound)
 }
 
@@ -48,16 +76,21 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: teacherID, Title: "Intro", ContentType: domain.ContentTypeVideo,
 		Classification: domain.Classification{Skill: "triad-shapes", Concept: "chord-theory", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
+		Languages:      []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
 		CreatedAt:      fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, node))
 
 	got, err := repo.GetByID(ctx, node.ID)
 	require.NoError(t, err)
+	node.Languages = []domain.Language{{Code: "en", Name: "English"}, {Code: "pt_BR", Name: "Portuguese (Brazil)"}}
+	assert.ElementsMatch(t, node.Languages, got.Languages)
+	got.Languages = node.Languages
 	assert.Equal(t, node, got)
 
 	node2 := node
 	node2.ID = uuid.NewString()
+	node2.Languages = []domain.Language{{Code: "any"}}
 	require.NoError(t, repo.Create(ctx, node2))
 
 	byIDs, err := repo.GetByIDs(ctx, []string{node.ID, node2.ID, uuid.NewString()})
@@ -65,6 +98,19 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	assert.Len(t, byIDs, 2)
 	assert.Contains(t, byIDs, node.ID)
 	assert.Contains(t, byIDs, node2.ID)
+	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, byIDs[node2.ID].Languages)
+}
+
+func TestEntLanguageRepository_GetByCode(t *testing.T) {
+	repo := NewEntLanguageRepository(setupPostgres(t))
+	ctx := context.Background()
+
+	lang, err := repo.GetByCode(ctx, "pt_BR")
+	require.NoError(t, err)
+	assert.Equal(t, domain.Language{Code: "pt_BR", Name: "Portuguese (Brazil)"}, lang)
+
+	_, err = repo.GetByCode(ctx, "xx")
+	assert.ErrorIs(t, err, domain.ErrNotFound)
 }
 
 func TestEntChallengeRepository_CreateAndGet(t *testing.T) {
@@ -136,6 +182,7 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 		},
 		ChallengeIDs:   []string{},
 		ContentNodeIDs: []string{},
+		Languages:      []domain.Language{{Code: "any"}},
 		CreatedAt:      fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, exercise))
@@ -149,6 +196,33 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	assert.ElementsMatch(t, exercise.Options, got.Options)
 	assert.Empty(t, got.ChallengeIDs)
 	assert.Empty(t, got.ContentNodeIDs)
+	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, got.Languages)
+}
+
+// TestEntExerciseRepository_Update_ReplacesLanguages confirms Update fully
+// replaces the exercise's language tags rather than merging with the old
+// set — the same complete-replacement contract Update already gives Options.
+func TestEntExerciseRepository_Update_ReplacesLanguages(t *testing.T) {
+	ctx := context.Background()
+	repo := NewEntExerciseRepository(setupPostgres(t))
+	label := "A major"
+
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Name the chord", Prompt: domain.NewPlainTextPrompt("Name this chord"),
+		ExerciseType: domain.ExerciseTypeTextResponse,
+		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
+		ChallengeIDs: []string{}, ContentNodeIDs: []string{},
+		Languages: []domain.Language{{Code: "en"}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	exercise.Languages = []domain.Language{{Code: "pt_BR"}}
+	require.NoError(t, repo.Update(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []domain.Language{{Code: "pt_BR", Name: "Portuguese (Brazil)"}}, got.Languages)
 }
 
 // TestEntExerciseRepository_LegacyPlainTextPromptShim writes a prompt column

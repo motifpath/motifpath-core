@@ -36,5 +36,23 @@ func setupPostgres(t *testing.T) *ent.Client {
 	})
 
 	require.NoError(t, client.Schema.Create(context.Background()))
+	seedLanguages(t, client)
 	return client
+}
+
+// seedLanguages inserts the en/pt_BR/any system rows the Atlas migration
+// seeds in production (see ADR-024) — auto-migrate creates only the DDL, not
+// this data, so every test needing a resolvable locale needs it seeded here
+// once per scratch database.
+func seedLanguages(t *testing.T, client *ent.Client) {
+	t.Helper()
+	ctx := context.Background()
+	seeds := []struct{ code, name string }{
+		{"en", "English"},
+		{"pt_BR", "Portuguese (Brazil)"},
+		{"any", "Language-agnostic"},
+	}
+	for _, s := range seeds {
+		require.NoError(t, client.Language.Create().SetCode(s.code).SetName(s.name).Exec(ctx))
+	}
 }
