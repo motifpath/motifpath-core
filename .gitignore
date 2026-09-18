@@ -28,3 +28,6 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# Local implementation plans (ADR-022) — never committed
+plans/
