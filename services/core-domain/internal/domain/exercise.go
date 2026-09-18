@@ -56,6 +56,13 @@ const (
 	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
 	PromptNodeTypeTableCell   PromptNodeType = "tableCell"
 	PromptNodeTypeImage       PromptNodeType = "image"
+	// PromptNodeTypeAudio and PromptNodeTypeVideo are available to rich_text
+	// ExpandedContent and Exercise.RemediationTargets' rich content — the
+	// exercise-prompt authoring toolbar does not offer them, so they never
+	// appear in a PromptDocument used as an exercise's own prompt, but this
+	// shared type permits them for the surfaces that do.
+	PromptNodeTypeAudio PromptNodeType = "audio"
+	PromptNodeTypeVideo PromptNodeType = "video"
 )
 
 // PromptNodeAttrs holds the type-specific attributes a PromptNode may
@@ -143,6 +150,18 @@ type Option struct {
 	Region    *OptionRegion
 }
 
+// RemediationTarget is one piece of content recommended to a student who
+// answers a specific exercise incorrectly. Exactly one of ContentNodeID or
+// RichContent must be set — a target is either a reference to an existing
+// content node, or inline-authored content (e.g. a specific external video
+// or article, with a caption explaining why it's suggested) using the same
+// rich-content model as an exercise prompt.
+type RemediationTarget struct {
+	ContentNodeID *string
+	RichContent   *PromptDocument
+	Caption       *string
+}
+
 // Exercise is a reusable, standalone practice item classified by skill tags
 // and independent of any single challenge. It is checked by option
 // selection: the student's selected option ID(s) must match the option(s)
@@ -157,6 +176,9 @@ type Exercise struct {
 	AudioURL                 *string
 	Options                  []Option
 	EstimatedDurationSeconds *int
+	// RemediationTargets is the ordered content recommended to a student who
+	// answers this exercise incorrectly. May be empty.
+	RemediationTargets []RemediationTarget
 	// ChallengeIDs are the challenges this exercise is currently linked to.
 	// Managed exclusively through LinkChallenge/UnlinkChallenge — never set
 	// directly by NewExercise beyond the empty slice a brand-new exercise
@@ -171,10 +193,13 @@ type Exercise struct {
 
 // NewExercise validates and constructs a standalone Exercise, not yet linked
 // to any challenge or content node. Whether it later gets linked to a
-// challenge or node that exists is an application-layer concern.
-func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
+// challenge or node that exists is an application-layer concern — as is
+// whether each remediationTargets[i].ContentNodeID refers to a content node
+// that actually exists, which requires a repository round-trip this
+// constructor can't perform.
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
-	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)...)
+	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -189,6 +214,7 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		AudioURL:                 audioURL,
 		Options:                  options,
 		EstimatedDurationSeconds: estimatedDurationSeconds,
+		RemediationTargets:       remediationTargets,
 		ChallengeIDs:             []string{},
 		ContentNodeIDs:           []string{},
 		CreatedAt:                createdAt,
@@ -196,14 +222,14 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 }
 
 // Update validates and returns a copy of e with its authored content
-// replaced: title, prompt, skill tags, stimulus media, options, and
-// estimated duration. ID, ExerciseType, ChallengeIDs, ContentNodeIDs, and
-// CreatedAt carry over unchanged — exercise_type cannot change after
-// creation since it determines the option shape (region vs. text vs.
-// image), and links are managed exclusively through the exercise's
+// replaced: title, prompt, skill tags, stimulus media, options, estimated
+// duration, and remediation targets. ID, ExerciseType, ChallengeIDs,
+// ContentNodeIDs, and CreatedAt carry over unchanged — exercise_type cannot
+// change after creation since it determines the option shape (region vs.
+// text vs. image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) (Exercise, error) {
-	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) (Exercise, error) {
+	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -216,13 +242,14 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string
 	updated.AudioURL = audioURL
 	updated.Options = options
 	updated.EstimatedDurationSeconds = estimatedDurationSeconds
+	updated.RemediationTargets = remediationTargets
 	return updated, nil
 }
 
 // validateExerciseContent checks the fields shared by creation and update —
 // everything except exercise_type itself, which only creation sets and only
 // creation validates.
-func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) []FieldError {
+func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
@@ -235,7 +262,29 @@ func validateExerciseContent(title string, prompt PromptDocument, exerciseType E
 	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
 		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
 	}
+	errs = append(errs, validateRemediationTargets(remediationTargets)...)
 
+	return errs
+}
+
+// validateRemediationTargets checks that each target carries exactly one of
+// ContentNodeID or RichContent, and that any RichContent is a well-formed
+// document. Whether a ContentNodeID refers to a content node that actually
+// exists is an application-layer concern.
+func validateRemediationTargets(targets []RemediationTarget) []FieldError {
+	var errs []FieldError
+	for _, target := range targets {
+		hasNode := target.ContentNodeID != nil && *target.ContentNodeID != ""
+		hasRich := target.RichContent != nil
+		switch {
+		case hasNode == hasRich:
+			errs = append(errs, FieldError{Field: "remediation_targets", Reason: "each target must carry exactly one of content_node_id or rich_content"})
+		case hasRich:
+			for _, docErr := range validatePromptDocument(*target.RichContent) {
+				errs = append(errs, FieldError{Field: "remediation_targets", Reason: docErr.Reason})
+			}
+		}
+	}
 	return errs
 }
 
@@ -264,7 +313,7 @@ func promptNodeError(node PromptNode) string {
 	case PromptNodeTypeHeading, PromptNodeTypeParagraph, PromptNodeTypeText,
 		PromptNodeTypeBulletList, PromptNodeTypeOrderedList, PromptNodeTypeListItem,
 		PromptNodeTypeTable, PromptNodeTypeTableRow, PromptNodeTypeTableHeader, PromptNodeTypeTableCell,
-		PromptNodeTypeImage:
+		PromptNodeTypeImage, PromptNodeTypeAudio, PromptNodeTypeVideo:
 	default:
 		return "contains an unsupported node type \"" + string(node.Type) + "\""
 	}

@@ -48,7 +48,7 @@ func (w *world) putExpandedContentRaw(slug, nodeSlug string, triggerAtSeconds, h
 		ID:                 expandedID(slug).String(),
 		ContentNodeID:      nodeID(nodeSlug).String(),
 		ContentType:        domain.ExpandedContentTypeImage,
-		MediaURL:           "https://cdn.example.com/" + slug + ".png",
+		MediaURL:           strPtr("https://cdn.example.com/" + slug + ".png"),
 		TriggerAtSeconds:   triggerAtSeconds,
 		HideAtSeconds:      hideAtSeconds,
 		TriggerAtParagraph: triggerAtParagraph,
@@ -107,7 +107,7 @@ func (w *world) addsVideoExpandedContent(contentType domain.ExpandedContentType)
 			ContentNodeId: nodeID(nodeSlug),
 			Body: &generated.CreateExpandedContentRequest{
 				ContentType:      generated.CreateExpandedContentRequestContentType(contentType),
-				MediaUrl:         "https://cdn.example.com/media.png",
+				MediaUrl:         strPtr("https://cdn.example.com/media.png"),
 				TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
 			},
 		})
@@ -130,7 +130,7 @@ func (w *world) addsArticleExpandedContent(contentType domain.ExpandedContentTyp
 			ContentNodeId: nodeID(nodeSlug),
 			Body: &generated.CreateExpandedContentRequest{
 				ContentType:        generated.CreateExpandedContentRequestContentType(contentType),
-				MediaUrl:           "https://cdn.example.com/media.png",
+				MediaUrl:           strPtr("https://cdn.example.com/media.png"),
 				TriggerAtParagraph: &paragraph, DurationMs: &duration,
 			},
 		})
@@ -148,7 +148,7 @@ func (w *world) addsThreeExpandedContentItems(name, nodeSlug string) error {
 			ContentNodeId: nodeID(nodeSlug),
 			Body: &generated.CreateExpandedContentRequest{
 				ContentType:      generated.CreateExpandedContentRequestContentTypeImage,
-				MediaUrl:         fmt.Sprintf("https://cdn.example.com/media-%d.png", i),
+				MediaUrl:         strPtr(fmt.Sprintf("https://cdn.example.com/media-%d.png", i)),
 				TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
 			},
 		})
@@ -180,7 +180,7 @@ func (w *world) retrievesExpandedContent(name, slug string) error {
 func (w *world) submitsExpandedContentMissingType(string) error {
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: nodeID(w.lastNodeSlug),
-		Body:          &generated.CreateExpandedContentRequest{MediaUrl: "https://cdn.example.com/media.png"},
+		Body:          &generated.CreateExpandedContentRequest{MediaUrl: strPtr("https://cdn.example.com/media.png")},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
@@ -207,7 +207,7 @@ func (w *world) submitsExpandedContentArticleFieldsForVideo(name, paragraphStr, 
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: nodeID(w.lastNodeSlug),
 		Body: &generated.CreateExpandedContentRequest{
-			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: "https://cdn.example.com/media.png",
+			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: strPtr("https://cdn.example.com/media.png"),
 			TriggerAtParagraph: &paragraph, DurationMs: &duration,
 		},
 	})
@@ -227,7 +227,7 @@ func (w *world) submitsExpandedContentVideoFields(name, triggerStr, hideStr stri
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: nodeID(w.lastNodeSlug),
 		Body: &generated.CreateExpandedContentRequest{
-			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: "https://cdn.example.com/media.png",
+			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: strPtr("https://cdn.example.com/media.png"),
 			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
 		},
 	})
@@ -247,7 +247,7 @@ func (w *world) submitsExpandedContentParagraphOnly(name, paragraphStr string) e
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: nodeID(w.lastNodeSlug),
 		Body: &generated.CreateExpandedContentRequest{
-			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: "https://cdn.example.com/media.png",
+			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: strPtr("https://cdn.example.com/media.png"),
 			TriggerAtParagraph: &paragraph,
 		},
 	})
@@ -260,7 +260,7 @@ func (w *world) addsExpandedContentToMissingNode(string) error {
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: deterministicUUID("node", "does-not-exist"),
 		Body: &generated.CreateExpandedContentRequest{
-			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: "https://cdn.example.com/media.png",
+			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: strPtr("https://cdn.example.com/media.png"),
 			TriggerAtSeconds: &seconds, HideAtSeconds: &hide,
 		},
 	})
@@ -279,7 +279,7 @@ func (w *world) attemptsAddExpandedContent(name, nodeSlug string) error {
 	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
 		ContentNodeId: nodeID(nodeSlug),
 		Body: &generated.CreateExpandedContentRequest{
-			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: "https://cdn.example.com/media.png",
+			ContentType: generated.CreateExpandedContentRequestContentTypeImage, MediaUrl: strPtr("https://cdn.example.com/media.png"),
 			TriggerAtSeconds: &seconds, HideAtSeconds: &hide,
 		},
 	})
@@ -351,7 +351,7 @@ func (w *world) expandedContentResponseComplete() error {
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if resp.ContentType == "" || resp.MediaUrl == "" {
+	if resp.ContentType == "" || resp.MediaUrl == nil || *resp.MediaUrl == "" {
 		return fmt.Errorf("expected a fully populated expanded content item, got %+v", resp)
 	}
 	if resp.TriggerAtSeconds == nil && resp.TriggerAtParagraph == nil {

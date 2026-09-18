@@ -224,7 +224,7 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	}
 
 	for _, spec := range specs {
-		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil)
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil, nil)
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}

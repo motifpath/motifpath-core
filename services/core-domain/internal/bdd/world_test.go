@@ -105,7 +105,7 @@ func newWorld() *world {
 
 	identity := application.NewIdentityService(w.users, newID, now)
 	content := application.NewContentService(w.nodes, w.expanded, newID, now)
-	challenge := application.NewChallengeService(w.nodes, w.challenges, newID, now)
+	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, newID, now, noShuffle)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)

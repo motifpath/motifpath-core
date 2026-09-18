@@ -468,6 +468,42 @@ func (f *fakeExpandedContentRepository) ListByContentNode(_ context.Context, con
 	return f.byNode[contentNodeID], nil
 }
 
+func (f *fakeExpandedContentRepository) Update(_ context.Context, item domain.ExpandedContent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[item.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[item.ID] = item
+	nodeItems := f.byNode[item.ContentNodeID]
+	for i, existing := range nodeItems {
+		if existing.ID == item.ID {
+			nodeItems[i] = item
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeExpandedContentRepository) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	nodeItems := f.byNode[item.ContentNodeID]
+	remaining := make([]domain.ExpandedContent, 0, len(nodeItems))
+	for _, existing := range nodeItems {
+		if existing.ID != id {
+			remaining = append(remaining, existing)
+		}
+	}
+	f.byNode[item.ContentNodeID] = remaining
+	return nil
+}
+
 // fakeLearningPathRepository is a minimal in-memory ports.LearningPathRepository.
 type fakeLearningPathRepository struct {
 	mu        sync.Mutex

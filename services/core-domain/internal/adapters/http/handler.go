@@ -305,8 +305,13 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
-		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
+		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -375,8 +380,13 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
-		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
+		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -477,7 +487,7 @@ func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.C
 
 	body := request.Body
 	item, err := h.content.CreateExpandedContent(ctx, caller, request.ContentNodeId.String(),
-		domain.ExpandedContentType(body.ContentType), body.MediaUrl,
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
 		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -494,6 +504,55 @@ func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.C
 	}
 
 	return generated.CreateExpandedContent201JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) UpdateExpandedContent(ctx context.Context, request generated.UpdateExpandedContentRequestObject) (generated.UpdateExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	item, err := h.content.UpdateExpandedContent(ctx, caller, request.ExpandedContentId.String(),
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateExpandedContent400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may update this expanded content item")), nil
+		case errKindNotFound:
+			return generated.UpdateExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateExpandedContent200JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) DeleteExpandedContent(ctx context.Context, request generated.DeleteExpandedContentRequestObject) (generated.DeleteExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.content.DeleteExpandedContent(ctx, caller, request.ExpandedContentId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind != errKindOther {
+			switch kind {
+			case errKindForbidden:
+				return generated.DeleteExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this expanded content item")), nil
+			case errKindNotFound:
+				return generated.DeleteExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+			}
+		}
+		return nil, err
+	}
+
+	return generated.DeleteExpandedContent204Response{}, nil
 }
 
 func (h *Handler) ListExpandedContent(ctx context.Context, request generated.ListExpandedContentRequestObject) (generated.ListExpandedContentResponseObject, error) {

@@ -2,23 +2,28 @@ package domain
 
 import "time"
 
-// ExpandedContentType is the media format of an ExpandedContent item.
+// ExpandedContentType is the format of an ExpandedContent item.
 type ExpandedContentType string
 
 const (
-	ExpandedContentTypeImage ExpandedContentType = "image"
-	ExpandedContentTypeGif   ExpandedContentType = "gif"
+	ExpandedContentTypeImage    ExpandedContentType = "image"
+	ExpandedContentTypeGif      ExpandedContentType = "gif"
+	ExpandedContentTypeRichText ExpandedContentType = "rich_text"
 )
 
-// ExpandedContent is an expositive media item (image or GIF) attached to a
-// content node and shown to the student at a specific point during content
-// consumption: at a video timestamp for video nodes, or at a paragraph
-// position for article nodes.
+// ExpandedContent is an expositive item (image, GIF, or rich content)
+// attached to a content node and shown to the student at a specific point
+// during content consumption: at a video timestamp for video nodes, or at a
+// paragraph position for article nodes. image/gif carry MediaURL; rich_text
+// carries RichContent instead — video or audio embeds live inside the rich
+// content itself via its media nodes, so there is no separate video/audio
+// content type.
 type ExpandedContent struct {
 	ID                 string
 	ContentNodeID      string
 	ContentType        ExpandedContentType
-	MediaURL           string
+	MediaURL           *string
+	RichContent        *PromptDocument
 	TriggerAtSeconds   *int
 	HideAtSeconds      *int
 	TriggerAtParagraph *int
@@ -39,21 +44,13 @@ func NewExpandedContent(
 	id, contentNodeID string,
 	parentType ContentType,
 	contentType ExpandedContentType,
-	mediaURL string,
+	mediaURL *string,
+	richContent *PromptDocument,
 	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
 	caption *string,
 	createdAt time.Time,
 ) (ExpandedContent, error) {
-	var errs []FieldError
-
-	switch contentType {
-	case ExpandedContentTypeImage, ExpandedContentTypeGif:
-	default:
-		errs = append(errs, FieldError{Field: "content_type", Reason: "must be image or gif"})
-	}
-	if mediaURL == "" {
-		errs = append(errs, FieldError{Field: "media_url", Reason: "must not be empty"})
-	}
+	errs := validateExpandedContentContent(contentType, mediaURL, richContent)
 
 	switch parentType {
 	case ContentTypeVideo:
@@ -71,6 +68,7 @@ func NewExpandedContent(
 		ContentNodeID:      contentNodeID,
 		ContentType:        contentType,
 		MediaURL:           mediaURL,
+		RichContent:        richContent,
 		TriggerAtSeconds:   triggerAtSeconds,
 		HideAtSeconds:      hideAtSeconds,
 		TriggerAtParagraph: triggerAtParagraph,
@@ -78,6 +76,77 @@ func NewExpandedContent(
 		Caption:            caption,
 		CreatedAt:          createdAt,
 	}, nil
+}
+
+// Update validates and returns a copy of item with its content, trigger/hide
+// position, and caption replaced. ID, ContentNodeID, and CreatedAt carry
+// over unchanged. parentType is the item's parent content node's type,
+// unchanged since content nodes are immutable there — the same trigger/hide
+// rules NewExpandedContent enforces apply identically here.
+func (item ExpandedContent) Update(
+	parentType ContentType,
+	contentType ExpandedContentType,
+	mediaURL *string,
+	richContent *PromptDocument,
+	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
+	caption *string,
+) (ExpandedContent, error) {
+	errs := validateExpandedContentContent(contentType, mediaURL, richContent)
+
+	switch parentType {
+	case ContentTypeVideo:
+		errs = append(errs, validateVideoTrigger(triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS)...)
+	case ContentTypeArticle:
+		errs = append(errs, validateArticleTrigger(triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS)...)
+	}
+
+	if len(errs) > 0 {
+		return ExpandedContent{}, &ValidationError{Fields: errs}
+	}
+
+	updated := item
+	updated.ContentType = contentType
+	updated.MediaURL = mediaURL
+	updated.RichContent = richContent
+	updated.TriggerAtSeconds = triggerAtSeconds
+	updated.HideAtSeconds = hideAtSeconds
+	updated.TriggerAtParagraph = triggerAtParagraph
+	updated.DurationMS = durationMS
+	updated.Caption = caption
+	return updated, nil
+}
+
+// validateExpandedContentContent checks contentType and the media_url/
+// rich_content pair shared by creation and update: image/gif require
+// media_url and forbid rich_content; rich_text requires rich_content and
+// forbids media_url.
+func validateExpandedContentContent(contentType ExpandedContentType, mediaURL *string, richContent *PromptDocument) []FieldError {
+	var errs []FieldError
+
+	switch contentType {
+	case ExpandedContentTypeImage, ExpandedContentTypeGif:
+		if mediaURL == nil || *mediaURL == "" {
+			errs = append(errs, FieldError{Field: "media_url", Reason: "is required when content_type is image or gif"})
+		}
+		if richContent != nil {
+			errs = append(errs, FieldError{Field: "rich_content", Reason: "must be absent when content_type is image or gif"})
+		}
+	case ExpandedContentTypeRichText:
+		if mediaURL != nil {
+			errs = append(errs, FieldError{Field: "media_url", Reason: "must be absent when content_type is rich_text"})
+		}
+		if richContent == nil {
+			errs = append(errs, FieldError{Field: "rich_content", Reason: "is required when content_type is rich_text"})
+		} else {
+			for _, docErr := range validatePromptDocument(*richContent) {
+				errs = append(errs, FieldError{Field: "rich_content", Reason: docErr.Reason})
+			}
+		}
+	default:
+		errs = append(errs, FieldError{Field: "content_type", Reason: "must be image, gif, or rich_text"})
+	}
+
+	return errs
 }
 
 func validateVideoTrigger(triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int) []FieldError {

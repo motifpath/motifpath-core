@@ -109,6 +109,16 @@ func toDomainPromptDocument(prompt generated.PromptDocument) domain.PromptDocume
 	return out
 }
 
+// toDomainPromptDocumentPtr converts an optional generated.PromptDocument
+// pointer to its optional domain shape, preserving nil.
+func toDomainPromptDocumentPtr(prompt *generated.PromptDocument) *domain.PromptDocument {
+	if prompt == nil {
+		return nil
+	}
+	doc := toDomainPromptDocument(*prompt)
+	return &doc
+}
+
 func toExercise(e domain.Exercise) generated.Exercise {
 	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
 	for i, id := range e.ChallengeIDs {
@@ -134,12 +144,47 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		ChallengeIds:             challengeIDs,
 		ContentNodeIds:           contentNodeIDs,
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
+		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
 	}
 	if len(e.SkillTags) > 0 {
 		exercise.SkillTags = &e.SkillTags
 	}
 	return exercise
+}
+
+func toRemediationTargets(targets []domain.RemediationTarget) []generated.RemediationTarget {
+	result := make([]generated.RemediationTarget, len(targets))
+	for i, t := range targets {
+		target := generated.RemediationTarget{Caption: t.Caption}
+		if t.ContentNodeID != nil {
+			id := mustUUID(*t.ContentNodeID)
+			target.ContentNodeId = &id
+		}
+		if t.RichContent != nil {
+			doc := toGeneratedPromptDocument(*t.RichContent)
+			target.RichContent = &doc
+		}
+		result[i] = target
+	}
+	return result
+}
+
+func toDomainRemediationTargets(targets []generated.RemediationTarget) []domain.RemediationTarget {
+	result := make([]domain.RemediationTarget, len(targets))
+	for i, t := range targets {
+		target := domain.RemediationTarget{Caption: t.Caption}
+		if t.ContentNodeId != nil {
+			id := t.ContentNodeId.String()
+			target.ContentNodeID = &id
+		}
+		if t.RichContent != nil {
+			doc := toDomainPromptDocument(*t.RichContent)
+			target.RichContent = &doc
+		}
+		result[i] = target
+	}
+	return result
 }
 
 func toExercises(exercises []domain.Exercise) []generated.Exercise {
@@ -210,7 +255,7 @@ func toMediaUploadURL(u domain.MediaUploadURL) generated.MediaUploadUrl {
 }
 
 func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
-	return generated.ExpandedContent{
+	result := generated.ExpandedContent{
 		ExpandedContentId:  mustUUID(item.ID),
 		ContentNodeId:      mustUUID(item.ContentNodeID),
 		ContentType:        generated.ExpandedContentContentType(item.ContentType),
@@ -222,6 +267,11 @@ func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
 		Caption:            item.Caption,
 		CreatedAt:          item.CreatedAt,
 	}
+	if item.RichContent != nil {
+		doc := toGeneratedPromptDocument(*item.RichContent)
+		result.RichContent = &doc
+	}
+	return result
 }
 
 func toLearningPathItem(item domain.LearningPathItem) generated.LearningPathItem {

@@ -89,7 +89,8 @@ func (s *ContentService) CreateExpandedContent(
 	caller domain.User,
 	contentNodeID string,
 	contentType domain.ExpandedContentType,
-	mediaURL string,
+	mediaURL *string,
+	richContent *domain.PromptDocument,
 	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
 	caption *string,
 ) (domain.ExpandedContent, error) {
@@ -103,7 +104,7 @@ func (s *ContentService) CreateExpandedContent(
 	}
 
 	item, err := domain.NewExpandedContent(
-		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL,
+		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL, richContent,
 		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption, s.now(),
 	)
 	if err != nil {
@@ -128,6 +129,55 @@ func (s *ContentService) ListExpandedContent(ctx context.Context, contentNodeID 
 // Any authenticated user may retrieve one.
 func (s *ContentService) GetExpandedContent(ctx context.Context, id string) (domain.ExpandedContent, error) {
 	return s.expanded.GetByID(ctx, id)
+}
+
+// UpdateExpandedContent replaces the given expanded content item's content,
+// trigger/hide position, and caption. Only teachers and admins may update an
+// expanded content item. Returns domain.ErrNotFound if no item exists with
+// the given id.
+func (s *ContentService) UpdateExpandedContent(
+	ctx context.Context,
+	caller domain.User,
+	id string,
+	contentType domain.ExpandedContentType,
+	mediaURL *string,
+	richContent *domain.PromptDocument,
+	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
+	caption *string,
+) (domain.ExpandedContent, error) {
+	if !canManageContent(caller.Role) {
+		return domain.ExpandedContent{}, domain.ErrForbidden
+	}
+
+	existing, err := s.expanded.GetByID(ctx, id)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	node, err := s.nodes.GetByID(ctx, existing.ContentNodeID)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+
+	updated, err := existing.Update(node.ContentType, contentType, mediaURL, richContent,
+		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+
+	if err := s.expanded.Update(ctx, updated); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	return updated, nil
+}
+
+// DeleteExpandedContent permanently removes the given expanded content item.
+// Only teachers and admins may delete an expanded content item. Returns
+// domain.ErrNotFound if no item exists with the given id.
+func (s *ContentService) DeleteExpandedContent(ctx context.Context, caller domain.User, id string) error {
+	if !canManageContent(caller.Role) {
+		return domain.ErrForbidden
+	}
+	return s.expanded.Delete(ctx, id)
 }
 
 // canManageContent reports whether role may create content nodes,

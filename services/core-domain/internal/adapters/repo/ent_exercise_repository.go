@@ -33,6 +33,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	remediationJSON, err := marshalRemediationTargets(ex.RemediationTargets)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -48,6 +52,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
+		SetNillableRemediationTargets(remediationJSON).
 		SetCreatedAt(ex.CreatedAt)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -320,20 +325,29 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	remediationJSON, err := marshalRemediationTargets(ex.RemediationTargets)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exercise.UpdateOneID(id).
+	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
-		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
-		Save(ctx)
+		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds)
+	if remediationJSON != nil {
+		updateBuilder = updateBuilder.SetRemediationTargets(*remediationJSON)
+	} else {
+		updateBuilder = updateBuilder.ClearRemediationTargets()
+	}
+	_, err = updateBuilder.Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
@@ -409,11 +423,47 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		ImageURL:                 row.ImageURL,
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,
+		RemediationTargets:       unmarshalRemediationTargets(row.RemediationTargets),
 		Options:                  options,
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		CreatedAt:                row.CreatedAt,
 	}
+}
+
+// marshalRemediationTargets serializes targets to the JSON text stored in
+// the exercise table's remediation_targets column. An empty/nil slice
+// marshals to nil (column left unset) rather than the literal string "[]",
+// keeping "no remediation configured" indistinguishable in storage from
+// "explicitly configured as empty" — the two have no different meaning.
+func marshalRemediationTargets(targets []domain.RemediationTarget) (*string, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	data, err := json.Marshal(targets)
+	if err != nil {
+		return nil, err
+	}
+	s := string(data)
+	return &s, nil
+}
+
+// unmarshalRemediationTargets parses the exercise table's
+// remediation_targets column back into a []domain.RemediationTarget. A nil
+// column (never configured) or malformed JSON both yield an empty slice
+// rather than an error — this column has no legacy pre-JSON data the way
+// prompt does, so any unparseable value is a storage bug, not a shimmable
+// legacy shape; failing softly here avoids turning a read of an otherwise-
+// valid exercise into a hard error.
+func unmarshalRemediationTargets(stored *string) []domain.RemediationTarget {
+	if stored == nil {
+		return nil
+	}
+	var targets []domain.RemediationTarget
+	if err := json.Unmarshal([]byte(*stored), &targets); err != nil {
+		return nil
+	}
+	return targets
 }
 
 func toDomainOption(row *ent.ExerciseOption) domain.Option {

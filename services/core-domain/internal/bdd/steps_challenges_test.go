@@ -15,7 +15,7 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a challenge "([^"]+)" exists for content node "([^"]+)"$`, w.putChallenge)
 
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)"\s+and pass threshold (\d+)$`, w.createsChallenge)
-	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)",\s+pass threshold (\d+), and remediation target "([^"]+)"$`, w.createsChallengeWithRemediation)
+	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)",\s+pass threshold (\d+), and time threshold (\d+) ms$`, w.createsChallengeWithTimeThreshold)
 	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject tag "([^"]+)",\s+pass threshold (\d+), shuffled exercises, and shuffled options$`, w.createsChallengeWithShuffle)
 	sc.Step(`^"([^"]+)" retrieves the challenge "([^"]+)"$`, w.retrievesChallenge)
 	sc.Step(`^"([^"]+)" lists the challenges for content node "([^"]+)"$`, w.listsContentNodeChallenges)
@@ -31,7 +31,7 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the challenge is created and assigned a stable identifier$`, w.challengeCreated)
 	sc.Step(`^the challenge records "([^"]+)" as its parent content node$`, w.challengeRecordsParent)
-	sc.Step(`^the challenge is created with the remediation target recorded$`, w.challengeRecordsRemediation)
+	sc.Step(`^the challenge is created with time_threshold_ms (\d+)$`, w.challengeRecordsTimeThreshold)
 	sc.Step(`^the challenge is created with exercise shuffling and option shuffling both enabled$`, w.challengeShuffleEnabled)
 	sc.Step(`^the challenge is created with exercise shuffling and option shuffling both disabled$`, w.challengeShuffleDisabled)
 	sc.Step(`^the response returns the challenge's subject tag, threshold, and parent content node$`, w.challengeResponseComplete)
@@ -61,17 +61,20 @@ func (w *world) createsChallenge(name, nodeSlug, subjectTag, passThresholdStr st
 	return err
 }
 
-func (w *world) createsChallengeWithRemediation(name, nodeSlug, subjectTag, passThresholdStr, remediationSlug string) error {
+func (w *world) createsChallengeWithTimeThreshold(name, nodeSlug, subjectTag, passThresholdStr, timeThresholdStr string) error {
 	passThreshold, err := parseInt(passThresholdStr)
 	if err != nil {
 		return err
 	}
-	target := nodeID(remediationSlug)
+	timeThreshold, err := parseInt(timeThresholdStr)
+	if err != nil {
+		return err
+	}
 	resp, err := w.handler.CreateChallenge(w.ctx(), generated.CreateChallengeRequestObject{
 		ContentNodeId: nodeID(nodeSlug),
 		Body: &generated.CreateChallengeRequest{
 			SubjectTag: subjectTag, PassThreshold: passThreshold,
-			RemediationTargetContentNodeId: &target,
+			TimeThresholdMs: &timeThreshold,
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -162,13 +165,17 @@ func (w *world) challengeRecordsParent(nodeSlug string) error {
 	return nil
 }
 
-func (w *world) challengeRecordsRemediation() error {
+func (w *world) challengeRecordsTimeThreshold(wantStr string) error {
+	want, err := parseInt(wantStr)
+	if err != nil {
+		return err
+	}
 	resp, ok := w.lastResp.(generated.CreateChallenge201JSONResponse)
 	if !ok {
 		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
 	}
-	if resp.RemediationTargetContentNodeId == nil {
-		return fmt.Errorf("expected remediation_target_content_node_id to be set")
+	if resp.TimeThresholdMs == nil || *resp.TimeThresholdMs != want {
+		return fmt.Errorf("expected time_threshold_ms %d, got %+v", want, resp.TimeThresholdMs)
 	}
 	return nil
 }
