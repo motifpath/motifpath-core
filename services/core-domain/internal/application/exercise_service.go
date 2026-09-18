@@ -36,19 +36,22 @@ func NewExerciseService(
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, s.now())
+	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, languages, s.now())
 	if err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := s.exercises.Create(ctx, exercise); err != nil {
 		return domain.Exercise{}, err
 	}
-	return exercise, nil
+	// Re-fetched rather than returned as constructed: exercise.Languages only
+	// carries the request-supplied codes until read back with its Language
+	// rows (and their Name) joined in.
+	return s.exercises.GetByID(ctx, exercise.ID)
 }
 
 // GetExercise returns the exercise with the given id. Any authenticated user
@@ -74,7 +77,7 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 // changed, and the exercise's challenge/content-node links are untouched.
 // Only teachers and admins may update an exercise. Returns
 // domain.ErrNotFound if no exercise exists with the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -84,7 +87,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, languages)
 	if err != nil {
 		return domain.Exercise{}, err
 	}

@@ -12,30 +12,71 @@ import (
 // student's active assignment with their per-node completion state for
 // GetMyPath.
 type PathAssignmentService struct {
-	users       ports.UserRepository
-	paths       ports.LearningPathRepository
-	assignments ports.PathAssignmentRepository
-	completion  ports.CompletionStateReader
-	newID       func() string
-	now         func() time.Time
+	users        ports.UserRepository
+	paths        ports.LearningPathRepository
+	assignments  ports.PathAssignmentRepository
+	contentNodes ports.ContentNodeRepository
+	exercises    ports.ExerciseRepository
+	completion   ports.CompletionStateReader
+	newID        func() string
+	now          func() time.Time
 }
 
 func NewPathAssignmentService(
 	users ports.UserRepository,
 	paths ports.LearningPathRepository,
 	assignments ports.PathAssignmentRepository,
+	contentNodes ports.ContentNodeRepository,
+	exercises ports.ExerciseRepository,
 	completion ports.CompletionStateReader,
 	newID func() string,
 	now func() time.Time,
 ) *PathAssignmentService {
 	return &PathAssignmentService{
-		users:       users,
-		paths:       paths,
-		assignments: assignments,
-		completion:  completion,
-		newID:       newID,
-		now:         now,
+		users:        users,
+		paths:        paths,
+		assignments:  assignments,
+		contentNodes: contentNodes,
+		exercises:    exercises,
+		completion:   completion,
+		newID:        newID,
+		now:          now,
 	}
+}
+
+// resolveLanguageLocks reports, per content_node_id in nodeIDs, whether it
+// must be locked because locale matches neither the node's own language
+// tags nor those of any exercise linked to it as a path exercise. A node id
+// with no matching ContentNode record is left out of the result entirely
+// (never locked by this check) rather than treated as a mismatch — path
+// items in tests and any other caller that never separately registered the
+// referenced ContentNode should not be penalized for data this check simply
+// has no visibility into.
+func (s *PathAssignmentService) resolveLanguageLocks(ctx context.Context, nodeIDs []string, locale string) (map[string]bool, error) {
+	nodes, err := s.contentNodes.GetByIDs(ctx, nodeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	langLocked := map[string]bool{}
+	for id, node := range nodes {
+		if !domain.HasMatchingLanguage(node.Languages, locale) {
+			langLocked[id] = true
+			continue
+		}
+
+		pathExercises, err := s.exercises.ListByContentNodeID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, ex := range pathExercises {
+			if !domain.HasMatchingLanguage(ex.Languages, locale) {
+				langLocked[id] = true
+				break
+			}
+		}
+	}
+	return langLocked, nil
 }
 
 // AssignLearningPath assigns learningPathID to studentID, replacing any
@@ -112,7 +153,12 @@ func (s *PathAssignmentService) GetMyPath(ctx context.Context, caller domain.Use
 		return StudentPathView{}, err
 	}
 
-	items, currentPosition := domain.BuildStudentPathItems(path.Items, raw)
+	langLocked, err := s.resolveLanguageLocks(ctx, nodeIDs, caller.Locale.Code)
+	if err != nil {
+		return StudentPathView{}, err
+	}
+
+	items, currentPosition := domain.BuildStudentPathItems(path.Items, raw, langLocked)
 
 	return StudentPathView{
 		AssignmentID:    assignment.ID,

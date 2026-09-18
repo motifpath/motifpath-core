@@ -28,7 +28,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		node, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Introduction to Triad Shapes",
-			domain.ContentTypeVideo, "triad-shapes", "chord-theory", domain.DifficultyLevelBeginner)
+			domain.ContentTypeVideo, "triad-shapes", "chord-theory", domain.DifficultyLevelBeginner, []string{"en"})
 
 		require.NoError(t, err)
 		assert.Equal(t, "teacher-1", node.TeacherID)
@@ -39,7 +39,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), adminCaller(), "Sweep Picking Fundamentals",
-			domain.ContentTypeVideo, "sweep-picking", "technique", domain.DifficultyLevelAdvanced)
+			domain.ContentTypeVideo, "sweep-picking", "technique", domain.DifficultyLevelAdvanced, []string{"en"})
 
 		require.NoError(t, err)
 	})
@@ -48,7 +48,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), studentCaller(), "Title",
-			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevelBeginner)
+			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevelBeginner, []string{"en"})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -57,7 +57,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "",
-			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevelBeginner)
+			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevelBeginner, []string{"en"})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -68,7 +68,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, "", "", "")
+			domain.ContentTypeVideo, "", "", "", []string{"en"})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -79,7 +79,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevel("expert"))
+			domain.ContentTypeVideo, "skill", "concept", domain.DifficultyLevel("expert"), []string{"en"})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))

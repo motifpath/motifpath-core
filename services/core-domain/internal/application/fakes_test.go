@@ -69,6 +69,45 @@ func (f *fakeUserRepository) put(user domain.User) {
 	f.byID[user.ID] = user
 }
 
+func (f *fakeUserRepository) UpdateLocale(_ context.Context, id, locale string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	user.Locale = domain.Language{Code: locale}
+	f.byID[id] = user
+	f.byClerkID[user.ClerkUserID] = user
+	return nil
+}
+
+// fakeLanguageRepository is a minimal in-memory ports.LanguageRepository,
+// pre-seeded with the system rows the Atlas migration seeds in production:
+// en, pt_BR, any.
+type fakeLanguageRepository struct {
+	mu     sync.Mutex
+	byCode map[string]domain.Language
+}
+
+func newFakeLanguageRepository() *fakeLanguageRepository {
+	return &fakeLanguageRepository{byCode: map[string]domain.Language{
+		"en":                    {Code: "en", Name: "English"},
+		"pt_BR":                 {Code: "pt_BR", Name: "Portuguese (Brazil)"},
+		domain.LanguageCodeAny:  {Code: domain.LanguageCodeAny, Name: "Language-agnostic"},
+	}}
+}
+
+func (f *fakeLanguageRepository) GetByCode(_ context.Context, code string) (domain.Language, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	lang, ok := f.byCode[code]
+	if !ok {
+		return domain.Language{}, domain.ErrNotFound
+	}
+	return lang, nil
+}
+
 // fakeContentNodeRepository is a minimal in-memory ports.ContentNodeRepository.
 type fakeContentNodeRepository struct {
 	mu        sync.Mutex

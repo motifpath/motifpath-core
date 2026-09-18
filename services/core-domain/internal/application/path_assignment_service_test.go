@@ -20,7 +20,18 @@ func newPathAssignmentService(
 	assignments *fakePathAssignmentRepository,
 	completion *fakeCompletionStateReader,
 ) *application.PathAssignmentService {
-	return application.NewPathAssignmentService(users, paths, assignments, completion, idSequence(), func() time.Time { return fixedAssignedAt })
+	return newPathAssignmentServiceWithContent(users, paths, assignments, newFakeContentNodeRepository(), newFakeExerciseRepository(), completion)
+}
+
+func newPathAssignmentServiceWithContent(
+	users *fakeUserRepository,
+	paths *fakeLearningPathRepository,
+	assignments *fakePathAssignmentRepository,
+	contentNodes *fakeContentNodeRepository,
+	exercises *fakeExerciseRepository,
+	completion *fakeCompletionStateReader,
+) *application.PathAssignmentService {
+	return application.NewPathAssignmentService(users, paths, assignments, contentNodes, exercises, completion, idSequence(), func() time.Time { return fixedAssignedAt })
 }
 
 func TestPathAssignmentService_AssignLearningPath(t *testing.T) {
@@ -258,5 +269,69 @@ func TestPathAssignmentService_GetMyPath(t *testing.T) {
 		_, err := svc.GetMyPath(context.Background(), adminCaller())
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a node whose content has no matching-language tag for the student's locale is locked", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(threeNodePath())
+		assignments := newFakePathAssignmentRepository()
+		require.NoError(t, assignments.ReplaceActive(context.Background(), domain.PathAssignment{ID: "a-1", StudentID: "alice", LearningPathID: "path-1"}))
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: "pt_BR"}}})
+		svc := newPathAssignmentServiceWithContent(newFakeUserRepository(), paths, assignments, nodes, newFakeExerciseRepository(), newFakeCompletionStateReader())
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CompletionStatusLocked, view.Items[0].Status)
+	})
+
+	t.Run("a node tagged any is never language-locked", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(threeNodePath())
+		assignments := newFakePathAssignmentRepository()
+		require.NoError(t, assignments.ReplaceActive(context.Background(), domain.PathAssignment{ID: "a-1", StudentID: "alice", LearningPathID: "path-1"}))
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: domain.LanguageCodeAny}}})
+		svc := newPathAssignmentServiceWithContent(newFakeUserRepository(), paths, assignments, nodes, newFakeExerciseRepository(), newFakeCompletionStateReader())
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CompletionStatusNotStarted, view.Items[0].Status)
+	})
+
+	t.Run("a node whose content matches locale but has a path exercise in a different language is locked", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(threeNodePath())
+		assignments := newFakePathAssignmentRepository()
+		require.NoError(t, assignments.ReplaceActive(context.Background(), domain.PathAssignment{ID: "a-1", StudentID: "alice", LearningPathID: "path-1"}))
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: "en"}}})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-01"}, Languages: []domain.Language{{Code: "pt_BR"}}})
+		svc := newPathAssignmentServiceWithContent(newFakeUserRepository(), paths, assignments, nodes, exercises, newFakeCompletionStateReader())
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CompletionStatusLocked, view.Items[0].Status)
+	})
+
+	t.Run("a node whose content and path exercises all match the student's locale is not language-locked", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(threeNodePath())
+		assignments := newFakePathAssignmentRepository()
+		require.NoError(t, assignments.ReplaceActive(context.Background(), domain.PathAssignment{ID: "a-1", StudentID: "alice", LearningPathID: "path-1"}))
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: "en"}, {Code: "pt_BR"}}})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-01"}, Languages: []domain.Language{{Code: "en"}}})
+		svc := newPathAssignmentServiceWithContent(newFakeUserRepository(), paths, assignments, nodes, exercises, newFakeCompletionStateReader())
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CompletionStatusNotStarted, view.Items[0].Status)
 	})
 }
