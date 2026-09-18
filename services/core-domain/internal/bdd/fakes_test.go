@@ -66,6 +66,44 @@ func (f *fakeUserRepo) put(u domain.User) {
 	f.byID[u.ID] = u
 }
 
+func (f *fakeUserRepo) UpdateLocale(_ context.Context, id, locale string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Locale = domain.Language{Code: locale}
+	f.byID[id] = u
+	f.byClerkID[u.ClerkUserID] = u
+	return nil
+}
+
+// fakeLanguageRepo is pre-seeded with the system rows the Atlas migration
+// seeds in production: en, pt_BR, any.
+type fakeLanguageRepo struct {
+	mu     sync.Mutex
+	byCode map[string]domain.Language
+}
+
+func newFakeLanguageRepo() *fakeLanguageRepo {
+	return &fakeLanguageRepo{byCode: map[string]domain.Language{
+		"en":                   {Code: "en", Name: "English"},
+		"pt_BR":                {Code: "pt_BR", Name: "Portuguese (Brazil)"},
+		domain.LanguageCodeAny: {Code: domain.LanguageCodeAny, Name: "Language-agnostic"},
+	}}
+}
+
+func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Language, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	lang, ok := f.byCode[code]
+	if !ok {
+		return domain.Language{}, domain.ErrNotFound
+	}
+	return lang, nil
+}
+
 type fakeContentNodeRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.ContentNode

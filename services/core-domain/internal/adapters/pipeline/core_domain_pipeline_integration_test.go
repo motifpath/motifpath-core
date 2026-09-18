@@ -47,6 +47,13 @@ func setupPipeline(t *testing.T) *pipeline {
 	t.Cleanup(func() { assert.NoError(t, entClient.Close()) })
 	require.NoError(t, entClient.Schema.Create(ctx))
 
+	// entClient.Schema.Create only creates DDL — the en/pt_BR/any system rows
+	// normally seeded by the Atlas migration itself (see ADR-024) don't exist
+	// here, so this pipeline seeds the one row ("en") its own User/ContentNode
+	// creation needs.
+	_, err = entClient.Language.Create().SetCode("en").SetName("English").Save(ctx)
+	require.NoError(t, err)
+
 	mongoDB := mongoDatabase(t)
 
 	newID := uuid.NewString
@@ -57,6 +64,7 @@ func setupPipeline(t *testing.T) *pipeline {
 	expanded := repo.NewEntExpandedContentRepository(entClient)
 	paths := repo.NewEntLearningPathRepository(entClient)
 	assignments := repo.NewEntPathAssignmentRepository(entClient)
+	exercises := repo.NewEntExerciseRepository(entClient)
 	users := repo.NewEntUserRepository(entClient)
 	completion := repo.NewMongoCompletionStateReader(mongoDB)
 
@@ -64,7 +72,7 @@ func setupPipeline(t *testing.T) *pipeline {
 		content:    application.NewContentService(nodes, expanded, newID, now),
 		challenge:  application.NewChallengeService(nodes, challenges, newID, now),
 		path:       application.NewLearningPathService(nodes, paths, newID, now),
-		assignment: application.NewPathAssignmentService(users, paths, assignments, completion, newID, now),
+		assignment: application.NewPathAssignmentService(users, paths, assignments, nodes, exercises, completion, newID, now),
 		users:      users,
 		mongoDB:    mongoDB,
 	}
@@ -74,9 +82,9 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	p := setupPipeline(t)
 	ctx := context.Background()
 	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
-	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent}
+	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}}
 
-	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, "triad-shapes", "chord-theory", domain.DifficultyLevelBeginner)
+	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, "triad-shapes", "chord-theory", domain.DifficultyLevelBeginner, []string{"en"})
 	require.NoError(t, err)
 
 	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, "triad-shapes", 70, nil, false, false)
@@ -115,10 +123,10 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	p := setupPipeline(t)
 	ctx := context.Background()
 	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
-	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent}
+	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}}
 	seedStudentInto(t, ctx, p, student)
 
-	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, "s1", "c1", domain.DifficultyLevelBeginner)
+	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, "s1", "c1", domain.DifficultyLevelBeginner, []string{"en"})
 	require.NoError(t, err)
 	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
 	require.NoError(t, err)
@@ -135,7 +143,7 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, "s2", "c2", domain.DifficultyLevelBeginner)
+	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, "s2", "c2", domain.DifficultyLevelBeginner, []string{"en"})
 	require.NoError(t, err)
 	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
 	require.NoError(t, err)
@@ -153,6 +161,11 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	assert.Equal(t, domain.CompletionStatusNotStarted, view.Items[0].Status)
 }
 
+// seedStudentInto persists student (whose Locale the caller must already
+// have set to a seeded code — see setupPipeline) into the same Postgres
+// database as a User row. Note this only writes a copy: it does not mutate
+// the caller's student variable, so ClerkUserID/RegisteredAt aren't visible
+// back at the call site, only the persisted row.
 func seedStudentInto(t *testing.T, ctx context.Context, p *pipeline, student domain.User) {
 	t.Helper()
 	student.ClerkUserID = "clerk-" + student.ID

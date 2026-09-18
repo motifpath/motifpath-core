@@ -230,7 +230,8 @@ func (w *world) createsExercise(name, exerciseType, title, prompt string) error 
 		Body: &generated.CreateExerciseRequest{
 			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
 			ImageUrl: imageURL, AudioUrl: audioURL,
-			Options: optionsFor(et),
+			Options:       optionsFor(et),
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -245,8 +246,9 @@ func (w *world) createsExerciseWithSkillTags(name, exerciseType, title, prompt, 
 		Body: &generated.CreateExerciseRequest{
 			Title: title, Prompt: promptDocFor(prompt), ExerciseType: et,
 			ImageUrl: imageURL, AudioUrl: audioURL,
-			SkillTags: &tags,
-			Options:   optionsFor(et),
+			SkillTags:     &tags,
+			Options:       optionsFor(et),
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -332,7 +334,8 @@ func (w *world) createsExerciseWithRichPrompt(name, title string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
-			Options: optionsFor(et),
+			Options:       optionsFor(et),
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -383,7 +386,8 @@ func (w *world) createsExerciseWithTextStylePrompt(name, title string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
-			Options: optionsFor(et),
+			Options:       optionsFor(et),
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -396,7 +400,8 @@ func (w *world) createsExerciseWithPlainParagraphPrompt(name, title string) erro
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: title, Prompt: w.lastPromptSent, ExerciseType: et,
-			Options: optionsFor(et),
+			Options:       optionsFor(et),
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -416,7 +421,8 @@ func (w *world) submitsExerciseUnstructuredPrompt(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", Prompt: generated.PromptDocument{}, ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -432,8 +438,9 @@ func (w *world) submitsExerciseUnsupportedPromptNode(string) error {
 				Type:    generated.Doc,
 				Content: []generated.PromptNode{{Type: generated.PromptNodeType("video")}},
 			},
-			ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			Options:      []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			ExerciseType:  generated.CreateExerciseRequestExerciseTypeTextResponse,
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -447,7 +454,8 @@ func (w *world) updatesExerciseWithFormattedPrompt(name, exerciseSlug string) er
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
 			Title: "title-" + exerciseSlug, Prompt: w.lastPromptSent,
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -493,7 +501,8 @@ func (w *world) submitsExerciseMissingTitle(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -505,7 +514,8 @@ func (w *world) submitsExerciseMissingPrompt(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -517,7 +527,8 @@ func (w *world) submitsExerciseMissingType(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -529,7 +540,8 @@ func (w *world) submitsExerciseWithType(name, exerciseType string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseType(exerciseType),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -541,7 +553,8 @@ func (w *world) submitsExerciseNoCorrectOption(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -554,8 +567,9 @@ func (w *world) submitsExerciseEmptySkillTag(string) error {
 	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
 		Body: &generated.CreateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"), ExerciseType: generated.CreateExerciseRequestExerciseTypeTextResponse,
-			SkillTags: &tags,
-			Options:   []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			SkillTags:     &tags,
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -611,7 +625,8 @@ func (w *world) updatesExerciseFull(name, exerciseSlug, title, prompt string) er
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
 			Title: title, Prompt: promptDocFor(prompt),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -625,8 +640,9 @@ func (w *world) updatesExerciseSkillTags(name, exerciseSlug, tagsCSV string) err
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"),
-			SkillTags: &tags,
-			Options:   []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			SkillTags:     &tags,
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -639,7 +655,8 @@ func (w *world) updatesExerciseTitleOnly(name, exerciseSlug, title string) error
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
 			Title: title, Prompt: promptDocFor("prompt"),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -656,8 +673,9 @@ func (w *world) submitsUpdateMissingTitle(name, exerciseSlug string) error {
 	resp, err := w.handler.UpdateExercise(w.ctx(), generated.UpdateExerciseRequestObject{
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
-			Prompt:  promptDocFor("prompt"),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Prompt:        promptDocFor("prompt"),
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -670,7 +688,8 @@ func (w *world) submitsUpdateNoCorrectOption(name, exerciseSlug string) error {
 		ExerciseId: exerciseID(exerciseSlug),
 		Body: &generated.UpdateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: false, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -683,7 +702,8 @@ func (w *world) attemptsUpdateMissingExercise(name string) error {
 		ExerciseId: deterministicUUID("exercise", "does-not-exist"),
 		Body: &generated.UpdateExerciseRequest{
 			Title: "title", Prompt: promptDocFor("prompt"),
-			Options: []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			Options:       []generated.Option{{OptionId: uuid.New(), IsCorrect: true, Label: &label}},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
