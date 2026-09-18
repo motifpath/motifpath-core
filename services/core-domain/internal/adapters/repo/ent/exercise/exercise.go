@@ -30,6 +30,8 @@ const (
 	FieldAudioURL = "audio_url"
 	// FieldEstimatedDurationSeconds holds the string denoting the estimated_duration_seconds field in the database.
 	FieldEstimatedDurationSeconds = "estimated_duration_seconds"
+	// FieldRemediationTargets holds the string denoting the remediation_targets field in the database.
+	FieldRemediationTargets = "remediation_targets"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeChallenges holds the string denoting the challenges edge name in mutations.
@@ -87,6 +89,7 @@ var Columns = []string{
 	FieldImageURL,
 	FieldAudioURL,
 	FieldEstimatedDurationSeconds,
+	FieldRemediationTargets,
 	FieldCreatedAt,
 }
 
@@ -178,6 +181,11 @@ func ByAudioURL(opts ...sql.OrderTermOption) OrderOption {
 // ByEstimatedDurationSeconds orders the results by the estimated_duration_seconds field.
 func ByEstimatedDurationSeconds(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEstimatedDurationSeconds, opts...).ToFunc()
+}
+
+// ByRemediationTargets orders the results by the remediation_targets field.
+func ByRemediationTargets(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRemediationTargets, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

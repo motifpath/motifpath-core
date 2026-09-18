@@ -33,6 +33,8 @@ type Exercise struct {
 	AudioURL *string `json:"audio_url,omitempty"`
 	// EstimatedDurationSeconds holds the value of the "estimated_duration_seconds" field.
 	EstimatedDurationSeconds *int `json:"estimated_duration_seconds,omitempty"`
+	// RemediationTargets holds the value of the "remediation_targets" field.
+	RemediationTargets *string `json:"remediation_targets,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -112,7 +114,7 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case exercise.FieldEstimatedDurationSeconds:
 			values[i] = new(sql.NullInt64)
-		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL:
+		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL, exercise.FieldRemediationTargets:
 			values[i] = new(sql.NullString)
 		case exercise.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -185,6 +187,13 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.EstimatedDurationSeconds = new(int)
 				*_m.EstimatedDurationSeconds = int(value.Int64)
+			}
+		case exercise.FieldRemediationTargets:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field remediation_targets", values[i])
+			} else if value.Valid {
+				_m.RemediationTargets = new(string)
+				*_m.RemediationTargets = value.String
 			}
 		case exercise.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -278,6 +287,11 @@ func (_m *Exercise) String() string {
 	if v := _m.EstimatedDurationSeconds; v != nil {
 		builder.WriteString("estimated_duration_seconds=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.RemediationTargets; v != nil {
+		builder.WriteString("remediation_targets=")
+		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")

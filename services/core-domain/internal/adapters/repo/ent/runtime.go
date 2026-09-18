@@ -67,7 +67,7 @@ func init() {
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
-	exerciseDescCreatedAt := exerciseFields[8].Descriptor()
+	exerciseDescCreatedAt := exerciseFields[9].Descriptor()
 	// exercise.DefaultCreatedAt holds the default value on creation for the created_at field.
 	exercise.DefaultCreatedAt = exerciseDescCreatedAt.Default.(func() time.Time)
 	// exerciseDescID is the schema descriptor for id field.
@@ -83,7 +83,7 @@ func init() {
 	expandedcontentFields := schema.ExpandedContent{}.Fields()
 	_ = expandedcontentFields
 	// expandedcontentDescCreatedAt is the schema descriptor for created_at field.
-	expandedcontentDescCreatedAt := expandedcontentFields[9].Descriptor()
+	expandedcontentDescCreatedAt := expandedcontentFields[10].Descriptor()
 	// expandedcontent.DefaultCreatedAt holds the default value on creation for the created_at field.
 	expandedcontent.DefaultCreatedAt = expandedcontentDescCreatedAt.Default.(func() time.Time)
 	// expandedcontentDescID is the schema descriptor for id field.

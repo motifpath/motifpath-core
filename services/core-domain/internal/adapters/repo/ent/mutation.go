@@ -2941,6 +2941,7 @@ type ExerciseMutation struct {
 	audio_url                     *string
 	estimated_duration_seconds    *int
 	addestimated_duration_seconds *int
+	remediation_targets           *string
 	created_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	challenges                    map[uuid.UUID]struct{}
@@ -3408,6 +3409,55 @@ func (m *ExerciseMutation) ResetEstimatedDurationSeconds() {
 	delete(m.clearedFields, exercise.FieldEstimatedDurationSeconds)
 }
 
+// SetRemediationTargets sets the "remediation_targets" field.
+func (m *ExerciseMutation) SetRemediationTargets(s string) {
+	m.remediation_targets = &s
+}
+
+// RemediationTargets returns the value of the "remediation_targets" field in the mutation.
+func (m *ExerciseMutation) RemediationTargets() (r string, exists bool) {
+	v := m.remediation_targets
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRemediationTargets returns the old "remediation_targets" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldRemediationTargets(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRemediationTargets is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRemediationTargets requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRemediationTargets: %w", err)
+	}
+	return oldValue.RemediationTargets, nil
+}
+
+// ClearRemediationTargets clears the value of the "remediation_targets" field.
+func (m *ExerciseMutation) ClearRemediationTargets() {
+	m.remediation_targets = nil
+	m.clearedFields[exercise.FieldRemediationTargets] = struct{}{}
+}
+
+// RemediationTargetsCleared returns if the "remediation_targets" field was cleared in this mutation.
+func (m *ExerciseMutation) RemediationTargetsCleared() bool {
+	_, ok := m.clearedFields[exercise.FieldRemediationTargets]
+	return ok
+}
+
+// ResetRemediationTargets resets all changes to the "remediation_targets" field.
+func (m *ExerciseMutation) ResetRemediationTargets() {
+	m.remediation_targets = nil
+	delete(m.clearedFields, exercise.FieldRemediationTargets)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ExerciseMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -3748,7 +3798,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -3769,6 +3819,9 @@ func (m *ExerciseMutation) Fields() []string {
 	}
 	if m.estimated_duration_seconds != nil {
 		fields = append(fields, exercise.FieldEstimatedDurationSeconds)
+	}
+	if m.remediation_targets != nil {
+		fields = append(fields, exercise.FieldRemediationTargets)
 	}
 	if m.created_at != nil {
 		fields = append(fields, exercise.FieldCreatedAt)
@@ -3795,6 +3848,8 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.AudioURL()
 	case exercise.FieldEstimatedDurationSeconds:
 		return m.EstimatedDurationSeconds()
+	case exercise.FieldRemediationTargets:
+		return m.RemediationTargets()
 	case exercise.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -3820,6 +3875,8 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldAudioURL(ctx)
 	case exercise.FieldEstimatedDurationSeconds:
 		return m.OldEstimatedDurationSeconds(ctx)
+	case exercise.FieldRemediationTargets:
+		return m.OldRemediationTargets(ctx)
 	case exercise.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -3879,6 +3936,13 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEstimatedDurationSeconds(v)
+		return nil
+	case exercise.FieldRemediationTargets:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRemediationTargets(v)
 		return nil
 	case exercise.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -3944,6 +4008,9 @@ func (m *ExerciseMutation) ClearedFields() []string {
 	if m.FieldCleared(exercise.FieldEstimatedDurationSeconds) {
 		fields = append(fields, exercise.FieldEstimatedDurationSeconds)
 	}
+	if m.FieldCleared(exercise.FieldRemediationTargets) {
+		fields = append(fields, exercise.FieldRemediationTargets)
+	}
 	return fields
 }
 
@@ -3969,6 +4036,9 @@ func (m *ExerciseMutation) ClearField(name string) error {
 		return nil
 	case exercise.FieldEstimatedDurationSeconds:
 		m.ClearEstimatedDurationSeconds()
+		return nil
+	case exercise.FieldRemediationTargets:
+		m.ClearRemediationTargets()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise nullable field %s", name)
@@ -3998,6 +4068,9 @@ func (m *ExerciseMutation) ResetField(name string) error {
 		return nil
 	case exercise.FieldEstimatedDurationSeconds:
 		m.ResetEstimatedDurationSeconds()
+		return nil
+	case exercise.FieldRemediationTargets:
+		m.ResetRemediationTargets()
 		return nil
 	case exercise.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -5369,6 +5442,7 @@ type ExpandedContentMutation struct {
 	content_node_id         *uuid.UUID
 	content_type            *expandedcontent.ContentType
 	media_url               *string
+	rich_content            *string
 	trigger_at_seconds      *int
 	addtrigger_at_seconds   *int
 	hide_at_seconds         *int
@@ -5578,7 +5652,7 @@ func (m *ExpandedContentMutation) MediaURL() (r string, exists bool) {
 // OldMediaURL returns the old "media_url" field's value of the ExpandedContent entity.
 // If the ExpandedContent object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ExpandedContentMutation) OldMediaURL(ctx context.Context) (v string, err error) {
+func (m *ExpandedContentMutation) OldMediaURL(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldMediaURL is only allowed on UpdateOne operations")
 	}
@@ -5592,9 +5666,71 @@ func (m *ExpandedContentMutation) OldMediaURL(ctx context.Context) (v string, er
 	return oldValue.MediaURL, nil
 }
 
+// ClearMediaURL clears the value of the "media_url" field.
+func (m *ExpandedContentMutation) ClearMediaURL() {
+	m.media_url = nil
+	m.clearedFields[expandedcontent.FieldMediaURL] = struct{}{}
+}
+
+// MediaURLCleared returns if the "media_url" field was cleared in this mutation.
+func (m *ExpandedContentMutation) MediaURLCleared() bool {
+	_, ok := m.clearedFields[expandedcontent.FieldMediaURL]
+	return ok
+}
+
 // ResetMediaURL resets all changes to the "media_url" field.
 func (m *ExpandedContentMutation) ResetMediaURL() {
 	m.media_url = nil
+	delete(m.clearedFields, expandedcontent.FieldMediaURL)
+}
+
+// SetRichContent sets the "rich_content" field.
+func (m *ExpandedContentMutation) SetRichContent(s string) {
+	m.rich_content = &s
+}
+
+// RichContent returns the value of the "rich_content" field in the mutation.
+func (m *ExpandedContentMutation) RichContent() (r string, exists bool) {
+	v := m.rich_content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRichContent returns the old "rich_content" field's value of the ExpandedContent entity.
+// If the ExpandedContent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExpandedContentMutation) OldRichContent(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRichContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRichContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRichContent: %w", err)
+	}
+	return oldValue.RichContent, nil
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (m *ExpandedContentMutation) ClearRichContent() {
+	m.rich_content = nil
+	m.clearedFields[expandedcontent.FieldRichContent] = struct{}{}
+}
+
+// RichContentCleared returns if the "rich_content" field was cleared in this mutation.
+func (m *ExpandedContentMutation) RichContentCleared() bool {
+	_, ok := m.clearedFields[expandedcontent.FieldRichContent]
+	return ok
+}
+
+// ResetRichContent resets all changes to the "rich_content" field.
+func (m *ExpandedContentMutation) ResetRichContent() {
+	m.rich_content = nil
+	delete(m.clearedFields, expandedcontent.FieldRichContent)
 }
 
 // SetTriggerAtSeconds sets the "trigger_at_seconds" field.
@@ -5996,7 +6132,7 @@ func (m *ExpandedContentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExpandedContentMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.content_node_id != nil {
 		fields = append(fields, expandedcontent.FieldContentNodeID)
 	}
@@ -6005,6 +6141,9 @@ func (m *ExpandedContentMutation) Fields() []string {
 	}
 	if m.media_url != nil {
 		fields = append(fields, expandedcontent.FieldMediaURL)
+	}
+	if m.rich_content != nil {
+		fields = append(fields, expandedcontent.FieldRichContent)
 	}
 	if m.trigger_at_seconds != nil {
 		fields = append(fields, expandedcontent.FieldTriggerAtSeconds)
@@ -6038,6 +6177,8 @@ func (m *ExpandedContentMutation) Field(name string) (ent.Value, bool) {
 		return m.ContentType()
 	case expandedcontent.FieldMediaURL:
 		return m.MediaURL()
+	case expandedcontent.FieldRichContent:
+		return m.RichContent()
 	case expandedcontent.FieldTriggerAtSeconds:
 		return m.TriggerAtSeconds()
 	case expandedcontent.FieldHideAtSeconds:
@@ -6065,6 +6206,8 @@ func (m *ExpandedContentMutation) OldField(ctx context.Context, name string) (en
 		return m.OldContentType(ctx)
 	case expandedcontent.FieldMediaURL:
 		return m.OldMediaURL(ctx)
+	case expandedcontent.FieldRichContent:
+		return m.OldRichContent(ctx)
 	case expandedcontent.FieldTriggerAtSeconds:
 		return m.OldTriggerAtSeconds(ctx)
 	case expandedcontent.FieldHideAtSeconds:
@@ -6106,6 +6249,13 @@ func (m *ExpandedContentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetMediaURL(v)
+		return nil
+	case expandedcontent.FieldRichContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRichContent(v)
 		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		v, ok := value.(int)
@@ -6230,6 +6380,12 @@ func (m *ExpandedContentMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ExpandedContentMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(expandedcontent.FieldMediaURL) {
+		fields = append(fields, expandedcontent.FieldMediaURL)
+	}
+	if m.FieldCleared(expandedcontent.FieldRichContent) {
+		fields = append(fields, expandedcontent.FieldRichContent)
+	}
 	if m.FieldCleared(expandedcontent.FieldTriggerAtSeconds) {
 		fields = append(fields, expandedcontent.FieldTriggerAtSeconds)
 	}
@@ -6259,6 +6415,12 @@ func (m *ExpandedContentMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ExpandedContentMutation) ClearField(name string) error {
 	switch name {
+	case expandedcontent.FieldMediaURL:
+		m.ClearMediaURL()
+		return nil
+	case expandedcontent.FieldRichContent:
+		m.ClearRichContent()
+		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		m.ClearTriggerAtSeconds()
 		return nil
@@ -6290,6 +6452,9 @@ func (m *ExpandedContentMutation) ResetField(name string) error {
 		return nil
 	case expandedcontent.FieldMediaURL:
 		m.ResetMediaURL()
+		return nil
+	case expandedcontent.FieldRichContent:
+		m.ResetRichContent()
 		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		m.ResetTriggerAtSeconds()

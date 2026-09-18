@@ -39,6 +39,28 @@ func (_c *ExpandedContentCreate) SetMediaURL(v string) *ExpandedContentCreate {
 	return _c
 }
 
+// SetNillableMediaURL sets the "media_url" field if the given value is not nil.
+func (_c *ExpandedContentCreate) SetNillableMediaURL(v *string) *ExpandedContentCreate {
+	if v != nil {
+		_c.SetMediaURL(*v)
+	}
+	return _c
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_c *ExpandedContentCreate) SetRichContent(v string) *ExpandedContentCreate {
+	_c.mutation.SetRichContent(v)
+	return _c
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_c *ExpandedContentCreate) SetNillableRichContent(v *string) *ExpandedContentCreate {
+	if v != nil {
+		_c.SetRichContent(*v)
+	}
+	return _c
+}
+
 // SetTriggerAtSeconds sets the "trigger_at_seconds" field.
 func (_c *ExpandedContentCreate) SetTriggerAtSeconds(v int) *ExpandedContentCreate {
 	_c.mutation.SetTriggerAtSeconds(v)
@@ -195,9 +217,6 @@ func (_c *ExpandedContentCreate) check() error {
 			return &ValidationError{Name: "content_type", err: fmt.Errorf(`ent: validator failed for field "ExpandedContent.content_type": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.MediaURL(); !ok {
-		return &ValidationError{Name: "media_url", err: errors.New(`ent: missing required field "ExpandedContent.media_url"`)}
-	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ExpandedContent.created_at"`)}
 	}
@@ -246,7 +265,11 @@ func (_c *ExpandedContentCreate) createSpec() (*ExpandedContent, *sqlgraph.Creat
 	}
 	if value, ok := _c.mutation.MediaURL(); ok {
 		_spec.SetField(expandedcontent.FieldMediaURL, field.TypeString, value)
-		_node.MediaURL = value
+		_node.MediaURL = &value
+	}
+	if value, ok := _c.mutation.RichContent(); ok {
+		_spec.SetField(expandedcontent.FieldRichContent, field.TypeString, value)
+		_node.RichContent = &value
 	}
 	if value, ok := _c.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)

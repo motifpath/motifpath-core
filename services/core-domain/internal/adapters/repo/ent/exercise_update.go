@@ -147,6 +147,26 @@ func (_u *ExerciseUpdate) ClearEstimatedDurationSeconds() *ExerciseUpdate {
 	return _u
 }
 
+// SetRemediationTargets sets the "remediation_targets" field.
+func (_u *ExerciseUpdate) SetRemediationTargets(v string) *ExerciseUpdate {
+	_u.mutation.SetRemediationTargets(v)
+	return _u
+}
+
+// SetNillableRemediationTargets sets the "remediation_targets" field if the given value is not nil.
+func (_u *ExerciseUpdate) SetNillableRemediationTargets(v *string) *ExerciseUpdate {
+	if v != nil {
+		_u.SetRemediationTargets(*v)
+	}
+	return _u
+}
+
+// ClearRemediationTargets clears the value of the "remediation_targets" field.
+func (_u *ExerciseUpdate) ClearRemediationTargets() *ExerciseUpdate {
+	_u.mutation.ClearRemediationTargets()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdate) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdate {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -405,6 +425,12 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.EstimatedDurationSecondsCleared() {
 		_spec.ClearField(exercise.FieldEstimatedDurationSeconds, field.TypeInt)
+	}
+	if value, ok := _u.mutation.RemediationTargets(); ok {
+		_spec.SetField(exercise.FieldRemediationTargets, field.TypeString, value)
+	}
+	if _u.mutation.RemediationTargetsCleared() {
+		_spec.ClearField(exercise.FieldRemediationTargets, field.TypeString)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -788,6 +814,26 @@ func (_u *ExerciseUpdateOne) ClearEstimatedDurationSeconds() *ExerciseUpdateOne 
 	return _u
 }
 
+// SetRemediationTargets sets the "remediation_targets" field.
+func (_u *ExerciseUpdateOne) SetRemediationTargets(v string) *ExerciseUpdateOne {
+	_u.mutation.SetRemediationTargets(v)
+	return _u
+}
+
+// SetNillableRemediationTargets sets the "remediation_targets" field if the given value is not nil.
+func (_u *ExerciseUpdateOne) SetNillableRemediationTargets(v *string) *ExerciseUpdateOne {
+	if v != nil {
+		_u.SetRemediationTargets(*v)
+	}
+	return _u
+}
+
+// ClearRemediationTargets clears the value of the "remediation_targets" field.
+func (_u *ExerciseUpdateOne) ClearRemediationTargets() *ExerciseUpdateOne {
+	_u.mutation.ClearRemediationTargets()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -1076,6 +1122,12 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	}
 	if _u.mutation.EstimatedDurationSecondsCleared() {
 		_spec.ClearField(exercise.FieldEstimatedDurationSeconds, field.TypeInt)
+	}
+	if value, ok := _u.mutation.RemediationTargets(); ok {
+		_spec.SetField(exercise.FieldRemediationTargets, field.TypeString, value)
+	}
+	if _u.mutation.RemediationTargetsCleared() {
+		_spec.ClearField(exercise.FieldRemediationTargets, field.TypeString)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{

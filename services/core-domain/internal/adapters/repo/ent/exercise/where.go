@@ -81,6 +81,11 @@ func EstimatedDurationSeconds(v int) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldEstimatedDurationSeconds, v))
 }
 
+// RemediationTargets applies equality check predicate on the "remediation_targets" field. It's identical to RemediationTargetsEQ.
+func RemediationTargets(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldRemediationTargets, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
@@ -444,6 +449,81 @@ func EstimatedDurationSecondsIsNil() predicate.Exercise {
 // EstimatedDurationSecondsNotNil applies the NotNil predicate on the "estimated_duration_seconds" field.
 func EstimatedDurationSecondsNotNil() predicate.Exercise {
 	return predicate.Exercise(sql.FieldNotNull(FieldEstimatedDurationSeconds))
+}
+
+// RemediationTargetsEQ applies the EQ predicate on the "remediation_targets" field.
+func RemediationTargetsEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsNEQ applies the NEQ predicate on the "remediation_targets" field.
+func RemediationTargetsNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsIn applies the In predicate on the "remediation_targets" field.
+func RemediationTargetsIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldRemediationTargets, vs...))
+}
+
+// RemediationTargetsNotIn applies the NotIn predicate on the "remediation_targets" field.
+func RemediationTargetsNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldRemediationTargets, vs...))
+}
+
+// RemediationTargetsGT applies the GT predicate on the "remediation_targets" field.
+func RemediationTargetsGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsGTE applies the GTE predicate on the "remediation_targets" field.
+func RemediationTargetsGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsLT applies the LT predicate on the "remediation_targets" field.
+func RemediationTargetsLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsLTE applies the LTE predicate on the "remediation_targets" field.
+func RemediationTargetsLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsContains applies the Contains predicate on the "remediation_targets" field.
+func RemediationTargetsContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsHasPrefix applies the HasPrefix predicate on the "remediation_targets" field.
+func RemediationTargetsHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsHasSuffix applies the HasSuffix predicate on the "remediation_targets" field.
+func RemediationTargetsHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsIsNil applies the IsNil predicate on the "remediation_targets" field.
+func RemediationTargetsIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldRemediationTargets))
+}
+
+// RemediationTargetsNotNil applies the NotNil predicate on the "remediation_targets" field.
+func RemediationTargetsNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldRemediationTargets))
+}
+
+// RemediationTargetsEqualFold applies the EqualFold predicate on the "remediation_targets" field.
+func RemediationTargetsEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldRemediationTargets, v))
+}
+
+// RemediationTargetsContainsFold applies the ContainsFold predicate on the "remediation_targets" field.
+func RemediationTargetsContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldRemediationTargets, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
