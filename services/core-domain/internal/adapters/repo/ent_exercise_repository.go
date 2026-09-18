@@ -58,29 +58,9 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
-		optionID, err := uuid.Parse(opt.ID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(id).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			shape := exerciseoption.RegionShape(opt.Region.Shape)
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(shape)
-		}
-		optionBuilders[i] = optBuilder
+	optionBuilders, err := buildExerciseOptionCreates(tx, id, ex.Options)
+	if err != nil {
+		return rollback(tx, err)
 	}
 	if len(optionBuilders) > 0 {
 		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
@@ -89,6 +69,36 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	}
 
 	return tx.Commit()
+}
+
+// buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
+// opt, shared by Create and Update since both fully (re)establish an
+// exercise's options the same way.
+func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
+	builders := make([]*ent.ExerciseOptionCreate, len(options))
+	for i, opt := range options {
+		optionID, err := uuid.Parse(opt.ID)
+		if err != nil {
+			return nil, err
+		}
+		optBuilder := tx.ExerciseOption.Create().
+			SetID(optionID).
+			SetExerciseID(exerciseID).
+			SetIsCorrect(opt.IsCorrect).
+			SetNillableLabel(opt.Label).
+			SetNillableImageURL(opt.ImageURL).
+			SetNillableAudioURL(opt.AudioURL)
+		if opt.Region != nil {
+			optBuilder = optBuilder.
+				SetRegionX(opt.Region.X).
+				SetRegionY(opt.Region.Y).
+				SetRegionWidth(opt.Region.Width).
+				SetRegionHeight(opt.Region.Height).
+				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
+		}
+		builders[i] = optBuilder
+	}
+	return builders, nil
 }
 
 func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.Exercise, error) {
@@ -359,28 +369,9 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
-		optionID, err := uuid.Parse(opt.ID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(id).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
-		}
-		optionBuilders[i] = optBuilder
+	optionBuilders, err := buildExerciseOptionCreates(tx, id, ex.Options)
+	if err != nil {
+		return rollback(tx, err)
 	}
 	if len(optionBuilders) > 0 {
 		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {

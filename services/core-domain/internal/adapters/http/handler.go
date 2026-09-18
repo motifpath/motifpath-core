@@ -541,15 +541,15 @@ func (h *Handler) DeleteExpandedContent(ctx context.Context, request generated.D
 
 	err := h.content.DeleteExpandedContent(ctx, caller, request.ExpandedContentId.String())
 	if err != nil {
-		if kind, _ := classify(err); kind != errKindOther {
-			switch kind {
-			case errKindForbidden:
-				return generated.DeleteExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this expanded content item")), nil
-			case errKindNotFound:
-				return generated.DeleteExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
-			}
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.DeleteExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this expanded content item")), nil
+		case errKindNotFound:
+			return generated.DeleteExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
 		}
-		return nil, err
 	}
 
 	return generated.DeleteExpandedContent204Response{}, nil

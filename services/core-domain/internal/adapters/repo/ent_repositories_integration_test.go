@@ -16,6 +16,8 @@ import (
 
 var fixedAt = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC).Truncate(time.Microsecond)
 
+func strPtr(s string) *string { return &s }
+
 func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -74,11 +76,11 @@ func TestEntChallengeRepository_CreateAndGet(t *testing.T) {
 	repo := NewEntChallengeRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
-	target := seedContentNode(t, ctx, nodeRepo).ID
+	timeThreshold := 120000
 
 	challenge := domain.Challenge{
 		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70,
-		RemediationTargetContentNodeID: &target, CreatedAt: fixedAt,
+		TimeThresholdMS: &timeThreshold, CreatedAt: fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, challenge))
 
@@ -392,9 +394,9 @@ func TestEntExpandedContentRepository_CreateGetAndList(t *testing.T) {
 	first, second, third := 210, 90, 150
 	hideFirst, hideSecond, hideThird := first+10, second+10, third+10
 	items := []domain.ExpandedContent{
-		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: "https://cdn/a.png", TriggerAtSeconds: &first, HideAtSeconds: &hideFirst, CreatedAt: fixedAt},
-		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: "https://cdn/b.png", TriggerAtSeconds: &second, HideAtSeconds: &hideSecond, CreatedAt: fixedAt},
-		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: "https://cdn/c.png", TriggerAtSeconds: &third, HideAtSeconds: &hideThird, CreatedAt: fixedAt},
+		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: strPtr("https://cdn/a.png"), TriggerAtSeconds: &first, HideAtSeconds: &hideFirst, CreatedAt: fixedAt},
+		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: strPtr("https://cdn/b.png"), TriggerAtSeconds: &second, HideAtSeconds: &hideSecond, CreatedAt: fixedAt},
+		{ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeImage, MediaURL: strPtr("https://cdn/c.png"), TriggerAtSeconds: &third, HideAtSeconds: &hideThird, CreatedAt: fixedAt},
 	}
 	for _, item := range items {
 		require.NoError(t, repo.Create(ctx, item))
