@@ -34,20 +34,41 @@ func (r *EntChallengeRepository) Create(ctx context.Context, challenge domain.Ch
 		SetContentNodeID(contentNodeID).
 		SetSubjectTag(challenge.SubjectTag).
 		SetPassThreshold(challenge.PassThreshold).
+		SetNillableTimeThresholdMs(challenge.TimeThresholdMS).
 		SetShuffleExercises(challenge.ShuffleExercises).
 		SetShuffleOptions(challenge.ShuffleOptions).
 		SetCreatedAt(challenge.CreatedAt)
 
-	if challenge.RemediationTargetContentNodeID != nil {
-		target, err := uuid.Parse(*challenge.RemediationTargetContentNodeID)
-		if err != nil {
-			return err
-		}
-		builder = builder.SetRemediationTargetContentNodeID(target)
+	_, err = builder.Save(ctx)
+	return err
+}
+
+func (r *EntChallengeRepository) Update(ctx context.Context, challenge domain.Challenge) error {
+	id, err := uuid.Parse(challenge.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	builder := r.client.Challenge.UpdateOneID(id).
+		SetSubjectTag(challenge.SubjectTag).
+		SetPassThreshold(challenge.PassThreshold).
+		SetShuffleExercises(challenge.ShuffleExercises).
+		SetShuffleOptions(challenge.ShuffleOptions)
+
+	if challenge.TimeThresholdMS != nil {
+		builder = builder.SetTimeThresholdMs(*challenge.TimeThresholdMS)
+	} else {
+		builder = builder.ClearTimeThresholdMs()
 	}
 
 	_, err = builder.Save(ctx)
-	return err
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *EntChallengeRepository) GetByID(ctx context.Context, id string) (domain.Challenge, error) {
@@ -84,18 +105,14 @@ func (r *EntChallengeRepository) ListByContentNodeID(ctx context.Context, conten
 }
 
 func toDomainChallenge(row *ent.Challenge) domain.Challenge {
-	challenge := domain.Challenge{
+	return domain.Challenge{
 		ID:               row.ID.String(),
 		ContentNodeID:    row.ContentNodeID.String(),
 		SubjectTag:       row.SubjectTag,
 		PassThreshold:    row.PassThreshold,
+		TimeThresholdMS:  row.TimeThresholdMs,
 		ShuffleExercises: row.ShuffleExercises,
 		ShuffleOptions:   row.ShuffleOptions,
 		CreatedAt:        row.CreatedAt,
 	}
-	if row.RemediationTargetContentNodeID != nil {
-		target := row.RemediationTargetContentNodeID.String()
-		challenge.RemediationTargetContentNodeID = &target
-	}
-	return challenge
 }

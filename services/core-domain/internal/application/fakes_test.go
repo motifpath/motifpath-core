@@ -203,6 +203,16 @@ func (f *fakeChallengeRepository) ListByContentNodeID(_ context.Context, content
 	return result, nil
 }
 
+func (f *fakeChallengeRepository) Update(_ context.Context, challenge domain.Challenge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[challenge.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[challenge.ID] = challenge
+	return nil
+}
+
 // fakeExerciseRepository is a minimal in-memory ports.ExerciseRepository.
 // byChallengeOrder/byNodeOrder track link order per challenge/node
 // separately from each exercise's own ChallengeIDs/ContentNodeIDs slice,

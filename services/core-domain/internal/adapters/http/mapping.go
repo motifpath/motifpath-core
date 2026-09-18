@@ -53,20 +53,16 @@ func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
 }
 
 func toChallenge(c domain.Challenge) generated.Challenge {
-	challenge := generated.Challenge{
+	return generated.Challenge{
 		ChallengeId:      mustUUID(c.ID),
 		ContentNodeId:    mustUUID(c.ContentNodeID),
 		SubjectTag:       c.SubjectTag,
 		PassThreshold:    c.PassThreshold,
+		TimeThresholdMs:  c.TimeThresholdMS,
 		ShuffleExercises: c.ShuffleExercises,
 		ShuffleOptions:   c.ShuffleOptions,
 		CreatedAt:        c.CreatedAt,
 	}
-	if c.RemediationTargetContentNodeID != nil {
-		target := mustUUID(*c.RemediationTargetContentNodeID)
-		challenge.RemediationTargetContentNodeId = &target
-	}
-	return challenge
 }
 
 func toChallenges(challenges []domain.Challenge) []generated.Challenge {

@@ -93,7 +93,7 @@ func run() error {
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nil, newID, now)
-	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)

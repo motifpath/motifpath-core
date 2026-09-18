@@ -218,12 +218,6 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 		return generated.CreateChallenge401JSONResponse(unauthorizedError()), nil
 	}
 
-	var remediationTarget *string
-	if request.Body.RemediationTargetContentNodeId != nil {
-		s := request.Body.RemediationTargetContentNodeId.String()
-		remediationTarget = &s
-	}
-
 	var shuffleExercises, shuffleOptions bool
 	if request.Body.ShuffleExercises != nil {
 		shuffleExercises = *request.Body.ShuffleExercises
@@ -233,7 +227,7 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 	}
 
 	challenge, err := h.challenge.CreateChallenge(ctx, caller, request.ContentNodeId.String(),
-		request.Body.SubjectTag, request.Body.PassThreshold, remediationTarget, shuffleExercises, shuffleOptions)
+		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -249,6 +243,39 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 	}
 
 	return generated.CreateChallenge201JSONResponse(toChallenge(challenge)), nil
+}
+
+func (h *Handler) UpdateChallenge(ctx context.Context, request generated.UpdateChallengeRequestObject) (generated.UpdateChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	var shuffleExercises, shuffleOptions bool
+	if request.Body.ShuffleExercises != nil {
+		shuffleExercises = *request.Body.ShuffleExercises
+	}
+	if request.Body.ShuffleOptions != nil {
+		shuffleOptions = *request.Body.ShuffleOptions
+	}
+
+	challenge, err := h.challenge.UpdateChallenge(ctx, caller, request.ChallengeId.String(),
+		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateChallenge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateChallenge403JSONResponse(forbiddenError("only the creating teacher or an admin may update this challenge")), nil
+		case errKindNotFound:
+			return generated.UpdateChallenge404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateChallenge200JSONResponse(toChallenge(challenge)), nil
 }
 
 func (h *Handler) GetChallenge(ctx context.Context, request generated.GetChallengeRequestObject) (generated.GetChallengeResponseObject, error) {
