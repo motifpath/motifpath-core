@@ -48,7 +48,13 @@ type ContentNode struct {
 	Title          string
 	ContentType    ContentType
 	Classification Classification
-	CreatedAt      time.Time
+	// Languages are the languages this content node is available in, or a
+	// single LanguageCodeAny entry for language-agnostic content. Never
+	// empty — a node must be explicitly tagged. Name is populated only once
+	// this ContentNode has been read back from the repository with its
+	// Language rows joined in.
+	Languages []Language
+	CreatedAt time.Time
 }
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
@@ -64,12 +70,13 @@ type ContentNode struct {
 // invalid" — which matters because the two are reported under different
 // field names in the merged Gherkin scenarios (register-user-style "whole
 // object omitted" -> "classification"; a single bad value -> its own field).
-func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, createdAt time.Time) (ContentNode, error) {
+func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
 	var errs []FieldError
 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 
 	switch contentType {
 	case ContentTypeVideo, ContentTypeArticle:
@@ -113,6 +120,7 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
+		Languages: languagesFromCodes(languageCodes),
 		CreatedAt: createdAt,
 	}, nil
 }

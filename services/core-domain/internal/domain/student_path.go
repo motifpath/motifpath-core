@@ -37,12 +37,18 @@ type StudentPathItem struct {
 // treated as not_started, mirroring CompletionStateRepository.GetStatus's
 // own found=false handling in the aggregation-worker.
 //
+// langLocked is keyed by content_node_id and holds true for items the
+// caller's resolved locale cannot access — no language edge on the item's
+// ContentNode (or a required Exercise) matches the locale, and neither has
+// an "any" edge. This composes with, not replaces, prerequisite-based
+// locking: an item is locked if either reason applies. See ADR-024.
+//
 // An item is locked unless every earlier item in the path is completed —
-// position 1 is never locked by this rule (there is no earlier item to
-// block it). current_position is the 1-based position of the first item
-// that is not completed, or the path's last position if every item is
-// completed.
-func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionStatus) ([]StudentPathItem, int) {
+// position 1 is never locked by the prerequisite rule (there is no earlier
+// item to block it), though it can still be locked by langLocked.
+// current_position is the 1-based position of the first item that is not
+// completed, or the path's last position if every item is completed.
+func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionStatus, langLocked map[string]bool) ([]StudentPathItem, int) {
 	result := make([]StudentPathItem, len(items))
 	priorCompleted := true
 	currentPosition := 1
@@ -54,6 +60,9 @@ func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionSt
 			status = CompletionStatusNotStarted
 		}
 		if !priorCompleted {
+			status = CompletionStatusLocked
+		}
+		if langLocked[item.ContentNodeID] {
 			status = CompletionStatusLocked
 		}
 

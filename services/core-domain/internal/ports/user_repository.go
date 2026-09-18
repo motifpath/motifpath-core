@@ -19,4 +19,8 @@ type UserRepository interface {
 	// GetByID returns the user with the given MotifPath user_id. Returns
 	// domain.ErrNotFound if none exists.
 	GetByID(ctx context.Context, id string) (domain.User, error)
+
+	// UpdateLocale sets the locale (a Language.Code) on the user with the
+	// given id. Returns domain.ErrNotFound if no such user exists.
+	UpdateLocale(ctx context.Context, id, locale string) error
 }

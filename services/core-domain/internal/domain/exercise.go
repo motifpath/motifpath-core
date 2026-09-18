@@ -166,15 +166,23 @@ type Exercise struct {
 	// to as a path exercise. Managed exclusively through
 	// LinkContentNode/UnlinkContentNode, independent of ChallengeIDs.
 	ContentNodeIDs []string
-	CreatedAt      time.Time
+	// Languages are the languages this exercise is available in, or a single
+	// LanguageCodeAny entry for language-agnostic content. Independent of
+	// any ContentNode's languages — an exercise reused across nodes has no
+	// single parent to inherit a language from. Name is populated only once
+	// this Exercise has been read back from the repository with its
+	// Language rows joined in.
+	Languages []Language
+	CreatedAt time.Time
 }
 
 // NewExercise validates and constructs a standalone Exercise, not yet linked
 // to any challenge or content node. Whether it later gets linked to a
 // challenge or node that exists is an application-layer concern.
-func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, createdAt time.Time) (Exercise, error) {
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, languageCodes []string, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
 	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)...)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -191,6 +199,7 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		EstimatedDurationSeconds: estimatedDurationSeconds,
 		ChallengeIDs:             []string{},
 		ContentNodeIDs:           []string{},
+		Languages:                languagesFromCodes(languageCodes),
 		CreatedAt:                createdAt,
 	}, nil
 }
@@ -202,8 +211,9 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 // creation since it determines the option shape (region vs. text vs.
 // image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int) (Exercise, error) {
+func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, languageCodes []string) (Exercise, error) {
 	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -216,6 +226,7 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string
 	updated.AudioURL = audioURL
 	updated.Options = options
 	updated.EstimatedDurationSeconds = estimatedDurationSeconds
+	updated.Languages = languagesFromCodes(languageCodes)
 	return updated, nil
 }
 
