@@ -439,6 +439,29 @@ func HasPathExercisesWith(preds ...predicate.Exercise) predicate.ContentNode {
 	})
 }
 
+// HasLanguages applies the HasEdge predicate on the "languages" edge.
+func HasLanguages() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, LanguagesTable, LanguagesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLanguagesWith applies the HasEdge predicate on the "languages" edge with a given conditions (other predicates).
+func HasLanguagesWith(preds ...predicate.Language) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newLanguagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasContentNodeExercises applies the HasEdge predicate on the "content_node_exercises" edge.
 func HasContentNodeExercises() predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
@@ -454,6 +477,29 @@ func HasContentNodeExercises() predicate.ContentNode {
 func HasContentNodeExercisesWith(preds ...predicate.ContentNodeExercise) predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
 		step := newContentNodeExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeLanguages applies the HasEdge predicate on the "content_node_languages" edge.
+func HasContentNodeLanguages() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeLanguagesTable, ContentNodeLanguagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeLanguagesWith applies the HasEdge predicate on the "content_node_languages" edge with a given conditions (other predicates).
+func HasContentNodeLanguagesWith(preds ...predicate.ContentNodeLanguage) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeLanguagesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

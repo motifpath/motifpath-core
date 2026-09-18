@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -30,6 +31,12 @@ func (_c *UserCreate) SetClerkUserID(v string) *UserCreate {
 // SetRole sets the "role" field.
 func (_c *UserCreate) SetRole(v user.Role) *UserCreate {
 	_c.mutation.SetRole(v)
+	return _c
+}
+
+// SetLocaleID sets the "locale_id" field.
+func (_c *UserCreate) SetLocaleID(v uuid.UUID) *UserCreate {
+	_c.mutation.SetLocaleID(v)
 	return _c
 }
 
@@ -59,6 +66,11 @@ func (_c *UserCreate) SetNillableID(v *uuid.UUID) *UserCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// SetLocale sets the "locale" edge to the Language entity.
+func (_c *UserCreate) SetLocale(v *Language) *UserCreate {
+	return _c.SetLocaleID(v.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -119,8 +131,14 @@ func (_c *UserCreate) check() error {
 			return &ValidationError{Name: "role", err: fmt.Errorf(`ent: validator failed for field "User.role": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.LocaleID(); !ok {
+		return &ValidationError{Name: "locale_id", err: errors.New(`ent: missing required field "User.locale_id"`)}
+	}
 	if _, ok := _c.mutation.RegisteredAt(); !ok {
 		return &ValidationError{Name: "registered_at", err: errors.New(`ent: missing required field "User.registered_at"`)}
+	}
+	if len(_c.mutation.LocaleIDs()) == 0 {
+		return &ValidationError{Name: "locale", err: errors.New(`ent: missing required edge "User.locale"`)}
 	}
 	return nil
 }
@@ -168,6 +186,23 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RegisteredAt(); ok {
 		_spec.SetField(user.FieldRegisteredAt, field.TypeTime, value)
 		_node.RegisteredAt = value
+	}
+	if nodes := _c.mutation.LocaleIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.LocaleTable,
+			Columns: []string{user.LocaleColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.LocaleID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

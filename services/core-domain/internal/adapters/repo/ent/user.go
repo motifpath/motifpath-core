@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -22,9 +23,34 @@ type User struct {
 	ClerkUserID string `json:"clerk_user_id,omitempty"`
 	// Role holds the value of the "role" field.
 	Role user.Role `json:"role,omitempty"`
+	// LocaleID holds the value of the "locale_id" field.
+	LocaleID uuid.UUID `json:"locale_id,omitempty"`
 	// RegisteredAt holds the value of the "registered_at" field.
 	RegisteredAt time.Time `json:"registered_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Locale holds the value of the locale edge.
+	Locale *Language `json:"locale,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// LocaleOrErr returns the Locale value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) LocaleOrErr() (*Language, error) {
+	if e.Locale != nil {
+		return e.Locale, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: language.Label}
+	}
+	return nil, &NotLoadedError{edge: "locale"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -36,7 +62,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case user.FieldRegisteredAt:
 			values[i] = new(sql.NullTime)
-		case user.FieldID:
+		case user.FieldID, user.FieldLocaleID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -71,6 +97,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Role = user.Role(value.String)
 			}
+		case user.FieldLocaleID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field locale_id", values[i])
+			} else if value != nil {
+				_m.LocaleID = *value
+			}
 		case user.FieldRegisteredAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field registered_at", values[i])
@@ -88,6 +120,11 @@ func (_m *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryLocale queries the "locale" edge of the User entity.
+func (_m *User) QueryLocale() *LanguageQuery {
+	return NewUserClient(_m.config).QueryLocale(_m)
 }
 
 // Update returns a builder for updating this User.
@@ -118,6 +155,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("role=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Role))
+	builder.WriteString(", ")
+	builder.WriteString("locale_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LocaleID))
 	builder.WriteString(", ")
 	builder.WriteString("registered_at=")
 	builder.WriteString(_m.RegisteredAt.Format(time.ANSIC))

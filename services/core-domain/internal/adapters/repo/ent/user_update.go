@@ -10,6 +10,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
@@ -27,9 +29,34 @@ func (_u *UserUpdate) Where(ps ...predicate.User) *UserUpdate {
 	return _u
 }
 
+// SetLocaleID sets the "locale_id" field.
+func (_u *UserUpdate) SetLocaleID(v uuid.UUID) *UserUpdate {
+	_u.mutation.SetLocaleID(v)
+	return _u
+}
+
+// SetNillableLocaleID sets the "locale_id" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableLocaleID(v *uuid.UUID) *UserUpdate {
+	if v != nil {
+		_u.SetLocaleID(*v)
+	}
+	return _u
+}
+
+// SetLocale sets the "locale" edge to the Language entity.
+func (_u *UserUpdate) SetLocale(v *Language) *UserUpdate {
+	return _u.SetLocaleID(v.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearLocale clears the "locale" edge to the Language entity.
+func (_u *UserUpdate) ClearLocale() *UserUpdate {
+	_u.mutation.ClearLocale()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -59,7 +86,18 @@ func (_u *UserUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *UserUpdate) check() error {
+	if _u.mutation.LocaleCleared() && len(_u.mutation.LocaleIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "User.locale"`)
+	}
+	return nil
+}
+
 func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -67,6 +105,35 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.LocaleCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.LocaleTable,
+			Columns: []string{user.LocaleColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LocaleIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.LocaleTable,
+			Columns: []string{user.LocaleColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -88,9 +155,34 @@ type UserUpdateOne struct {
 	mutation *UserMutation
 }
 
+// SetLocaleID sets the "locale_id" field.
+func (_u *UserUpdateOne) SetLocaleID(v uuid.UUID) *UserUpdateOne {
+	_u.mutation.SetLocaleID(v)
+	return _u
+}
+
+// SetNillableLocaleID sets the "locale_id" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableLocaleID(v *uuid.UUID) *UserUpdateOne {
+	if v != nil {
+		_u.SetLocaleID(*v)
+	}
+	return _u
+}
+
+// SetLocale sets the "locale" edge to the Language entity.
+func (_u *UserUpdateOne) SetLocale(v *Language) *UserUpdateOne {
+	return _u.SetLocaleID(v.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearLocale clears the "locale" edge to the Language entity.
+func (_u *UserUpdateOne) ClearLocale() *UserUpdateOne {
+	_u.mutation.ClearLocale()
+	return _u
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -133,7 +225,18 @@ func (_u *UserUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *UserUpdateOne) check() error {
+	if _u.mutation.LocaleCleared() && len(_u.mutation.LocaleIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "User.locale"`)
+	}
+	return nil
+}
+
 func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -158,6 +261,35 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.LocaleCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.LocaleTable,
+			Columns: []string{user.LocaleColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LocaleIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   user.LocaleTable,
+			Columns: []string{user.LocaleColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: _u.config}
 	_spec.Assign = _node.assignValues

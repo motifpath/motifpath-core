@@ -20,12 +20,18 @@ type Tx struct {
 	ContentNode *ContentNodeClient
 	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
 	ContentNodeExercise *ContentNodeExerciseClient
+	// ContentNodeLanguage is the client for interacting with the ContentNodeLanguage builders.
+	ContentNodeLanguage *ContentNodeLanguageClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
+	// ExerciseLanguage is the client for interacting with the ExerciseLanguage builders.
+	ExerciseLanguage *ExerciseLanguageClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
 	ExerciseOption *ExerciseOptionClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// Language is the client for interacting with the Language builders.
+	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
 	LearningPath *LearningPathClient
 	// LearningPathItem is the client for interacting with the LearningPathItem builders.
@@ -169,9 +175,12 @@ func (tx *Tx) init() {
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
+	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
+	tx.ExerciseLanguage = NewExerciseLanguageClient(tx.config)
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)
+	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.PathAssignment = NewPathAssignmentClient(tx.config)

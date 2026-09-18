@@ -13,7 +13,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -115,6 +117,21 @@ func (_u *ContentNodeUpdate) AddPathExercises(v ...*Exercise) *ContentNodeUpdate
 	return _u.AddPathExerciseIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_u *ContentNodeUpdate) AddLanguageIDs(ids ...uuid.UUID) *ContentNodeUpdate {
+	_u.mutation.AddLanguageIDs(ids...)
+	return _u
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_u *ContentNodeUpdate) AddLanguages(v ...*Language) *ContentNodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLanguageIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_u *ContentNodeUpdate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdate {
 	_u.mutation.AddContentNodeExerciseIDs(ids...)
@@ -128,6 +145,21 @@ func (_u *ContentNodeUpdate) AddContentNodeExercises(v ...*ContentNodeExercise) 
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddContentNodeLanguageIDs adds the "content_node_languages" edge to the ContentNodeLanguage entity by IDs.
+func (_u *ContentNodeUpdate) AddContentNodeLanguageIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.AddContentNodeLanguageIDs(ids...)
+	return _u
+}
+
+// AddContentNodeLanguages adds the "content_node_languages" edges to the ContentNodeLanguage entity.
+func (_u *ContentNodeUpdate) AddContentNodeLanguages(v ...*ContentNodeLanguage) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeLanguageIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -156,6 +188,27 @@ func (_u *ContentNodeUpdate) RemovePathExercises(v ...*Exercise) *ContentNodeUpd
 	return _u.RemovePathExerciseIDs(ids...)
 }
 
+// ClearLanguages clears all "languages" edges to the Language entity.
+func (_u *ContentNodeUpdate) ClearLanguages() *ContentNodeUpdate {
+	_u.mutation.ClearLanguages()
+	return _u
+}
+
+// RemoveLanguageIDs removes the "languages" edge to Language entities by IDs.
+func (_u *ContentNodeUpdate) RemoveLanguageIDs(ids ...uuid.UUID) *ContentNodeUpdate {
+	_u.mutation.RemoveLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveLanguages removes "languages" edges to Language entities.
+func (_u *ContentNodeUpdate) RemoveLanguages(v ...*Language) *ContentNodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLanguageIDs(ids...)
+}
+
 // ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
 func (_u *ContentNodeUpdate) ClearContentNodeExercises() *ContentNodeUpdate {
 	_u.mutation.ClearContentNodeExercises()
@@ -175,6 +228,27 @@ func (_u *ContentNodeUpdate) RemoveContentNodeExercises(v ...*ContentNodeExercis
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeExerciseIDs(ids...)
+}
+
+// ClearContentNodeLanguages clears all "content_node_languages" edges to the ContentNodeLanguage entity.
+func (_u *ContentNodeUpdate) ClearContentNodeLanguages() *ContentNodeUpdate {
+	_u.mutation.ClearContentNodeLanguages()
+	return _u
+}
+
+// RemoveContentNodeLanguageIDs removes the "content_node_languages" edge to ContentNodeLanguage entities by IDs.
+func (_u *ContentNodeUpdate) RemoveContentNodeLanguageIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.RemoveContentNodeLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeLanguages removes "content_node_languages" edges to ContentNodeLanguage entities.
+func (_u *ContentNodeUpdate) RemoveContentNodeLanguages(v ...*ContentNodeLanguage) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeLanguageIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -303,6 +377,63 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLanguagesIDs(); len(nodes) > 0 && !_u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -341,6 +472,51 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeLanguagesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -453,6 +629,21 @@ func (_u *ContentNodeUpdateOne) AddPathExercises(v ...*Exercise) *ContentNodeUpd
 	return _u.AddPathExerciseIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_u *ContentNodeUpdateOne) AddLanguageIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
+	_u.mutation.AddLanguageIDs(ids...)
+	return _u
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_u *ContentNodeUpdateOne) AddLanguages(v ...*Language) *ContentNodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLanguageIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_u *ContentNodeUpdateOne) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdateOne {
 	_u.mutation.AddContentNodeExerciseIDs(ids...)
@@ -466,6 +657,21 @@ func (_u *ContentNodeUpdateOne) AddContentNodeExercises(v ...*ContentNodeExercis
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddContentNodeLanguageIDs adds the "content_node_languages" edge to the ContentNodeLanguage entity by IDs.
+func (_u *ContentNodeUpdateOne) AddContentNodeLanguageIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.AddContentNodeLanguageIDs(ids...)
+	return _u
+}
+
+// AddContentNodeLanguages adds the "content_node_languages" edges to the ContentNodeLanguage entity.
+func (_u *ContentNodeUpdateOne) AddContentNodeLanguages(v ...*ContentNodeLanguage) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeLanguageIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -494,6 +700,27 @@ func (_u *ContentNodeUpdateOne) RemovePathExercises(v ...*Exercise) *ContentNode
 	return _u.RemovePathExerciseIDs(ids...)
 }
 
+// ClearLanguages clears all "languages" edges to the Language entity.
+func (_u *ContentNodeUpdateOne) ClearLanguages() *ContentNodeUpdateOne {
+	_u.mutation.ClearLanguages()
+	return _u
+}
+
+// RemoveLanguageIDs removes the "languages" edge to Language entities by IDs.
+func (_u *ContentNodeUpdateOne) RemoveLanguageIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
+	_u.mutation.RemoveLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveLanguages removes "languages" edges to Language entities.
+func (_u *ContentNodeUpdateOne) RemoveLanguages(v ...*Language) *ContentNodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLanguageIDs(ids...)
+}
+
 // ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
 func (_u *ContentNodeUpdateOne) ClearContentNodeExercises() *ContentNodeUpdateOne {
 	_u.mutation.ClearContentNodeExercises()
@@ -513,6 +740,27 @@ func (_u *ContentNodeUpdateOne) RemoveContentNodeExercises(v ...*ContentNodeExer
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeExerciseIDs(ids...)
+}
+
+// ClearContentNodeLanguages clears all "content_node_languages" edges to the ContentNodeLanguage entity.
+func (_u *ContentNodeUpdateOne) ClearContentNodeLanguages() *ContentNodeUpdateOne {
+	_u.mutation.ClearContentNodeLanguages()
+	return _u
+}
+
+// RemoveContentNodeLanguageIDs removes the "content_node_languages" edge to ContentNodeLanguage entities by IDs.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeLanguageIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.RemoveContentNodeLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeLanguages removes "content_node_languages" edges to ContentNodeLanguage entities.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeLanguages(v ...*ContentNodeLanguage) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeLanguageIDs(ids...)
 }
 
 // Where appends a list predicates to the ContentNodeUpdate builder.
@@ -671,6 +919,63 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLanguagesIDs(); len(nodes) > 0 && !_u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeLanguageCreate{config: _u.config, mutation: newContentNodeLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -709,6 +1014,51 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeLanguagesIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

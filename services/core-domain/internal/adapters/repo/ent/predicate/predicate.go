@@ -18,14 +18,23 @@ type ContentNode func(*sql.Selector)
 // ContentNodeExercise is the predicate function for contentnodeexercise builders.
 type ContentNodeExercise func(*sql.Selector)
 
+// ContentNodeLanguage is the predicate function for contentnodelanguage builders.
+type ContentNodeLanguage func(*sql.Selector)
+
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)
+
+// ExerciseLanguage is the predicate function for exerciselanguage builders.
+type ExerciseLanguage func(*sql.Selector)
 
 // ExerciseOption is the predicate function for exerciseoption builders.
 type ExerciseOption func(*sql.Selector)
 
 // ExpandedContent is the predicate function for expandedcontent builders.
 type ExpandedContent func(*sql.Selector)
+
+// Language is the predicate function for language builders.
+type Language func(*sql.Selector)
 
 // LearningPath is the predicate function for learningpath builders.
 type LearningPath func(*sql.Selector)

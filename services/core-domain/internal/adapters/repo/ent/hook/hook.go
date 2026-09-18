@@ -57,6 +57,18 @@ func (f ContentNodeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (en
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeExerciseMutation", m)
 }
 
+// The ContentNodeLanguageFunc type is an adapter to allow the use of ordinary
+// function as ContentNodeLanguage mutator.
+type ContentNodeLanguageFunc func(context.Context, *ent.ContentNodeLanguageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ContentNodeLanguageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ContentNodeLanguageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeLanguageMutation", m)
+}
+
 // The ExerciseFunc type is an adapter to allow the use of ordinary
 // function as Exercise mutator.
 type ExerciseFunc func(context.Context, *ent.ExerciseMutation) (ent.Value, error)
@@ -67,6 +79,18 @@ func (f ExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseMutation", m)
+}
+
+// The ExerciseLanguageFunc type is an adapter to allow the use of ordinary
+// function as ExerciseLanguage mutator.
+type ExerciseLanguageFunc func(context.Context, *ent.ExerciseLanguageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ExerciseLanguageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ExerciseLanguageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseLanguageMutation", m)
 }
 
 // The ExerciseOptionFunc type is an adapter to allow the use of ordinary
@@ -91,6 +115,18 @@ func (f ExpandedContentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExpandedContentMutation", m)
+}
+
+// The LanguageFunc type is an adapter to allow the use of ordinary
+// function as Language mutator.
+type LanguageFunc func(context.Context, *ent.LanguageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LanguageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LanguageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LanguageMutation", m)
 }
 
 // The LearningPathFunc type is an adapter to allow the use of ordinary

@@ -16,9 +16,12 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
@@ -87,9 +90,12 @@ func checkColumn(t, c string) error {
 			challengeexercise.Table:   challengeexercise.ValidColumn,
 			contentnode.Table:         contentnode.ValidColumn,
 			contentnodeexercise.Table: contentnodeexercise.ValidColumn,
+			contentnodelanguage.Table: contentnodelanguage.ValidColumn,
 			exercise.Table:            exercise.ValidColumn,
+			exerciselanguage.Table:    exerciselanguage.ValidColumn,
 			exerciseoption.Table:      exerciseoption.ValidColumn,
 			expandedcontent.Table:     expandedcontent.ValidColumn,
+			language.Table:            language.ValidColumn,
 			learningpath.Table:        learningpath.ValidColumn,
 			learningpathitem.Table:    learningpathitem.ValidColumn,
 			pathassignment.Table:      pathassignment.ValidColumn,

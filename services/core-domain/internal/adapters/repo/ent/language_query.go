@@ -14,62 +14,84 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
-// ContentNodeQuery is the builder for querying ContentNode entities.
-type ContentNodeQuery struct {
+// LanguageQuery is the builder for querying Language entities.
+type LanguageQuery struct {
 	config
 	ctx                      *QueryContext
-	order                    []contentnode.OrderOption
+	order                    []language.OrderOption
 	inters                   []Interceptor
-	predicates               []predicate.ContentNode
-	withPathExercises        *ExerciseQuery
-	withLanguages            *LanguageQuery
-	withContentNodeExercises *ContentNodeExerciseQuery
+	predicates               []predicate.Language
+	withContentNodes         *ContentNodeQuery
+	withExercises            *ExerciseQuery
 	withContentNodeLanguages *ContentNodeLanguageQuery
+	withExerciseLanguages    *ExerciseLanguageQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the ContentNodeQuery builder.
-func (_q *ContentNodeQuery) Where(ps ...predicate.ContentNode) *ContentNodeQuery {
+// Where adds a new predicate for the LanguageQuery builder.
+func (_q *LanguageQuery) Where(ps ...predicate.Language) *LanguageQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *ContentNodeQuery) Limit(limit int) *ContentNodeQuery {
+func (_q *LanguageQuery) Limit(limit int) *LanguageQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *ContentNodeQuery) Offset(offset int) *ContentNodeQuery {
+func (_q *LanguageQuery) Offset(offset int) *LanguageQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *ContentNodeQuery) Unique(unique bool) *ContentNodeQuery {
+func (_q *LanguageQuery) Unique(unique bool) *LanguageQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *ContentNodeQuery) Order(o ...contentnode.OrderOption) *ContentNodeQuery {
+func (_q *LanguageQuery) Order(o ...language.OrderOption) *LanguageQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryPathExercises chains the current query on the "path_exercises" edge.
-func (_q *ContentNodeQuery) QueryPathExercises() *ExerciseQuery {
+// QueryContentNodes chains the current query on the "content_nodes" edge.
+func (_q *LanguageQuery) QueryContentNodes() *ContentNodeQuery {
+	query := (&ContentNodeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, selector),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, language.ContentNodesTable, language.ContentNodesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryExercises chains the current query on the "exercises" edge.
+func (_q *LanguageQuery) QueryExercises() *ExerciseQuery {
 	query := (&ExerciseClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -80,53 +102,9 @@ func (_q *ContentNodeQuery) QueryPathExercises() *ExerciseQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
+			sqlgraph.From(language.Table, language.FieldID, selector),
 			sqlgraph.To(exercise.Table, exercise.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, contentnode.PathExercisesTable, contentnode.PathExercisesPrimaryKey...),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryLanguages chains the current query on the "languages" edge.
-func (_q *ContentNodeQuery) QueryLanguages() *LanguageQuery {
-	query := (&LanguageClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
-			sqlgraph.To(language.Table, language.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.LanguagesTable, contentnode.LanguagesPrimaryKey...),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryContentNodeExercises chains the current query on the "content_node_exercises" edge.
-func (_q *ContentNodeQuery) QueryContentNodeExercises() *ContentNodeExerciseQuery {
-	query := (&ContentNodeExerciseClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
-			sqlgraph.To(contentnodeexercise.Table, contentnodeexercise.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeExercisesTable, contentnode.ContentNodeExercisesColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, language.ExercisesTable, language.ExercisesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -135,7 +113,7 @@ func (_q *ContentNodeQuery) QueryContentNodeExercises() *ContentNodeExerciseQuer
 }
 
 // QueryContentNodeLanguages chains the current query on the "content_node_languages" edge.
-func (_q *ContentNodeQuery) QueryContentNodeLanguages() *ContentNodeLanguageQuery {
+func (_q *LanguageQuery) QueryContentNodeLanguages() *ContentNodeLanguageQuery {
 	query := (&ContentNodeLanguageClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -146,9 +124,9 @@ func (_q *ContentNodeQuery) QueryContentNodeLanguages() *ContentNodeLanguageQuer
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
+			sqlgraph.From(language.Table, language.FieldID, selector),
 			sqlgraph.To(contentnodelanguage.Table, contentnodelanguage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeLanguagesTable, contentnode.ContentNodeLanguagesColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, language.ContentNodeLanguagesTable, language.ContentNodeLanguagesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -156,21 +134,43 @@ func (_q *ContentNodeQuery) QueryContentNodeLanguages() *ContentNodeLanguageQuer
 	return query
 }
 
-// First returns the first ContentNode entity from the query.
-// Returns a *NotFoundError when no ContentNode was found.
-func (_q *ContentNodeQuery) First(ctx context.Context) (*ContentNode, error) {
+// QueryExerciseLanguages chains the current query on the "exercise_languages" edge.
+func (_q *LanguageQuery) QueryExerciseLanguages() *ExerciseLanguageQuery {
+	query := (&ExerciseLanguageClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, selector),
+			sqlgraph.To(exerciselanguage.Table, exerciselanguage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, language.ExerciseLanguagesTable, language.ExerciseLanguagesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// First returns the first Language entity from the query.
+// Returns a *NotFoundError when no Language was found.
+func (_q *LanguageQuery) First(ctx context.Context) (*Language, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{contentnode.Label}
+		return nil, &NotFoundError{language.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *ContentNodeQuery) FirstX(ctx context.Context) *ContentNode {
+func (_q *LanguageQuery) FirstX(ctx context.Context) *Language {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -178,22 +178,22 @@ func (_q *ContentNodeQuery) FirstX(ctx context.Context) *ContentNode {
 	return node
 }
 
-// FirstID returns the first ContentNode ID from the query.
-// Returns a *NotFoundError when no ContentNode ID was found.
-func (_q *ContentNodeQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first Language ID from the query.
+// Returns a *NotFoundError when no Language ID was found.
+func (_q *LanguageQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{contentnode.Label}
+		err = &NotFoundError{language.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *ContentNodeQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *LanguageQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -201,10 +201,10 @@ func (_q *ContentNodeQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single ContentNode entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one ContentNode entity is found.
-// Returns a *NotFoundError when no ContentNode entities are found.
-func (_q *ContentNodeQuery) Only(ctx context.Context) (*ContentNode, error) {
+// Only returns a single Language entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Language entity is found.
+// Returns a *NotFoundError when no Language entities are found.
+func (_q *LanguageQuery) Only(ctx context.Context) (*Language, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -213,14 +213,14 @@ func (_q *ContentNodeQuery) Only(ctx context.Context) (*ContentNode, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{contentnode.Label}
+		return nil, &NotFoundError{language.Label}
 	default:
-		return nil, &NotSingularError{contentnode.Label}
+		return nil, &NotSingularError{language.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *ContentNodeQuery) OnlyX(ctx context.Context) *ContentNode {
+func (_q *LanguageQuery) OnlyX(ctx context.Context) *Language {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -228,10 +228,10 @@ func (_q *ContentNodeQuery) OnlyX(ctx context.Context) *ContentNode {
 	return node
 }
 
-// OnlyID is like Only, but returns the only ContentNode ID in the query.
-// Returns a *NotSingularError when more than one ContentNode ID is found.
+// OnlyID is like Only, but returns the only Language ID in the query.
+// Returns a *NotSingularError when more than one Language ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *ContentNodeQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *LanguageQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -240,15 +240,15 @@ func (_q *ContentNodeQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{contentnode.Label}
+		err = &NotFoundError{language.Label}
 	default:
-		err = &NotSingularError{contentnode.Label}
+		err = &NotSingularError{language.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *ContentNodeQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *LanguageQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -256,18 +256,18 @@ func (_q *ContentNodeQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of ContentNodes.
-func (_q *ContentNodeQuery) All(ctx context.Context) ([]*ContentNode, error) {
+// All executes the query and returns a list of Languages.
+func (_q *LanguageQuery) All(ctx context.Context) ([]*Language, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*ContentNode, *ContentNodeQuery]()
-	return withInterceptors[[]*ContentNode](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Language, *LanguageQuery]()
+	return withInterceptors[[]*Language](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *ContentNodeQuery) AllX(ctx context.Context) []*ContentNode {
+func (_q *LanguageQuery) AllX(ctx context.Context) []*Language {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -275,20 +275,20 @@ func (_q *ContentNodeQuery) AllX(ctx context.Context) []*ContentNode {
 	return nodes
 }
 
-// IDs executes the query and returns a list of ContentNode IDs.
-func (_q *ContentNodeQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of Language IDs.
+func (_q *LanguageQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(contentnode.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(language.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *ContentNodeQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *LanguageQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -297,16 +297,16 @@ func (_q *ContentNodeQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *ContentNodeQuery) Count(ctx context.Context) (int, error) {
+func (_q *LanguageQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*ContentNodeQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*LanguageQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *ContentNodeQuery) CountX(ctx context.Context) int {
+func (_q *LanguageQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -315,7 +315,7 @@ func (_q *ContentNodeQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *ContentNodeQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *LanguageQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -328,7 +328,7 @@ func (_q *ContentNodeQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *ContentNodeQuery) ExistX(ctx context.Context) bool {
+func (_q *LanguageQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -336,69 +336,69 @@ func (_q *ContentNodeQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the ContentNodeQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the LanguageQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *ContentNodeQuery) Clone() *ContentNodeQuery {
+func (_q *LanguageQuery) Clone() *LanguageQuery {
 	if _q == nil {
 		return nil
 	}
-	return &ContentNodeQuery{
+	return &LanguageQuery{
 		config:                   _q.config,
 		ctx:                      _q.ctx.Clone(),
-		order:                    append([]contentnode.OrderOption{}, _q.order...),
+		order:                    append([]language.OrderOption{}, _q.order...),
 		inters:                   append([]Interceptor{}, _q.inters...),
-		predicates:               append([]predicate.ContentNode{}, _q.predicates...),
-		withPathExercises:        _q.withPathExercises.Clone(),
-		withLanguages:            _q.withLanguages.Clone(),
-		withContentNodeExercises: _q.withContentNodeExercises.Clone(),
+		predicates:               append([]predicate.Language{}, _q.predicates...),
+		withContentNodes:         _q.withContentNodes.Clone(),
+		withExercises:            _q.withExercises.Clone(),
 		withContentNodeLanguages: _q.withContentNodeLanguages.Clone(),
+		withExerciseLanguages:    _q.withExerciseLanguages.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithPathExercises tells the query-builder to eager-load the nodes that are connected to
-// the "path_exercises" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithPathExercises(opts ...func(*ExerciseQuery)) *ContentNodeQuery {
+// WithContentNodes tells the query-builder to eager-load the nodes that are connected to
+// the "content_nodes" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LanguageQuery) WithContentNodes(opts ...func(*ContentNodeQuery)) *LanguageQuery {
+	query := (&ContentNodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withContentNodes = query
+	return _q
+}
+
+// WithExercises tells the query-builder to eager-load the nodes that are connected to
+// the "exercises" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LanguageQuery) WithExercises(opts ...func(*ExerciseQuery)) *LanguageQuery {
 	query := (&ExerciseClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withPathExercises = query
-	return _q
-}
-
-// WithLanguages tells the query-builder to eager-load the nodes that are connected to
-// the "languages" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithLanguages(opts ...func(*LanguageQuery)) *ContentNodeQuery {
-	query := (&LanguageClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withLanguages = query
-	return _q
-}
-
-// WithContentNodeExercises tells the query-builder to eager-load the nodes that are connected to
-// the "content_node_exercises" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithContentNodeExercises(opts ...func(*ContentNodeExerciseQuery)) *ContentNodeQuery {
-	query := (&ContentNodeExerciseClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withContentNodeExercises = query
+	_q.withExercises = query
 	return _q
 }
 
 // WithContentNodeLanguages tells the query-builder to eager-load the nodes that are connected to
 // the "content_node_languages" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithContentNodeLanguages(opts ...func(*ContentNodeLanguageQuery)) *ContentNodeQuery {
+func (_q *LanguageQuery) WithContentNodeLanguages(opts ...func(*ContentNodeLanguageQuery)) *LanguageQuery {
 	query := (&ContentNodeLanguageClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
 	_q.withContentNodeLanguages = query
+	return _q
+}
+
+// WithExerciseLanguages tells the query-builder to eager-load the nodes that are connected to
+// the "exercise_languages" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LanguageQuery) WithExerciseLanguages(opts ...func(*ExerciseLanguageQuery)) *LanguageQuery {
+	query := (&ExerciseLanguageClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withExerciseLanguages = query
 	return _q
 }
 
@@ -408,19 +408,19 @@ func (_q *ContentNodeQuery) WithContentNodeLanguages(opts ...func(*ContentNodeLa
 // Example:
 //
 //	var v []struct {
-//		TeacherID uuid.UUID `json:"teacher_id,omitempty"`
+//		Code string `json:"code,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.ContentNode.Query().
-//		GroupBy(contentnode.FieldTeacherID).
+//	client.Language.Query().
+//		GroupBy(language.FieldCode).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *ContentNodeQuery) GroupBy(field string, fields ...string) *ContentNodeGroupBy {
+func (_q *LanguageQuery) GroupBy(field string, fields ...string) *LanguageGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &ContentNodeGroupBy{build: _q}
+	grbuild := &LanguageGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = contentnode.Label
+	grbuild.label = language.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -431,26 +431,26 @@ func (_q *ContentNodeQuery) GroupBy(field string, fields ...string) *ContentNode
 // Example:
 //
 //	var v []struct {
-//		TeacherID uuid.UUID `json:"teacher_id,omitempty"`
+//		Code string `json:"code,omitempty"`
 //	}
 //
-//	client.ContentNode.Query().
-//		Select(contentnode.FieldTeacherID).
+//	client.Language.Query().
+//		Select(language.FieldCode).
 //		Scan(ctx, &v)
-func (_q *ContentNodeQuery) Select(fields ...string) *ContentNodeSelect {
+func (_q *LanguageQuery) Select(fields ...string) *LanguageSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &ContentNodeSelect{ContentNodeQuery: _q}
-	sbuild.label = contentnode.Label
+	sbuild := &LanguageSelect{LanguageQuery: _q}
+	sbuild.label = language.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a ContentNodeSelect configured with the given aggregations.
-func (_q *ContentNodeQuery) Aggregate(fns ...AggregateFunc) *ContentNodeSelect {
+// Aggregate returns a LanguageSelect configured with the given aggregations.
+func (_q *LanguageQuery) Aggregate(fns ...AggregateFunc) *LanguageSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *ContentNodeQuery) prepareQuery(ctx context.Context) error {
+func (_q *LanguageQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -462,7 +462,7 @@ func (_q *ContentNodeQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !contentnode.ValidColumn(f) {
+		if !language.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -476,22 +476,22 @@ func (_q *ContentNodeQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*ContentNode, error) {
+func (_q *LanguageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Language, error) {
 	var (
-		nodes       = []*ContentNode{}
+		nodes       = []*Language{}
 		_spec       = _q.querySpec()
 		loadedTypes = [4]bool{
-			_q.withPathExercises != nil,
-			_q.withLanguages != nil,
-			_q.withContentNodeExercises != nil,
+			_q.withContentNodes != nil,
+			_q.withExercises != nil,
 			_q.withContentNodeLanguages != nil,
+			_q.withExerciseLanguages != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*ContentNode).scanValues(nil, columns)
+		return (*Language).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &ContentNode{config: _q.config}
+		node := &Language{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -505,34 +505,34 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withPathExercises; query != nil {
-		if err := _q.loadPathExercises(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.PathExercises = []*Exercise{} },
-			func(n *ContentNode, e *Exercise) { n.Edges.PathExercises = append(n.Edges.PathExercises, e) }); err != nil {
+	if query := _q.withContentNodes; query != nil {
+		if err := _q.loadContentNodes(ctx, query, nodes,
+			func(n *Language) { n.Edges.ContentNodes = []*ContentNode{} },
+			func(n *Language, e *ContentNode) { n.Edges.ContentNodes = append(n.Edges.ContentNodes, e) }); err != nil {
 			return nil, err
 		}
 	}
-	if query := _q.withLanguages; query != nil {
-		if err := _q.loadLanguages(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.Languages = []*Language{} },
-			func(n *ContentNode, e *Language) { n.Edges.Languages = append(n.Edges.Languages, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withContentNodeExercises; query != nil {
-		if err := _q.loadContentNodeExercises(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.ContentNodeExercises = []*ContentNodeExercise{} },
-			func(n *ContentNode, e *ContentNodeExercise) {
-				n.Edges.ContentNodeExercises = append(n.Edges.ContentNodeExercises, e)
-			}); err != nil {
+	if query := _q.withExercises; query != nil {
+		if err := _q.loadExercises(ctx, query, nodes,
+			func(n *Language) { n.Edges.Exercises = []*Exercise{} },
+			func(n *Language, e *Exercise) { n.Edges.Exercises = append(n.Edges.Exercises, e) }); err != nil {
 			return nil, err
 		}
 	}
 	if query := _q.withContentNodeLanguages; query != nil {
 		if err := _q.loadContentNodeLanguages(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.ContentNodeLanguages = []*ContentNodeLanguage{} },
-			func(n *ContentNode, e *ContentNodeLanguage) {
+			func(n *Language) { n.Edges.ContentNodeLanguages = []*ContentNodeLanguage{} },
+			func(n *Language, e *ContentNodeLanguage) {
 				n.Edges.ContentNodeLanguages = append(n.Edges.ContentNodeLanguages, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withExerciseLanguages; query != nil {
+		if err := _q.loadExerciseLanguages(ctx, query, nodes,
+			func(n *Language) { n.Edges.ExerciseLanguages = []*ExerciseLanguage{} },
+			func(n *Language, e *ExerciseLanguage) {
+				n.Edges.ExerciseLanguages = append(n.Edges.ExerciseLanguages, e)
 			}); err != nil {
 			return nil, err
 		}
@@ -540,10 +540,10 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	return nodes, nil
 }
 
-func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *ExerciseQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *Exercise)) error {
+func (_q *LanguageQuery) loadContentNodes(ctx context.Context, query *ContentNodeQuery, nodes []*Language, init func(*Language), assign func(*Language, *ContentNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[uuid.UUID]*ContentNode)
-	nids := make(map[uuid.UUID]map[*ContentNode]struct{})
+	byID := make(map[uuid.UUID]*Language)
+	nids := make(map[uuid.UUID]map[*Language]struct{})
 	for i, node := range nodes {
 		edgeIDs[i] = node.ID
 		byID[node.ID] = node
@@ -552,11 +552,11 @@ func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *Exerci
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(contentnode.PathExercisesTable)
-		s.Join(joinT).On(s.C(exercise.FieldID), joinT.C(contentnode.PathExercisesPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(contentnode.PathExercisesPrimaryKey[1]), edgeIDs...))
+		joinT := sql.Table(language.ContentNodesTable)
+		s.Join(joinT).On(s.C(contentnode.FieldID), joinT.C(language.ContentNodesPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(language.ContentNodesPrimaryKey[1]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(contentnode.PathExercisesPrimaryKey[1]))
+		s.Select(joinT.C(language.ContentNodesPrimaryKey[1]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -578,7 +578,68 @@ func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *Exerci
 				outValue := *values[0].(*uuid.UUID)
 				inValue := *values[1].(*uuid.UUID)
 				if nids[inValue] == nil {
-					nids[inValue] = map[*ContentNode]struct{}{byID[outValue]: {}}
+					nids[inValue] = map[*Language]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*ContentNode](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "content_nodes" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *LanguageQuery) loadExercises(ctx context.Context, query *ExerciseQuery, nodes []*Language, init func(*Language), assign func(*Language, *Exercise)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Language)
+	nids := make(map[uuid.UUID]map[*Language]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(language.ExercisesTable)
+		s.Join(joinT).On(s.C(exercise.FieldID), joinT.C(language.ExercisesPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(language.ExercisesPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(language.ExercisesPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Language]struct{}{byID[outValue]: {}}
 					return assign(columns[1:], values[1:])
 				}
 				nids[inValue][byID[outValue]] = struct{}{}
@@ -593,7 +654,7 @@ func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *Exerci
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "path_exercises" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "exercises" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
@@ -601,70 +662,9 @@ func (_q *ContentNodeQuery) loadPathExercises(ctx context.Context, query *Exerci
 	}
 	return nil
 }
-func (_q *ContentNodeQuery) loadLanguages(ctx context.Context, query *LanguageQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *Language)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[uuid.UUID]*ContentNode)
-	nids := make(map[uuid.UUID]map[*ContentNode]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
-		if init != nil {
-			init(node)
-		}
-	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(contentnode.LanguagesTable)
-		s.Join(joinT).On(s.C(language.FieldID), joinT.C(contentnode.LanguagesPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(contentnode.LanguagesPrimaryKey[0]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(contentnode.LanguagesPrimaryKey[0]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
-	}
-	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
-		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-			assign := spec.Assign
-			values := spec.ScanValues
-			spec.ScanValues = func(columns []string) ([]any, error) {
-				values, err := values(columns[1:])
-				if err != nil {
-					return nil, err
-				}
-				return append([]any{new(uuid.UUID)}, values...), nil
-			}
-			spec.Assign = func(columns []string, values []any) error {
-				outValue := *values[0].(*uuid.UUID)
-				inValue := *values[1].(*uuid.UUID)
-				if nids[inValue] == nil {
-					nids[inValue] = map[*ContentNode]struct{}{byID[outValue]: {}}
-					return assign(columns[1:], values[1:])
-				}
-				nids[inValue][byID[outValue]] = struct{}{}
-				return nil
-			}
-		})
-	})
-	neighbors, err := withInterceptors[[]*Language](ctx, query, qr, query.inters)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected "languages" node returned %v`, n.ID)
-		}
-		for kn := range nodes {
-			assign(kn, n)
-		}
-	}
-	return nil
-}
-func (_q *ContentNodeQuery) loadContentNodeExercises(ctx context.Context, query *ContentNodeExerciseQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *ContentNodeExercise)) error {
+func (_q *LanguageQuery) loadContentNodeLanguages(ctx context.Context, query *ContentNodeLanguageQuery, nodes []*Language, init func(*Language), assign func(*Language, *ContentNodeLanguage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[uuid.UUID]*ContentNode)
+	nodeids := make(map[uuid.UUID]*Language)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -673,28 +673,28 @@ func (_q *ContentNodeQuery) loadContentNodeExercises(ctx context.Context, query 
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(contentnodeexercise.FieldContentNodeID)
+		query.ctx.AppendFieldOnce(contentnodelanguage.FieldLanguageID)
 	}
-	query.Where(predicate.ContentNodeExercise(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(contentnode.ContentNodeExercisesColumn), fks...))
+	query.Where(predicate.ContentNodeLanguage(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(language.ContentNodeLanguagesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.ContentNodeID
+		fk := n.LanguageID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "content_node_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "language_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
 	return nil
 }
-func (_q *ContentNodeQuery) loadContentNodeLanguages(ctx context.Context, query *ContentNodeLanguageQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *ContentNodeLanguage)) error {
+func (_q *LanguageQuery) loadExerciseLanguages(ctx context.Context, query *ExerciseLanguageQuery, nodes []*Language, init func(*Language), assign func(*Language, *ExerciseLanguage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[uuid.UUID]*ContentNode)
+	nodeids := make(map[uuid.UUID]*Language)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -703,27 +703,27 @@ func (_q *ContentNodeQuery) loadContentNodeLanguages(ctx context.Context, query 
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(contentnodelanguage.FieldContentNodeID)
+		query.ctx.AppendFieldOnce(exerciselanguage.FieldLanguageID)
 	}
-	query.Where(predicate.ContentNodeLanguage(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(contentnode.ContentNodeLanguagesColumn), fks...))
+	query.Where(predicate.ExerciseLanguage(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(language.ExerciseLanguagesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.ContentNodeID
+		fk := n.LanguageID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "content_node_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "language_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
 	return nil
 }
 
-func (_q *ContentNodeQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *LanguageQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -732,8 +732,8 @@ func (_q *ContentNodeQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *ContentNodeQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(contentnode.Table, contentnode.Columns, sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID))
+func (_q *LanguageQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(language.Table, language.Columns, sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -742,9 +742,9 @@ func (_q *ContentNodeQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, contentnode.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, language.FieldID)
 		for i := range fields {
-			if fields[i] != contentnode.FieldID {
+			if fields[i] != language.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -772,12 +772,12 @@ func (_q *ContentNodeQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *ContentNodeQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *LanguageQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(contentnode.Table)
+	t1 := builder.Table(language.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = contentnode.Columns
+		columns = language.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -804,28 +804,28 @@ func (_q *ContentNodeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// ContentNodeGroupBy is the group-by builder for ContentNode entities.
-type ContentNodeGroupBy struct {
+// LanguageGroupBy is the group-by builder for Language entities.
+type LanguageGroupBy struct {
 	selector
-	build *ContentNodeQuery
+	build *LanguageQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *ContentNodeGroupBy) Aggregate(fns ...AggregateFunc) *ContentNodeGroupBy {
+func (_g *LanguageGroupBy) Aggregate(fns ...AggregateFunc) *LanguageGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *ContentNodeGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *LanguageGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ContentNodeQuery, *ContentNodeGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*LanguageQuery, *LanguageGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *ContentNodeGroupBy) sqlScan(ctx context.Context, root *ContentNodeQuery, v any) error {
+func (_g *LanguageGroupBy) sqlScan(ctx context.Context, root *LanguageQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -852,28 +852,28 @@ func (_g *ContentNodeGroupBy) sqlScan(ctx context.Context, root *ContentNodeQuer
 	return sql.ScanSlice(rows, v)
 }
 
-// ContentNodeSelect is the builder for selecting fields of ContentNode entities.
-type ContentNodeSelect struct {
-	*ContentNodeQuery
+// LanguageSelect is the builder for selecting fields of Language entities.
+type LanguageSelect struct {
+	*LanguageQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *ContentNodeSelect) Aggregate(fns ...AggregateFunc) *ContentNodeSelect {
+func (_s *LanguageSelect) Aggregate(fns ...AggregateFunc) *LanguageSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *ContentNodeSelect) Scan(ctx context.Context, v any) error {
+func (_s *LanguageSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ContentNodeQuery, *ContentNodeSelect](ctx, _s.ContentNodeQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*LanguageQuery, *LanguageSelect](ctx, _s.LanguageQuery, _s, _s.inters, v)
 }
 
-func (_s *ContentNodeSelect) sqlScan(ctx context.Context, root *ContentNodeQuery, v any) error {
+func (_s *LanguageSelect) sqlScan(ctx context.Context, root *LanguageQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

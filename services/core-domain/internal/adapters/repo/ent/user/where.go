@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -58,6 +59,11 @@ func IDLTE(id uuid.UUID) predicate.User {
 // ClerkUserID applies equality check predicate on the "clerk_user_id" field. It's identical to ClerkUserIDEQ.
 func ClerkUserID(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldClerkUserID, v))
+}
+
+// LocaleID applies equality check predicate on the "locale_id" field. It's identical to LocaleIDEQ.
+func LocaleID(v uuid.UUID) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLocaleID, v))
 }
 
 // RegisteredAt applies equality check predicate on the "registered_at" field. It's identical to RegisteredAtEQ.
@@ -150,6 +156,26 @@ func RoleNotIn(vs ...Role) predicate.User {
 	return predicate.User(sql.FieldNotIn(FieldRole, vs...))
 }
 
+// LocaleIDEQ applies the EQ predicate on the "locale_id" field.
+func LocaleIDEQ(v uuid.UUID) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldLocaleID, v))
+}
+
+// LocaleIDNEQ applies the NEQ predicate on the "locale_id" field.
+func LocaleIDNEQ(v uuid.UUID) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldLocaleID, v))
+}
+
+// LocaleIDIn applies the In predicate on the "locale_id" field.
+func LocaleIDIn(vs ...uuid.UUID) predicate.User {
+	return predicate.User(sql.FieldIn(FieldLocaleID, vs...))
+}
+
+// LocaleIDNotIn applies the NotIn predicate on the "locale_id" field.
+func LocaleIDNotIn(vs ...uuid.UUID) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldLocaleID, vs...))
+}
+
 // RegisteredAtEQ applies the EQ predicate on the "registered_at" field.
 func RegisteredAtEQ(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldRegisteredAt, v))
@@ -188,6 +214,29 @@ func RegisteredAtLT(v time.Time) predicate.User {
 // RegisteredAtLTE applies the LTE predicate on the "registered_at" field.
 func RegisteredAtLTE(v time.Time) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldRegisteredAt, v))
+}
+
+// HasLocale applies the HasEdge predicate on the "locale" edge.
+func HasLocale() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, LocaleTable, LocaleColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLocaleWith applies the HasEdge predicate on the "locale" edge with a given conditions (other predicates).
+func HasLocaleWith(preds ...predicate.Language) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newLocaleStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

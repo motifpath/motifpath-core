@@ -56,5 +56,8 @@ func (ContentNode) Edges() []ent.Edge {
 		edge.From("path_exercises", Exercise.Type).
 			Ref("content_nodes").
 			Through("content_node_exercises", ContentNodeExercise.Type),
+
+		edge.To("languages", Language.Type).
+			Through("content_node_languages", ContentNodeLanguage.Type),
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -32,8 +33,23 @@ func (User) Fields() []ent.Field {
 			Values("student", "teacher", "admin").
 			Immutable(),
 
+		// LocaleID is the user's resolved locale preference. Required —
+		// every user has one, defaulted in the application layer at
+		// registration time rather than via a DB default, matching how role
+		// is handled. Mutable afterwards via UpdateLocale.
+		field.UUID("locale_id", uuid.UUID{}),
+
 		field.Time("registered_at").
 			Immutable().
 			Default(time.Now),
+	}
+}
+
+func (User) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("locale", Language.Type).
+			Unique().
+			Required().
+			Field("locale_id"),
 	}
 }
