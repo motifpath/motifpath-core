@@ -21,8 +21,8 @@ const (
 	FieldSubjectTag = "subject_tag"
 	// FieldPassThreshold holds the string denoting the pass_threshold field in the database.
 	FieldPassThreshold = "pass_threshold"
-	// FieldRemediationTargetContentNodeID holds the string denoting the remediation_target_content_node_id field in the database.
-	FieldRemediationTargetContentNodeID = "remediation_target_content_node_id"
+	// FieldTimeThresholdMs holds the string denoting the time_threshold_ms field in the database.
+	FieldTimeThresholdMs = "time_threshold_ms"
 	// FieldShuffleExercises holds the string denoting the shuffle_exercises field in the database.
 	FieldShuffleExercises = "shuffle_exercises"
 	// FieldShuffleOptions holds the string denoting the shuffle_options field in the database.
@@ -55,7 +55,7 @@ var Columns = []string{
 	FieldContentNodeID,
 	FieldSubjectTag,
 	FieldPassThreshold,
-	FieldRemediationTargetContentNodeID,
+	FieldTimeThresholdMs,
 	FieldShuffleExercises,
 	FieldShuffleOptions,
 	FieldCreatedAt,
@@ -111,9 +111,9 @@ func ByPassThreshold(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPassThreshold, opts...).ToFunc()
 }
 
-// ByRemediationTargetContentNodeID orders the results by the remediation_target_content_node_id field.
-func ByRemediationTargetContentNodeID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRemediationTargetContentNodeID, opts...).ToFunc()
+// ByTimeThresholdMs orders the results by the time_threshold_ms field.
+func ByTimeThresholdMs(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimeThresholdMs, opts...).ToFunc()
 }
 
 // ByShuffleExercises orders the results by the shuffle_exercises field.

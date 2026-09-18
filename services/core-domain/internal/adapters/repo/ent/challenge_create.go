@@ -41,16 +41,16 @@ func (_c *ChallengeCreate) SetPassThreshold(v int) *ChallengeCreate {
 	return _c
 }
 
-// SetRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field.
-func (_c *ChallengeCreate) SetRemediationTargetContentNodeID(v uuid.UUID) *ChallengeCreate {
-	_c.mutation.SetRemediationTargetContentNodeID(v)
+// SetTimeThresholdMs sets the "time_threshold_ms" field.
+func (_c *ChallengeCreate) SetTimeThresholdMs(v int) *ChallengeCreate {
+	_c.mutation.SetTimeThresholdMs(v)
 	return _c
 }
 
-// SetNillableRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field if the given value is not nil.
-func (_c *ChallengeCreate) SetNillableRemediationTargetContentNodeID(v *uuid.UUID) *ChallengeCreate {
+// SetNillableTimeThresholdMs sets the "time_threshold_ms" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableTimeThresholdMs(v *int) *ChallengeCreate {
 	if v != nil {
-		_c.SetRemediationTargetContentNodeID(*v)
+		_c.SetTimeThresholdMs(*v)
 	}
 	return _c
 }
@@ -261,9 +261,9 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 		_spec.SetField(challenge.FieldPassThreshold, field.TypeInt, value)
 		_node.PassThreshold = value
 	}
-	if value, ok := _c.mutation.RemediationTargetContentNodeID(); ok {
-		_spec.SetField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID, value)
-		_node.RemediationTargetContentNodeID = &value
+	if value, ok := _c.mutation.TimeThresholdMs(); ok {
+		_spec.SetField(challenge.FieldTimeThresholdMs, field.TypeInt, value)
+		_node.TimeThresholdMs = &value
 	}
 	if value, ok := _c.mutation.ShuffleExercises(); ok {
 		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)

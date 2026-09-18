@@ -14,7 +14,7 @@ var (
 		{Name: "content_node_id", Type: field.TypeUUID},
 		{Name: "subject_tag", Type: field.TypeString},
 		{Name: "pass_threshold", Type: field.TypeInt},
-		{Name: "remediation_target_content_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "time_threshold_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "shuffle_exercises", Type: field.TypeBool, Default: false},
 		{Name: "shuffle_options", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},

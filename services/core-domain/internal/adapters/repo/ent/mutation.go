@@ -51,27 +51,28 @@ const (
 // ChallengeMutation represents an operation that mutates the Challenge nodes in the graph.
 type ChallengeMutation struct {
 	config
-	op                                 Op
-	typ                                string
-	id                                 *uuid.UUID
-	content_node_id                    *uuid.UUID
-	subject_tag                        *string
-	pass_threshold                     *int
-	addpass_threshold                  *int
-	remediation_target_content_node_id *uuid.UUID
-	shuffle_exercises                  *bool
-	shuffle_options                    *bool
-	created_at                         *time.Time
-	clearedFields                      map[string]struct{}
-	exercises                          map[uuid.UUID]struct{}
-	removedexercises                   map[uuid.UUID]struct{}
-	clearedexercises                   bool
-	challenge_exercises                map[int]struct{}
-	removedchallenge_exercises         map[int]struct{}
-	clearedchallenge_exercises         bool
-	done                               bool
-	oldValue                           func(context.Context) (*Challenge, error)
-	predicates                         []predicate.Challenge
+	op                         Op
+	typ                        string
+	id                         *uuid.UUID
+	content_node_id            *uuid.UUID
+	subject_tag                *string
+	pass_threshold             *int
+	addpass_threshold          *int
+	time_threshold_ms          *int
+	addtime_threshold_ms       *int
+	shuffle_exercises          *bool
+	shuffle_options            *bool
+	created_at                 *time.Time
+	clearedFields              map[string]struct{}
+	exercises                  map[uuid.UUID]struct{}
+	removedexercises           map[uuid.UUID]struct{}
+	clearedexercises           bool
+	challenge_exercises        map[int]struct{}
+	removedchallenge_exercises map[int]struct{}
+	clearedchallenge_exercises bool
+	done                       bool
+	oldValue                   func(context.Context) (*Challenge, error)
+	predicates                 []predicate.Challenge
 }
 
 var _ ent.Mutation = (*ChallengeMutation)(nil)
@@ -306,53 +307,74 @@ func (m *ChallengeMutation) ResetPassThreshold() {
 	m.addpass_threshold = nil
 }
 
-// SetRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field.
-func (m *ChallengeMutation) SetRemediationTargetContentNodeID(u uuid.UUID) {
-	m.remediation_target_content_node_id = &u
+// SetTimeThresholdMs sets the "time_threshold_ms" field.
+func (m *ChallengeMutation) SetTimeThresholdMs(i int) {
+	m.time_threshold_ms = &i
+	m.addtime_threshold_ms = nil
 }
 
-// RemediationTargetContentNodeID returns the value of the "remediation_target_content_node_id" field in the mutation.
-func (m *ChallengeMutation) RemediationTargetContentNodeID() (r uuid.UUID, exists bool) {
-	v := m.remediation_target_content_node_id
+// TimeThresholdMs returns the value of the "time_threshold_ms" field in the mutation.
+func (m *ChallengeMutation) TimeThresholdMs() (r int, exists bool) {
+	v := m.time_threshold_ms
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldRemediationTargetContentNodeID returns the old "remediation_target_content_node_id" field's value of the Challenge entity.
+// OldTimeThresholdMs returns the old "time_threshold_ms" field's value of the Challenge entity.
 // If the Challenge object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChallengeMutation) OldRemediationTargetContentNodeID(ctx context.Context) (v *uuid.UUID, err error) {
+func (m *ChallengeMutation) OldTimeThresholdMs(ctx context.Context) (v *int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRemediationTargetContentNodeID is only allowed on UpdateOne operations")
+		return v, errors.New("OldTimeThresholdMs is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRemediationTargetContentNodeID requires an ID field in the mutation")
+		return v, errors.New("OldTimeThresholdMs requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRemediationTargetContentNodeID: %w", err)
+		return v, fmt.Errorf("querying old value for OldTimeThresholdMs: %w", err)
 	}
-	return oldValue.RemediationTargetContentNodeID, nil
+	return oldValue.TimeThresholdMs, nil
 }
 
-// ClearRemediationTargetContentNodeID clears the value of the "remediation_target_content_node_id" field.
-func (m *ChallengeMutation) ClearRemediationTargetContentNodeID() {
-	m.remediation_target_content_node_id = nil
-	m.clearedFields[challenge.FieldRemediationTargetContentNodeID] = struct{}{}
+// AddTimeThresholdMs adds i to the "time_threshold_ms" field.
+func (m *ChallengeMutation) AddTimeThresholdMs(i int) {
+	if m.addtime_threshold_ms != nil {
+		*m.addtime_threshold_ms += i
+	} else {
+		m.addtime_threshold_ms = &i
+	}
 }
 
-// RemediationTargetContentNodeIDCleared returns if the "remediation_target_content_node_id" field was cleared in this mutation.
-func (m *ChallengeMutation) RemediationTargetContentNodeIDCleared() bool {
-	_, ok := m.clearedFields[challenge.FieldRemediationTargetContentNodeID]
+// AddedTimeThresholdMs returns the value that was added to the "time_threshold_ms" field in this mutation.
+func (m *ChallengeMutation) AddedTimeThresholdMs() (r int, exists bool) {
+	v := m.addtime_threshold_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearTimeThresholdMs clears the value of the "time_threshold_ms" field.
+func (m *ChallengeMutation) ClearTimeThresholdMs() {
+	m.time_threshold_ms = nil
+	m.addtime_threshold_ms = nil
+	m.clearedFields[challenge.FieldTimeThresholdMs] = struct{}{}
+}
+
+// TimeThresholdMsCleared returns if the "time_threshold_ms" field was cleared in this mutation.
+func (m *ChallengeMutation) TimeThresholdMsCleared() bool {
+	_, ok := m.clearedFields[challenge.FieldTimeThresholdMs]
 	return ok
 }
 
-// ResetRemediationTargetContentNodeID resets all changes to the "remediation_target_content_node_id" field.
-func (m *ChallengeMutation) ResetRemediationTargetContentNodeID() {
-	m.remediation_target_content_node_id = nil
-	delete(m.clearedFields, challenge.FieldRemediationTargetContentNodeID)
+// ResetTimeThresholdMs resets all changes to the "time_threshold_ms" field.
+func (m *ChallengeMutation) ResetTimeThresholdMs() {
+	m.time_threshold_ms = nil
+	m.addtime_threshold_ms = nil
+	delete(m.clearedFields, challenge.FieldTimeThresholdMs)
 }
 
 // SetShuffleExercises sets the "shuffle_exercises" field.
@@ -615,8 +637,8 @@ func (m *ChallengeMutation) Fields() []string {
 	if m.pass_threshold != nil {
 		fields = append(fields, challenge.FieldPassThreshold)
 	}
-	if m.remediation_target_content_node_id != nil {
-		fields = append(fields, challenge.FieldRemediationTargetContentNodeID)
+	if m.time_threshold_ms != nil {
+		fields = append(fields, challenge.FieldTimeThresholdMs)
 	}
 	if m.shuffle_exercises != nil {
 		fields = append(fields, challenge.FieldShuffleExercises)
@@ -641,8 +663,8 @@ func (m *ChallengeMutation) Field(name string) (ent.Value, bool) {
 		return m.SubjectTag()
 	case challenge.FieldPassThreshold:
 		return m.PassThreshold()
-	case challenge.FieldRemediationTargetContentNodeID:
-		return m.RemediationTargetContentNodeID()
+	case challenge.FieldTimeThresholdMs:
+		return m.TimeThresholdMs()
 	case challenge.FieldShuffleExercises:
 		return m.ShuffleExercises()
 	case challenge.FieldShuffleOptions:
@@ -664,8 +686,8 @@ func (m *ChallengeMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldSubjectTag(ctx)
 	case challenge.FieldPassThreshold:
 		return m.OldPassThreshold(ctx)
-	case challenge.FieldRemediationTargetContentNodeID:
-		return m.OldRemediationTargetContentNodeID(ctx)
+	case challenge.FieldTimeThresholdMs:
+		return m.OldTimeThresholdMs(ctx)
 	case challenge.FieldShuffleExercises:
 		return m.OldShuffleExercises(ctx)
 	case challenge.FieldShuffleOptions:
@@ -702,12 +724,12 @@ func (m *ChallengeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPassThreshold(v)
 		return nil
-	case challenge.FieldRemediationTargetContentNodeID:
-		v, ok := value.(uuid.UUID)
+	case challenge.FieldTimeThresholdMs:
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRemediationTargetContentNodeID(v)
+		m.SetTimeThresholdMs(v)
 		return nil
 	case challenge.FieldShuffleExercises:
 		v, ok := value.(bool)
@@ -741,6 +763,9 @@ func (m *ChallengeMutation) AddedFields() []string {
 	if m.addpass_threshold != nil {
 		fields = append(fields, challenge.FieldPassThreshold)
 	}
+	if m.addtime_threshold_ms != nil {
+		fields = append(fields, challenge.FieldTimeThresholdMs)
+	}
 	return fields
 }
 
@@ -751,6 +776,8 @@ func (m *ChallengeMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case challenge.FieldPassThreshold:
 		return m.AddedPassThreshold()
+	case challenge.FieldTimeThresholdMs:
+		return m.AddedTimeThresholdMs()
 	}
 	return nil, false
 }
@@ -767,6 +794,13 @@ func (m *ChallengeMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddPassThreshold(v)
 		return nil
+	case challenge.FieldTimeThresholdMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimeThresholdMs(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Challenge numeric field %s", name)
 }
@@ -775,8 +809,8 @@ func (m *ChallengeMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ChallengeMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(challenge.FieldRemediationTargetContentNodeID) {
-		fields = append(fields, challenge.FieldRemediationTargetContentNodeID)
+	if m.FieldCleared(challenge.FieldTimeThresholdMs) {
+		fields = append(fields, challenge.FieldTimeThresholdMs)
 	}
 	return fields
 }
@@ -792,8 +826,8 @@ func (m *ChallengeMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChallengeMutation) ClearField(name string) error {
 	switch name {
-	case challenge.FieldRemediationTargetContentNodeID:
-		m.ClearRemediationTargetContentNodeID()
+	case challenge.FieldTimeThresholdMs:
+		m.ClearTimeThresholdMs()
 		return nil
 	}
 	return fmt.Errorf("unknown Challenge nullable field %s", name)
@@ -812,8 +846,8 @@ func (m *ChallengeMutation) ResetField(name string) error {
 	case challenge.FieldPassThreshold:
 		m.ResetPassThreshold()
 		return nil
-	case challenge.FieldRemediationTargetContentNodeID:
-		m.ResetRemediationTargetContentNodeID()
+	case challenge.FieldTimeThresholdMs:
+		m.ResetTimeThresholdMs()
 		return nil
 	case challenge.FieldShuffleExercises:
 		m.ResetShuffleExercises()
