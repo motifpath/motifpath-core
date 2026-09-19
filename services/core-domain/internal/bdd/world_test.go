@@ -83,6 +83,12 @@ type world struct {
 	// expanded-content steps whose Gherkin text doesn't repeat the slug —
 	// they rely on the immediately preceding Given for node context.
 	lastNodeSlug string
+
+	// lastExerciseSlug is the slug of the most recently linked exercise, for
+	// a following "the exercise records ... among its linked challenges"
+	// assertion after an action (like updating the challenge) whose own
+	// lastResp isn't exercise-shaped and so can't be asserted on directly.
+	lastExerciseSlug string
 }
 
 func newWorld() *world {
@@ -105,7 +111,7 @@ func newWorld() *world {
 
 	identity := application.NewIdentityService(w.users, newID, now)
 	content := application.NewContentService(w.nodes, w.expanded, newID, now)
-	challenge := application.NewChallengeService(w.nodes, w.challenges, newID, now)
+	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, newID, now, noShuffle)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)

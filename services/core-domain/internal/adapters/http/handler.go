@@ -156,16 +156,66 @@ func (h *Handler) GetContentNode(ctx context.Context, request generated.GetConte
 	return generated.GetContentNode200JSONResponse(toContentNode(node)), nil
 }
 
+func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListContentNodesRequestObject) (generated.ListContentNodesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodes401JSONResponse(unauthorizedError()), nil
+	}
+
+	var contentType domain.ContentType
+	if request.Params.ContentType != nil {
+		contentType = domain.ContentType(*request.Params.ContentType)
+	}
+	var skill string
+	if request.Params.Skill != nil {
+		skill = *request.Params.Skill
+	}
+	var difficulty domain.DifficultyLevel
+	if request.Params.DifficultyLevel != nil {
+		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
+	}
+
+	nodes, err := h.content.ListContentNodes(ctx, caller, contentType, skill, difficulty)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListContentNodes200JSONResponse(toContentNodes(nodes)), nil
+}
+
+func (h *Handler) UpdateContentNode(ctx context.Context, request generated.UpdateContentNodeRequestObject) (generated.UpdateContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
+		body.Classification.Skill, body.Classification.Concept, domain.DifficultyLevel(body.Classification.DifficultyLevel))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateContentNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may update this content node")), nil
+		case errKindNotFound:
+			return generated.UpdateContentNode404JSONResponse(notFoundError("no content node exists with the given content_node_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateContentNode200JSONResponse(toContentNode(node)), nil
+}
+
 func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateChallengeRequestObject) (generated.CreateChallengeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
 		return generated.CreateChallenge401JSONResponse(unauthorizedError()), nil
-	}
-
-	var remediationTarget *string
-	if request.Body.RemediationTargetContentNodeId != nil {
-		s := request.Body.RemediationTargetContentNodeId.String()
-		remediationTarget = &s
 	}
 
 	var shuffleExercises, shuffleOptions bool
@@ -177,7 +227,7 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 	}
 
 	challenge, err := h.challenge.CreateChallenge(ctx, caller, request.ContentNodeId.String(),
-		request.Body.SubjectTag, request.Body.PassThreshold, remediationTarget, shuffleExercises, shuffleOptions)
+		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -193,6 +243,39 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 	}
 
 	return generated.CreateChallenge201JSONResponse(toChallenge(challenge)), nil
+}
+
+func (h *Handler) UpdateChallenge(ctx context.Context, request generated.UpdateChallengeRequestObject) (generated.UpdateChallengeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateChallenge401JSONResponse(unauthorizedError()), nil
+	}
+
+	var shuffleExercises, shuffleOptions bool
+	if request.Body.ShuffleExercises != nil {
+		shuffleExercises = *request.Body.ShuffleExercises
+	}
+	if request.Body.ShuffleOptions != nil {
+		shuffleOptions = *request.Body.ShuffleOptions
+	}
+
+	challenge, err := h.challenge.UpdateChallenge(ctx, caller, request.ChallengeId.String(),
+		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateChallenge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateChallenge403JSONResponse(forbiddenError("only the creating teacher or an admin may update this challenge")), nil
+		case errKindNotFound:
+			return generated.UpdateChallenge404JSONResponse(notFoundError("no challenge exists with the given challenge_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateChallenge200JSONResponse(toChallenge(challenge)), nil
 }
 
 func (h *Handler) GetChallenge(ctx context.Context, request generated.GetChallengeRequestObject) (generated.GetChallengeResponseObject, error) {
@@ -222,8 +305,13 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
-		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
+		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -292,8 +380,13 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	if body.SkillTags != nil {
 		skillTags = *body.SkillTags
 	}
+	var remediationTargets []generated.RemediationTarget
+	if body.RemediationTargets != nil {
+		remediationTargets = *body.RemediationTargets
+	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
-		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds)
+		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		toDomainRemediationTargets(remediationTargets))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -394,7 +487,7 @@ func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.C
 
 	body := request.Body
 	item, err := h.content.CreateExpandedContent(ctx, caller, request.ContentNodeId.String(),
-		domain.ExpandedContentType(body.ContentType), body.MediaUrl,
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
 		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -411,6 +504,55 @@ func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.C
 	}
 
 	return generated.CreateExpandedContent201JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) UpdateExpandedContent(ctx context.Context, request generated.UpdateExpandedContentRequestObject) (generated.UpdateExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	item, err := h.content.UpdateExpandedContent(ctx, caller, request.ExpandedContentId.String(),
+		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateExpandedContent400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may update this expanded content item")), nil
+		case errKindNotFound:
+			return generated.UpdateExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateExpandedContent200JSONResponse(toExpandedContent(item)), nil
+}
+
+func (h *Handler) DeleteExpandedContent(ctx context.Context, request generated.DeleteExpandedContentRequestObject) (generated.DeleteExpandedContentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteExpandedContent401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.content.DeleteExpandedContent(ctx, caller, request.ExpandedContentId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.DeleteExpandedContent403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this expanded content item")), nil
+		case errKindNotFound:
+			return generated.DeleteExpandedContent404JSONResponse(notFoundError("no expanded content item exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteExpandedContent204Response{}, nil
 }
 
 func (h *Handler) ListExpandedContent(ctx context.Context, request generated.ListExpandedContentRequestObject) (generated.ListExpandedContentResponseObject, error) {
@@ -499,6 +641,55 @@ func (h *Handler) GetLearningPath(ctx context.Context, request generated.GetLear
 	}
 
 	return generated.GetLearningPath200JSONResponse(toLearningPath(path)), nil
+}
+
+func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListLearningPathsRequestObject) (generated.ListLearningPathsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListLearningPaths401JSONResponse(unauthorizedError()), nil
+	}
+
+	paths, err := h.path.ListLearningPaths(ctx, caller)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListLearningPaths200JSONResponse(toLearningPaths(paths)), nil
+}
+
+func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.ReplaceLearningPathRequestObject) (generated.ReplaceLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	pathItems := make([]application.PathItemInput, len(request.Body.Items))
+	for i, item := range request.Body.Items {
+		pathItems[i] = application.PathItemInput{
+			ContentNodeID: item.ContentNodeId.String(),
+			SectionLabel:  item.SectionLabel,
+		}
+	}
+
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), request.Body.Title, pathItems)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceLearningPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ReplaceLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this learning path")), nil
+		case errKindNotFound:
+			return generated.ReplaceLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path)), nil
 }
 
 func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {

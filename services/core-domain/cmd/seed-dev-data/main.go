@@ -93,7 +93,7 @@ func run() error {
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nil, newID, now)
-	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
@@ -224,7 +224,7 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	}
 
 	for _, spec := range specs {
-		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil)
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil, nil)
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}

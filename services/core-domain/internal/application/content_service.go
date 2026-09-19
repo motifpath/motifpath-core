@@ -44,6 +44,47 @@ func (s *ContentService) GetContentNode(ctx context.Context, id string) (domain.
 	return s.nodes.GetByID(ctx, id)
 }
 
+// ListContentNodes returns content nodes from the library, optionally
+// narrowed by contentType, skill, and/or difficulty (any may be "" for "no
+// filter"). Only teachers and admins may list content nodes — the library is
+// an authoring surface, unlike GetContentNode which any authenticated user
+// may call for a specific known id.
+func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.User, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	return s.nodes.List(ctx, contentType, skill, difficulty)
+}
+
+// UpdateContentNode replaces the given content node's title and
+// classification. content_type and the classification's review state are
+// untouched. Only the creating teacher or an admin may update a content
+// node. Returns domain.ErrNotFound if no content node exists with the given
+// id.
+func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id, title, skill, concept string, difficulty domain.DifficultyLevel) (domain.ContentNode, error) {
+	if !canManageContent(caller.Role) {
+		return domain.ContentNode{}, domain.ErrForbidden
+	}
+
+	existing, err := s.nodes.GetByID(ctx, id)
+	if err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := requireOwner(caller, existing.TeacherID); err != nil {
+		return domain.ContentNode{}, err
+	}
+
+	updated, err := existing.Update(title, skill, concept, difficulty)
+	if err != nil {
+		return domain.ContentNode{}, err
+	}
+
+	if err := s.nodes.Update(ctx, updated); err != nil {
+		return domain.ContentNode{}, err
+	}
+	return updated, nil
+}
+
 // CreateExpandedContent attaches an expositive media item to the content
 // node identified by contentNodeID. Only teachers and admins may add
 // expanded content.
@@ -52,7 +93,8 @@ func (s *ContentService) CreateExpandedContent(
 	caller domain.User,
 	contentNodeID string,
 	contentType domain.ExpandedContentType,
-	mediaURL string,
+	mediaURL *string,
+	richContent *domain.PromptDocument,
 	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
 	caption *string,
 ) (domain.ExpandedContent, error) {
@@ -66,7 +108,7 @@ func (s *ContentService) CreateExpandedContent(
 	}
 
 	item, err := domain.NewExpandedContent(
-		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL,
+		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL, richContent,
 		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption, s.now(),
 	)
 	if err != nil {
@@ -93,10 +135,94 @@ func (s *ContentService) GetExpandedContent(ctx context.Context, id string) (dom
 	return s.expanded.GetByID(ctx, id)
 }
 
+// UpdateExpandedContent replaces the given expanded content item's content,
+// trigger/hide position, and caption. Only teachers and admins may update an
+// expanded content item. Returns domain.ErrNotFound if no item exists with
+// the given id.
+func (s *ContentService) UpdateExpandedContent(
+	ctx context.Context,
+	caller domain.User,
+	id string,
+	contentType domain.ExpandedContentType,
+	mediaURL *string,
+	richContent *domain.PromptDocument,
+	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
+	caption *string,
+) (domain.ExpandedContent, error) {
+	if !canManageContent(caller.Role) {
+		return domain.ExpandedContent{}, domain.ErrForbidden
+	}
+
+	existing, err := s.expanded.GetByID(ctx, id)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	node, err := s.nodes.GetByID(ctx, existing.ContentNodeID)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := requireOwner(caller, node.TeacherID); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+
+	updated, err := existing.Update(node.ContentType, contentType, mediaURL, richContent,
+		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption)
+	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+
+	if err := s.expanded.Update(ctx, updated); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	return updated, nil
+}
+
+// DeleteExpandedContent permanently removes the given expanded content item.
+// Only the creating teacher or an admin may delete an expanded content
+// item. Returns domain.ErrNotFound if no item exists with the given id.
+func (s *ContentService) DeleteExpandedContent(ctx context.Context, caller domain.User, id string) error {
+	if !canManageContent(caller.Role) {
+		return domain.ErrForbidden
+	}
+
+	existing, err := s.expanded.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	node, err := s.nodes.GetByID(ctx, existing.ContentNodeID)
+	if err != nil {
+		return err
+	}
+	if err := requireOwner(caller, node.TeacherID); err != nil {
+		return err
+	}
+
+	return s.expanded.Delete(ctx, id)
+}
+
 // canManageContent reports whether role may create content nodes,
 // challenges, exercises, and expanded content, and create/assign learning
 // paths — every write endpoint in this service shares the same
-// teacher-or-admin gate.
+// teacher-or-admin gate. Creating content needs nothing more than this: the
+// caller becomes the resource's owner by definition. Updating, deleting, or
+// replacing an existing resource additionally needs requireOwner below,
+// since canManageContent alone can't tell one teacher's content from
+// another's.
 func canManageContent(role domain.Role) bool {
 	return role == domain.RoleTeacher || role == domain.RoleAdmin
+}
+
+// requireOwner returns domain.ErrForbidden unless caller may modify a
+// resource owned by teacherID — an admin may modify any teacher's content;
+// a teacher may only modify their own. Callers check canManageContent (or
+// equivalent) first to reject a student outright before ever fetching the
+// resource whose ownership this checks.
+func requireOwner(caller domain.User, teacherID string) error {
+	if caller.Role == domain.RoleAdmin {
+		return nil
+	}
+	if caller.Role == domain.RoleTeacher && caller.ID == teacherID {
+		return nil
+	}
+	return domain.ErrForbidden
 }

@@ -65,23 +65,30 @@ func (_u *ChallengeUpdate) AddPassThreshold(v int) *ChallengeUpdate {
 	return _u
 }
 
-// SetRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field.
-func (_u *ChallengeUpdate) SetRemediationTargetContentNodeID(v uuid.UUID) *ChallengeUpdate {
-	_u.mutation.SetRemediationTargetContentNodeID(v)
+// SetTimeThresholdMs sets the "time_threshold_ms" field.
+func (_u *ChallengeUpdate) SetTimeThresholdMs(v int) *ChallengeUpdate {
+	_u.mutation.ResetTimeThresholdMs()
+	_u.mutation.SetTimeThresholdMs(v)
 	return _u
 }
 
-// SetNillableRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field if the given value is not nil.
-func (_u *ChallengeUpdate) SetNillableRemediationTargetContentNodeID(v *uuid.UUID) *ChallengeUpdate {
+// SetNillableTimeThresholdMs sets the "time_threshold_ms" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableTimeThresholdMs(v *int) *ChallengeUpdate {
 	if v != nil {
-		_u.SetRemediationTargetContentNodeID(*v)
+		_u.SetTimeThresholdMs(*v)
 	}
 	return _u
 }
 
-// ClearRemediationTargetContentNodeID clears the value of the "remediation_target_content_node_id" field.
-func (_u *ChallengeUpdate) ClearRemediationTargetContentNodeID() *ChallengeUpdate {
-	_u.mutation.ClearRemediationTargetContentNodeID()
+// AddTimeThresholdMs adds value to the "time_threshold_ms" field.
+func (_u *ChallengeUpdate) AddTimeThresholdMs(v int) *ChallengeUpdate {
+	_u.mutation.AddTimeThresholdMs(v)
+	return _u
+}
+
+// ClearTimeThresholdMs clears the value of the "time_threshold_ms" field.
+func (_u *ChallengeUpdate) ClearTimeThresholdMs() *ChallengeUpdate {
+	_u.mutation.ClearTimeThresholdMs()
 	return _u
 }
 
@@ -235,11 +242,14 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedPassThreshold(); ok {
 		_spec.AddField(challenge.FieldPassThreshold, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.RemediationTargetContentNodeID(); ok {
-		_spec.SetField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TimeThresholdMs(); ok {
+		_spec.SetField(challenge.FieldTimeThresholdMs, field.TypeInt, value)
 	}
-	if _u.mutation.RemediationTargetContentNodeIDCleared() {
-		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
+	if value, ok := _u.mutation.AddedTimeThresholdMs(); ok {
+		_spec.AddField(challenge.FieldTimeThresholdMs, field.TypeInt, value)
+	}
+	if _u.mutation.TimeThresholdMsCleared() {
+		_spec.ClearField(challenge.FieldTimeThresholdMs, field.TypeInt)
 	}
 	if value, ok := _u.mutation.ShuffleExercises(); ok {
 		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)
@@ -404,23 +414,30 @@ func (_u *ChallengeUpdateOne) AddPassThreshold(v int) *ChallengeUpdateOne {
 	return _u
 }
 
-// SetRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field.
-func (_u *ChallengeUpdateOne) SetRemediationTargetContentNodeID(v uuid.UUID) *ChallengeUpdateOne {
-	_u.mutation.SetRemediationTargetContentNodeID(v)
+// SetTimeThresholdMs sets the "time_threshold_ms" field.
+func (_u *ChallengeUpdateOne) SetTimeThresholdMs(v int) *ChallengeUpdateOne {
+	_u.mutation.ResetTimeThresholdMs()
+	_u.mutation.SetTimeThresholdMs(v)
 	return _u
 }
 
-// SetNillableRemediationTargetContentNodeID sets the "remediation_target_content_node_id" field if the given value is not nil.
-func (_u *ChallengeUpdateOne) SetNillableRemediationTargetContentNodeID(v *uuid.UUID) *ChallengeUpdateOne {
+// SetNillableTimeThresholdMs sets the "time_threshold_ms" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableTimeThresholdMs(v *int) *ChallengeUpdateOne {
 	if v != nil {
-		_u.SetRemediationTargetContentNodeID(*v)
+		_u.SetTimeThresholdMs(*v)
 	}
 	return _u
 }
 
-// ClearRemediationTargetContentNodeID clears the value of the "remediation_target_content_node_id" field.
-func (_u *ChallengeUpdateOne) ClearRemediationTargetContentNodeID() *ChallengeUpdateOne {
-	_u.mutation.ClearRemediationTargetContentNodeID()
+// AddTimeThresholdMs adds value to the "time_threshold_ms" field.
+func (_u *ChallengeUpdateOne) AddTimeThresholdMs(v int) *ChallengeUpdateOne {
+	_u.mutation.AddTimeThresholdMs(v)
+	return _u
+}
+
+// ClearTimeThresholdMs clears the value of the "time_threshold_ms" field.
+func (_u *ChallengeUpdateOne) ClearTimeThresholdMs() *ChallengeUpdateOne {
+	_u.mutation.ClearTimeThresholdMs()
 	return _u
 }
 
@@ -604,11 +621,14 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 	if value, ok := _u.mutation.AddedPassThreshold(); ok {
 		_spec.AddField(challenge.FieldPassThreshold, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.RemediationTargetContentNodeID(); ok {
-		_spec.SetField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID, value)
+	if value, ok := _u.mutation.TimeThresholdMs(); ok {
+		_spec.SetField(challenge.FieldTimeThresholdMs, field.TypeInt, value)
 	}
-	if _u.mutation.RemediationTargetContentNodeIDCleared() {
-		_spec.ClearField(challenge.FieldRemediationTargetContentNodeID, field.TypeUUID)
+	if value, ok := _u.mutation.AddedTimeThresholdMs(); ok {
+		_spec.AddField(challenge.FieldTimeThresholdMs, field.TypeInt, value)
+	}
+	if _u.mutation.TimeThresholdMsCleared() {
+		_spec.ClearField(challenge.FieldTimeThresholdMs, field.TypeInt)
 	}
 	if value, ok := _u.mutation.ShuffleExercises(); ok {
 		_spec.SetField(challenge.FieldShuffleExercises, field.TypeBool, value)

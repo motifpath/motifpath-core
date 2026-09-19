@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 
@@ -29,12 +30,17 @@ func (r *EntExpandedContentRepository) Create(ctx context.Context, item domain.E
 	if err != nil {
 		return err
 	}
+	richContentJSON, err := marshalRichContent(item.RichContent)
+	if err != nil {
+		return err
+	}
 
 	builder := r.client.ExpandedContent.Create().
 		SetID(id).
 		SetContentNodeID(contentNodeID).
 		SetContentType(expandedcontent.ContentType(item.ContentType)).
-		SetMediaURL(item.MediaURL).
+		SetNillableMediaURL(item.MediaURL).
+		SetNillableRichContent(richContentJSON).
 		SetNillableTriggerAtSeconds(item.TriggerAtSeconds).
 		SetNillableHideAtSeconds(item.HideAtSeconds).
 		SetNillableTriggerAtParagraph(item.TriggerAtParagraph).
@@ -87,12 +93,82 @@ func (r *EntExpandedContentRepository) ListByContentNode(ctx context.Context, co
 	return items, nil
 }
 
+func (r *EntExpandedContentRepository) Update(ctx context.Context, item domain.ExpandedContent) error {
+	id, err := uuid.Parse(item.ID)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	richContentJSON, err := marshalRichContent(item.RichContent)
+	if err != nil {
+		return err
+	}
+
+	builder := r.client.ExpandedContent.UpdateOneID(id).
+		SetContentType(expandedcontent.ContentType(item.ContentType)).
+		SetNillableTriggerAtSeconds(item.TriggerAtSeconds).
+		SetNillableHideAtSeconds(item.HideAtSeconds).
+		SetNillableTriggerAtParagraph(item.TriggerAtParagraph).
+		SetNillableDurationMs(item.DurationMS).
+		SetNillableCaption(item.Caption)
+
+	if item.MediaURL != nil {
+		builder = builder.SetMediaURL(*item.MediaURL)
+	} else {
+		builder = builder.ClearMediaURL()
+	}
+	if richContentJSON != nil {
+		builder = builder.SetRichContent(*richContentJSON)
+	} else {
+		builder = builder.ClearRichContent()
+	}
+	if item.TriggerAtSeconds == nil {
+		builder = builder.ClearTriggerAtSeconds()
+	}
+	if item.HideAtSeconds == nil {
+		builder = builder.ClearHideAtSeconds()
+	}
+	if item.TriggerAtParagraph == nil {
+		builder = builder.ClearTriggerAtParagraph()
+	}
+	if item.DurationMS == nil {
+		builder = builder.ClearDurationMs()
+	}
+	if item.Caption == nil {
+		builder = builder.ClearCaption()
+	}
+
+	_, err = builder.Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *EntExpandedContentRepository) Delete(ctx context.Context, id string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	err = r.client.ExpandedContent.DeleteOneID(parsed).Exec(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 func toDomainExpandedContent(row *ent.ExpandedContent) domain.ExpandedContent {
 	return domain.ExpandedContent{
 		ID:                 row.ID.String(),
 		ContentNodeID:      row.ContentNodeID.String(),
 		ContentType:        domain.ExpandedContentType(row.ContentType),
 		MediaURL:           row.MediaURL,
+		RichContent:        unmarshalRichContent(row.RichContent),
 		TriggerAtSeconds:   row.TriggerAtSeconds,
 		HideAtSeconds:      row.HideAtSeconds,
 		TriggerAtParagraph: row.TriggerAtParagraph,
@@ -100,4 +176,34 @@ func toDomainExpandedContent(row *ent.ExpandedContent) domain.ExpandedContent {
 		Caption:            row.Caption,
 		CreatedAt:          row.CreatedAt,
 	}
+}
+
+// marshalRichContent serializes content to the JSON text stored in the
+// expanded_contents table's rich_content column. A nil content marshals to
+// nil (column left unset) — the column is only ever populated for rich_text
+// items.
+func marshalRichContent(content *domain.PromptDocument) (*string, error) {
+	if content == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
+	s := string(data)
+	return &s, nil
+}
+
+// unmarshalRichContent parses the expanded_contents table's rich_content
+// column back into a *domain.PromptDocument. A nil column (image/gif items
+// never populate it) or malformed JSON both yield nil rather than an error.
+func unmarshalRichContent(stored *string) *domain.PromptDocument {
+	if stored == nil {
+		return nil
+	}
+	var content domain.PromptDocument
+	if err := json.Unmarshal([]byte(*stored), &content); err != nil {
+		return nil
+	}
+	return &content
 }

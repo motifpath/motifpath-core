@@ -44,21 +44,25 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 	}
 }
 
+func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
+	result := make([]generated.ContentNode, 0, len(nodes))
+	for _, n := range nodes {
+		result = append(result, toContentNode(n))
+	}
+	return result
+}
+
 func toChallenge(c domain.Challenge) generated.Challenge {
-	challenge := generated.Challenge{
+	return generated.Challenge{
 		ChallengeId:      mustUUID(c.ID),
 		ContentNodeId:    mustUUID(c.ContentNodeID),
 		SubjectTag:       c.SubjectTag,
 		PassThreshold:    c.PassThreshold,
+		TimeThresholdMs:  c.TimeThresholdMS,
 		ShuffleExercises: c.ShuffleExercises,
 		ShuffleOptions:   c.ShuffleOptions,
 		CreatedAt:        c.CreatedAt,
 	}
-	if c.RemediationTargetContentNodeID != nil {
-		target := mustUUID(*c.RemediationTargetContentNodeID)
-		challenge.RemediationTargetContentNodeId = &target
-	}
-	return challenge
 }
 
 func toChallenges(challenges []domain.Challenge) []generated.Challenge {
@@ -105,6 +109,16 @@ func toDomainPromptDocument(prompt generated.PromptDocument) domain.PromptDocume
 	return out
 }
 
+// toDomainPromptDocumentPtr converts an optional generated.PromptDocument
+// pointer to its optional domain shape, preserving nil.
+func toDomainPromptDocumentPtr(prompt *generated.PromptDocument) *domain.PromptDocument {
+	if prompt == nil {
+		return nil
+	}
+	doc := toDomainPromptDocument(*prompt)
+	return &doc
+}
+
 func toExercise(e domain.Exercise) generated.Exercise {
 	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
 	for i, id := range e.ChallengeIDs {
@@ -130,12 +144,47 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		ChallengeIds:             challengeIDs,
 		ContentNodeIds:           contentNodeIDs,
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
+		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
 	}
 	if len(e.SkillTags) > 0 {
 		exercise.SkillTags = &e.SkillTags
 	}
 	return exercise
+}
+
+func toRemediationTargets(targets []domain.RemediationTarget) []generated.RemediationTarget {
+	result := make([]generated.RemediationTarget, len(targets))
+	for i, t := range targets {
+		target := generated.RemediationTarget{Caption: t.Caption}
+		if t.ContentNodeID != nil {
+			id := mustUUID(*t.ContentNodeID)
+			target.ContentNodeId = &id
+		}
+		if t.RichContent != nil {
+			doc := toGeneratedPromptDocument(*t.RichContent)
+			target.RichContent = &doc
+		}
+		result[i] = target
+	}
+	return result
+}
+
+func toDomainRemediationTargets(targets []generated.RemediationTarget) []domain.RemediationTarget {
+	result := make([]domain.RemediationTarget, len(targets))
+	for i, t := range targets {
+		target := domain.RemediationTarget{Caption: t.Caption}
+		if t.ContentNodeId != nil {
+			id := t.ContentNodeId.String()
+			target.ContentNodeID = &id
+		}
+		if t.RichContent != nil {
+			doc := toDomainPromptDocument(*t.RichContent)
+			target.RichContent = &doc
+		}
+		result[i] = target
+	}
+	return result
 }
 
 func toExercises(exercises []domain.Exercise) []generated.Exercise {
@@ -206,7 +255,7 @@ func toMediaUploadURL(u domain.MediaUploadURL) generated.MediaUploadUrl {
 }
 
 func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
-	return generated.ExpandedContent{
+	result := generated.ExpandedContent{
 		ExpandedContentId:  mustUUID(item.ID),
 		ContentNodeId:      mustUUID(item.ContentNodeID),
 		ContentType:        generated.ExpandedContentContentType(item.ContentType),
@@ -218,6 +267,11 @@ func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
 		Caption:            item.Caption,
 		CreatedAt:          item.CreatedAt,
 	}
+	if item.RichContent != nil {
+		doc := toGeneratedPromptDocument(*item.RichContent)
+		result.RichContent = &doc
+	}
+	return result
 }
 
 func toLearningPathItem(item domain.LearningPathItem) generated.LearningPathItem {
@@ -242,6 +296,14 @@ func toLearningPath(p domain.LearningPath) generated.LearningPath {
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
 	}
+}
+
+func toLearningPaths(paths []domain.LearningPath) []generated.LearningPath {
+	result := make([]generated.LearningPath, 0, len(paths))
+	for _, p := range paths {
+		result = append(result, toLearningPath(p))
+	}
+	return result
 }
 
 func toPathAssignment(a domain.PathAssignment) generated.PathAssignment {

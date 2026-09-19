@@ -18,4 +18,8 @@ type ChallengeRepository interface {
 	// or an empty slice if it has none. Does not itself verify the content
 	// node exists — callers check that separately.
 	ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Challenge, error)
+
+	// Update returns domain.ErrNotFound if no challenge exists with the
+	// given id.
+	Update(ctx context.Context, challenge domain.Challenge) error
 }

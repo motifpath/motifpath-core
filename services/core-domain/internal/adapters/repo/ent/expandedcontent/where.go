@@ -65,6 +65,11 @@ func MediaURL(v string) predicate.ExpandedContent {
 	return predicate.ExpandedContent(sql.FieldEQ(FieldMediaURL, v))
 }
 
+// RichContent applies equality check predicate on the "rich_content" field. It's identical to RichContentEQ.
+func RichContent(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldEQ(FieldRichContent, v))
+}
+
 // TriggerAtSeconds applies equality check predicate on the "trigger_at_seconds" field. It's identical to TriggerAtSecondsEQ.
 func TriggerAtSeconds(v int) predicate.ExpandedContent {
 	return predicate.ExpandedContent(sql.FieldEQ(FieldTriggerAtSeconds, v))
@@ -210,6 +215,16 @@ func MediaURLHasSuffix(v string) predicate.ExpandedContent {
 	return predicate.ExpandedContent(sql.FieldHasSuffix(FieldMediaURL, v))
 }
 
+// MediaURLIsNil applies the IsNil predicate on the "media_url" field.
+func MediaURLIsNil() predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldIsNull(FieldMediaURL))
+}
+
+// MediaURLNotNil applies the NotNil predicate on the "media_url" field.
+func MediaURLNotNil() predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldNotNull(FieldMediaURL))
+}
+
 // MediaURLEqualFold applies the EqualFold predicate on the "media_url" field.
 func MediaURLEqualFold(v string) predicate.ExpandedContent {
 	return predicate.ExpandedContent(sql.FieldEqualFold(FieldMediaURL, v))
@@ -218,6 +233,81 @@ func MediaURLEqualFold(v string) predicate.ExpandedContent {
 // MediaURLContainsFold applies the ContainsFold predicate on the "media_url" field.
 func MediaURLContainsFold(v string) predicate.ExpandedContent {
 	return predicate.ExpandedContent(sql.FieldContainsFold(FieldMediaURL, v))
+}
+
+// RichContentEQ applies the EQ predicate on the "rich_content" field.
+func RichContentEQ(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldEQ(FieldRichContent, v))
+}
+
+// RichContentNEQ applies the NEQ predicate on the "rich_content" field.
+func RichContentNEQ(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldNEQ(FieldRichContent, v))
+}
+
+// RichContentIn applies the In predicate on the "rich_content" field.
+func RichContentIn(vs ...string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldIn(FieldRichContent, vs...))
+}
+
+// RichContentNotIn applies the NotIn predicate on the "rich_content" field.
+func RichContentNotIn(vs ...string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldNotIn(FieldRichContent, vs...))
+}
+
+// RichContentGT applies the GT predicate on the "rich_content" field.
+func RichContentGT(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldGT(FieldRichContent, v))
+}
+
+// RichContentGTE applies the GTE predicate on the "rich_content" field.
+func RichContentGTE(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldGTE(FieldRichContent, v))
+}
+
+// RichContentLT applies the LT predicate on the "rich_content" field.
+func RichContentLT(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldLT(FieldRichContent, v))
+}
+
+// RichContentLTE applies the LTE predicate on the "rich_content" field.
+func RichContentLTE(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldLTE(FieldRichContent, v))
+}
+
+// RichContentContains applies the Contains predicate on the "rich_content" field.
+func RichContentContains(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldContains(FieldRichContent, v))
+}
+
+// RichContentHasPrefix applies the HasPrefix predicate on the "rich_content" field.
+func RichContentHasPrefix(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldHasPrefix(FieldRichContent, v))
+}
+
+// RichContentHasSuffix applies the HasSuffix predicate on the "rich_content" field.
+func RichContentHasSuffix(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldHasSuffix(FieldRichContent, v))
+}
+
+// RichContentIsNil applies the IsNil predicate on the "rich_content" field.
+func RichContentIsNil() predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldIsNull(FieldRichContent))
+}
+
+// RichContentNotNil applies the NotNil predicate on the "rich_content" field.
+func RichContentNotNil() predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldNotNull(FieldRichContent))
+}
+
+// RichContentEqualFold applies the EqualFold predicate on the "rich_content" field.
+func RichContentEqualFold(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldEqualFold(FieldRichContent, v))
+}
+
+// RichContentContainsFold applies the ContainsFold predicate on the "rich_content" field.
+func RichContentContainsFold(v string) predicate.ExpandedContent {
+	return predicate.ExpandedContent(sql.FieldContainsFold(FieldRichContent, v))
 }
 
 // TriggerAtSecondsEQ applies the EQ predicate on the "trigger_at_seconds" field.

@@ -36,12 +36,16 @@ func NewExerciseService(
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, s.now())
+	if err := s.checkRemediationTargetsExist(ctx, remediationTargets); err != nil {
+		return domain.Exercise{}, err
+	}
+
+	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, s.now())
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -49,6 +53,38 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 	return exercise, nil
+}
+
+// checkRemediationTargetsExist reports a domain.ValidationError under
+// "remediation_targets" if any target's ContentNodeID does not reference an
+// existing content node. Whether a target's shape (exactly one of
+// content_node_id/rich_content) is valid is domain.NewExercise/Update's own
+// concern — this only checks the existence a repository round-trip
+// requires. Looks up every referenced id in a single batched GetByIDs call
+// rather than one GetByID per target, since a caller may name the same
+// content node more than once across targets and each lookup is otherwise a
+// separate round trip.
+func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targets []domain.RemediationTarget) error {
+	ids := make([]string, 0, len(targets))
+	for _, target := range targets {
+		if target.ContentNodeID != nil && *target.ContentNodeID != "" {
+			ids = append(ids, *target.ContentNodeID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	found, err := s.nodes.GetByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, ok := found[id]; !ok {
+			return domain.NewValidationError("remediation_targets", "references a content node that does not exist: "+id)
+		}
+	}
+	return nil
 }
 
 // GetExercise returns the exercise with the given id. Any authenticated user
@@ -70,11 +106,11 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 }
 
 // UpdateExercise replaces the given exercise's title, prompt, skill tags,
-// stimulus media, options, and estimated duration. exercise_type cannot be
-// changed, and the exercise's challenge/content-node links are untouched.
-// Only teachers and admins may update an exercise. Returns
-// domain.ErrNotFound if no exercise exists with the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int) (domain.Exercise, error) {
+// stimulus media, options, estimated duration, and remediation targets.
+// exercise_type cannot be changed, and the exercise's challenge/content-node
+// links are untouched. Only teachers and admins may update an exercise.
+// Returns domain.ErrNotFound if no exercise exists with the given id.
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -84,7 +120,11 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds)
+	if err := s.checkRemediationTargetsExist(ctx, remediationTargets); err != nil {
+		return domain.Exercise{}, err
+	}
+
+	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -92,7 +132,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}
-	return s.exercises.GetByID(ctx, id)
+	return updated, nil
 }
 
 // LinkExerciseToChallenge links an existing exercise into a challenge. Only

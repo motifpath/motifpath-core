@@ -14,7 +14,7 @@ var (
 		{Name: "content_node_id", Type: field.TypeUUID},
 		{Name: "subject_tag", Type: field.TypeString},
 		{Name: "pass_threshold", Type: field.TypeInt},
-		{Name: "remediation_target_content_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "time_threshold_ms", Type: field.TypeInt, Nullable: true},
 		{Name: "shuffle_exercises", Type: field.TypeBool, Default: false},
 		{Name: "shuffle_options", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
@@ -128,6 +128,7 @@ var (
 		{Name: "image_url", Type: field.TypeString, Nullable: true},
 		{Name: "audio_url", Type: field.TypeString, Nullable: true},
 		{Name: "estimated_duration_seconds", Type: field.TypeInt, Nullable: true},
+		{Name: "remediation_targets", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.
@@ -175,8 +176,9 @@ var (
 	ExpandedContentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "content_node_id", Type: field.TypeUUID},
-		{Name: "content_type", Type: field.TypeEnum, Enums: []string{"image", "gif"}},
-		{Name: "media_url", Type: field.TypeString},
+		{Name: "content_type", Type: field.TypeEnum, Enums: []string{"image", "gif", "rich_text"}},
+		{Name: "media_url", Type: field.TypeString, Nullable: true},
+		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "trigger_at_seconds", Type: field.TypeInt, Nullable: true},
 		{Name: "hide_at_seconds", Type: field.TypeInt, Nullable: true},
 		{Name: "trigger_at_paragraph", Type: field.TypeInt, Nullable: true},

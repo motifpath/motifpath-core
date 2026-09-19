@@ -19,4 +19,11 @@ type ContentNodeRepository interface {
 	// information CreateLearningPath's 400 response needs to name the
 	// missing content_node_id.
 	GetByIDs(ctx context.Context, ids []string) (map[string]domain.ContentNode, error)
+
+	// List returns content nodes matching the given filters. An empty
+	// filter value means "no filter" on that dimension.
+	List(ctx context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error)
+
+	// Update returns domain.ErrNotFound if no node exists with the given id.
+	Update(ctx context.Context, node domain.ContentNode) error
 }

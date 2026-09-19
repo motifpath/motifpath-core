@@ -27,6 +27,20 @@ func (_u *ExpandedContentUpdate) Where(ps ...predicate.ExpandedContent) *Expande
 	return _u
 }
 
+// SetContentType sets the "content_type" field.
+func (_u *ExpandedContentUpdate) SetContentType(v expandedcontent.ContentType) *ExpandedContentUpdate {
+	_u.mutation.SetContentType(v)
+	return _u
+}
+
+// SetNillableContentType sets the "content_type" field if the given value is not nil.
+func (_u *ExpandedContentUpdate) SetNillableContentType(v *expandedcontent.ContentType) *ExpandedContentUpdate {
+	if v != nil {
+		_u.SetContentType(*v)
+	}
+	return _u
+}
+
 // SetMediaURL sets the "media_url" field.
 func (_u *ExpandedContentUpdate) SetMediaURL(v string) *ExpandedContentUpdate {
 	_u.mutation.SetMediaURL(v)
@@ -38,6 +52,32 @@ func (_u *ExpandedContentUpdate) SetNillableMediaURL(v *string) *ExpandedContent
 	if v != nil {
 		_u.SetMediaURL(*v)
 	}
+	return _u
+}
+
+// ClearMediaURL clears the value of the "media_url" field.
+func (_u *ExpandedContentUpdate) ClearMediaURL() *ExpandedContentUpdate {
+	_u.mutation.ClearMediaURL()
+	return _u
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_u *ExpandedContentUpdate) SetRichContent(v string) *ExpandedContentUpdate {
+	_u.mutation.SetRichContent(v)
+	return _u
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_u *ExpandedContentUpdate) SetNillableRichContent(v *string) *ExpandedContentUpdate {
+	if v != nil {
+		_u.SetRichContent(*v)
+	}
+	return _u
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (_u *ExpandedContentUpdate) ClearRichContent() *ExpandedContentUpdate {
+	_u.mutation.ClearRichContent()
 	return _u
 }
 
@@ -201,7 +241,20 @@ func (_u *ExpandedContentUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *ExpandedContentUpdate) check() error {
+	if v, ok := _u.mutation.ContentType(); ok {
+		if err := expandedcontent.ContentTypeValidator(v); err != nil {
+			return &ValidationError{Name: "content_type", err: fmt.Errorf(`ent: validator failed for field "ExpandedContent.content_type": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *ExpandedContentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(expandedcontent.Table, expandedcontent.Columns, sqlgraph.NewFieldSpec(expandedcontent.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -210,8 +263,20 @@ func (_u *ExpandedContentUpdate) sqlSave(ctx context.Context) (_node int, err er
 			}
 		}
 	}
+	if value, ok := _u.mutation.ContentType(); ok {
+		_spec.SetField(expandedcontent.FieldContentType, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.MediaURL(); ok {
 		_spec.SetField(expandedcontent.FieldMediaURL, field.TypeString, value)
+	}
+	if _u.mutation.MediaURLCleared() {
+		_spec.ClearField(expandedcontent.FieldMediaURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.RichContent(); ok {
+		_spec.SetField(expandedcontent.FieldRichContent, field.TypeString, value)
+	}
+	if _u.mutation.RichContentCleared() {
+		_spec.ClearField(expandedcontent.FieldRichContent, field.TypeString)
 	}
 	if value, ok := _u.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)
@@ -275,6 +340,20 @@ type ExpandedContentUpdateOne struct {
 	mutation *ExpandedContentMutation
 }
 
+// SetContentType sets the "content_type" field.
+func (_u *ExpandedContentUpdateOne) SetContentType(v expandedcontent.ContentType) *ExpandedContentUpdateOne {
+	_u.mutation.SetContentType(v)
+	return _u
+}
+
+// SetNillableContentType sets the "content_type" field if the given value is not nil.
+func (_u *ExpandedContentUpdateOne) SetNillableContentType(v *expandedcontent.ContentType) *ExpandedContentUpdateOne {
+	if v != nil {
+		_u.SetContentType(*v)
+	}
+	return _u
+}
+
 // SetMediaURL sets the "media_url" field.
 func (_u *ExpandedContentUpdateOne) SetMediaURL(v string) *ExpandedContentUpdateOne {
 	_u.mutation.SetMediaURL(v)
@@ -286,6 +365,32 @@ func (_u *ExpandedContentUpdateOne) SetNillableMediaURL(v *string) *ExpandedCont
 	if v != nil {
 		_u.SetMediaURL(*v)
 	}
+	return _u
+}
+
+// ClearMediaURL clears the value of the "media_url" field.
+func (_u *ExpandedContentUpdateOne) ClearMediaURL() *ExpandedContentUpdateOne {
+	_u.mutation.ClearMediaURL()
+	return _u
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_u *ExpandedContentUpdateOne) SetRichContent(v string) *ExpandedContentUpdateOne {
+	_u.mutation.SetRichContent(v)
+	return _u
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_u *ExpandedContentUpdateOne) SetNillableRichContent(v *string) *ExpandedContentUpdateOne {
+	if v != nil {
+		_u.SetRichContent(*v)
+	}
+	return _u
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (_u *ExpandedContentUpdateOne) ClearRichContent() *ExpandedContentUpdateOne {
+	_u.mutation.ClearRichContent()
 	return _u
 }
 
@@ -462,7 +567,20 @@ func (_u *ExpandedContentUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *ExpandedContentUpdateOne) check() error {
+	if v, ok := _u.mutation.ContentType(); ok {
+		if err := expandedcontent.ContentTypeValidator(v); err != nil {
+			return &ValidationError{Name: "content_type", err: fmt.Errorf(`ent: validator failed for field "ExpandedContent.content_type": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *ExpandedContentUpdateOne) sqlSave(ctx context.Context) (_node *ExpandedContent, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(expandedcontent.Table, expandedcontent.Columns, sqlgraph.NewFieldSpec(expandedcontent.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -488,8 +606,20 @@ func (_u *ExpandedContentUpdateOne) sqlSave(ctx context.Context) (_node *Expande
 			}
 		}
 	}
+	if value, ok := _u.mutation.ContentType(); ok {
+		_spec.SetField(expandedcontent.FieldContentType, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.MediaURL(); ok {
 		_spec.SetField(expandedcontent.FieldMediaURL, field.TypeString, value)
+	}
+	if _u.mutation.MediaURLCleared() {
+		_spec.ClearField(expandedcontent.FieldMediaURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.RichContent(); ok {
+		_spec.SetField(expandedcontent.FieldRichContent, field.TypeString, value)
+	}
+	if _u.mutation.RichContentCleared() {
+		_spec.ClearField(expandedcontent.FieldRichContent, field.TypeString)
 	}
 	if value, ok := _u.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)

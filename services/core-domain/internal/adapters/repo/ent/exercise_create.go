@@ -92,6 +92,20 @@ func (_c *ExerciseCreate) SetNillableEstimatedDurationSeconds(v *int) *ExerciseC
 	return _c
 }
 
+// SetRemediationTargets sets the "remediation_targets" field.
+func (_c *ExerciseCreate) SetRemediationTargets(v string) *ExerciseCreate {
+	_c.mutation.SetRemediationTargets(v)
+	return _c
+}
+
+// SetNillableRemediationTargets sets the "remediation_targets" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableRemediationTargets(v *string) *ExerciseCreate {
+	if v != nil {
+		_c.SetRemediationTargets(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ExerciseCreate) SetCreatedAt(v time.Time) *ExerciseCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -321,6 +335,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.EstimatedDurationSeconds(); ok {
 		_spec.SetField(exercise.FieldEstimatedDurationSeconds, field.TypeInt, value)
 		_node.EstimatedDurationSeconds = &value
+	}
+	if value, ok := _c.mutation.RemediationTargets(); ok {
+		_spec.SetField(exercise.FieldRemediationTargets, field.TypeString, value)
+		_node.RemediationTargets = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)

@@ -33,6 +33,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	remediationJSON, err := marshalRemediationTargets(ex.RemediationTargets)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -48,34 +52,15 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
+		SetNillableRemediationTargets(remediationJSON).
 		SetCreatedAt(ex.CreatedAt)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
-		optionID, err := uuid.Parse(opt.ID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(id).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			shape := exerciseoption.RegionShape(opt.Region.Shape)
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(shape)
-		}
-		optionBuilders[i] = optBuilder
+	optionBuilders, err := buildExerciseOptionCreates(tx, id, ex.Options)
+	if err != nil {
+		return rollback(tx, err)
 	}
 	if len(optionBuilders) > 0 {
 		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
@@ -84,6 +69,36 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	}
 
 	return tx.Commit()
+}
+
+// buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
+// opt, shared by Create and Update since both fully (re)establish an
+// exercise's options the same way.
+func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
+	builders := make([]*ent.ExerciseOptionCreate, len(options))
+	for i, opt := range options {
+		optionID, err := uuid.Parse(opt.ID)
+		if err != nil {
+			return nil, err
+		}
+		optBuilder := tx.ExerciseOption.Create().
+			SetID(optionID).
+			SetExerciseID(exerciseID).
+			SetIsCorrect(opt.IsCorrect).
+			SetNillableLabel(opt.Label).
+			SetNillableImageURL(opt.ImageURL).
+			SetNillableAudioURL(opt.AudioURL)
+		if opt.Region != nil {
+			optBuilder = optBuilder.
+				SetRegionX(opt.Region.X).
+				SetRegionY(opt.Region.Y).
+				SetRegionWidth(opt.Region.Width).
+				SetRegionHeight(opt.Region.Height).
+				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
+		}
+		builders[i] = optBuilder
+	}
+	return builders, nil
 }
 
 func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.Exercise, error) {
@@ -162,6 +177,59 @@ func (r *EntExerciseRepository) ListByChallengeID(ctx context.Context, challenge
 	return r.exercisesInOrder(ctx, ids)
 }
 
+// ListByChallengeIDs is ListByChallengeID batched across multiple
+// challenges: one query for every ChallengeExercise link across
+// challengeIDs, one query for every linked exercise, then grouped back by
+// challenge id in Go — instead of one round trip per challenge.
+func (r *EntExerciseRepository) ListByChallengeIDs(ctx context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	result := map[string][]domain.Exercise{}
+	if len(challengeIDs) == 0 {
+		return result, nil
+	}
+
+	parsed := make([]uuid.UUID, 0, len(challengeIDs))
+	for _, id := range challengeIDs {
+		u, err := uuid.Parse(id)
+		if err != nil {
+			continue // not a valid id, so it can never match — left absent from result
+		}
+		parsed = append(parsed, u)
+	}
+	if len(parsed) == 0 {
+		return result, nil
+	}
+
+	links, err := r.client.ChallengeExercise.Query().
+		Where(challengeexercise.ChallengeIDIn(parsed...)).
+		Order(challengeexercise.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(links) == 0 {
+		return result, nil
+	}
+
+	exerciseIDs := make([]uuid.UUID, len(links))
+	for i, link := range links {
+		exerciseIDs[i] = link.ExerciseID
+	}
+	byID, err := r.exercisesByID(ctx, exerciseIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, link := range links {
+		row, ok := byID[link.ExerciseID]
+		if !ok {
+			continue
+		}
+		key := link.ChallengeID.String()
+		result[key] = append(result[key], toDomainExercise(row))
+	}
+	return result, nil
+}
+
 // LinkContentNode links exerciseID into contentNodeID as a path exercise,
 // via the ContentNodeExercise join entity — see LinkChallenge for why its
 // auto-incrementing id column is enough for link order on its own.
@@ -223,6 +291,24 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 	if len(ids) == 0 {
 		return nil, nil
 	}
+	byID, err := r.exercisesByID(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	ordered := make([]*ent.Exercise, 0, len(ids))
+	for _, id := range ids {
+		if row, ok := byID[id]; ok {
+			ordered = append(ordered, row)
+		}
+	}
+	return toDomainExercises(ordered), nil
+}
+
+// exercisesByID batch-fetches the exercises matching ids, with the edges
+// (challenges, content nodes, options) every caller of this file's exercise
+// queries needs, keyed by id. Shared by exercisesInOrder and
+// ListByChallengeIDs so the eager-load list lives in exactly one place.
+func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*ent.Exercise, error) {
 	rows, err := r.client.Exercise.Query().
 		Where(exercise.IDIn(ids...)).
 		WithChallenges().
@@ -236,13 +322,7 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 	for _, row := range rows {
 		byID[row.ID] = row
 	}
-	ordered := make([]*ent.Exercise, 0, len(ids))
-	for _, id := range ids {
-		if row, ok := byID[id]; ok {
-			ordered = append(ordered, row)
-		}
-	}
-	return toDomainExercises(ordered), nil
+	return byID, nil
 }
 
 // ListBySkillTag filters in Go rather than in the query — skill_tags is a
@@ -320,20 +400,29 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	remediationJSON, err := marshalRemediationTargets(ex.RemediationTargets)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exercise.UpdateOneID(id).
+	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
-		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
-		Save(ctx)
+		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds)
+	if remediationJSON != nil {
+		updateBuilder = updateBuilder.SetRemediationTargets(*remediationJSON)
+	} else {
+		updateBuilder = updateBuilder.ClearRemediationTargets()
+	}
+	_, err = updateBuilder.Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
@@ -345,28 +434,9 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return rollback(tx, err)
 	}
 
-	optionBuilders := make([]*ent.ExerciseOptionCreate, len(ex.Options))
-	for i, opt := range ex.Options {
-		optionID, err := uuid.Parse(opt.ID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(id).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
-		}
-		optionBuilders[i] = optBuilder
+	optionBuilders, err := buildExerciseOptionCreates(tx, id, ex.Options)
+	if err != nil {
+		return rollback(tx, err)
 	}
 	if len(optionBuilders) > 0 {
 		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
@@ -409,11 +479,47 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		ImageURL:                 row.ImageURL,
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,
+		RemediationTargets:       unmarshalRemediationTargets(row.RemediationTargets),
 		Options:                  options,
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		CreatedAt:                row.CreatedAt,
 	}
+}
+
+// marshalRemediationTargets serializes targets to the JSON text stored in
+// the exercise table's remediation_targets column. An empty/nil slice
+// marshals to nil (column left unset) rather than the literal string "[]",
+// keeping "no remediation configured" indistinguishable in storage from
+// "explicitly configured as empty" — the two have no different meaning.
+func marshalRemediationTargets(targets []domain.RemediationTarget) (*string, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	data, err := json.Marshal(targets)
+	if err != nil {
+		return nil, err
+	}
+	s := string(data)
+	return &s, nil
+}
+
+// unmarshalRemediationTargets parses the exercise table's
+// remediation_targets column back into a []domain.RemediationTarget. A nil
+// column (never configured) or malformed JSON both yield an empty slice
+// rather than an error — this column has no legacy pre-JSON data the way
+// prompt does, so any unparseable value is a storage bug, not a shimmable
+// legacy shape; failing softly here avoids turning a read of an otherwise-
+// valid exercise into a hard error.
+func unmarshalRemediationTargets(stored *string) []domain.RemediationTarget {
+	if stored == nil {
+		return nil
+	}
+	var targets []domain.RemediationTarget
+	if err := json.Unmarshal([]byte(*stored), &targets); err != nil {
+		return nil
+	}
+	return targets
 }
 
 func toDomainOption(row *ent.ExerciseOption) domain.Option {
