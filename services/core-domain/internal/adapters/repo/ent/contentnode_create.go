@@ -13,7 +13,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 )
 
 // ContentNodeCreate is the builder for creating a ContentNode entity.
@@ -116,6 +118,21 @@ func (_c *ContentNodeCreate) AddPathExercises(v ...*Exercise) *ContentNodeCreate
 	return _c.AddPathExerciseIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_c *ContentNodeCreate) AddLanguageIDs(ids ...uuid.UUID) *ContentNodeCreate {
+	_c.mutation.AddLanguageIDs(ids...)
+	return _c
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_c *ContentNodeCreate) AddLanguages(v ...*Language) *ContentNodeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLanguageIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_c *ContentNodeCreate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeCreate {
 	_c.mutation.AddContentNodeExerciseIDs(ids...)
@@ -129,6 +146,21 @@ func (_c *ContentNodeCreate) AddContentNodeExercises(v ...*ContentNodeExercise) 
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddContentNodeLanguageIDs adds the "content_node_languages" edge to the ContentNodeLanguage entity by IDs.
+func (_c *ContentNodeCreate) AddContentNodeLanguageIDs(ids ...int) *ContentNodeCreate {
+	_c.mutation.AddContentNodeLanguageIDs(ids...)
+	return _c
+}
+
+// AddContentNodeLanguages adds the "content_node_languages" edges to the ContentNodeLanguage entity.
+func (_c *ContentNodeCreate) AddContentNodeLanguages(v ...*ContentNodeLanguage) *ContentNodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeLanguageIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -308,6 +340,26 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.LanguagesTable,
+			Columns: contentnode.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeLanguageCreate{config: _c.config, mutation: newContentNodeLanguageMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -317,6 +369,22 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeLanguagesTable,
+			Columns: []string{contentnode.ContentNodeLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

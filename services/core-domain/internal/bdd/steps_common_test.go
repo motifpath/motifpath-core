@@ -222,7 +222,8 @@ func (w *world) requestRefusedNotFound() error {
 		generated.UpdateChallenge404JSONResponse,
 		generated.UpdateExpandedContent404JSONResponse,
 		generated.DeleteExpandedContent404JSONResponse,
-		generated.ReplaceLearningPath404JSONResponse:
+		generated.ReplaceLearningPath404JSONResponse,
+		generated.UpdateMyLocale404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -274,7 +275,8 @@ func (w *world) requestRefusedAuthError() error {
 		generated.UpdateExpandedContent401JSONResponse,
 		generated.DeleteExpandedContent401JSONResponse,
 		generated.ListLearningPaths401JSONResponse,
-		generated.ReplaceLearningPath401JSONResponse:
+		generated.ReplaceLearningPath401JSONResponse,
+		generated.UpdateMyLocale401JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 401 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -331,6 +333,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.UpdateExpandedContent400JSONResponse:
 		return resp.Errors, nil
 	case generated.ReplaceLearningPath400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateMyLocale400JSONResponse:
 		return resp.Errors, nil
 	default:
 		return nil, fmt.Errorf("expected a 400 response with validation errors, got %#v (err=%v)", w.lastResp, w.lastErr)

@@ -92,7 +92,7 @@ func run() error {
 
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nil, newID, now)
+	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, rand.Shuffle)
 
@@ -150,7 +150,7 @@ func seedPathAndProgress(
 	var items []application.PathItemInput
 	var nodeIDs []string
 	for _, spec := range specs {
-		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, spec.skill, spec.concept, spec.difficulty)
+		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, spec.skill, spec.concept, spec.difficulty, []string{"en"})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
@@ -224,7 +224,7 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	}
 
 	for _, spec := range specs {
-		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil, nil)
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil, nil, []string{"en"})
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}

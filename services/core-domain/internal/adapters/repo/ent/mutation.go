@@ -16,9 +16,12 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
@@ -39,9 +42,12 @@ const (
 	TypeChallengeExercise   = "ChallengeExercise"
 	TypeContentNode         = "ContentNode"
 	TypeContentNodeExercise = "ContentNodeExercise"
+	TypeContentNodeLanguage = "ContentNodeLanguage"
 	TypeExercise            = "Exercise"
+	TypeExerciseLanguage    = "ExerciseLanguage"
 	TypeExerciseOption      = "ExerciseOption"
 	TypeExpandedContent     = "ExpandedContent"
+	TypeLanguage            = "Language"
 	TypeLearningPath        = "LearningPath"
 	TypeLearningPathItem    = "LearningPathItem"
 	TypePathAssignment      = "PathAssignment"
@@ -1524,9 +1530,15 @@ type ContentNodeMutation struct {
 	path_exercises                map[uuid.UUID]struct{}
 	removedpath_exercises         map[uuid.UUID]struct{}
 	clearedpath_exercises         bool
+	languages                     map[uuid.UUID]struct{}
+	removedlanguages              map[uuid.UUID]struct{}
+	clearedlanguages              bool
 	content_node_exercises        map[int]struct{}
 	removedcontent_node_exercises map[int]struct{}
 	clearedcontent_node_exercises bool
+	content_node_languages        map[int]struct{}
+	removedcontent_node_languages map[int]struct{}
+	clearedcontent_node_languages bool
 	done                          bool
 	oldValue                      func(context.Context) (*ContentNode, error)
 	predicates                    []predicate.ContentNode
@@ -1978,6 +1990,60 @@ func (m *ContentNodeMutation) ResetPathExercises() {
 	m.removedpath_exercises = nil
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by ids.
+func (m *ContentNodeMutation) AddLanguageIDs(ids ...uuid.UUID) {
+	if m.languages == nil {
+		m.languages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLanguages clears the "languages" edge to the Language entity.
+func (m *ContentNodeMutation) ClearLanguages() {
+	m.clearedlanguages = true
+}
+
+// LanguagesCleared reports if the "languages" edge to the Language entity was cleared.
+func (m *ContentNodeMutation) LanguagesCleared() bool {
+	return m.clearedlanguages
+}
+
+// RemoveLanguageIDs removes the "languages" edge to the Language entity by IDs.
+func (m *ContentNodeMutation) RemoveLanguageIDs(ids ...uuid.UUID) {
+	if m.removedlanguages == nil {
+		m.removedlanguages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.languages, ids[i])
+		m.removedlanguages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLanguages returns the removed IDs of the "languages" edge to the Language entity.
+func (m *ContentNodeMutation) RemovedLanguagesIDs() (ids []uuid.UUID) {
+	for id := range m.removedlanguages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LanguagesIDs returns the "languages" edge IDs in the mutation.
+func (m *ContentNodeMutation) LanguagesIDs() (ids []uuid.UUID) {
+	for id := range m.languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLanguages resets all changes to the "languages" edge.
+func (m *ContentNodeMutation) ResetLanguages() {
+	m.languages = nil
+	m.clearedlanguages = false
+	m.removedlanguages = nil
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by ids.
 func (m *ContentNodeMutation) AddContentNodeExerciseIDs(ids ...int) {
 	if m.content_node_exercises == nil {
@@ -2030,6 +2096,60 @@ func (m *ContentNodeMutation) ResetContentNodeExercises() {
 	m.content_node_exercises = nil
 	m.clearedcontent_node_exercises = false
 	m.removedcontent_node_exercises = nil
+}
+
+// AddContentNodeLanguageIDs adds the "content_node_languages" edge to the ContentNodeLanguage entity by ids.
+func (m *ContentNodeMutation) AddContentNodeLanguageIDs(ids ...int) {
+	if m.content_node_languages == nil {
+		m.content_node_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeLanguages clears the "content_node_languages" edge to the ContentNodeLanguage entity.
+func (m *ContentNodeMutation) ClearContentNodeLanguages() {
+	m.clearedcontent_node_languages = true
+}
+
+// ContentNodeLanguagesCleared reports if the "content_node_languages" edge to the ContentNodeLanguage entity was cleared.
+func (m *ContentNodeMutation) ContentNodeLanguagesCleared() bool {
+	return m.clearedcontent_node_languages
+}
+
+// RemoveContentNodeLanguageIDs removes the "content_node_languages" edge to the ContentNodeLanguage entity by IDs.
+func (m *ContentNodeMutation) RemoveContentNodeLanguageIDs(ids ...int) {
+	if m.removedcontent_node_languages == nil {
+		m.removedcontent_node_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_languages, ids[i])
+		m.removedcontent_node_languages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeLanguages returns the removed IDs of the "content_node_languages" edge to the ContentNodeLanguage entity.
+func (m *ContentNodeMutation) RemovedContentNodeLanguagesIDs() (ids []int) {
+	for id := range m.removedcontent_node_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeLanguagesIDs returns the "content_node_languages" edge IDs in the mutation.
+func (m *ContentNodeMutation) ContentNodeLanguagesIDs() (ids []int) {
+	for id := range m.content_node_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeLanguages resets all changes to the "content_node_languages" edge.
+func (m *ContentNodeMutation) ResetContentNodeLanguages() {
+	m.content_node_languages = nil
+	m.clearedcontent_node_languages = false
+	m.removedcontent_node_languages = nil
 }
 
 // Where appends a list predicates to the ContentNodeMutation builder.
@@ -2284,12 +2404,18 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ContentNodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.path_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
+	if m.languages != nil {
+		edges = append(edges, contentnode.EdgeLanguages)
+	}
 	if m.content_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
+	}
+	if m.content_node_languages != nil {
+		edges = append(edges, contentnode.EdgeContentNodeLanguages)
 	}
 	return edges
 }
@@ -2304,9 +2430,21 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeLanguages:
+		ids := make([]ent.Value, 0, len(m.languages))
+		for id := range m.languages {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.content_node_exercises))
 		for id := range m.content_node_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeContentNodeLanguages:
+		ids := make([]ent.Value, 0, len(m.content_node_languages))
+		for id := range m.content_node_languages {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2316,12 +2454,18 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ContentNodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.removedpath_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
+	if m.removedlanguages != nil {
+		edges = append(edges, contentnode.EdgeLanguages)
+	}
 	if m.removedcontent_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
+	}
+	if m.removedcontent_node_languages != nil {
+		edges = append(edges, contentnode.EdgeContentNodeLanguages)
 	}
 	return edges
 }
@@ -2336,9 +2480,21 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeLanguages:
+		ids := make([]ent.Value, 0, len(m.removedlanguages))
+		for id := range m.removedlanguages {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.removedcontent_node_exercises))
 		for id := range m.removedcontent_node_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeContentNodeLanguages:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_languages))
+		for id := range m.removedcontent_node_languages {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2348,12 +2504,18 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ContentNodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.clearedpath_exercises {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
+	if m.clearedlanguages {
+		edges = append(edges, contentnode.EdgeLanguages)
+	}
 	if m.clearedcontent_node_exercises {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
+	}
+	if m.clearedcontent_node_languages {
+		edges = append(edges, contentnode.EdgeContentNodeLanguages)
 	}
 	return edges
 }
@@ -2364,8 +2526,12 @@ func (m *ContentNodeMutation) EdgeCleared(name string) bool {
 	switch name {
 	case contentnode.EdgePathExercises:
 		return m.clearedpath_exercises
+	case contentnode.EdgeLanguages:
+		return m.clearedlanguages
 	case contentnode.EdgeContentNodeExercises:
 		return m.clearedcontent_node_exercises
+	case contentnode.EdgeContentNodeLanguages:
+		return m.clearedcontent_node_languages
 	}
 	return false
 }
@@ -2385,8 +2551,14 @@ func (m *ContentNodeMutation) ResetEdge(name string) error {
 	case contentnode.EdgePathExercises:
 		m.ResetPathExercises()
 		return nil
+	case contentnode.EdgeLanguages:
+		m.ResetLanguages()
+		return nil
 	case contentnode.EdgeContentNodeExercises:
 		m.ResetContentNodeExercises()
+		return nil
+	case contentnode.EdgeContentNodeLanguages:
+		m.ResetContentNodeLanguages()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode edge %s", name)
@@ -2926,6 +3098,540 @@ func (m *ContentNodeExerciseMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ContentNodeExercise edge %s", name)
 }
 
+// ContentNodeLanguageMutation represents an operation that mutates the ContentNodeLanguage nodes in the graph.
+type ContentNodeLanguageMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	linked_at           *time.Time
+	clearedFields       map[string]struct{}
+	content_node        *uuid.UUID
+	clearedcontent_node bool
+	language            *uuid.UUID
+	clearedlanguage     bool
+	done                bool
+	oldValue            func(context.Context) (*ContentNodeLanguage, error)
+	predicates          []predicate.ContentNodeLanguage
+}
+
+var _ ent.Mutation = (*ContentNodeLanguageMutation)(nil)
+
+// contentnodelanguageOption allows management of the mutation configuration using functional options.
+type contentnodelanguageOption func(*ContentNodeLanguageMutation)
+
+// newContentNodeLanguageMutation creates new mutation for the ContentNodeLanguage entity.
+func newContentNodeLanguageMutation(c config, op Op, opts ...contentnodelanguageOption) *ContentNodeLanguageMutation {
+	m := &ContentNodeLanguageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeContentNodeLanguage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withContentNodeLanguageID sets the ID field of the mutation.
+func withContentNodeLanguageID(id int) contentnodelanguageOption {
+	return func(m *ContentNodeLanguageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ContentNodeLanguage
+		)
+		m.oldValue = func(ctx context.Context) (*ContentNodeLanguage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ContentNodeLanguage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withContentNodeLanguage sets the old ContentNodeLanguage of the mutation.
+func withContentNodeLanguage(node *ContentNodeLanguage) contentnodelanguageOption {
+	return func(m *ContentNodeLanguageMutation) {
+		m.oldValue = func(context.Context) (*ContentNodeLanguage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ContentNodeLanguageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ContentNodeLanguageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ContentNodeLanguageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ContentNodeLanguageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ContentNodeLanguage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentNodeID sets the "content_node_id" field.
+func (m *ContentNodeLanguageMutation) SetContentNodeID(u uuid.UUID) {
+	m.content_node = &u
+}
+
+// ContentNodeID returns the value of the "content_node_id" field in the mutation.
+func (m *ContentNodeLanguageMutation) ContentNodeID() (r uuid.UUID, exists bool) {
+	v := m.content_node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentNodeID returns the old "content_node_id" field's value of the ContentNodeLanguage entity.
+// If the ContentNodeLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeLanguageMutation) OldContentNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentNodeID: %w", err)
+	}
+	return oldValue.ContentNodeID, nil
+}
+
+// ResetContentNodeID resets all changes to the "content_node_id" field.
+func (m *ContentNodeLanguageMutation) ResetContentNodeID() {
+	m.content_node = nil
+}
+
+// SetLanguageID sets the "language_id" field.
+func (m *ContentNodeLanguageMutation) SetLanguageID(u uuid.UUID) {
+	m.language = &u
+}
+
+// LanguageID returns the value of the "language_id" field in the mutation.
+func (m *ContentNodeLanguageMutation) LanguageID() (r uuid.UUID, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguageID returns the old "language_id" field's value of the ContentNodeLanguage entity.
+// If the ContentNodeLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeLanguageMutation) OldLanguageID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguageID: %w", err)
+	}
+	return oldValue.LanguageID, nil
+}
+
+// ResetLanguageID resets all changes to the "language_id" field.
+func (m *ContentNodeLanguageMutation) ResetLanguageID() {
+	m.language = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ContentNodeLanguageMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ContentNodeLanguageMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ContentNodeLanguage entity.
+// If the ContentNodeLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeLanguageMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ContentNodeLanguageMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearContentNode clears the "content_node" edge to the ContentNode entity.
+func (m *ContentNodeLanguageMutation) ClearContentNode() {
+	m.clearedcontent_node = true
+	m.clearedFields[contentnodelanguage.FieldContentNodeID] = struct{}{}
+}
+
+// ContentNodeCleared reports if the "content_node" edge to the ContentNode entity was cleared.
+func (m *ContentNodeLanguageMutation) ContentNodeCleared() bool {
+	return m.clearedcontent_node
+}
+
+// ContentNodeIDs returns the "content_node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ContentNodeID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeLanguageMutation) ContentNodeIDs() (ids []uuid.UUID) {
+	if id := m.content_node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetContentNode resets all changes to the "content_node" edge.
+func (m *ContentNodeLanguageMutation) ResetContentNode() {
+	m.content_node = nil
+	m.clearedcontent_node = false
+}
+
+// ClearLanguage clears the "language" edge to the Language entity.
+func (m *ContentNodeLanguageMutation) ClearLanguage() {
+	m.clearedlanguage = true
+	m.clearedFields[contentnodelanguage.FieldLanguageID] = struct{}{}
+}
+
+// LanguageCleared reports if the "language" edge to the Language entity was cleared.
+func (m *ContentNodeLanguageMutation) LanguageCleared() bool {
+	return m.clearedlanguage
+}
+
+// LanguageIDs returns the "language" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LanguageID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeLanguageMutation) LanguageIDs() (ids []uuid.UUID) {
+	if id := m.language; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLanguage resets all changes to the "language" edge.
+func (m *ContentNodeLanguageMutation) ResetLanguage() {
+	m.language = nil
+	m.clearedlanguage = false
+}
+
+// Where appends a list predicates to the ContentNodeLanguageMutation builder.
+func (m *ContentNodeLanguageMutation) Where(ps ...predicate.ContentNodeLanguage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ContentNodeLanguageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ContentNodeLanguageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ContentNodeLanguage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ContentNodeLanguageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ContentNodeLanguageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ContentNodeLanguage).
+func (m *ContentNodeLanguageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ContentNodeLanguageMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.content_node != nil {
+		fields = append(fields, contentnodelanguage.FieldContentNodeID)
+	}
+	if m.language != nil {
+		fields = append(fields, contentnodelanguage.FieldLanguageID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, contentnodelanguage.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ContentNodeLanguageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case contentnodelanguage.FieldContentNodeID:
+		return m.ContentNodeID()
+	case contentnodelanguage.FieldLanguageID:
+		return m.LanguageID()
+	case contentnodelanguage.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ContentNodeLanguageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case contentnodelanguage.FieldContentNodeID:
+		return m.OldContentNodeID(ctx)
+	case contentnodelanguage.FieldLanguageID:
+		return m.OldLanguageID(ctx)
+	case contentnodelanguage.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ContentNodeLanguage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeLanguageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case contentnodelanguage.FieldContentNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentNodeID(v)
+		return nil
+	case contentnodelanguage.FieldLanguageID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguageID(v)
+		return nil
+	case contentnodelanguage.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeLanguage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ContentNodeLanguageMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ContentNodeLanguageMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeLanguageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ContentNodeLanguage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ContentNodeLanguageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ContentNodeLanguageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ContentNodeLanguageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ContentNodeLanguage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ContentNodeLanguageMutation) ResetField(name string) error {
+	switch name {
+	case contentnodelanguage.FieldContentNodeID:
+		m.ResetContentNodeID()
+		return nil
+	case contentnodelanguage.FieldLanguageID:
+		m.ResetLanguageID()
+		return nil
+	case contentnodelanguage.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeLanguage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ContentNodeLanguageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.content_node != nil {
+		edges = append(edges, contentnodelanguage.EdgeContentNode)
+	}
+	if m.language != nil {
+		edges = append(edges, contentnodelanguage.EdgeLanguage)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ContentNodeLanguageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case contentnodelanguage.EdgeContentNode:
+		if id := m.content_node; id != nil {
+			return []ent.Value{*id}
+		}
+	case contentnodelanguage.EdgeLanguage:
+		if id := m.language; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ContentNodeLanguageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ContentNodeLanguageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ContentNodeLanguageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedcontent_node {
+		edges = append(edges, contentnodelanguage.EdgeContentNode)
+	}
+	if m.clearedlanguage {
+		edges = append(edges, contentnodelanguage.EdgeLanguage)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ContentNodeLanguageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case contentnodelanguage.EdgeContentNode:
+		return m.clearedcontent_node
+	case contentnodelanguage.EdgeLanguage:
+		return m.clearedlanguage
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ContentNodeLanguageMutation) ClearEdge(name string) error {
+	switch name {
+	case contentnodelanguage.EdgeContentNode:
+		m.ClearContentNode()
+		return nil
+	case contentnodelanguage.EdgeLanguage:
+		m.ClearLanguage()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeLanguage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ContentNodeLanguageMutation) ResetEdge(name string) error {
+	switch name {
+	case contentnodelanguage.EdgeContentNode:
+		m.ResetContentNode()
+		return nil
+	case contentnodelanguage.EdgeLanguage:
+		m.ResetLanguage()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeLanguage edge %s", name)
+}
+
 // ExerciseMutation represents an operation that mutates the Exercise nodes in the graph.
 type ExerciseMutation struct {
 	config
@@ -2953,12 +3659,18 @@ type ExerciseMutation struct {
 	options                       map[uuid.UUID]struct{}
 	removedoptions                map[uuid.UUID]struct{}
 	clearedoptions                bool
+	languages                     map[uuid.UUID]struct{}
+	removedlanguages              map[uuid.UUID]struct{}
+	clearedlanguages              bool
 	challenge_exercises           map[int]struct{}
 	removedchallenge_exercises    map[int]struct{}
 	clearedchallenge_exercises    bool
 	content_node_exercises        map[int]struct{}
 	removedcontent_node_exercises map[int]struct{}
 	clearedcontent_node_exercises bool
+	exercise_languages            map[int]struct{}
+	removedexercise_languages     map[int]struct{}
+	clearedexercise_languages     bool
 	done                          bool
 	oldValue                      func(context.Context) (*Exercise, error)
 	predicates                    []predicate.Exercise
@@ -3656,6 +4368,60 @@ func (m *ExerciseMutation) ResetOptions() {
 	m.removedoptions = nil
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by ids.
+func (m *ExerciseMutation) AddLanguageIDs(ids ...uuid.UUID) {
+	if m.languages == nil {
+		m.languages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLanguages clears the "languages" edge to the Language entity.
+func (m *ExerciseMutation) ClearLanguages() {
+	m.clearedlanguages = true
+}
+
+// LanguagesCleared reports if the "languages" edge to the Language entity was cleared.
+func (m *ExerciseMutation) LanguagesCleared() bool {
+	return m.clearedlanguages
+}
+
+// RemoveLanguageIDs removes the "languages" edge to the Language entity by IDs.
+func (m *ExerciseMutation) RemoveLanguageIDs(ids ...uuid.UUID) {
+	if m.removedlanguages == nil {
+		m.removedlanguages = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.languages, ids[i])
+		m.removedlanguages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLanguages returns the removed IDs of the "languages" edge to the Language entity.
+func (m *ExerciseMutation) RemovedLanguagesIDs() (ids []uuid.UUID) {
+	for id := range m.removedlanguages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LanguagesIDs returns the "languages" edge IDs in the mutation.
+func (m *ExerciseMutation) LanguagesIDs() (ids []uuid.UUID) {
+	for id := range m.languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLanguages resets all changes to the "languages" edge.
+func (m *ExerciseMutation) ResetLanguages() {
+	m.languages = nil
+	m.clearedlanguages = false
+	m.removedlanguages = nil
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by ids.
 func (m *ExerciseMutation) AddChallengeExerciseIDs(ids ...int) {
 	if m.challenge_exercises == nil {
@@ -3762,6 +4528,60 @@ func (m *ExerciseMutation) ResetContentNodeExercises() {
 	m.content_node_exercises = nil
 	m.clearedcontent_node_exercises = false
 	m.removedcontent_node_exercises = nil
+}
+
+// AddExerciseLanguageIDs adds the "exercise_languages" edge to the ExerciseLanguage entity by ids.
+func (m *ExerciseMutation) AddExerciseLanguageIDs(ids ...int) {
+	if m.exercise_languages == nil {
+		m.exercise_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseLanguages clears the "exercise_languages" edge to the ExerciseLanguage entity.
+func (m *ExerciseMutation) ClearExerciseLanguages() {
+	m.clearedexercise_languages = true
+}
+
+// ExerciseLanguagesCleared reports if the "exercise_languages" edge to the ExerciseLanguage entity was cleared.
+func (m *ExerciseMutation) ExerciseLanguagesCleared() bool {
+	return m.clearedexercise_languages
+}
+
+// RemoveExerciseLanguageIDs removes the "exercise_languages" edge to the ExerciseLanguage entity by IDs.
+func (m *ExerciseMutation) RemoveExerciseLanguageIDs(ids ...int) {
+	if m.removedexercise_languages == nil {
+		m.removedexercise_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_languages, ids[i])
+		m.removedexercise_languages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseLanguages returns the removed IDs of the "exercise_languages" edge to the ExerciseLanguage entity.
+func (m *ExerciseMutation) RemovedExerciseLanguagesIDs() (ids []int) {
+	for id := range m.removedexercise_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseLanguagesIDs returns the "exercise_languages" edge IDs in the mutation.
+func (m *ExerciseMutation) ExerciseLanguagesIDs() (ids []int) {
+	for id := range m.exercise_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseLanguages resets all changes to the "exercise_languages" edge.
+func (m *ExerciseMutation) ResetExerciseLanguages() {
+	m.exercise_languages = nil
+	m.clearedexercise_languages = false
+	m.removedexercise_languages = nil
 }
 
 // Where appends a list predicates to the ExerciseMutation builder.
@@ -4081,7 +4901,7 @@ func (m *ExerciseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ExerciseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.challenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -4091,11 +4911,17 @@ func (m *ExerciseMutation) AddedEdges() []string {
 	if m.options != nil {
 		edges = append(edges, exercise.EdgeOptions)
 	}
+	if m.languages != nil {
+		edges = append(edges, exercise.EdgeLanguages)
+	}
 	if m.challenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
 	if m.content_node_exercises != nil {
 		edges = append(edges, exercise.EdgeContentNodeExercises)
+	}
+	if m.exercise_languages != nil {
+		edges = append(edges, exercise.EdgeExerciseLanguages)
 	}
 	return edges
 }
@@ -4122,6 +4948,12 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeLanguages:
+		ids := make([]ent.Value, 0, len(m.languages))
+		for id := range m.languages {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.challenge_exercises))
 		for id := range m.challenge_exercises {
@@ -4134,13 +4966,19 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseLanguages:
+		ids := make([]ent.Value, 0, len(m.exercise_languages))
+		for id := range m.exercise_languages {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ExerciseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.removedchallenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -4150,11 +4988,17 @@ func (m *ExerciseMutation) RemovedEdges() []string {
 	if m.removedoptions != nil {
 		edges = append(edges, exercise.EdgeOptions)
 	}
+	if m.removedlanguages != nil {
+		edges = append(edges, exercise.EdgeLanguages)
+	}
 	if m.removedchallenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
 	if m.removedcontent_node_exercises != nil {
 		edges = append(edges, exercise.EdgeContentNodeExercises)
+	}
+	if m.removedexercise_languages != nil {
+		edges = append(edges, exercise.EdgeExerciseLanguages)
 	}
 	return edges
 }
@@ -4181,6 +5025,12 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeLanguages:
+		ids := make([]ent.Value, 0, len(m.removedlanguages))
+		for id := range m.removedlanguages {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.removedchallenge_exercises))
 		for id := range m.removedchallenge_exercises {
@@ -4193,13 +5043,19 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseLanguages:
+		ids := make([]ent.Value, 0, len(m.removedexercise_languages))
+		for id := range m.removedexercise_languages {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ExerciseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 5)
+	edges := make([]string, 0, 7)
 	if m.clearedchallenges {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -4209,11 +5065,17 @@ func (m *ExerciseMutation) ClearedEdges() []string {
 	if m.clearedoptions {
 		edges = append(edges, exercise.EdgeOptions)
 	}
+	if m.clearedlanguages {
+		edges = append(edges, exercise.EdgeLanguages)
+	}
 	if m.clearedchallenge_exercises {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
 	if m.clearedcontent_node_exercises {
 		edges = append(edges, exercise.EdgeContentNodeExercises)
+	}
+	if m.clearedexercise_languages {
+		edges = append(edges, exercise.EdgeExerciseLanguages)
 	}
 	return edges
 }
@@ -4228,10 +5090,14 @@ func (m *ExerciseMutation) EdgeCleared(name string) bool {
 		return m.clearedcontent_nodes
 	case exercise.EdgeOptions:
 		return m.clearedoptions
+	case exercise.EdgeLanguages:
+		return m.clearedlanguages
 	case exercise.EdgeChallengeExercises:
 		return m.clearedchallenge_exercises
 	case exercise.EdgeContentNodeExercises:
 		return m.clearedcontent_node_exercises
+	case exercise.EdgeExerciseLanguages:
+		return m.clearedexercise_languages
 	}
 	return false
 }
@@ -4257,14 +5123,554 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 	case exercise.EdgeOptions:
 		m.ResetOptions()
 		return nil
+	case exercise.EdgeLanguages:
+		m.ResetLanguages()
+		return nil
 	case exercise.EdgeChallengeExercises:
 		m.ResetChallengeExercises()
 		return nil
 	case exercise.EdgeContentNodeExercises:
 		m.ResetContentNodeExercises()
 		return nil
+	case exercise.EdgeExerciseLanguages:
+		m.ResetExerciseLanguages()
+		return nil
 	}
 	return fmt.Errorf("unknown Exercise edge %s", name)
+}
+
+// ExerciseLanguageMutation represents an operation that mutates the ExerciseLanguage nodes in the graph.
+type ExerciseLanguageMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	linked_at       *time.Time
+	clearedFields   map[string]struct{}
+	exercise        *uuid.UUID
+	clearedexercise bool
+	language        *uuid.UUID
+	clearedlanguage bool
+	done            bool
+	oldValue        func(context.Context) (*ExerciseLanguage, error)
+	predicates      []predicate.ExerciseLanguage
+}
+
+var _ ent.Mutation = (*ExerciseLanguageMutation)(nil)
+
+// exerciselanguageOption allows management of the mutation configuration using functional options.
+type exerciselanguageOption func(*ExerciseLanguageMutation)
+
+// newExerciseLanguageMutation creates new mutation for the ExerciseLanguage entity.
+func newExerciseLanguageMutation(c config, op Op, opts ...exerciselanguageOption) *ExerciseLanguageMutation {
+	m := &ExerciseLanguageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeExerciseLanguage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withExerciseLanguageID sets the ID field of the mutation.
+func withExerciseLanguageID(id int) exerciselanguageOption {
+	return func(m *ExerciseLanguageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ExerciseLanguage
+		)
+		m.oldValue = func(ctx context.Context) (*ExerciseLanguage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ExerciseLanguage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withExerciseLanguage sets the old ExerciseLanguage of the mutation.
+func withExerciseLanguage(node *ExerciseLanguage) exerciselanguageOption {
+	return func(m *ExerciseLanguageMutation) {
+		m.oldValue = func(context.Context) (*ExerciseLanguage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ExerciseLanguageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ExerciseLanguageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ExerciseLanguageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ExerciseLanguageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ExerciseLanguage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetExerciseID sets the "exercise_id" field.
+func (m *ExerciseLanguageMutation) SetExerciseID(u uuid.UUID) {
+	m.exercise = &u
+}
+
+// ExerciseID returns the value of the "exercise_id" field in the mutation.
+func (m *ExerciseLanguageMutation) ExerciseID() (r uuid.UUID, exists bool) {
+	v := m.exercise
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExerciseID returns the old "exercise_id" field's value of the ExerciseLanguage entity.
+// If the ExerciseLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseLanguageMutation) OldExerciseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExerciseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExerciseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExerciseID: %w", err)
+	}
+	return oldValue.ExerciseID, nil
+}
+
+// ResetExerciseID resets all changes to the "exercise_id" field.
+func (m *ExerciseLanguageMutation) ResetExerciseID() {
+	m.exercise = nil
+}
+
+// SetLanguageID sets the "language_id" field.
+func (m *ExerciseLanguageMutation) SetLanguageID(u uuid.UUID) {
+	m.language = &u
+}
+
+// LanguageID returns the value of the "language_id" field in the mutation.
+func (m *ExerciseLanguageMutation) LanguageID() (r uuid.UUID, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguageID returns the old "language_id" field's value of the ExerciseLanguage entity.
+// If the ExerciseLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseLanguageMutation) OldLanguageID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguageID: %w", err)
+	}
+	return oldValue.LanguageID, nil
+}
+
+// ResetLanguageID resets all changes to the "language_id" field.
+func (m *ExerciseLanguageMutation) ResetLanguageID() {
+	m.language = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ExerciseLanguageMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ExerciseLanguageMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ExerciseLanguage entity.
+// If the ExerciseLanguage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseLanguageMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ExerciseLanguageMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearExercise clears the "exercise" edge to the Exercise entity.
+func (m *ExerciseLanguageMutation) ClearExercise() {
+	m.clearedexercise = true
+	m.clearedFields[exerciselanguage.FieldExerciseID] = struct{}{}
+}
+
+// ExerciseCleared reports if the "exercise" edge to the Exercise entity was cleared.
+func (m *ExerciseLanguageMutation) ExerciseCleared() bool {
+	return m.clearedexercise
+}
+
+// ExerciseIDs returns the "exercise" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExerciseID instead. It exists only for internal usage by the builders.
+func (m *ExerciseLanguageMutation) ExerciseIDs() (ids []uuid.UUID) {
+	if id := m.exercise; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExercise resets all changes to the "exercise" edge.
+func (m *ExerciseLanguageMutation) ResetExercise() {
+	m.exercise = nil
+	m.clearedexercise = false
+}
+
+// ClearLanguage clears the "language" edge to the Language entity.
+func (m *ExerciseLanguageMutation) ClearLanguage() {
+	m.clearedlanguage = true
+	m.clearedFields[exerciselanguage.FieldLanguageID] = struct{}{}
+}
+
+// LanguageCleared reports if the "language" edge to the Language entity was cleared.
+func (m *ExerciseLanguageMutation) LanguageCleared() bool {
+	return m.clearedlanguage
+}
+
+// LanguageIDs returns the "language" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LanguageID instead. It exists only for internal usage by the builders.
+func (m *ExerciseLanguageMutation) LanguageIDs() (ids []uuid.UUID) {
+	if id := m.language; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLanguage resets all changes to the "language" edge.
+func (m *ExerciseLanguageMutation) ResetLanguage() {
+	m.language = nil
+	m.clearedlanguage = false
+}
+
+// Where appends a list predicates to the ExerciseLanguageMutation builder.
+func (m *ExerciseLanguageMutation) Where(ps ...predicate.ExerciseLanguage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ExerciseLanguageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ExerciseLanguageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ExerciseLanguage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ExerciseLanguageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ExerciseLanguageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ExerciseLanguage).
+func (m *ExerciseLanguageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ExerciseLanguageMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.exercise != nil {
+		fields = append(fields, exerciselanguage.FieldExerciseID)
+	}
+	if m.language != nil {
+		fields = append(fields, exerciselanguage.FieldLanguageID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, exerciselanguage.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ExerciseLanguageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case exerciselanguage.FieldExerciseID:
+		return m.ExerciseID()
+	case exerciselanguage.FieldLanguageID:
+		return m.LanguageID()
+	case exerciselanguage.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ExerciseLanguageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case exerciselanguage.FieldExerciseID:
+		return m.OldExerciseID(ctx)
+	case exerciselanguage.FieldLanguageID:
+		return m.OldLanguageID(ctx)
+	case exerciselanguage.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ExerciseLanguage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseLanguageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case exerciselanguage.FieldExerciseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExerciseID(v)
+		return nil
+	case exerciselanguage.FieldLanguageID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguageID(v)
+		return nil
+	case exerciselanguage.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseLanguage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ExerciseLanguageMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ExerciseLanguageMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseLanguageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ExerciseLanguage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ExerciseLanguageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ExerciseLanguageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ExerciseLanguageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ExerciseLanguage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ExerciseLanguageMutation) ResetField(name string) error {
+	switch name {
+	case exerciselanguage.FieldExerciseID:
+		m.ResetExerciseID()
+		return nil
+	case exerciselanguage.FieldLanguageID:
+		m.ResetLanguageID()
+		return nil
+	case exerciselanguage.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseLanguage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ExerciseLanguageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.exercise != nil {
+		edges = append(edges, exerciselanguage.EdgeExercise)
+	}
+	if m.language != nil {
+		edges = append(edges, exerciselanguage.EdgeLanguage)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ExerciseLanguageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case exerciselanguage.EdgeExercise:
+		if id := m.exercise; id != nil {
+			return []ent.Value{*id}
+		}
+	case exerciselanguage.EdgeLanguage:
+		if id := m.language; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ExerciseLanguageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ExerciseLanguageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ExerciseLanguageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedexercise {
+		edges = append(edges, exerciselanguage.EdgeExercise)
+	}
+	if m.clearedlanguage {
+		edges = append(edges, exerciselanguage.EdgeLanguage)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ExerciseLanguageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case exerciselanguage.EdgeExercise:
+		return m.clearedexercise
+	case exerciselanguage.EdgeLanguage:
+		return m.clearedlanguage
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ExerciseLanguageMutation) ClearEdge(name string) error {
+	switch name {
+	case exerciselanguage.EdgeExercise:
+		m.ClearExercise()
+		return nil
+	case exerciselanguage.EdgeLanguage:
+		m.ClearLanguage()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseLanguage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ExerciseLanguageMutation) ResetEdge(name string) error {
+	switch name {
+	case exerciselanguage.EdgeExercise:
+		m.ResetExercise()
+		return nil
+	case exerciselanguage.EdgeLanguage:
+		m.ResetLanguage()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseLanguage edge %s", name)
 }
 
 // ExerciseOptionMutation represents an operation that mutates the ExerciseOption nodes in the graph.
@@ -6526,6 +7932,734 @@ func (m *ExpandedContentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ExpandedContent edge %s", name)
 }
 
+// LanguageMutation represents an operation that mutates the Language nodes in the graph.
+type LanguageMutation struct {
+	config
+	op                            Op
+	typ                           string
+	id                            *uuid.UUID
+	code                          *string
+	name                          *string
+	clearedFields                 map[string]struct{}
+	content_nodes                 map[uuid.UUID]struct{}
+	removedcontent_nodes          map[uuid.UUID]struct{}
+	clearedcontent_nodes          bool
+	exercises                     map[uuid.UUID]struct{}
+	removedexercises              map[uuid.UUID]struct{}
+	clearedexercises              bool
+	content_node_languages        map[int]struct{}
+	removedcontent_node_languages map[int]struct{}
+	clearedcontent_node_languages bool
+	exercise_languages            map[int]struct{}
+	removedexercise_languages     map[int]struct{}
+	clearedexercise_languages     bool
+	done                          bool
+	oldValue                      func(context.Context) (*Language, error)
+	predicates                    []predicate.Language
+}
+
+var _ ent.Mutation = (*LanguageMutation)(nil)
+
+// languageOption allows management of the mutation configuration using functional options.
+type languageOption func(*LanguageMutation)
+
+// newLanguageMutation creates new mutation for the Language entity.
+func newLanguageMutation(c config, op Op, opts ...languageOption) *LanguageMutation {
+	m := &LanguageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeLanguage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withLanguageID sets the ID field of the mutation.
+func withLanguageID(id uuid.UUID) languageOption {
+	return func(m *LanguageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Language
+		)
+		m.oldValue = func(ctx context.Context) (*Language, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Language.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withLanguage sets the old Language of the mutation.
+func withLanguage(node *Language) languageOption {
+	return func(m *LanguageMutation) {
+		m.oldValue = func(context.Context) (*Language, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m LanguageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m LanguageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Language entities.
+func (m *LanguageMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *LanguageMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *LanguageMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Language.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCode sets the "code" field.
+func (m *LanguageMutation) SetCode(s string) {
+	m.code = &s
+}
+
+// Code returns the value of the "code" field in the mutation.
+func (m *LanguageMutation) Code() (r string, exists bool) {
+	v := m.code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCode returns the old "code" field's value of the Language entity.
+// If the Language object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LanguageMutation) OldCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCode: %w", err)
+	}
+	return oldValue.Code, nil
+}
+
+// ResetCode resets all changes to the "code" field.
+func (m *LanguageMutation) ResetCode() {
+	m.code = nil
+}
+
+// SetName sets the "name" field.
+func (m *LanguageMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *LanguageMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Language entity.
+// If the Language object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LanguageMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *LanguageMutation) ResetName() {
+	m.name = nil
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
+func (m *LanguageMutation) AddContentNodeIDs(ids ...uuid.UUID) {
+	if m.content_nodes == nil {
+		m.content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
+func (m *LanguageMutation) ClearContentNodes() {
+	m.clearedcontent_nodes = true
+}
+
+// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
+func (m *LanguageMutation) ContentNodesCleared() bool {
+	return m.clearedcontent_nodes
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
+func (m *LanguageMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedcontent_nodes == nil {
+		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.content_nodes, ids[i])
+		m.removedcontent_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
+func (m *LanguageMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcontent_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
+func (m *LanguageMutation) ContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodes resets all changes to the "content_nodes" edge.
+func (m *LanguageMutation) ResetContentNodes() {
+	m.content_nodes = nil
+	m.clearedcontent_nodes = false
+	m.removedcontent_nodes = nil
+}
+
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
+func (m *LanguageMutation) AddExerciseIDs(ids ...uuid.UUID) {
+	if m.exercises == nil {
+		m.exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExercises clears the "exercises" edge to the Exercise entity.
+func (m *LanguageMutation) ClearExercises() {
+	m.clearedexercises = true
+}
+
+// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
+func (m *LanguageMutation) ExercisesCleared() bool {
+	return m.clearedexercises
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
+func (m *LanguageMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
+	if m.removedexercises == nil {
+		m.removedexercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.exercises, ids[i])
+		m.removedexercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
+func (m *LanguageMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedexercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExercisesIDs returns the "exercises" edge IDs in the mutation.
+func (m *LanguageMutation) ExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExercises resets all changes to the "exercises" edge.
+func (m *LanguageMutation) ResetExercises() {
+	m.exercises = nil
+	m.clearedexercises = false
+	m.removedexercises = nil
+}
+
+// AddContentNodeLanguageIDs adds the "content_node_languages" edge to the ContentNodeLanguage entity by ids.
+func (m *LanguageMutation) AddContentNodeLanguageIDs(ids ...int) {
+	if m.content_node_languages == nil {
+		m.content_node_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeLanguages clears the "content_node_languages" edge to the ContentNodeLanguage entity.
+func (m *LanguageMutation) ClearContentNodeLanguages() {
+	m.clearedcontent_node_languages = true
+}
+
+// ContentNodeLanguagesCleared reports if the "content_node_languages" edge to the ContentNodeLanguage entity was cleared.
+func (m *LanguageMutation) ContentNodeLanguagesCleared() bool {
+	return m.clearedcontent_node_languages
+}
+
+// RemoveContentNodeLanguageIDs removes the "content_node_languages" edge to the ContentNodeLanguage entity by IDs.
+func (m *LanguageMutation) RemoveContentNodeLanguageIDs(ids ...int) {
+	if m.removedcontent_node_languages == nil {
+		m.removedcontent_node_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_languages, ids[i])
+		m.removedcontent_node_languages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeLanguages returns the removed IDs of the "content_node_languages" edge to the ContentNodeLanguage entity.
+func (m *LanguageMutation) RemovedContentNodeLanguagesIDs() (ids []int) {
+	for id := range m.removedcontent_node_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeLanguagesIDs returns the "content_node_languages" edge IDs in the mutation.
+func (m *LanguageMutation) ContentNodeLanguagesIDs() (ids []int) {
+	for id := range m.content_node_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeLanguages resets all changes to the "content_node_languages" edge.
+func (m *LanguageMutation) ResetContentNodeLanguages() {
+	m.content_node_languages = nil
+	m.clearedcontent_node_languages = false
+	m.removedcontent_node_languages = nil
+}
+
+// AddExerciseLanguageIDs adds the "exercise_languages" edge to the ExerciseLanguage entity by ids.
+func (m *LanguageMutation) AddExerciseLanguageIDs(ids ...int) {
+	if m.exercise_languages == nil {
+		m.exercise_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_languages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseLanguages clears the "exercise_languages" edge to the ExerciseLanguage entity.
+func (m *LanguageMutation) ClearExerciseLanguages() {
+	m.clearedexercise_languages = true
+}
+
+// ExerciseLanguagesCleared reports if the "exercise_languages" edge to the ExerciseLanguage entity was cleared.
+func (m *LanguageMutation) ExerciseLanguagesCleared() bool {
+	return m.clearedexercise_languages
+}
+
+// RemoveExerciseLanguageIDs removes the "exercise_languages" edge to the ExerciseLanguage entity by IDs.
+func (m *LanguageMutation) RemoveExerciseLanguageIDs(ids ...int) {
+	if m.removedexercise_languages == nil {
+		m.removedexercise_languages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_languages, ids[i])
+		m.removedexercise_languages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseLanguages returns the removed IDs of the "exercise_languages" edge to the ExerciseLanguage entity.
+func (m *LanguageMutation) RemovedExerciseLanguagesIDs() (ids []int) {
+	for id := range m.removedexercise_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseLanguagesIDs returns the "exercise_languages" edge IDs in the mutation.
+func (m *LanguageMutation) ExerciseLanguagesIDs() (ids []int) {
+	for id := range m.exercise_languages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseLanguages resets all changes to the "exercise_languages" edge.
+func (m *LanguageMutation) ResetExerciseLanguages() {
+	m.exercise_languages = nil
+	m.clearedexercise_languages = false
+	m.removedexercise_languages = nil
+}
+
+// Where appends a list predicates to the LanguageMutation builder.
+func (m *LanguageMutation) Where(ps ...predicate.Language) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the LanguageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *LanguageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Language, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *LanguageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *LanguageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Language).
+func (m *LanguageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *LanguageMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.code != nil {
+		fields = append(fields, language.FieldCode)
+	}
+	if m.name != nil {
+		fields = append(fields, language.FieldName)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *LanguageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case language.FieldCode:
+		return m.Code()
+	case language.FieldName:
+		return m.Name()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *LanguageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case language.FieldCode:
+		return m.OldCode(ctx)
+	case language.FieldName:
+		return m.OldName(ctx)
+	}
+	return nil, fmt.Errorf("unknown Language field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LanguageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case language.FieldCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCode(v)
+		return nil
+	case language.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Language field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *LanguageMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *LanguageMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LanguageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Language numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *LanguageMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *LanguageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *LanguageMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Language nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *LanguageMutation) ResetField(name string) error {
+	switch name {
+	case language.FieldCode:
+		m.ResetCode()
+		return nil
+	case language.FieldName:
+		m.ResetName()
+		return nil
+	}
+	return fmt.Errorf("unknown Language field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *LanguageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.content_nodes != nil {
+		edges = append(edges, language.EdgeContentNodes)
+	}
+	if m.exercises != nil {
+		edges = append(edges, language.EdgeExercises)
+	}
+	if m.content_node_languages != nil {
+		edges = append(edges, language.EdgeContentNodeLanguages)
+	}
+	if m.exercise_languages != nil {
+		edges = append(edges, language.EdgeExerciseLanguages)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *LanguageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case language.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.content_nodes))
+		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.exercises))
+		for id := range m.exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeContentNodeLanguages:
+		ids := make([]ent.Value, 0, len(m.content_node_languages))
+		for id := range m.content_node_languages {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeExerciseLanguages:
+		ids := make([]ent.Value, 0, len(m.exercise_languages))
+		for id := range m.exercise_languages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *LanguageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.removedcontent_nodes != nil {
+		edges = append(edges, language.EdgeContentNodes)
+	}
+	if m.removedexercises != nil {
+		edges = append(edges, language.EdgeExercises)
+	}
+	if m.removedcontent_node_languages != nil {
+		edges = append(edges, language.EdgeContentNodeLanguages)
+	}
+	if m.removedexercise_languages != nil {
+		edges = append(edges, language.EdgeExerciseLanguages)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *LanguageMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case language.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
+		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.removedexercises))
+		for id := range m.removedexercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeContentNodeLanguages:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_languages))
+		for id := range m.removedcontent_node_languages {
+			ids = append(ids, id)
+		}
+		return ids
+	case language.EdgeExerciseLanguages:
+		ids := make([]ent.Value, 0, len(m.removedexercise_languages))
+		for id := range m.removedexercise_languages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *LanguageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.clearedcontent_nodes {
+		edges = append(edges, language.EdgeContentNodes)
+	}
+	if m.clearedexercises {
+		edges = append(edges, language.EdgeExercises)
+	}
+	if m.clearedcontent_node_languages {
+		edges = append(edges, language.EdgeContentNodeLanguages)
+	}
+	if m.clearedexercise_languages {
+		edges = append(edges, language.EdgeExerciseLanguages)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *LanguageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case language.EdgeContentNodes:
+		return m.clearedcontent_nodes
+	case language.EdgeExercises:
+		return m.clearedexercises
+	case language.EdgeContentNodeLanguages:
+		return m.clearedcontent_node_languages
+	case language.EdgeExerciseLanguages:
+		return m.clearedexercise_languages
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *LanguageMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Language unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *LanguageMutation) ResetEdge(name string) error {
+	switch name {
+	case language.EdgeContentNodes:
+		m.ResetContentNodes()
+		return nil
+	case language.EdgeExercises:
+		m.ResetExercises()
+		return nil
+	case language.EdgeContentNodeLanguages:
+		m.ResetContentNodeLanguages()
+		return nil
+	case language.EdgeExerciseLanguages:
+		m.ResetExerciseLanguages()
+		return nil
+	}
+	return fmt.Errorf("unknown Language edge %s", name)
+}
+
 // LearningPathMutation represents an operation that mutates the LearningPath nodes in the graph.
 type LearningPathMutation struct {
 	config
@@ -8022,6 +10156,8 @@ type UserMutation struct {
 	role          *user.Role
 	registered_at *time.Time
 	clearedFields map[string]struct{}
+	locale        *uuid.UUID
+	clearedlocale bool
 	done          bool
 	oldValue      func(context.Context) (*User, error)
 	predicates    []predicate.User
@@ -8203,6 +10339,42 @@ func (m *UserMutation) ResetRole() {
 	m.role = nil
 }
 
+// SetLocaleID sets the "locale_id" field.
+func (m *UserMutation) SetLocaleID(u uuid.UUID) {
+	m.locale = &u
+}
+
+// LocaleID returns the value of the "locale_id" field in the mutation.
+func (m *UserMutation) LocaleID() (r uuid.UUID, exists bool) {
+	v := m.locale
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocaleID returns the old "locale_id" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldLocaleID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocaleID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocaleID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocaleID: %w", err)
+	}
+	return oldValue.LocaleID, nil
+}
+
+// ResetLocaleID resets all changes to the "locale_id" field.
+func (m *UserMutation) ResetLocaleID() {
+	m.locale = nil
+}
+
 // SetRegisteredAt sets the "registered_at" field.
 func (m *UserMutation) SetRegisteredAt(t time.Time) {
 	m.registered_at = &t
@@ -8239,6 +10411,33 @@ func (m *UserMutation) ResetRegisteredAt() {
 	m.registered_at = nil
 }
 
+// ClearLocale clears the "locale" edge to the Language entity.
+func (m *UserMutation) ClearLocale() {
+	m.clearedlocale = true
+	m.clearedFields[user.FieldLocaleID] = struct{}{}
+}
+
+// LocaleCleared reports if the "locale" edge to the Language entity was cleared.
+func (m *UserMutation) LocaleCleared() bool {
+	return m.clearedlocale
+}
+
+// LocaleIDs returns the "locale" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LocaleID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) LocaleIDs() (ids []uuid.UUID) {
+	if id := m.locale; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLocale resets all changes to the "locale" edge.
+func (m *UserMutation) ResetLocale() {
+	m.locale = nil
+	m.clearedlocale = false
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -8273,12 +10472,15 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.clerk_user_id != nil {
 		fields = append(fields, user.FieldClerkUserID)
 	}
 	if m.role != nil {
 		fields = append(fields, user.FieldRole)
+	}
+	if m.locale != nil {
+		fields = append(fields, user.FieldLocaleID)
 	}
 	if m.registered_at != nil {
 		fields = append(fields, user.FieldRegisteredAt)
@@ -8295,6 +10497,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.ClerkUserID()
 	case user.FieldRole:
 		return m.Role()
+	case user.FieldLocaleID:
+		return m.LocaleID()
 	case user.FieldRegisteredAt:
 		return m.RegisteredAt()
 	}
@@ -8310,6 +10514,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldClerkUserID(ctx)
 	case user.FieldRole:
 		return m.OldRole(ctx)
+	case user.FieldLocaleID:
+		return m.OldLocaleID(ctx)
 	case user.FieldRegisteredAt:
 		return m.OldRegisteredAt(ctx)
 	}
@@ -8334,6 +10540,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRole(v)
+		return nil
+	case user.FieldLocaleID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocaleID(v)
 		return nil
 	case user.FieldRegisteredAt:
 		v, ok := value.(time.Time)
@@ -8397,6 +10610,9 @@ func (m *UserMutation) ResetField(name string) error {
 	case user.FieldRole:
 		m.ResetRole()
 		return nil
+	case user.FieldLocaleID:
+		m.ResetLocaleID()
+		return nil
 	case user.FieldRegisteredAt:
 		m.ResetRegisteredAt()
 		return nil
@@ -8406,19 +10622,28 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.locale != nil {
+		edges = append(edges, user.EdgeLocale)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *UserMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case user.EdgeLocale:
+		if id := m.locale; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -8430,24 +10655,41 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedlocale {
+		edges = append(edges, user.EdgeLocale)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *UserMutation) EdgeCleared(name string) bool {
+	switch name {
+	case user.EdgeLocale:
+		return m.clearedlocale
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
+	switch name {
+	case user.EdgeLocale:
+		m.ClearLocale()
+		return nil
+	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *UserMutation) ResetEdge(name string) error {
+	switch name {
+	case user.EdgeLocale:
+		m.ResetLocale()
+		return nil
+	}
 	return fmt.Errorf("unknown User edge %s", name)
 }

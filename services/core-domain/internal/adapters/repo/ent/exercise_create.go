@@ -16,7 +16,9 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 )
 
 // ExerciseCreate is the builder for creating a Exercise entity.
@@ -179,6 +181,21 @@ func (_c *ExerciseCreate) AddOptions(v ...*ExerciseOption) *ExerciseCreate {
 	return _c.AddOptionIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_c *ExerciseCreate) AddLanguageIDs(ids ...uuid.UUID) *ExerciseCreate {
+	_c.mutation.AddLanguageIDs(ids...)
+	return _c
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_c *ExerciseCreate) AddLanguages(v ...*Language) *ExerciseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLanguageIDs(ids...)
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
 func (_c *ExerciseCreate) AddChallengeExerciseIDs(ids ...int) *ExerciseCreate {
 	_c.mutation.AddChallengeExerciseIDs(ids...)
@@ -207,6 +224,21 @@ func (_c *ExerciseCreate) AddContentNodeExercises(v ...*ContentNodeExercise) *Ex
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddExerciseLanguageIDs adds the "exercise_languages" edge to the ExerciseLanguage entity by IDs.
+func (_c *ExerciseCreate) AddExerciseLanguageIDs(ids ...int) *ExerciseCreate {
+	_c.mutation.AddExerciseLanguageIDs(ids...)
+	return _c
+}
+
+// AddExerciseLanguages adds the "exercise_languages" edges to the ExerciseLanguage entity.
+func (_c *ExerciseCreate) AddExerciseLanguages(v ...*ExerciseLanguage) *ExerciseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddExerciseLanguageIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -400,6 +432,26 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseLanguageCreate{config: _c.config, mutation: newExerciseLanguageMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ChallengeExercisesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -425,6 +477,22 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ExerciseLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -48,15 +48,22 @@ type ContentNode struct {
 	Title          string
 	ContentType    ContentType
 	Classification Classification
-	CreatedAt      time.Time
+	// Languages are the languages this content node is available in, or a
+	// single LanguageCodeAny entry for language-agnostic content. Never
+	// empty — a node must be explicitly tagged. Name is populated only once
+	// this ContentNode has been read back from the repository with its
+	// Language rows joined in.
+	Languages []Language
+	CreatedAt time.Time
 }
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
 // always forced to pending, regardless of any caller-supplied value — only
 // an admin confirms a classification, never the teacher who created it. See
 // validateContentNodeClassification for the shared classification rules.
-func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, createdAt time.Time) (ContentNode, error) {
+func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
 	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 
 	switch contentType {
 	case ContentTypeVideo, ContentTypeArticle:
@@ -79,18 +86,21 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
+		Languages: languagesFromCodes(languageCodes),
 		CreatedAt: createdAt,
 	}, nil
 }
 
-// Update validates and returns a copy of n with its title and classification
-// replaced. ContentType and Classification.ReviewState carry over unchanged
-// — content_type cannot change after creation since it determines which
-// ExpandedContent trigger fields are valid for items already attached to
-// this node, and an edit does not reset or require re-confirming an admin's
-// prior review.
-func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyLevel) (ContentNode, error) {
-	if errs := validateContentNodeClassification(title, skill, concept, difficulty); len(errs) > 0 {
+// Update validates and returns a copy of n with its title, classification,
+// and languages replaced. ContentType and Classification.ReviewState carry
+// over unchanged — content_type cannot change after creation since it
+// determines which ExpandedContent trigger fields are valid for items
+// already attached to this node, and an edit does not reset or require
+// re-confirming an admin's prior review.
+func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyLevel, languageCodes []string) (ContentNode, error) {
+	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
 	}
 
@@ -99,6 +109,7 @@ func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyL
 	updated.Classification.Skill = skill
 	updated.Classification.Concept = concept
 	updated.Classification.DifficultyLevel = difficulty
+	updated.Languages = languagesFromCodes(languageCodes)
 	return updated, nil
 }
 

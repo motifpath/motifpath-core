@@ -17,7 +17,9 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -212,6 +214,21 @@ func (_u *ExerciseUpdate) AddOptions(v ...*ExerciseOption) *ExerciseUpdate {
 	return _u.AddOptionIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_u *ExerciseUpdate) AddLanguageIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.AddLanguageIDs(ids...)
+	return _u
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_u *ExerciseUpdate) AddLanguages(v ...*Language) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLanguageIDs(ids...)
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
 func (_u *ExerciseUpdate) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdate {
 	_u.mutation.AddChallengeExerciseIDs(ids...)
@@ -240,6 +257,21 @@ func (_u *ExerciseUpdate) AddContentNodeExercises(v ...*ContentNodeExercise) *Ex
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddExerciseLanguageIDs adds the "exercise_languages" edge to the ExerciseLanguage entity by IDs.
+func (_u *ExerciseUpdate) AddExerciseLanguageIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.AddExerciseLanguageIDs(ids...)
+	return _u
+}
+
+// AddExerciseLanguages adds the "exercise_languages" edges to the ExerciseLanguage entity.
+func (_u *ExerciseUpdate) AddExerciseLanguages(v ...*ExerciseLanguage) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseLanguageIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -310,6 +342,27 @@ func (_u *ExerciseUpdate) RemoveOptions(v ...*ExerciseOption) *ExerciseUpdate {
 	return _u.RemoveOptionIDs(ids...)
 }
 
+// ClearLanguages clears all "languages" edges to the Language entity.
+func (_u *ExerciseUpdate) ClearLanguages() *ExerciseUpdate {
+	_u.mutation.ClearLanguages()
+	return _u
+}
+
+// RemoveLanguageIDs removes the "languages" edge to Language entities by IDs.
+func (_u *ExerciseUpdate) RemoveLanguageIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.RemoveLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveLanguages removes "languages" edges to Language entities.
+func (_u *ExerciseUpdate) RemoveLanguages(v ...*Language) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLanguageIDs(ids...)
+}
+
 // ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
 func (_u *ExerciseUpdate) ClearChallengeExercises() *ExerciseUpdate {
 	_u.mutation.ClearChallengeExercises()
@@ -350,6 +403,27 @@ func (_u *ExerciseUpdate) RemoveContentNodeExercises(v ...*ContentNodeExercise) 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeExerciseIDs(ids...)
+}
+
+// ClearExerciseLanguages clears all "exercise_languages" edges to the ExerciseLanguage entity.
+func (_u *ExerciseUpdate) ClearExerciseLanguages() *ExerciseUpdate {
+	_u.mutation.ClearExerciseLanguages()
+	return _u
+}
+
+// RemoveExerciseLanguageIDs removes the "exercise_languages" edge to ExerciseLanguage entities by IDs.
+func (_u *ExerciseUpdate) RemoveExerciseLanguageIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.RemoveExerciseLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseLanguages removes "exercise_languages" edges to ExerciseLanguage entities.
+func (_u *ExerciseUpdate) RemoveExerciseLanguages(v ...*ExerciseLanguage) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseLanguageIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -591,6 +665,63 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLanguagesIDs(); len(nodes) > 0 && !_u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ChallengeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -674,6 +805,51 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseLanguagesIDs(); len(nodes) > 0 && !_u.mutation.ExerciseLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -879,6 +1055,21 @@ func (_u *ExerciseUpdateOne) AddOptions(v ...*ExerciseOption) *ExerciseUpdateOne
 	return _u.AddOptionIDs(ids...)
 }
 
+// AddLanguageIDs adds the "languages" edge to the Language entity by IDs.
+func (_u *ExerciseUpdateOne) AddLanguageIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.AddLanguageIDs(ids...)
+	return _u
+}
+
+// AddLanguages adds the "languages" edges to the Language entity.
+func (_u *ExerciseUpdateOne) AddLanguages(v ...*Language) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLanguageIDs(ids...)
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeExerciseIDs(ids...)
@@ -907,6 +1098,21 @@ func (_u *ExerciseUpdateOne) AddContentNodeExercises(v ...*ContentNodeExercise) 
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeExerciseIDs(ids...)
+}
+
+// AddExerciseLanguageIDs adds the "exercise_languages" edge to the ExerciseLanguage entity by IDs.
+func (_u *ExerciseUpdateOne) AddExerciseLanguageIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.AddExerciseLanguageIDs(ids...)
+	return _u
+}
+
+// AddExerciseLanguages adds the "exercise_languages" edges to the ExerciseLanguage entity.
+func (_u *ExerciseUpdateOne) AddExerciseLanguages(v ...*ExerciseLanguage) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseLanguageIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -977,6 +1183,27 @@ func (_u *ExerciseUpdateOne) RemoveOptions(v ...*ExerciseOption) *ExerciseUpdate
 	return _u.RemoveOptionIDs(ids...)
 }
 
+// ClearLanguages clears all "languages" edges to the Language entity.
+func (_u *ExerciseUpdateOne) ClearLanguages() *ExerciseUpdateOne {
+	_u.mutation.ClearLanguages()
+	return _u
+}
+
+// RemoveLanguageIDs removes the "languages" edge to Language entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveLanguageIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.RemoveLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveLanguages removes "languages" edges to Language entities.
+func (_u *ExerciseUpdateOne) RemoveLanguages(v ...*Language) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLanguageIDs(ids...)
+}
+
 // ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
 func (_u *ExerciseUpdateOne) ClearChallengeExercises() *ExerciseUpdateOne {
 	_u.mutation.ClearChallengeExercises()
@@ -1017,6 +1244,27 @@ func (_u *ExerciseUpdateOne) RemoveContentNodeExercises(v ...*ContentNodeExercis
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeExerciseIDs(ids...)
+}
+
+// ClearExerciseLanguages clears all "exercise_languages" edges to the ExerciseLanguage entity.
+func (_u *ExerciseUpdateOne) ClearExerciseLanguages() *ExerciseUpdateOne {
+	_u.mutation.ClearExerciseLanguages()
+	return _u
+}
+
+// RemoveExerciseLanguageIDs removes the "exercise_languages" edge to ExerciseLanguage entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveExerciseLanguageIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.RemoveExerciseLanguageIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseLanguages removes "exercise_languages" edges to ExerciseLanguage entities.
+func (_u *ExerciseUpdateOne) RemoveExerciseLanguages(v ...*ExerciseLanguage) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseLanguageIDs(ids...)
 }
 
 // Where appends a list predicates to the ExerciseUpdate builder.
@@ -1288,6 +1536,63 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLanguagesIDs(); len(nodes) > 0 && !_u.mutation.LanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.LanguagesTable,
+			Columns: exercise.LanguagesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(language.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseLanguageCreate{config: _u.config, mutation: newExerciseLanguageMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ChallengeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1371,6 +1676,51 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeexercise.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseLanguagesIDs(); len(nodes) > 0 && !_u.mutation.ExerciseLanguagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseLanguagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseLanguagesTable,
+			Columns: []string{exercise.ExerciseLanguagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

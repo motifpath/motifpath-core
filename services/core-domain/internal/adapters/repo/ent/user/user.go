@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -19,10 +20,21 @@ const (
 	FieldClerkUserID = "clerk_user_id"
 	// FieldRole holds the string denoting the role field in the database.
 	FieldRole = "role"
+	// FieldLocaleID holds the string denoting the locale_id field in the database.
+	FieldLocaleID = "locale_id"
 	// FieldRegisteredAt holds the string denoting the registered_at field in the database.
 	FieldRegisteredAt = "registered_at"
+	// EdgeLocale holds the string denoting the locale edge name in mutations.
+	EdgeLocale = "locale"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// LocaleTable is the table that holds the locale relation/edge.
+	LocaleTable = "users"
+	// LocaleInverseTable is the table name for the Language entity.
+	// It exists in this package in order to avoid circular dependency with the "language" package.
+	LocaleInverseTable = "languages"
+	// LocaleColumn is the table column denoting the locale relation/edge.
+	LocaleColumn = "locale_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -30,6 +42,7 @@ var Columns = []string{
 	FieldID,
 	FieldClerkUserID,
 	FieldRole,
+	FieldLocaleID,
 	FieldRegisteredAt,
 }
 
@@ -92,7 +105,26 @@ func ByRole(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRole, opts...).ToFunc()
 }
 
+// ByLocaleID orders the results by the locale_id field.
+func ByLocaleID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLocaleID, opts...).ToFunc()
+}
+
 // ByRegisteredAt orders the results by the registered_at field.
 func ByRegisteredAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRegisteredAt, opts...).ToFunc()
+}
+
+// ByLocaleField orders the results by locale field.
+func ByLocaleField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLocaleStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newLocaleStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LocaleInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, LocaleTable, LocaleColumn),
+	)
 }

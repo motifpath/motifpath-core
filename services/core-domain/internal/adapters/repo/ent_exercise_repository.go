@@ -43,6 +43,11 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
+	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return rollback(tx, err)
+	}
+
 	builder := tx.Exercise.Create().
 		SetID(id).
 		SetTitle(ex.Title).
@@ -53,7 +58,8 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		SetNillableRemediationTargets(remediationJSON).
-		SetCreatedAt(ex.CreatedAt)
+		SetCreatedAt(ex.CreatedAt).
+		AddLanguageIDs(langIDs...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -62,12 +68,12 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return rollback(tx, err)
 	}
-	if len(optionBuilders) > 0 {
-		if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
-			return rollback(tx, err)
-		}
+	if len(optionBuilders) == 0 {
+		return tx.Commit()
 	}
-
+	if _, err := tx.ExerciseOption.CreateBulk(optionBuilders...).Save(ctx); err != nil {
+		return rollback(tx, err)
+	}
 	return tx.Commit()
 }
 
@@ -111,6 +117,7 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -314,6 +321,7 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -333,6 +341,7 @@ func (r *EntExerciseRepository) ListBySkillTag(ctx context.Context, skillTag str
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -360,6 +369,7 @@ func (r *EntExerciseRepository) List(ctx context.Context, skillTag string, exerc
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
+		WithLanguages().
 		Order(exercise.ByCreatedAt())
 	if exerciseType != "" {
 		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(exerciseType)))
@@ -410,13 +420,20 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
+	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return rollback(tx, err)
+	}
+
 	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
 		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
-		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds)
+		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
+		ClearLanguages().
+		AddLanguageIDs(langIDs...)
 	if remediationJSON != nil {
 		updateBuilder = updateBuilder.SetRemediationTargets(*remediationJSON)
 	} else {
@@ -470,6 +487,11 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		options[i] = toDomainOption(opt)
 	}
 
+	languages := make([]domain.Language, len(row.Edges.Languages))
+	for i, lang := range row.Edges.Languages {
+		languages[i] = domain.Language{Code: lang.Code, Name: lang.Name}
+	}
+
 	return domain.Exercise{
 		ID:                       row.ID.String(),
 		Title:                    row.Title,
@@ -483,6 +505,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		Options:                  options,
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
+		Languages:                languages,
 		CreatedAt:                row.CreatedAt,
 	}
 }

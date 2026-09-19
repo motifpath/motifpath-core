@@ -48,6 +48,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerCommonSteps(sc, w)
 	registerUserRegistrationSteps(sc, w)
+	registerLocaleSteps(sc, w)
 	registerContentNodeSteps(sc, w)
 	registerChallengeSteps(sc, w)
 	registerExerciseSteps(sc, w)

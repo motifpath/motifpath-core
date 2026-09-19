@@ -40,10 +40,14 @@ const (
 	EdgeContentNodes = "content_nodes"
 	// EdgeOptions holds the string denoting the options edge name in mutations.
 	EdgeOptions = "options"
+	// EdgeLanguages holds the string denoting the languages edge name in mutations.
+	EdgeLanguages = "languages"
 	// EdgeChallengeExercises holds the string denoting the challenge_exercises edge name in mutations.
 	EdgeChallengeExercises = "challenge_exercises"
 	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
 	EdgeContentNodeExercises = "content_node_exercises"
+	// EdgeExerciseLanguages holds the string denoting the exercise_languages edge name in mutations.
+	EdgeExerciseLanguages = "exercise_languages"
 	// Table holds the table name of the exercise in the database.
 	Table = "exercises"
 	// ChallengesTable is the table that holds the challenges relation/edge. The primary key declared below.
@@ -63,6 +67,11 @@ const (
 	OptionsInverseTable = "exercise_options"
 	// OptionsColumn is the table column denoting the options relation/edge.
 	OptionsColumn = "exercise_id"
+	// LanguagesTable is the table that holds the languages relation/edge. The primary key declared below.
+	LanguagesTable = "exercise_languages"
+	// LanguagesInverseTable is the table name for the Language entity.
+	// It exists in this package in order to avoid circular dependency with the "language" package.
+	LanguagesInverseTable = "languages"
 	// ChallengeExercisesTable is the table that holds the challenge_exercises relation/edge.
 	ChallengeExercisesTable = "challenge_exercises"
 	// ChallengeExercisesInverseTable is the table name for the ChallengeExercise entity.
@@ -77,6 +86,13 @@ const (
 	ContentNodeExercisesInverseTable = "content_node_exercises"
 	// ContentNodeExercisesColumn is the table column denoting the content_node_exercises relation/edge.
 	ContentNodeExercisesColumn = "exercise_id"
+	// ExerciseLanguagesTable is the table that holds the exercise_languages relation/edge.
+	ExerciseLanguagesTable = "exercise_languages"
+	// ExerciseLanguagesInverseTable is the table name for the ExerciseLanguage entity.
+	// It exists in this package in order to avoid circular dependency with the "exerciselanguage" package.
+	ExerciseLanguagesInverseTable = "exercise_languages"
+	// ExerciseLanguagesColumn is the table column denoting the exercise_languages relation/edge.
+	ExerciseLanguagesColumn = "exercise_id"
 )
 
 // Columns holds all SQL columns for exercise fields.
@@ -100,6 +116,9 @@ var (
 	// ContentNodesPrimaryKey and ContentNodesColumn2 are the table columns denoting the
 	// primary key for the content_nodes relation (M2M).
 	ContentNodesPrimaryKey = []string{"exercise_id", "content_node_id"}
+	// LanguagesPrimaryKey and LanguagesColumn2 are the table columns denoting the
+	// primary key for the languages relation (M2M).
+	LanguagesPrimaryKey = []string{"exercise_id", "language_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -235,6 +254,20 @@ func ByOptions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByLanguagesCount orders the results by languages count.
+func ByLanguagesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newLanguagesStep(), opts...)
+	}
+}
+
+// ByLanguages orders the results by languages terms.
+func ByLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLanguagesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByChallengeExercisesCount orders the results by challenge_exercises count.
 func ByChallengeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -262,6 +295,20 @@ func ByContentNodeExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpt
 		sqlgraph.OrderByNeighborTerms(s, newContentNodeExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByExerciseLanguagesCount orders the results by exercise_languages count.
+func ByExerciseLanguagesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExerciseLanguagesStep(), opts...)
+	}
+}
+
+// ByExerciseLanguages orders the results by exercise_languages terms.
+func ByExerciseLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExerciseLanguagesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newChallengesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -283,6 +330,13 @@ func newOptionsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, false, OptionsTable, OptionsColumn),
 	)
 }
+func newLanguagesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LanguagesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, LanguagesTable, LanguagesPrimaryKey...),
+	)
+}
 func newChallengeExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -295,5 +349,12 @@ func newContentNodeExercisesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ContentNodeExercisesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeExercisesTable, ContentNodeExercisesColumn),
+	)
+}
+func newExerciseLanguagesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExerciseLanguagesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseLanguagesTable, ExerciseLanguagesColumn),
 	)
 }

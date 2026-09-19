@@ -7,6 +7,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -28,6 +29,10 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	langIDs, err := languageIDsByCode(ctx, r.client.Language, node.Languages)
+	if err != nil {
+		return err
+	}
 	_, err = r.client.ContentNode.Create().
 		SetID(id).
 		SetTeacherID(teacherID).
@@ -38,6 +43,7 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
 		SetReviewState(contentnode.ReviewState(node.Classification.ReviewState)).
 		SetCreatedAt(node.CreatedAt).
+		AddLanguageIDs(langIDs...).
 		Save(ctx)
 	return err
 }
@@ -47,7 +53,10 @@ func (r *EntContentNodeRepository) GetByID(ctx context.Context, id string) (doma
 	if err != nil {
 		return domain.ContentNode{}, domain.ErrNotFound
 	}
-	row, err := r.client.ContentNode.Get(ctx, parsed)
+	row, err := r.client.ContentNode.Query().
+		Where(contentnode.ID(parsed)).
+		WithLanguages().
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.ContentNode{}, domain.ErrNotFound
@@ -72,7 +81,7 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 		parsed = append(parsed, u)
 	}
 
-	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parsed...)).All(ctx)
+	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parsed...)).WithLanguages().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +135,10 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 }
 
 func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
+	languages := make([]domain.Language, len(row.Edges.Languages))
+	for i, lang := range row.Edges.Languages {
+		languages[i] = domain.Language{Code: lang.Code, Name: lang.Name}
+	}
 	return domain.ContentNode{
 		ID:          row.ID.String(),
 		TeacherID:   row.TeacherID.String(),
@@ -137,6 +150,30 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 			DifficultyLevel: domain.DifficultyLevel(row.DifficultyLevel),
 			ReviewState:     domain.ReviewState(row.ReviewState),
 		},
+		Languages: languages,
 		CreatedAt: row.CreatedAt,
 	}
+}
+
+// languageIDsByCode resolves each of langs' codes to its Language row id. A
+// code that matches no row is silently skipped — the same "not found, simply
+// absent" convention ContentNodeRepository.GetByIDs documents — since codes
+// are already validated non-empty by the domain layer before reaching here.
+func languageIDsByCode(ctx context.Context, languageClient *ent.LanguageClient, langs []domain.Language) ([]uuid.UUID, error) {
+	if len(langs) == 0 {
+		return nil, nil
+	}
+	codes := make([]string, len(langs))
+	for i, lang := range langs {
+		codes[i] = lang.Code
+	}
+	rows, err := languageClient.Query().Where(language.CodeIn(codes...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		ids[i] = row.ID
+	}
+	return ids, nil
 }

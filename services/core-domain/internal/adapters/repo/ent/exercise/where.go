@@ -635,6 +635,29 @@ func HasOptionsWith(preds ...predicate.ExerciseOption) predicate.Exercise {
 	})
 }
 
+// HasLanguages applies the HasEdge predicate on the "languages" edge.
+func HasLanguages() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, LanguagesTable, LanguagesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLanguagesWith applies the HasEdge predicate on the "languages" edge with a given conditions (other predicates).
+func HasLanguagesWith(preds ...predicate.Language) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newLanguagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasChallengeExercises applies the HasEdge predicate on the "challenge_exercises" edge.
 func HasChallengeExercises() predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
@@ -673,6 +696,29 @@ func HasContentNodeExercises() predicate.Exercise {
 func HasContentNodeExercisesWith(preds ...predicate.ContentNodeExercise) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newContentNodeExercisesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasExerciseLanguages applies the HasEdge predicate on the "exercise_languages" edge.
+func HasExerciseLanguages() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ExerciseLanguagesTable, ExerciseLanguagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExerciseLanguagesWith applies the HasEdge predicate on the "exercise_languages" edge with a given conditions (other predicates).
+func HasExerciseLanguagesWith(preds ...predicate.ExerciseLanguage) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newExerciseLanguagesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

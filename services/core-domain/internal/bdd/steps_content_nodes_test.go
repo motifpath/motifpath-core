@@ -123,6 +123,7 @@ func (w *world) updatesContentNodeFull(name, slug, title, skill, concept, diffic
 				Skill: skill, Concept: concept,
 				DifficultyLevel: generated.ClassificationInputDifficultyLevel(difficulty),
 			},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -137,6 +138,7 @@ func (w *world) updatesContentNodeTitleOnly(name, slug, title string) error {
 			Classification: generated.ClassificationInput{
 				Skill: "s", Concept: "c", DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -239,6 +241,11 @@ func (w *world) putContentNode(slug string, contentType domain.ContentType) erro
 			Skill: "skill-" + slug, Concept: "concept-" + slug,
 			DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
 		},
+		// Matches the "en" default a registered user's locale resolves to
+		// (see RegisterUser), so student-path-view scenarios that don't
+		// specifically exercise language locking see this node's
+		// prerequisite-based lock state unaffected by it.
+		Languages: []domain.Language{{Code: "en"}},
 		CreatedAt: fixedNow,
 	})
 	return nil
@@ -263,6 +270,7 @@ func (w *world) createsContentNode(contentType domain.ContentType) func(name, ti
 					Skill: skill, Concept: concept,
 					DifficultyLevel: generated.ClassificationInputDifficultyLevel(difficulty),
 				},
+				LanguageCodes: []string{"en"},
 			},
 		})
 		w.lastResp, w.lastErr = resp, err
@@ -281,6 +289,7 @@ func (w *world) submitsContentNodeMissingTitle(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			ContentType:    generated.CreateContentNodeRequestContentTypeVideo,
 			Classification: generated.ClassificationInput{Skill: "s", Concept: "c", DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner},
+			LanguageCodes:  []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -290,8 +299,9 @@ func (w *world) submitsContentNodeMissingTitle(string) error {
 func (w *world) submitsContentNodeMissingClassification(string) error {
 	resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
 		Body: &generated.CreateContentNodeRequest{
-			Title:       "Title",
-			ContentType: generated.CreateContentNodeRequestContentTypeVideo,
+			Title:         "Title",
+			ContentType:   generated.CreateContentNodeRequestContentTypeVideo,
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -306,6 +316,7 @@ func (w *world) submitsContentNodeBadDifficulty(name, difficulty string) error {
 			Classification: generated.ClassificationInput{
 				Skill: "s", Concept: "c", DifficultyLevel: generated.ClassificationInputDifficultyLevel(difficulty),
 			},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -320,6 +331,7 @@ func (w *world) attemptsCreateContentNode(string) error {
 			Classification: generated.ClassificationInput{
 				Skill: "s", Concept: "c", DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
+			LanguageCodes: []string{"en"},
 		},
 	})
 	w.lastResp, w.lastErr = resp, err

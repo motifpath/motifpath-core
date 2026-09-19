@@ -20,9 +20,12 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
@@ -42,12 +45,18 @@ type Client struct {
 	ContentNode *ContentNodeClient
 	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
 	ContentNodeExercise *ContentNodeExerciseClient
+	// ContentNodeLanguage is the client for interacting with the ContentNodeLanguage builders.
+	ContentNodeLanguage *ContentNodeLanguageClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
+	// ExerciseLanguage is the client for interacting with the ExerciseLanguage builders.
+	ExerciseLanguage *ExerciseLanguageClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
 	ExerciseOption *ExerciseOptionClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// Language is the client for interacting with the Language builders.
+	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
 	LearningPath *LearningPathClient
 	// LearningPathItem is the client for interacting with the LearningPathItem builders.
@@ -71,9 +80,12 @@ func (c *Client) init() {
 	c.ChallengeExercise = NewChallengeExerciseClient(c.config)
 	c.ContentNode = NewContentNodeClient(c.config)
 	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
+	c.ContentNodeLanguage = NewContentNodeLanguageClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
+	c.ExerciseLanguage = NewExerciseLanguageClient(c.config)
 	c.ExerciseOption = NewExerciseOptionClient(c.config)
 	c.ExpandedContent = NewExpandedContentClient(c.config)
+	c.Language = NewLanguageClient(c.config)
 	c.LearningPath = NewLearningPathClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.PathAssignment = NewPathAssignmentClient(c.config)
@@ -174,9 +186,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ChallengeExercise:   NewChallengeExerciseClient(cfg),
 		ContentNode:         NewContentNodeClient(cfg),
 		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
+		ContentNodeLanguage: NewContentNodeLanguageClient(cfg),
 		Exercise:            NewExerciseClient(cfg),
+		ExerciseLanguage:    NewExerciseLanguageClient(cfg),
 		ExerciseOption:      NewExerciseOptionClient(cfg),
 		ExpandedContent:     NewExpandedContentClient(cfg),
+		Language:            NewLanguageClient(cfg),
 		LearningPath:        NewLearningPathClient(cfg),
 		LearningPathItem:    NewLearningPathItemClient(cfg),
 		PathAssignment:      NewPathAssignmentClient(cfg),
@@ -204,9 +219,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ChallengeExercise:   NewChallengeExerciseClient(cfg),
 		ContentNode:         NewContentNodeClient(cfg),
 		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
+		ContentNodeLanguage: NewContentNodeLanguageClient(cfg),
 		Exercise:            NewExerciseClient(cfg),
+		ExerciseLanguage:    NewExerciseLanguageClient(cfg),
 		ExerciseOption:      NewExerciseOptionClient(cfg),
 		ExpandedContent:     NewExpandedContentClient(cfg),
+		Language:            NewLanguageClient(cfg),
 		LearningPath:        NewLearningPathClient(cfg),
 		LearningPathItem:    NewLearningPathItemClient(cfg),
 		PathAssignment:      NewPathAssignmentClient(cfg),
@@ -241,8 +259,9 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeExercise,
-		c.Exercise, c.ExerciseOption, c.ExpandedContent, c.LearningPath,
-		c.LearningPathItem, c.PathAssignment, c.User,
+		c.ContentNodeLanguage, c.Exercise, c.ExerciseLanguage, c.ExerciseOption,
+		c.ExpandedContent, c.Language, c.LearningPath, c.LearningPathItem,
+		c.PathAssignment, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -253,8 +272,9 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeExercise,
-		c.Exercise, c.ExerciseOption, c.ExpandedContent, c.LearningPath,
-		c.LearningPathItem, c.PathAssignment, c.User,
+		c.ContentNodeLanguage, c.Exercise, c.ExerciseLanguage, c.ExerciseOption,
+		c.ExpandedContent, c.Language, c.LearningPath, c.LearningPathItem,
+		c.PathAssignment, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -271,12 +291,18 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ContentNode.mutate(ctx, m)
 	case *ContentNodeExerciseMutation:
 		return c.ContentNodeExercise.mutate(ctx, m)
+	case *ContentNodeLanguageMutation:
+		return c.ContentNodeLanguage.mutate(ctx, m)
 	case *ExerciseMutation:
 		return c.Exercise.mutate(ctx, m)
+	case *ExerciseLanguageMutation:
+		return c.ExerciseLanguage.mutate(ctx, m)
 	case *ExerciseOptionMutation:
 		return c.ExerciseOption.mutate(ctx, m)
 	case *ExpandedContentMutation:
 		return c.ExpandedContent.mutate(ctx, m)
+	case *LanguageMutation:
+		return c.Language.mutate(ctx, m)
 	case *LearningPathMutation:
 		return c.LearningPath.mutate(ctx, m)
 	case *LearningPathItemMutation:
@@ -744,6 +770,22 @@ func (c *ContentNodeClient) QueryPathExercises(_m *ContentNode) *ExerciseQuery {
 	return query
 }
 
+// QueryLanguages queries the languages edge of a ContentNode.
+func (c *ContentNodeClient) QueryLanguages(_m *ContentNode) *LanguageQuery {
+	query := (&LanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
+			sqlgraph.To(language.Table, language.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.LanguagesTable, contentnode.LanguagesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryContentNodeExercises queries the content_node_exercises edge of a ContentNode.
 func (c *ContentNodeClient) QueryContentNodeExercises(_m *ContentNode) *ContentNodeExerciseQuery {
 	query := (&ContentNodeExerciseClient{config: c.config}).Query()
@@ -753,6 +795,22 @@ func (c *ContentNodeClient) QueryContentNodeExercises(_m *ContentNode) *ContentN
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
 			sqlgraph.To(contentnodeexercise.Table, contentnodeexercise.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeExercisesTable, contentnode.ContentNodeExercisesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodeLanguages queries the content_node_languages edge of a ContentNode.
+func (c *ContentNodeClient) QueryContentNodeLanguages(_m *ContentNode) *ContentNodeLanguageQuery {
+	query := (&ContentNodeLanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
+			sqlgraph.To(contentnodelanguage.Table, contentnodelanguage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, contentnode.ContentNodeLanguagesTable, contentnode.ContentNodeLanguagesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -950,6 +1008,171 @@ func (c *ContentNodeExerciseClient) mutate(ctx context.Context, m *ContentNodeEx
 	}
 }
 
+// ContentNodeLanguageClient is a client for the ContentNodeLanguage schema.
+type ContentNodeLanguageClient struct {
+	config
+}
+
+// NewContentNodeLanguageClient returns a client for the ContentNodeLanguage from the given config.
+func NewContentNodeLanguageClient(c config) *ContentNodeLanguageClient {
+	return &ContentNodeLanguageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `contentnodelanguage.Hooks(f(g(h())))`.
+func (c *ContentNodeLanguageClient) Use(hooks ...Hook) {
+	c.hooks.ContentNodeLanguage = append(c.hooks.ContentNodeLanguage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `contentnodelanguage.Intercept(f(g(h())))`.
+func (c *ContentNodeLanguageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ContentNodeLanguage = append(c.inters.ContentNodeLanguage, interceptors...)
+}
+
+// Create returns a builder for creating a ContentNodeLanguage entity.
+func (c *ContentNodeLanguageClient) Create() *ContentNodeLanguageCreate {
+	mutation := newContentNodeLanguageMutation(c.config, OpCreate)
+	return &ContentNodeLanguageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ContentNodeLanguage entities.
+func (c *ContentNodeLanguageClient) CreateBulk(builders ...*ContentNodeLanguageCreate) *ContentNodeLanguageCreateBulk {
+	return &ContentNodeLanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ContentNodeLanguageClient) MapCreateBulk(slice any, setFunc func(*ContentNodeLanguageCreate, int)) *ContentNodeLanguageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ContentNodeLanguageCreateBulk{err: fmt.Errorf("calling to ContentNodeLanguageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ContentNodeLanguageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ContentNodeLanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ContentNodeLanguage.
+func (c *ContentNodeLanguageClient) Update() *ContentNodeLanguageUpdate {
+	mutation := newContentNodeLanguageMutation(c.config, OpUpdate)
+	return &ContentNodeLanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ContentNodeLanguageClient) UpdateOne(_m *ContentNodeLanguage) *ContentNodeLanguageUpdateOne {
+	mutation := newContentNodeLanguageMutation(c.config, OpUpdateOne, withContentNodeLanguage(_m))
+	return &ContentNodeLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ContentNodeLanguageClient) UpdateOneID(id int) *ContentNodeLanguageUpdateOne {
+	mutation := newContentNodeLanguageMutation(c.config, OpUpdateOne, withContentNodeLanguageID(id))
+	return &ContentNodeLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ContentNodeLanguage.
+func (c *ContentNodeLanguageClient) Delete() *ContentNodeLanguageDelete {
+	mutation := newContentNodeLanguageMutation(c.config, OpDelete)
+	return &ContentNodeLanguageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ContentNodeLanguageClient) DeleteOne(_m *ContentNodeLanguage) *ContentNodeLanguageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ContentNodeLanguageClient) DeleteOneID(id int) *ContentNodeLanguageDeleteOne {
+	builder := c.Delete().Where(contentnodelanguage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ContentNodeLanguageDeleteOne{builder}
+}
+
+// Query returns a query builder for ContentNodeLanguage.
+func (c *ContentNodeLanguageClient) Query() *ContentNodeLanguageQuery {
+	return &ContentNodeLanguageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeContentNodeLanguage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ContentNodeLanguage entity by its id.
+func (c *ContentNodeLanguageClient) Get(ctx context.Context, id int) (*ContentNodeLanguage, error) {
+	return c.Query().Where(contentnodelanguage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ContentNodeLanguageClient) GetX(ctx context.Context, id int) *ContentNodeLanguage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryContentNode queries the content_node edge of a ContentNodeLanguage.
+func (c *ContentNodeLanguageClient) QueryContentNode(_m *ContentNodeLanguage) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnodelanguage.Table, contentnodelanguage.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, contentnodelanguage.ContentNodeTable, contentnodelanguage.ContentNodeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLanguage queries the language edge of a ContentNodeLanguage.
+func (c *ContentNodeLanguageClient) QueryLanguage(_m *ContentNodeLanguage) *LanguageQuery {
+	query := (&LanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(contentnodelanguage.Table, contentnodelanguage.FieldID, id),
+			sqlgraph.To(language.Table, language.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, contentnodelanguage.LanguageTable, contentnodelanguage.LanguageColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ContentNodeLanguageClient) Hooks() []Hook {
+	return c.hooks.ContentNodeLanguage
+}
+
+// Interceptors returns the client interceptors.
+func (c *ContentNodeLanguageClient) Interceptors() []Interceptor {
+	return c.inters.ContentNodeLanguage
+}
+
+func (c *ContentNodeLanguageClient) mutate(ctx context.Context, m *ContentNodeLanguageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ContentNodeLanguageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ContentNodeLanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ContentNodeLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ContentNodeLanguageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ContentNodeLanguage mutation op: %q", m.Op())
+	}
+}
+
 // ExerciseClient is a client for the Exercise schema.
 type ExerciseClient struct {
 	config
@@ -1106,6 +1329,22 @@ func (c *ExerciseClient) QueryOptions(_m *Exercise) *ExerciseOptionQuery {
 	return query
 }
 
+// QueryLanguages queries the languages edge of a Exercise.
+func (c *ExerciseClient) QueryLanguages(_m *Exercise) *LanguageQuery {
+	query := (&LanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(language.Table, language.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, exercise.LanguagesTable, exercise.LanguagesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryChallengeExercises queries the challenge_exercises edge of a Exercise.
 func (c *ExerciseClient) QueryChallengeExercises(_m *Exercise) *ChallengeExerciseQuery {
 	query := (&ChallengeExerciseClient{config: c.config}).Query()
@@ -1138,6 +1377,22 @@ func (c *ExerciseClient) QueryContentNodeExercises(_m *Exercise) *ContentNodeExe
 	return query
 }
 
+// QueryExerciseLanguages queries the exercise_languages edge of a Exercise.
+func (c *ExerciseClient) QueryExerciseLanguages(_m *Exercise) *ExerciseLanguageQuery {
+	query := (&ExerciseLanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(exerciselanguage.Table, exerciselanguage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ExerciseLanguagesTable, exercise.ExerciseLanguagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ExerciseClient) Hooks() []Hook {
 	return c.hooks.Exercise
@@ -1160,6 +1415,171 @@ func (c *ExerciseClient) mutate(ctx context.Context, m *ExerciseMutation) (Value
 		return (&ExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Exercise mutation op: %q", m.Op())
+	}
+}
+
+// ExerciseLanguageClient is a client for the ExerciseLanguage schema.
+type ExerciseLanguageClient struct {
+	config
+}
+
+// NewExerciseLanguageClient returns a client for the ExerciseLanguage from the given config.
+func NewExerciseLanguageClient(c config) *ExerciseLanguageClient {
+	return &ExerciseLanguageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `exerciselanguage.Hooks(f(g(h())))`.
+func (c *ExerciseLanguageClient) Use(hooks ...Hook) {
+	c.hooks.ExerciseLanguage = append(c.hooks.ExerciseLanguage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `exerciselanguage.Intercept(f(g(h())))`.
+func (c *ExerciseLanguageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ExerciseLanguage = append(c.inters.ExerciseLanguage, interceptors...)
+}
+
+// Create returns a builder for creating a ExerciseLanguage entity.
+func (c *ExerciseLanguageClient) Create() *ExerciseLanguageCreate {
+	mutation := newExerciseLanguageMutation(c.config, OpCreate)
+	return &ExerciseLanguageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ExerciseLanguage entities.
+func (c *ExerciseLanguageClient) CreateBulk(builders ...*ExerciseLanguageCreate) *ExerciseLanguageCreateBulk {
+	return &ExerciseLanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ExerciseLanguageClient) MapCreateBulk(slice any, setFunc func(*ExerciseLanguageCreate, int)) *ExerciseLanguageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ExerciseLanguageCreateBulk{err: fmt.Errorf("calling to ExerciseLanguageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ExerciseLanguageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ExerciseLanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ExerciseLanguage.
+func (c *ExerciseLanguageClient) Update() *ExerciseLanguageUpdate {
+	mutation := newExerciseLanguageMutation(c.config, OpUpdate)
+	return &ExerciseLanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ExerciseLanguageClient) UpdateOne(_m *ExerciseLanguage) *ExerciseLanguageUpdateOne {
+	mutation := newExerciseLanguageMutation(c.config, OpUpdateOne, withExerciseLanguage(_m))
+	return &ExerciseLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ExerciseLanguageClient) UpdateOneID(id int) *ExerciseLanguageUpdateOne {
+	mutation := newExerciseLanguageMutation(c.config, OpUpdateOne, withExerciseLanguageID(id))
+	return &ExerciseLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ExerciseLanguage.
+func (c *ExerciseLanguageClient) Delete() *ExerciseLanguageDelete {
+	mutation := newExerciseLanguageMutation(c.config, OpDelete)
+	return &ExerciseLanguageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ExerciseLanguageClient) DeleteOne(_m *ExerciseLanguage) *ExerciseLanguageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ExerciseLanguageClient) DeleteOneID(id int) *ExerciseLanguageDeleteOne {
+	builder := c.Delete().Where(exerciselanguage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ExerciseLanguageDeleteOne{builder}
+}
+
+// Query returns a query builder for ExerciseLanguage.
+func (c *ExerciseLanguageClient) Query() *ExerciseLanguageQuery {
+	return &ExerciseLanguageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeExerciseLanguage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ExerciseLanguage entity by its id.
+func (c *ExerciseLanguageClient) Get(ctx context.Context, id int) (*ExerciseLanguage, error) {
+	return c.Query().Where(exerciselanguage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ExerciseLanguageClient) GetX(ctx context.Context, id int) *ExerciseLanguage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryExercise queries the exercise edge of a ExerciseLanguage.
+func (c *ExerciseLanguageClient) QueryExercise(_m *ExerciseLanguage) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exerciselanguage.Table, exerciselanguage.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, exerciselanguage.ExerciseTable, exerciselanguage.ExerciseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLanguage queries the language edge of a ExerciseLanguage.
+func (c *ExerciseLanguageClient) QueryLanguage(_m *ExerciseLanguage) *LanguageQuery {
+	query := (&LanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exerciselanguage.Table, exerciselanguage.FieldID, id),
+			sqlgraph.To(language.Table, language.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, exerciselanguage.LanguageTable, exerciselanguage.LanguageColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ExerciseLanguageClient) Hooks() []Hook {
+	return c.hooks.ExerciseLanguage
+}
+
+// Interceptors returns the client interceptors.
+func (c *ExerciseLanguageClient) Interceptors() []Interceptor {
+	return c.inters.ExerciseLanguage
+}
+
+func (c *ExerciseLanguageClient) mutate(ctx context.Context, m *ExerciseLanguageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ExerciseLanguageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ExerciseLanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ExerciseLanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ExerciseLanguageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ExerciseLanguage mutation op: %q", m.Op())
 	}
 }
 
@@ -1442,6 +1862,203 @@ func (c *ExpandedContentClient) mutate(ctx context.Context, m *ExpandedContentMu
 		return (&ExpandedContentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ExpandedContent mutation op: %q", m.Op())
+	}
+}
+
+// LanguageClient is a client for the Language schema.
+type LanguageClient struct {
+	config
+}
+
+// NewLanguageClient returns a client for the Language from the given config.
+func NewLanguageClient(c config) *LanguageClient {
+	return &LanguageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `language.Hooks(f(g(h())))`.
+func (c *LanguageClient) Use(hooks ...Hook) {
+	c.hooks.Language = append(c.hooks.Language, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `language.Intercept(f(g(h())))`.
+func (c *LanguageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Language = append(c.inters.Language, interceptors...)
+}
+
+// Create returns a builder for creating a Language entity.
+func (c *LanguageClient) Create() *LanguageCreate {
+	mutation := newLanguageMutation(c.config, OpCreate)
+	return &LanguageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Language entities.
+func (c *LanguageClient) CreateBulk(builders ...*LanguageCreate) *LanguageCreateBulk {
+	return &LanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LanguageClient) MapCreateBulk(slice any, setFunc func(*LanguageCreate, int)) *LanguageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LanguageCreateBulk{err: fmt.Errorf("calling to LanguageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LanguageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LanguageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Language.
+func (c *LanguageClient) Update() *LanguageUpdate {
+	mutation := newLanguageMutation(c.config, OpUpdate)
+	return &LanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LanguageClient) UpdateOne(_m *Language) *LanguageUpdateOne {
+	mutation := newLanguageMutation(c.config, OpUpdateOne, withLanguage(_m))
+	return &LanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LanguageClient) UpdateOneID(id uuid.UUID) *LanguageUpdateOne {
+	mutation := newLanguageMutation(c.config, OpUpdateOne, withLanguageID(id))
+	return &LanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Language.
+func (c *LanguageClient) Delete() *LanguageDelete {
+	mutation := newLanguageMutation(c.config, OpDelete)
+	return &LanguageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LanguageClient) DeleteOne(_m *Language) *LanguageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LanguageClient) DeleteOneID(id uuid.UUID) *LanguageDeleteOne {
+	builder := c.Delete().Where(language.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LanguageDeleteOne{builder}
+}
+
+// Query returns a query builder for Language.
+func (c *LanguageClient) Query() *LanguageQuery {
+	return &LanguageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLanguage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Language entity by its id.
+func (c *LanguageClient) Get(ctx context.Context, id uuid.UUID) (*Language, error) {
+	return c.Query().Where(language.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LanguageClient) GetX(ctx context.Context, id uuid.UUID) *Language {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryContentNodes queries the content_nodes edge of a Language.
+func (c *LanguageClient) QueryContentNodes(_m *Language) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, language.ContentNodesTable, language.ContentNodesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExercises queries the exercises edge of a Language.
+func (c *LanguageClient) QueryExercises(_m *Language) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, language.ExercisesTable, language.ExercisesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodeLanguages queries the content_node_languages edge of a Language.
+func (c *LanguageClient) QueryContentNodeLanguages(_m *Language) *ContentNodeLanguageQuery {
+	query := (&ContentNodeLanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, id),
+			sqlgraph.To(contentnodelanguage.Table, contentnodelanguage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, language.ContentNodeLanguagesTable, language.ContentNodeLanguagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExerciseLanguages queries the exercise_languages edge of a Language.
+func (c *LanguageClient) QueryExerciseLanguages(_m *Language) *ExerciseLanguageQuery {
+	query := (&ExerciseLanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(language.Table, language.FieldID, id),
+			sqlgraph.To(exerciselanguage.Table, exerciselanguage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, language.ExerciseLanguagesTable, language.ExerciseLanguagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *LanguageClient) Hooks() []Hook {
+	return c.hooks.Language
+}
+
+// Interceptors returns the client interceptors.
+func (c *LanguageClient) Interceptors() []Interceptor {
+	return c.inters.Language
+}
+
+func (c *LanguageClient) mutate(ctx context.Context, m *LanguageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LanguageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LanguageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LanguageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LanguageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Language mutation op: %q", m.Op())
 	}
 }
 
@@ -1952,6 +2569,22 @@ func (c *UserClient) GetX(ctx context.Context, id uuid.UUID) *User {
 	return obj
 }
 
+// QueryLocale queries the locale edge of a User.
+func (c *UserClient) QueryLocale(_m *User) *LanguageQuery {
+	query := (&LanguageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(language.Table, language.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, user.LocaleTable, user.LocaleColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -1980,13 +2613,15 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise, Exercise,
-		ExerciseOption, ExpandedContent, LearningPath, LearningPathItem,
-		PathAssignment, User []ent.Hook
+		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise,
+		ContentNodeLanguage, Exercise, ExerciseLanguage, ExerciseOption,
+		ExpandedContent, Language, LearningPath, LearningPathItem, PathAssignment,
+		User []ent.Hook
 	}
 	inters struct {
-		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise, Exercise,
-		ExerciseOption, ExpandedContent, LearningPath, LearningPathItem,
-		PathAssignment, User []ent.Interceptor
+		Challenge, ChallengeExercise, ContentNode, ContentNodeExercise,
+		ContentNodeLanguage, Exercise, ExerciseLanguage, ExerciseOption,
+		ExpandedContent, Language, LearningPath, LearningPathItem, PathAssignment,
+		User []ent.Interceptor
 	}
 )

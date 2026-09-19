@@ -326,6 +326,12 @@ type ContentNode struct {
 	// CreatedAt Timestamp at which the content node was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// Languages The language(s) this content node is available in, or a single
+	// "any" entry for language-agnostic content. A student whose locale
+	// matches none of these (and "any" is absent) sees this node
+	// locked.
+	Languages []Language `json:"languages"`
+
 	// TeacherId The user_id of the teacher who created this content node.
 	TeacherId openapi_types.UUID `json:"teacher_id"`
 
@@ -381,6 +387,14 @@ type CreateContentNodeRequest struct {
 	// ContentType The media format of this content node.
 	ContentType CreateContentNodeRequestContentType `json:"content_type"`
 
+	// LanguageCodes One or more Language.code values this content node is available
+	// in. A single-element array containing "any" marks the content as
+	// language-agnostic; "any" cannot be combined with other language
+	// codes in the same array. Must not be empty — a node must be
+	// explicitly tagged as either specific language(s) or
+	// language-agnostic, never left unclassified.
+	LanguageCodes []string `json:"language_codes"`
+
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
 }
@@ -410,6 +424,14 @@ type CreateExerciseRequest struct {
 	// ImageUrl The stimulus image for this exercise. Required when exercise_type
 	// is image_recognition; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
+
+	// LanguageCodes One or more Language.code values this exercise is available in.
+	// A single-element array containing "any" marks the exercise as
+	// language-agnostic; "any" cannot be combined with other language
+	// codes in the same array. Must not be empty. Tagged independently
+	// of any content node's own language tagging, since an exercise
+	// can be reused across multiple content nodes.
+	LanguageCodes []string `json:"language_codes"`
 
 	// Options The exercise's selectable answer choices. At least one option
 	// must have is_correct set to true — an exercise with no correct
@@ -587,6 +609,13 @@ type Exercise struct {
 	// ImageUrl The stimulus image for this exercise, present when exercise_type is image_recognition.
 	ImageUrl *string `json:"image_url,omitempty"`
 
+	// Languages The language(s) this exercise is available in, or a single "any"
+	// entry for language-agnostic content. Independent of any content
+	// node's languages — an exercise can be reused across multiple
+	// content nodes and so has no single parent to inherit a language
+	// from.
+	Languages []Language `json:"languages"`
+
 	// Options The exercise's selectable answer choices.
 	Options []Option `json:"options"`
 
@@ -689,6 +718,21 @@ type HealthStatusChecks string
 // HealthStatusStatus ok — all checks passed. degraded — one or more dependency checks failed;
 // used only on the readiness probe when the service should be taken out of rotation.
 type HealthStatusStatus string
+
+// Language A language MotifPath content or a user's locale preference can be
+// tagged with. Includes the literal code "any", which marks content as
+// language-agnostic (e.g. an image with no spoken or written words)
+// rather than belonging to a specific language.
+type Language struct {
+	// Code Stable identifier for this language (e.g. "en", "pt_BR"), or the
+	// literal value "any" for language-agnostic content. Used as the
+	// value of UpdateMyLocaleRequest.locale and of
+	// ContentNode.languages / Exercise.languages entries.
+	Code string `json:"code"`
+
+	// Name Human-readable name of this language (e.g. "English", "Portuguese (Brazil)").
+	Name string `json:"name"`
+}
 
 // LearningPath An ordered sequence of content nodes assigned to students as a structured curriculum.
 type LearningPath struct {
@@ -1086,6 +1130,13 @@ type UpdateContentNodeRequest struct {
 	// the rules-based recommendation engine to function.
 	Classification ClassificationInput `json:"classification"`
 
+	// LanguageCodes One or more Language.code values this content node is available
+	// in, replacing its current set. A single-element array containing
+	// "any" marks the content as language-agnostic; "any" cannot be
+	// combined with other language codes in the same array. Must not
+	// be empty.
+	LanguageCodes []string `json:"language_codes"`
+
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
 }
@@ -1108,6 +1159,13 @@ type UpdateExerciseRequest struct {
 	// ImageUrl The stimulus image for this exercise. Required when the
 	// exercise's exercise_type is image_recognition; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
+
+	// LanguageCodes One or more Language.code values this exercise is available in,
+	// replacing its current set. A single-element array containing
+	// "any" marks the exercise as language-agnostic; "any" cannot be
+	// combined with other language codes in the same array. Must not
+	// be empty.
+	LanguageCodes []string `json:"language_codes"`
 
 	// Options The exercise's selectable answer choices, replacing its current
 	// set. At least one option must have is_correct set to true — an
@@ -1184,10 +1242,25 @@ type UpdateExpandedContentRequest struct {
 // media_url; rich_text requires rich_content instead.
 type UpdateExpandedContentRequestContentType string
 
+// UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
+type UpdateMyLocaleRequest struct {
+	// Locale The Language.code to set as this user's locale preference. Must
+	// be an existing language code; "any" is not a valid locale for a
+	// user, since it names language-agnostic content, not a language
+	// a person reads or speaks.
+	Locale string `json:"locale"`
+}
+
 // UserProfile The stable MotifPath identity for a registered user. The user_id is the
 // value that other services (e.g. Event Ingestion Service) use to identify
 // this user in payloads and JWT claim validation.
 type UserProfile struct {
+	// Locale A language MotifPath content or a user's locale preference can be
+	// tagged with. Includes the literal code "any", which marks content as
+	// language-agnostic (e.g. an image with no spoken or written words)
+	// rather than belonging to a specific language.
+	Locale Language `json:"locale"`
+
 	// RegisteredAt Timestamp at which the user record was created.
 	RegisteredAt time.Time `json:"registered_at"`
 
@@ -1301,6 +1374,9 @@ type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
 // RegisterUserJSONRequestBody defines body for RegisterUser for application/json ContentType.
 type RegisterUserJSONRequestBody = RegisterUserRequest
 
+// UpdateMyLocaleJSONRequestBody defines body for UpdateMyLocale for application/json ContentType.
+type UpdateMyLocaleJSONRequestBody = UpdateMyLocaleRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Get a challenge by ID
@@ -1408,6 +1484,9 @@ type ServerInterface interface {
 	// Get the authenticated user's profile
 	// (GET /users/me)
 	GetMyProfile(w http.ResponseWriter, r *http.Request)
+	// Set the authenticated user's locale preference
+	// (PATCH /users/me)
+	UpdateMyLocale(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -1621,6 +1700,12 @@ func (_ Unimplemented) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // Get the authenticated user's profile
 // (GET /users/me)
 func (_ Unimplemented) GetMyProfile(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Set the authenticated user's locale preference
+// (PATCH /users/me)
+func (_ Unimplemented) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2677,6 +2762,26 @@ func (siw *ServerInterfaceWrapper) GetMyProfile(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateMyLocale operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMyLocale(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2894,6 +2999,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/users/me", wrapper.GetMyProfile)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/users/me", wrapper.UpdateMyLocale)
 	})
 
 	return r
@@ -4377,6 +4485,50 @@ func (response GetMyProfile404JSONResponse) VisitGetMyProfileResponse(w http.Res
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateMyLocaleRequestObject struct {
+	Body *UpdateMyLocaleJSONRequestBody
+}
+
+type UpdateMyLocaleResponseObject interface {
+	VisitUpdateMyLocaleResponse(w http.ResponseWriter) error
+}
+
+type UpdateMyLocale200JSONResponse UserProfile
+
+func (response UpdateMyLocale200JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyLocale400JSONResponse ValidationError
+
+func (response UpdateMyLocale400JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyLocale401JSONResponse UnauthorizedError
+
+func (response UpdateMyLocale401JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateMyLocale404JSONResponse NotFoundError
+
+func (response UpdateMyLocale404JSONResponse) VisitUpdateMyLocaleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Get a challenge by ID
@@ -4484,6 +4636,9 @@ type StrictServerInterface interface {
 	// Get the authenticated user's profile
 	// (GET /users/me)
 	GetMyProfile(ctx context.Context, request GetMyProfileRequestObject) (GetMyProfileResponseObject, error)
+	// Set the authenticated user's locale preference
+	// (PATCH /users/me)
+	UpdateMyLocale(ctx context.Context, request UpdateMyLocaleRequestObject) (UpdateMyLocaleResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -5493,6 +5648,37 @@ func (sh *strictHandler) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMyProfileResponseObject); ok {
 		if err := validResponse.VisitGetMyProfileResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMyLocale operation middleware
+func (sh *strictHandler) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
+	var request UpdateMyLocaleRequestObject
+
+	var body UpdateMyLocaleJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMyLocale(ctx, request.(UpdateMyLocaleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMyLocale")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMyLocaleResponseObject); ok {
+		if err := validResponse.VisitUpdateMyLocaleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

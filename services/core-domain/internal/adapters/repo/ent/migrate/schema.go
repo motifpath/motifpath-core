@@ -118,6 +118,40 @@ var (
 			},
 		},
 	}
+	// ContentNodeLanguagesColumns holds the columns for the "content_node_languages" table.
+	ContentNodeLanguagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "content_node_id", Type: field.TypeUUID},
+		{Name: "language_id", Type: field.TypeUUID},
+	}
+	// ContentNodeLanguagesTable holds the schema information for the "content_node_languages" table.
+	ContentNodeLanguagesTable = &schema.Table{
+		Name:       "content_node_languages",
+		Columns:    ContentNodeLanguagesColumns,
+		PrimaryKey: []*schema.Column{ContentNodeLanguagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "content_node_languages_content_nodes_content_node",
+				Columns:    []*schema.Column{ContentNodeLanguagesColumns[2]},
+				RefColumns: []*schema.Column{ContentNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "content_node_languages_languages_language",
+				Columns:    []*schema.Column{ContentNodeLanguagesColumns[3]},
+				RefColumns: []*schema.Column{LanguagesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "contentnodelanguage_content_node_id_language_id",
+				Unique:  true,
+				Columns: []*schema.Column{ContentNodeLanguagesColumns[2], ContentNodeLanguagesColumns[3]},
+			},
+		},
+	}
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -136,6 +170,40 @@ var (
 		Name:       "exercises",
 		Columns:    ExercisesColumns,
 		PrimaryKey: []*schema.Column{ExercisesColumns[0]},
+	}
+	// ExerciseLanguagesColumns holds the columns for the "exercise_languages" table.
+	ExerciseLanguagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "exercise_id", Type: field.TypeUUID},
+		{Name: "language_id", Type: field.TypeUUID},
+	}
+	// ExerciseLanguagesTable holds the schema information for the "exercise_languages" table.
+	ExerciseLanguagesTable = &schema.Table{
+		Name:       "exercise_languages",
+		Columns:    ExerciseLanguagesColumns,
+		PrimaryKey: []*schema.Column{ExerciseLanguagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "exercise_languages_exercises_exercise",
+				Columns:    []*schema.Column{ExerciseLanguagesColumns[2]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "exercise_languages_languages_language",
+				Columns:    []*schema.Column{ExerciseLanguagesColumns[3]},
+				RefColumns: []*schema.Column{LanguagesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "exerciselanguage_exercise_id_language_id",
+				Unique:  true,
+				Columns: []*schema.Column{ExerciseLanguagesColumns[2], ExerciseLanguagesColumns[3]},
+			},
+		},
 	}
 	// ExerciseOptionsColumns holds the columns for the "exercise_options" table.
 	ExerciseOptionsColumns = []*schema.Column{
@@ -199,6 +267,18 @@ var (
 			},
 		},
 	}
+	// LanguagesColumns holds the columns for the "languages" table.
+	LanguagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "code", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
+	}
+	// LanguagesTable holds the schema information for the "languages" table.
+	LanguagesTable = &schema.Table{
+		Name:       "languages",
+		Columns:    LanguagesColumns,
+		PrimaryKey: []*schema.Column{LanguagesColumns[0]},
+	}
 	// LearningPathsColumns holds the columns for the "learning_paths" table.
 	LearningPathsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -253,12 +333,21 @@ var (
 		{Name: "clerk_user_id", Type: field.TypeString, Unique: true},
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"student", "teacher", "admin"}},
 		{Name: "registered_at", Type: field.TypeTime},
+		{Name: "locale_id", Type: field.TypeUUID},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_languages_locale",
+				Columns:    []*schema.Column{UsersColumns[4]},
+				RefColumns: []*schema.Column{LanguagesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
@@ -266,9 +355,12 @@ var (
 		ChallengeExercisesTable,
 		ContentNodesTable,
 		ContentNodeExercisesTable,
+		ContentNodeLanguagesTable,
 		ExercisesTable,
+		ExerciseLanguagesTable,
 		ExerciseOptionsTable,
 		ExpandedContentsTable,
+		LanguagesTable,
 		LearningPathsTable,
 		LearningPathItemsTable,
 		PathAssignmentsTable,
@@ -281,5 +373,10 @@ func init() {
 	ChallengeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
 	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
+	ContentNodeLanguagesTable.ForeignKeys[0].RefTable = ContentNodesTable
+	ContentNodeLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
+	ExerciseLanguagesTable.ForeignKeys[0].RefTable = ExercisesTable
+	ExerciseLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
+	UsersTable.ForeignKeys[0].RefTable = LanguagesTable
 }

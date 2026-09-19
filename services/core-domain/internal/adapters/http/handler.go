@@ -81,7 +81,8 @@ func (h *Handler) RegisterUser(ctx context.Context, request generated.RegisterUs
 		return generated.RegisterUser401JSONResponse(unauthorizedError()), nil
 	}
 
-	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role))
+	acceptLanguageCandidate := AcceptLanguageCandidateFromContext(ctx)
+	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch {
@@ -114,6 +115,28 @@ func (h *Handler) GetMyProfile(ctx context.Context, _ generated.GetMyProfileRequ
 	return generated.GetMyProfile200JSONResponse(toUserProfile(user)), nil
 }
 
+func (h *Handler) UpdateMyLocale(ctx context.Context, request generated.UpdateMyLocaleRequestObject) (generated.UpdateMyLocaleResponseObject, error) {
+	clerkUserID, ok := ClerkUserIDFromContext(ctx)
+	if !ok {
+		return generated.UpdateMyLocale401JSONResponse(unauthorizedError()), nil
+	}
+
+	user, err := h.identity.UpdateLocale(ctx, clerkUserID, request.Body.Locale)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateMyLocale400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound:
+			return generated.UpdateMyLocale404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
+		case errKindForbidden, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateMyLocale200JSONResponse(toUserProfile(user)), nil
+}
+
 func (h *Handler) CreateContentNode(ctx context.Context, request generated.CreateContentNodeRequestObject) (generated.CreateContentNodeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -124,7 +147,8 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 	node, err := h.content.CreateContentNode(ctx, caller, body.Title,
 		domain.ContentType(body.ContentType),
 		body.Classification.Skill, body.Classification.Concept,
-		domain.DifficultyLevel(body.Classification.DifficultyLevel))
+		domain.DifficultyLevel(body.Classification.DifficultyLevel),
+		body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -194,7 +218,7 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 
 	body := request.Body
 	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
-		body.Classification.Skill, body.Classification.Concept, domain.DifficultyLevel(body.Classification.DifficultyLevel))
+		body.Classification.Skill, body.Classification.Concept, domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -311,7 +335,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
 		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
-		toDomainRemediationTargets(remediationTargets))
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -386,7 +410,7 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
 		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
-		toDomainRemediationTargets(remediationTargets))
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

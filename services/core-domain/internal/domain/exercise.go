@@ -188,7 +188,14 @@ type Exercise struct {
 	// to as a path exercise. Managed exclusively through
 	// LinkContentNode/UnlinkContentNode, independent of ChallengeIDs.
 	ContentNodeIDs []string
-	CreatedAt      time.Time
+	// Languages are the languages this exercise is available in, or a single
+	// LanguageCodeAny entry for language-agnostic content. Independent of
+	// any ContentNode's languages — an exercise reused across nodes has no
+	// single parent to inherit a language from. Name is populated only once
+	// this Exercise has been read back from the repository with its
+	// Language rows joined in.
+	Languages []Language
+	CreatedAt time.Time
 }
 
 // NewExercise validates and constructs a standalone Exercise, not yet linked
@@ -197,9 +204,10 @@ type Exercise struct {
 // whether each remediationTargets[i].ContentNodeID refers to a content node
 // that actually exists, which requires a repository round-trip this
 // constructor can't perform.
-func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, createdAt time.Time) (Exercise, error) {
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
 	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)...)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -217,6 +225,7 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		RemediationTargets:       remediationTargets,
 		ChallengeIDs:             []string{},
 		ContentNodeIDs:           []string{},
+		Languages:                languagesFromCodes(languageCodes),
 		CreatedAt:                createdAt,
 	}, nil
 }
@@ -228,8 +237,9 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 // change after creation since it determines the option shape (region vs.
 // text vs. image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) (Exercise, error) {
+func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
 	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
 	}
@@ -243,6 +253,7 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string
 	updated.Options = options
 	updated.EstimatedDurationSeconds = estimatedDurationSeconds
 	updated.RemediationTargets = remediationTargets
+	updated.Languages = languagesFromCodes(languageCodes)
 	return updated, nil
 }
 
