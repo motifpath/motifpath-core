@@ -21,6 +21,8 @@ const (
 	FieldContentType = "content_type"
 	// FieldMediaURL holds the string denoting the media_url field in the database.
 	FieldMediaURL = "media_url"
+	// FieldRichContent holds the string denoting the rich_content field in the database.
+	FieldRichContent = "rich_content"
 	// FieldTriggerAtSeconds holds the string denoting the trigger_at_seconds field in the database.
 	FieldTriggerAtSeconds = "trigger_at_seconds"
 	// FieldHideAtSeconds holds the string denoting the hide_at_seconds field in the database.
@@ -43,6 +45,7 @@ var Columns = []string{
 	FieldContentNodeID,
 	FieldContentType,
 	FieldMediaURL,
+	FieldRichContent,
 	FieldTriggerAtSeconds,
 	FieldHideAtSeconds,
 	FieldTriggerAtParagraph,
@@ -73,8 +76,9 @@ type ContentType string
 
 // ContentType values.
 const (
-	ContentTypeImage ContentType = "image"
-	ContentTypeGif   ContentType = "gif"
+	ContentTypeImage    ContentType = "image"
+	ContentTypeGif      ContentType = "gif"
+	ContentTypeRichText ContentType = "rich_text"
 )
 
 func (ct ContentType) String() string {
@@ -84,7 +88,7 @@ func (ct ContentType) String() string {
 // ContentTypeValidator is a validator for the "content_type" field enum values. It is called by the builders before save.
 func ContentTypeValidator(ct ContentType) error {
 	switch ct {
-	case ContentTypeImage, ContentTypeGif:
+	case ContentTypeImage, ContentTypeGif, ContentTypeRichText:
 		return nil
 	default:
 		return fmt.Errorf("expandedcontent: invalid enum value for content_type field: %q", ct)
@@ -112,6 +116,11 @@ func ByContentType(opts ...sql.OrderTermOption) OrderOption {
 // ByMediaURL orders the results by the media_url field.
 func ByMediaURL(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMediaURL, opts...).ToFunc()
+}
+
+// ByRichContent orders the results by the rich_content field.
+func ByRichContent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRichContent, opts...).ToFunc()
 }
 
 // ByTriggerAtSeconds orders the results by the trigger_at_seconds field.

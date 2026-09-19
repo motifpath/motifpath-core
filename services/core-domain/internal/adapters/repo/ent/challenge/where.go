@@ -71,9 +71,9 @@ func PassThreshold(v int) predicate.Challenge {
 	return predicate.Challenge(sql.FieldEQ(FieldPassThreshold, v))
 }
 
-// RemediationTargetContentNodeID applies equality check predicate on the "remediation_target_content_node_id" field. It's identical to RemediationTargetContentNodeIDEQ.
-func RemediationTargetContentNodeID(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldEQ(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMs applies equality check predicate on the "time_threshold_ms" field. It's identical to TimeThresholdMsEQ.
+func TimeThresholdMs(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldTimeThresholdMs, v))
 }
 
 // ShuffleExercises applies equality check predicate on the "shuffle_exercises" field. It's identical to ShuffleExercisesEQ.
@@ -236,54 +236,54 @@ func PassThresholdLTE(v int) predicate.Challenge {
 	return predicate.Challenge(sql.FieldLTE(FieldPassThreshold, v))
 }
 
-// RemediationTargetContentNodeIDEQ applies the EQ predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDEQ(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldEQ(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsEQ applies the EQ predicate on the "time_threshold_ms" field.
+func TimeThresholdMsEQ(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDNEQ applies the NEQ predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDNEQ(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldNEQ(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsNEQ applies the NEQ predicate on the "time_threshold_ms" field.
+func TimeThresholdMsNEQ(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNEQ(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDIn applies the In predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDIn(vs ...uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldIn(FieldRemediationTargetContentNodeID, vs...))
+// TimeThresholdMsIn applies the In predicate on the "time_threshold_ms" field.
+func TimeThresholdMsIn(vs ...int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldIn(FieldTimeThresholdMs, vs...))
 }
 
-// RemediationTargetContentNodeIDNotIn applies the NotIn predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDNotIn(vs ...uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldNotIn(FieldRemediationTargetContentNodeID, vs...))
+// TimeThresholdMsNotIn applies the NotIn predicate on the "time_threshold_ms" field.
+func TimeThresholdMsNotIn(vs ...int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotIn(FieldTimeThresholdMs, vs...))
 }
 
-// RemediationTargetContentNodeIDGT applies the GT predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDGT(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldGT(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsGT applies the GT predicate on the "time_threshold_ms" field.
+func TimeThresholdMsGT(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGT(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDGTE applies the GTE predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDGTE(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldGTE(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsGTE applies the GTE predicate on the "time_threshold_ms" field.
+func TimeThresholdMsGTE(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGTE(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDLT applies the LT predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDLT(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldLT(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsLT applies the LT predicate on the "time_threshold_ms" field.
+func TimeThresholdMsLT(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLT(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDLTE applies the LTE predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDLTE(v uuid.UUID) predicate.Challenge {
-	return predicate.Challenge(sql.FieldLTE(FieldRemediationTargetContentNodeID, v))
+// TimeThresholdMsLTE applies the LTE predicate on the "time_threshold_ms" field.
+func TimeThresholdMsLTE(v int) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLTE(FieldTimeThresholdMs, v))
 }
 
-// RemediationTargetContentNodeIDIsNil applies the IsNil predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDIsNil() predicate.Challenge {
-	return predicate.Challenge(sql.FieldIsNull(FieldRemediationTargetContentNodeID))
+// TimeThresholdMsIsNil applies the IsNil predicate on the "time_threshold_ms" field.
+func TimeThresholdMsIsNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldIsNull(FieldTimeThresholdMs))
 }
 
-// RemediationTargetContentNodeIDNotNil applies the NotNil predicate on the "remediation_target_content_node_id" field.
-func RemediationTargetContentNodeIDNotNil() predicate.Challenge {
-	return predicate.Challenge(sql.FieldNotNull(FieldRemediationTargetContentNodeID))
+// TimeThresholdMsNotNil applies the NotNil predicate on the "time_threshold_ms" field.
+func TimeThresholdMsNotNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotNull(FieldTimeThresholdMs))
 }
 
 // ShuffleExercisesEQ applies the EQ predicate on the "shuffle_exercises" field.

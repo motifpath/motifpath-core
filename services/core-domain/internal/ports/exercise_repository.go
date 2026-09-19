@@ -32,6 +32,14 @@ type ExerciseRepository interface {
 	// concern.
 	ListByChallengeID(ctx context.Context, challengeID string) ([]domain.Exercise, error)
 
+	// ListByChallengeIDs returns the exercises linked to each of
+	// challengeIDs, in link order, keyed by challenge id. A challenge id
+	// with no linked exercises is simply absent from the result. Batches
+	// what would otherwise be one ListByChallengeID call per challenge —
+	// for callers (e.g. listing every challenge on a content node) that
+	// need this for more than one challenge at a time.
+	ListByChallengeIDs(ctx context.Context, challengeIDs []string) (map[string][]domain.Exercise, error)
+
 	// LinkContentNode links exerciseID into contentNodeID as a path
 	// exercise. Callers are responsible for checking both ids exist and are
 	// not already linked before calling.

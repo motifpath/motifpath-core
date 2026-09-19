@@ -24,8 +24,8 @@ type Challenge struct {
 	SubjectTag string `json:"subject_tag,omitempty"`
 	// PassThreshold holds the value of the "pass_threshold" field.
 	PassThreshold int `json:"pass_threshold,omitempty"`
-	// RemediationTargetContentNodeID holds the value of the "remediation_target_content_node_id" field.
-	RemediationTargetContentNodeID *uuid.UUID `json:"remediation_target_content_node_id,omitempty"`
+	// TimeThresholdMs holds the value of the "time_threshold_ms" field.
+	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 	// ShuffleExercises holds the value of the "shuffle_exercises" field.
 	ShuffleExercises bool `json:"shuffle_exercises,omitempty"`
 	// ShuffleOptions holds the value of the "shuffle_options" field.
@@ -72,11 +72,9 @@ func (*Challenge) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case challenge.FieldRemediationTargetContentNodeID:
-			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case challenge.FieldShuffleExercises, challenge.FieldShuffleOptions:
 			values[i] = new(sql.NullBool)
-		case challenge.FieldPassThreshold:
+		case challenge.FieldPassThreshold, challenge.FieldTimeThresholdMs:
 			values[i] = new(sql.NullInt64)
 		case challenge.FieldSubjectTag:
 			values[i] = new(sql.NullString)
@@ -123,12 +121,12 @@ func (_m *Challenge) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PassThreshold = int(value.Int64)
 			}
-		case challenge.FieldRemediationTargetContentNodeID:
-			if value, ok := values[i].(*sql.NullScanner); !ok {
-				return fmt.Errorf("unexpected type %T for field remediation_target_content_node_id", values[i])
+		case challenge.FieldTimeThresholdMs:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field time_threshold_ms", values[i])
 			} else if value.Valid {
-				_m.RemediationTargetContentNodeID = new(uuid.UUID)
-				*_m.RemediationTargetContentNodeID = *value.S.(*uuid.UUID)
+				_m.TimeThresholdMs = new(int)
+				*_m.TimeThresholdMs = int(value.Int64)
 			}
 		case challenge.FieldShuffleExercises:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -203,8 +201,8 @@ func (_m *Challenge) String() string {
 	builder.WriteString("pass_threshold=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PassThreshold))
 	builder.WriteString(", ")
-	if v := _m.RemediationTargetContentNodeID; v != nil {
-		builder.WriteString("remediation_target_content_node_id=")
+	if v := _m.TimeThresholdMs; v != nil {
+		builder.WriteString("time_threshold_ms=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")

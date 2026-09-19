@@ -50,6 +50,13 @@ func (Exercise) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		// remediation_targets stores a marshaled JSON array of
+		// domain.RemediationTarget as text, the same pattern prompt uses —
+		// nil/absent means no remediation is configured.
+		field.Text("remediation_targets").
+			Optional().
+			Nillable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

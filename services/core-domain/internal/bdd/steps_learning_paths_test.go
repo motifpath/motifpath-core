@@ -14,6 +14,7 @@ import (
 
 func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)", "([^"]+)"$`, w.putLearningPathThreeItems)
+	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)"$`, w.putLearningPathTwoItems)
 	sc.Step(`^a learning path "([^"]+)" exists with "([^"]+)" and "([^"]+)" in section "([^"]+)" and "([^"]+)" in section "([^"]+)"$`, w.putLearningPathThreeItemsWithSections)
 	sc.Step(`^a learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
 	sc.Step(`^a second learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
@@ -36,6 +37,149 @@ func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response returns the path title, owner, and ordered items$`, w.learningPathResponseComplete)
 	sc.Step(`^"([^"]+)" and "([^"]+)" are returned with section_label "([^"]+)"$`, w.createdItemsHaveSectionLabel)
 	sc.Step(`^"([^"]+)" is returned with section_label "([^"]+)"$`, w.createdItemHasSectionLabel)
+
+	sc.Step(`^"([^"]+)" lists all learning paths$`, w.listsAllLearningPaths)
+	sc.Step(`^"([^"]+)" attempts to list all learning paths$`, w.listsAllLearningPaths)
+	sc.Step(`^an unauthenticated request attempts to list all learning paths$`, w.unauthListsAllLearningPaths)
+
+	sc.Step(`^"([^"]+)" replaces learning path "([^"]+)" with items in order: "([^"]+)", "([^"]+)"$`, w.replacesLearningPathTwoItems)
+	sc.Step(`^"([^"]+)" replaces learning path "([^"]+)" with items in order: "([^"]+)", "([^"]+)", "([^"]+)"$`, w.replacesLearningPathThreeItems)
+	sc.Step(`^"([^"]+)" replaces learning path "([^"]+)" with items in order: "([^"]+)" in section "([^"]+)", "([^"]+)" in section "([^"]+)", "([^"]+)"$`, w.replacesLearningPathThreeItemsWithSections)
+	sc.Step(`^"([^"]+)" attempts to replace learning path "([^"]+)" with items in order: "([^"]+)"$`, w.attemptsReplaceLearningPath)
+	sc.Step(`^an unauthenticated request attempts to replace learning path "([^"]+)" with items in order: "([^"]+)"$`, w.unauthReplacesLearningPath)
+	sc.Step(`^"([^"]+)" submits a replace learning path request for "([^"]+)" with an empty items array$`, w.submitsReplaceLearningPathEmptyItems)
+	sc.Step(`^"([^"]+)" replaces learning path "([^"]+)" with an item referencing a content node ID that does not exist$`, w.replacesLearningPathMissingNode)
+	sc.Step(`^"([^"]+)" attempts to replace a learning path with an ID that does not exist$`, w.attemptsReplaceMissingLearningPath)
+
+	sc.Step(`^the items are returned with positions (\d+), (\d+), and (\d+) in the order "([^"]+)", "([^"]+)", "([^"]+)"$`, w.replaceItemsReturnedInOrder)
+	sc.Step(`^the learning path has (\d+) items$`, w.learningPathHasNItems)
+}
+
+func (w *world) listsAllLearningPaths(name string) error {
+	resp, err := w.handler.ListLearningPaths(w.ctx(), generated.ListLearningPathsRequestObject{})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthListsAllLearningPaths() error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsAllLearningPaths("")
+}
+
+func (w *world) replacesLearningPathWithSpecs(slug string, specs []pathItemSpec) error {
+	body := &generated.ReplaceLearningPathRequest{Title: slug}
+	for _, spec := range specs {
+		item := struct {
+			ContentNodeId uuid.UUID `json:"content_node_id"`
+			SectionLabel  *string   `json:"section_label,omitempty"`
+		}{ContentNodeId: nodeID(spec.slug)}
+		if spec.sectionLabel != "" {
+			label := spec.sectionLabel
+			item.SectionLabel = &label
+		}
+		body.Items = append(body.Items, item)
+	}
+	resp, err := w.handler.ReplaceLearningPath(w.ctx(), generated.ReplaceLearningPathRequestObject{
+		LearningPathId: pathID(slug),
+		Body:           body,
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) replacesLearningPath(slug string, nodeSlugs []string) error {
+	specs := make([]pathItemSpec, len(nodeSlugs))
+	for i, s := range nodeSlugs {
+		specs[i] = pathItemSpec{slug: s}
+	}
+	return w.replacesLearningPathWithSpecs(slug, specs)
+}
+
+func (w *world) replacesLearningPathTwoItems(name, slug, n1, n2 string) error {
+	return w.replacesLearningPath(slug, []string{n1, n2})
+}
+
+func (w *world) replacesLearningPathThreeItems(name, slug, n1, n2, n3 string) error {
+	return w.replacesLearningPath(slug, []string{n1, n2, n3})
+}
+
+func (w *world) replacesLearningPathThreeItemsWithSections(name, slug, n1, s1, n2, s2, n3 string) error {
+	return w.replacesLearningPathWithSpecs(slug, []pathItemSpec{
+		{slug: n1, sectionLabel: s1},
+		{slug: n2, sectionLabel: s2},
+		{slug: n3},
+	})
+}
+
+func (w *world) attemptsReplaceLearningPath(name, slug, n1 string) error {
+	return w.replacesLearningPath(slug, []string{n1})
+}
+
+func (w *world) unauthReplacesLearningPath(slug, n1 string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.attemptsReplaceLearningPath("", slug, n1)
+}
+
+func (w *world) submitsReplaceLearningPathEmptyItems(name, slug string) error {
+	return w.replacesLearningPathWithSpecs(slug, nil)
+}
+
+func (w *world) replacesLearningPathMissingNode(name, slug string) error {
+	return w.replacesLearningPath(slug, []string{"does-not-exist"})
+}
+
+func (w *world) attemptsReplaceMissingLearningPath(string) error {
+	body := &generated.ReplaceLearningPathRequest{Title: "Title"}
+	body.Items = append(body.Items, struct {
+		ContentNodeId uuid.UUID `json:"content_node_id"`
+		SectionLabel  *string   `json:"section_label,omitempty"`
+	}{ContentNodeId: nodeID("node-01")})
+	resp, err := w.handler.ReplaceLearningPath(w.ctx(), generated.ReplaceLearningPathRequestObject{
+		LearningPathId: deterministicUUID("path", "does-not-exist"),
+		Body:           body,
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) replaceItemsReturnedInOrder(p1, p2, p3, n1, n2, n3 string) error {
+	resp, ok := w.lastResp.(generated.ReplaceLearningPath200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	wantPositions := []string{p1, p2, p3}
+	wantNodes := []string{n1, n2, n3}
+	if len(resp.Items) != 3 {
+		return fmt.Errorf("expected 3 items, got %d", len(resp.Items))
+	}
+	for i, item := range resp.Items {
+		wantPos, err := parseInt(wantPositions[i])
+		if err != nil {
+			return err
+		}
+		if item.Position != wantPos {
+			return fmt.Errorf("expected item %d to have position %d, got %d", i, wantPos, item.Position)
+		}
+		if item.ContentNodeId != nodeID(wantNodes[i]) {
+			return fmt.Errorf("expected item %d to reference %s, got %s", i, nodeID(wantNodes[i]), item.ContentNodeId)
+		}
+	}
+	return nil
+}
+
+func (w *world) learningPathHasNItems(countStr string) error {
+	count, err := parseInt(countStr)
+	if err != nil {
+		return err
+	}
+	resp, ok := w.lastResp.(generated.ReplaceLearningPath200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if len(resp.Items) != count {
+		return fmt.Errorf("expected %d items, got %d", count, len(resp.Items))
+	}
+	return nil
 }
 
 type pathItemSpec struct {
@@ -51,12 +195,31 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
 			{Position: 2, ContentNodeID: nodeID(n2).String(), Title: n2, ContentType: domain.ContentTypeVideo},
 			{Position: 3, ContentNodeID: nodeID(n3).String(), Title: n3, ContentType: domain.ContentTypeVideo},
+		},
+		CreatedAt: fixedNow,
+	})
+	return nil
+}
+
+func (w *world) putLearningPathTwoItems(slug, n1, n2 string) error {
+	for _, n := range []string{n1, n2} {
+		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
+			return err
+		}
+	}
+	w.paths.put(domain.LearningPath{
+		ID:        pathID(slug).String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
+		Title:     slug,
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
+			{Position: 2, ContentNodeID: nodeID(n2).String(), Title: n2, ContentType: domain.ContentTypeVideo},
 		},
 		CreatedAt: fixedNow,
 	})
@@ -81,7 +244,7 @@ func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items:     items,
 		CreatedAt: fixedNow,
@@ -95,7 +258,7 @@ func (w *world) putLearningPathDefault(slug string) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID("default-node-for-" + slug).String(), Title: "default", ContentType: domain.ContentTypeVideo},
@@ -208,12 +371,17 @@ func (w *world) itemsHavePositions123() error {
 }
 
 func (w *world) createdSectionLabelFor(slug string) (string, error) {
-	resp, ok := w.lastResp.(generated.CreateLearningPath201JSONResponse)
-	if !ok {
-		return "", fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	var items []generated.LearningPathItem
+	switch resp := w.lastResp.(type) {
+	case generated.CreateLearningPath201JSONResponse:
+		items = resp.Items
+	case generated.ReplaceLearningPath200JSONResponse:
+		items = resp.Items
+	default:
+		return "", fmt.Errorf("expected a 201 or 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
 	want := nodeID(slug)
-	for _, item := range resp.Items {
+	for _, item := range items {
 		if item.ContentNodeId == want {
 			if item.SectionLabel == nil {
 				return "", nil

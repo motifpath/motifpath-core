@@ -64,8 +64,9 @@ const (
 
 // Defines values for CreateExpandedContentRequestContentType.
 const (
-	CreateExpandedContentRequestContentTypeGif   CreateExpandedContentRequestContentType = "gif"
-	CreateExpandedContentRequestContentTypeImage CreateExpandedContentRequestContentType = "image"
+	CreateExpandedContentRequestContentTypeGif      CreateExpandedContentRequestContentType = "gif"
+	CreateExpandedContentRequestContentTypeImage    CreateExpandedContentRequestContentType = "image"
+	CreateExpandedContentRequestContentTypeRichText CreateExpandedContentRequestContentType = "rich_text"
 )
 
 // Defines values for CreateMediaUploadUrlRequestContentType.
@@ -91,8 +92,9 @@ const (
 
 // Defines values for ExpandedContentContentType.
 const (
-	ExpandedContentContentTypeGif   ExpandedContentContentType = "gif"
-	ExpandedContentContentTypeImage ExpandedContentContentType = "image"
+	ExpandedContentContentTypeGif      ExpandedContentContentType = "gif"
+	ExpandedContentContentTypeImage    ExpandedContentContentType = "image"
+	ExpandedContentContentTypeRichText ExpandedContentContentType = "rich_text"
 )
 
 // Defines values for HealthStatusChecks.
@@ -136,6 +138,7 @@ const (
 
 // Defines values for PromptNodeType.
 const (
+	PromptNodeTypeAudio       PromptNodeType = "audio"
 	PromptNodeTypeBulletList  PromptNodeType = "bulletList"
 	PromptNodeTypeHeading     PromptNodeType = "heading"
 	PromptNodeTypeImage       PromptNodeType = "image"
@@ -147,6 +150,7 @@ const (
 	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
 	PromptNodeTypeTableRow    PromptNodeType = "tableRow"
 	PromptNodeTypeText        PromptNodeType = "text"
+	PromptNodeTypeVideo       PromptNodeType = "video"
 )
 
 // Defines values for RegisterUserRequestRole.
@@ -169,11 +173,31 @@ const (
 	NotStarted StudentPathItemStatus = "not_started"
 )
 
+// Defines values for UpdateExpandedContentRequestContentType.
+const (
+	Gif      UpdateExpandedContentRequestContentType = "gif"
+	Image    UpdateExpandedContentRequestContentType = "image"
+	RichText UpdateExpandedContentRequestContentType = "rich_text"
+)
+
 // Defines values for UserProfileRole.
 const (
 	UserProfileRoleAdmin   UserProfileRole = "admin"
 	UserProfileRoleStudent UserProfileRole = "student"
 	UserProfileRoleTeacher UserProfileRole = "teacher"
+)
+
+// Defines values for ListContentNodesParamsContentType.
+const (
+	Article ListContentNodesParamsContentType = "article"
+	Video   ListContentNodesParamsContentType = "video"
+)
+
+// Defines values for ListContentNodesParamsDifficultyLevel.
+const (
+	Advanced     ListContentNodesParamsDifficultyLevel = "advanced"
+	Beginner     ListContentNodesParamsDifficultyLevel = "beginner"
+	Intermediate ListContentNodesParamsDifficultyLevel = "intermediate"
 )
 
 // Defines values for ListExercisesParamsExerciseType.
@@ -208,9 +232,6 @@ type Challenge struct {
 	// PassThreshold Minimum score percentage required to pass.
 	PassThreshold int `json:"pass_threshold"`
 
-	// RemediationTargetContentNodeId Content node recommended when the student fails this challenge. Absent if not configured.
-	RemediationTargetContentNodeId *openapi_types.UUID `json:"remediation_target_content_node_id,omitempty"`
-
 	// ShuffleExercises Whether this challenge's exercise order varies per request.
 	ShuffleExercises bool `json:"shuffle_exercises"`
 
@@ -219,6 +240,17 @@ type Challenge struct {
 
 	// SubjectTag The subject this challenge assesses.
 	SubjectTag string `json:"subject_tag"`
+
+	// TimeThresholdMs An informational time expectation for this challenge, in
+	// milliseconds — never enforced, never affects scoring or
+	// submission. Equal to the teacher's explicit override if one was
+	// set, otherwise computed as the sum of the challenge's currently
+	// linked exercises' estimated_duration_seconds converted to
+	// milliseconds (an exercise with no estimate contributes 0),
+	// recomputed on every read. Absent only when the challenge has no
+	// override and no linked exercise has an estimated_duration_seconds
+	// set, so there is nothing to sum.
+	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
 // Classification defines model for Classification.
@@ -313,14 +345,8 @@ type ContentNodeContentType string
 // CreateChallengeRequest Payload for creating a challenge within a content node.
 type CreateChallengeRequest struct {
 	// PassThreshold The minimum score (as a percentage of exercises answered correctly)
-	// required to pass this challenge. Scores below this value trigger
-	// the remediation recommendation if a target is configured.
+	// required to pass this challenge.
 	PassThreshold int `json:"pass_threshold"`
-
-	// RemediationTargetContentNodeId The content node to recommend when a student's score falls below
-	// pass_threshold. If omitted, no automatic recommendation is made on
-	// failure.
-	RemediationTargetContentNodeId *openapi_types.UUID `json:"remediation_target_content_node_id,omitempty"`
 
 	// ShuffleExercises When true, the order in which this challenge's exercises are
 	// returned varies per request. When false, exercises are always
@@ -337,6 +363,18 @@ type CreateChallengeRequest struct {
 	// minimum required for gap detection — a challenge without a subject
 	// tag produces analytically meaningless outcomes.
 	SubjectTag string `json:"subject_tag"`
+
+	// TimeThresholdMs An informational time expectation for this challenge, in
+	// milliseconds. Purely advisory — never enforced, never affects
+	// scoring or submission. When omitted, the value returned by
+	// GET/list endpoints is computed as the sum of the challenge's
+	// currently linked exercises' estimated_duration_seconds
+	// (converted to milliseconds; an exercise with no estimate
+	// contributes 0), recomputed on every read rather than stored, so
+	// it always reflects the challenge's current exercise links. Set
+	// this explicitly to override that computed value with the
+	// teacher's own estimate.
+	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
 // CreateContentNodeRequest Payload for creating a new content node.
@@ -400,11 +438,22 @@ type CreateExerciseRequest struct {
 	// option cannot be graded.
 	Options []Option `json:"options"`
 
-	// Prompt A structured rich-text document for an exercise's prompt, authored
-	// with the exercise-prompt rich-text editor and persisted exactly as
-	// the editor produces it. Always has type "doc" at the root, with the
+	// Prompt A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
 	// document's block-level content nested beneath it.
 	Prompt PromptDocument `json:"prompt"`
+
+	// RemediationTargets Content to recommend a student who answers this specific
+	// exercise incorrectly, in priority order. Empty or omitted means
+	// no remediation is configured for this exercise.
+	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
 	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
 	// targets (e.g. "alternate_picking"), used to classify and discover
@@ -426,15 +475,20 @@ type CreateExerciseRequest struct {
 // their own audio_url.
 type CreateExerciseRequestExerciseType string
 
-// CreateExpandedContentRequest Payload for attaching an expositive media item to a content node.
-// The trigger and hide fields used depend on the parent content node type:
+// CreateExpandedContentRequest Payload for attaching an expositive item to a content node. The
+// trigger and hide fields used depend on the parent content node type:
 // video nodes use trigger_at_seconds + hide_at_seconds; article nodes use
 // trigger_at_paragraph + duration_ms. Mixing fields across groups is invalid.
+// These timing fields apply identically regardless of content_type —
+// timing is a property of when the item appears, independent of what
+// it contains.
 type CreateExpandedContentRequest struct {
-	// Caption Optional caption displayed alongside the media item.
+	// Caption Optional caption displayed alongside the item.
 	Caption *string `json:"caption,omitempty"`
 
-	// ContentType The media format of the expanded content item.
+	// ContentType The format of the expanded content item. image and gif require
+	// media_url; rich_text requires rich_content instead — the two
+	// are mutually exclusive.
 	ContentType CreateExpandedContentRequestContentType `json:"content_type"`
 
 	// DurationMs Article nodes only. How long to display this item in milliseconds
@@ -446,8 +500,16 @@ type CreateExpandedContentRequest struct {
 	// for article nodes.
 	HideAtSeconds *int `json:"hide_at_seconds,omitempty"`
 
-	// MediaUrl External URL of the image or GIF to display.
-	MediaUrl string `json:"media_url"`
+	// MediaUrl External URL of the image or GIF to display. Required when
+	// content_type is image or gif; must be absent when content_type
+	// is rich_text.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent Rich content authored with the Tiptap-based content editor,
+	// which may embed video or audio alongside text and images —
+	// no separate video/audio content_type is needed. Required when
+	// content_type is rich_text; must be absent otherwise.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
 	// TriggerAtParagraph Article nodes only. The 1-based paragraph index at which to show
 	// this item. Must be absent for video nodes.
@@ -458,7 +520,9 @@ type CreateExpandedContentRequest struct {
 	TriggerAtSeconds *int `json:"trigger_at_seconds,omitempty"`
 }
 
-// CreateExpandedContentRequestContentType The media format of the expanded content item.
+// CreateExpandedContentRequestContentType The format of the expanded content item. image and gif require
+// media_url; rich_text requires rich_content instead — the two
+// are mutually exclusive.
 type CreateExpandedContentRequestContentType string
 
 // CreateLearningPathRequest Payload for creating a learning path.
@@ -555,11 +619,22 @@ type Exercise struct {
 	// Options The exercise's selectable answer choices.
 	Options []Option `json:"options"`
 
-	// Prompt A structured rich-text document for an exercise's prompt, authored
-	// with the exercise-prompt rich-text editor and persisted exactly as
-	// the editor produces it. Always has type "doc" at the root, with the
+	// Prompt A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
 	// document's block-level content nested beneath it.
 	Prompt PromptDocument `json:"prompt"`
+
+	// RemediationTargets Content recommended to a student who answers this exercise
+	// incorrectly, in priority order. May be empty — an exercise can
+	// exist without any remediation configured.
+	RemediationTargets []RemediationTarget `json:"remediation_targets"`
 
 	// SkillTags Freeform tags naming the skill(s) this exercise targets.
 	SkillTags *[]string `json:"skill_tags,omitempty"`
@@ -571,18 +646,20 @@ type Exercise struct {
 // ExerciseExerciseType The type of practice interaction.
 type ExerciseExerciseType string
 
-// ExpandedContent An expositive media item (image or GIF) attached to a content node and
-// shown to the student at a specific point during content consumption.
-// For video nodes the item is synced to the video timeline; for article
-// nodes it is triggered by paragraph position.
+// ExpandedContent An expositive item (image, GIF, or rich content) attached to a
+// content node and shown to the student at a specific point during
+// content consumption. For video nodes the item is synced to the
+// video timeline; for article nodes it is triggered by paragraph
+// position.
 type ExpandedContent struct {
-	// Caption Optional caption displayed alongside the media item.
+	// Caption Optional caption displayed alongside the item.
 	Caption *string `json:"caption,omitempty"`
 
 	// ContentNodeId The content node this item is attached to.
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
 
-	// ContentType The media format of this item.
+	// ContentType The format of this item. image and gif carry media_url;
+	// rich_text carries rich_content instead.
 	ContentType ExpandedContentContentType `json:"content_type"`
 
 	// CreatedAt Timestamp at which this expanded content item was created.
@@ -597,8 +674,13 @@ type ExpandedContent struct {
 	// HideAtSeconds Video nodes only. Video timestamp (seconds) at which this item is hidden.
 	HideAtSeconds *int `json:"hide_at_seconds,omitempty"`
 
-	// MediaUrl External URL of the image or GIF.
-	MediaUrl string `json:"media_url"`
+	// MediaUrl External URL of the image or GIF. Present only when content_type is image or gif.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent Rich content authored with the Tiptap-based content editor,
+	// which may embed video or audio. Present only when content_type
+	// is rich_text.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
 	// TriggerAtParagraph Article nodes only. 1-based paragraph index at which this item is shown.
 	TriggerAtParagraph *int `json:"trigger_at_paragraph,omitempty"`
@@ -607,7 +689,8 @@ type ExpandedContent struct {
 	TriggerAtSeconds *int `json:"trigger_at_seconds,omitempty"`
 }
 
-// ExpandedContentContentType The media format of this item.
+// ExpandedContentContentType The format of this item. image and gif carry media_url;
+// rich_text carries rich_content instead.
 type ExpandedContentContentType string
 
 // ForbiddenError Returned when the authenticated user lacks permission for the requested operation.
@@ -806,9 +889,15 @@ type PracticeSession struct {
 	SkillTag string `json:"skill_tag"`
 }
 
-// PromptDocument A structured rich-text document for an exercise's prompt, authored
-// with the exercise-prompt rich-text editor and persisted exactly as
-// the editor produces it. Always has type "doc" at the root, with the
+// PromptDocument A structured rich-text document, authored with MotifPath's
+// Tiptap-based content-authoring editor and persisted exactly as the
+// editor produces it (ProseMirror JSON). Used for an exercise's
+// prompt, rich_text expanded content, and an exercise's
+// remediation_targets rich content — the same document shape across
+// all three, though which PromptNode types a given surface's own
+// toolbar can actually produce varies (an exercise prompt's toolbar
+// does not offer audio/video embeds; expanded content and remediation
+// content may). Always has type "doc" at the root, with the
 // document's block-level content nested beneath it.
 type PromptDocument struct {
 	// Content The document's top-level block nodes, in reading order.
@@ -846,9 +935,9 @@ type PromptMarkType string
 // content; the text node is a leaf that carries the literal string
 // under text and any inline marks under marks. attrs holds
 // type-specific attributes (e.g. heading's level, paragraph/heading's
-// text alignment, image's src and alt, table cell's colspan, rowspan,
-// backgroundColor, and borderColor) and is validated by the authoring
-// editor, not by this schema.
+// text alignment, image's src and alt, audio/video's src, table
+// cell's colspan, rowspan, backgroundColor, and borderColor) and is
+// validated by the authoring editor, not by this schema.
 type PromptNode struct {
 	// Attrs Type-specific attributes for this node. Absent when the node
 	// type has none set.
@@ -865,11 +954,17 @@ type PromptNode struct {
 	// Text The literal text content. Present only when type is text.
 	Text *string `json:"text,omitempty"`
 
-	// Type The kind of node this is.
+	// Type The kind of node this is. audio and video are available to
+	// rich_text expanded content and remediation content; the
+	// exercise-prompt authoring toolbar does not offer them, so they
+	// do not appear in a PromptDocument used as an exercise's prompt.
 	Type PromptNodeType `json:"type"`
 }
 
-// PromptNodeType The kind of node this is.
+// PromptNodeType The kind of node this is. audio and video are available to
+// rich_text expanded content and remediation content; the
+// exercise-prompt authoring toolbar does not offer them, so they
+// do not appear in a PromptDocument used as an exercise's prompt.
 type PromptNodeType string
 
 // RegisterUserRequest Payload for registering a new MotifPath user.
@@ -892,6 +987,54 @@ type RegisterUserRequest struct {
 // directly in the database at deploy time and are reserved for internal
 // platform operations.
 type RegisterUserRequestRole string
+
+// RemediationTarget One piece of content recommended to a student who answers a
+// specific exercise incorrectly. Exactly one of content_node_id or
+// rich_content must be present — a target is either a reference to an
+// existing content node already published on the platform, or
+// inline-authored content (for example, a specific external video or
+// article, with a caption explaining why it's suggested) using the
+// same rich-content model as an exercise prompt.
+type RemediationTarget struct {
+	// Caption Optional short label shown alongside this target (e.g. "Watch
+	// this if the chord shapes felt unfamiliar"). Applies to either
+	// target shape.
+	Caption *string `json:"caption,omitempty"`
+
+	// ContentNodeId An existing content node to recommend. Must be absent if
+	// rich_content is present.
+	ContentNodeId *openapi_types.UUID `json:"content_node_id,omitempty"`
+
+	// RichContent A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
+}
+
+// ReplaceLearningPathRequest Payload for replacing an existing learning path's title and items
+// wholesale — the same shape as CreateLearningPathRequest, since a
+// change to any single item (add, remove, reorder, relabel) is
+// expressed by resending the complete desired items array.
+type ReplaceLearningPathRequest struct {
+	// Items Ordered list of content nodes that make up this path. At least one item is required.
+	Items []struct {
+		// ContentNodeId The ID of the content node at this position. Must exist in the system.
+		ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+		// SectionLabel Optional label grouping this item with its immediate neighbors under a named section in the resulting path view.
+		SectionLabel *string `json:"section_label,omitempty"`
+	} `json:"items"`
+
+	// Title Human-readable name for this learning path, displayed to teachers and admins.
+	Title string `json:"title"`
+}
 
 // StudentPathItem A content node in the student's learning path with their current progress state.
 type StudentPathItem struct {
@@ -951,6 +1094,53 @@ type UnauthorizedError struct {
 	Message string `json:"message"`
 }
 
+// UpdateChallengeRequest Payload for updating an existing challenge's assessment
+// configuration. Linked exercises are not part of this payload — they
+// are changed via POST/DELETE
+// /challenges/{challenge_id}/exercises/{exercise_id}, not by resending
+// them here.
+type UpdateChallengeRequest struct {
+	// PassThreshold The minimum score (as a percentage of exercises answered
+	// correctly) required to pass this challenge.
+	PassThreshold int `json:"pass_threshold"`
+
+	// ShuffleExercises Whether this challenge's exercise order varies per request.
+	ShuffleExercises *bool `json:"shuffle_exercises,omitempty"`
+
+	// ShuffleOptions Whether each exercise's option order varies per request.
+	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
+
+	// SubjectTag The subject this challenge assesses.
+	SubjectTag string `json:"subject_tag"`
+
+	// TimeThresholdMs An informational time expectation for this challenge, in
+	// milliseconds — never enforced, never affects scoring or
+	// submission. Omit to clear a previously set override and fall
+	// back to the computed sum of linked exercises'
+	// estimated_duration_seconds.
+	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
+}
+
+// UpdateContentNodeRequest Payload for updating an existing content node's title and
+// classification. content_type is not present here — it cannot be
+// changed after creation.
+type UpdateContentNodeRequest struct {
+	// Classification The three mandatory classification dimensions for a content node. These
+	// dimensions are the minimum semantic layer required for gap detection and
+	// the rules-based recommendation engine to function.
+	Classification ClassificationInput `json:"classification"`
+
+	// LanguageCodes One or more Language.code values this content node is available
+	// in, replacing its current set. A single-element array containing
+	// "any" marks the content as language-agnostic; "any" cannot be
+	// combined with other language codes in the same array. Must not
+	// be empty.
+	LanguageCodes []string `json:"language_codes"`
+
+	// Title Human-readable title of the content node, displayed to students.
+	Title string `json:"title"`
+}
+
 // UpdateExerciseRequest Payload for replacing an existing exercise's authored content.
 // exercise_type is not present here — it cannot be changed after
 // creation. options fully replaces the exercise's current options, the
@@ -982,11 +1172,22 @@ type UpdateExerciseRequest struct {
 	// exercise with no correct option cannot be graded.
 	Options []Option `json:"options"`
 
-	// Prompt A structured rich-text document for an exercise's prompt, authored
-	// with the exercise-prompt rich-text editor and persisted exactly as
-	// the editor produces it. Always has type "doc" at the root, with the
+	// Prompt A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
 	// document's block-level content nested beneath it.
 	Prompt PromptDocument `json:"prompt"`
+
+	// RemediationTargets Content to recommend a student who answers this specific
+	// exercise incorrectly, in priority order, replacing the current
+	// set. Empty or omitted clears any previously configured targets.
+	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
 	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
 	// targets, replacing its current set. Each tag must be a non-empty
@@ -997,6 +1198,49 @@ type UpdateExerciseRequest struct {
 	// it in authoring tools. Not shown to students.
 	Title string `json:"title"`
 }
+
+// UpdateExpandedContentRequest Payload for replacing an existing expanded content item's content,
+// trigger/hide position, and caption. Same trigger/hide field-group
+// rules as CreateExpandedContentRequest apply, keyed off the parent
+// content node's type (seconds-based for video, paragraph-based for
+// article) — the parent content node's own type cannot change, so
+// which trigger group is valid is unchanged by this update. The
+// item's own content_type (image/gif/rich_text) may change.
+type UpdateExpandedContentRequest struct {
+	// Caption Optional caption displayed alongside the item.
+	Caption *string `json:"caption,omitempty"`
+
+	// ContentType The format of the expanded content item. image and gif require
+	// media_url; rich_text requires rich_content instead.
+	ContentType UpdateExpandedContentRequestContentType `json:"content_type"`
+
+	// DurationMs Article nodes only. Must be absent for video nodes.
+	DurationMs *int `json:"duration_ms,omitempty"`
+
+	// HideAtSeconds Video nodes only. Must be greater than trigger_at_seconds. Must
+	// be absent for article nodes.
+	HideAtSeconds *int `json:"hide_at_seconds,omitempty"`
+
+	// MediaUrl External URL of the image or GIF to display. Required when
+	// content_type is image or gif; must be absent when content_type
+	// is rich_text.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent Rich content authored with the Tiptap-based content editor.
+	// Required when content_type is rich_text; must be absent
+	// otherwise.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
+
+	// TriggerAtParagraph Article nodes only. Must be absent for video nodes.
+	TriggerAtParagraph *int `json:"trigger_at_paragraph,omitempty"`
+
+	// TriggerAtSeconds Video nodes only. Must be absent for article nodes.
+	TriggerAtSeconds *int `json:"trigger_at_seconds,omitempty"`
+}
+
+// UpdateExpandedContentRequestContentType The format of the expanded content item. image and gif require
+// media_url; rich_text requires rich_content instead.
+type UpdateExpandedContentRequestContentType string
 
 // UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
 type UpdateMyLocaleRequest struct {
@@ -1050,6 +1294,24 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
+// ListContentNodesParams defines parameters for ListContentNodes.
+type ListContentNodesParams struct {
+	// ContentType When given, only content nodes of this type are returned.
+	ContentType *ListContentNodesParamsContentType `form:"content_type,omitempty" json:"content_type,omitempty"`
+
+	// Skill When given, only content nodes classified with this exact skill are returned.
+	Skill *string `form:"skill,omitempty" json:"skill,omitempty"`
+
+	// DifficultyLevel When given, only content nodes at this difficulty level are returned.
+	DifficultyLevel *ListContentNodesParamsDifficultyLevel `form:"difficulty_level,omitempty" json:"difficulty_level,omitempty"`
+}
+
+// ListContentNodesParamsContentType defines parameters for ListContentNodes.
+type ListContentNodesParamsContentType string
+
+// ListContentNodesParamsDifficultyLevel defines parameters for ListContentNodes.
+type ListContentNodesParamsDifficultyLevel string
+
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
 	// SkillTag When given, only exercises carrying this exact skill tag are
@@ -1073,8 +1335,14 @@ type StartPracticeSessionParams struct {
 	Count *int `form:"count,omitempty" json:"count,omitempty"`
 }
 
+// UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
+type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
+
 // CreateContentNodeJSONRequestBody defines body for CreateContentNode for application/json ContentType.
 type CreateContentNodeJSONRequestBody = CreateContentNodeRequest
+
+// UpdateContentNodeJSONRequestBody defines body for UpdateContentNode for application/json ContentType.
+type UpdateContentNodeJSONRequestBody = UpdateContentNodeRequest
 
 // CreateChallengeJSONRequestBody defines body for CreateChallenge for application/json ContentType.
 type CreateChallengeJSONRequestBody = CreateChallengeRequest
@@ -1088,8 +1356,14 @@ type CreateExerciseJSONRequestBody = CreateExerciseRequest
 // UpdateExerciseJSONRequestBody defines body for UpdateExercise for application/json ContentType.
 type UpdateExerciseJSONRequestBody = UpdateExerciseRequest
 
+// UpdateExpandedContentJSONRequestBody defines body for UpdateExpandedContent for application/json ContentType.
+type UpdateExpandedContentJSONRequestBody = UpdateExpandedContentRequest
+
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
+
+// ReplaceLearningPathJSONRequestBody defines body for ReplaceLearningPath for application/json ContentType.
+type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
@@ -1108,6 +1382,9 @@ type ServerInterface interface {
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
+	// Update a challenge's assessment configuration
+	// (PUT /challenges/{challenge_id})
+	UpdateChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
 	// List the exercises linked to a challenge
 	// (GET /challenges/{challenge_id}/exercises)
 	ListChallengeExercises(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
@@ -1117,12 +1394,18 @@ type ServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
+	// List content nodes for authoring
+	// (GET /content-nodes)
+	ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams)
 	// Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(w http.ResponseWriter, r *http.Request)
 	// Get a content node by ID
 	// (GET /content-nodes/{content_node_id})
 	GetContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// Update a content node's title and classification
+	// (PUT /content-nodes/{content_node_id})
+	UpdateContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
 	// List the challenges attached to a content node
 	// (GET /content-nodes/{content_node_id}/challenges)
 	ListContentNodeChallenges(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
@@ -1156,18 +1439,30 @@ type ServerInterface interface {
 	// Replace an exercise's authored content
 	// (PUT /exercises/{exercise_id})
 	UpdateExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID)
+	// Delete an expanded content item
+	// (DELETE /expanded-content/{expanded_content_id})
+	DeleteExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID)
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID)
+	// Update an expanded content item
+	// (PUT /expanded-content/{expanded_content_id})
+	UpdateExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID)
 	// Liveness probe
 	// (GET /healthz)
 	LivenessCheck(w http.ResponseWriter, r *http.Request)
+	// List learning paths for authoring
+	// (GET /learning-paths)
+	ListLearningPaths(w http.ResponseWriter, r *http.Request)
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(w http.ResponseWriter, r *http.Request)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// Replace a learning path's title and items
+	// (PUT /learning-paths/{learning_path_id})
+	ReplaceLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
@@ -1204,6 +1499,12 @@ func (_ Unimplemented) GetChallenge(w http.ResponseWriter, r *http.Request, chal
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Update a challenge's assessment configuration
+// (PUT /challenges/{challenge_id})
+func (_ Unimplemented) UpdateChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // List the exercises linked to a challenge
 // (GET /challenges/{challenge_id}/exercises)
 func (_ Unimplemented) ListChallengeExercises(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
@@ -1222,6 +1523,12 @@ func (_ Unimplemented) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List content nodes for authoring
+// (GET /content-nodes)
+func (_ Unimplemented) ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Create a content node
 // (POST /content-nodes)
 func (_ Unimplemented) CreateContentNode(w http.ResponseWriter, r *http.Request) {
@@ -1231,6 +1538,12 @@ func (_ Unimplemented) CreateContentNode(w http.ResponseWriter, r *http.Request)
 // Get a content node by ID
 // (GET /content-nodes/{content_node_id})
 func (_ Unimplemented) GetContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update a content node's title and classification
+// (PUT /content-nodes/{content_node_id})
+func (_ Unimplemented) UpdateContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1300,15 +1613,33 @@ func (_ Unimplemented) UpdateExercise(w http.ResponseWriter, r *http.Request, ex
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Delete an expanded content item
+// (DELETE /expanded-content/{expanded_content_id})
+func (_ Unimplemented) DeleteExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get an expanded content item by ID
 // (GET /expanded-content/{expanded_content_id})
 func (_ Unimplemented) GetExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Update an expanded content item
+// (PUT /expanded-content/{expanded_content_id})
+func (_ Unimplemented) UpdateExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Liveness probe
 // (GET /healthz)
 func (_ Unimplemented) LivenessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List learning paths for authoring
+// (GET /learning-paths)
+func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1321,6 +1652,12 @@ func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request
 // Get a learning path by ID
 // (GET /learning-paths/{learning_path_id})
 func (_ Unimplemented) GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace a learning path's title and items
+// (PUT /learning-paths/{learning_path_id})
+func (_ Unimplemented) ReplaceLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1403,6 +1740,37 @@ func (siw *ServerInterfaceWrapper) GetChallenge(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetChallenge(w, r, challengeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateChallenge operation middleware
+func (siw *ServerInterfaceWrapper) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "challenge_id" -------------
+	var challengeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "challenge_id", chi.URLParam(r, "challenge_id"), &challengeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "challenge_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateChallenge(w, r, challengeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1523,6 +1891,55 @@ func (siw *ServerInterfaceWrapper) LinkExerciseToChallenge(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListContentNodes operation middleware
+func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListContentNodesParams
+
+	// ------------- Optional query parameter "content_type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "content_type", r.URL.Query(), &params.ContentType)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_type", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill", r.URL.Query(), &params.Skill)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "difficulty_level" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "difficulty_level", r.URL.Query(), &params.DifficultyLevel)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "difficulty_level", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListContentNodes(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateContentNode operation middleware
 func (siw *ServerInterfaceWrapper) CreateContentNode(w http.ResponseWriter, r *http.Request) {
 
@@ -1565,6 +1982,37 @@ func (siw *ServerInterfaceWrapper) GetContentNode(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetContentNode(w, r, contentNodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateContentNode operation middleware
+func (siw *ServerInterfaceWrapper) UpdateContentNode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "content_node_id" -------------
+	var contentNodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_node_id", chi.URLParam(r, "content_node_id"), &contentNodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateContentNode(w, r, contentNodeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1932,6 +2380,37 @@ func (siw *ServerInterfaceWrapper) UpdateExercise(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteExpandedContent operation middleware
+func (siw *ServerInterfaceWrapper) DeleteExpandedContent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "expanded_content_id" -------------
+	var expandedContentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "expanded_content_id", chi.URLParam(r, "expanded_content_id"), &expandedContentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "expanded_content_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteExpandedContent(w, r, expandedContentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetExpandedContent operation middleware
 func (siw *ServerInterfaceWrapper) GetExpandedContent(w http.ResponseWriter, r *http.Request) {
 
@@ -1963,11 +2442,62 @@ func (siw *ServerInterfaceWrapper) GetExpandedContent(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateExpandedContent operation middleware
+func (siw *ServerInterfaceWrapper) UpdateExpandedContent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "expanded_content_id" -------------
+	var expandedContentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "expanded_content_id", chi.URLParam(r, "expanded_content_id"), &expandedContentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "expanded_content_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateExpandedContent(w, r, expandedContentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // LivenessCheck operation middleware
 func (siw *ServerInterfaceWrapper) LivenessCheck(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LivenessCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLearningPaths operation middleware
+func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLearningPaths(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2019,6 +2549,37 @@ func (siw *ServerInterfaceWrapper) GetLearningPath(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReplaceLearningPath operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceLearningPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learning_path_id" -------------
+	var learningPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learning_path_id", chi.URLParam(r, "learning_path_id"), &learningPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learning_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReplaceLearningPath(w, r, learningPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2338,6 +2899,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/challenges/{challenge_id}", wrapper.GetChallenge)
 	})
 	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/challenges/{challenge_id}", wrapper.UpdateChallenge)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/challenges/{challenge_id}/exercises", wrapper.ListChallengeExercises)
 	})
 	r.Group(func(r chi.Router) {
@@ -2347,10 +2911,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.LinkExerciseToChallenge)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/content-nodes", wrapper.ListContentNodes)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/content-nodes", wrapper.CreateContentNode)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes/{content_node_id}", wrapper.GetContentNode)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/content-nodes/{content_node_id}", wrapper.UpdateContentNode)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes/{content_node_id}/challenges", wrapper.ListContentNodeChallenges)
@@ -2386,16 +2956,28 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/exercises/{exercise_id}", wrapper.UpdateExercise)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/expanded-content/{expanded_content_id}", wrapper.DeleteExpandedContent)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/expanded-content/{expanded_content_id}", wrapper.GetExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/expanded-content/{expanded_content_id}", wrapper.UpdateExpandedContent)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.LivenessCheck)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/learning-paths", wrapper.ListLearningPaths)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/learning-paths", wrapper.CreateLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.GetLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.ReplaceLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/media/upload-url", wrapper.CreateMediaUploadUrl)
@@ -2454,6 +3036,60 @@ func (response GetChallenge401JSONResponse) VisitGetChallengeResponse(w http.Res
 type GetChallenge404JSONResponse NotFoundError
 
 func (response GetChallenge404JSONResponse) VisitGetChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateChallengeRequestObject struct {
+	ChallengeId openapi_types.UUID `json:"challenge_id"`
+	Body        *UpdateChallengeJSONRequestBody
+}
+
+type UpdateChallengeResponseObject interface {
+	VisitUpdateChallengeResponse(w http.ResponseWriter) error
+}
+
+type UpdateChallenge200JSONResponse Challenge
+
+func (response UpdateChallenge200JSONResponse) VisitUpdateChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateChallenge400JSONResponse ValidationError
+
+func (response UpdateChallenge400JSONResponse) VisitUpdateChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateChallenge401JSONResponse UnauthorizedError
+
+func (response UpdateChallenge401JSONResponse) VisitUpdateChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateChallenge403JSONResponse ForbiddenError
+
+func (response UpdateChallenge403JSONResponse) VisitUpdateChallengeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateChallenge404JSONResponse NotFoundError
+
+func (response UpdateChallenge404JSONResponse) VisitUpdateChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -2593,6 +3229,41 @@ func (response LinkExerciseToChallenge409JSONResponse) VisitLinkExerciseToChalle
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListContentNodesRequestObject struct {
+	Params ListContentNodesParams
+}
+
+type ListContentNodesResponseObject interface {
+	VisitListContentNodesResponse(w http.ResponseWriter) error
+}
+
+type ListContentNodes200JSONResponse []ContentNode
+
+func (response ListContentNodes200JSONResponse) VisitListContentNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodes401JSONResponse UnauthorizedError
+
+func (response ListContentNodes401JSONResponse) VisitListContentNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodes403JSONResponse ForbiddenError
+
+func (response ListContentNodes403JSONResponse) VisitListContentNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type CreateContentNodeRequestObject struct {
 	Body *CreateContentNodeJSONRequestBody
 }
@@ -2666,6 +3337,60 @@ func (response GetContentNode401JSONResponse) VisitGetContentNodeResponse(w http
 type GetContentNode404JSONResponse NotFoundError
 
 func (response GetContentNode404JSONResponse) VisitGetContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateContentNodeRequestObject struct {
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+	Body          *UpdateContentNodeJSONRequestBody
+}
+
+type UpdateContentNodeResponseObject interface {
+	VisitUpdateContentNodeResponse(w http.ResponseWriter) error
+}
+
+type UpdateContentNode200JSONResponse ContentNode
+
+func (response UpdateContentNode200JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateContentNode400JSONResponse ValidationError
+
+func (response UpdateContentNode400JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateContentNode401JSONResponse UnauthorizedError
+
+func (response UpdateContentNode401JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateContentNode403JSONResponse ForbiddenError
+
+func (response UpdateContentNode403JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateContentNode404JSONResponse NotFoundError
+
+func (response UpdateContentNode404JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -3157,6 +3882,49 @@ func (response UpdateExercise404JSONResponse) VisitUpdateExerciseResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type DeleteExpandedContentRequestObject struct {
+	ExpandedContentId openapi_types.UUID `json:"expanded_content_id"`
+}
+
+type DeleteExpandedContentResponseObject interface {
+	VisitDeleteExpandedContentResponse(w http.ResponseWriter) error
+}
+
+type DeleteExpandedContent204Response struct {
+}
+
+func (response DeleteExpandedContent204Response) VisitDeleteExpandedContentResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteExpandedContent401JSONResponse UnauthorizedError
+
+func (response DeleteExpandedContent401JSONResponse) VisitDeleteExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteExpandedContent403JSONResponse ForbiddenError
+
+func (response DeleteExpandedContent403JSONResponse) VisitDeleteExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteExpandedContent404JSONResponse NotFoundError
+
+func (response DeleteExpandedContent404JSONResponse) VisitDeleteExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetExpandedContentRequestObject struct {
 	ExpandedContentId openapi_types.UUID `json:"expanded_content_id"`
 }
@@ -3192,6 +3960,60 @@ func (response GetExpandedContent404JSONResponse) VisitGetExpandedContentRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateExpandedContentRequestObject struct {
+	ExpandedContentId openapi_types.UUID `json:"expanded_content_id"`
+	Body              *UpdateExpandedContentJSONRequestBody
+}
+
+type UpdateExpandedContentResponseObject interface {
+	VisitUpdateExpandedContentResponse(w http.ResponseWriter) error
+}
+
+type UpdateExpandedContent200JSONResponse ExpandedContent
+
+func (response UpdateExpandedContent200JSONResponse) VisitUpdateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExpandedContent400JSONResponse ValidationError
+
+func (response UpdateExpandedContent400JSONResponse) VisitUpdateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExpandedContent401JSONResponse UnauthorizedError
+
+func (response UpdateExpandedContent401JSONResponse) VisitUpdateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExpandedContent403JSONResponse ForbiddenError
+
+func (response UpdateExpandedContent403JSONResponse) VisitUpdateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExpandedContent404JSONResponse NotFoundError
+
+func (response UpdateExpandedContent404JSONResponse) VisitUpdateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type LivenessCheckRequestObject struct {
 }
 
@@ -3204,6 +4026,40 @@ type LivenessCheck200JSONResponse HealthStatus
 func (response LivenessCheck200JSONResponse) VisitLivenessCheckResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPathsRequestObject struct {
+}
+
+type ListLearningPathsResponseObject interface {
+	VisitListLearningPathsResponse(w http.ResponseWriter) error
+}
+
+type ListLearningPaths200JSONResponse []LearningPath
+
+func (response ListLearningPaths200JSONResponse) VisitListLearningPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPaths401JSONResponse UnauthorizedError
+
+func (response ListLearningPaths401JSONResponse) VisitListLearningPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPaths403JSONResponse ForbiddenError
+
+func (response ListLearningPaths403JSONResponse) VisitListLearningPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -3290,6 +4146,60 @@ func (response GetLearningPath403JSONResponse) VisitGetLearningPathResponse(w ht
 type GetLearningPath404JSONResponse NotFoundError
 
 func (response GetLearningPath404JSONResponse) VisitGetLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceLearningPathRequestObject struct {
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+	Body           *ReplaceLearningPathJSONRequestBody
+}
+
+type ReplaceLearningPathResponseObject interface {
+	VisitReplaceLearningPathResponse(w http.ResponseWriter) error
+}
+
+type ReplaceLearningPath200JSONResponse LearningPath
+
+func (response ReplaceLearningPath200JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceLearningPath400JSONResponse ValidationError
+
+func (response ReplaceLearningPath400JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceLearningPath401JSONResponse UnauthorizedError
+
+func (response ReplaceLearningPath401JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceLearningPath403JSONResponse ForbiddenError
+
+func (response ReplaceLearningPath403JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceLearningPath404JSONResponse NotFoundError
+
+func (response ReplaceLearningPath404JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -3624,6 +4534,9 @@ type StrictServerInterface interface {
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(ctx context.Context, request GetChallengeRequestObject) (GetChallengeResponseObject, error)
+	// Update a challenge's assessment configuration
+	// (PUT /challenges/{challenge_id})
+	UpdateChallenge(ctx context.Context, request UpdateChallengeRequestObject) (UpdateChallengeResponseObject, error)
 	// List the exercises linked to a challenge
 	// (GET /challenges/{challenge_id}/exercises)
 	ListChallengeExercises(ctx context.Context, request ListChallengeExercisesRequestObject) (ListChallengeExercisesResponseObject, error)
@@ -3633,12 +4546,18 @@ type StrictServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(ctx context.Context, request LinkExerciseToChallengeRequestObject) (LinkExerciseToChallengeResponseObject, error)
+	// List content nodes for authoring
+	// (GET /content-nodes)
+	ListContentNodes(ctx context.Context, request ListContentNodesRequestObject) (ListContentNodesResponseObject, error)
 	// Create a content node
 	// (POST /content-nodes)
 	CreateContentNode(ctx context.Context, request CreateContentNodeRequestObject) (CreateContentNodeResponseObject, error)
 	// Get a content node by ID
 	// (GET /content-nodes/{content_node_id})
 	GetContentNode(ctx context.Context, request GetContentNodeRequestObject) (GetContentNodeResponseObject, error)
+	// Update a content node's title and classification
+	// (PUT /content-nodes/{content_node_id})
+	UpdateContentNode(ctx context.Context, request UpdateContentNodeRequestObject) (UpdateContentNodeResponseObject, error)
 	// List the challenges attached to a content node
 	// (GET /content-nodes/{content_node_id}/challenges)
 	ListContentNodeChallenges(ctx context.Context, request ListContentNodeChallengesRequestObject) (ListContentNodeChallengesResponseObject, error)
@@ -3672,18 +4591,30 @@ type StrictServerInterface interface {
 	// Replace an exercise's authored content
 	// (PUT /exercises/{exercise_id})
 	UpdateExercise(ctx context.Context, request UpdateExerciseRequestObject) (UpdateExerciseResponseObject, error)
+	// Delete an expanded content item
+	// (DELETE /expanded-content/{expanded_content_id})
+	DeleteExpandedContent(ctx context.Context, request DeleteExpandedContentRequestObject) (DeleteExpandedContentResponseObject, error)
 	// Get an expanded content item by ID
 	// (GET /expanded-content/{expanded_content_id})
 	GetExpandedContent(ctx context.Context, request GetExpandedContentRequestObject) (GetExpandedContentResponseObject, error)
+	// Update an expanded content item
+	// (PUT /expanded-content/{expanded_content_id})
+	UpdateExpandedContent(ctx context.Context, request UpdateExpandedContentRequestObject) (UpdateExpandedContentResponseObject, error)
 	// Liveness probe
 	// (GET /healthz)
 	LivenessCheck(ctx context.Context, request LivenessCheckRequestObject) (LivenessCheckResponseObject, error)
+	// List learning paths for authoring
+	// (GET /learning-paths)
+	ListLearningPaths(ctx context.Context, request ListLearningPathsRequestObject) (ListLearningPathsResponseObject, error)
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(ctx context.Context, request CreateLearningPathRequestObject) (CreateLearningPathResponseObject, error)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(ctx context.Context, request GetLearningPathRequestObject) (GetLearningPathResponseObject, error)
+	// Replace a learning path's title and items
+	// (PUT /learning-paths/{learning_path_id})
+	ReplaceLearningPath(ctx context.Context, request ReplaceLearningPathRequestObject) (ReplaceLearningPathResponseObject, error)
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
@@ -3758,6 +4689,39 @@ func (sh *strictHandler) GetChallenge(w http.ResponseWriter, r *http.Request, ch
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetChallengeResponseObject); ok {
 		if err := validResponse.VisitGetChallengeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateChallenge operation middleware
+func (sh *strictHandler) UpdateChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
+	var request UpdateChallengeRequestObject
+
+	request.ChallengeId = challengeId
+
+	var body UpdateChallengeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateChallenge(ctx, request.(UpdateChallengeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateChallenge")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateChallengeResponseObject); ok {
+		if err := validResponse.VisitUpdateChallengeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3845,6 +4809,32 @@ func (sh *strictHandler) LinkExerciseToChallenge(w http.ResponseWriter, r *http.
 	}
 }
 
+// ListContentNodes operation middleware
+func (sh *strictHandler) ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams) {
+	var request ListContentNodesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListContentNodes(ctx, request.(ListContentNodesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListContentNodes")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListContentNodesResponseObject); ok {
+		if err := validResponse.VisitListContentNodesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateContentNode operation middleware
 func (sh *strictHandler) CreateContentNode(w http.ResponseWriter, r *http.Request) {
 	var request CreateContentNodeRequestObject
@@ -3895,6 +4885,39 @@ func (sh *strictHandler) GetContentNode(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetContentNodeResponseObject); ok {
 		if err := validResponse.VisitGetContentNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateContentNode operation middleware
+func (sh *strictHandler) UpdateContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	var request UpdateContentNodeRequestObject
+
+	request.ContentNodeId = contentNodeId
+
+	var body UpdateContentNodeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateContentNode(ctx, request.(UpdateContentNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateContentNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateContentNodeResponseObject); ok {
+		if err := validResponse.VisitUpdateContentNodeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4216,6 +5239,32 @@ func (sh *strictHandler) UpdateExercise(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// DeleteExpandedContent operation middleware
+func (sh *strictHandler) DeleteExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
+	var request DeleteExpandedContentRequestObject
+
+	request.ExpandedContentId = expandedContentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteExpandedContent(ctx, request.(DeleteExpandedContentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteExpandedContent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteExpandedContentResponseObject); ok {
+		if err := validResponse.VisitDeleteExpandedContentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetExpandedContent operation middleware
 func (sh *strictHandler) GetExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
 	var request GetExpandedContentRequestObject
@@ -4242,6 +5291,39 @@ func (sh *strictHandler) GetExpandedContent(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// UpdateExpandedContent operation middleware
+func (sh *strictHandler) UpdateExpandedContent(w http.ResponseWriter, r *http.Request, expandedContentId openapi_types.UUID) {
+	var request UpdateExpandedContentRequestObject
+
+	request.ExpandedContentId = expandedContentId
+
+	var body UpdateExpandedContentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateExpandedContent(ctx, request.(UpdateExpandedContentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateExpandedContent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateExpandedContentResponseObject); ok {
+		if err := validResponse.VisitUpdateExpandedContentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // LivenessCheck operation middleware
 func (sh *strictHandler) LivenessCheck(w http.ResponseWriter, r *http.Request) {
 	var request LivenessCheckRequestObject
@@ -4259,6 +5341,30 @@ func (sh *strictHandler) LivenessCheck(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LivenessCheckResponseObject); ok {
 		if err := validResponse.VisitLivenessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLearningPaths operation middleware
+func (sh *strictHandler) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
+	var request ListLearningPathsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLearningPaths(ctx, request.(ListLearningPathsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLearningPaths")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLearningPathsResponseObject); ok {
+		if err := validResponse.VisitListLearningPathsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4316,6 +5422,39 @@ func (sh *strictHandler) GetLearningPath(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetLearningPathResponseObject); ok {
 		if err := validResponse.VisitGetLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReplaceLearningPath operation middleware
+func (sh *strictHandler) ReplaceLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	var request ReplaceLearningPathRequestObject
+
+	request.LearningPathId = learningPathId
+
+	var body ReplaceLearningPathJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReplaceLearningPath(ctx, request.(ReplaceLearningPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReplaceLearningPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReplaceLearningPathResponseObject); ok {
+		if err := validResponse.VisitReplaceLearningPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

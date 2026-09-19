@@ -250,7 +250,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
-	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, newID, now)
+	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, mathrand.Shuffle)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)

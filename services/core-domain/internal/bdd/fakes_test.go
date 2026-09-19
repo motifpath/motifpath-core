@@ -148,6 +148,35 @@ func (f *fakeContentNodeRepo) put(n domain.ContentNode) {
 	f.byID[n.ID] = n
 }
 
+func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.ContentNode
+	for _, n := range f.byID {
+		if contentType != "" && n.ContentType != contentType {
+			continue
+		}
+		if skill != "" && n.Classification.Skill != skill {
+			continue
+		}
+		if difficulty != "" && n.Classification.DifficultyLevel != difficulty {
+			continue
+		}
+		result = append(result, n)
+	}
+	return result, nil
+}
+
+func (f *fakeContentNodeRepo) Update(_ context.Context, n domain.ContentNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[n.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[n.ID] = n
+	return nil
+}
+
 type fakeChallengeRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.Challenge
@@ -190,6 +219,16 @@ func (f *fakeChallengeRepo) ListByContentNodeID(_ context.Context, contentNodeID
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeChallengeRepo) Update(_ context.Context, c domain.Challenge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[c.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[c.ID] = c
+	return nil
 }
 
 // fakeExerciseRepo tracks link order per challenge/node separately from
@@ -273,6 +312,24 @@ func (f *fakeExerciseRepo) ListByChallengeID(_ context.Context, challengeID stri
 	result := make([]domain.Exercise, 0, len(f.byChallengeOrder[challengeID]))
 	for _, id := range f.byChallengeOrder[challengeID] {
 		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepo) ListByChallengeIDs(_ context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string][]domain.Exercise{}
+	for _, challengeID := range challengeIDs {
+		ids := f.byChallengeOrder[challengeID]
+		if len(ids) == 0 {
+			continue
+		}
+		exercises := make([]domain.Exercise, 0, len(ids))
+		for _, id := range ids {
+			exercises = append(exercises, f.byID[id])
+		}
+		result[challengeID] = exercises
 	}
 	return result, nil
 }
@@ -442,6 +499,42 @@ func (f *fakeExpandedContentRepo) ListByContentNode(_ context.Context, contentNo
 	return items, nil
 }
 
+func (f *fakeExpandedContentRepo) Update(_ context.Context, item domain.ExpandedContent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[item.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[item.ID] = item
+	nodeItems := f.byNode[item.ContentNodeID]
+	for i, existing := range nodeItems {
+		if existing.ID == item.ID {
+			nodeItems[i] = item
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeExpandedContentRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	nodeItems := f.byNode[item.ContentNodeID]
+	remaining := make([]domain.ExpandedContent, 0, len(nodeItems))
+	for _, existing := range nodeItems {
+		if existing.ID != id {
+			remaining = append(remaining, existing)
+		}
+	}
+	f.byNode[item.ContentNodeID] = remaining
+	return nil
+}
+
 func sortExpandedContent(items []domain.ExpandedContent) {
 	less := func(i, j int) bool {
 		key := func(item domain.ExpandedContent) int {
@@ -492,6 +585,26 @@ func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[p.ID] = p
+}
+
+func (f *fakeLearningPathRepo) List(_ context.Context) ([]domain.LearningPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.LearningPath, 0, len(f.byID))
+	for _, p := range f.byID {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[p.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[p.ID] = p
+	return nil
 }
 
 type fakePathAssignmentRepo struct {

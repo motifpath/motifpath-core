@@ -17,4 +17,10 @@ type ExpandedContentRepository interface {
 	// ordered by trigger position ascending (trigger_at_seconds for video
 	// nodes, trigger_at_paragraph for article nodes).
 	ListByContentNode(ctx context.Context, contentNodeID string) ([]domain.ExpandedContent, error)
+
+	// Update returns domain.ErrNotFound if no item exists with the given id.
+	Update(ctx context.Context, item domain.ExpandedContent) error
+
+	// Delete returns domain.ErrNotFound if no item exists with the given id.
+	Delete(ctx context.Context, id string) error
 }

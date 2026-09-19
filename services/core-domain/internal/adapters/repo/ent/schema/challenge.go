@@ -11,8 +11,11 @@ import (
 )
 
 // Challenge is the assessment unit for a content node: it groups exercises
-// and carries the subject tag, pass threshold, and optional remediation
-// target used by the rules-based recommendation engine.
+// and carries the subject tag and pass threshold used by the rules-based
+// recommendation engine, plus an optional, purely informational time
+// threshold. Remediation targets are not modeled here — see Exercise's
+// remediation_targets, which attaches remediation to the specific exercise
+// a student struggled with rather than the whole challenge.
 type Challenge struct {
 	ent.Schema
 }
@@ -29,7 +32,11 @@ func (Challenge) Fields() []ent.Field {
 		field.String("subject_tag"),
 		field.Int("pass_threshold"),
 
-		field.UUID("remediation_target_content_node_id", uuid.UUID{}).
+		// time_threshold_ms is the teacher's explicit override only — never
+		// enforced, never affects scoring. When absent, the value shown to
+		// a caller is computed in the application layer from linked
+		// exercises' estimated durations, not stored here.
+		field.Int("time_threshold_ms").
 			Optional().
 			Nillable(),
 

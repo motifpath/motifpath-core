@@ -1,4 +1,4 @@
-h1:rjedfgZKV35S0nr+oGPz9ZDK5lo08U1U6eUuT8fgJxg=
+h1:Tb1xRn3vUjEGqKXewJZiD2nPqWa5uvfdQzmg4rxTYKA=
 20260826200228_core-domain-initial-schema.up.sql h1:vGtBw0KPCKXvzhcv9kADPyNx0CaAV5I9tRj7hA5BvFo=
 20260906105417_learning_path_item_section_label.up.sql h1:zfqSmJArdqvUK19IMMKEeRPUck1D0Ucy9zu4Iqz7Jd8=
 20260913234948_pb40_exercise_authoring.up.sql h1:DWrdUZNcBGhY9rAiHpIQU8pQv4P1rNO8EJOYvcYUeVw=
@@ -6,4 +6,6 @@ h1:rjedfgZKV35S0nr+oGPz9ZDK5lo08U1U6eUuT8fgJxg=
 20260915172035_ordered_exercise_links.up.sql h1:QBvOLJ0AnhzHTUPmc3EuNTYEFgDcrJn9nrrWvRH4s38=
 20260915180545_drop_exercise_link_position.up.sql h1:boWt9O6yc8lcCYH1Po3nJJXgd3fhbIjcLK+60wb2P6Y=
 20260917001145_pb52_audio_selection_exercise_type.up.sql h1:di9yL6xe5KCg294TQqe5sJIc+khaZM6oXL8Z84wwo9w=
-20260918221420_add_language_i18n.up.sql h1:iKZsQ1poUDhHlzgZ39TlE1YdTlHu5SSlW7o7iQM8MCU=
+20260918183838_challenge-time-threshold-remove-remediation-target.up.sql h1:gFAgg8Lpw0GxlHHuKojG/mYi9NF+n3M+/vUUKt5RKhw=
+20260918184716_expanded-content-rich-text-and-exercise-remediation-targets.up.sql h1:Mv9IfitQjDiIcJyhG30ox2RhZ0WGJ7nQ3SBIAJFiMUg=
+20260918221420_add_language_i18n.up.sql h1:bLxCav64c3eAnIB6gTQ6YNSOM5f+54z+CYfLVoiIccA=

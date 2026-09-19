@@ -59,7 +59,63 @@ type ContentNode struct {
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
 // always forced to pending, regardless of any caller-supplied value — only
-// an admin confirms a classification, never the teacher who created it.
+// an admin confirms a classification, never the teacher who created it. See
+// validateContentNodeClassification for the shared classification rules.
+func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
+	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+
+	switch contentType {
+	case ContentTypeVideo, ContentTypeArticle:
+	default:
+		errs = append(errs, FieldError{Field: "content_type", Reason: "must be video or article"})
+	}
+
+	if len(errs) > 0 {
+		return ContentNode{}, &ValidationError{Fields: errs}
+	}
+
+	return ContentNode{
+		ID:          id,
+		TeacherID:   teacherID,
+		Title:       title,
+		ContentType: contentType,
+		Classification: Classification{
+			Skill:           skill,
+			Concept:         concept,
+			DifficultyLevel: difficulty,
+			ReviewState:     ReviewStatePending,
+		},
+		Languages: languagesFromCodes(languageCodes),
+		CreatedAt: createdAt,
+	}, nil
+}
+
+// Update validates and returns a copy of n with its title, classification,
+// and languages replaced. ContentType and Classification.ReviewState carry
+// over unchanged — content_type cannot change after creation since it
+// determines which ExpandedContent trigger fields are valid for items
+// already attached to this node, and an edit does not reset or require
+// re-confirming an admin's prior review.
+func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyLevel, languageCodes []string) (ContentNode, error) {
+	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if len(errs) > 0 {
+		return ContentNode{}, &ValidationError{Fields: errs}
+	}
+
+	updated := n
+	updated.Title = title
+	updated.Classification.Skill = skill
+	updated.Classification.Concept = concept
+	updated.Classification.DifficultyLevel = difficulty
+	updated.Languages = languagesFromCodes(languageCodes)
+	return updated, nil
+}
+
+// validateContentNodeClassification checks the fields shared by creation and
+// update — everything except content_type itself, which only creation
+// validates (it cannot be changed after creation).
 //
 // When skill, concept, and difficulty are all zero-valued, the failure is
 // reported against the single field "classification" rather than three
@@ -70,18 +126,11 @@ type ContentNode struct {
 // invalid" — which matters because the two are reported under different
 // field names in the merged Gherkin scenarios (register-user-style "whole
 // object omitted" -> "classification"; a single bad value -> its own field).
-func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
+func validateContentNodeClassification(title, skill, concept string, difficulty DifficultyLevel) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
-	}
-	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
-
-	switch contentType {
-	case ContentTypeVideo, ContentTypeArticle:
-	default:
-		errs = append(errs, FieldError{Field: "content_type", Reason: "must be video or article"})
 	}
 
 	difficultyValid := false
@@ -105,22 +154,5 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 		}
 	}
 
-	if len(errs) > 0 {
-		return ContentNode{}, &ValidationError{Fields: errs}
-	}
-
-	return ContentNode{
-		ID:          id,
-		TeacherID:   teacherID,
-		Title:       title,
-		ContentType: contentType,
-		Classification: Classification{
-			Skill:           skill,
-			Concept:         concept,
-			DifficultyLevel: difficulty,
-			ReviewState:     ReviewStatePending,
-		},
-		Languages: languagesFromCodes(languageCodes),
-		CreatedAt: createdAt,
-	}, nil
+	return errs
 }

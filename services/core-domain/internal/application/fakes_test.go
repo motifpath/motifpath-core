@@ -164,6 +164,35 @@ func (f *fakeContentNodeRepository) put(node domain.ContentNode) {
 	f.byID[node.ID] = node
 }
 
+func (f *fakeContentNodeRepository) List(_ context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.ContentNode
+	for _, node := range f.byID {
+		if contentType != "" && node.ContentType != contentType {
+			continue
+		}
+		if skill != "" && node.Classification.Skill != skill {
+			continue
+		}
+		if difficulty != "" && node.Classification.DifficultyLevel != difficulty {
+			continue
+		}
+		result = append(result, node)
+	}
+	return result, nil
+}
+
+func (f *fakeContentNodeRepository) Update(_ context.Context, node domain.ContentNode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[node.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[node.ID] = node
+	return nil
+}
+
 // fakeChallengeRepository is a minimal in-memory ports.ChallengeRepository.
 type fakeChallengeRepository struct {
 	mu        sync.Mutex
@@ -211,6 +240,16 @@ func (f *fakeChallengeRepository) ListByContentNodeID(_ context.Context, content
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeChallengeRepository) Update(_ context.Context, challenge domain.Challenge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[challenge.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[challenge.ID] = challenge
+	return nil
 }
 
 // fakeExerciseRepository is a minimal in-memory ports.ExerciseRepository.
@@ -299,6 +338,24 @@ func (f *fakeExerciseRepository) ListByChallengeID(_ context.Context, challengeI
 	result := make([]domain.Exercise, 0, len(f.byChallengeOrder[challengeID]))
 	for _, id := range f.byChallengeOrder[challengeID] {
 		result = append(result, f.byID[id])
+	}
+	return result, nil
+}
+
+func (f *fakeExerciseRepository) ListByChallengeIDs(_ context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string][]domain.Exercise{}
+	for _, challengeID := range challengeIDs {
+		ids := f.byChallengeOrder[challengeID]
+		if len(ids) == 0 {
+			continue
+		}
+		exercises := make([]domain.Exercise, 0, len(ids))
+		for _, id := range ids {
+			exercises = append(exercises, f.byID[id])
+		}
+		result[challengeID] = exercises
 	}
 	return result, nil
 }
@@ -468,6 +525,42 @@ func (f *fakeExpandedContentRepository) ListByContentNode(_ context.Context, con
 	return f.byNode[contentNodeID], nil
 }
 
+func (f *fakeExpandedContentRepository) Update(_ context.Context, item domain.ExpandedContent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[item.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[item.ID] = item
+	nodeItems := f.byNode[item.ContentNodeID]
+	for i, existing := range nodeItems {
+		if existing.ID == item.ID {
+			nodeItems[i] = item
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeExpandedContentRepository) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	nodeItems := f.byNode[item.ContentNodeID]
+	remaining := make([]domain.ExpandedContent, 0, len(nodeItems))
+	for _, existing := range nodeItems {
+		if existing.ID != id {
+			remaining = append(remaining, existing)
+		}
+	}
+	f.byNode[item.ContentNodeID] = remaining
+	return nil
+}
+
 // fakeLearningPathRepository is a minimal in-memory ports.LearningPathRepository.
 type fakeLearningPathRepository struct {
 	mu        sync.Mutex
@@ -503,6 +596,26 @@ func (f *fakeLearningPathRepository) put(path domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[path.ID] = path
+}
+
+func (f *fakeLearningPathRepository) List(_ context.Context) ([]domain.LearningPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.LearningPath, 0, len(f.byID))
+	for _, path := range f.byID {
+		result = append(result, path)
+	}
+	return result, nil
+}
+
+func (f *fakeLearningPathRepository) Replace(_ context.Context, path domain.LearningPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[path.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[path.ID] = path
+	return nil
 }
 
 // fakePathAssignmentRepository is a minimal in-memory
