@@ -41,7 +41,10 @@ type StudentPathItem struct {
 // caller's resolved locale cannot access — no language edge on the item's
 // ContentNode (or a required Exercise) matches the locale, and neither has
 // an "any" edge. This composes with, not replaces, prerequisite-based
-// locking: an item is locked if either reason applies. See ADR-024.
+// locking: an item not yet completed is locked if either reason applies.
+// It never revokes access to an item the student has already completed,
+// even if the locale check would otherwise fail it — completing a node
+// while it was available must not later hide it behind a locale change.
 //
 // An item is locked unless every earlier item in the path is completed —
 // position 1 is never locked by the prerequisite rule (there is no earlier
@@ -62,7 +65,7 @@ func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionSt
 		if !priorCompleted {
 			status = CompletionStatusLocked
 		}
-		if langLocked[item.ContentNodeID] {
+		if status != CompletionStatusCompleted && langLocked[item.ContentNodeID] {
 			status = CompletionStatusLocked
 		}
 
