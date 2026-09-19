@@ -78,7 +78,7 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err := s.nodes.Update(ctx, updated); err != nil {
 		return domain.ContentNode{}, err
 	}
-	return s.nodes.GetByID(ctx, id)
+	return updated, nil
 }
 
 // CreateExpandedContent attaches an expositive media item to the content

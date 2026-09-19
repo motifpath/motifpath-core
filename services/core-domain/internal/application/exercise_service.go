@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -61,17 +60,28 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 // existing content node. Whether a target's shape (exactly one of
 // content_node_id/rich_content) is valid is domain.NewExercise/Update's own
 // concern — this only checks the existence a repository round-trip
-// requires.
+// requires. Looks up every referenced id in a single batched GetByIDs call
+// rather than one GetByID per target, since a caller may name the same
+// content node more than once across targets and each lookup is otherwise a
+// separate round trip.
 func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targets []domain.RemediationTarget) error {
+	ids := make([]string, 0, len(targets))
 	for _, target := range targets {
-		if target.ContentNodeID == nil || *target.ContentNodeID == "" {
-			continue
+		if target.ContentNodeID != nil && *target.ContentNodeID != "" {
+			ids = append(ids, *target.ContentNodeID)
 		}
-		if _, err := s.nodes.GetByID(ctx, *target.ContentNodeID); err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				return domain.NewValidationError("remediation_targets", "references a content node that does not exist: "+*target.ContentNodeID)
-			}
-			return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	found, err := s.nodes.GetByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, ok := found[id]; !ok {
+			return domain.NewValidationError("remediation_targets", "references a content node that does not exist: "+id)
 		}
 	}
 	return nil
@@ -122,7 +132,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}
-	return s.exercises.GetByID(ctx, id)
+	return updated, nil
 }
 
 // LinkExerciseToChallenge links an existing exercise into a challenge. Only

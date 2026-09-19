@@ -303,6 +303,24 @@ func (f *fakeExerciseRepository) ListByChallengeID(_ context.Context, challengeI
 	return result, nil
 }
 
+func (f *fakeExerciseRepository) ListByChallengeIDs(_ context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string][]domain.Exercise{}
+	for _, challengeID := range challengeIDs {
+		ids := f.byChallengeOrder[challengeID]
+		if len(ids) == 0 {
+			continue
+		}
+		exercises := make([]domain.Exercise, 0, len(ids))
+		for _, id := range ids {
+			exercises = append(exercises, f.byID[id])
+		}
+		result[challengeID] = exercises
+	}
+	return result, nil
+}
+
 func (f *fakeExerciseRepository) LinkContentNode(_ context.Context, exerciseID, contentNodeID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

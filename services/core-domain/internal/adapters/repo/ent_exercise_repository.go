@@ -177,6 +177,59 @@ func (r *EntExerciseRepository) ListByChallengeID(ctx context.Context, challenge
 	return r.exercisesInOrder(ctx, ids)
 }
 
+// ListByChallengeIDs is ListByChallengeID batched across multiple
+// challenges: one query for every ChallengeExercise link across
+// challengeIDs, one query for every linked exercise, then grouped back by
+// challenge id in Go — instead of one round trip per challenge.
+func (r *EntExerciseRepository) ListByChallengeIDs(ctx context.Context, challengeIDs []string) (map[string][]domain.Exercise, error) {
+	result := map[string][]domain.Exercise{}
+	if len(challengeIDs) == 0 {
+		return result, nil
+	}
+
+	parsed := make([]uuid.UUID, 0, len(challengeIDs))
+	for _, id := range challengeIDs {
+		u, err := uuid.Parse(id)
+		if err != nil {
+			continue // not a valid id, so it can never match — left absent from result
+		}
+		parsed = append(parsed, u)
+	}
+	if len(parsed) == 0 {
+		return result, nil
+	}
+
+	links, err := r.client.ChallengeExercise.Query().
+		Where(challengeexercise.ChallengeIDIn(parsed...)).
+		Order(challengeexercise.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(links) == 0 {
+		return result, nil
+	}
+
+	exerciseIDs := make([]uuid.UUID, len(links))
+	for i, link := range links {
+		exerciseIDs[i] = link.ExerciseID
+	}
+	byID, err := r.exercisesByID(ctx, exerciseIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, link := range links {
+		row, ok := byID[link.ExerciseID]
+		if !ok {
+			continue
+		}
+		key := link.ChallengeID.String()
+		result[key] = append(result[key], toDomainExercise(row))
+	}
+	return result, nil
+}
+
 // LinkContentNode links exerciseID into contentNodeID as a path exercise,
 // via the ContentNodeExercise join entity — see LinkChallenge for why its
 // auto-incrementing id column is enough for link order on its own.
@@ -238,6 +291,24 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 	if len(ids) == 0 {
 		return nil, nil
 	}
+	byID, err := r.exercisesByID(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	ordered := make([]*ent.Exercise, 0, len(ids))
+	for _, id := range ids {
+		if row, ok := byID[id]; ok {
+			ordered = append(ordered, row)
+		}
+	}
+	return toDomainExercises(ordered), nil
+}
+
+// exercisesByID batch-fetches the exercises matching ids, with the edges
+// (challenges, content nodes, options) every caller of this file's exercise
+// queries needs, keyed by id. Shared by exercisesInOrder and
+// ListByChallengeIDs so the eager-load list lives in exactly one place.
+func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*ent.Exercise, error) {
 	rows, err := r.client.Exercise.Query().
 		Where(exercise.IDIn(ids...)).
 		WithChallenges().
@@ -251,13 +322,7 @@ func (r *EntExerciseRepository) exercisesInOrder(ctx context.Context, ids []uuid
 	for _, row := range rows {
 		byID[row.ID] = row
 	}
-	ordered := make([]*ent.Exercise, 0, len(ids))
-	for _, id := range ids {
-		if row, ok := byID[id]; ok {
-			ordered = append(ordered, row)
-		}
-	}
-	return toDomainExercises(ordered), nil
+	return byID, nil
 }
 
 // ListBySkillTag filters in Go rather than in the query — skill_tags is a

@@ -37,23 +37,9 @@ func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller dom
 		return domain.LearningPath{}, domain.ErrForbidden
 	}
 
-	contentNodeIDs := make([]string, len(pathItems))
-	for i, item := range pathItems {
-		contentNodeIDs[i] = item.ContentNodeID
-	}
-
-	found, err := s.nodes.GetByIDs(ctx, contentNodeIDs)
+	items, err := s.resolvePathItems(ctx, pathItems)
 	if err != nil {
 		return domain.LearningPath{}, err
-	}
-
-	items := make([]domain.NewLearningPathItem, 0, len(pathItems))
-	for _, item := range pathItems {
-		node, ok := found[item.ContentNodeID]
-		if !ok {
-			return domain.LearningPath{}, domain.NewValidationError("content_node_id", "references a content node that does not exist: "+item.ContentNodeID)
-		}
-		items = append(items, domain.NewLearningPathItem{Node: node, SectionLabel: item.SectionLabel})
 	}
 
 	path, err := domain.NewLearningPath(s.newID(), caller.ID, title, items, s.now())
@@ -103,23 +89,9 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 		return domain.LearningPath{}, err
 	}
 
-	contentNodeIDs := make([]string, len(pathItems))
-	for i, item := range pathItems {
-		contentNodeIDs[i] = item.ContentNodeID
-	}
-
-	found, err := s.nodes.GetByIDs(ctx, contentNodeIDs)
+	items, err := s.resolvePathItems(ctx, pathItems)
 	if err != nil {
 		return domain.LearningPath{}, err
-	}
-
-	items := make([]domain.NewLearningPathItem, 0, len(pathItems))
-	for _, item := range pathItems {
-		node, ok := found[item.ContentNodeID]
-		if !ok {
-			return domain.LearningPath{}, domain.NewValidationError("content_node_id", "references a content node that does not exist: "+item.ContentNodeID)
-		}
-		items = append(items, domain.NewLearningPathItem{Node: node, SectionLabel: item.SectionLabel})
 	}
 
 	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, title, items, existing.CreatedAt)
@@ -130,4 +102,32 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 		return domain.LearningPath{}, err
 	}
 	return replaced, nil
+}
+
+// resolvePathItems turns pathItems into the resolved domain.NewLearningPathItem
+// slice domain.NewLearningPath needs, batching the content-node lookup into
+// a single GetByIDs call. Returns a domain.ValidationError under
+// "content_node_id" naming the first item whose content_node_id doesn't
+// exist — shared by CreateLearningPath and ReplaceLearningPath, which
+// resolve items identically.
+func (s *LearningPathService) resolvePathItems(ctx context.Context, pathItems []PathItemInput) ([]domain.NewLearningPathItem, error) {
+	contentNodeIDs := make([]string, len(pathItems))
+	for i, item := range pathItems {
+		contentNodeIDs[i] = item.ContentNodeID
+	}
+
+	found, err := s.nodes.GetByIDs(ctx, contentNodeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]domain.NewLearningPathItem, 0, len(pathItems))
+	for _, item := range pathItems {
+		node, ok := found[item.ContentNodeID]
+		if !ok {
+			return nil, domain.NewValidationError("content_node_id", "references a content node that does not exist: "+item.ContentNodeID)
+		}
+		items = append(items, domain.NewLearningPathItem{Node: node, SectionLabel: item.SectionLabel})
+	}
+	return items, nil
 }

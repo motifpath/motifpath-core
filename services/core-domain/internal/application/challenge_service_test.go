@@ -152,6 +152,32 @@ func TestChallengeService_ListChallengesForContentNode(t *testing.T) {
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
+
+	t.Run("each listed challenge resolves its own time threshold independently", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "overridden", ContentNodeID: "node-1", TimeThresholdMS: intPtr(90000)})
+		challenges.put(domain.Challenge{ID: "derived", ContentNodeID: "node-1"})
+		challenges.put(domain.Challenge{ID: "no-exercises", ContentNodeID: "node-1"})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"derived"}, EstimatedDurationSeconds: intPtr(30)})
+		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"derived"}, EstimatedDurationSeconds: intPtr(45)})
+		svc := newChallengeService(nodes, challenges, exercises)
+
+		got, err := svc.ListChallengesForContentNode(context.Background(), "node-1")
+
+		require.NoError(t, err)
+		byID := map[string]domain.Challenge{}
+		for _, c := range got {
+			byID[c.ID] = c
+		}
+		require.NotNil(t, byID["overridden"].TimeThresholdMS)
+		assert.Equal(t, 90000, *byID["overridden"].TimeThresholdMS)
+		require.NotNil(t, byID["derived"].TimeThresholdMS)
+		assert.Equal(t, 75000, *byID["derived"].TimeThresholdMS)
+		assert.Nil(t, byID["no-exercises"].TimeThresholdMS)
+	})
 }
 
 func TestChallengeService_GetChallenge(t *testing.T) {

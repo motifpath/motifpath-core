@@ -209,6 +209,47 @@ func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 	assert.Empty(t, empty)
 }
 
+// TestEntExerciseRepository_ListByChallengeIDs confirms the batched lookup
+// groups each linked exercise under the right challenge id, leaves a
+// challenge with no links absent from the result, and ignores unknown ids
+// passed alongside real ones.
+func TestEntExerciseRepository_ListByChallengeIDs(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	challengeRepo := NewEntChallengeRepository(client)
+	repo := NewEntExerciseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	challengeA := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, challengeA))
+	challengeB := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, challengeB))
+	challengeC := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "empty", PassThreshold: 70, CreatedAt: fixedAt}
+	require.NoError(t, challengeRepo.Create(ctx, challengeC))
+
+	label := "A major"
+	exA := domain.Exercise{ID: uuid.NewString(), Title: "Ex A", Prompt: domain.NewPlainTextPrompt("p"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, exA))
+	exB := domain.Exercise{ID: uuid.NewString(), Title: "Ex B", Prompt: domain.NewPlainTextPrompt("p"), ExerciseType: domain.ExerciseTypeTextResponse, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, exB))
+	require.NoError(t, repo.LinkChallenge(ctx, exA.ID, challengeA.ID))
+	require.NoError(t, repo.LinkChallenge(ctx, exB.ID, challengeB.ID))
+
+	byChallenge, err := repo.ListByChallengeIDs(ctx, []string{challengeA.ID, challengeB.ID, challengeC.ID, uuid.NewString()})
+	require.NoError(t, err)
+	require.Len(t, byChallenge, 2)
+	require.Len(t, byChallenge[challengeA.ID], 1)
+	assert.Equal(t, exA.ID, byChallenge[challengeA.ID][0].ID)
+	require.Len(t, byChallenge[challengeB.ID], 1)
+	assert.Equal(t, exB.ID, byChallenge[challengeB.ID][0].ID)
+	assert.NotContains(t, byChallenge, challengeC.ID)
+
+	empty, err := repo.ListByChallengeIDs(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}
+
 // TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder guards
 // against relying on incidental Postgres row order: an implicit ent
 // many-to-many join table carries no sequence column, so a plain
@@ -445,6 +486,60 @@ func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
 
 	_, err = repo.GetByID(ctx, uuid.NewString())
 	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+// TestEntLearningPathRepository_List confirms List batches its item and
+// content-node lookups across every path (rather than one GetByID-style
+// round trip per path) while still returning each path's items in the
+// right order and never leaking another path's items into it.
+func TestEntLearningPathRepository_List(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntLearningPathRepository(client)
+
+	// A fresh database with no paths yet returns a non-nil empty slice, not
+	// nil — callers (ultimately the HTTP JSON response) must see `[]`, not
+	// `null`.
+	empty, err := repo.List(ctx)
+	require.NoError(t, err)
+	assert.NotNil(t, empty)
+	assert.Empty(t, empty)
+
+	node1 := seedContentNode(t, ctx, nodeRepo)
+	node2 := seedContentNode(t, ctx, nodeRepo)
+	node3 := seedContentNode(t, ctx, nodeRepo)
+
+	pathA := domain.LearningPath{
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path A",
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType},
+			{Position: 2, ContentNodeID: node2.ID, Title: node2.Title, ContentType: node2.ContentType},
+		},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, pathA))
+	pathB := domain.LearningPath{
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path B",
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: node3.ID, Title: node3.Title, ContentType: node3.ContentType},
+		},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, pathB))
+
+	list, err := repo.List(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+
+	byID := map[string]domain.LearningPath{}
+	for _, p := range list {
+		byID[p.ID] = p
+	}
+	require.Contains(t, byID, pathA.ID)
+	require.Contains(t, byID, pathB.ID)
+	assert.Equal(t, pathA, byID[pathA.ID])
+	assert.Equal(t, pathB, byID[pathB.ID])
 }
 
 func TestEntPathAssignmentRepository_ReplaceActive(t *testing.T) {

@@ -65,15 +65,7 @@ func (s *ChallengeService) ListChallengesForContentNode(ctx context.Context, con
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.Challenge, len(challenges))
-	for i, c := range challenges {
-		resolved, err := s.resolveTimeThreshold(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = resolved
-	}
-	return result, nil
+	return s.resolveTimeThresholds(ctx, challenges)
 }
 
 // UpdateChallenge replaces the given challenge's subject tag, pass
@@ -122,12 +114,61 @@ func (s *ChallengeService) resolveTimeThreshold(ctx context.Context, challenge d
 		return challenge, nil
 	}
 
+	sum := sumEstimatedDurationMS(linked)
+	challenge.TimeThresholdMS = &sum
+	return challenge, nil
+}
+
+// sumEstimatedDurationMS sums exercises' EstimatedDurationSeconds, converted
+// to milliseconds (an exercise with no estimate contributes 0).
+func sumEstimatedDurationMS(exercises []domain.Exercise) int {
 	sum := 0
-	for _, ex := range linked {
+	for _, ex := range exercises {
 		if ex.EstimatedDurationSeconds != nil {
 			sum += *ex.EstimatedDurationSeconds * 1000
 		}
 	}
-	challenge.TimeThresholdMS = &sum
-	return challenge, nil
+	return sum
+}
+
+// resolveTimeThresholds is resolveTimeThreshold applied to a whole list,
+// batching the exercise lookup into a single ListByChallengeIDs call across
+// every challenge that lacks an explicit override, instead of one
+// ListByChallengeID round trip per challenge.
+func (s *ChallengeService) resolveTimeThresholds(ctx context.Context, challenges []domain.Challenge) ([]domain.Challenge, error) {
+	needsResolution := make([]string, 0, len(challenges))
+	for _, c := range challenges {
+		if c.TimeThresholdMS == nil {
+			needsResolution = append(needsResolution, c.ID)
+		}
+	}
+
+	// Every challenge already carries an explicit override — skip the
+	// lookup outright rather than relying on ListByChallengeIDs happening
+	// to no-op on empty input, an implementation detail of one adapter.
+	var linkedByChallenge map[string][]domain.Exercise
+	if len(needsResolution) > 0 {
+		var err error
+		linkedByChallenge, err = s.exercises.ListByChallengeIDs(ctx, needsResolution)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	result := make([]domain.Challenge, len(challenges))
+	for i, c := range challenges {
+		if c.TimeThresholdMS != nil {
+			result[i] = c
+			continue
+		}
+		linked := linkedByChallenge[c.ID]
+		if len(linked) == 0 {
+			result[i] = c
+			continue
+		}
+		sum := sumEstimatedDurationMS(linked)
+		c.TimeThresholdMS = &sum
+		result[i] = c
+	}
+	return result, nil
 }
