@@ -64,7 +64,7 @@ func (w *world) putContentNodeWithSkill(slug, skill string) error {
 	w.lastNodeSlug = slug
 	w.nodes.put(domain.ContentNode{
 		ID:          nodeID(slug).String(),
-		TeacherID:   deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID:   w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:       slug,
 		ContentType: domain.ContentTypeVideo,
 		Classification: domain.Classification{
@@ -232,7 +232,7 @@ func (w *world) putContentNode(slug string, contentType domain.ContentType) erro
 	w.lastNodeSlug = slug
 	w.nodes.put(domain.ContentNode{
 		ID:          nodeID(slug).String(),
-		TeacherID:   deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID:   w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:       slug,
 		ContentType: contentType,
 		Classification: domain.Classification{

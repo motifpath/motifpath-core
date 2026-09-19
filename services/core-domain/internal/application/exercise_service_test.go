@@ -248,6 +248,29 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		assertHasField(t, valErr, "prompt")
 	})
 
+	// audio/video node types are valid in the rich_text ExpandedContent and
+	// remediation-target editors, which share this same prompt-document
+	// validation, but the exercise-prompt authoring toolbar never offers
+	// them — an exercise's own prompt must still reject them.
+	for _, nodeType := range []string{"audio", "video"} {
+		t.Run("creating an exercise with a prompt using a "+nodeType+" node is rejected", func(t *testing.T) {
+			svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+			prompt := domain.PromptDocument{
+				Type: "doc",
+				Content: []domain.PromptNode{
+					{Type: domain.PromptNodeType(nodeType)},
+				},
+			}
+
+			_, err := svc.CreateExercise(context.Background(), teacherCaller(),
+				"title", prompt, domain.ExerciseTypeTextResponse, nil, nil, nil, textResponseOptions(), nil, nil)
+
+			var valErr *domain.ValidationError
+			require.True(t, errors.As(err, &valErr))
+			assertHasField(t, valErr, "prompt")
+		})
+	}
+
 	t.Run("creating an exercise without a title is rejected", func(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 

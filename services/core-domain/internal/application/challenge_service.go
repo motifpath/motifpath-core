@@ -41,7 +41,11 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.Us
 	if err := s.challenges.Create(ctx, challenge); err != nil {
 		return domain.Challenge{}, err
 	}
-	return s.resolveTimeThreshold(ctx, challenge)
+	// A brand-new challenge can't have any linked exercises yet, so
+	// resolveTimeThreshold's lookup would always resolve to "no exercises
+	// linked" — skip straight to that outcome instead of paying for a
+	// guaranteed-empty round trip.
+	return challenge, nil
 }
 
 // GetChallenge returns the challenge with the given id. Any authenticated
@@ -70,9 +74,9 @@ func (s *ChallengeService) ListChallengesForContentNode(ctx context.Context, con
 
 // UpdateChallenge replaces the given challenge's subject tag, pass
 // threshold, time threshold override, and shuffle flags. The challenge's
-// linked exercises are untouched. Only teachers and admins may update a
-// challenge. Returns domain.ErrNotFound if no challenge exists with the
-// given id.
+// linked exercises are untouched. Only the teacher who created the
+// challenge's content node, or an admin, may update it. Returns
+// domain.ErrNotFound if no challenge exists with the given id.
 func (s *ChallengeService) UpdateChallenge(ctx context.Context, caller domain.User, id, subjectTag string, passThreshold int, timeThresholdMS *int, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Challenge{}, domain.ErrForbidden
@@ -80,6 +84,13 @@ func (s *ChallengeService) UpdateChallenge(ctx context.Context, caller domain.Us
 
 	existing, err := s.challenges.GetByID(ctx, id)
 	if err != nil {
+		return domain.Challenge{}, err
+	}
+	node, err := s.nodes.GetByID(ctx, existing.ContentNodeID)
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	if err := requireOwner(caller, node.TeacherID); err != nil {
 		return domain.Challenge{}, err
 	}
 

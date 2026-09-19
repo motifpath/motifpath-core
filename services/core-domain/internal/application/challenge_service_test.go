@@ -261,9 +261,11 @@ func TestChallengeService_TimeThresholdResolution(t *testing.T) {
 
 func TestChallengeService_UpdateChallenge(t *testing.T) {
 	t.Run("a teacher updates a challenge's subject tag and pass threshold", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
 		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, newFakeExerciseRepository())
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
 		got, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "triad-shapes-revised", 85, nil, false, false)
 
@@ -273,9 +275,11 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("a teacher sets an explicit time threshold on an existing challenge", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, newFakeExerciseRepository())
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
 		got, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "triad-shapes", 70, intPtr(90000), false, false)
 
@@ -285,11 +289,13 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("a teacher clears a challenge's explicit time threshold, falling back to the computed value", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70, TimeThresholdMS: intPtr(90000)})
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70, TimeThresholdMS: intPtr(90000)})
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"challenge-1"}, EstimatedDurationSeconds: intPtr(30)})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, exercises)
+		svc := newChallengeService(nodes, challenges, exercises)
 
 		got, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "triad-shapes", 70, nil, false, false)
 
@@ -299,11 +305,13 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("updating does not change linked exercises", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"challenge-1"}})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, exercises)
+		svc := newChallengeService(nodes, challenges, exercises)
 
 		_, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "triad-shapes-revised", 70, nil, false, false)
 		require.NoError(t, err)
@@ -315,9 +323,11 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("updating without a subject tag is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, newFakeExerciseRepository())
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
 		_, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "", 70, nil, false, false)
 
@@ -327,9 +337,11 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("updating with a pass threshold above 100 is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, newFakeExerciseRepository())
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
 		_, err := svc.UpdateChallenge(context.Background(), teacherCaller(), "challenge-1", "triad-shapes", 101, nil, false, false)
 
@@ -339,13 +351,40 @@ func TestChallengeService_UpdateChallenge(t *testing.T) {
 	})
 
 	t.Run("a student cannot update a challenge", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1", SubjectTag: "triad-shapes", PassThreshold: 70})
-		svc := newChallengeService(newFakeContentNodeRepository(), challenges, newFakeExerciseRepository())
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
 
 		_, err := svc.UpdateChallenge(context.Background(), studentCaller(), "challenge-1", "hijacked-tag", 70, nil, false, false)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher cannot update a challenge on another teacher's content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
+
+		_, err := svc.UpdateChallenge(context.Background(), otherTeacherCaller(), "challenge-1", "hijacked-tag", 70, nil, false, false)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("an admin can update a challenge on any teacher's content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		challenges := newFakeChallengeRepository()
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1", SubjectTag: "triad-shapes", PassThreshold: 70})
+		svc := newChallengeService(nodes, challenges, newFakeExerciseRepository())
+
+		got, err := svc.UpdateChallenge(context.Background(), adminCaller(), "challenge-1", "revised-by-admin", 70, nil, false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, "revised-by-admin", got.SubjectTag)
 	})
 
 	t.Run("updating a challenge that does not exist returns not found", func(t *testing.T) {

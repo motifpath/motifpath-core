@@ -280,7 +280,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
 		paths := newFakeLearningPathRepository()
-		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "original-teacher", Title: "Old title",
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Old title",
 			Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}},
 			CreatedAt: fixedCreatedAt})
 		svc := newLearningPathService(nodes, paths)
@@ -289,14 +289,14 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "path-1", got.ID)
-		assert.Equal(t, "original-teacher", got.TeacherID)
+		assert.Equal(t, "teacher-1", got.TeacherID)
 		assert.Equal(t, "New title", got.Title)
 		assert.Equal(t, fixedCreatedAt, got.CreatedAt)
 	})
 
 	t.Run("replacing with an empty items array is rejected", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
 		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "Title", nil)
@@ -308,7 +308,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 
 	t.Run("replacing with an item referencing a non-existent content node is rejected", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
 		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", "Title", pathItems("missing"))
@@ -320,12 +320,39 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 
 	t.Run("a student cannot replace a learning path", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		paths.put(domain.LearningPath{ID: "path-1", Title: "Title"})
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
 		_, err := svc.ReplaceLearningPath(context.Background(), studentCaller(), "path-1", "Title", pathItems("node-01"))
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher cannot replace another teacher's learning path", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title",
+			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}}, CreatedAt: fixedCreatedAt})
+		svc := newLearningPathService(nodes, paths)
+
+		_, err := svc.ReplaceLearningPath(context.Background(), otherTeacherCaller(), "path-1", "Hijacked title", pathItems("node-01"))
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("an admin can replace any teacher's learning path", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title",
+			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}}, CreatedAt: fixedCreatedAt})
+		svc := newLearningPathService(nodes, paths)
+
+		got, err := svc.ReplaceLearningPath(context.Background(), adminCaller(), "path-1", "Revised by admin", pathItems("node-01"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "Revised by admin", got.Title)
 	})
 
 	t.Run("replacing a learning path that does not exist returns not found", func(t *testing.T) {

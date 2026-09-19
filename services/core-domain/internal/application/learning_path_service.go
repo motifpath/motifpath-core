@@ -77,8 +77,8 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 // domain.NewLearningPath to recompute item positions from scratch. The
 // path's id, owner, and creation time are preserved. A content_node_id that
 // doesn't exist is a validation failure (400), matching CreateLearningPath.
-// Only teachers and admins may replace a learning path. Returns
-// domain.ErrNotFound if no path exists with the given id.
+// Only the creating teacher or an admin may replace a learning path.
+// Returns domain.ErrNotFound if no path exists with the given id.
 func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller domain.User, id, title string, pathItems []PathItemInput) (domain.LearningPath, error) {
 	if !canManageContent(caller.Role) {
 		return domain.LearningPath{}, domain.ErrForbidden
@@ -86,6 +86,9 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 
 	existing, err := s.paths.GetByID(ctx, id)
 	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if err := requireOwner(caller, existing.TeacherID); err != nil {
 		return domain.LearningPath{}, err
 	}
 

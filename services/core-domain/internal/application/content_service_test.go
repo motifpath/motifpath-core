@@ -19,9 +19,10 @@ func newContentService(nodes *fakeContentNodeRepository, expanded *fakeExpandedC
 	return application.NewContentService(nodes, expanded, idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
-func teacherCaller() domain.User { return domain.User{ID: "teacher-1", Role: domain.RoleTeacher} }
-func adminCaller() domain.User   { return domain.User{ID: "admin-1", Role: domain.RoleAdmin} }
-func studentCaller() domain.User { return domain.User{ID: "student-1", Role: domain.RoleStudent} }
+func teacherCaller() domain.User      { return domain.User{ID: "teacher-1", Role: domain.RoleTeacher} }
+func otherTeacherCaller() domain.User { return domain.User{ID: "teacher-2", Role: domain.RoleTeacher} }
+func adminCaller() domain.User        { return domain.User{ID: "admin-1", Role: domain.RoleAdmin} }
+func studentCaller() domain.User      { return domain.User{ID: "student-1", Role: domain.RoleStudent} }
 
 func TestContentService_CreateContentNode(t *testing.T) {
 	t.Run("a teacher creates a video content node with classification", func(t *testing.T) {
@@ -181,7 +182,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 	t.Run("a teacher updates a content node's title and classification", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{
-			ID: "node-1", ContentType: domain.ContentTypeVideo,
+			ID: "node-1", TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo,
 			Classification: domain.Classification{Skill: "triad-shapes", Concept: "chord-theory", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
@@ -209,7 +210,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 	t.Run("updating does not reset an admin-confirmed review state", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{
-			ID: "node-1", ContentType: domain.ContentTypeVideo,
+			ID: "node-1", TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo,
 			Classification: domain.Classification{Skill: "s", Concept: "c", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
@@ -254,6 +255,27 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 
+	t.Run("a teacher cannot update another teacher's content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.UpdateContentNode(context.Background(), otherTeacherCaller(), "node-1", "Hijacked title", "skill", "concept", domain.DifficultyLevelBeginner)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("an admin can update any teacher's content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.UpdateContentNode(context.Background(), adminCaller(), "node-1", "Revised by admin", "skill", "concept", domain.DifficultyLevelBeginner)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Revised by admin", got.Title)
+	})
+
 	t.Run("updating a content node that does not exist returns not found", func(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
@@ -264,11 +286,11 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 }
 
 func videoNode(id string) domain.ContentNode {
-	return domain.ContentNode{ID: id, ContentType: domain.ContentTypeVideo}
+	return domain.ContentNode{ID: id, TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo}
 }
 
 func articleNode(id string) domain.ContentNode {
-	return domain.ContentNode{ID: id, ContentType: domain.ContentTypeArticle}
+	return domain.ContentNode{ID: id, TeacherID: "teacher-1", ContentType: domain.ContentTypeArticle}
 }
 
 func intPtr(v int) *int       { return &v }
@@ -583,6 +605,20 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 
+	t.Run("a teacher cannot update another teacher's expanded content item", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+		require.NoError(t, err)
+
+		_, err = svc.UpdateExpandedContent(context.Background(), otherTeacherCaller(), created.ID,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
 	t.Run("updating an item that does not exist returns not found", func(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
@@ -618,6 +654,19 @@ func TestContentService_DeleteExpandedContent(t *testing.T) {
 		require.NoError(t, err)
 
 		err = svc.DeleteExpandedContent(context.Background(), studentCaller(), created.ID)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher cannot delete another teacher's expanded content item", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1")) // owned by teacher-1
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+		require.NoError(t, err)
+
+		err = svc.DeleteExpandedContent(context.Background(), otherTeacherCaller(), created.ID)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})

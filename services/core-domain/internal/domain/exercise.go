@@ -255,7 +255,7 @@ func validateExerciseContent(title string, prompt PromptDocument, exerciseType E
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
-	errs = append(errs, validatePromptDocument(prompt)...)
+	errs = append(errs, validatePromptDocument(prompt, false)...)
 	errs = append(errs, validateSkillTags(skillTags)...)
 	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
 	errs = append(errs, validateOptions(exerciseType, options)...)
@@ -280,7 +280,7 @@ func validateRemediationTargets(targets []RemediationTarget) []FieldError {
 		case hasNode == hasRich:
 			errs = append(errs, FieldError{Field: "remediation_targets", Reason: "each target must carry exactly one of content_node_id or rich_content"})
 		case hasRich:
-			for _, docErr := range validatePromptDocument(*target.RichContent) {
+			for _, docErr := range validatePromptDocument(*target.RichContent, true) {
 				errs = append(errs, FieldError{Field: "remediation_targets", Reason: docErr.Reason})
 			}
 		}
@@ -290,8 +290,13 @@ func validateRemediationTargets(targets []RemediationTarget) []FieldError {
 
 // validatePromptDocument checks that prompt is a well-formed document
 // (a "doc" root with at least one block node) using only the node and mark
-// types the exercise-prompt editor can actually produce.
-func validatePromptDocument(prompt PromptDocument) []FieldError {
+// types the given surface's editor can actually produce. allowMediaNodes
+// permits PromptNodeTypeAudio/Video — offered by the rich_text
+// ExpandedContent and remediation-target editors, but never by the
+// exercise-prompt authoring toolbar, so an exercise's own Prompt must
+// reject them even though this validation function is shared across all
+// three surfaces.
+func validatePromptDocument(prompt PromptDocument, allowMediaNodes bool) []FieldError {
 	if prompt.Type != "doc" {
 		return []FieldError{{Field: "prompt", Reason: "must be a structured document with type \"doc\""}}
 	}
@@ -299,7 +304,7 @@ func validatePromptDocument(prompt PromptDocument) []FieldError {
 		return []FieldError{{Field: "prompt", Reason: "must not be empty"}}
 	}
 	for _, node := range prompt.Content {
-		if reason := promptNodeError(node); reason != "" {
+		if reason := promptNodeError(node, allowMediaNodes); reason != "" {
 			return []FieldError{{Field: "prompt", Reason: reason}}
 		}
 	}
@@ -308,18 +313,22 @@ func validatePromptDocument(prompt PromptDocument) []FieldError {
 
 // promptNodeError reports the reason node (and, recursively, its content
 // and marks) is invalid, or "" if it's valid.
-func promptNodeError(node PromptNode) string {
+func promptNodeError(node PromptNode, allowMediaNodes bool) string {
 	switch node.Type {
 	case PromptNodeTypeHeading, PromptNodeTypeParagraph, PromptNodeTypeText,
 		PromptNodeTypeBulletList, PromptNodeTypeOrderedList, PromptNodeTypeListItem,
 		PromptNodeTypeTable, PromptNodeTypeTableRow, PromptNodeTypeTableHeader, PromptNodeTypeTableCell,
-		PromptNodeTypeImage, PromptNodeTypeAudio, PromptNodeTypeVideo:
+		PromptNodeTypeImage:
+	case PromptNodeTypeAudio, PromptNodeTypeVideo:
+		if !allowMediaNodes {
+			return "contains an unsupported node type \"" + string(node.Type) + "\""
+		}
 	default:
 		return "contains an unsupported node type \"" + string(node.Type) + "\""
 	}
 
 	for _, child := range node.Content {
-		if reason := promptNodeError(child); reason != "" {
+		if reason := promptNodeError(child, allowMediaNodes); reason != "" {
 			return reason
 		}
 	}

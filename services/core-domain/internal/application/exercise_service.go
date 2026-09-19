@@ -115,12 +115,12 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	if err := s.checkRemediationTargetsExist(ctx, remediationTargets); err != nil {
+	existing, err := s.exercises.GetByID(ctx, id)
+	if err != nil {
 		return domain.Exercise{}, err
 	}
 
-	existing, err := s.exercises.GetByID(ctx, id)
-	if err != nil {
+	if err := s.checkRemediationTargetsExist(ctx, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
 

@@ -195,7 +195,7 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
@@ -215,7 +215,7 @@ func (w *world) putLearningPathTwoItems(slug, n1, n2 string) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
@@ -244,7 +244,7 @@ func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items:     items,
 		CreatedAt: fixedNow,
@@ -258,7 +258,7 @@ func (w *world) putLearningPathDefault(slug string) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
-		TeacherID: deterministicUUID("motif-user", "seed-teacher").String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID("default-node-for-" + slug).String(), Title: "default", ContentType: domain.ContentTypeVideo},
