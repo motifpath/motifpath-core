@@ -13,35 +13,38 @@ import (
 )
 
 func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
-	sc.Step(`^(\d+) exercises tagged "([^"]+)" exist in the system$`, w.putNExercisesTagged)
+	sc.Step(`^(\d+) exercises linked to skill "([^"]+)" exist in the system$`, w.putNExercisesLinkedToSkill)
 
-	sc.Step(`^"([^"]+)" starts a practice session for skill tag "([^"]+)" with count (\d+)$`, w.startsPracticeSession)
-	sc.Step(`^"([^"]+)" starts a practice session for skill tag "([^"]+)" without specifying a count$`, w.startsPracticeSessionNoCount)
-	sc.Step(`^"([^"]+)" starts two practice sessions for skill tag "([^"]+)" with count (\d+)$`, w.startsTwoPracticeSessions)
-	sc.Step(`^"([^"]+)" submits a start practice session request with the skill_tag field omitted$`, w.submitsPracticeSessionMissingSkillTag)
-	sc.Step(`^"([^"]+)" submits a start practice session request with skill_tag "([^"]+)" and count (\d+)$`, w.submitsPracticeSessionWithSkillTagAndCount)
-	sc.Step(`^an unauthenticated request attempts to start a practice session for skill tag "([^"]+)"$`, w.unauthStartsPracticeSession)
+	sc.Step(`^"([^"]+)" starts a practice session for skill "([^"]+)" with count (\d+)$`, w.startsPracticeSession)
+	sc.Step(`^"([^"]+)" starts a practice session for skill "([^"]+)" without specifying a count$`, w.startsPracticeSessionNoCount)
+	sc.Step(`^"([^"]+)" starts two practice sessions for skill "([^"]+)" with count (\d+)$`, w.startsTwoPracticeSessions)
+	sc.Step(`^"([^"]+)" submits a start practice session request with the skill_id field omitted$`, w.submitsPracticeSessionMissingSkillID)
+	sc.Step(`^"([^"]+)" submits a start practice session request with skill "([^"]+)" and count (\d+)$`, w.submitsPracticeSessionWithSkillAndCount)
+	sc.Step(`^an unauthenticated request attempts to start a practice session for skill "([^"]+)"$`, w.unauthStartsPracticeSession)
 
 	sc.Step(`^the practice session contains (\d+) exercises$`, w.practiceSessionContains)
-	sc.Step(`^every exercise in the practice session is tagged "([^"]+)"$`, w.everyExerciseInPracticeSessionTagged)
+	sc.Step(`^every exercise in the practice session is linked to skill "([^"]+)"$`, w.everyExerciseInPracticeSessionLinkedToSkill)
 	sc.Step(`^the practice session is assigned a stable practice_session_id$`, w.practiceSessionHasStableID)
 	sc.Step(`^the two practice sessions are assigned different practice_session_ids$`, w.twoPracticeSessionsDifferentIDs)
 }
 
-func (w *world) putNExercisesTagged(countStr, skillTag string) error {
+func (w *world) putNExercisesLinkedToSkill(countStr, skillName string) error {
 	count, err := parseInt(countStr)
 	if err != nil {
 		return err
 	}
+	skillID := w.skillIDFor(skillName)
+	conceptID := w.conceptIDFor("concept-for-" + skillName)
 	for i := 1; i <= count; i++ {
-		slug := fmt.Sprintf("%s-tagged-%d", skillTag, i)
+		slug := fmt.Sprintf("%s-linked-%d", skillName, i)
 		label := "option-" + slug
 		w.exercises.put(domain.Exercise{
 			ID:             exerciseID(slug).String(),
 			Title:          "title-" + slug,
 			Prompt:         domain.NewPlainTextPrompt("prompt-" + slug),
 			ExerciseType:   domain.ExerciseTypeTextResponse,
-			SkillTags:      []string{skillTag},
+			Skills:         []domain.Skill{{ID: skillID.String(), Name: skillName}},
+			Concepts:       []domain.Concept{{ID: conceptID.String(), Name: "concept-for-" + skillName}},
 			Options:        []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}, {ID: uuid.NewString(), IsCorrect: false, Label: &label}},
 			ChallengeIDs:   []string{},
 			ContentNodeIDs: []string{},
@@ -51,40 +54,40 @@ func (w *world) putNExercisesTagged(countStr, skillTag string) error {
 	return nil
 }
 
-func (w *world) startsPracticeSession(name, skillTag, countStr string) error {
+func (w *world) startsPracticeSession(name, skillName, countStr string) error {
 	count, err := parseInt(countStr)
 	if err != nil {
 		return err
 	}
 	resp, err := w.handler.StartPracticeSession(w.ctx(), generated.StartPracticeSessionRequestObject{
-		Params: generated.StartPracticeSessionParams{SkillTag: skillTag, Count: &count},
+		Params: generated.StartPracticeSessionParams{SkillId: w.skillIDFor(skillName), Count: &count},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
 
-func (w *world) startsPracticeSessionNoCount(name, skillTag string) error {
+func (w *world) startsPracticeSessionNoCount(name, skillName string) error {
 	resp, err := w.handler.StartPracticeSession(w.ctx(), generated.StartPracticeSessionRequestObject{
-		Params: generated.StartPracticeSessionParams{SkillTag: skillTag},
+		Params: generated.StartPracticeSessionParams{SkillId: w.skillIDFor(skillName)},
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
 
-func (w *world) startsTwoPracticeSessions(name, skillTag, countStr string) error {
+func (w *world) startsTwoPracticeSessions(name, skillName, countStr string) error {
 	w.multiResp = nil
-	if err := w.startsPracticeSession(name, skillTag, countStr); err != nil {
+	if err := w.startsPracticeSession(name, skillName, countStr); err != nil {
 		return err
 	}
 	w.multiResp = append(w.multiResp, w.lastResp)
-	if err := w.startsPracticeSession(name, skillTag, countStr); err != nil {
+	if err := w.startsPracticeSession(name, skillName, countStr); err != nil {
 		return err
 	}
 	w.multiResp = append(w.multiResp, w.lastResp)
 	return nil
 }
 
-func (w *world) submitsPracticeSessionMissingSkillTag(string) error {
+func (w *world) submitsPracticeSessionMissingSkillID(string) error {
 	resp, err := w.handler.StartPracticeSession(w.ctx(), generated.StartPracticeSessionRequestObject{
 		Params: generated.StartPracticeSessionParams{},
 	})
@@ -92,13 +95,13 @@ func (w *world) submitsPracticeSessionMissingSkillTag(string) error {
 	return err
 }
 
-func (w *world) submitsPracticeSessionWithSkillTagAndCount(name, skillTag, countStr string) error {
-	return w.startsPracticeSession(name, skillTag, countStr)
+func (w *world) submitsPracticeSessionWithSkillAndCount(name, skillName, countStr string) error {
+	return w.startsPracticeSession(name, skillName, countStr)
 }
 
-func (w *world) unauthStartsPracticeSession(skillTag string) error {
+func (w *world) unauthStartsPracticeSession(skillName string) error {
 	w.noAuthToken() //nolint:errcheck // never errors
-	return w.startsPracticeSessionNoCount("", skillTag)
+	return w.startsPracticeSessionNoCount("", skillName)
 }
 
 func (w *world) practiceSessionContains(countStr string) error {
@@ -116,23 +119,21 @@ func (w *world) practiceSessionContains(countStr string) error {
 	return nil
 }
 
-func (w *world) everyExerciseInPracticeSessionTagged(skillTag string) error {
+func (w *world) everyExerciseInPracticeSessionLinkedToSkill(skillName string) error {
 	resp, ok := w.lastResp.(generated.StartPracticeSession200JSONResponse)
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
+	want := w.skillIDFor(skillName)
 	for _, e := range resp.Exercises {
-		if e.SkillTags == nil {
-			return fmt.Errorf("expected exercise %s to carry skill tags, got none", e.ExerciseId)
-		}
 		found := false
-		for _, tag := range *e.SkillTags {
-			if tag == skillTag {
+		for _, s := range e.Skills {
+			if s.SkillId == want {
 				found = true
 			}
 		}
 		if !found {
-			return fmt.Errorf("expected exercise %s to be tagged %q, got %v", e.ExerciseId, skillTag, *e.SkillTags)
+			return fmt.Errorf("expected exercise %s to be linked to skill %q, got %+v", e.ExerciseId, skillName, e.Skills)
 		}
 	}
 	return nil

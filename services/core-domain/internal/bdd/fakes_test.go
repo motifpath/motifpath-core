@@ -148,7 +148,7 @@ func (f *fakeContentNodeRepo) put(n domain.ContentNode) {
 	f.byID[n.ID] = n
 }
 
-func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.ContentNode
@@ -156,7 +156,10 @@ func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.Content
 		if contentType != "" && n.ContentType != contentType {
 			continue
 		}
-		if skill != "" && n.Classification.Skill != skill {
+		if skillID != "" && !containsID(n.Classification.SkillIDs(), skillID) {
+			continue
+		}
+		if conceptID != "" && !containsID(n.Classification.ConceptIDs(), conceptID) {
 			continue
 		}
 		if difficulty != "" && n.Classification.DifficultyLevel != difficulty {
@@ -165,6 +168,15 @@ func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.Content
 		result = append(result, n)
 	}
 	return result, nil
+}
+
+func containsID(ids []string, id string) bool {
+	for _, existing := range ids {
+		if existing == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *fakeContentNodeRepo) Update(_ context.Context, n domain.ContentNode) error {
@@ -383,22 +395,19 @@ func (f *fakeExerciseRepo) ListByContentNodeID(_ context.Context, contentNodeID 
 	return result, nil
 }
 
-func (f *fakeExerciseRepo) ListBySkillTag(_ context.Context, skillTag string) ([]domain.Exercise, error) {
+func (f *fakeExerciseRepo) ListBySkillID(_ context.Context, skillID string) ([]domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.Exercise
 	for _, e := range f.byID {
-		for _, tag := range e.SkillTags {
-			if tag == skillTag {
-				result = append(result, e)
-				break
-			}
+		if containsID(exerciseSkillIDs(e), skillID) {
+			result = append(result, e)
 		}
 	}
 	return result, nil
 }
 
-func (f *fakeExerciseRepo) List(_ context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+func (f *fakeExerciseRepo) List(_ context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.Exercise
@@ -406,21 +415,20 @@ func (f *fakeExerciseRepo) List(_ context.Context, skillTag string, exerciseType
 		if exerciseType != "" && e.ExerciseType != exerciseType {
 			continue
 		}
-		if skillTag != "" {
-			matched := false
-			for _, tag := range e.SkillTags {
-				if tag == skillTag {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
+		if skillID != "" && !containsID(exerciseSkillIDs(e), skillID) {
+			continue
 		}
 		result = append(result, e)
 	}
 	return result, nil
+}
+
+func exerciseSkillIDs(e domain.Exercise) []string {
+	ids := make([]string, len(e.Skills))
+	for i, s := range e.Skills {
+		ids[i] = s.ID
+	}
+	return ids
 }
 
 func (f *fakeExerciseRepo) Update(_ context.Context, e domain.Exercise) error {
@@ -701,4 +709,143 @@ func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ 
 		ObjectURL: "https://cdn.example.com/" + objectKey,
 		ExpiresAt: fixedNow.Add(15 * time.Minute),
 	}, nil
+}
+
+type fakeSkillRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Skill
+}
+
+func newFakeSkillRepo() *fakeSkillRepo {
+	return &fakeSkillRepo{byID: map[string]domain.Skill{}}
+}
+
+func (f *fakeSkillRepo) Create(_ context.Context, s domain.Skill) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[s.ID] = s
+	return nil
+}
+
+func (f *fakeSkillRepo) GetByID(_ context.Context, id string) (domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byID[id]
+	if !ok {
+		return domain.Skill{}, domain.ErrNotFound
+	}
+	return s, nil
+}
+
+func (f *fakeSkillRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.Skill{}
+	for _, id := range ids {
+		if s, ok := f.byID[id]; ok {
+			result[id] = s
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeSkillRepo) List(_ context.Context) ([]domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Skill, 0, len(f.byID))
+	for _, s := range f.byID {
+		result = append(result, s)
+	}
+	return result, nil
+}
+
+func (f *fakeSkillRepo) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, s := range f.byID {
+		if s.Name == name && samePointerValue(s.ParentID, parentID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeSkillRepo) put(s domain.Skill) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[s.ID] = s
+}
+
+type fakeConceptRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Concept
+}
+
+func newFakeConceptRepo() *fakeConceptRepo {
+	return &fakeConceptRepo{byID: map[string]domain.Concept{}}
+}
+
+func (f *fakeConceptRepo) Create(_ context.Context, c domain.Concept) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeConceptRepo) GetByID(_ context.Context, id string) (domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.Concept{}, domain.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeConceptRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.Concept{}
+	for _, id := range ids {
+		if c, ok := f.byID[id]; ok {
+			result[id] = c
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeConceptRepo) List(_ context.Context) ([]domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Concept, 0, len(f.byID))
+	for _, c := range f.byID {
+		result = append(result, c)
+	}
+	return result, nil
+}
+
+func (f *fakeConceptRepo) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, c := range f.byID {
+		if c.Name == name && samePointerValue(c.ParentID, parentID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeConceptRepo) put(c domain.Concept) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+}
+
+// samePointerValue reports whether a and b are both nil, or both non-nil
+// and pointing at equal values.
+func samePointerValue(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

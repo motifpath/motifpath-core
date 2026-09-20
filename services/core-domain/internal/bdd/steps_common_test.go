@@ -141,6 +141,14 @@ func (w *world) responseIsEmptyList() error {
 		if len(resp) != 0 {
 			return fmt.Errorf("expected an empty list, got %d learning paths", len(resp))
 		}
+	case generated.ListSkills200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d skills", len(resp))
+		}
+	case generated.ListConcepts200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d concepts", len(resp))
+		}
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
 	}
@@ -189,7 +197,9 @@ func (w *world) requestRefusedForbidden() error {
 		generated.UpdateExpandedContent403JSONResponse,
 		generated.DeleteExpandedContent403JSONResponse,
 		generated.ListLearningPaths403JSONResponse,
-		generated.ReplaceLearningPath403JSONResponse:
+		generated.ReplaceLearningPath403JSONResponse,
+		generated.CreateSkill403JSONResponse,
+		generated.CreateConcept403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -276,7 +286,11 @@ func (w *world) requestRefusedAuthError() error {
 		generated.DeleteExpandedContent401JSONResponse,
 		generated.ListLearningPaths401JSONResponse,
 		generated.ReplaceLearningPath401JSONResponse,
-		generated.UpdateMyLocale401JSONResponse:
+		generated.UpdateMyLocale401JSONResponse,
+		generated.ListSkills401JSONResponse,
+		generated.CreateSkill401JSONResponse,
+		generated.ListConcepts401JSONResponse,
+		generated.CreateConcept401JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 401 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -335,6 +349,10 @@ func (w *world) validationErrors() ([]struct {
 	case generated.ReplaceLearningPath400JSONResponse:
 		return resp.Errors, nil
 	case generated.UpdateMyLocale400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateSkill400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateConcept400JSONResponse:
 		return resp.Errors, nil
 	default:
 		return nil, fmt.Errorf("expected a 400 response with validation errors, got %#v (err=%v)", w.lastResp, w.lastErr)
