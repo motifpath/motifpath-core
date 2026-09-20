@@ -44,15 +44,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
-	if err != nil {
-		return rollback(tx, err)
-	}
-	skillIDs, err := parseUUIDs(skillIDsOf(ex.Skills))
-	if err != nil {
-		return rollback(tx, err)
-	}
-	conceptIDs, err := parseUUIDs(conceptIDsOf(ex.Concepts))
+	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -90,6 +82,25 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 // buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
 // opt, shared by Create and Update since both fully (re)establish an
 // exercise's options the same way.
+// resolveExerciseEdgeIDs resolves ex's Languages/Skills/Concepts to the row
+// ids Create/Update need to (re)establish those edges, shared by both since
+// they resolve the same three edges the same way.
+func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (langIDs, skillIDs, conceptIDs []uuid.UUID, err error) {
+	langIDs, err = languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	skillIDs, err = parseUUIDs(skillIDsOf(ex.Skills))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	conceptIDs, err = parseUUIDs(conceptIDsOf(ex.Concepts))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return langIDs, skillIDs, conceptIDs, nil
+}
+
 func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
 	builders := make([]*ent.ExerciseOptionCreate, len(options))
 	for i, opt := range options {
@@ -422,15 +433,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
-	if err != nil {
-		return rollback(tx, err)
-	}
-	skillIDs, err := parseUUIDs(skillIDsOf(ex.Skills))
-	if err != nil {
-		return rollback(tx, err)
-	}
-	conceptIDs, err := parseUUIDs(conceptIDsOf(ex.Concepts))
+	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
