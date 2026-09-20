@@ -41,6 +41,40 @@ func toUserProfile(u domain.User) generated.UserProfile {
 	}
 }
 
+func toGeneratedSkill(s domain.Skill) generated.Skill {
+	skill := generated.Skill{SkillId: mustUUID(s.ID), Name: s.Name}
+	if s.ParentID != nil {
+		id := mustUUID(*s.ParentID)
+		skill.ParentId = &id
+	}
+	return skill
+}
+
+func toGeneratedSkills(skills []domain.Skill) []generated.Skill {
+	result := make([]generated.Skill, len(skills))
+	for i, s := range skills {
+		result[i] = toGeneratedSkill(s)
+	}
+	return result
+}
+
+func toGeneratedConcept(c domain.Concept) generated.Concept {
+	concept := generated.Concept{ConceptId: mustUUID(c.ID), Name: c.Name}
+	if c.ParentID != nil {
+		id := mustUUID(*c.ParentID)
+		concept.ParentId = &id
+	}
+	return concept
+}
+
+func toGeneratedConcepts(concepts []domain.Concept) []generated.Concept {
+	result := make([]generated.Concept, len(concepts))
+	for i, c := range concepts {
+		result[i] = toGeneratedConcept(c)
+	}
+	return result
+}
+
 func toContentNode(n domain.ContentNode) generated.ContentNode {
 	return generated.ContentNode{
 		ContentNodeId: mustUUID(n.ID),
@@ -48,8 +82,8 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 		Title:         n.Title,
 		ContentType:   generated.ContentNodeContentType(n.ContentType),
 		Classification: generated.Classification{
-			Skill:           n.Classification.Skill,
-			Concept:         n.Classification.Concept,
+			Skills:          toGeneratedSkills(n.Classification.Skills),
+			Concepts:        toGeneratedConcepts(n.Classification.Concepts),
 			DifficultyLevel: generated.ClassificationDifficultyLevel(n.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(n.Classification.ReviewState),
 		},
@@ -67,16 +101,24 @@ func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
 }
 
 func toChallenge(c domain.Challenge) generated.Challenge {
-	return generated.Challenge{
+	challenge := generated.Challenge{
 		ChallengeId:      mustUUID(c.ID),
 		ContentNodeId:    mustUUID(c.ContentNodeID),
-		SubjectTag:       c.SubjectTag,
 		PassThreshold:    c.PassThreshold,
 		TimeThresholdMs:  c.TimeThresholdMS,
 		ShuffleExercises: c.ShuffleExercises,
 		ShuffleOptions:   c.ShuffleOptions,
 		CreatedAt:        c.CreatedAt,
 	}
+	if c.SubjectSkillID != nil {
+		id := mustUUID(*c.SubjectSkillID)
+		challenge.SubjectSkillId = &id
+	}
+	if c.SubjectConceptID != nil {
+		id := mustUUID(*c.SubjectConceptID)
+		challenge.SubjectConceptId = &id
+	}
+	return challenge
 }
 
 func toChallenges(challenges []domain.Challenge) []generated.Challenge {
@@ -152,6 +194,8 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		Title:                    e.Title,
 		Prompt:                   toGeneratedPromptDocument(e.Prompt),
 		ExerciseType:             generated.ExerciseExerciseType(e.ExerciseType),
+		Skills:                   toGeneratedSkills(e.Skills),
+		Concepts:                 toGeneratedConcepts(e.Concepts),
 		ImageUrl:                 e.ImageURL,
 		AudioUrl:                 e.AudioURL,
 		Options:                  options,
@@ -161,9 +205,6 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
 		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
-	}
-	if len(e.SkillTags) > 0 {
-		exercise.SkillTags = &e.SkillTags
 	}
 	return exercise
 }
@@ -213,7 +254,7 @@ func toExercises(exercises []domain.Exercise) []generated.Exercise {
 func toPracticeSession(session application.PracticeSession) generated.PracticeSession {
 	return generated.PracticeSession{
 		PracticeSessionId: mustUUID(session.ID),
-		SkillTag:          session.SkillTag,
+		SkillId:           mustUUID(session.SkillID),
 		Exercises:         toExercises(session.Exercises),
 	}
 }

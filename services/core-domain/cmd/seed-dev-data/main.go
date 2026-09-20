@@ -86,15 +86,19 @@ func run() error {
 	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
+	skillRepo := repo.NewEntSkillRepository(entClient)
+	conceptRepo := repo.NewEntConceptRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, rand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle)
+	skillService := application.NewSkillService(skillRepo, newID)
+	conceptService := application.NewConceptService(conceptRepo, newID)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {
@@ -104,7 +108,8 @@ func run() error {
 
 	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
 
-	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, assignmentService, mongoClient.Database(mongoDatabase))
+	classifier := &classificationSeeder{skills: skillService, concepts: conceptService, teacher: teacher}
+	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, assignmentService, classifier, mongoClient.Database(mongoDatabase))
 	if err != nil {
 		return err
 	}
@@ -112,13 +117,60 @@ func run() error {
 	// A challenge + exercises on the in-progress node (nodeIDs[2]) so
 	// /path/nodes/:nodeId/practice has something real to run against.
 	practiceNodeID := nodeIDs[2]
-	if err := seedPracticeChallenge(ctx, teacher, challengeService, exerciseService, practiceNodeID); err != nil {
+	if err := seedPracticeChallenge(ctx, teacher, challengeService, exerciseService, classifier, practiceNodeID); err != nil {
 		return fmt.Errorf("seed practice challenge: %w", err)
 	}
 	log.Printf("seeded a challenge + exercises on content node %s", practiceNodeID)
 
 	log.Println("done — reload the SPA's /path view to see it")
 	return nil
+}
+
+// classificationSeeder resolves plain skill/concept names to real Skill/
+// Concept tree node ids, creating a fresh root node the first time a given
+// name is seen in this run and reusing it thereafter — ADR-026 rejected
+// find-or-create as an API-level pattern (an ambiguous operation once names
+// aren't globally unique), but this script isn't the API: it seeds a known,
+// disjoint set of root-level names it fully controls, so a same-run cache is
+// enough. Re-running this script against a database that already has these
+// root names would fail on the sibling-uniqueness check — a real limitation,
+// left as-is since this tool targets a fresh dev database.
+type classificationSeeder struct {
+	skills     *application.SkillService
+	concepts   *application.ConceptService
+	teacher    domain.User
+	skillIDs   map[string]string
+	conceptIDs map[string]string
+}
+
+func (c *classificationSeeder) skillID(ctx context.Context, name string) (string, error) {
+	if c.skillIDs == nil {
+		c.skillIDs = map[string]string{}
+	}
+	if id, ok := c.skillIDs[name]; ok {
+		return id, nil
+	}
+	skill, err := c.skills.CreateSkill(ctx, c.teacher, name, nil)
+	if err != nil {
+		return "", fmt.Errorf("create skill %q: %w", name, err)
+	}
+	c.skillIDs[name] = skill.ID
+	return skill.ID, nil
+}
+
+func (c *classificationSeeder) conceptID(ctx context.Context, name string) (string, error) {
+	if c.conceptIDs == nil {
+		c.conceptIDs = map[string]string{}
+	}
+	if id, ok := c.conceptIDs[name]; ok {
+		return id, nil
+	}
+	concept, err := c.concepts.CreateConcept(ctx, c.teacher, name, nil)
+	if err != nil {
+		return "", fmt.Errorf("create concept %q: %w", name, err)
+	}
+	c.conceptIDs[name] = concept.ID
+	return concept.ID, nil
 }
 
 // seedPathAndProgress creates the six-node learning path, assigns it to
@@ -131,6 +183,7 @@ func seedPathAndProgress(
 	contentService *application.ContentService,
 	pathService *application.LearningPathService,
 	assignmentService *application.PathAssignmentService,
+	classifier *classificationSeeder,
 	mongoDB *mongo.Database,
 ) ([]string, error) {
 	type nodeSpec struct {
@@ -150,7 +203,15 @@ func seedPathAndProgress(
 	var items []application.PathItemInput
 	var nodeIDs []string
 	for _, spec := range specs {
-		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, spec.skill, spec.concept, spec.difficulty, []string{"en"})
+		skillID, err := classifier.skillID(ctx, spec.skill)
+		if err != nil {
+			return nil, err
+		}
+		conceptID, err := classifier.conceptID(ctx, spec.concept)
+		if err != nil {
+			return nil, err
+		}
+		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, spec.difficulty, []string{"en"})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
@@ -186,8 +247,15 @@ func seedPathAndProgress(
 	return nodeIDs, nil
 }
 
-func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeService *application.ChallengeService, exerciseService *application.ExerciseService, contentNodeID string) error {
-	challenge, err := challengeService.CreateChallenge(ctx, teacher, contentNodeID, "Pentatonic fingerings", 70, nil, false, false)
+func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeService *application.ChallengeService, exerciseService *application.ExerciseService, classifier *classificationSeeder, contentNodeID string) error {
+	// "Scales" was already created as a root skill while seeding nodeIDs[2]
+	// (the practice node) above — classifier.skillID returns that same id
+	// rather than creating a second one, since it caches by name for this run.
+	subjectSkillID, err := classifier.skillID(ctx, "Scales")
+	if err != nil {
+		return err
+	}
+	challenge, err := challengeService.CreateChallenge(ctx, teacher, contentNodeID, &subjectSkillID, nil, 70, nil, false, false)
 	if err != nil {
 		return fmt.Errorf("create challenge: %w", err)
 	}
@@ -223,8 +291,17 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 		},
 	}
 
+	pentatonicSkillID, err := classifier.skillID(ctx, "Pentatonic shapes")
+	if err != nil {
+		return err
+	}
+	pentatonicConceptID, err := classifier.conceptID(ctx, "Pentatonic fingerings")
+	if err != nil {
+		return err
+	}
 	for _, spec := range specs {
-		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse, []string{"pentatonic_shapes"}, nil, nil, spec.options, nil, nil, []string{"en"})
+		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse,
+			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, spec.options, nil, nil, []string{"en"})
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}

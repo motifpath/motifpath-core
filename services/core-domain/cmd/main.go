@@ -242,6 +242,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
 	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
+	skillRepo := repo.NewEntSkillRepository(entClient)
+	conceptRepo := repo.NewEntConceptRepository(entClient)
 	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
 	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
 
@@ -249,14 +251,16 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	now := func() time.Time { return time.Now().UTC() }
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, newID, now, mathrand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, mathrand.Shuffle)
+	skillService := application.NewSkillService(skillRepo, newID)
+	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, mediaService, pathService, assignmentService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, assignmentService,
 		learningGraphPinger, completionReader), nil
 }
 

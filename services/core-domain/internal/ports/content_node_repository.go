@@ -21,8 +21,10 @@ type ContentNodeRepository interface {
 	GetByIDs(ctx context.Context, ids []string) (map[string]domain.ContentNode, error)
 
 	// List returns content nodes matching the given filters. An empty
-	// filter value means "no filter" on that dimension.
-	List(ctx context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error)
+	// filter value means "no filter" on that dimension. skillID/conceptID
+	// match a content node whose linked skill_ids/concept_ids contain that
+	// exact id — not its ancestors or descendants.
+	List(ctx context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error)
 
 	// Update returns domain.ErrNotFound if no node exists with the given id.
 	Update(ctx context.Context, node domain.ContentNode) error

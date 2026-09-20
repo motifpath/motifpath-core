@@ -162,16 +162,21 @@ type RemediationTarget struct {
 	Caption       *string
 }
 
-// Exercise is a reusable, standalone practice item classified by skill tags
-// and independent of any single challenge. It is checked by option
-// selection: the student's selected option ID(s) must match the option(s)
-// marked correct.
+// Exercise is a reusable, standalone practice item classified by Skill/
+// Concept tree references — the same shared trees ContentNode classifies
+// against — and independent of any single challenge. It is checked by
+// option selection: the student's selected option ID(s) must match the
+// option(s) marked correct.
 type Exercise struct {
-	ID                       string
-	Title                    string
-	Prompt                   PromptDocument
-	ExerciseType             ExerciseType
-	SkillTags                []string
+	ID           string
+	Title        string
+	Prompt       PromptDocument
+	ExerciseType ExerciseType
+	// Skills/Concepts carry only ID until this Exercise is read back from
+	// the repository with its Skill/Concept rows joined in — the same
+	// construct-then-refetch convention Languages already follows.
+	Skills                   []Skill
+	Concepts                 []Concept
 	ImageURL                 *string
 	AudioURL                 *string
 	Options                  []Option
@@ -204,9 +209,9 @@ type Exercise struct {
 // whether each remediationTargets[i].ContentNodeID refers to a content node
 // that actually exists, which requires a repository round-trip this
 // constructor can't perform.
-func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
-	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)...)
+	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)...)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
@@ -217,7 +222,8 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		Title:                    title,
 		Prompt:                   prompt,
 		ExerciseType:             exerciseType,
-		SkillTags:                skillTags,
+		Skills:                   skillsFromIDs(skillIDs),
+		Concepts:                 conceptsFromIDs(conceptIDs),
 		ImageURL:                 imageURL,
 		AudioURL:                 audioURL,
 		Options:                  options,
@@ -237,8 +243,8 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 // change after creation since it determines the option shape (region vs.
 // text vs. image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
-	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
+func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
+	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
@@ -247,7 +253,8 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string
 	updated := e
 	updated.Title = title
 	updated.Prompt = prompt
-	updated.SkillTags = skillTags
+	updated.Skills = skillsFromIDs(skillIDs)
+	updated.Concepts = conceptsFromIDs(conceptIDs)
 	updated.ImageURL = imageURL
 	updated.AudioURL = audioURL
 	updated.Options = options
@@ -260,14 +267,19 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillTags []string
 // validateExerciseContent checks the fields shared by creation and update —
 // everything except exercise_type itself, which only creation sets and only
 // creation validates.
-func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillTags []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
+func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
 	errs = append(errs, validatePromptDocument(prompt, false)...)
-	errs = append(errs, validateSkillTags(skillTags)...)
+	if len(skillIDs) == 0 {
+		errs = append(errs, FieldError{Field: "skill_ids", Reason: "must not be empty"})
+	}
+	if len(conceptIDs) == 0 {
+		errs = append(errs, FieldError{Field: "concept_ids", Reason: "must not be empty"})
+	}
 	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
 	errs = append(errs, validateOptions(exerciseType, options)...)
 	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
@@ -368,15 +380,6 @@ func validateExerciseType(exerciseType ExerciseType) []FieldError {
 	default:
 		return []FieldError{{Field: "exercise_type", Reason: "must be one of text_response, audio_recognition, image_recognition, image_choice, audio_selection"}}
 	}
-}
-
-func validateSkillTags(skillTags []string) []FieldError {
-	for _, tag := range skillTags {
-		if tag == "" {
-			return []FieldError{{Field: "skill_tags", Reason: "each tag must be a non-empty string"}}
-		}
-	}
-	return nil
 }
 
 // validateStimulusMedia checks the exercise-level media required by

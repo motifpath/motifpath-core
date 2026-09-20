@@ -55,19 +55,19 @@ type ExerciseRepository interface {
 	// none. Does not itself verify the content node exists.
 	ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Exercise, error)
 
-	// ListBySkillTag returns every exercise carrying skillTag among its
-	// skill tags, in no particular order — the practice-session pool for
-	// that skill. Selecting and randomizing a subset is an
-	// application-layer concern.
-	ListBySkillTag(ctx context.Context, skillTag string) ([]domain.Exercise, error)
+	// ListBySkillID returns every exercise linked to the skill identified by
+	// skillID, in no particular order — the practice-session pool for that
+	// skill. Selecting and randomizing a subset is an application-layer
+	// concern.
+	ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error)
 
 	// List returns exercises from the whole pool, optionally narrowed by
-	// skillTag and/or exerciseType — an empty string on either means no
+	// skillID and/or exerciseType — an empty string on either means no
 	// filter on that dimension. Order is stable but otherwise unspecified.
-	List(ctx context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error)
+	List(ctx context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error)
 
-	// Update replaces exercise's title, prompt, skill_tags, image_url,
-	// audio_url, options, and estimated_duration_seconds. exercise.ID
+	// Update replaces exercise's title, prompt, skill/concept links,
+	// image_url, audio_url, options, and estimated_duration_seconds. exercise.ID
 	// identifies which row to update; exercise.ExerciseType,
 	// exercise.ChallengeIDs, and exercise.ContentNodeIDs are not applied —
 	// exercise_type cannot change after creation and links are managed
