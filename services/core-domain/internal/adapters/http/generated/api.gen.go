@@ -22,9 +22,11 @@ const (
 
 // Defines values for ClassificationDifficultyLevel.
 const (
-	ClassificationDifficultyLevelAdvanced     ClassificationDifficultyLevel = "advanced"
-	ClassificationDifficultyLevelBeginner     ClassificationDifficultyLevel = "beginner"
-	ClassificationDifficultyLevelIntermediate ClassificationDifficultyLevel = "intermediate"
+	ClassificationDifficultyLevelAdvanced          ClassificationDifficultyLevel = "advanced"
+	ClassificationDifficultyLevelBeginner          ClassificationDifficultyLevel = "beginner"
+	ClassificationDifficultyLevelEarlyIntermediate ClassificationDifficultyLevel = "early_intermediate"
+	ClassificationDifficultyLevelExpert            ClassificationDifficultyLevel = "expert"
+	ClassificationDifficultyLevelIntermediate      ClassificationDifficultyLevel = "intermediate"
 )
 
 // Defines values for ClassificationReviewState.
@@ -36,9 +38,11 @@ const (
 
 // Defines values for ClassificationInputDifficultyLevel.
 const (
-	ClassificationInputDifficultyLevelAdvanced     ClassificationInputDifficultyLevel = "advanced"
-	ClassificationInputDifficultyLevelBeginner     ClassificationInputDifficultyLevel = "beginner"
-	ClassificationInputDifficultyLevelIntermediate ClassificationInputDifficultyLevel = "intermediate"
+	ClassificationInputDifficultyLevelAdvanced          ClassificationInputDifficultyLevel = "advanced"
+	ClassificationInputDifficultyLevelBeginner          ClassificationInputDifficultyLevel = "beginner"
+	ClassificationInputDifficultyLevelEarlyIntermediate ClassificationInputDifficultyLevel = "early_intermediate"
+	ClassificationInputDifficultyLevelExpert            ClassificationInputDifficultyLevel = "expert"
+	ClassificationInputDifficultyLevelIntermediate      ClassificationInputDifficultyLevel = "intermediate"
 )
 
 // Defines values for ContentNodeContentType.
@@ -195,9 +199,11 @@ const (
 
 // Defines values for ListContentNodesParamsDifficultyLevel.
 const (
-	Advanced     ListContentNodesParamsDifficultyLevel = "advanced"
-	Beginner     ListContentNodesParamsDifficultyLevel = "beginner"
-	Intermediate ListContentNodesParamsDifficultyLevel = "intermediate"
+	Advanced          ListContentNodesParamsDifficultyLevel = "advanced"
+	Beginner          ListContentNodesParamsDifficultyLevel = "beginner"
+	EarlyIntermediate ListContentNodesParamsDifficultyLevel = "early_intermediate"
+	Expert            ListContentNodesParamsDifficultyLevel = "expert"
+	Intermediate      ListContentNodesParamsDifficultyLevel = "intermediate"
 )
 
 // Defines values for ListExercisesParamsExerciseType.
@@ -215,10 +221,11 @@ type AssignLearningPathRequest struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
 
-// Challenge A challenge is the assessment unit for a content node. It groups exercises
-// and carries the subject tag and threshold rules used by the recommendation
-// engine. Its ID is carried in exercise-family tracking events as challenge_id
-// inside trigger_context.
+// Challenge A challenge is the assessment unit for a content node. It groups
+// exercises and carries the subject (a Skill or Concept reference) and
+// threshold rules used by the recommendation engine. Its ID is carried
+// in exercise-family tracking events as challenge_id inside
+// trigger_context.
 type Challenge struct {
 	// ChallengeId Stable identifier for this challenge. Carried as challenge_id in tracking events.
 	ChallengeId openapi_types.UUID `json:"challenge_id"`
@@ -238,8 +245,11 @@ type Challenge struct {
 	// ShuffleOptions Whether each exercise's option order varies per request, independent of shuffle_exercises.
 	ShuffleOptions bool `json:"shuffle_options"`
 
-	// SubjectTag The subject this challenge assesses.
-	SubjectTag string `json:"subject_tag"`
+	// SubjectConceptId The Concept this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
+
+	// SubjectSkillId The Skill this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
 	// milliseconds — never enforced, never affects scoring or
@@ -253,14 +263,18 @@ type Challenge struct {
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
-// Classification defines model for Classification.
+// Classification The classification of a content node as returned by the API —
+// skills/concepts are embedded in full (id, name, parent_id) rather
+// than left as bare ids, so a client can render each one's position
+// in the tree without a follow-up lookup per id. Includes review
+// state: all classifications start as pending and must be confirmed
+// by an admin before the content node is considered fully ready.
 type Classification struct {
-	// Concept The intellectual concept this content addresses. Must be a short
-	// kebab-case tag (e.g. chord-theory, interval-recognition,
-	// scale-construction).
-	Concept string `json:"concept"`
+	// Concepts The Concept tree node(s) this content addresses, in full.
+	Concepts []Concept `json:"concepts"`
 
-	// DifficultyLevel The difficulty level of this content node.
+	// DifficultyLevel The difficulty level of this content node, ordered beginner <
+	// early_intermediate < intermediate < advanced < expert.
 	DifficultyLevel ClassificationDifficultyLevel `json:"difficulty_level"`
 
 	// ReviewState The review state of this classification. pending — awaiting
@@ -269,13 +283,12 @@ type Classification struct {
 	// human reviewer.
 	ReviewState ClassificationReviewState `json:"review_state"`
 
-	// Skill The observable, practicable skill this content teaches. Must be a
-	// short kebab-case tag (e.g. triad-shapes, chord-transitions,
-	// sweep-picking).
-	Skill string `json:"skill"`
+	// Skills The Skill tree node(s) this content teaches, in full.
+	Skills []Skill `json:"skills"`
 }
 
-// ClassificationDifficultyLevel The difficulty level of this content node.
+// ClassificationDifficultyLevel The difficulty level of this content node, ordered beginner <
+// early_intermediate < intermediate < advanced < expert.
 type ClassificationDifficultyLevel string
 
 // ClassificationReviewState The review state of this classification. pending — awaiting
@@ -284,26 +297,48 @@ type ClassificationDifficultyLevel string
 // human reviewer.
 type ClassificationReviewState string
 
-// ClassificationInput The three mandatory classification dimensions for a content node. These
-// dimensions are the minimum semantic layer required for gap detection and
-// the rules-based recommendation engine to function.
+// ClassificationInput The three mandatory classification dimensions for a content node.
+// These dimensions are the minimum semantic layer required for gap
+// detection and the rules-based recommendation engine to function.
+// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
+// create one first via POST /skills or POST /concepts if the one you
+// need doesn't exist yet.
 type ClassificationInput struct {
-	// Concept The intellectual concept this content addresses. Must be a short
-	// kebab-case tag (e.g. chord-theory, interval-recognition,
-	// scale-construction).
-	Concept string `json:"concept"`
+	// ConceptIds The id(s) of the Concept tree node(s) this content addresses —
+	// same depth/mix rules as skill_ids. Must not be empty; each id
+	// must reference an existing concept.
+	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
-	// DifficultyLevel The difficulty level of this content node.
+	// DifficultyLevel The difficulty level of this content node, ordered beginner <
+	// early_intermediate < intermediate < advanced < expert.
 	DifficultyLevel ClassificationInputDifficultyLevel `json:"difficulty_level"`
 
-	// Skill The observable, practicable skill this content teaches. Must be a
-	// short kebab-case tag (e.g. triad-shapes, chord-transitions,
-	// sweep-picking).
-	Skill string `json:"skill"`
+	// SkillIds The id(s) of the Skill tree node(s) this content teaches — may
+	// be a root, a leaf, or a mix of nodes at different depths,
+	// whichever set actually fits this content's scope. Must not be
+	// empty; each id must reference an existing skill.
+	SkillIds []openapi_types.UUID `json:"skill_ids"`
 }
 
-// ClassificationInputDifficultyLevel The difficulty level of this content node.
+// ClassificationInputDifficultyLevel The difficulty level of this content node, ordered beginner <
+// early_intermediate < intermediate < advanced < expert.
 type ClassificationInputDifficultyLevel string
+
+// Concept An intellectual concept a content node can address. Concepts form a
+// tree the same way Skills do — parent_id null means a root concept;
+// any concept may have children, to any depth. A node's name is unique
+// among its siblings (including other roots), not globally.
+type Concept struct {
+	// ConceptId Stable identifier for this concept.
+	ConceptId openapi_types.UUID `json:"concept_id"`
+
+	// Name Short kebab-case tag naming the concept (e.g. chord-theory,
+	// interval-recognition).
+	Name string `json:"name"`
+
+	// ParentId The parent concept's id, or null if this is a root concept.
+	ParentId *openapi_types.UUID `json:"parent_id"`
+}
 
 // ConflictError Returned when a resource already exists and cannot be created again.
 type ConflictError struct {
@@ -315,6 +350,12 @@ type ConflictError struct {
 // by a teacher. Its ID is carried in lesson-family tracking events as
 // content_node_id.
 type ContentNode struct {
+	// Classification The classification of a content node as returned by the API —
+	// skills/concepts are embedded in full (id, name, parent_id) rather
+	// than left as bare ids, so a client can render each one's position
+	// in the tree without a follow-up lookup per id. Includes review
+	// state: all classifications start as pending and must be confirmed
+	// by an admin before the content node is considered fully ready.
 	Classification Classification `json:"classification"`
 
 	// ContentNodeId Stable identifier for this content node. Used as content_node_id in tracking events.
@@ -342,7 +383,8 @@ type ContentNode struct {
 // ContentNodeContentType The media format of this content node.
 type ContentNodeContentType string
 
-// CreateChallengeRequest Payload for creating a challenge within a content node.
+// CreateChallengeRequest Payload for creating a challenge within a content node. Exactly one
+// of subject_skill_id or subject_concept_id must be set.
 type CreateChallengeRequest struct {
 	// PassThreshold The minimum score (as a percentage of exercises answered correctly)
 	// required to pass this challenge.
@@ -358,11 +400,17 @@ type CreateChallengeRequest struct {
 	// request, independent of shuffle_exercises. Defaults to false.
 	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
 
-	// SubjectTag The subject this challenge assesses. Must match a skill or concept
-	// tag on the parent content node's classification. This tag is the
-	// minimum required for gap detection — a challenge without a subject
-	// tag produces analytically meaningless outcomes.
-	SubjectTag string `json:"subject_tag"`
+	// SubjectConceptId The Concept this challenge assesses. Must be one of the parent
+	// content node's linked concept_ids. Exactly one of
+	// subject_skill_id/subject_concept_id must be set.
+	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
+
+	// SubjectSkillId The Skill this challenge assesses. Must be one of the parent
+	// content node's linked skill_ids. Exactly one of
+	// subject_skill_id/subject_concept_id must be set — the subject is
+	// the minimum required for gap detection, a challenge without one
+	// produces analytically meaningless outcomes.
+	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
 	// milliseconds. Purely advisory — never enforced, never affects
@@ -377,11 +425,26 @@ type CreateChallengeRequest struct {
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
+// CreateConceptRequest Payload for creating a new concept node. There is no update or
+// delete endpoint yet — re-parenting, renaming, or deleting a concept
+// that already has links is a deliberately open question.
+type CreateConceptRequest struct {
+	// Name Short kebab-case tag naming the concept.
+	Name string `json:"name"`
+
+	// ParentId The parent concept's id. Omit to create a root concept. Must
+	// reference an existing concept if given.
+	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
+}
+
 // CreateContentNodeRequest Payload for creating a new content node.
 type CreateContentNodeRequest struct {
-	// Classification The three mandatory classification dimensions for a content node. These
-	// dimensions are the minimum semantic layer required for gap detection and
-	// the rules-based recommendation engine to function.
+	// Classification The three mandatory classification dimensions for a content node.
+	// These dimensions are the minimum semantic layer required for gap
+	// detection and the rules-based recommendation engine to function.
+	// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
+	// create one first via POST /skills or POST /concepts if the one you
+	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
 	// ContentType The media format of this content node.
@@ -407,6 +470,10 @@ type CreateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
 	// is audio_recognition; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
+
+	// ConceptIds The id(s) of the Concept tree node(s) this exercise addresses.
+	// Must not be empty; each id must reference an existing concept.
+	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
 	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
 	// exercise once. Optional — used to fit practice sessions and
@@ -455,11 +522,11 @@ type CreateExerciseRequest struct {
 	// no remediation is configured for this exercise.
 	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
-	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
-	// targets (e.g. "alternate_picking"), used to classify and discover
-	// the exercise independent of any challenge. Each tag must be a
-	// non-empty string.
-	SkillTags *[]string `json:"skill_tags,omitempty"`
+	// SkillIds The id(s) of the Skill tree node(s) this exercise targets,
+	// independent of any challenge or content node it may also be
+	// linked to. Must not be empty; each id must reference an
+	// existing skill.
+	SkillIds []openapi_types.UUID `json:"skill_ids"`
 
 	// Title A short, authoring-only name for this exercise (e.g. "Alternate
 	// picking — descending run"), used to identify it in authoring
@@ -571,11 +638,24 @@ type CreateMediaUploadUrlRequestContentType string
 // image-picker library's prefix.
 type CreateMediaUploadUrlRequestPurpose string
 
-// Exercise A reusable, standalone practice item classified by skill tags and
-// independent of any single challenge. The exercise_id is the value
-// the SPA supplies in exercise-family tracking events. An exercise is
-// checked by option selection: the student's selected option ID(s)
-// must match the option(s) marked is_correct.
+// CreateSkillRequest Payload for creating a new skill node. There is no update or delete
+// endpoint yet — re-parenting, renaming, or deleting a skill that
+// already has links is a deliberately open question.
+type CreateSkillRequest struct {
+	// Name Short kebab-case tag naming the skill.
+	Name string `json:"name"`
+
+	// ParentId The parent skill's id. Omit to create a root skill. Must
+	// reference an existing skill if given.
+	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
+}
+
+// Exercise A reusable, standalone practice item classified by Skill/Concept
+// tree references and independent of any single challenge. The
+// exercise_id is the value the SPA supplies in exercise-family
+// tracking events. An exercise is checked by option selection: the
+// student's selected option ID(s) must match the option(s) marked
+// is_correct.
 type Exercise struct {
 	// AudioUrl The stimulus audio for this exercise, present when exercise_type is audio_recognition.
 	AudioUrl *string `json:"audio_url,omitempty"`
@@ -584,6 +664,9 @@ type Exercise struct {
 	// empty — an exercise can exist without being linked to any
 	// challenge.
 	ChallengeIds []openapi_types.UUID `json:"challenge_ids"`
+
+	// Concepts The Concept tree node(s) this exercise addresses, in full.
+	Concepts []Concept `json:"concepts"`
 
 	// ContentNodeIds The content nodes this exercise is currently linked to as a path
 	// exercise. May be empty. Independent of challenge_ids — an exercise
@@ -636,8 +719,8 @@ type Exercise struct {
 	// exist without any remediation configured.
 	RemediationTargets []RemediationTarget `json:"remediation_targets"`
 
-	// SkillTags Freeform tags naming the skill(s) this exercise targets.
-	SkillTags *[]string `json:"skill_tags,omitempty"`
+	// Skills The Skill tree node(s) this exercise targets, in full.
+	Skills []Skill `json:"skills"`
 
 	// Title Short, authoring-only name for this exercise. Not shown to students.
 	Title string `json:"title"`
@@ -876,17 +959,17 @@ type PathAssignment struct {
 type PracticeSession struct {
 	// Exercises The session's exercises, in randomized order, each with its
 	// options also randomized. May contain fewer than the requested
-	// count if the tagged pool is smaller.
+	// count if the linked pool is smaller.
 	Exercises []Exercise `json:"exercises"`
 
 	// PracticeSessionId Identifier for this generated session. Carried as
 	// practice_session_id in trigger_context on the exercise.* tracking
 	// events emitted while attempting it, so outcomes can be grouped
-	// back to the session and skill tag that produced them.
+	// back to the session and skill that produced them.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
 
-	// SkillTag The skill tag this session was generated for.
-	SkillTag string `json:"skill_tag"`
+	// SkillId The Skill this session was generated for.
+	SkillId openapi_types.UUID `json:"skill_id"`
 }
 
 // PromptDocument A structured rich-text document, authored with MotifPath's
@@ -1036,6 +1119,23 @@ type ReplaceLearningPathRequest struct {
 	Title string `json:"title"`
 }
 
+// Skill An observable, practicable skill a content node can teach. Skills
+// form a tree — parent_id null means a root skill; any skill may have
+// children, to any depth. A node's name is unique among its siblings
+// (including other roots), not globally, so two different branches may
+// contain a same-named skill.
+type Skill struct {
+	// Name Short kebab-case tag naming the skill (e.g. triad-shapes,
+	// sweep-picking).
+	Name string `json:"name"`
+
+	// ParentId The parent skill's id, or null if this is a root skill.
+	ParentId *openapi_types.UUID `json:"parent_id"`
+
+	// SkillId Stable identifier for this skill.
+	SkillId openapi_types.UUID `json:"skill_id"`
+}
+
 // StudentPathItem A content node in the student's learning path with their current progress state.
 type StudentPathItem struct {
 	// ContentNodeId The ID of the content node at this position.
@@ -1098,7 +1198,8 @@ type UnauthorizedError struct {
 // configuration. Linked exercises are not part of this payload — they
 // are changed via POST/DELETE
 // /challenges/{challenge_id}/exercises/{exercise_id}, not by resending
-// them here.
+// them here. Exactly one of subject_skill_id or subject_concept_id
+// must be set.
 type UpdateChallengeRequest struct {
 	// PassThreshold The minimum score (as a percentage of exercises answered
 	// correctly) required to pass this challenge.
@@ -1110,8 +1211,11 @@ type UpdateChallengeRequest struct {
 	// ShuffleOptions Whether each exercise's option order varies per request.
 	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
 
-	// SubjectTag The subject this challenge assesses.
-	SubjectTag string `json:"subject_tag"`
+	// SubjectConceptId The Concept this challenge assesses. Must be one of the parent content node's linked concept_ids.
+	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
+
+	// SubjectSkillId The Skill this challenge assesses. Must be one of the parent content node's linked skill_ids.
+	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
 	// milliseconds — never enforced, never affects scoring or
@@ -1125,9 +1229,12 @@ type UpdateChallengeRequest struct {
 // classification. content_type is not present here — it cannot be
 // changed after creation.
 type UpdateContentNodeRequest struct {
-	// Classification The three mandatory classification dimensions for a content node. These
-	// dimensions are the minimum semantic layer required for gap detection and
-	// the rules-based recommendation engine to function.
+	// Classification The three mandatory classification dimensions for a content node.
+	// These dimensions are the minimum semantic layer required for gap
+	// detection and the rules-based recommendation engine to function.
+	// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
+	// create one first via POST /skills or POST /concepts if the one you
+	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
 	// LanguageCodes One or more Language.code values this content node is available
@@ -1150,6 +1257,11 @@ type UpdateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when the
 	// exercise's exercise_type is audio_recognition; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
+
+	// ConceptIds The id(s) of the Concept tree node(s) this exercise addresses,
+	// replacing its current set. Must not be empty; each id must
+	// reference an existing concept.
+	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
 	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
 	// exercise once. Optional — used to fit practice sessions and
@@ -1189,10 +1301,10 @@ type UpdateExerciseRequest struct {
 	// set. Empty or omitted clears any previously configured targets.
 	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
-	// SkillTags Freeform tags naming the skill(s) or technique(s) this exercise
-	// targets, replacing its current set. Each tag must be a non-empty
-	// string.
-	SkillTags *[]string `json:"skill_tags,omitempty"`
+	// SkillIds The id(s) of the Skill tree node(s) this exercise targets,
+	// replacing its current set. Must not be empty; each id must
+	// reference an existing skill.
+	SkillIds []openapi_types.UUID `json:"skill_ids"`
 
 	// Title A short, authoring-only name for this exercise, used to identify
 	// it in authoring tools. Not shown to students.
@@ -1299,8 +1411,11 @@ type ListContentNodesParams struct {
 	// ContentType When given, only content nodes of this type are returned.
 	ContentType *ListContentNodesParamsContentType `form:"content_type,omitempty" json:"content_type,omitempty"`
 
-	// Skill When given, only content nodes classified with this exact skill are returned.
-	Skill *string `form:"skill,omitempty" json:"skill,omitempty"`
+	// SkillId When given, only content nodes with this exact skill id among their linked skills are returned. Matches that node only, not its ancestors or descendants.
+	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
+
+	// ConceptId When given, only content nodes with this exact concept id among their linked concepts are returned. Matches that node only, not its ancestors or descendants.
+	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
 
 	// DifficultyLevel When given, only content nodes at this difficulty level are returned.
 	DifficultyLevel *ListContentNodesParamsDifficultyLevel `form:"difficulty_level,omitempty" json:"difficulty_level,omitempty"`
@@ -1314,9 +1429,9 @@ type ListContentNodesParamsDifficultyLevel string
 
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
-	// SkillTag When given, only exercises carrying this exact skill tag are
+	// SkillId When given, only exercises linked to this exact skill id are
 	// returned.
-	SkillTag *string `form:"skill_tag,omitempty" json:"skill_tag,omitempty"`
+	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
 
 	// ExerciseType When given, only exercises of this type are returned.
 	ExerciseType *ListExercisesParamsExerciseType `form:"exercise_type,omitempty" json:"exercise_type,omitempty"`
@@ -1327,16 +1442,19 @@ type ListExercisesParamsExerciseType string
 
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
-	// SkillTag The skill or technique tag to select exercises for (e.g. "alternate_picking").
-	SkillTag string `form:"skill_tag" json:"skill_tag"`
+	// SkillId The Skill to select exercises for.
+	SkillId openapi_types.UUID `form:"skill_id" json:"skill_id"`
 
 	// Count The number of exercises requested. The response may contain fewer
-	// if the exercise pool tagged with skill_tag is smaller than count.
+	// if the exercise pool linked to skill_id is smaller than count.
 	Count *int `form:"count,omitempty" json:"count,omitempty"`
 }
 
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
+
+// CreateConceptJSONRequestBody defines body for CreateConcept for application/json ContentType.
+type CreateConceptJSONRequestBody = CreateConceptRequest
 
 // CreateContentNodeJSONRequestBody defines body for CreateContentNode for application/json ContentType.
 type CreateContentNodeJSONRequestBody = CreateContentNodeRequest
@@ -1368,6 +1486,9 @@ type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
+// CreateSkillJSONRequestBody defines body for CreateSkill for application/json ContentType.
+type CreateSkillJSONRequestBody = CreateSkillRequest
+
 // AssignLearningPathJSONRequestBody defines body for AssignLearningPath for application/json ContentType.
 type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
 
@@ -1394,6 +1515,12 @@ type ServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
+	// List all known concepts
+	// (GET /concepts)
+	ListConcepts(w http.ResponseWriter, r *http.Request)
+	// Create a concept node
+	// (POST /concepts)
+	CreateConcept(w http.ResponseWriter, r *http.Request)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams)
@@ -1472,6 +1599,12 @@ type ServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
+	// List all known skills
+	// (GET /skills)
+	ListSkills(w http.ResponseWriter, r *http.Request)
+	// Create a skill node
+	// (POST /skills)
+	CreateSkill(w http.ResponseWriter, r *http.Request)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(w http.ResponseWriter, r *http.Request)
@@ -1520,6 +1653,18 @@ func (_ Unimplemented) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *htt
 // Link an existing exercise to a challenge
 // (POST /challenges/{challenge_id}/exercises/{exercise_id})
 func (_ Unimplemented) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all known concepts
+// (GET /concepts)
+func (_ Unimplemented) ListConcepts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a concept node
+// (POST /concepts)
+func (_ Unimplemented) CreateConcept(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1676,6 +1821,18 @@ func (_ Unimplemented) StartPracticeSession(w http.ResponseWriter, r *http.Reque
 // Readiness probe
 // (GET /readyz)
 func (_ Unimplemented) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all known skills
+// (GET /skills)
+func (_ Unimplemented) ListSkills(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a skill node
+// (POST /skills)
+func (_ Unimplemented) CreateSkill(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1891,6 +2048,46 @@ func (siw *ServerInterfaceWrapper) LinkExerciseToChallenge(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// ListConcepts operation middleware
+func (siw *ServerInterfaceWrapper) ListConcepts(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListConcepts(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateConcept operation middleware
+func (siw *ServerInterfaceWrapper) CreateConcept(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateConcept(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListContentNodes operation middleware
 func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *http.Request) {
 
@@ -1913,11 +2110,19 @@ func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// ------------- Optional query parameter "skill" -------------
+	// ------------- Optional query parameter "skill_id" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "skill", r.URL.Query(), &params.Skill)
+	err = runtime.BindQueryParameter("form", true, false, "skill_id", r.URL.Query(), &params.SkillId)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
 		return
 	}
 
@@ -2271,11 +2476,11 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListExercisesParams
 
-	// ------------- Optional query parameter "skill_tag" -------------
+	// ------------- Optional query parameter "skill_id" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "skill_tag", r.URL.Query(), &params.SkillTag)
+	err = runtime.BindQueryParameter("form", true, false, "skill_id", r.URL.Query(), &params.SkillId)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_tag", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
 		return
 	}
 
@@ -2623,18 +2828,18 @@ func (siw *ServerInterfaceWrapper) StartPracticeSession(w http.ResponseWriter, r
 	// Parameter object where we will unmarshal all parameters from the context
 	var params StartPracticeSessionParams
 
-	// ------------- Required query parameter "skill_tag" -------------
+	// ------------- Required query parameter "skill_id" -------------
 
-	if paramValue := r.URL.Query().Get("skill_tag"); paramValue != "" {
+	if paramValue := r.URL.Query().Get("skill_id"); paramValue != "" {
 
 	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_tag"})
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_id"})
 		return
 	}
 
-	err = runtime.BindQueryParameter("form", true, true, "skill_tag", r.URL.Query(), &params.SkillTag)
+	err = runtime.BindQueryParameter("form", true, true, "skill_id", r.URL.Query(), &params.SkillId)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_tag", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
 		return
 	}
 
@@ -2662,6 +2867,46 @@ func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReadinessCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSkills operation middleware
+func (siw *ServerInterfaceWrapper) ListSkills(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSkills(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSkill operation middleware
+func (siw *ServerInterfaceWrapper) CreateSkill(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSkill(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2911,6 +3156,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.LinkExerciseToChallenge)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/concepts", wrapper.ListConcepts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/concepts", wrapper.CreateConcept)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes", wrapper.ListContentNodes)
 	})
 	r.Group(func(r chi.Router) {
@@ -2987,6 +3238,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/skills", wrapper.ListSkills)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/skills", wrapper.CreateSkill)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/path", wrapper.GetMyPath)
@@ -3225,6 +3482,75 @@ type LinkExerciseToChallenge409JSONResponse ConflictError
 func (response LinkExerciseToChallenge409JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListConceptsRequestObject struct {
+}
+
+type ListConceptsResponseObject interface {
+	VisitListConceptsResponse(w http.ResponseWriter) error
+}
+
+type ListConcepts200JSONResponse []Concept
+
+func (response ListConcepts200JSONResponse) VisitListConceptsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListConcepts401JSONResponse UnauthorizedError
+
+func (response ListConcepts401JSONResponse) VisitListConceptsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateConceptRequestObject struct {
+	Body *CreateConceptJSONRequestBody
+}
+
+type CreateConceptResponseObject interface {
+	VisitCreateConceptResponse(w http.ResponseWriter) error
+}
+
+type CreateConcept201JSONResponse Concept
+
+func (response CreateConcept201JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateConcept400JSONResponse ValidationError
+
+func (response CreateConcept400JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateConcept401JSONResponse UnauthorizedError
+
+func (response CreateConcept401JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateConcept403JSONResponse ForbiddenError
+
+func (response CreateConcept403JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -4319,6 +4645,75 @@ func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListSkillsRequestObject struct {
+}
+
+type ListSkillsResponseObject interface {
+	VisitListSkillsResponse(w http.ResponseWriter) error
+}
+
+type ListSkills200JSONResponse []Skill
+
+func (response ListSkills200JSONResponse) VisitListSkillsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSkills401JSONResponse UnauthorizedError
+
+func (response ListSkills401JSONResponse) VisitListSkillsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSkillRequestObject struct {
+	Body *CreateSkillJSONRequestBody
+}
+
+type CreateSkillResponseObject interface {
+	VisitCreateSkillResponse(w http.ResponseWriter) error
+}
+
+type CreateSkill201JSONResponse Skill
+
+func (response CreateSkill201JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSkill400JSONResponse ValidationError
+
+func (response CreateSkill400JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSkill401JSONResponse UnauthorizedError
+
+func (response CreateSkill401JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSkill403JSONResponse ForbiddenError
+
+func (response CreateSkill403JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetMyPathRequestObject struct {
 }
 
@@ -4546,6 +4941,12 @@ type StrictServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(ctx context.Context, request LinkExerciseToChallengeRequestObject) (LinkExerciseToChallengeResponseObject, error)
+	// List all known concepts
+	// (GET /concepts)
+	ListConcepts(ctx context.Context, request ListConceptsRequestObject) (ListConceptsResponseObject, error)
+	// Create a concept node
+	// (POST /concepts)
+	CreateConcept(ctx context.Context, request CreateConceptRequestObject) (CreateConceptResponseObject, error)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(ctx context.Context, request ListContentNodesRequestObject) (ListContentNodesResponseObject, error)
@@ -4624,6 +5025,12 @@ type StrictServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
+	// List all known skills
+	// (GET /skills)
+	ListSkills(ctx context.Context, request ListSkillsRequestObject) (ListSkillsResponseObject, error)
+	// Create a skill node
+	// (POST /skills)
+	CreateSkill(ctx context.Context, request CreateSkillRequestObject) (CreateSkillResponseObject, error)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(ctx context.Context, request GetMyPathRequestObject) (GetMyPathResponseObject, error)
@@ -4802,6 +5209,61 @@ func (sh *strictHandler) LinkExerciseToChallenge(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LinkExerciseToChallengeResponseObject); ok {
 		if err := validResponse.VisitLinkExerciseToChallengeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListConcepts operation middleware
+func (sh *strictHandler) ListConcepts(w http.ResponseWriter, r *http.Request) {
+	var request ListConceptsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListConcepts(ctx, request.(ListConceptsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListConcepts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListConceptsResponseObject); ok {
+		if err := validResponse.VisitListConceptsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateConcept operation middleware
+func (sh *strictHandler) CreateConcept(w http.ResponseWriter, r *http.Request) {
+	var request CreateConceptRequestObject
+
+	var body CreateConceptJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateConcept(ctx, request.(CreateConceptRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateConcept")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateConceptResponseObject); ok {
+		if err := validResponse.VisitCreateConceptResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -5536,6 +5998,61 @@ func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReadinessCheckResponseObject); ok {
 		if err := validResponse.VisitReadinessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSkills operation middleware
+func (sh *strictHandler) ListSkills(w http.ResponseWriter, r *http.Request) {
+	var request ListSkillsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSkills(ctx, request.(ListSkillsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSkills")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSkillsResponseObject); ok {
+		if err := validResponse.VisitListSkillsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSkill operation middleware
+func (sh *strictHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
+	var request CreateSkillRequestObject
+
+	var body CreateSkillJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSkill(ctx, request.(CreateSkillRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSkill")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSkillResponseObject); ok {
+		if err := validResponse.VisitCreateSkillResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

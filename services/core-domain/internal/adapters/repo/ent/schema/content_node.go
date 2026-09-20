@@ -10,9 +10,9 @@ import (
 )
 
 // ContentNode is the base unit of a class — a video or article published by
-// a teacher. Classification (skill, concept, difficulty_level, review_state)
-// is embedded directly on the node rather than modeled as a separate
-// entity, matching the merged core-domain-service.yaml spec.
+// a teacher. Classification's skill/concept dimensions are many-to-many
+// relations against the shared Skill/Concept trees; difficulty_level and
+// review_state remain scalar fields on the node itself.
 type ContentNode struct {
 	ent.Schema
 }
@@ -32,11 +32,8 @@ func (ContentNode) Fields() []ent.Field {
 			Values("video", "article").
 			Immutable(),
 
-		field.String("skill"),
-		field.String("concept"),
-
 		field.Enum("difficulty_level").
-			Values("beginner", "intermediate", "advanced"),
+			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert"),
 
 		// ReviewState always starts pending on creation regardless of any
 		// value supplied by the caller — enforced in the domain constructor,
@@ -59,5 +56,11 @@ func (ContentNode) Edges() []ent.Edge {
 
 		edge.To("languages", Language.Type).
 			Through("content_node_languages", ContentNodeLanguage.Type),
+
+		edge.To("skills", Skill.Type).
+			Through("content_node_skills", ContentNodeSkill.Type),
+
+		edge.To("concepts", Concept.Type).
+			Through("content_node_concepts", ContentNodeConcept.Type),
 	}
 }

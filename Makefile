@@ -11,6 +11,11 @@ generate:
 		.bundled/event-ingestion-service.yaml
 	npx --yes @redocly/cli bundle $(SPECS_DIR)/openapi/core-domain-service.yaml \
 		-o .bundled/core-domain-service.yaml
+	@# oapi-codegen 2.4 doesn't parse OpenAPI 3.1's "type: [string, null]" nullable
+	@# shorthand, which redocly's bundler re-serializes as a two-item YAML list
+	@# (only this local, gitignored bundle is touched — the spec itself, in
+	@# motifpath-specs, is untouched and keeps authoring in 3.1 style).
+	@perl -0pi -e 's/^([ \t]*)type:\n[ \t]*- string\n[ \t]*- .null.\n/$$1type: string\n$$1nullable: true\n/mg' .bundled/core-domain-service.yaml
 	oapi-codegen -config services/core-domain/oapi-codegen.yaml \
 		.bundled/core-domain-service.yaml
 

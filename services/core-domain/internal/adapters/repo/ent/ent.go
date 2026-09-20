@@ -14,17 +14,23 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -88,17 +94,23 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			challenge.Table:           challenge.ValidColumn,
 			challengeexercise.Table:   challengeexercise.ValidColumn,
+			concept.Table:             concept.ValidColumn,
 			contentnode.Table:         contentnode.ValidColumn,
+			contentnodeconcept.Table:  contentnodeconcept.ValidColumn,
 			contentnodeexercise.Table: contentnodeexercise.ValidColumn,
 			contentnodelanguage.Table: contentnodelanguage.ValidColumn,
+			contentnodeskill.Table:    contentnodeskill.ValidColumn,
 			exercise.Table:            exercise.ValidColumn,
+			exerciseconcept.Table:     exerciseconcept.ValidColumn,
 			exerciselanguage.Table:    exerciselanguage.ValidColumn,
 			exerciseoption.Table:      exerciseoption.ValidColumn,
+			exerciseskill.Table:       exerciseskill.ValidColumn,
 			expandedcontent.Table:     expandedcontent.ValidColumn,
 			language.Table:            language.ValidColumn,
 			learningpath.Table:        learningpath.ValidColumn,
 			learningpathitem.Table:    learningpathitem.ValidColumn,
 			pathassignment.Table:      pathassignment.ValidColumn,
+			skill.Table:               skill.ValidColumn,
 			user.Table:                user.ValidColumn,
 		})
 	})

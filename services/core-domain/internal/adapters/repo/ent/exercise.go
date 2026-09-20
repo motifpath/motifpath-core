@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -25,8 +24,6 @@ type Exercise struct {
 	Prompt string `json:"prompt,omitempty"`
 	// ExerciseType holds the value of the "exercise_type" field.
 	ExerciseType exercise.ExerciseType `json:"exercise_type,omitempty"`
-	// SkillTags holds the value of the "skill_tags" field.
-	SkillTags []string `json:"skill_tags,omitempty"`
 	// ImageURL holds the value of the "image_url" field.
 	ImageURL *string `json:"image_url,omitempty"`
 	// AudioURL holds the value of the "audio_url" field.
@@ -53,15 +50,23 @@ type ExerciseEdges struct {
 	Options []*ExerciseOption `json:"options,omitempty"`
 	// Languages holds the value of the languages edge.
 	Languages []*Language `json:"languages,omitempty"`
+	// Skills holds the value of the skills edge.
+	Skills []*Skill `json:"skills,omitempty"`
+	// Concepts holds the value of the concepts edge.
+	Concepts []*Concept `json:"concepts,omitempty"`
 	// ChallengeExercises holds the value of the challenge_exercises edge.
 	ChallengeExercises []*ChallengeExercise `json:"challenge_exercises,omitempty"`
 	// ContentNodeExercises holds the value of the content_node_exercises edge.
 	ContentNodeExercises []*ContentNodeExercise `json:"content_node_exercises,omitempty"`
 	// ExerciseLanguages holds the value of the exercise_languages edge.
 	ExerciseLanguages []*ExerciseLanguage `json:"exercise_languages,omitempty"`
+	// ExerciseSkills holds the value of the exercise_skills edge.
+	ExerciseSkills []*ExerciseSkill `json:"exercise_skills,omitempty"`
+	// ExerciseConcepts holds the value of the exercise_concepts edge.
+	ExerciseConcepts []*ExerciseConcept `json:"exercise_concepts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [11]bool
 }
 
 // ChallengesOrErr returns the Challenges value or an error if the edge
@@ -100,10 +105,28 @@ func (e ExerciseEdges) LanguagesOrErr() ([]*Language, error) {
 	return nil, &NotLoadedError{edge: "languages"}
 }
 
+// SkillsOrErr returns the Skills value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) SkillsOrErr() ([]*Skill, error) {
+	if e.loadedTypes[4] {
+		return e.Skills, nil
+	}
+	return nil, &NotLoadedError{edge: "skills"}
+}
+
+// ConceptsOrErr returns the Concepts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ConceptsOrErr() ([]*Concept, error) {
+	if e.loadedTypes[5] {
+		return e.Concepts, nil
+	}
+	return nil, &NotLoadedError{edge: "concepts"}
+}
+
 // ChallengeExercisesOrErr returns the ChallengeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[6] {
 		return e.ChallengeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "challenge_exercises"}
@@ -112,7 +135,7 @@ func (e ExerciseEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
 // ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[7] {
 		return e.ContentNodeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_exercises"}
@@ -121,10 +144,28 @@ func (e ExerciseEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, erro
 // ExerciseLanguagesOrErr returns the ExerciseLanguages value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ExerciseLanguagesOrErr() ([]*ExerciseLanguage, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.ExerciseLanguages, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_languages"}
+}
+
+// ExerciseSkillsOrErr returns the ExerciseSkills value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ExerciseSkillsOrErr() ([]*ExerciseSkill, error) {
+	if e.loadedTypes[9] {
+		return e.ExerciseSkills, nil
+	}
+	return nil, &NotLoadedError{edge: "exercise_skills"}
+}
+
+// ExerciseConceptsOrErr returns the ExerciseConcepts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ExerciseConceptsOrErr() ([]*ExerciseConcept, error) {
+	if e.loadedTypes[10] {
+		return e.ExerciseConcepts, nil
+	}
+	return nil, &NotLoadedError{edge: "exercise_concepts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -132,8 +173,6 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case exercise.FieldSkillTags:
-			values[i] = new([]byte)
 		case exercise.FieldEstimatedDurationSeconds:
 			values[i] = new(sql.NullInt64)
 		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL, exercise.FieldRemediationTargets:
@@ -180,14 +219,6 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field exercise_type", values[i])
 			} else if value.Valid {
 				_m.ExerciseType = exercise.ExerciseType(value.String)
-			}
-		case exercise.FieldSkillTags:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field skill_tags", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.SkillTags); err != nil {
-					return fmt.Errorf("unmarshal field skill_tags: %w", err)
-				}
 			}
 		case exercise.FieldImageURL:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -256,6 +287,16 @@ func (_m *Exercise) QueryLanguages() *LanguageQuery {
 	return NewExerciseClient(_m.config).QueryLanguages(_m)
 }
 
+// QuerySkills queries the "skills" edge of the Exercise entity.
+func (_m *Exercise) QuerySkills() *SkillQuery {
+	return NewExerciseClient(_m.config).QuerySkills(_m)
+}
+
+// QueryConcepts queries the "concepts" edge of the Exercise entity.
+func (_m *Exercise) QueryConcepts() *ConceptQuery {
+	return NewExerciseClient(_m.config).QueryConcepts(_m)
+}
+
 // QueryChallengeExercises queries the "challenge_exercises" edge of the Exercise entity.
 func (_m *Exercise) QueryChallengeExercises() *ChallengeExerciseQuery {
 	return NewExerciseClient(_m.config).QueryChallengeExercises(_m)
@@ -269,6 +310,16 @@ func (_m *Exercise) QueryContentNodeExercises() *ContentNodeExerciseQuery {
 // QueryExerciseLanguages queries the "exercise_languages" edge of the Exercise entity.
 func (_m *Exercise) QueryExerciseLanguages() *ExerciseLanguageQuery {
 	return NewExerciseClient(_m.config).QueryExerciseLanguages(_m)
+}
+
+// QueryExerciseSkills queries the "exercise_skills" edge of the Exercise entity.
+func (_m *Exercise) QueryExerciseSkills() *ExerciseSkillQuery {
+	return NewExerciseClient(_m.config).QueryExerciseSkills(_m)
+}
+
+// QueryExerciseConcepts queries the "exercise_concepts" edge of the Exercise entity.
+func (_m *Exercise) QueryExerciseConcepts() *ExerciseConceptQuery {
+	return NewExerciseClient(_m.config).QueryExerciseConcepts(_m)
 }
 
 // Update returns a builder for updating this Exercise.
@@ -302,9 +353,6 @@ func (_m *Exercise) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("exercise_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ExerciseType))
-	builder.WriteString(", ")
-	builder.WriteString("skill_tags=")
-	builder.WriteString(fmt.Sprintf("%v", _m.SkillTags))
 	builder.WriteString(", ")
 	if v := _m.ImageURL; v != nil {
 		builder.WriteString("image_url=")

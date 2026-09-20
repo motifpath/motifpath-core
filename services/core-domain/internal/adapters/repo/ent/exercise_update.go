@@ -9,18 +9,21 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ExerciseUpdate is the builder for updating Exercise entities.
@@ -61,24 +64,6 @@ func (_u *ExerciseUpdate) SetNillablePrompt(v *string) *ExerciseUpdate {
 	if v != nil {
 		_u.SetPrompt(*v)
 	}
-	return _u
-}
-
-// SetSkillTags sets the "skill_tags" field.
-func (_u *ExerciseUpdate) SetSkillTags(v []string) *ExerciseUpdate {
-	_u.mutation.SetSkillTags(v)
-	return _u
-}
-
-// AppendSkillTags appends value to the "skill_tags" field.
-func (_u *ExerciseUpdate) AppendSkillTags(v []string) *ExerciseUpdate {
-	_u.mutation.AppendSkillTags(v)
-	return _u
-}
-
-// ClearSkillTags clears the value of the "skill_tags" field.
-func (_u *ExerciseUpdate) ClearSkillTags() *ExerciseUpdate {
-	_u.mutation.ClearSkillTags()
 	return _u
 }
 
@@ -229,6 +214,36 @@ func (_u *ExerciseUpdate) AddLanguages(v ...*Language) *ExerciseUpdate {
 	return _u.AddLanguageIDs(ids...)
 }
 
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_u *ExerciseUpdate) AddSkillIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.AddSkillIDs(ids...)
+	return _u
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_u *ExerciseUpdate) AddSkills(v ...*Skill) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSkillIDs(ids...)
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+func (_u *ExerciseUpdate) AddConceptIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.AddConceptIDs(ids...)
+	return _u
+}
+
+// AddConcepts adds the "concepts" edges to the Concept entity.
+func (_u *ExerciseUpdate) AddConcepts(v ...*Concept) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConceptIDs(ids...)
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
 func (_u *ExerciseUpdate) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdate {
 	_u.mutation.AddChallengeExerciseIDs(ids...)
@@ -272,6 +287,36 @@ func (_u *ExerciseUpdate) AddExerciseLanguages(v ...*ExerciseLanguage) *Exercise
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseLanguageIDs(ids...)
+}
+
+// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by IDs.
+func (_u *ExerciseUpdate) AddExerciseSkillIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.AddExerciseSkillIDs(ids...)
+	return _u
+}
+
+// AddExerciseSkills adds the "exercise_skills" edges to the ExerciseSkill entity.
+func (_u *ExerciseUpdate) AddExerciseSkills(v ...*ExerciseSkill) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseSkillIDs(ids...)
+}
+
+// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
+func (_u *ExerciseUpdate) AddExerciseConceptIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.AddExerciseConceptIDs(ids...)
+	return _u
+}
+
+// AddExerciseConcepts adds the "exercise_concepts" edges to the ExerciseConcept entity.
+func (_u *ExerciseUpdate) AddExerciseConcepts(v ...*ExerciseConcept) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseConceptIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -363,6 +408,48 @@ func (_u *ExerciseUpdate) RemoveLanguages(v ...*Language) *ExerciseUpdate {
 	return _u.RemoveLanguageIDs(ids...)
 }
 
+// ClearSkills clears all "skills" edges to the Skill entity.
+func (_u *ExerciseUpdate) ClearSkills() *ExerciseUpdate {
+	_u.mutation.ClearSkills()
+	return _u
+}
+
+// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+func (_u *ExerciseUpdate) RemoveSkillIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.RemoveSkillIDs(ids...)
+	return _u
+}
+
+// RemoveSkills removes "skills" edges to Skill entities.
+func (_u *ExerciseUpdate) RemoveSkills(v ...*Skill) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSkillIDs(ids...)
+}
+
+// ClearConcepts clears all "concepts" edges to the Concept entity.
+func (_u *ExerciseUpdate) ClearConcepts() *ExerciseUpdate {
+	_u.mutation.ClearConcepts()
+	return _u
+}
+
+// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+func (_u *ExerciseUpdate) RemoveConceptIDs(ids ...uuid.UUID) *ExerciseUpdate {
+	_u.mutation.RemoveConceptIDs(ids...)
+	return _u
+}
+
+// RemoveConcepts removes "concepts" edges to Concept entities.
+func (_u *ExerciseUpdate) RemoveConcepts(v ...*Concept) *ExerciseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConceptIDs(ids...)
+}
+
 // ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
 func (_u *ExerciseUpdate) ClearChallengeExercises() *ExerciseUpdate {
 	_u.mutation.ClearChallengeExercises()
@@ -426,6 +513,48 @@ func (_u *ExerciseUpdate) RemoveExerciseLanguages(v ...*ExerciseLanguage) *Exerc
 	return _u.RemoveExerciseLanguageIDs(ids...)
 }
 
+// ClearExerciseSkills clears all "exercise_skills" edges to the ExerciseSkill entity.
+func (_u *ExerciseUpdate) ClearExerciseSkills() *ExerciseUpdate {
+	_u.mutation.ClearExerciseSkills()
+	return _u
+}
+
+// RemoveExerciseSkillIDs removes the "exercise_skills" edge to ExerciseSkill entities by IDs.
+func (_u *ExerciseUpdate) RemoveExerciseSkillIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.RemoveExerciseSkillIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseSkills removes "exercise_skills" edges to ExerciseSkill entities.
+func (_u *ExerciseUpdate) RemoveExerciseSkills(v ...*ExerciseSkill) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseSkillIDs(ids...)
+}
+
+// ClearExerciseConcepts clears all "exercise_concepts" edges to the ExerciseConcept entity.
+func (_u *ExerciseUpdate) ClearExerciseConcepts() *ExerciseUpdate {
+	_u.mutation.ClearExerciseConcepts()
+	return _u
+}
+
+// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to ExerciseConcept entities by IDs.
+func (_u *ExerciseUpdate) RemoveExerciseConceptIDs(ids ...int) *ExerciseUpdate {
+	_u.mutation.RemoveExerciseConceptIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseConcepts removes "exercise_concepts" edges to ExerciseConcept entities.
+func (_u *ExerciseUpdate) RemoveExerciseConcepts(v ...*ExerciseConcept) *ExerciseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseConceptIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *ExerciseUpdate) Save(ctx context.Context) (int, error) {
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
@@ -467,17 +596,6 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Prompt(); ok {
 		_spec.SetField(exercise.FieldPrompt, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.SkillTags(); ok {
-		_spec.SetField(exercise.FieldSkillTags, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedSkillTags(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, exercise.FieldSkillTags, value)
-		})
-	}
-	if _u.mutation.SkillTagsCleared() {
-		_spec.ClearField(exercise.FieldSkillTags, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.ImageURL(); ok {
 		_spec.SetField(exercise.FieldImageURL, field.TypeString, value)
@@ -722,6 +840,120 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSkillsIDs(); len(nodes) > 0 && !_u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConceptsIDs(); len(nodes) > 0 && !_u.mutation.ConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ChallengeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -857,6 +1089,96 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ExerciseSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseSkillsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseConceptsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{exercise.Label}
@@ -902,24 +1224,6 @@ func (_u *ExerciseUpdateOne) SetNillablePrompt(v *string) *ExerciseUpdateOne {
 	if v != nil {
 		_u.SetPrompt(*v)
 	}
-	return _u
-}
-
-// SetSkillTags sets the "skill_tags" field.
-func (_u *ExerciseUpdateOne) SetSkillTags(v []string) *ExerciseUpdateOne {
-	_u.mutation.SetSkillTags(v)
-	return _u
-}
-
-// AppendSkillTags appends value to the "skill_tags" field.
-func (_u *ExerciseUpdateOne) AppendSkillTags(v []string) *ExerciseUpdateOne {
-	_u.mutation.AppendSkillTags(v)
-	return _u
-}
-
-// ClearSkillTags clears the value of the "skill_tags" field.
-func (_u *ExerciseUpdateOne) ClearSkillTags() *ExerciseUpdateOne {
-	_u.mutation.ClearSkillTags()
 	return _u
 }
 
@@ -1070,6 +1374,36 @@ func (_u *ExerciseUpdateOne) AddLanguages(v ...*Language) *ExerciseUpdateOne {
 	return _u.AddLanguageIDs(ids...)
 }
 
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_u *ExerciseUpdateOne) AddSkillIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.AddSkillIDs(ids...)
+	return _u
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_u *ExerciseUpdateOne) AddSkills(v ...*Skill) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSkillIDs(ids...)
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+func (_u *ExerciseUpdateOne) AddConceptIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.AddConceptIDs(ids...)
+	return _u
+}
+
+// AddConcepts adds the "concepts" edges to the Concept entity.
+func (_u *ExerciseUpdateOne) AddConcepts(v ...*Concept) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddConceptIDs(ids...)
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeExerciseIDs(ids ...int) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeExerciseIDs(ids...)
@@ -1113,6 +1447,36 @@ func (_u *ExerciseUpdateOne) AddExerciseLanguages(v ...*ExerciseLanguage) *Exerc
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseLanguageIDs(ids...)
+}
+
+// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by IDs.
+func (_u *ExerciseUpdateOne) AddExerciseSkillIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.AddExerciseSkillIDs(ids...)
+	return _u
+}
+
+// AddExerciseSkills adds the "exercise_skills" edges to the ExerciseSkill entity.
+func (_u *ExerciseUpdateOne) AddExerciseSkills(v ...*ExerciseSkill) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseSkillIDs(ids...)
+}
+
+// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
+func (_u *ExerciseUpdateOne) AddExerciseConceptIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.AddExerciseConceptIDs(ids...)
+	return _u
+}
+
+// AddExerciseConcepts adds the "exercise_concepts" edges to the ExerciseConcept entity.
+func (_u *ExerciseUpdateOne) AddExerciseConcepts(v ...*ExerciseConcept) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseConceptIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -1204,6 +1568,48 @@ func (_u *ExerciseUpdateOne) RemoveLanguages(v ...*Language) *ExerciseUpdateOne 
 	return _u.RemoveLanguageIDs(ids...)
 }
 
+// ClearSkills clears all "skills" edges to the Skill entity.
+func (_u *ExerciseUpdateOne) ClearSkills() *ExerciseUpdateOne {
+	_u.mutation.ClearSkills()
+	return _u
+}
+
+// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveSkillIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.RemoveSkillIDs(ids...)
+	return _u
+}
+
+// RemoveSkills removes "skills" edges to Skill entities.
+func (_u *ExerciseUpdateOne) RemoveSkills(v ...*Skill) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSkillIDs(ids...)
+}
+
+// ClearConcepts clears all "concepts" edges to the Concept entity.
+func (_u *ExerciseUpdateOne) ClearConcepts() *ExerciseUpdateOne {
+	_u.mutation.ClearConcepts()
+	return _u
+}
+
+// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveConceptIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
+	_u.mutation.RemoveConceptIDs(ids...)
+	return _u
+}
+
+// RemoveConcepts removes "concepts" edges to Concept entities.
+func (_u *ExerciseUpdateOne) RemoveConcepts(v ...*Concept) *ExerciseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveConceptIDs(ids...)
+}
+
 // ClearChallengeExercises clears all "challenge_exercises" edges to the ChallengeExercise entity.
 func (_u *ExerciseUpdateOne) ClearChallengeExercises() *ExerciseUpdateOne {
 	_u.mutation.ClearChallengeExercises()
@@ -1265,6 +1671,48 @@ func (_u *ExerciseUpdateOne) RemoveExerciseLanguages(v ...*ExerciseLanguage) *Ex
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseLanguageIDs(ids...)
+}
+
+// ClearExerciseSkills clears all "exercise_skills" edges to the ExerciseSkill entity.
+func (_u *ExerciseUpdateOne) ClearExerciseSkills() *ExerciseUpdateOne {
+	_u.mutation.ClearExerciseSkills()
+	return _u
+}
+
+// RemoveExerciseSkillIDs removes the "exercise_skills" edge to ExerciseSkill entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveExerciseSkillIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.RemoveExerciseSkillIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseSkills removes "exercise_skills" edges to ExerciseSkill entities.
+func (_u *ExerciseUpdateOne) RemoveExerciseSkills(v ...*ExerciseSkill) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseSkillIDs(ids...)
+}
+
+// ClearExerciseConcepts clears all "exercise_concepts" edges to the ExerciseConcept entity.
+func (_u *ExerciseUpdateOne) ClearExerciseConcepts() *ExerciseUpdateOne {
+	_u.mutation.ClearExerciseConcepts()
+	return _u
+}
+
+// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to ExerciseConcept entities by IDs.
+func (_u *ExerciseUpdateOne) RemoveExerciseConceptIDs(ids ...int) *ExerciseUpdateOne {
+	_u.mutation.RemoveExerciseConceptIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseConcepts removes "exercise_concepts" edges to ExerciseConcept entities.
+func (_u *ExerciseUpdateOne) RemoveExerciseConcepts(v ...*ExerciseConcept) *ExerciseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseConceptIDs(ids...)
 }
 
 // Where appends a list predicates to the ExerciseUpdate builder.
@@ -1338,17 +1786,6 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	}
 	if value, ok := _u.mutation.Prompt(); ok {
 		_spec.SetField(exercise.FieldPrompt, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.SkillTags(); ok {
-		_spec.SetField(exercise.FieldSkillTags, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedSkillTags(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, exercise.FieldSkillTags, value)
-		})
-	}
-	if _u.mutation.SkillTagsCleared() {
-		_spec.ClearField(exercise.FieldSkillTags, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.ImageURL(); ok {
 		_spec.SetField(exercise.FieldImageURL, field.TypeString, value)
@@ -1593,6 +2030,120 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSkillsIDs(); len(nodes) > 0 && !_u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.SkillsTable,
+			Columns: exercise.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseSkillCreate{config: _u.config, mutation: newExerciseSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedConceptsIDs(); len(nodes) > 0 && !_u.mutation.ConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.ConceptsTable,
+			Columns: exercise.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseConceptCreate{config: _u.config, mutation: newExerciseConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ChallengeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1721,6 +2272,96 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciselanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseSkillsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseSkillsTable,
+			Columns: []string{exercise.ExerciseSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseConceptsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseConceptsTable,
+			Columns: []string{exercise.ExerciseConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

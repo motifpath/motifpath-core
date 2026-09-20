@@ -8,18 +8,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -30,15 +36,15 @@ func init() {
 	challengeFields := schema.Challenge{}.Fields()
 	_ = challengeFields
 	// challengeDescShuffleExercises is the schema descriptor for shuffle_exercises field.
-	challengeDescShuffleExercises := challengeFields[5].Descriptor()
+	challengeDescShuffleExercises := challengeFields[6].Descriptor()
 	// challenge.DefaultShuffleExercises holds the default value on creation for the shuffle_exercises field.
 	challenge.DefaultShuffleExercises = challengeDescShuffleExercises.Default.(bool)
 	// challengeDescShuffleOptions is the schema descriptor for shuffle_options field.
-	challengeDescShuffleOptions := challengeFields[6].Descriptor()
+	challengeDescShuffleOptions := challengeFields[7].Descriptor()
 	// challenge.DefaultShuffleOptions holds the default value on creation for the shuffle_options field.
 	challenge.DefaultShuffleOptions = challengeDescShuffleOptions.Default.(bool)
 	// challengeDescCreatedAt is the schema descriptor for created_at field.
-	challengeDescCreatedAt := challengeFields[7].Descriptor()
+	challengeDescCreatedAt := challengeFields[8].Descriptor()
 	// challenge.DefaultCreatedAt holds the default value on creation for the created_at field.
 	challenge.DefaultCreatedAt = challengeDescCreatedAt.Default.(func() time.Time)
 	// challengeDescID is the schema descriptor for id field.
@@ -51,16 +57,28 @@ func init() {
 	challengeexerciseDescLinkedAt := challengeexerciseFields[2].Descriptor()
 	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
+	conceptFields := schema.Concept{}.Fields()
+	_ = conceptFields
+	// conceptDescID is the schema descriptor for id field.
+	conceptDescID := conceptFields[0].Descriptor()
+	// concept.DefaultID holds the default value on creation for the id field.
+	concept.DefaultID = conceptDescID.Default.(func() uuid.UUID)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
-	contentnodeDescCreatedAt := contentnodeFields[8].Descriptor()
+	contentnodeDescCreatedAt := contentnodeFields[6].Descriptor()
 	// contentnode.DefaultCreatedAt holds the default value on creation for the created_at field.
 	contentnode.DefaultCreatedAt = contentnodeDescCreatedAt.Default.(func() time.Time)
 	// contentnodeDescID is the schema descriptor for id field.
 	contentnodeDescID := contentnodeFields[0].Descriptor()
 	// contentnode.DefaultID holds the default value on creation for the id field.
 	contentnode.DefaultID = contentnodeDescID.Default.(func() uuid.UUID)
+	contentnodeconceptFields := schema.ContentNodeConcept{}.Fields()
+	_ = contentnodeconceptFields
+	// contentnodeconceptDescLinkedAt is the schema descriptor for linked_at field.
+	contentnodeconceptDescLinkedAt := contentnodeconceptFields[2].Descriptor()
+	// contentnodeconcept.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	contentnodeconcept.DefaultLinkedAt = contentnodeconceptDescLinkedAt.Default.(func() time.Time)
 	contentnodeexerciseFields := schema.ContentNodeExercise{}.Fields()
 	_ = contentnodeexerciseFields
 	// contentnodeexerciseDescLinkedAt is the schema descriptor for linked_at field.
@@ -73,16 +91,28 @@ func init() {
 	contentnodelanguageDescLinkedAt := contentnodelanguageFields[2].Descriptor()
 	// contentnodelanguage.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	contentnodelanguage.DefaultLinkedAt = contentnodelanguageDescLinkedAt.Default.(func() time.Time)
+	contentnodeskillFields := schema.ContentNodeSkill{}.Fields()
+	_ = contentnodeskillFields
+	// contentnodeskillDescLinkedAt is the schema descriptor for linked_at field.
+	contentnodeskillDescLinkedAt := contentnodeskillFields[2].Descriptor()
+	// contentnodeskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	contentnodeskill.DefaultLinkedAt = contentnodeskillDescLinkedAt.Default.(func() time.Time)
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
-	exerciseDescCreatedAt := exerciseFields[9].Descriptor()
+	exerciseDescCreatedAt := exerciseFields[8].Descriptor()
 	// exercise.DefaultCreatedAt holds the default value on creation for the created_at field.
 	exercise.DefaultCreatedAt = exerciseDescCreatedAt.Default.(func() time.Time)
 	// exerciseDescID is the schema descriptor for id field.
 	exerciseDescID := exerciseFields[0].Descriptor()
 	// exercise.DefaultID holds the default value on creation for the id field.
 	exercise.DefaultID = exerciseDescID.Default.(func() uuid.UUID)
+	exerciseconceptFields := schema.ExerciseConcept{}.Fields()
+	_ = exerciseconceptFields
+	// exerciseconceptDescLinkedAt is the schema descriptor for linked_at field.
+	exerciseconceptDescLinkedAt := exerciseconceptFields[2].Descriptor()
+	// exerciseconcept.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	exerciseconcept.DefaultLinkedAt = exerciseconceptDescLinkedAt.Default.(func() time.Time)
 	exerciselanguageFields := schema.ExerciseLanguage{}.Fields()
 	_ = exerciselanguageFields
 	// exerciselanguageDescLinkedAt is the schema descriptor for linked_at field.
@@ -95,6 +125,12 @@ func init() {
 	exerciseoptionDescID := exerciseoptionFields[0].Descriptor()
 	// exerciseoption.DefaultID holds the default value on creation for the id field.
 	exerciseoption.DefaultID = exerciseoptionDescID.Default.(func() uuid.UUID)
+	exerciseskillFields := schema.ExerciseSkill{}.Fields()
+	_ = exerciseskillFields
+	// exerciseskillDescLinkedAt is the schema descriptor for linked_at field.
+	exerciseskillDescLinkedAt := exerciseskillFields[2].Descriptor()
+	// exerciseskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	exerciseskill.DefaultLinkedAt = exerciseskillDescLinkedAt.Default.(func() time.Time)
 	expandedcontentFields := schema.ExpandedContent{}.Fields()
 	_ = expandedcontentFields
 	// expandedcontentDescCreatedAt is the schema descriptor for created_at field.
@@ -137,6 +173,12 @@ func init() {
 	pathassignmentDescID := pathassignmentFields[0].Descriptor()
 	// pathassignment.DefaultID holds the default value on creation for the id field.
 	pathassignment.DefaultID = pathassignmentDescID.Default.(func() uuid.UUID)
+	skillFields := schema.Skill{}.Fields()
+	_ = skillFields
+	// skillDescID is the schema descriptor for id field.
+	skillDescID := skillFields[0].Descriptor()
+	// skill.DefaultID holds the default value on creation for the id field.
+	skill.DefaultID = skillDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescRegisteredAt is the schema descriptor for registered_at field.

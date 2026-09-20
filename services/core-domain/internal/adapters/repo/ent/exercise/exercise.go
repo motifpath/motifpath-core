@@ -22,8 +22,6 @@ const (
 	FieldPrompt = "prompt"
 	// FieldExerciseType holds the string denoting the exercise_type field in the database.
 	FieldExerciseType = "exercise_type"
-	// FieldSkillTags holds the string denoting the skill_tags field in the database.
-	FieldSkillTags = "skill_tags"
 	// FieldImageURL holds the string denoting the image_url field in the database.
 	FieldImageURL = "image_url"
 	// FieldAudioURL holds the string denoting the audio_url field in the database.
@@ -42,12 +40,20 @@ const (
 	EdgeOptions = "options"
 	// EdgeLanguages holds the string denoting the languages edge name in mutations.
 	EdgeLanguages = "languages"
+	// EdgeSkills holds the string denoting the skills edge name in mutations.
+	EdgeSkills = "skills"
+	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
+	EdgeConcepts = "concepts"
 	// EdgeChallengeExercises holds the string denoting the challenge_exercises edge name in mutations.
 	EdgeChallengeExercises = "challenge_exercises"
 	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
 	EdgeContentNodeExercises = "content_node_exercises"
 	// EdgeExerciseLanguages holds the string denoting the exercise_languages edge name in mutations.
 	EdgeExerciseLanguages = "exercise_languages"
+	// EdgeExerciseSkills holds the string denoting the exercise_skills edge name in mutations.
+	EdgeExerciseSkills = "exercise_skills"
+	// EdgeExerciseConcepts holds the string denoting the exercise_concepts edge name in mutations.
+	EdgeExerciseConcepts = "exercise_concepts"
 	// Table holds the table name of the exercise in the database.
 	Table = "exercises"
 	// ChallengesTable is the table that holds the challenges relation/edge. The primary key declared below.
@@ -72,6 +78,16 @@ const (
 	// LanguagesInverseTable is the table name for the Language entity.
 	// It exists in this package in order to avoid circular dependency with the "language" package.
 	LanguagesInverseTable = "languages"
+	// SkillsTable is the table that holds the skills relation/edge. The primary key declared below.
+	SkillsTable = "exercise_skills"
+	// SkillsInverseTable is the table name for the Skill entity.
+	// It exists in this package in order to avoid circular dependency with the "skill" package.
+	SkillsInverseTable = "skills"
+	// ConceptsTable is the table that holds the concepts relation/edge. The primary key declared below.
+	ConceptsTable = "exercise_concepts"
+	// ConceptsInverseTable is the table name for the Concept entity.
+	// It exists in this package in order to avoid circular dependency with the "concept" package.
+	ConceptsInverseTable = "concepts"
 	// ChallengeExercisesTable is the table that holds the challenge_exercises relation/edge.
 	ChallengeExercisesTable = "challenge_exercises"
 	// ChallengeExercisesInverseTable is the table name for the ChallengeExercise entity.
@@ -93,6 +109,20 @@ const (
 	ExerciseLanguagesInverseTable = "exercise_languages"
 	// ExerciseLanguagesColumn is the table column denoting the exercise_languages relation/edge.
 	ExerciseLanguagesColumn = "exercise_id"
+	// ExerciseSkillsTable is the table that holds the exercise_skills relation/edge.
+	ExerciseSkillsTable = "exercise_skills"
+	// ExerciseSkillsInverseTable is the table name for the ExerciseSkill entity.
+	// It exists in this package in order to avoid circular dependency with the "exerciseskill" package.
+	ExerciseSkillsInverseTable = "exercise_skills"
+	// ExerciseSkillsColumn is the table column denoting the exercise_skills relation/edge.
+	ExerciseSkillsColumn = "exercise_id"
+	// ExerciseConceptsTable is the table that holds the exercise_concepts relation/edge.
+	ExerciseConceptsTable = "exercise_concepts"
+	// ExerciseConceptsInverseTable is the table name for the ExerciseConcept entity.
+	// It exists in this package in order to avoid circular dependency with the "exerciseconcept" package.
+	ExerciseConceptsInverseTable = "exercise_concepts"
+	// ExerciseConceptsColumn is the table column denoting the exercise_concepts relation/edge.
+	ExerciseConceptsColumn = "exercise_id"
 )
 
 // Columns holds all SQL columns for exercise fields.
@@ -101,7 +131,6 @@ var Columns = []string{
 	FieldTitle,
 	FieldPrompt,
 	FieldExerciseType,
-	FieldSkillTags,
 	FieldImageURL,
 	FieldAudioURL,
 	FieldEstimatedDurationSeconds,
@@ -119,6 +148,12 @@ var (
 	// LanguagesPrimaryKey and LanguagesColumn2 are the table columns denoting the
 	// primary key for the languages relation (M2M).
 	LanguagesPrimaryKey = []string{"exercise_id", "language_id"}
+	// SkillsPrimaryKey and SkillsColumn2 are the table columns denoting the
+	// primary key for the skills relation (M2M).
+	SkillsPrimaryKey = []string{"exercise_id", "skill_id"}
+	// ConceptsPrimaryKey and ConceptsColumn2 are the table columns denoting the
+	// primary key for the concepts relation (M2M).
+	ConceptsPrimaryKey = []string{"exercise_id", "concept_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -268,6 +303,34 @@ func ByLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySkillsCount orders the results by skills count.
+func BySkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSkillsStep(), opts...)
+	}
+}
+
+// BySkills orders the results by skills terms.
+func BySkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByConceptsCount orders the results by concepts count.
+func ByConceptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newConceptsStep(), opts...)
+	}
+}
+
+// ByConcepts orders the results by concepts terms.
+func ByConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByChallengeExercisesCount orders the results by challenge_exercises count.
 func ByChallengeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -309,6 +372,34 @@ func ByExerciseLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption
 		sqlgraph.OrderByNeighborTerms(s, newExerciseLanguagesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByExerciseSkillsCount orders the results by exercise_skills count.
+func ByExerciseSkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExerciseSkillsStep(), opts...)
+	}
+}
+
+// ByExerciseSkills orders the results by exercise_skills terms.
+func ByExerciseSkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExerciseSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByExerciseConceptsCount orders the results by exercise_concepts count.
+func ByExerciseConceptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExerciseConceptsStep(), opts...)
+	}
+}
+
+// ByExerciseConcepts orders the results by exercise_concepts terms.
+func ByExerciseConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExerciseConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newChallengesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -337,6 +428,20 @@ func newLanguagesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, false, LanguagesTable, LanguagesPrimaryKey...),
 	)
 }
+func newSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, SkillsTable, SkillsPrimaryKey...),
+	)
+}
+func newConceptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ConceptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+	)
+}
 func newChallengeExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -356,5 +461,19 @@ func newExerciseLanguagesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ExerciseLanguagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseLanguagesTable, ExerciseLanguagesColumn),
+	)
+}
+func newExerciseSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExerciseSkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseSkillsTable, ExerciseSkillsColumn),
+	)
+}
+func newExerciseConceptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExerciseConceptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseConceptsTable, ExerciseConceptsColumn),
 	)
 }

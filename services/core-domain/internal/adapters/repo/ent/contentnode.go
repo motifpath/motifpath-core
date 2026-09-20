@@ -24,10 +24,6 @@ type ContentNode struct {
 	Title string `json:"title,omitempty"`
 	// ContentType holds the value of the "content_type" field.
 	ContentType contentnode.ContentType `json:"content_type,omitempty"`
-	// Skill holds the value of the "skill" field.
-	Skill string `json:"skill,omitempty"`
-	// Concept holds the value of the "concept" field.
-	Concept string `json:"concept,omitempty"`
 	// DifficultyLevel holds the value of the "difficulty_level" field.
 	DifficultyLevel contentnode.DifficultyLevel `json:"difficulty_level,omitempty"`
 	// ReviewState holds the value of the "review_state" field.
@@ -46,13 +42,21 @@ type ContentNodeEdges struct {
 	PathExercises []*Exercise `json:"path_exercises,omitempty"`
 	// Languages holds the value of the languages edge.
 	Languages []*Language `json:"languages,omitempty"`
+	// Skills holds the value of the skills edge.
+	Skills []*Skill `json:"skills,omitempty"`
+	// Concepts holds the value of the concepts edge.
+	Concepts []*Concept `json:"concepts,omitempty"`
 	// ContentNodeExercises holds the value of the content_node_exercises edge.
 	ContentNodeExercises []*ContentNodeExercise `json:"content_node_exercises,omitempty"`
 	// ContentNodeLanguages holds the value of the content_node_languages edge.
 	ContentNodeLanguages []*ContentNodeLanguage `json:"content_node_languages,omitempty"`
+	// ContentNodeSkills holds the value of the content_node_skills edge.
+	ContentNodeSkills []*ContentNodeSkill `json:"content_node_skills,omitempty"`
+	// ContentNodeConcepts holds the value of the content_node_concepts edge.
+	ContentNodeConcepts []*ContentNodeConcept `json:"content_node_concepts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [8]bool
 }
 
 // PathExercisesOrErr returns the PathExercises value or an error if the edge
@@ -73,10 +77,28 @@ func (e ContentNodeEdges) LanguagesOrErr() ([]*Language, error) {
 	return nil, &NotLoadedError{edge: "languages"}
 }
 
+// SkillsOrErr returns the Skills value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) SkillsOrErr() ([]*Skill, error) {
+	if e.loadedTypes[2] {
+		return e.Skills, nil
+	}
+	return nil, &NotLoadedError{edge: "skills"}
+}
+
+// ConceptsOrErr returns the Concepts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) ConceptsOrErr() ([]*Concept, error) {
+	if e.loadedTypes[3] {
+		return e.Concepts, nil
+	}
+	return nil, &NotLoadedError{edge: "concepts"}
+}
+
 // ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[4] {
 		return e.ContentNodeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_exercises"}
@@ -85,10 +107,28 @@ func (e ContentNodeEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, e
 // ContentNodeLanguagesOrErr returns the ContentNodeLanguages value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeLanguagesOrErr() ([]*ContentNodeLanguage, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[5] {
 		return e.ContentNodeLanguages, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_languages"}
+}
+
+// ContentNodeSkillsOrErr returns the ContentNodeSkills value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) ContentNodeSkillsOrErr() ([]*ContentNodeSkill, error) {
+	if e.loadedTypes[6] {
+		return e.ContentNodeSkills, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_skills"}
+}
+
+// ContentNodeConceptsOrErr returns the ContentNodeConcepts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) ContentNodeConceptsOrErr() ([]*ContentNodeConcept, error) {
+	if e.loadedTypes[7] {
+		return e.ContentNodeConcepts, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_concepts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -96,7 +136,7 @@ func (*ContentNode) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldSkill, contentnode.FieldConcept, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
+		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
 			values[i] = new(sql.NullString)
 		case contentnode.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -141,18 +181,6 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ContentType = contentnode.ContentType(value.String)
 			}
-		case contentnode.FieldSkill:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field skill", values[i])
-			} else if value.Valid {
-				_m.Skill = value.String
-			}
-		case contentnode.FieldConcept:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field concept", values[i])
-			} else if value.Valid {
-				_m.Concept = value.String
-			}
 		case contentnode.FieldDifficultyLevel:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field difficulty_level", values[i])
@@ -194,6 +222,16 @@ func (_m *ContentNode) QueryLanguages() *LanguageQuery {
 	return NewContentNodeClient(_m.config).QueryLanguages(_m)
 }
 
+// QuerySkills queries the "skills" edge of the ContentNode entity.
+func (_m *ContentNode) QuerySkills() *SkillQuery {
+	return NewContentNodeClient(_m.config).QuerySkills(_m)
+}
+
+// QueryConcepts queries the "concepts" edge of the ContentNode entity.
+func (_m *ContentNode) QueryConcepts() *ConceptQuery {
+	return NewContentNodeClient(_m.config).QueryConcepts(_m)
+}
+
 // QueryContentNodeExercises queries the "content_node_exercises" edge of the ContentNode entity.
 func (_m *ContentNode) QueryContentNodeExercises() *ContentNodeExerciseQuery {
 	return NewContentNodeClient(_m.config).QueryContentNodeExercises(_m)
@@ -202,6 +240,16 @@ func (_m *ContentNode) QueryContentNodeExercises() *ContentNodeExerciseQuery {
 // QueryContentNodeLanguages queries the "content_node_languages" edge of the ContentNode entity.
 func (_m *ContentNode) QueryContentNodeLanguages() *ContentNodeLanguageQuery {
 	return NewContentNodeClient(_m.config).QueryContentNodeLanguages(_m)
+}
+
+// QueryContentNodeSkills queries the "content_node_skills" edge of the ContentNode entity.
+func (_m *ContentNode) QueryContentNodeSkills() *ContentNodeSkillQuery {
+	return NewContentNodeClient(_m.config).QueryContentNodeSkills(_m)
+}
+
+// QueryContentNodeConcepts queries the "content_node_concepts" edge of the ContentNode entity.
+func (_m *ContentNode) QueryContentNodeConcepts() *ContentNodeConceptQuery {
+	return NewContentNodeClient(_m.config).QueryContentNodeConcepts(_m)
 }
 
 // Update returns a builder for updating this ContentNode.
@@ -235,12 +283,6 @@ func (_m *ContentNode) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("content_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ContentType))
-	builder.WriteString(", ")
-	builder.WriteString("skill=")
-	builder.WriteString(_m.Skill)
-	builder.WriteString(", ")
-	builder.WriteString("concept=")
-	builder.WriteString(_m.Concept)
 	builder.WriteString(", ")
 	builder.WriteString("difficulty_level=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DifficultyLevel))

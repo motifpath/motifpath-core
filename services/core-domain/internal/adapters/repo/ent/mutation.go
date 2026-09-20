@@ -14,18 +14,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -40,17 +46,23 @@ const (
 	// Node types.
 	TypeChallenge           = "Challenge"
 	TypeChallengeExercise   = "ChallengeExercise"
+	TypeConcept             = "Concept"
 	TypeContentNode         = "ContentNode"
+	TypeContentNodeConcept  = "ContentNodeConcept"
 	TypeContentNodeExercise = "ContentNodeExercise"
 	TypeContentNodeLanguage = "ContentNodeLanguage"
+	TypeContentNodeSkill    = "ContentNodeSkill"
 	TypeExercise            = "Exercise"
+	TypeExerciseConcept     = "ExerciseConcept"
 	TypeExerciseLanguage    = "ExerciseLanguage"
 	TypeExerciseOption      = "ExerciseOption"
+	TypeExerciseSkill       = "ExerciseSkill"
 	TypeExpandedContent     = "ExpandedContent"
 	TypeLanguage            = "Language"
 	TypeLearningPath        = "LearningPath"
 	TypeLearningPathItem    = "LearningPathItem"
 	TypePathAssignment      = "PathAssignment"
+	TypeSkill               = "Skill"
 	TypeUser                = "User"
 )
 
@@ -61,7 +73,8 @@ type ChallengeMutation struct {
 	typ                        string
 	id                         *uuid.UUID
 	content_node_id            *uuid.UUID
-	subject_tag                *string
+	subject_skill_id           *uuid.UUID
+	subject_concept_id         *uuid.UUID
 	pass_threshold             *int
 	addpass_threshold          *int
 	time_threshold_ms          *int
@@ -221,40 +234,102 @@ func (m *ChallengeMutation) ResetContentNodeID() {
 	m.content_node_id = nil
 }
 
-// SetSubjectTag sets the "subject_tag" field.
-func (m *ChallengeMutation) SetSubjectTag(s string) {
-	m.subject_tag = &s
+// SetSubjectSkillID sets the "subject_skill_id" field.
+func (m *ChallengeMutation) SetSubjectSkillID(u uuid.UUID) {
+	m.subject_skill_id = &u
 }
 
-// SubjectTag returns the value of the "subject_tag" field in the mutation.
-func (m *ChallengeMutation) SubjectTag() (r string, exists bool) {
-	v := m.subject_tag
+// SubjectSkillID returns the value of the "subject_skill_id" field in the mutation.
+func (m *ChallengeMutation) SubjectSkillID() (r uuid.UUID, exists bool) {
+	v := m.subject_skill_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSubjectTag returns the old "subject_tag" field's value of the Challenge entity.
+// OldSubjectSkillID returns the old "subject_skill_id" field's value of the Challenge entity.
 // If the Challenge object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ChallengeMutation) OldSubjectTag(ctx context.Context) (v string, err error) {
+func (m *ChallengeMutation) OldSubjectSkillID(ctx context.Context) (v *uuid.UUID, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSubjectTag is only allowed on UpdateOne operations")
+		return v, errors.New("OldSubjectSkillID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSubjectTag requires an ID field in the mutation")
+		return v, errors.New("OldSubjectSkillID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSubjectTag: %w", err)
+		return v, fmt.Errorf("querying old value for OldSubjectSkillID: %w", err)
 	}
-	return oldValue.SubjectTag, nil
+	return oldValue.SubjectSkillID, nil
 }
 
-// ResetSubjectTag resets all changes to the "subject_tag" field.
-func (m *ChallengeMutation) ResetSubjectTag() {
-	m.subject_tag = nil
+// ClearSubjectSkillID clears the value of the "subject_skill_id" field.
+func (m *ChallengeMutation) ClearSubjectSkillID() {
+	m.subject_skill_id = nil
+	m.clearedFields[challenge.FieldSubjectSkillID] = struct{}{}
+}
+
+// SubjectSkillIDCleared returns if the "subject_skill_id" field was cleared in this mutation.
+func (m *ChallengeMutation) SubjectSkillIDCleared() bool {
+	_, ok := m.clearedFields[challenge.FieldSubjectSkillID]
+	return ok
+}
+
+// ResetSubjectSkillID resets all changes to the "subject_skill_id" field.
+func (m *ChallengeMutation) ResetSubjectSkillID() {
+	m.subject_skill_id = nil
+	delete(m.clearedFields, challenge.FieldSubjectSkillID)
+}
+
+// SetSubjectConceptID sets the "subject_concept_id" field.
+func (m *ChallengeMutation) SetSubjectConceptID(u uuid.UUID) {
+	m.subject_concept_id = &u
+}
+
+// SubjectConceptID returns the value of the "subject_concept_id" field in the mutation.
+func (m *ChallengeMutation) SubjectConceptID() (r uuid.UUID, exists bool) {
+	v := m.subject_concept_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubjectConceptID returns the old "subject_concept_id" field's value of the Challenge entity.
+// If the Challenge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChallengeMutation) OldSubjectConceptID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubjectConceptID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubjectConceptID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubjectConceptID: %w", err)
+	}
+	return oldValue.SubjectConceptID, nil
+}
+
+// ClearSubjectConceptID clears the value of the "subject_concept_id" field.
+func (m *ChallengeMutation) ClearSubjectConceptID() {
+	m.subject_concept_id = nil
+	m.clearedFields[challenge.FieldSubjectConceptID] = struct{}{}
+}
+
+// SubjectConceptIDCleared returns if the "subject_concept_id" field was cleared in this mutation.
+func (m *ChallengeMutation) SubjectConceptIDCleared() bool {
+	_, ok := m.clearedFields[challenge.FieldSubjectConceptID]
+	return ok
+}
+
+// ResetSubjectConceptID resets all changes to the "subject_concept_id" field.
+func (m *ChallengeMutation) ResetSubjectConceptID() {
+	m.subject_concept_id = nil
+	delete(m.clearedFields, challenge.FieldSubjectConceptID)
 }
 
 // SetPassThreshold sets the "pass_threshold" field.
@@ -633,12 +708,15 @@ func (m *ChallengeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChallengeMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.content_node_id != nil {
 		fields = append(fields, challenge.FieldContentNodeID)
 	}
-	if m.subject_tag != nil {
-		fields = append(fields, challenge.FieldSubjectTag)
+	if m.subject_skill_id != nil {
+		fields = append(fields, challenge.FieldSubjectSkillID)
+	}
+	if m.subject_concept_id != nil {
+		fields = append(fields, challenge.FieldSubjectConceptID)
 	}
 	if m.pass_threshold != nil {
 		fields = append(fields, challenge.FieldPassThreshold)
@@ -665,8 +743,10 @@ func (m *ChallengeMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case challenge.FieldContentNodeID:
 		return m.ContentNodeID()
-	case challenge.FieldSubjectTag:
-		return m.SubjectTag()
+	case challenge.FieldSubjectSkillID:
+		return m.SubjectSkillID()
+	case challenge.FieldSubjectConceptID:
+		return m.SubjectConceptID()
 	case challenge.FieldPassThreshold:
 		return m.PassThreshold()
 	case challenge.FieldTimeThresholdMs:
@@ -688,8 +768,10 @@ func (m *ChallengeMutation) OldField(ctx context.Context, name string) (ent.Valu
 	switch name {
 	case challenge.FieldContentNodeID:
 		return m.OldContentNodeID(ctx)
-	case challenge.FieldSubjectTag:
-		return m.OldSubjectTag(ctx)
+	case challenge.FieldSubjectSkillID:
+		return m.OldSubjectSkillID(ctx)
+	case challenge.FieldSubjectConceptID:
+		return m.OldSubjectConceptID(ctx)
 	case challenge.FieldPassThreshold:
 		return m.OldPassThreshold(ctx)
 	case challenge.FieldTimeThresholdMs:
@@ -716,12 +798,19 @@ func (m *ChallengeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetContentNodeID(v)
 		return nil
-	case challenge.FieldSubjectTag:
-		v, ok := value.(string)
+	case challenge.FieldSubjectSkillID:
+		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSubjectTag(v)
+		m.SetSubjectSkillID(v)
+		return nil
+	case challenge.FieldSubjectConceptID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubjectConceptID(v)
 		return nil
 	case challenge.FieldPassThreshold:
 		v, ok := value.(int)
@@ -815,6 +904,12 @@ func (m *ChallengeMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ChallengeMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(challenge.FieldSubjectSkillID) {
+		fields = append(fields, challenge.FieldSubjectSkillID)
+	}
+	if m.FieldCleared(challenge.FieldSubjectConceptID) {
+		fields = append(fields, challenge.FieldSubjectConceptID)
+	}
 	if m.FieldCleared(challenge.FieldTimeThresholdMs) {
 		fields = append(fields, challenge.FieldTimeThresholdMs)
 	}
@@ -832,6 +927,12 @@ func (m *ChallengeMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChallengeMutation) ClearField(name string) error {
 	switch name {
+	case challenge.FieldSubjectSkillID:
+		m.ClearSubjectSkillID()
+		return nil
+	case challenge.FieldSubjectConceptID:
+		m.ClearSubjectConceptID()
+		return nil
 	case challenge.FieldTimeThresholdMs:
 		m.ClearTimeThresholdMs()
 		return nil
@@ -846,8 +947,11 @@ func (m *ChallengeMutation) ResetField(name string) error {
 	case challenge.FieldContentNodeID:
 		m.ResetContentNodeID()
 		return nil
-	case challenge.FieldSubjectTag:
-		m.ResetSubjectTag()
+	case challenge.FieldSubjectSkillID:
+		m.ResetSubjectSkillID()
+		return nil
+	case challenge.FieldSubjectConceptID:
+		m.ResetSubjectConceptID()
 		return nil
 	case challenge.FieldPassThreshold:
 		m.ResetPassThreshold()
@@ -1512,6 +1616,885 @@ func (m *ChallengeExerciseMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ChallengeExercise edge %s", name)
 }
 
+// ConceptMutation represents an operation that mutates the Concept nodes in the graph.
+type ConceptMutation struct {
+	config
+	op                           Op
+	typ                          string
+	id                           *uuid.UUID
+	name                         *string
+	clearedFields                map[string]struct{}
+	children                     map[uuid.UUID]struct{}
+	removedchildren              map[uuid.UUID]struct{}
+	clearedchildren              bool
+	parent                       *uuid.UUID
+	clearedparent                bool
+	content_nodes                map[uuid.UUID]struct{}
+	removedcontent_nodes         map[uuid.UUID]struct{}
+	clearedcontent_nodes         bool
+	exercises                    map[uuid.UUID]struct{}
+	removedexercises             map[uuid.UUID]struct{}
+	clearedexercises             bool
+	content_node_concepts        map[int]struct{}
+	removedcontent_node_concepts map[int]struct{}
+	clearedcontent_node_concepts bool
+	exercise_concepts            map[int]struct{}
+	removedexercise_concepts     map[int]struct{}
+	clearedexercise_concepts     bool
+	done                         bool
+	oldValue                     func(context.Context) (*Concept, error)
+	predicates                   []predicate.Concept
+}
+
+var _ ent.Mutation = (*ConceptMutation)(nil)
+
+// conceptOption allows management of the mutation configuration using functional options.
+type conceptOption func(*ConceptMutation)
+
+// newConceptMutation creates new mutation for the Concept entity.
+func newConceptMutation(c config, op Op, opts ...conceptOption) *ConceptMutation {
+	m := &ConceptMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeConcept,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withConceptID sets the ID field of the mutation.
+func withConceptID(id uuid.UUID) conceptOption {
+	return func(m *ConceptMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Concept
+		)
+		m.oldValue = func(ctx context.Context) (*Concept, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Concept.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withConcept sets the old Concept of the mutation.
+func withConcept(node *Concept) conceptOption {
+	return func(m *ConceptMutation) {
+		m.oldValue = func(context.Context) (*Concept, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ConceptMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ConceptMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Concept entities.
+func (m *ConceptMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ConceptMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ConceptMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Concept.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *ConceptMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *ConceptMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Concept entity.
+// If the Concept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ConceptMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *ConceptMutation) ResetName() {
+	m.name = nil
+}
+
+// SetParentID sets the "parent_id" field.
+func (m *ConceptMutation) SetParentID(u uuid.UUID) {
+	m.parent = &u
+}
+
+// ParentID returns the value of the "parent_id" field in the mutation.
+func (m *ConceptMutation) ParentID() (r uuid.UUID, exists bool) {
+	v := m.parent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParentID returns the old "parent_id" field's value of the Concept entity.
+// If the Concept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ConceptMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
+	}
+	return oldValue.ParentID, nil
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (m *ConceptMutation) ClearParentID() {
+	m.parent = nil
+	m.clearedFields[concept.FieldParentID] = struct{}{}
+}
+
+// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
+func (m *ConceptMutation) ParentIDCleared() bool {
+	_, ok := m.clearedFields[concept.FieldParentID]
+	return ok
+}
+
+// ResetParentID resets all changes to the "parent_id" field.
+func (m *ConceptMutation) ResetParentID() {
+	m.parent = nil
+	delete(m.clearedFields, concept.FieldParentID)
+}
+
+// AddChildIDs adds the "children" edge to the Concept entity by ids.
+func (m *ConceptMutation) AddChildIDs(ids ...uuid.UUID) {
+	if m.children == nil {
+		m.children = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.children[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChildren clears the "children" edge to the Concept entity.
+func (m *ConceptMutation) ClearChildren() {
+	m.clearedchildren = true
+}
+
+// ChildrenCleared reports if the "children" edge to the Concept entity was cleared.
+func (m *ConceptMutation) ChildrenCleared() bool {
+	return m.clearedchildren
+}
+
+// RemoveChildIDs removes the "children" edge to the Concept entity by IDs.
+func (m *ConceptMutation) RemoveChildIDs(ids ...uuid.UUID) {
+	if m.removedchildren == nil {
+		m.removedchildren = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.children, ids[i])
+		m.removedchildren[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChildren returns the removed IDs of the "children" edge to the Concept entity.
+func (m *ConceptMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.removedchildren {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChildrenIDs returns the "children" edge IDs in the mutation.
+func (m *ConceptMutation) ChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.children {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChildren resets all changes to the "children" edge.
+func (m *ConceptMutation) ResetChildren() {
+	m.children = nil
+	m.clearedchildren = false
+	m.removedchildren = nil
+}
+
+// ClearParent clears the "parent" edge to the Concept entity.
+func (m *ConceptMutation) ClearParent() {
+	m.clearedparent = true
+	m.clearedFields[concept.FieldParentID] = struct{}{}
+}
+
+// ParentCleared reports if the "parent" edge to the Concept entity was cleared.
+func (m *ConceptMutation) ParentCleared() bool {
+	return m.ParentIDCleared() || m.clearedparent
+}
+
+// ParentIDs returns the "parent" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ParentID instead. It exists only for internal usage by the builders.
+func (m *ConceptMutation) ParentIDs() (ids []uuid.UUID) {
+	if id := m.parent; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetParent resets all changes to the "parent" edge.
+func (m *ConceptMutation) ResetParent() {
+	m.parent = nil
+	m.clearedparent = false
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
+func (m *ConceptMutation) AddContentNodeIDs(ids ...uuid.UUID) {
+	if m.content_nodes == nil {
+		m.content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
+func (m *ConceptMutation) ClearContentNodes() {
+	m.clearedcontent_nodes = true
+}
+
+// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
+func (m *ConceptMutation) ContentNodesCleared() bool {
+	return m.clearedcontent_nodes
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
+func (m *ConceptMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedcontent_nodes == nil {
+		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.content_nodes, ids[i])
+		m.removedcontent_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
+func (m *ConceptMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcontent_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
+func (m *ConceptMutation) ContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodes resets all changes to the "content_nodes" edge.
+func (m *ConceptMutation) ResetContentNodes() {
+	m.content_nodes = nil
+	m.clearedcontent_nodes = false
+	m.removedcontent_nodes = nil
+}
+
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
+func (m *ConceptMutation) AddExerciseIDs(ids ...uuid.UUID) {
+	if m.exercises == nil {
+		m.exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExercises clears the "exercises" edge to the Exercise entity.
+func (m *ConceptMutation) ClearExercises() {
+	m.clearedexercises = true
+}
+
+// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
+func (m *ConceptMutation) ExercisesCleared() bool {
+	return m.clearedexercises
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
+func (m *ConceptMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
+	if m.removedexercises == nil {
+		m.removedexercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.exercises, ids[i])
+		m.removedexercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
+func (m *ConceptMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedexercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExercisesIDs returns the "exercises" edge IDs in the mutation.
+func (m *ConceptMutation) ExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExercises resets all changes to the "exercises" edge.
+func (m *ConceptMutation) ResetExercises() {
+	m.exercises = nil
+	m.clearedexercises = false
+	m.removedexercises = nil
+}
+
+// AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by ids.
+func (m *ConceptMutation) AddContentNodeConceptIDs(ids ...int) {
+	if m.content_node_concepts == nil {
+		m.content_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeConcepts clears the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *ConceptMutation) ClearContentNodeConcepts() {
+	m.clearedcontent_node_concepts = true
+}
+
+// ContentNodeConceptsCleared reports if the "content_node_concepts" edge to the ContentNodeConcept entity was cleared.
+func (m *ConceptMutation) ContentNodeConceptsCleared() bool {
+	return m.clearedcontent_node_concepts
+}
+
+// RemoveContentNodeConceptIDs removes the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
+func (m *ConceptMutation) RemoveContentNodeConceptIDs(ids ...int) {
+	if m.removedcontent_node_concepts == nil {
+		m.removedcontent_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_concepts, ids[i])
+		m.removedcontent_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeConcepts returns the removed IDs of the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *ConceptMutation) RemovedContentNodeConceptsIDs() (ids []int) {
+	for id := range m.removedcontent_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeConceptsIDs returns the "content_node_concepts" edge IDs in the mutation.
+func (m *ConceptMutation) ContentNodeConceptsIDs() (ids []int) {
+	for id := range m.content_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeConcepts resets all changes to the "content_node_concepts" edge.
+func (m *ConceptMutation) ResetContentNodeConcepts() {
+	m.content_node_concepts = nil
+	m.clearedcontent_node_concepts = false
+	m.removedcontent_node_concepts = nil
+}
+
+// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by ids.
+func (m *ConceptMutation) AddExerciseConceptIDs(ids ...int) {
+	if m.exercise_concepts == nil {
+		m.exercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseConcepts clears the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *ConceptMutation) ClearExerciseConcepts() {
+	m.clearedexercise_concepts = true
+}
+
+// ExerciseConceptsCleared reports if the "exercise_concepts" edge to the ExerciseConcept entity was cleared.
+func (m *ConceptMutation) ExerciseConceptsCleared() bool {
+	return m.clearedexercise_concepts
+}
+
+// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
+func (m *ConceptMutation) RemoveExerciseConceptIDs(ids ...int) {
+	if m.removedexercise_concepts == nil {
+		m.removedexercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_concepts, ids[i])
+		m.removedexercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseConcepts returns the removed IDs of the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *ConceptMutation) RemovedExerciseConceptsIDs() (ids []int) {
+	for id := range m.removedexercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseConceptsIDs returns the "exercise_concepts" edge IDs in the mutation.
+func (m *ConceptMutation) ExerciseConceptsIDs() (ids []int) {
+	for id := range m.exercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseConcepts resets all changes to the "exercise_concepts" edge.
+func (m *ConceptMutation) ResetExerciseConcepts() {
+	m.exercise_concepts = nil
+	m.clearedexercise_concepts = false
+	m.removedexercise_concepts = nil
+}
+
+// Where appends a list predicates to the ConceptMutation builder.
+func (m *ConceptMutation) Where(ps ...predicate.Concept) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ConceptMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ConceptMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Concept, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ConceptMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ConceptMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Concept).
+func (m *ConceptMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ConceptMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.name != nil {
+		fields = append(fields, concept.FieldName)
+	}
+	if m.parent != nil {
+		fields = append(fields, concept.FieldParentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ConceptMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case concept.FieldName:
+		return m.Name()
+	case concept.FieldParentID:
+		return m.ParentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ConceptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case concept.FieldName:
+		return m.OldName(ctx)
+	case concept.FieldParentID:
+		return m.OldParentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Concept field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ConceptMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case concept.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case concept.FieldParentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Concept field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ConceptMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ConceptMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ConceptMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Concept numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ConceptMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(concept.FieldParentID) {
+		fields = append(fields, concept.FieldParentID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ConceptMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ConceptMutation) ClearField(name string) error {
+	switch name {
+	case concept.FieldParentID:
+		m.ClearParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown Concept nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ConceptMutation) ResetField(name string) error {
+	switch name {
+	case concept.FieldName:
+		m.ResetName()
+		return nil
+	case concept.FieldParentID:
+		m.ResetParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown Concept field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ConceptMutation) AddedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.children != nil {
+		edges = append(edges, concept.EdgeChildren)
+	}
+	if m.parent != nil {
+		edges = append(edges, concept.EdgeParent)
+	}
+	if m.content_nodes != nil {
+		edges = append(edges, concept.EdgeContentNodes)
+	}
+	if m.exercises != nil {
+		edges = append(edges, concept.EdgeExercises)
+	}
+	if m.content_node_concepts != nil {
+		edges = append(edges, concept.EdgeContentNodeConcepts)
+	}
+	if m.exercise_concepts != nil {
+		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ConceptMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case concept.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.children))
+		for id := range m.children {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeParent:
+		if id := m.parent; id != nil {
+			return []ent.Value{*id}
+		}
+	case concept.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.content_nodes))
+		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.exercises))
+		for id := range m.exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.content_node_concepts))
+		for id := range m.content_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.exercise_concepts))
+		for id := range m.exercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ConceptMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.removedchildren != nil {
+		edges = append(edges, concept.EdgeChildren)
+	}
+	if m.removedcontent_nodes != nil {
+		edges = append(edges, concept.EdgeContentNodes)
+	}
+	if m.removedexercises != nil {
+		edges = append(edges, concept.EdgeExercises)
+	}
+	if m.removedcontent_node_concepts != nil {
+		edges = append(edges, concept.EdgeContentNodeConcepts)
+	}
+	if m.removedexercise_concepts != nil {
+		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ConceptMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case concept.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.removedchildren))
+		for id := range m.removedchildren {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
+		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.removedexercises))
+		for id := range m.removedexercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_concepts))
+		for id := range m.removedcontent_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case concept.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.removedexercise_concepts))
+		for id := range m.removedexercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ConceptMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.clearedchildren {
+		edges = append(edges, concept.EdgeChildren)
+	}
+	if m.clearedparent {
+		edges = append(edges, concept.EdgeParent)
+	}
+	if m.clearedcontent_nodes {
+		edges = append(edges, concept.EdgeContentNodes)
+	}
+	if m.clearedexercises {
+		edges = append(edges, concept.EdgeExercises)
+	}
+	if m.clearedcontent_node_concepts {
+		edges = append(edges, concept.EdgeContentNodeConcepts)
+	}
+	if m.clearedexercise_concepts {
+		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ConceptMutation) EdgeCleared(name string) bool {
+	switch name {
+	case concept.EdgeChildren:
+		return m.clearedchildren
+	case concept.EdgeParent:
+		return m.clearedparent
+	case concept.EdgeContentNodes:
+		return m.clearedcontent_nodes
+	case concept.EdgeExercises:
+		return m.clearedexercises
+	case concept.EdgeContentNodeConcepts:
+		return m.clearedcontent_node_concepts
+	case concept.EdgeExerciseConcepts:
+		return m.clearedexercise_concepts
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ConceptMutation) ClearEdge(name string) error {
+	switch name {
+	case concept.EdgeParent:
+		m.ClearParent()
+		return nil
+	}
+	return fmt.Errorf("unknown Concept unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ConceptMutation) ResetEdge(name string) error {
+	switch name {
+	case concept.EdgeChildren:
+		m.ResetChildren()
+		return nil
+	case concept.EdgeParent:
+		m.ResetParent()
+		return nil
+	case concept.EdgeContentNodes:
+		m.ResetContentNodes()
+		return nil
+	case concept.EdgeExercises:
+		m.ResetExercises()
+		return nil
+	case concept.EdgeContentNodeConcepts:
+		m.ResetContentNodeConcepts()
+		return nil
+	case concept.EdgeExerciseConcepts:
+		m.ResetExerciseConcepts()
+		return nil
+	}
+	return fmt.Errorf("unknown Concept edge %s", name)
+}
+
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.
 type ContentNodeMutation struct {
 	config
@@ -1521,8 +2504,6 @@ type ContentNodeMutation struct {
 	teacher_id                    *uuid.UUID
 	title                         *string
 	content_type                  *contentnode.ContentType
-	skill                         *string
-	concept                       *string
 	difficulty_level              *contentnode.DifficultyLevel
 	review_state                  *contentnode.ReviewState
 	created_at                    *time.Time
@@ -1533,12 +2514,24 @@ type ContentNodeMutation struct {
 	languages                     map[uuid.UUID]struct{}
 	removedlanguages              map[uuid.UUID]struct{}
 	clearedlanguages              bool
+	skills                        map[uuid.UUID]struct{}
+	removedskills                 map[uuid.UUID]struct{}
+	clearedskills                 bool
+	concepts                      map[uuid.UUID]struct{}
+	removedconcepts               map[uuid.UUID]struct{}
+	clearedconcepts               bool
 	content_node_exercises        map[int]struct{}
 	removedcontent_node_exercises map[int]struct{}
 	clearedcontent_node_exercises bool
 	content_node_languages        map[int]struct{}
 	removedcontent_node_languages map[int]struct{}
 	clearedcontent_node_languages bool
+	content_node_skills           map[int]struct{}
+	removedcontent_node_skills    map[int]struct{}
+	clearedcontent_node_skills    bool
+	content_node_concepts         map[int]struct{}
+	removedcontent_node_concepts  map[int]struct{}
+	clearedcontent_node_concepts  bool
 	done                          bool
 	oldValue                      func(context.Context) (*ContentNode, error)
 	predicates                    []predicate.ContentNode
@@ -1754,78 +2747,6 @@ func (m *ContentNodeMutation) OldContentType(ctx context.Context) (v contentnode
 // ResetContentType resets all changes to the "content_type" field.
 func (m *ContentNodeMutation) ResetContentType() {
 	m.content_type = nil
-}
-
-// SetSkill sets the "skill" field.
-func (m *ContentNodeMutation) SetSkill(s string) {
-	m.skill = &s
-}
-
-// Skill returns the value of the "skill" field in the mutation.
-func (m *ContentNodeMutation) Skill() (r string, exists bool) {
-	v := m.skill
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSkill returns the old "skill" field's value of the ContentNode entity.
-// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ContentNodeMutation) OldSkill(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSkill is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSkill requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSkill: %w", err)
-	}
-	return oldValue.Skill, nil
-}
-
-// ResetSkill resets all changes to the "skill" field.
-func (m *ContentNodeMutation) ResetSkill() {
-	m.skill = nil
-}
-
-// SetConcept sets the "concept" field.
-func (m *ContentNodeMutation) SetConcept(s string) {
-	m.concept = &s
-}
-
-// Concept returns the value of the "concept" field in the mutation.
-func (m *ContentNodeMutation) Concept() (r string, exists bool) {
-	v := m.concept
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldConcept returns the old "concept" field's value of the ContentNode entity.
-// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ContentNodeMutation) OldConcept(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldConcept is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldConcept requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldConcept: %w", err)
-	}
-	return oldValue.Concept, nil
-}
-
-// ResetConcept resets all changes to the "concept" field.
-func (m *ContentNodeMutation) ResetConcept() {
-	m.concept = nil
 }
 
 // SetDifficultyLevel sets the "difficulty_level" field.
@@ -2044,6 +2965,114 @@ func (m *ContentNodeMutation) ResetLanguages() {
 	m.removedlanguages = nil
 }
 
+// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+func (m *ContentNodeMutation) AddSkillIDs(ids ...uuid.UUID) {
+	if m.skills == nil {
+		m.skills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkills clears the "skills" edge to the Skill entity.
+func (m *ContentNodeMutation) ClearSkills() {
+	m.clearedskills = true
+}
+
+// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+func (m *ContentNodeMutation) SkillsCleared() bool {
+	return m.clearedskills
+}
+
+// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+func (m *ContentNodeMutation) RemoveSkillIDs(ids ...uuid.UUID) {
+	if m.removedskills == nil {
+		m.removedskills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skills, ids[i])
+		m.removedskills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+func (m *ContentNodeMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
+	for id := range m.removedskills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillsIDs returns the "skills" edge IDs in the mutation.
+func (m *ContentNodeMutation) SkillsIDs() (ids []uuid.UUID) {
+	for id := range m.skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkills resets all changes to the "skills" edge.
+func (m *ContentNodeMutation) ResetSkills() {
+	m.skills = nil
+	m.clearedskills = false
+	m.removedskills = nil
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+func (m *ContentNodeMutation) AddConceptIDs(ids ...uuid.UUID) {
+	if m.concepts == nil {
+		m.concepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConcepts clears the "concepts" edge to the Concept entity.
+func (m *ContentNodeMutation) ClearConcepts() {
+	m.clearedconcepts = true
+}
+
+// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+func (m *ContentNodeMutation) ConceptsCleared() bool {
+	return m.clearedconcepts
+}
+
+// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+func (m *ContentNodeMutation) RemoveConceptIDs(ids ...uuid.UUID) {
+	if m.removedconcepts == nil {
+		m.removedconcepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concepts, ids[i])
+		m.removedconcepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+func (m *ContentNodeMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptsIDs returns the "concepts" edge IDs in the mutation.
+func (m *ContentNodeMutation) ConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConcepts resets all changes to the "concepts" edge.
+func (m *ContentNodeMutation) ResetConcepts() {
+	m.concepts = nil
+	m.clearedconcepts = false
+	m.removedconcepts = nil
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by ids.
 func (m *ContentNodeMutation) AddContentNodeExerciseIDs(ids ...int) {
 	if m.content_node_exercises == nil {
@@ -2152,6 +3181,114 @@ func (m *ContentNodeMutation) ResetContentNodeLanguages() {
 	m.removedcontent_node_languages = nil
 }
 
+// AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by ids.
+func (m *ContentNodeMutation) AddContentNodeSkillIDs(ids ...int) {
+	if m.content_node_skills == nil {
+		m.content_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeSkills clears the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *ContentNodeMutation) ClearContentNodeSkills() {
+	m.clearedcontent_node_skills = true
+}
+
+// ContentNodeSkillsCleared reports if the "content_node_skills" edge to the ContentNodeSkill entity was cleared.
+func (m *ContentNodeMutation) ContentNodeSkillsCleared() bool {
+	return m.clearedcontent_node_skills
+}
+
+// RemoveContentNodeSkillIDs removes the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
+func (m *ContentNodeMutation) RemoveContentNodeSkillIDs(ids ...int) {
+	if m.removedcontent_node_skills == nil {
+		m.removedcontent_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_skills, ids[i])
+		m.removedcontent_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeSkills returns the removed IDs of the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *ContentNodeMutation) RemovedContentNodeSkillsIDs() (ids []int) {
+	for id := range m.removedcontent_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeSkillsIDs returns the "content_node_skills" edge IDs in the mutation.
+func (m *ContentNodeMutation) ContentNodeSkillsIDs() (ids []int) {
+	for id := range m.content_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeSkills resets all changes to the "content_node_skills" edge.
+func (m *ContentNodeMutation) ResetContentNodeSkills() {
+	m.content_node_skills = nil
+	m.clearedcontent_node_skills = false
+	m.removedcontent_node_skills = nil
+}
+
+// AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by ids.
+func (m *ContentNodeMutation) AddContentNodeConceptIDs(ids ...int) {
+	if m.content_node_concepts == nil {
+		m.content_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeConcepts clears the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *ContentNodeMutation) ClearContentNodeConcepts() {
+	m.clearedcontent_node_concepts = true
+}
+
+// ContentNodeConceptsCleared reports if the "content_node_concepts" edge to the ContentNodeConcept entity was cleared.
+func (m *ContentNodeMutation) ContentNodeConceptsCleared() bool {
+	return m.clearedcontent_node_concepts
+}
+
+// RemoveContentNodeConceptIDs removes the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
+func (m *ContentNodeMutation) RemoveContentNodeConceptIDs(ids ...int) {
+	if m.removedcontent_node_concepts == nil {
+		m.removedcontent_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_concepts, ids[i])
+		m.removedcontent_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeConcepts returns the removed IDs of the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *ContentNodeMutation) RemovedContentNodeConceptsIDs() (ids []int) {
+	for id := range m.removedcontent_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeConceptsIDs returns the "content_node_concepts" edge IDs in the mutation.
+func (m *ContentNodeMutation) ContentNodeConceptsIDs() (ids []int) {
+	for id := range m.content_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeConcepts resets all changes to the "content_node_concepts" edge.
+func (m *ContentNodeMutation) ResetContentNodeConcepts() {
+	m.content_node_concepts = nil
+	m.clearedcontent_node_concepts = false
+	m.removedcontent_node_concepts = nil
+}
+
 // Where appends a list predicates to the ContentNodeMutation builder.
 func (m *ContentNodeMutation) Where(ps ...predicate.ContentNode) {
 	m.predicates = append(m.predicates, ps...)
@@ -2186,7 +3323,7 @@ func (m *ContentNodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 6)
 	if m.teacher_id != nil {
 		fields = append(fields, contentnode.FieldTeacherID)
 	}
@@ -2195,12 +3332,6 @@ func (m *ContentNodeMutation) Fields() []string {
 	}
 	if m.content_type != nil {
 		fields = append(fields, contentnode.FieldContentType)
-	}
-	if m.skill != nil {
-		fields = append(fields, contentnode.FieldSkill)
-	}
-	if m.concept != nil {
-		fields = append(fields, contentnode.FieldConcept)
 	}
 	if m.difficulty_level != nil {
 		fields = append(fields, contentnode.FieldDifficultyLevel)
@@ -2225,10 +3356,6 @@ func (m *ContentNodeMutation) Field(name string) (ent.Value, bool) {
 		return m.Title()
 	case contentnode.FieldContentType:
 		return m.ContentType()
-	case contentnode.FieldSkill:
-		return m.Skill()
-	case contentnode.FieldConcept:
-		return m.Concept()
 	case contentnode.FieldDifficultyLevel:
 		return m.DifficultyLevel()
 	case contentnode.FieldReviewState:
@@ -2250,10 +3377,6 @@ func (m *ContentNodeMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldTitle(ctx)
 	case contentnode.FieldContentType:
 		return m.OldContentType(ctx)
-	case contentnode.FieldSkill:
-		return m.OldSkill(ctx)
-	case contentnode.FieldConcept:
-		return m.OldConcept(ctx)
 	case contentnode.FieldDifficultyLevel:
 		return m.OldDifficultyLevel(ctx)
 	case contentnode.FieldReviewState:
@@ -2289,20 +3412,6 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetContentType(v)
-		return nil
-	case contentnode.FieldSkill:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSkill(v)
-		return nil
-	case contentnode.FieldConcept:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetConcept(v)
 		return nil
 	case contentnode.FieldDifficultyLevel:
 		v, ok := value.(contentnode.DifficultyLevel)
@@ -2383,12 +3492,6 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 	case contentnode.FieldContentType:
 		m.ResetContentType()
 		return nil
-	case contentnode.FieldSkill:
-		m.ResetSkill()
-		return nil
-	case contentnode.FieldConcept:
-		m.ResetConcept()
-		return nil
 	case contentnode.FieldDifficultyLevel:
 		m.ResetDifficultyLevel()
 		return nil
@@ -2404,18 +3507,30 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ContentNodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 8)
 	if m.path_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
 	if m.languages != nil {
 		edges = append(edges, contentnode.EdgeLanguages)
 	}
+	if m.skills != nil {
+		edges = append(edges, contentnode.EdgeSkills)
+	}
+	if m.concepts != nil {
+		edges = append(edges, contentnode.EdgeConcepts)
+	}
 	if m.content_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
 	if m.content_node_languages != nil {
 		edges = append(edges, contentnode.EdgeContentNodeLanguages)
+	}
+	if m.content_node_skills != nil {
+		edges = append(edges, contentnode.EdgeContentNodeSkills)
+	}
+	if m.content_node_concepts != nil {
+		edges = append(edges, contentnode.EdgeContentNodeConcepts)
 	}
 	return edges
 }
@@ -2436,6 +3551,18 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.skills))
+		for id := range m.skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.concepts))
+		for id := range m.concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.content_node_exercises))
 		for id := range m.content_node_exercises {
@@ -2448,24 +3575,48 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.content_node_skills))
+		for id := range m.content_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.content_node_concepts))
+		for id := range m.content_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ContentNodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 8)
 	if m.removedpath_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
 	if m.removedlanguages != nil {
 		edges = append(edges, contentnode.EdgeLanguages)
 	}
+	if m.removedskills != nil {
+		edges = append(edges, contentnode.EdgeSkills)
+	}
+	if m.removedconcepts != nil {
+		edges = append(edges, contentnode.EdgeConcepts)
+	}
 	if m.removedcontent_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
 	if m.removedcontent_node_languages != nil {
 		edges = append(edges, contentnode.EdgeContentNodeLanguages)
+	}
+	if m.removedcontent_node_skills != nil {
+		edges = append(edges, contentnode.EdgeContentNodeSkills)
+	}
+	if m.removedcontent_node_concepts != nil {
+		edges = append(edges, contentnode.EdgeContentNodeConcepts)
 	}
 	return edges
 }
@@ -2486,6 +3637,18 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.removedskills))
+		for id := range m.removedskills {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedconcepts))
+		for id := range m.removedconcepts {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.removedcontent_node_exercises))
 		for id := range m.removedcontent_node_exercises {
@@ -2498,24 +3661,48 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_skills))
+		for id := range m.removedcontent_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case contentnode.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_concepts))
+		for id := range m.removedcontent_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ContentNodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 8)
 	if m.clearedpath_exercises {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
 	if m.clearedlanguages {
 		edges = append(edges, contentnode.EdgeLanguages)
 	}
+	if m.clearedskills {
+		edges = append(edges, contentnode.EdgeSkills)
+	}
+	if m.clearedconcepts {
+		edges = append(edges, contentnode.EdgeConcepts)
+	}
 	if m.clearedcontent_node_exercises {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
 	if m.clearedcontent_node_languages {
 		edges = append(edges, contentnode.EdgeContentNodeLanguages)
+	}
+	if m.clearedcontent_node_skills {
+		edges = append(edges, contentnode.EdgeContentNodeSkills)
+	}
+	if m.clearedcontent_node_concepts {
+		edges = append(edges, contentnode.EdgeContentNodeConcepts)
 	}
 	return edges
 }
@@ -2528,10 +3715,18 @@ func (m *ContentNodeMutation) EdgeCleared(name string) bool {
 		return m.clearedpath_exercises
 	case contentnode.EdgeLanguages:
 		return m.clearedlanguages
+	case contentnode.EdgeSkills:
+		return m.clearedskills
+	case contentnode.EdgeConcepts:
+		return m.clearedconcepts
 	case contentnode.EdgeContentNodeExercises:
 		return m.clearedcontent_node_exercises
 	case contentnode.EdgeContentNodeLanguages:
 		return m.clearedcontent_node_languages
+	case contentnode.EdgeContentNodeSkills:
+		return m.clearedcontent_node_skills
+	case contentnode.EdgeContentNodeConcepts:
+		return m.clearedcontent_node_concepts
 	}
 	return false
 }
@@ -2554,14 +3749,560 @@ func (m *ContentNodeMutation) ResetEdge(name string) error {
 	case contentnode.EdgeLanguages:
 		m.ResetLanguages()
 		return nil
+	case contentnode.EdgeSkills:
+		m.ResetSkills()
+		return nil
+	case contentnode.EdgeConcepts:
+		m.ResetConcepts()
+		return nil
 	case contentnode.EdgeContentNodeExercises:
 		m.ResetContentNodeExercises()
 		return nil
 	case contentnode.EdgeContentNodeLanguages:
 		m.ResetContentNodeLanguages()
 		return nil
+	case contentnode.EdgeContentNodeSkills:
+		m.ResetContentNodeSkills()
+		return nil
+	case contentnode.EdgeContentNodeConcepts:
+		m.ResetContentNodeConcepts()
+		return nil
 	}
 	return fmt.Errorf("unknown ContentNode edge %s", name)
+}
+
+// ContentNodeConceptMutation represents an operation that mutates the ContentNodeConcept nodes in the graph.
+type ContentNodeConceptMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	linked_at           *time.Time
+	clearedFields       map[string]struct{}
+	content_node        *uuid.UUID
+	clearedcontent_node bool
+	concept             *uuid.UUID
+	clearedconcept      bool
+	done                bool
+	oldValue            func(context.Context) (*ContentNodeConcept, error)
+	predicates          []predicate.ContentNodeConcept
+}
+
+var _ ent.Mutation = (*ContentNodeConceptMutation)(nil)
+
+// contentnodeconceptOption allows management of the mutation configuration using functional options.
+type contentnodeconceptOption func(*ContentNodeConceptMutation)
+
+// newContentNodeConceptMutation creates new mutation for the ContentNodeConcept entity.
+func newContentNodeConceptMutation(c config, op Op, opts ...contentnodeconceptOption) *ContentNodeConceptMutation {
+	m := &ContentNodeConceptMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeContentNodeConcept,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withContentNodeConceptID sets the ID field of the mutation.
+func withContentNodeConceptID(id int) contentnodeconceptOption {
+	return func(m *ContentNodeConceptMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ContentNodeConcept
+		)
+		m.oldValue = func(ctx context.Context) (*ContentNodeConcept, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ContentNodeConcept.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withContentNodeConcept sets the old ContentNodeConcept of the mutation.
+func withContentNodeConcept(node *ContentNodeConcept) contentnodeconceptOption {
+	return func(m *ContentNodeConceptMutation) {
+		m.oldValue = func(context.Context) (*ContentNodeConcept, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ContentNodeConceptMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ContentNodeConceptMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ContentNodeConceptMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ContentNodeConceptMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ContentNodeConcept.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentNodeID sets the "content_node_id" field.
+func (m *ContentNodeConceptMutation) SetContentNodeID(u uuid.UUID) {
+	m.content_node = &u
+}
+
+// ContentNodeID returns the value of the "content_node_id" field in the mutation.
+func (m *ContentNodeConceptMutation) ContentNodeID() (r uuid.UUID, exists bool) {
+	v := m.content_node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentNodeID returns the old "content_node_id" field's value of the ContentNodeConcept entity.
+// If the ContentNodeConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeConceptMutation) OldContentNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentNodeID: %w", err)
+	}
+	return oldValue.ContentNodeID, nil
+}
+
+// ResetContentNodeID resets all changes to the "content_node_id" field.
+func (m *ContentNodeConceptMutation) ResetContentNodeID() {
+	m.content_node = nil
+}
+
+// SetConceptID sets the "concept_id" field.
+func (m *ContentNodeConceptMutation) SetConceptID(u uuid.UUID) {
+	m.concept = &u
+}
+
+// ConceptID returns the value of the "concept_id" field in the mutation.
+func (m *ContentNodeConceptMutation) ConceptID() (r uuid.UUID, exists bool) {
+	v := m.concept
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConceptID returns the old "concept_id" field's value of the ContentNodeConcept entity.
+// If the ContentNodeConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeConceptMutation) OldConceptID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConceptID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConceptID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConceptID: %w", err)
+	}
+	return oldValue.ConceptID, nil
+}
+
+// ResetConceptID resets all changes to the "concept_id" field.
+func (m *ContentNodeConceptMutation) ResetConceptID() {
+	m.concept = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ContentNodeConceptMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ContentNodeConceptMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ContentNodeConcept entity.
+// If the ContentNodeConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeConceptMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ContentNodeConceptMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearContentNode clears the "content_node" edge to the ContentNode entity.
+func (m *ContentNodeConceptMutation) ClearContentNode() {
+	m.clearedcontent_node = true
+	m.clearedFields[contentnodeconcept.FieldContentNodeID] = struct{}{}
+}
+
+// ContentNodeCleared reports if the "content_node" edge to the ContentNode entity was cleared.
+func (m *ContentNodeConceptMutation) ContentNodeCleared() bool {
+	return m.clearedcontent_node
+}
+
+// ContentNodeIDs returns the "content_node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ContentNodeID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeConceptMutation) ContentNodeIDs() (ids []uuid.UUID) {
+	if id := m.content_node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetContentNode resets all changes to the "content_node" edge.
+func (m *ContentNodeConceptMutation) ResetContentNode() {
+	m.content_node = nil
+	m.clearedcontent_node = false
+}
+
+// ClearConcept clears the "concept" edge to the Concept entity.
+func (m *ContentNodeConceptMutation) ClearConcept() {
+	m.clearedconcept = true
+	m.clearedFields[contentnodeconcept.FieldConceptID] = struct{}{}
+}
+
+// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+func (m *ContentNodeConceptMutation) ConceptCleared() bool {
+	return m.clearedconcept
+}
+
+// ConceptIDs returns the "concept" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ConceptID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeConceptMutation) ConceptIDs() (ids []uuid.UUID) {
+	if id := m.concept; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetConcept resets all changes to the "concept" edge.
+func (m *ContentNodeConceptMutation) ResetConcept() {
+	m.concept = nil
+	m.clearedconcept = false
+}
+
+// Where appends a list predicates to the ContentNodeConceptMutation builder.
+func (m *ContentNodeConceptMutation) Where(ps ...predicate.ContentNodeConcept) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ContentNodeConceptMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ContentNodeConceptMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ContentNodeConcept, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ContentNodeConceptMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ContentNodeConceptMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ContentNodeConcept).
+func (m *ContentNodeConceptMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ContentNodeConceptMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.content_node != nil {
+		fields = append(fields, contentnodeconcept.FieldContentNodeID)
+	}
+	if m.concept != nil {
+		fields = append(fields, contentnodeconcept.FieldConceptID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, contentnodeconcept.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ContentNodeConceptMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case contentnodeconcept.FieldContentNodeID:
+		return m.ContentNodeID()
+	case contentnodeconcept.FieldConceptID:
+		return m.ConceptID()
+	case contentnodeconcept.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ContentNodeConceptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case contentnodeconcept.FieldContentNodeID:
+		return m.OldContentNodeID(ctx)
+	case contentnodeconcept.FieldConceptID:
+		return m.OldConceptID(ctx)
+	case contentnodeconcept.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ContentNodeConcept field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeConceptMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case contentnodeconcept.FieldContentNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentNodeID(v)
+		return nil
+	case contentnodeconcept.FieldConceptID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConceptID(v)
+		return nil
+	case contentnodeconcept.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeConcept field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ContentNodeConceptMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ContentNodeConceptMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeConceptMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ContentNodeConcept numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ContentNodeConceptMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ContentNodeConceptMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ContentNodeConceptMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ContentNodeConcept nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ContentNodeConceptMutation) ResetField(name string) error {
+	switch name {
+	case contentnodeconcept.FieldContentNodeID:
+		m.ResetContentNodeID()
+		return nil
+	case contentnodeconcept.FieldConceptID:
+		m.ResetConceptID()
+		return nil
+	case contentnodeconcept.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeConcept field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ContentNodeConceptMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.content_node != nil {
+		edges = append(edges, contentnodeconcept.EdgeContentNode)
+	}
+	if m.concept != nil {
+		edges = append(edges, contentnodeconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ContentNodeConceptMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case contentnodeconcept.EdgeContentNode:
+		if id := m.content_node; id != nil {
+			return []ent.Value{*id}
+		}
+	case contentnodeconcept.EdgeConcept:
+		if id := m.concept; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ContentNodeConceptMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ContentNodeConceptMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ContentNodeConceptMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedcontent_node {
+		edges = append(edges, contentnodeconcept.EdgeContentNode)
+	}
+	if m.clearedconcept {
+		edges = append(edges, contentnodeconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ContentNodeConceptMutation) EdgeCleared(name string) bool {
+	switch name {
+	case contentnodeconcept.EdgeContentNode:
+		return m.clearedcontent_node
+	case contentnodeconcept.EdgeConcept:
+		return m.clearedconcept
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ContentNodeConceptMutation) ClearEdge(name string) error {
+	switch name {
+	case contentnodeconcept.EdgeContentNode:
+		m.ClearContentNode()
+		return nil
+	case contentnodeconcept.EdgeConcept:
+		m.ClearConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeConcept unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ContentNodeConceptMutation) ResetEdge(name string) error {
+	switch name {
+	case contentnodeconcept.EdgeContentNode:
+		m.ResetContentNode()
+		return nil
+	case contentnodeconcept.EdgeConcept:
+		m.ResetConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeConcept edge %s", name)
 }
 
 // ContentNodeExerciseMutation represents an operation that mutates the ContentNodeExercise nodes in the graph.
@@ -3632,6 +5373,540 @@ func (m *ContentNodeLanguageMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ContentNodeLanguage edge %s", name)
 }
 
+// ContentNodeSkillMutation represents an operation that mutates the ContentNodeSkill nodes in the graph.
+type ContentNodeSkillMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	linked_at           *time.Time
+	clearedFields       map[string]struct{}
+	content_node        *uuid.UUID
+	clearedcontent_node bool
+	skill               *uuid.UUID
+	clearedskill        bool
+	done                bool
+	oldValue            func(context.Context) (*ContentNodeSkill, error)
+	predicates          []predicate.ContentNodeSkill
+}
+
+var _ ent.Mutation = (*ContentNodeSkillMutation)(nil)
+
+// contentnodeskillOption allows management of the mutation configuration using functional options.
+type contentnodeskillOption func(*ContentNodeSkillMutation)
+
+// newContentNodeSkillMutation creates new mutation for the ContentNodeSkill entity.
+func newContentNodeSkillMutation(c config, op Op, opts ...contentnodeskillOption) *ContentNodeSkillMutation {
+	m := &ContentNodeSkillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeContentNodeSkill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withContentNodeSkillID sets the ID field of the mutation.
+func withContentNodeSkillID(id int) contentnodeskillOption {
+	return func(m *ContentNodeSkillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ContentNodeSkill
+		)
+		m.oldValue = func(ctx context.Context) (*ContentNodeSkill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ContentNodeSkill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withContentNodeSkill sets the old ContentNodeSkill of the mutation.
+func withContentNodeSkill(node *ContentNodeSkill) contentnodeskillOption {
+	return func(m *ContentNodeSkillMutation) {
+		m.oldValue = func(context.Context) (*ContentNodeSkill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ContentNodeSkillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ContentNodeSkillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ContentNodeSkillMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ContentNodeSkillMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ContentNodeSkill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentNodeID sets the "content_node_id" field.
+func (m *ContentNodeSkillMutation) SetContentNodeID(u uuid.UUID) {
+	m.content_node = &u
+}
+
+// ContentNodeID returns the value of the "content_node_id" field in the mutation.
+func (m *ContentNodeSkillMutation) ContentNodeID() (r uuid.UUID, exists bool) {
+	v := m.content_node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentNodeID returns the old "content_node_id" field's value of the ContentNodeSkill entity.
+// If the ContentNodeSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeSkillMutation) OldContentNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentNodeID: %w", err)
+	}
+	return oldValue.ContentNodeID, nil
+}
+
+// ResetContentNodeID resets all changes to the "content_node_id" field.
+func (m *ContentNodeSkillMutation) ResetContentNodeID() {
+	m.content_node = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *ContentNodeSkillMutation) SetSkillID(u uuid.UUID) {
+	m.skill = &u
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *ContentNodeSkillMutation) SkillID() (r uuid.UUID, exists bool) {
+	v := m.skill
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the ContentNodeSkill entity.
+// If the ContentNodeSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeSkillMutation) OldSkillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *ContentNodeSkillMutation) ResetSkillID() {
+	m.skill = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ContentNodeSkillMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ContentNodeSkillMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ContentNodeSkill entity.
+// If the ContentNodeSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeSkillMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ContentNodeSkillMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearContentNode clears the "content_node" edge to the ContentNode entity.
+func (m *ContentNodeSkillMutation) ClearContentNode() {
+	m.clearedcontent_node = true
+	m.clearedFields[contentnodeskill.FieldContentNodeID] = struct{}{}
+}
+
+// ContentNodeCleared reports if the "content_node" edge to the ContentNode entity was cleared.
+func (m *ContentNodeSkillMutation) ContentNodeCleared() bool {
+	return m.clearedcontent_node
+}
+
+// ContentNodeIDs returns the "content_node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ContentNodeID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeSkillMutation) ContentNodeIDs() (ids []uuid.UUID) {
+	if id := m.content_node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetContentNode resets all changes to the "content_node" edge.
+func (m *ContentNodeSkillMutation) ResetContentNode() {
+	m.content_node = nil
+	m.clearedcontent_node = false
+}
+
+// ClearSkill clears the "skill" edge to the Skill entity.
+func (m *ContentNodeSkillMutation) ClearSkill() {
+	m.clearedskill = true
+	m.clearedFields[contentnodeskill.FieldSkillID] = struct{}{}
+}
+
+// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+func (m *ContentNodeSkillMutation) SkillCleared() bool {
+	return m.clearedskill
+}
+
+// SkillIDs returns the "skill" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SkillID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeSkillMutation) SkillIDs() (ids []uuid.UUID) {
+	if id := m.skill; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSkill resets all changes to the "skill" edge.
+func (m *ContentNodeSkillMutation) ResetSkill() {
+	m.skill = nil
+	m.clearedskill = false
+}
+
+// Where appends a list predicates to the ContentNodeSkillMutation builder.
+func (m *ContentNodeSkillMutation) Where(ps ...predicate.ContentNodeSkill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ContentNodeSkillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ContentNodeSkillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ContentNodeSkill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ContentNodeSkillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ContentNodeSkillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ContentNodeSkill).
+func (m *ContentNodeSkillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ContentNodeSkillMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.content_node != nil {
+		fields = append(fields, contentnodeskill.FieldContentNodeID)
+	}
+	if m.skill != nil {
+		fields = append(fields, contentnodeskill.FieldSkillID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, contentnodeskill.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ContentNodeSkillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case contentnodeskill.FieldContentNodeID:
+		return m.ContentNodeID()
+	case contentnodeskill.FieldSkillID:
+		return m.SkillID()
+	case contentnodeskill.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ContentNodeSkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case contentnodeskill.FieldContentNodeID:
+		return m.OldContentNodeID(ctx)
+	case contentnodeskill.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case contentnodeskill.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ContentNodeSkill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeSkillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case contentnodeskill.FieldContentNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentNodeID(v)
+		return nil
+	case contentnodeskill.FieldSkillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case contentnodeskill.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeSkill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ContentNodeSkillMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ContentNodeSkillMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeSkillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ContentNodeSkill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ContentNodeSkillMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ContentNodeSkillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ContentNodeSkillMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ContentNodeSkill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ContentNodeSkillMutation) ResetField(name string) error {
+	switch name {
+	case contentnodeskill.FieldContentNodeID:
+		m.ResetContentNodeID()
+		return nil
+	case contentnodeskill.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case contentnodeskill.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeSkill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ContentNodeSkillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.content_node != nil {
+		edges = append(edges, contentnodeskill.EdgeContentNode)
+	}
+	if m.skill != nil {
+		edges = append(edges, contentnodeskill.EdgeSkill)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ContentNodeSkillMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case contentnodeskill.EdgeContentNode:
+		if id := m.content_node; id != nil {
+			return []ent.Value{*id}
+		}
+	case contentnodeskill.EdgeSkill:
+		if id := m.skill; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ContentNodeSkillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ContentNodeSkillMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ContentNodeSkillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedcontent_node {
+		edges = append(edges, contentnodeskill.EdgeContentNode)
+	}
+	if m.clearedskill {
+		edges = append(edges, contentnodeskill.EdgeSkill)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ContentNodeSkillMutation) EdgeCleared(name string) bool {
+	switch name {
+	case contentnodeskill.EdgeContentNode:
+		return m.clearedcontent_node
+	case contentnodeskill.EdgeSkill:
+		return m.clearedskill
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ContentNodeSkillMutation) ClearEdge(name string) error {
+	switch name {
+	case contentnodeskill.EdgeContentNode:
+		m.ClearContentNode()
+		return nil
+	case contentnodeskill.EdgeSkill:
+		m.ClearSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeSkill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ContentNodeSkillMutation) ResetEdge(name string) error {
+	switch name {
+	case contentnodeskill.EdgeContentNode:
+		m.ResetContentNode()
+		return nil
+	case contentnodeskill.EdgeSkill:
+		m.ResetSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeSkill edge %s", name)
+}
+
 // ExerciseMutation represents an operation that mutates the Exercise nodes in the graph.
 type ExerciseMutation struct {
 	config
@@ -3641,8 +5916,6 @@ type ExerciseMutation struct {
 	title                         *string
 	prompt                        *string
 	exercise_type                 *exercise.ExerciseType
-	skill_tags                    *[]string
-	appendskill_tags              []string
 	image_url                     *string
 	audio_url                     *string
 	estimated_duration_seconds    *int
@@ -3662,6 +5935,12 @@ type ExerciseMutation struct {
 	languages                     map[uuid.UUID]struct{}
 	removedlanguages              map[uuid.UUID]struct{}
 	clearedlanguages              bool
+	skills                        map[uuid.UUID]struct{}
+	removedskills                 map[uuid.UUID]struct{}
+	clearedskills                 bool
+	concepts                      map[uuid.UUID]struct{}
+	removedconcepts               map[uuid.UUID]struct{}
+	clearedconcepts               bool
 	challenge_exercises           map[int]struct{}
 	removedchallenge_exercises    map[int]struct{}
 	clearedchallenge_exercises    bool
@@ -3671,6 +5950,12 @@ type ExerciseMutation struct {
 	exercise_languages            map[int]struct{}
 	removedexercise_languages     map[int]struct{}
 	clearedexercise_languages     bool
+	exercise_skills               map[int]struct{}
+	removedexercise_skills        map[int]struct{}
+	clearedexercise_skills        bool
+	exercise_concepts             map[int]struct{}
+	removedexercise_concepts      map[int]struct{}
+	clearedexercise_concepts      bool
 	done                          bool
 	oldValue                      func(context.Context) (*Exercise, error)
 	predicates                    []predicate.Exercise
@@ -3886,71 +6171,6 @@ func (m *ExerciseMutation) OldExerciseType(ctx context.Context) (v exercise.Exer
 // ResetExerciseType resets all changes to the "exercise_type" field.
 func (m *ExerciseMutation) ResetExerciseType() {
 	m.exercise_type = nil
-}
-
-// SetSkillTags sets the "skill_tags" field.
-func (m *ExerciseMutation) SetSkillTags(s []string) {
-	m.skill_tags = &s
-	m.appendskill_tags = nil
-}
-
-// SkillTags returns the value of the "skill_tags" field in the mutation.
-func (m *ExerciseMutation) SkillTags() (r []string, exists bool) {
-	v := m.skill_tags
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSkillTags returns the old "skill_tags" field's value of the Exercise entity.
-// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ExerciseMutation) OldSkillTags(ctx context.Context) (v []string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSkillTags is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSkillTags requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSkillTags: %w", err)
-	}
-	return oldValue.SkillTags, nil
-}
-
-// AppendSkillTags adds s to the "skill_tags" field.
-func (m *ExerciseMutation) AppendSkillTags(s []string) {
-	m.appendskill_tags = append(m.appendskill_tags, s...)
-}
-
-// AppendedSkillTags returns the list of values that were appended to the "skill_tags" field in this mutation.
-func (m *ExerciseMutation) AppendedSkillTags() ([]string, bool) {
-	if len(m.appendskill_tags) == 0 {
-		return nil, false
-	}
-	return m.appendskill_tags, true
-}
-
-// ClearSkillTags clears the value of the "skill_tags" field.
-func (m *ExerciseMutation) ClearSkillTags() {
-	m.skill_tags = nil
-	m.appendskill_tags = nil
-	m.clearedFields[exercise.FieldSkillTags] = struct{}{}
-}
-
-// SkillTagsCleared returns if the "skill_tags" field was cleared in this mutation.
-func (m *ExerciseMutation) SkillTagsCleared() bool {
-	_, ok := m.clearedFields[exercise.FieldSkillTags]
-	return ok
-}
-
-// ResetSkillTags resets all changes to the "skill_tags" field.
-func (m *ExerciseMutation) ResetSkillTags() {
-	m.skill_tags = nil
-	m.appendskill_tags = nil
-	delete(m.clearedFields, exercise.FieldSkillTags)
 }
 
 // SetImageURL sets the "image_url" field.
@@ -4422,6 +6642,114 @@ func (m *ExerciseMutation) ResetLanguages() {
 	m.removedlanguages = nil
 }
 
+// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+func (m *ExerciseMutation) AddSkillIDs(ids ...uuid.UUID) {
+	if m.skills == nil {
+		m.skills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkills clears the "skills" edge to the Skill entity.
+func (m *ExerciseMutation) ClearSkills() {
+	m.clearedskills = true
+}
+
+// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+func (m *ExerciseMutation) SkillsCleared() bool {
+	return m.clearedskills
+}
+
+// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+func (m *ExerciseMutation) RemoveSkillIDs(ids ...uuid.UUID) {
+	if m.removedskills == nil {
+		m.removedskills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skills, ids[i])
+		m.removedskills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+func (m *ExerciseMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
+	for id := range m.removedskills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillsIDs returns the "skills" edge IDs in the mutation.
+func (m *ExerciseMutation) SkillsIDs() (ids []uuid.UUID) {
+	for id := range m.skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkills resets all changes to the "skills" edge.
+func (m *ExerciseMutation) ResetSkills() {
+	m.skills = nil
+	m.clearedskills = false
+	m.removedskills = nil
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+func (m *ExerciseMutation) AddConceptIDs(ids ...uuid.UUID) {
+	if m.concepts == nil {
+		m.concepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConcepts clears the "concepts" edge to the Concept entity.
+func (m *ExerciseMutation) ClearConcepts() {
+	m.clearedconcepts = true
+}
+
+// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+func (m *ExerciseMutation) ConceptsCleared() bool {
+	return m.clearedconcepts
+}
+
+// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+func (m *ExerciseMutation) RemoveConceptIDs(ids ...uuid.UUID) {
+	if m.removedconcepts == nil {
+		m.removedconcepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concepts, ids[i])
+		m.removedconcepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+func (m *ExerciseMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptsIDs returns the "concepts" edge IDs in the mutation.
+func (m *ExerciseMutation) ConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConcepts resets all changes to the "concepts" edge.
+func (m *ExerciseMutation) ResetConcepts() {
+	m.concepts = nil
+	m.clearedconcepts = false
+	m.removedconcepts = nil
+}
+
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by ids.
 func (m *ExerciseMutation) AddChallengeExerciseIDs(ids ...int) {
 	if m.challenge_exercises == nil {
@@ -4584,6 +6912,114 @@ func (m *ExerciseMutation) ResetExerciseLanguages() {
 	m.removedexercise_languages = nil
 }
 
+// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by ids.
+func (m *ExerciseMutation) AddExerciseSkillIDs(ids ...int) {
+	if m.exercise_skills == nil {
+		m.exercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseSkills clears the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *ExerciseMutation) ClearExerciseSkills() {
+	m.clearedexercise_skills = true
+}
+
+// ExerciseSkillsCleared reports if the "exercise_skills" edge to the ExerciseSkill entity was cleared.
+func (m *ExerciseMutation) ExerciseSkillsCleared() bool {
+	return m.clearedexercise_skills
+}
+
+// RemoveExerciseSkillIDs removes the "exercise_skills" edge to the ExerciseSkill entity by IDs.
+func (m *ExerciseMutation) RemoveExerciseSkillIDs(ids ...int) {
+	if m.removedexercise_skills == nil {
+		m.removedexercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_skills, ids[i])
+		m.removedexercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseSkills returns the removed IDs of the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *ExerciseMutation) RemovedExerciseSkillsIDs() (ids []int) {
+	for id := range m.removedexercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseSkillsIDs returns the "exercise_skills" edge IDs in the mutation.
+func (m *ExerciseMutation) ExerciseSkillsIDs() (ids []int) {
+	for id := range m.exercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseSkills resets all changes to the "exercise_skills" edge.
+func (m *ExerciseMutation) ResetExerciseSkills() {
+	m.exercise_skills = nil
+	m.clearedexercise_skills = false
+	m.removedexercise_skills = nil
+}
+
+// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by ids.
+func (m *ExerciseMutation) AddExerciseConceptIDs(ids ...int) {
+	if m.exercise_concepts == nil {
+		m.exercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseConcepts clears the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *ExerciseMutation) ClearExerciseConcepts() {
+	m.clearedexercise_concepts = true
+}
+
+// ExerciseConceptsCleared reports if the "exercise_concepts" edge to the ExerciseConcept entity was cleared.
+func (m *ExerciseMutation) ExerciseConceptsCleared() bool {
+	return m.clearedexercise_concepts
+}
+
+// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
+func (m *ExerciseMutation) RemoveExerciseConceptIDs(ids ...int) {
+	if m.removedexercise_concepts == nil {
+		m.removedexercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_concepts, ids[i])
+		m.removedexercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseConcepts returns the removed IDs of the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *ExerciseMutation) RemovedExerciseConceptsIDs() (ids []int) {
+	for id := range m.removedexercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseConceptsIDs returns the "exercise_concepts" edge IDs in the mutation.
+func (m *ExerciseMutation) ExerciseConceptsIDs() (ids []int) {
+	for id := range m.exercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseConcepts resets all changes to the "exercise_concepts" edge.
+func (m *ExerciseMutation) ResetExerciseConcepts() {
+	m.exercise_concepts = nil
+	m.clearedexercise_concepts = false
+	m.removedexercise_concepts = nil
+}
+
 // Where appends a list predicates to the ExerciseMutation builder.
 func (m *ExerciseMutation) Where(ps ...predicate.Exercise) {
 	m.predicates = append(m.predicates, ps...)
@@ -4618,7 +7054,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 8)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -4627,9 +7063,6 @@ func (m *ExerciseMutation) Fields() []string {
 	}
 	if m.exercise_type != nil {
 		fields = append(fields, exercise.FieldExerciseType)
-	}
-	if m.skill_tags != nil {
-		fields = append(fields, exercise.FieldSkillTags)
 	}
 	if m.image_url != nil {
 		fields = append(fields, exercise.FieldImageURL)
@@ -4660,8 +7093,6 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.Prompt()
 	case exercise.FieldExerciseType:
 		return m.ExerciseType()
-	case exercise.FieldSkillTags:
-		return m.SkillTags()
 	case exercise.FieldImageURL:
 		return m.ImageURL()
 	case exercise.FieldAudioURL:
@@ -4687,8 +7118,6 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldPrompt(ctx)
 	case exercise.FieldExerciseType:
 		return m.OldExerciseType(ctx)
-	case exercise.FieldSkillTags:
-		return m.OldSkillTags(ctx)
 	case exercise.FieldImageURL:
 		return m.OldImageURL(ctx)
 	case exercise.FieldAudioURL:
@@ -4728,13 +7157,6 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetExerciseType(v)
-		return nil
-	case exercise.FieldSkillTags:
-		v, ok := value.([]string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSkillTags(v)
 		return nil
 	case exercise.FieldImageURL:
 		v, ok := value.(string)
@@ -4816,9 +7238,6 @@ func (m *ExerciseMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ExerciseMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(exercise.FieldSkillTags) {
-		fields = append(fields, exercise.FieldSkillTags)
-	}
 	if m.FieldCleared(exercise.FieldImageURL) {
 		fields = append(fields, exercise.FieldImageURL)
 	}
@@ -4845,9 +7264,6 @@ func (m *ExerciseMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ExerciseMutation) ClearField(name string) error {
 	switch name {
-	case exercise.FieldSkillTags:
-		m.ClearSkillTags()
-		return nil
 	case exercise.FieldImageURL:
 		m.ClearImageURL()
 		return nil
@@ -4877,9 +7293,6 @@ func (m *ExerciseMutation) ResetField(name string) error {
 	case exercise.FieldExerciseType:
 		m.ResetExerciseType()
 		return nil
-	case exercise.FieldSkillTags:
-		m.ResetSkillTags()
-		return nil
 	case exercise.FieldImageURL:
 		m.ResetImageURL()
 		return nil
@@ -4901,7 +7314,7 @@ func (m *ExerciseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ExerciseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 11)
 	if m.challenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -4914,6 +7327,12 @@ func (m *ExerciseMutation) AddedEdges() []string {
 	if m.languages != nil {
 		edges = append(edges, exercise.EdgeLanguages)
 	}
+	if m.skills != nil {
+		edges = append(edges, exercise.EdgeSkills)
+	}
+	if m.concepts != nil {
+		edges = append(edges, exercise.EdgeConcepts)
+	}
 	if m.challenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -4922,6 +7341,12 @@ func (m *ExerciseMutation) AddedEdges() []string {
 	}
 	if m.exercise_languages != nil {
 		edges = append(edges, exercise.EdgeExerciseLanguages)
+	}
+	if m.exercise_skills != nil {
+		edges = append(edges, exercise.EdgeExerciseSkills)
+	}
+	if m.exercise_concepts != nil {
+		edges = append(edges, exercise.EdgeExerciseConcepts)
 	}
 	return edges
 }
@@ -4954,6 +7379,18 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.skills))
+		for id := range m.skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case exercise.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.concepts))
+		for id := range m.concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.challenge_exercises))
 		for id := range m.challenge_exercises {
@@ -4972,13 +7409,25 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.exercise_skills))
+		for id := range m.exercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case exercise.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.exercise_concepts))
+		for id := range m.exercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ExerciseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 11)
 	if m.removedchallenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -4991,6 +7440,12 @@ func (m *ExerciseMutation) RemovedEdges() []string {
 	if m.removedlanguages != nil {
 		edges = append(edges, exercise.EdgeLanguages)
 	}
+	if m.removedskills != nil {
+		edges = append(edges, exercise.EdgeSkills)
+	}
+	if m.removedconcepts != nil {
+		edges = append(edges, exercise.EdgeConcepts)
+	}
 	if m.removedchallenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -4999,6 +7454,12 @@ func (m *ExerciseMutation) RemovedEdges() []string {
 	}
 	if m.removedexercise_languages != nil {
 		edges = append(edges, exercise.EdgeExerciseLanguages)
+	}
+	if m.removedexercise_skills != nil {
+		edges = append(edges, exercise.EdgeExerciseSkills)
+	}
+	if m.removedexercise_concepts != nil {
+		edges = append(edges, exercise.EdgeExerciseConcepts)
 	}
 	return edges
 }
@@ -5031,6 +7492,18 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.removedskills))
+		for id := range m.removedskills {
+			ids = append(ids, id)
+		}
+		return ids
+	case exercise.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedconcepts))
+		for id := range m.removedconcepts {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.removedchallenge_exercises))
 		for id := range m.removedchallenge_exercises {
@@ -5049,13 +7522,25 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.removedexercise_skills))
+		for id := range m.removedexercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case exercise.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.removedexercise_concepts))
+		for id := range m.removedexercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ExerciseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 11)
 	if m.clearedchallenges {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -5068,6 +7553,12 @@ func (m *ExerciseMutation) ClearedEdges() []string {
 	if m.clearedlanguages {
 		edges = append(edges, exercise.EdgeLanguages)
 	}
+	if m.clearedskills {
+		edges = append(edges, exercise.EdgeSkills)
+	}
+	if m.clearedconcepts {
+		edges = append(edges, exercise.EdgeConcepts)
+	}
 	if m.clearedchallenge_exercises {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -5076,6 +7567,12 @@ func (m *ExerciseMutation) ClearedEdges() []string {
 	}
 	if m.clearedexercise_languages {
 		edges = append(edges, exercise.EdgeExerciseLanguages)
+	}
+	if m.clearedexercise_skills {
+		edges = append(edges, exercise.EdgeExerciseSkills)
+	}
+	if m.clearedexercise_concepts {
+		edges = append(edges, exercise.EdgeExerciseConcepts)
 	}
 	return edges
 }
@@ -5092,12 +7589,20 @@ func (m *ExerciseMutation) EdgeCleared(name string) bool {
 		return m.clearedoptions
 	case exercise.EdgeLanguages:
 		return m.clearedlanguages
+	case exercise.EdgeSkills:
+		return m.clearedskills
+	case exercise.EdgeConcepts:
+		return m.clearedconcepts
 	case exercise.EdgeChallengeExercises:
 		return m.clearedchallenge_exercises
 	case exercise.EdgeContentNodeExercises:
 		return m.clearedcontent_node_exercises
 	case exercise.EdgeExerciseLanguages:
 		return m.clearedexercise_languages
+	case exercise.EdgeExerciseSkills:
+		return m.clearedexercise_skills
+	case exercise.EdgeExerciseConcepts:
+		return m.clearedexercise_concepts
 	}
 	return false
 }
@@ -5126,6 +7631,12 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 	case exercise.EdgeLanguages:
 		m.ResetLanguages()
 		return nil
+	case exercise.EdgeSkills:
+		m.ResetSkills()
+		return nil
+	case exercise.EdgeConcepts:
+		m.ResetConcepts()
+		return nil
 	case exercise.EdgeChallengeExercises:
 		m.ResetChallengeExercises()
 		return nil
@@ -5135,8 +7646,548 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 	case exercise.EdgeExerciseLanguages:
 		m.ResetExerciseLanguages()
 		return nil
+	case exercise.EdgeExerciseSkills:
+		m.ResetExerciseSkills()
+		return nil
+	case exercise.EdgeExerciseConcepts:
+		m.ResetExerciseConcepts()
+		return nil
 	}
 	return fmt.Errorf("unknown Exercise edge %s", name)
+}
+
+// ExerciseConceptMutation represents an operation that mutates the ExerciseConcept nodes in the graph.
+type ExerciseConceptMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	linked_at       *time.Time
+	clearedFields   map[string]struct{}
+	exercise        *uuid.UUID
+	clearedexercise bool
+	concept         *uuid.UUID
+	clearedconcept  bool
+	done            bool
+	oldValue        func(context.Context) (*ExerciseConcept, error)
+	predicates      []predicate.ExerciseConcept
+}
+
+var _ ent.Mutation = (*ExerciseConceptMutation)(nil)
+
+// exerciseconceptOption allows management of the mutation configuration using functional options.
+type exerciseconceptOption func(*ExerciseConceptMutation)
+
+// newExerciseConceptMutation creates new mutation for the ExerciseConcept entity.
+func newExerciseConceptMutation(c config, op Op, opts ...exerciseconceptOption) *ExerciseConceptMutation {
+	m := &ExerciseConceptMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeExerciseConcept,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withExerciseConceptID sets the ID field of the mutation.
+func withExerciseConceptID(id int) exerciseconceptOption {
+	return func(m *ExerciseConceptMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ExerciseConcept
+		)
+		m.oldValue = func(ctx context.Context) (*ExerciseConcept, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ExerciseConcept.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withExerciseConcept sets the old ExerciseConcept of the mutation.
+func withExerciseConcept(node *ExerciseConcept) exerciseconceptOption {
+	return func(m *ExerciseConceptMutation) {
+		m.oldValue = func(context.Context) (*ExerciseConcept, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ExerciseConceptMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ExerciseConceptMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ExerciseConceptMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ExerciseConceptMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ExerciseConcept.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetExerciseID sets the "exercise_id" field.
+func (m *ExerciseConceptMutation) SetExerciseID(u uuid.UUID) {
+	m.exercise = &u
+}
+
+// ExerciseID returns the value of the "exercise_id" field in the mutation.
+func (m *ExerciseConceptMutation) ExerciseID() (r uuid.UUID, exists bool) {
+	v := m.exercise
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExerciseID returns the old "exercise_id" field's value of the ExerciseConcept entity.
+// If the ExerciseConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseConceptMutation) OldExerciseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExerciseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExerciseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExerciseID: %w", err)
+	}
+	return oldValue.ExerciseID, nil
+}
+
+// ResetExerciseID resets all changes to the "exercise_id" field.
+func (m *ExerciseConceptMutation) ResetExerciseID() {
+	m.exercise = nil
+}
+
+// SetConceptID sets the "concept_id" field.
+func (m *ExerciseConceptMutation) SetConceptID(u uuid.UUID) {
+	m.concept = &u
+}
+
+// ConceptID returns the value of the "concept_id" field in the mutation.
+func (m *ExerciseConceptMutation) ConceptID() (r uuid.UUID, exists bool) {
+	v := m.concept
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConceptID returns the old "concept_id" field's value of the ExerciseConcept entity.
+// If the ExerciseConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseConceptMutation) OldConceptID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConceptID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConceptID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConceptID: %w", err)
+	}
+	return oldValue.ConceptID, nil
+}
+
+// ResetConceptID resets all changes to the "concept_id" field.
+func (m *ExerciseConceptMutation) ResetConceptID() {
+	m.concept = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ExerciseConceptMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ExerciseConceptMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ExerciseConcept entity.
+// If the ExerciseConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseConceptMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ExerciseConceptMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearExercise clears the "exercise" edge to the Exercise entity.
+func (m *ExerciseConceptMutation) ClearExercise() {
+	m.clearedexercise = true
+	m.clearedFields[exerciseconcept.FieldExerciseID] = struct{}{}
+}
+
+// ExerciseCleared reports if the "exercise" edge to the Exercise entity was cleared.
+func (m *ExerciseConceptMutation) ExerciseCleared() bool {
+	return m.clearedexercise
+}
+
+// ExerciseIDs returns the "exercise" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExerciseID instead. It exists only for internal usage by the builders.
+func (m *ExerciseConceptMutation) ExerciseIDs() (ids []uuid.UUID) {
+	if id := m.exercise; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExercise resets all changes to the "exercise" edge.
+func (m *ExerciseConceptMutation) ResetExercise() {
+	m.exercise = nil
+	m.clearedexercise = false
+}
+
+// ClearConcept clears the "concept" edge to the Concept entity.
+func (m *ExerciseConceptMutation) ClearConcept() {
+	m.clearedconcept = true
+	m.clearedFields[exerciseconcept.FieldConceptID] = struct{}{}
+}
+
+// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+func (m *ExerciseConceptMutation) ConceptCleared() bool {
+	return m.clearedconcept
+}
+
+// ConceptIDs returns the "concept" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ConceptID instead. It exists only for internal usage by the builders.
+func (m *ExerciseConceptMutation) ConceptIDs() (ids []uuid.UUID) {
+	if id := m.concept; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetConcept resets all changes to the "concept" edge.
+func (m *ExerciseConceptMutation) ResetConcept() {
+	m.concept = nil
+	m.clearedconcept = false
+}
+
+// Where appends a list predicates to the ExerciseConceptMutation builder.
+func (m *ExerciseConceptMutation) Where(ps ...predicate.ExerciseConcept) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ExerciseConceptMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ExerciseConceptMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ExerciseConcept, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ExerciseConceptMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ExerciseConceptMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ExerciseConcept).
+func (m *ExerciseConceptMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ExerciseConceptMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.exercise != nil {
+		fields = append(fields, exerciseconcept.FieldExerciseID)
+	}
+	if m.concept != nil {
+		fields = append(fields, exerciseconcept.FieldConceptID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, exerciseconcept.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ExerciseConceptMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case exerciseconcept.FieldExerciseID:
+		return m.ExerciseID()
+	case exerciseconcept.FieldConceptID:
+		return m.ConceptID()
+	case exerciseconcept.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ExerciseConceptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case exerciseconcept.FieldExerciseID:
+		return m.OldExerciseID(ctx)
+	case exerciseconcept.FieldConceptID:
+		return m.OldConceptID(ctx)
+	case exerciseconcept.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ExerciseConcept field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseConceptMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case exerciseconcept.FieldExerciseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExerciseID(v)
+		return nil
+	case exerciseconcept.FieldConceptID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConceptID(v)
+		return nil
+	case exerciseconcept.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseConcept field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ExerciseConceptMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ExerciseConceptMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseConceptMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ExerciseConcept numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ExerciseConceptMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ExerciseConceptMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ExerciseConceptMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ExerciseConcept nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ExerciseConceptMutation) ResetField(name string) error {
+	switch name {
+	case exerciseconcept.FieldExerciseID:
+		m.ResetExerciseID()
+		return nil
+	case exerciseconcept.FieldConceptID:
+		m.ResetConceptID()
+		return nil
+	case exerciseconcept.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseConcept field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ExerciseConceptMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.exercise != nil {
+		edges = append(edges, exerciseconcept.EdgeExercise)
+	}
+	if m.concept != nil {
+		edges = append(edges, exerciseconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ExerciseConceptMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case exerciseconcept.EdgeExercise:
+		if id := m.exercise; id != nil {
+			return []ent.Value{*id}
+		}
+	case exerciseconcept.EdgeConcept:
+		if id := m.concept; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ExerciseConceptMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ExerciseConceptMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ExerciseConceptMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedexercise {
+		edges = append(edges, exerciseconcept.EdgeExercise)
+	}
+	if m.clearedconcept {
+		edges = append(edges, exerciseconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ExerciseConceptMutation) EdgeCleared(name string) bool {
+	switch name {
+	case exerciseconcept.EdgeExercise:
+		return m.clearedexercise
+	case exerciseconcept.EdgeConcept:
+		return m.clearedconcept
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ExerciseConceptMutation) ClearEdge(name string) error {
+	switch name {
+	case exerciseconcept.EdgeExercise:
+		m.ClearExercise()
+		return nil
+	case exerciseconcept.EdgeConcept:
+		m.ClearConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseConcept unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ExerciseConceptMutation) ResetEdge(name string) error {
+	switch name {
+	case exerciseconcept.EdgeExercise:
+		m.ResetExercise()
+		return nil
+	case exerciseconcept.EdgeConcept:
+		m.ResetConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseConcept edge %s", name)
 }
 
 // ExerciseLanguageMutation represents an operation that mutates the ExerciseLanguage nodes in the graph.
@@ -6837,6 +9888,540 @@ func (m *ExerciseOptionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption edge %s", name)
+}
+
+// ExerciseSkillMutation represents an operation that mutates the ExerciseSkill nodes in the graph.
+type ExerciseSkillMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	linked_at       *time.Time
+	clearedFields   map[string]struct{}
+	exercise        *uuid.UUID
+	clearedexercise bool
+	skill           *uuid.UUID
+	clearedskill    bool
+	done            bool
+	oldValue        func(context.Context) (*ExerciseSkill, error)
+	predicates      []predicate.ExerciseSkill
+}
+
+var _ ent.Mutation = (*ExerciseSkillMutation)(nil)
+
+// exerciseskillOption allows management of the mutation configuration using functional options.
+type exerciseskillOption func(*ExerciseSkillMutation)
+
+// newExerciseSkillMutation creates new mutation for the ExerciseSkill entity.
+func newExerciseSkillMutation(c config, op Op, opts ...exerciseskillOption) *ExerciseSkillMutation {
+	m := &ExerciseSkillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeExerciseSkill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withExerciseSkillID sets the ID field of the mutation.
+func withExerciseSkillID(id int) exerciseskillOption {
+	return func(m *ExerciseSkillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ExerciseSkill
+		)
+		m.oldValue = func(ctx context.Context) (*ExerciseSkill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ExerciseSkill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withExerciseSkill sets the old ExerciseSkill of the mutation.
+func withExerciseSkill(node *ExerciseSkill) exerciseskillOption {
+	return func(m *ExerciseSkillMutation) {
+		m.oldValue = func(context.Context) (*ExerciseSkill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ExerciseSkillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ExerciseSkillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ExerciseSkillMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ExerciseSkillMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ExerciseSkill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetExerciseID sets the "exercise_id" field.
+func (m *ExerciseSkillMutation) SetExerciseID(u uuid.UUID) {
+	m.exercise = &u
+}
+
+// ExerciseID returns the value of the "exercise_id" field in the mutation.
+func (m *ExerciseSkillMutation) ExerciseID() (r uuid.UUID, exists bool) {
+	v := m.exercise
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExerciseID returns the old "exercise_id" field's value of the ExerciseSkill entity.
+// If the ExerciseSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseSkillMutation) OldExerciseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExerciseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExerciseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExerciseID: %w", err)
+	}
+	return oldValue.ExerciseID, nil
+}
+
+// ResetExerciseID resets all changes to the "exercise_id" field.
+func (m *ExerciseSkillMutation) ResetExerciseID() {
+	m.exercise = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *ExerciseSkillMutation) SetSkillID(u uuid.UUID) {
+	m.skill = &u
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *ExerciseSkillMutation) SkillID() (r uuid.UUID, exists bool) {
+	v := m.skill
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the ExerciseSkill entity.
+// If the ExerciseSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseSkillMutation) OldSkillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *ExerciseSkillMutation) ResetSkillID() {
+	m.skill = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ExerciseSkillMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ExerciseSkillMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ExerciseSkill entity.
+// If the ExerciseSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseSkillMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ExerciseSkillMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearExercise clears the "exercise" edge to the Exercise entity.
+func (m *ExerciseSkillMutation) ClearExercise() {
+	m.clearedexercise = true
+	m.clearedFields[exerciseskill.FieldExerciseID] = struct{}{}
+}
+
+// ExerciseCleared reports if the "exercise" edge to the Exercise entity was cleared.
+func (m *ExerciseSkillMutation) ExerciseCleared() bool {
+	return m.clearedexercise
+}
+
+// ExerciseIDs returns the "exercise" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExerciseID instead. It exists only for internal usage by the builders.
+func (m *ExerciseSkillMutation) ExerciseIDs() (ids []uuid.UUID) {
+	if id := m.exercise; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExercise resets all changes to the "exercise" edge.
+func (m *ExerciseSkillMutation) ResetExercise() {
+	m.exercise = nil
+	m.clearedexercise = false
+}
+
+// ClearSkill clears the "skill" edge to the Skill entity.
+func (m *ExerciseSkillMutation) ClearSkill() {
+	m.clearedskill = true
+	m.clearedFields[exerciseskill.FieldSkillID] = struct{}{}
+}
+
+// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+func (m *ExerciseSkillMutation) SkillCleared() bool {
+	return m.clearedskill
+}
+
+// SkillIDs returns the "skill" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SkillID instead. It exists only for internal usage by the builders.
+func (m *ExerciseSkillMutation) SkillIDs() (ids []uuid.UUID) {
+	if id := m.skill; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSkill resets all changes to the "skill" edge.
+func (m *ExerciseSkillMutation) ResetSkill() {
+	m.skill = nil
+	m.clearedskill = false
+}
+
+// Where appends a list predicates to the ExerciseSkillMutation builder.
+func (m *ExerciseSkillMutation) Where(ps ...predicate.ExerciseSkill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ExerciseSkillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ExerciseSkillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ExerciseSkill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ExerciseSkillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ExerciseSkillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ExerciseSkill).
+func (m *ExerciseSkillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ExerciseSkillMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.exercise != nil {
+		fields = append(fields, exerciseskill.FieldExerciseID)
+	}
+	if m.skill != nil {
+		fields = append(fields, exerciseskill.FieldSkillID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, exerciseskill.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ExerciseSkillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case exerciseskill.FieldExerciseID:
+		return m.ExerciseID()
+	case exerciseskill.FieldSkillID:
+		return m.SkillID()
+	case exerciseskill.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ExerciseSkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case exerciseskill.FieldExerciseID:
+		return m.OldExerciseID(ctx)
+	case exerciseskill.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case exerciseskill.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ExerciseSkill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseSkillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case exerciseskill.FieldExerciseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExerciseID(v)
+		return nil
+	case exerciseskill.FieldSkillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case exerciseskill.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseSkill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ExerciseSkillMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ExerciseSkillMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseSkillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ExerciseSkill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ExerciseSkillMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ExerciseSkillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ExerciseSkillMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ExerciseSkill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ExerciseSkillMutation) ResetField(name string) error {
+	switch name {
+	case exerciseskill.FieldExerciseID:
+		m.ResetExerciseID()
+		return nil
+	case exerciseskill.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case exerciseskill.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseSkill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ExerciseSkillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.exercise != nil {
+		edges = append(edges, exerciseskill.EdgeExercise)
+	}
+	if m.skill != nil {
+		edges = append(edges, exerciseskill.EdgeSkill)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ExerciseSkillMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case exerciseskill.EdgeExercise:
+		if id := m.exercise; id != nil {
+			return []ent.Value{*id}
+		}
+	case exerciseskill.EdgeSkill:
+		if id := m.skill; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ExerciseSkillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ExerciseSkillMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ExerciseSkillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedexercise {
+		edges = append(edges, exerciseskill.EdgeExercise)
+	}
+	if m.clearedskill {
+		edges = append(edges, exerciseskill.EdgeSkill)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ExerciseSkillMutation) EdgeCleared(name string) bool {
+	switch name {
+	case exerciseskill.EdgeExercise:
+		return m.clearedexercise
+	case exerciseskill.EdgeSkill:
+		return m.clearedskill
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ExerciseSkillMutation) ClearEdge(name string) error {
+	switch name {
+	case exerciseskill.EdgeExercise:
+		m.ClearExercise()
+		return nil
+	case exerciseskill.EdgeSkill:
+		m.ClearSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseSkill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ExerciseSkillMutation) ResetEdge(name string) error {
+	switch name {
+	case exerciseskill.EdgeExercise:
+		m.ResetExercise()
+		return nil
+	case exerciseskill.EdgeSkill:
+		m.ResetSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseSkill edge %s", name)
 }
 
 // ExpandedContentMutation represents an operation that mutates the ExpandedContent nodes in the graph.
@@ -10144,6 +13729,885 @@ func (m *PathAssignmentMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PathAssignmentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown PathAssignment edge %s", name)
+}
+
+// SkillMutation represents an operation that mutates the Skill nodes in the graph.
+type SkillMutation struct {
+	config
+	op                         Op
+	typ                        string
+	id                         *uuid.UUID
+	name                       *string
+	clearedFields              map[string]struct{}
+	children                   map[uuid.UUID]struct{}
+	removedchildren            map[uuid.UUID]struct{}
+	clearedchildren            bool
+	parent                     *uuid.UUID
+	clearedparent              bool
+	content_nodes              map[uuid.UUID]struct{}
+	removedcontent_nodes       map[uuid.UUID]struct{}
+	clearedcontent_nodes       bool
+	exercises                  map[uuid.UUID]struct{}
+	removedexercises           map[uuid.UUID]struct{}
+	clearedexercises           bool
+	content_node_skills        map[int]struct{}
+	removedcontent_node_skills map[int]struct{}
+	clearedcontent_node_skills bool
+	exercise_skills            map[int]struct{}
+	removedexercise_skills     map[int]struct{}
+	clearedexercise_skills     bool
+	done                       bool
+	oldValue                   func(context.Context) (*Skill, error)
+	predicates                 []predicate.Skill
+}
+
+var _ ent.Mutation = (*SkillMutation)(nil)
+
+// skillOption allows management of the mutation configuration using functional options.
+type skillOption func(*SkillMutation)
+
+// newSkillMutation creates new mutation for the Skill entity.
+func newSkillMutation(c config, op Op, opts ...skillOption) *SkillMutation {
+	m := &SkillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSkill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSkillID sets the ID field of the mutation.
+func withSkillID(id uuid.UUID) skillOption {
+	return func(m *SkillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Skill
+		)
+		m.oldValue = func(ctx context.Context) (*Skill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Skill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSkill sets the old Skill of the mutation.
+func withSkill(node *Skill) skillOption {
+	return func(m *SkillMutation) {
+		m.oldValue = func(context.Context) (*Skill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SkillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SkillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Skill entities.
+func (m *SkillMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SkillMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SkillMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Skill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *SkillMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *SkillMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Skill entity.
+// If the Skill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SkillMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *SkillMutation) ResetName() {
+	m.name = nil
+}
+
+// SetParentID sets the "parent_id" field.
+func (m *SkillMutation) SetParentID(u uuid.UUID) {
+	m.parent = &u
+}
+
+// ParentID returns the value of the "parent_id" field in the mutation.
+func (m *SkillMutation) ParentID() (r uuid.UUID, exists bool) {
+	v := m.parent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParentID returns the old "parent_id" field's value of the Skill entity.
+// If the Skill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SkillMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
+	}
+	return oldValue.ParentID, nil
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (m *SkillMutation) ClearParentID() {
+	m.parent = nil
+	m.clearedFields[skill.FieldParentID] = struct{}{}
+}
+
+// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
+func (m *SkillMutation) ParentIDCleared() bool {
+	_, ok := m.clearedFields[skill.FieldParentID]
+	return ok
+}
+
+// ResetParentID resets all changes to the "parent_id" field.
+func (m *SkillMutation) ResetParentID() {
+	m.parent = nil
+	delete(m.clearedFields, skill.FieldParentID)
+}
+
+// AddChildIDs adds the "children" edge to the Skill entity by ids.
+func (m *SkillMutation) AddChildIDs(ids ...uuid.UUID) {
+	if m.children == nil {
+		m.children = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.children[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChildren clears the "children" edge to the Skill entity.
+func (m *SkillMutation) ClearChildren() {
+	m.clearedchildren = true
+}
+
+// ChildrenCleared reports if the "children" edge to the Skill entity was cleared.
+func (m *SkillMutation) ChildrenCleared() bool {
+	return m.clearedchildren
+}
+
+// RemoveChildIDs removes the "children" edge to the Skill entity by IDs.
+func (m *SkillMutation) RemoveChildIDs(ids ...uuid.UUID) {
+	if m.removedchildren == nil {
+		m.removedchildren = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.children, ids[i])
+		m.removedchildren[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChildren returns the removed IDs of the "children" edge to the Skill entity.
+func (m *SkillMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.removedchildren {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChildrenIDs returns the "children" edge IDs in the mutation.
+func (m *SkillMutation) ChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.children {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChildren resets all changes to the "children" edge.
+func (m *SkillMutation) ResetChildren() {
+	m.children = nil
+	m.clearedchildren = false
+	m.removedchildren = nil
+}
+
+// ClearParent clears the "parent" edge to the Skill entity.
+func (m *SkillMutation) ClearParent() {
+	m.clearedparent = true
+	m.clearedFields[skill.FieldParentID] = struct{}{}
+}
+
+// ParentCleared reports if the "parent" edge to the Skill entity was cleared.
+func (m *SkillMutation) ParentCleared() bool {
+	return m.ParentIDCleared() || m.clearedparent
+}
+
+// ParentIDs returns the "parent" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ParentID instead. It exists only for internal usage by the builders.
+func (m *SkillMutation) ParentIDs() (ids []uuid.UUID) {
+	if id := m.parent; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetParent resets all changes to the "parent" edge.
+func (m *SkillMutation) ResetParent() {
+	m.parent = nil
+	m.clearedparent = false
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
+func (m *SkillMutation) AddContentNodeIDs(ids ...uuid.UUID) {
+	if m.content_nodes == nil {
+		m.content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
+func (m *SkillMutation) ClearContentNodes() {
+	m.clearedcontent_nodes = true
+}
+
+// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
+func (m *SkillMutation) ContentNodesCleared() bool {
+	return m.clearedcontent_nodes
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
+func (m *SkillMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedcontent_nodes == nil {
+		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.content_nodes, ids[i])
+		m.removedcontent_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
+func (m *SkillMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcontent_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
+func (m *SkillMutation) ContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodes resets all changes to the "content_nodes" edge.
+func (m *SkillMutation) ResetContentNodes() {
+	m.content_nodes = nil
+	m.clearedcontent_nodes = false
+	m.removedcontent_nodes = nil
+}
+
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
+func (m *SkillMutation) AddExerciseIDs(ids ...uuid.UUID) {
+	if m.exercises == nil {
+		m.exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExercises clears the "exercises" edge to the Exercise entity.
+func (m *SkillMutation) ClearExercises() {
+	m.clearedexercises = true
+}
+
+// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
+func (m *SkillMutation) ExercisesCleared() bool {
+	return m.clearedexercises
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
+func (m *SkillMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
+	if m.removedexercises == nil {
+		m.removedexercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.exercises, ids[i])
+		m.removedexercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
+func (m *SkillMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedexercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExercisesIDs returns the "exercises" edge IDs in the mutation.
+func (m *SkillMutation) ExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExercises resets all changes to the "exercises" edge.
+func (m *SkillMutation) ResetExercises() {
+	m.exercises = nil
+	m.clearedexercises = false
+	m.removedexercises = nil
+}
+
+// AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by ids.
+func (m *SkillMutation) AddContentNodeSkillIDs(ids ...int) {
+	if m.content_node_skills == nil {
+		m.content_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeSkills clears the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *SkillMutation) ClearContentNodeSkills() {
+	m.clearedcontent_node_skills = true
+}
+
+// ContentNodeSkillsCleared reports if the "content_node_skills" edge to the ContentNodeSkill entity was cleared.
+func (m *SkillMutation) ContentNodeSkillsCleared() bool {
+	return m.clearedcontent_node_skills
+}
+
+// RemoveContentNodeSkillIDs removes the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
+func (m *SkillMutation) RemoveContentNodeSkillIDs(ids ...int) {
+	if m.removedcontent_node_skills == nil {
+		m.removedcontent_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_skills, ids[i])
+		m.removedcontent_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeSkills returns the removed IDs of the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *SkillMutation) RemovedContentNodeSkillsIDs() (ids []int) {
+	for id := range m.removedcontent_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeSkillsIDs returns the "content_node_skills" edge IDs in the mutation.
+func (m *SkillMutation) ContentNodeSkillsIDs() (ids []int) {
+	for id := range m.content_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeSkills resets all changes to the "content_node_skills" edge.
+func (m *SkillMutation) ResetContentNodeSkills() {
+	m.content_node_skills = nil
+	m.clearedcontent_node_skills = false
+	m.removedcontent_node_skills = nil
+}
+
+// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by ids.
+func (m *SkillMutation) AddExerciseSkillIDs(ids ...int) {
+	if m.exercise_skills == nil {
+		m.exercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseSkills clears the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *SkillMutation) ClearExerciseSkills() {
+	m.clearedexercise_skills = true
+}
+
+// ExerciseSkillsCleared reports if the "exercise_skills" edge to the ExerciseSkill entity was cleared.
+func (m *SkillMutation) ExerciseSkillsCleared() bool {
+	return m.clearedexercise_skills
+}
+
+// RemoveExerciseSkillIDs removes the "exercise_skills" edge to the ExerciseSkill entity by IDs.
+func (m *SkillMutation) RemoveExerciseSkillIDs(ids ...int) {
+	if m.removedexercise_skills == nil {
+		m.removedexercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_skills, ids[i])
+		m.removedexercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseSkills returns the removed IDs of the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *SkillMutation) RemovedExerciseSkillsIDs() (ids []int) {
+	for id := range m.removedexercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseSkillsIDs returns the "exercise_skills" edge IDs in the mutation.
+func (m *SkillMutation) ExerciseSkillsIDs() (ids []int) {
+	for id := range m.exercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseSkills resets all changes to the "exercise_skills" edge.
+func (m *SkillMutation) ResetExerciseSkills() {
+	m.exercise_skills = nil
+	m.clearedexercise_skills = false
+	m.removedexercise_skills = nil
+}
+
+// Where appends a list predicates to the SkillMutation builder.
+func (m *SkillMutation) Where(ps ...predicate.Skill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SkillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SkillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Skill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SkillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SkillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Skill).
+func (m *SkillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SkillMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.name != nil {
+		fields = append(fields, skill.FieldName)
+	}
+	if m.parent != nil {
+		fields = append(fields, skill.FieldParentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SkillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case skill.FieldName:
+		return m.Name()
+	case skill.FieldParentID:
+		return m.ParentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case skill.FieldName:
+		return m.OldName(ctx)
+	case skill.FieldParentID:
+		return m.OldParentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Skill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SkillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case skill.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case skill.FieldParentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Skill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SkillMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SkillMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SkillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Skill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SkillMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(skill.FieldParentID) {
+		fields = append(fields, skill.FieldParentID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SkillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SkillMutation) ClearField(name string) error {
+	switch name {
+	case skill.FieldParentID:
+		m.ClearParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown Skill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SkillMutation) ResetField(name string) error {
+	switch name {
+	case skill.FieldName:
+		m.ResetName()
+		return nil
+	case skill.FieldParentID:
+		m.ResetParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown Skill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SkillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.children != nil {
+		edges = append(edges, skill.EdgeChildren)
+	}
+	if m.parent != nil {
+		edges = append(edges, skill.EdgeParent)
+	}
+	if m.content_nodes != nil {
+		edges = append(edges, skill.EdgeContentNodes)
+	}
+	if m.exercises != nil {
+		edges = append(edges, skill.EdgeExercises)
+	}
+	if m.content_node_skills != nil {
+		edges = append(edges, skill.EdgeContentNodeSkills)
+	}
+	if m.exercise_skills != nil {
+		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SkillMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case skill.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.children))
+		for id := range m.children {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeParent:
+		if id := m.parent; id != nil {
+			return []ent.Value{*id}
+		}
+	case skill.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.content_nodes))
+		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.exercises))
+		for id := range m.exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.content_node_skills))
+		for id := range m.content_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.exercise_skills))
+		for id := range m.exercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SkillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.removedchildren != nil {
+		edges = append(edges, skill.EdgeChildren)
+	}
+	if m.removedcontent_nodes != nil {
+		edges = append(edges, skill.EdgeContentNodes)
+	}
+	if m.removedexercises != nil {
+		edges = append(edges, skill.EdgeExercises)
+	}
+	if m.removedcontent_node_skills != nil {
+		edges = append(edges, skill.EdgeContentNodeSkills)
+	}
+	if m.removedexercise_skills != nil {
+		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case skill.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.removedchildren))
+		for id := range m.removedchildren {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
+		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.removedexercises))
+		for id := range m.removedexercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_skills))
+		for id := range m.removedcontent_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case skill.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.removedexercise_skills))
+		for id := range m.removedexercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SkillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.clearedchildren {
+		edges = append(edges, skill.EdgeChildren)
+	}
+	if m.clearedparent {
+		edges = append(edges, skill.EdgeParent)
+	}
+	if m.clearedcontent_nodes {
+		edges = append(edges, skill.EdgeContentNodes)
+	}
+	if m.clearedexercises {
+		edges = append(edges, skill.EdgeExercises)
+	}
+	if m.clearedcontent_node_skills {
+		edges = append(edges, skill.EdgeContentNodeSkills)
+	}
+	if m.clearedexercise_skills {
+		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SkillMutation) EdgeCleared(name string) bool {
+	switch name {
+	case skill.EdgeChildren:
+		return m.clearedchildren
+	case skill.EdgeParent:
+		return m.clearedparent
+	case skill.EdgeContentNodes:
+		return m.clearedcontent_nodes
+	case skill.EdgeExercises:
+		return m.clearedexercises
+	case skill.EdgeContentNodeSkills:
+		return m.clearedcontent_node_skills
+	case skill.EdgeExerciseSkills:
+		return m.clearedexercise_skills
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SkillMutation) ClearEdge(name string) error {
+	switch name {
+	case skill.EdgeParent:
+		m.ClearParent()
+		return nil
+	}
+	return fmt.Errorf("unknown Skill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SkillMutation) ResetEdge(name string) error {
+	switch name {
+	case skill.EdgeChildren:
+		m.ResetChildren()
+		return nil
+	case skill.EdgeParent:
+		m.ResetParent()
+		return nil
+	case skill.EdgeContentNodes:
+		m.ResetContentNodes()
+		return nil
+	case skill.EdgeExercises:
+		m.ResetExercises()
+		return nil
+	case skill.EdgeContentNodeSkills:
+		m.ResetContentNodeSkills()
+		return nil
+	case skill.EdgeExerciseSkills:
+		m.ResetExerciseSkills()
+		return nil
+	}
+	return fmt.Errorf("unknown Skill edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

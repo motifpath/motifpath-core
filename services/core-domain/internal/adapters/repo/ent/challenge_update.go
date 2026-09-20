@@ -30,17 +30,43 @@ func (_u *ChallengeUpdate) Where(ps ...predicate.Challenge) *ChallengeUpdate {
 	return _u
 }
 
-// SetSubjectTag sets the "subject_tag" field.
-func (_u *ChallengeUpdate) SetSubjectTag(v string) *ChallengeUpdate {
-	_u.mutation.SetSubjectTag(v)
+// SetSubjectSkillID sets the "subject_skill_id" field.
+func (_u *ChallengeUpdate) SetSubjectSkillID(v uuid.UUID) *ChallengeUpdate {
+	_u.mutation.SetSubjectSkillID(v)
 	return _u
 }
 
-// SetNillableSubjectTag sets the "subject_tag" field if the given value is not nil.
-func (_u *ChallengeUpdate) SetNillableSubjectTag(v *string) *ChallengeUpdate {
+// SetNillableSubjectSkillID sets the "subject_skill_id" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableSubjectSkillID(v *uuid.UUID) *ChallengeUpdate {
 	if v != nil {
-		_u.SetSubjectTag(*v)
+		_u.SetSubjectSkillID(*v)
 	}
+	return _u
+}
+
+// ClearSubjectSkillID clears the value of the "subject_skill_id" field.
+func (_u *ChallengeUpdate) ClearSubjectSkillID() *ChallengeUpdate {
+	_u.mutation.ClearSubjectSkillID()
+	return _u
+}
+
+// SetSubjectConceptID sets the "subject_concept_id" field.
+func (_u *ChallengeUpdate) SetSubjectConceptID(v uuid.UUID) *ChallengeUpdate {
+	_u.mutation.SetSubjectConceptID(v)
+	return _u
+}
+
+// SetNillableSubjectConceptID sets the "subject_concept_id" field if the given value is not nil.
+func (_u *ChallengeUpdate) SetNillableSubjectConceptID(v *uuid.UUID) *ChallengeUpdate {
+	if v != nil {
+		_u.SetSubjectConceptID(*v)
+	}
+	return _u
+}
+
+// ClearSubjectConceptID clears the value of the "subject_concept_id" field.
+func (_u *ChallengeUpdate) ClearSubjectConceptID() *ChallengeUpdate {
+	_u.mutation.ClearSubjectConceptID()
 	return _u
 }
 
@@ -233,8 +259,17 @@ func (_u *ChallengeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.SubjectTag(); ok {
-		_spec.SetField(challenge.FieldSubjectTag, field.TypeString, value)
+	if value, ok := _u.mutation.SubjectSkillID(); ok {
+		_spec.SetField(challenge.FieldSubjectSkillID, field.TypeUUID, value)
+	}
+	if _u.mutation.SubjectSkillIDCleared() {
+		_spec.ClearField(challenge.FieldSubjectSkillID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.SubjectConceptID(); ok {
+		_spec.SetField(challenge.FieldSubjectConceptID, field.TypeUUID, value)
+	}
+	if _u.mutation.SubjectConceptIDCleared() {
+		_spec.ClearField(challenge.FieldSubjectConceptID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.PassThreshold(); ok {
 		_spec.SetField(challenge.FieldPassThreshold, field.TypeInt, value)
@@ -379,17 +414,43 @@ type ChallengeUpdateOne struct {
 	mutation *ChallengeMutation
 }
 
-// SetSubjectTag sets the "subject_tag" field.
-func (_u *ChallengeUpdateOne) SetSubjectTag(v string) *ChallengeUpdateOne {
-	_u.mutation.SetSubjectTag(v)
+// SetSubjectSkillID sets the "subject_skill_id" field.
+func (_u *ChallengeUpdateOne) SetSubjectSkillID(v uuid.UUID) *ChallengeUpdateOne {
+	_u.mutation.SetSubjectSkillID(v)
 	return _u
 }
 
-// SetNillableSubjectTag sets the "subject_tag" field if the given value is not nil.
-func (_u *ChallengeUpdateOne) SetNillableSubjectTag(v *string) *ChallengeUpdateOne {
+// SetNillableSubjectSkillID sets the "subject_skill_id" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableSubjectSkillID(v *uuid.UUID) *ChallengeUpdateOne {
 	if v != nil {
-		_u.SetSubjectTag(*v)
+		_u.SetSubjectSkillID(*v)
 	}
+	return _u
+}
+
+// ClearSubjectSkillID clears the value of the "subject_skill_id" field.
+func (_u *ChallengeUpdateOne) ClearSubjectSkillID() *ChallengeUpdateOne {
+	_u.mutation.ClearSubjectSkillID()
+	return _u
+}
+
+// SetSubjectConceptID sets the "subject_concept_id" field.
+func (_u *ChallengeUpdateOne) SetSubjectConceptID(v uuid.UUID) *ChallengeUpdateOne {
+	_u.mutation.SetSubjectConceptID(v)
+	return _u
+}
+
+// SetNillableSubjectConceptID sets the "subject_concept_id" field if the given value is not nil.
+func (_u *ChallengeUpdateOne) SetNillableSubjectConceptID(v *uuid.UUID) *ChallengeUpdateOne {
+	if v != nil {
+		_u.SetSubjectConceptID(*v)
+	}
+	return _u
+}
+
+// ClearSubjectConceptID clears the value of the "subject_concept_id" field.
+func (_u *ChallengeUpdateOne) ClearSubjectConceptID() *ChallengeUpdateOne {
+	_u.mutation.ClearSubjectConceptID()
 	return _u
 }
 
@@ -612,8 +673,17 @@ func (_u *ChallengeUpdateOne) sqlSave(ctx context.Context) (_node *Challenge, er
 			}
 		}
 	}
-	if value, ok := _u.mutation.SubjectTag(); ok {
-		_spec.SetField(challenge.FieldSubjectTag, field.TypeString, value)
+	if value, ok := _u.mutation.SubjectSkillID(); ok {
+		_spec.SetField(challenge.FieldSubjectSkillID, field.TypeUUID, value)
+	}
+	if _u.mutation.SubjectSkillIDCleared() {
+		_spec.ClearField(challenge.FieldSubjectSkillID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.SubjectConceptID(); ok {
+		_spec.SetField(challenge.FieldSubjectConceptID, field.TypeUUID, value)
+	}
+	if _u.mutation.SubjectConceptIDCleared() {
+		_spec.ClearField(challenge.FieldSubjectConceptID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.PassThreshold(); ok {
 		_spec.SetField(challenge.FieldPassThreshold, field.TypeInt, value)
