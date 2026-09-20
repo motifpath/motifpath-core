@@ -38,7 +38,7 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the exercise's prompt preserves its font color and background color$`, w.exercisePromptMatchesLastSent)
 	sc.Step(`^"([^"]+)" creates a text_response exercise titled "([^"]+)" with a prompt containing a single unformatted paragraph and one correct option$`, w.createsExerciseWithPlainParagraphPrompt)
 	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt is a plain string instead of a structured document$`, w.submitsExerciseUnstructuredPrompt)
-	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt document contains a video node$`, w.submitsExerciseUnsupportedPromptNode)
+	sc.Step(`^"([^"]+)" submits a create exercise request whose prompt document contains a footnote node$`, w.submitsExerciseUnsupportedPromptNode)
 	sc.Step(`^the exercise's prompt preserves its heading, bulleted list, table, and image structure$`, w.exercisePromptMatchesLastSent)
 
 	sc.Step(`^an exercise "([^"]+)" exists with skills "([^"]+)"$`, w.putExerciseWithSkills)

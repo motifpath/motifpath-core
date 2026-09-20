@@ -105,18 +105,46 @@ func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Lan
 }
 
 type fakeContentNodeRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.ContentNode
+	mu       sync.Mutex
+	byID     map[string]domain.ContentNode
+	skills   *fakeSkillRepo
+	concepts *fakeConceptRepo
 }
 
-func newFakeContentNodeRepo() *fakeContentNodeRepo {
-	return &fakeContentNodeRepo{byID: map[string]domain.ContentNode{}}
+func newFakeContentNodeRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeContentNodeRepo {
+	return &fakeContentNodeRepo{byID: map[string]domain.ContentNode{}, skills: skills, concepts: concepts}
+}
+
+// resolveClassification replaces n.Classification.Skills/Concepts (which
+// may carry only IDs, as domain.NewContentNode's placeholders do) with the
+// full Skill/Concept records from f.skills/f.concepts — mirroring the real
+// ent adapter's WithSkills()/WithConcepts() join on read.
+func (f *fakeContentNodeRepo) resolveClassification(n domain.ContentNode) domain.ContentNode {
+	skills := make([]domain.Skill, len(n.Classification.Skills))
+	for i, s := range n.Classification.Skills {
+		if full, ok := f.skills.byID[s.ID]; ok {
+			skills[i] = full
+		} else {
+			skills[i] = s
+		}
+	}
+	concepts := make([]domain.Concept, len(n.Classification.Concepts))
+	for i, c := range n.Classification.Concepts {
+		if full, ok := f.concepts.byID[c.ID]; ok {
+			concepts[i] = full
+		} else {
+			concepts[i] = c
+		}
+	}
+	n.Classification.Skills = skills
+	n.Classification.Concepts = concepts
+	return n
 }
 
 func (f *fakeContentNodeRepo) Create(_ context.Context, n domain.ContentNode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[n.ID] = n
+	f.byID[n.ID] = f.resolveClassification(n)
 	return nil
 }
 
@@ -185,7 +213,7 @@ func (f *fakeContentNodeRepo) Update(_ context.Context, n domain.ContentNode) er
 	if _, ok := f.byID[n.ID]; !ok {
 		return domain.ErrNotFound
 	}
-	f.byID[n.ID] = n
+	f.byID[n.ID] = f.resolveClassification(n)
 	return nil
 }
 
@@ -252,20 +280,48 @@ type fakeExerciseRepo struct {
 	byID             map[string]domain.Exercise
 	byChallengeOrder map[string][]string
 	byNodeOrder      map[string][]string
+	skills           *fakeSkillRepo
+	concepts         *fakeConceptRepo
 }
 
-func newFakeExerciseRepo() *fakeExerciseRepo {
+func newFakeExerciseRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeExerciseRepo {
 	return &fakeExerciseRepo{
 		byID:             map[string]domain.Exercise{},
 		byChallengeOrder: map[string][]string{},
 		byNodeOrder:      map[string][]string{},
+		skills:           skills,
+		concepts:         concepts,
 	}
+}
+
+// resolveClassification is fakeContentNodeRepo.resolveClassification's
+// counterpart for Exercise.
+func (f *fakeExerciseRepo) resolveClassification(e domain.Exercise) domain.Exercise {
+	skills := make([]domain.Skill, len(e.Skills))
+	for i, s := range e.Skills {
+		if full, ok := f.skills.byID[s.ID]; ok {
+			skills[i] = full
+		} else {
+			skills[i] = s
+		}
+	}
+	concepts := make([]domain.Concept, len(e.Concepts))
+	for i, c := range e.Concepts {
+		if full, ok := f.concepts.byID[c.ID]; ok {
+			concepts[i] = full
+		} else {
+			concepts[i] = c
+		}
+	}
+	e.Skills = skills
+	e.Concepts = concepts
+	return e
 }
 
 func (f *fakeExerciseRepo) Create(_ context.Context, e domain.Exercise) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[e.ID] = e
+	f.byID[e.ID] = f.resolveClassification(e)
 	return nil
 }
 
@@ -437,7 +493,7 @@ func (f *fakeExerciseRepo) Update(_ context.Context, e domain.Exercise) error {
 	if _, ok := f.byID[e.ID]; !ok {
 		return domain.ErrNotFound
 	}
-	f.byID[e.ID] = e
+	f.byID[e.ID] = f.resolveClassification(e)
 	return nil
 }
 

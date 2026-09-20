@@ -107,17 +107,19 @@ type world struct {
 }
 
 func newWorld() *world {
+	skills := newFakeSkillRepo()
+	concepts := newFakeConceptRepo()
 	w := &world{
 		users:       newFakeUserRepo(),
-		nodes:       newFakeContentNodeRepo(),
+		nodes:       newFakeContentNodeRepo(skills, concepts),
 		challenges:  newFakeChallengeRepo(),
-		exercises:   newFakeExerciseRepo(),
+		exercises:   newFakeExerciseRepo(skills, concepts),
 		expanded:    newFakeExpandedContentRepo(),
 		paths:       newFakeLearningPathRepo(),
 		assignments: newFakePathAssignmentRepo(),
 		completion:  newFakeCompletionReader(),
-		skills:      newFakeSkillRepo(),
-		concepts:    newFakeConceptRepo(),
+		skills:      skills,
+		concepts:    concepts,
 		pgPinger:    &fakePinger{},
 		mongoPinger: &fakePinger{},
 		userMotifID: map[string]uuid.UUID{},

@@ -11,12 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
 var fixedAt = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC).Truncate(time.Microsecond)
 
 func strPtr(s string) *string { return &s }
+
+// seedSkill/seedConcept create a real Skill/Concept row via the ent
+// repository — ContentNode/Exercise's skill_ids/concept_ids reference these
+// by a real foreign key, so integration tests need actual rows to link
+// against, not just an arbitrary uuid.
+func seedSkill(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.Skill {
+	t.Helper()
+	skill := domain.Skill{ID: uuid.NewString(), Name: name}
+	require.NoError(t, NewEntSkillRepository(client).Create(ctx, skill))
+	return skill
+}
+
+func seedConcept(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.Concept {
+	t.Helper()
+	concept := domain.Concept{ID: uuid.NewString(), Name: name}
+	require.NoError(t, NewEntConceptRepository(client).Create(ctx, concept))
+	return concept
+}
 
 func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	client := setupPostgres(t)
@@ -74,10 +93,13 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEntContentNodeRepository(client)
 
+	skill := seedSkill(t, ctx, client, "triad-shapes-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "chord-theory-"+uuid.NewString())
+
 	teacherID := uuid.NewString()
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: teacherID, Title: "Intro", ContentType: domain.ContentTypeVideo,
-		Classification: domain.Classification{Skill: "triad-shapes", Concept: "chord-theory", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
+		Classification: domain.Classification{Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		Languages:      []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
 		CreatedAt:      fixedAt,
 	}
@@ -125,7 +147,7 @@ func TestEntChallengeRepository_CreateAndGet(t *testing.T) {
 	timeThreshold := 120000
 
 	challenge := domain.Challenge{
-		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70,
+		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70,
 		TimeThresholdMS: &timeThreshold, CreatedAt: fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, challenge))
@@ -145,12 +167,12 @@ func TestEntChallengeRepository_CreateWithShufflingAndListByContentNodeID(t *tes
 	otherNode := seedContentNode(t, ctx, nodeRepo)
 
 	shuffled := domain.Challenge{
-		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70,
+		ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70,
 		ShuffleExercises: true, ShuffleOptions: true, CreatedAt: fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, shuffled))
 	require.NoError(t, repo.Create(ctx, domain.Challenge{
-		ID: uuid.NewString(), ContentNodeID: otherNode.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt,
+		ID: uuid.NewString(), ContentNodeID: otherNode.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt,
 	}))
 
 	got, err := repo.GetByID(ctx, shuffled.ID)
@@ -172,11 +194,14 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	ctx := context.Background()
 	imageURL := "https://cdn.example.com/fretboard/c-major-triad.png"
 	duration := 45
-	repo := NewEntExerciseRepository(setupPostgres(t))
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	skill := seedSkill(t, ctx, client, "triad-shapes-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "chord-theory-"+uuid.NewString())
 
 	exercise := domain.Exercise{
 		ID: uuid.NewString(), Title: "Root position of a C major triad", Prompt: domain.NewPlainTextPrompt("Identify the chord"),
-		ExerciseType: domain.ExerciseTypeImageRecognition, SkillTags: []string{"triad-shapes"}, ImageURL: &imageURL,
+		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, ImageURL: &imageURL,
 		EstimatedDurationSeconds: &duration,
 		Options: []domain.Option{
 			{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.2, Y: 0.3, Width: 0.1, Height: 0.1, Shape: domain.OptionRegionShapeRectangle}},
@@ -193,7 +218,8 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, exercise.Title, got.Title)
 	assert.Equal(t, exercise.ExerciseType, got.ExerciseType)
-	assert.Equal(t, exercise.SkillTags, got.SkillTags)
+	assert.Equal(t, exercise.Skills, got.Skills)
+	assert.Equal(t, exercise.Concepts, got.Concepts)
 	assert.Equal(t, exercise.EstimatedDurationSeconds, got.EstimatedDurationSeconds)
 	assert.ElementsMatch(t, exercise.Options, got.Options)
 	assert.Empty(t, got.ChallengeIDs)
@@ -260,9 +286,9 @@ func TestEntExerciseRepository_ListByChallengeID(t *testing.T) {
 	repo := NewEntExerciseRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
-	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challenge))
-	otherChallenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt}
+	otherChallenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, otherChallenge))
 
 	label := "A major"
@@ -295,11 +321,11 @@ func TestEntExerciseRepository_ListByChallengeIDs(t *testing.T) {
 	repo := NewEntExerciseRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
-	challengeA := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	challengeA := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challengeA))
-	challengeB := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt}
+	challengeB := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challengeB))
-	challengeC := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "empty", PassThreshold: 70, CreatedAt: fixedAt}
+	challengeC := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challengeC))
 
 	label := "A major"
@@ -339,7 +365,7 @@ func TestEntExerciseRepository_ListByChallengeID_PreservesLinkOrder(t *testing.T
 	repo := NewEntExerciseRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
-	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	challenge := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challenge))
 
 	label := "A major"
@@ -441,22 +467,27 @@ func TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder(t *testing
 	assert.Equal(t, wantOrder, gotOrder)
 }
 
-func TestEntExerciseRepository_ListBySkillTag(t *testing.T) {
+func TestEntExerciseRepository_ListBySkillID(t *testing.T) {
 	ctx := context.Background()
-	repo := NewEntExerciseRepository(setupPostgres(t))
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	concept := seedConcept(t, ctx, client, "concept-"+uuid.NewString())
+
+	skillA := seedSkill(t, ctx, client, "alternate_picking-"+uuid.NewString())
+	skillB := seedSkill(t, ctx, client, "hybrid_picking-"+uuid.NewString())
 
 	label := "A major"
-	tagged := domain.Exercise{ID: uuid.NewString(), Title: "Tagged", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"alternate_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, tagged))
-	untagged := domain.Exercise{ID: uuid.NewString(), Title: "Untagged", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, SkillTags: []string{"hybrid_picking"}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, untagged))
+	linked := domain.Exercise{ID: uuid.NewString(), Title: "Linked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.Skill{skillA}, Concepts: []domain.Concept{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, linked))
+	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Unlinked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.Skill{skillB}, Concepts: []domain.Concept{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, unlinked))
 
-	list, err := repo.ListBySkillTag(ctx, "alternate_picking")
+	list, err := repo.ListBySkillID(ctx, skillA.ID)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
-	assert.Equal(t, tagged.ID, list[0].ID)
+	assert.Equal(t, linked.ID, list[0].ID)
 
-	empty, err := repo.ListBySkillTag(ctx, "nonexistent-skill")
+	empty, err := repo.ListBySkillID(ctx, uuid.NewString())
 	require.NoError(t, err)
 	assert.Empty(t, empty)
 }
@@ -469,9 +500,9 @@ func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
 	repo := NewEntExerciseRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
-	challengeA := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "triad-shapes", PassThreshold: 70, CreatedAt: fixedAt}
+	challengeA := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challengeA))
-	challengeB := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectTag: "inversions", PassThreshold: 70, CreatedAt: fixedAt}
+	challengeB := domain.Challenge{ID: uuid.NewString(), ContentNodeID: node.ID, SubjectSkillID: strPtr(uuid.NewString()), PassThreshold: 70, CreatedAt: fixedAt}
 	require.NoError(t, challengeRepo.Create(ctx, challengeB))
 
 	label := "A major"
@@ -648,9 +679,11 @@ func TestEntPathAssignmentRepository_ReplaceActive(t *testing.T) {
 
 func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepository) domain.ContentNode {
 	t.Helper()
+	skill := seedSkill(t, ctx, repo.client, "skill-"+uuid.NewString())
+	concept := seedConcept(t, ctx, repo.client, "concept-"+uuid.NewString())
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
-		Classification: domain.Classification{Skill: "skill", Concept: "concept", DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
+		Classification: domain.Classification{Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, node))

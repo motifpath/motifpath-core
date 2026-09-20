@@ -25,7 +25,6 @@ func registerChallengeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a create challenge request with both subject_skill_id and subject_concept_id set$`, w.submitsChallengeBothSubjects)
 	sc.Step(`^"([^"]+)" submits a create challenge request with the pass_threshold field omitted$`, w.submitsChallengeMissingPassThreshold)
 	sc.Step(`^"([^"]+)" submits a create challenge request with pass_threshold (\d+)$`, w.submitsChallengeWithPassThreshold)
-	sc.Step(`^"([^"]+)" creates a challenge for "([^"]+)" with subject skill "([^"]+)" and pass threshold (\d+)$`, w.createsChallengeWithSubjectSkill)
 	sc.Step(`^"([^"]+)" creates a challenge for a content node ID that does not exist$`, w.createsChallengeForMissingNode)
 	sc.Step(`^"([^"]+)" retrieves a challenge with an ID that does not exist$`, w.retrievesMissingChallenge)
 	sc.Step(`^"([^"]+)" attempts to create a challenge for "([^"]+)"$`, w.attemptsCreateChallenge)
