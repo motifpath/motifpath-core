@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
@@ -108,6 +110,21 @@ func (_c *SkillCreate) AddExercises(v ...*Exercise) *SkillCreate {
 	return _c.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_c *SkillCreate) AddDiagramIDs(ids ...uuid.UUID) *SkillCreate {
+	_c.mutation.AddDiagramIDs(ids...)
+	return _c
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_c *SkillCreate) AddDiagrams(v ...*Diagram) *SkillCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
 func (_c *SkillCreate) AddContentNodeSkillIDs(ids ...int) *SkillCreate {
 	_c.mutation.AddContentNodeSkillIDs(ids...)
@@ -136,6 +153,21 @@ func (_c *SkillCreate) AddExerciseSkills(v ...*ExerciseSkill) *SkillCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddExerciseSkillIDs(ids...)
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (_c *SkillCreate) AddDiagramSkillIDs(ids ...int) *SkillCreate {
+	_c.mutation.AddDiagramSkillIDs(ids...)
+	return _c
+}
+
+// AddDiagramSkills adds the "diagram_skills" edges to the DiagramSkill entity.
+func (_c *SkillCreate) AddDiagramSkills(v ...*DiagramSkill) *SkillCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramSkillIDs(ids...)
 }
 
 // Mutation returns the SkillMutation object of the builder.
@@ -296,6 +328,26 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramSkillCreate{config: _c.config, mutation: newDiagramSkillMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ContentNodeSkillsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -321,6 +373,22 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DiagramSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

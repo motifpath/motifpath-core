@@ -37,13 +37,17 @@ type ConceptEdges struct {
 	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
 	// Exercises holds the value of the exercises edge.
 	Exercises []*Exercise `json:"exercises,omitempty"`
+	// Diagrams holds the value of the diagrams edge.
+	Diagrams []*Diagram `json:"diagrams,omitempty"`
 	// ContentNodeConcepts holds the value of the content_node_concepts edge.
 	ContentNodeConcepts []*ContentNodeConcept `json:"content_node_concepts,omitempty"`
 	// ExerciseConcepts holds the value of the exercise_concepts edge.
 	ExerciseConcepts []*ExerciseConcept `json:"exercise_concepts,omitempty"`
+	// DiagramConcepts holds the value of the diagram_concepts edge.
+	DiagramConcepts []*DiagramConcept `json:"diagram_concepts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [8]bool
 }
 
 // ChildrenOrErr returns the Children value or an error if the edge
@@ -84,10 +88,19 @@ func (e ConceptEdges) ExercisesOrErr() ([]*Exercise, error) {
 	return nil, &NotLoadedError{edge: "exercises"}
 }
 
+// DiagramsOrErr returns the Diagrams value or an error if the edge
+// was not loaded in eager-loading.
+func (e ConceptEdges) DiagramsOrErr() ([]*Diagram, error) {
+	if e.loadedTypes[4] {
+		return e.Diagrams, nil
+	}
+	return nil, &NotLoadedError{edge: "diagrams"}
+}
+
 // ContentNodeConceptsOrErr returns the ContentNodeConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e ConceptEdges) ContentNodeConceptsOrErr() ([]*ContentNodeConcept, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.ContentNodeConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_concepts"}
@@ -96,10 +109,19 @@ func (e ConceptEdges) ContentNodeConceptsOrErr() ([]*ContentNodeConcept, error) 
 // ExerciseConceptsOrErr returns the ExerciseConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e ConceptEdges) ExerciseConceptsOrErr() ([]*ExerciseConcept, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.ExerciseConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_concepts"}
+}
+
+// DiagramConceptsOrErr returns the DiagramConcepts value or an error if the edge
+// was not loaded in eager-loading.
+func (e ConceptEdges) DiagramConceptsOrErr() ([]*DiagramConcept, error) {
+	if e.loadedTypes[7] {
+		return e.DiagramConcepts, nil
+	}
+	return nil, &NotLoadedError{edge: "diagram_concepts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -180,6 +202,11 @@ func (_m *Concept) QueryExercises() *ExerciseQuery {
 	return NewConceptClient(_m.config).QueryExercises(_m)
 }
 
+// QueryDiagrams queries the "diagrams" edge of the Concept entity.
+func (_m *Concept) QueryDiagrams() *DiagramQuery {
+	return NewConceptClient(_m.config).QueryDiagrams(_m)
+}
+
 // QueryContentNodeConcepts queries the "content_node_concepts" edge of the Concept entity.
 func (_m *Concept) QueryContentNodeConcepts() *ContentNodeConceptQuery {
 	return NewConceptClient(_m.config).QueryContentNodeConcepts(_m)
@@ -188,6 +215,11 @@ func (_m *Concept) QueryContentNodeConcepts() *ContentNodeConceptQuery {
 // QueryExerciseConcepts queries the "exercise_concepts" edge of the Concept entity.
 func (_m *Concept) QueryExerciseConcepts() *ExerciseConceptQuery {
 	return NewConceptClient(_m.config).QueryExerciseConcepts(_m)
+}
+
+// QueryDiagramConcepts queries the "diagram_concepts" edge of the Concept entity.
+func (_m *Concept) QueryDiagramConcepts() *DiagramConceptQuery {
+	return NewConceptClient(_m.config).QueryDiagramConcepts(_m)
 }
 
 // Update returns a builder for updating this Concept.

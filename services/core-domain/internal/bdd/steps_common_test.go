@@ -80,6 +80,14 @@ func (w *world) responseIncludes(slug string) error {
 			}
 		}
 		return fmt.Errorf("expected learning paths to include %s, got %+v", want, resp)
+	case generated.ListDiagrams200JSONResponse:
+		want := diagramID(slug)
+		for _, d := range resp {
+			if d.DiagramId == want {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected diagrams to include %s, got %+v", want, resp)
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
 	}
@@ -107,6 +115,14 @@ func (w *world) responseDoesNotInclude(slug string) error {
 		for _, n := range resp {
 			if n.ContentNodeId == want {
 				return fmt.Errorf("expected content nodes not to include %s, got %+v", want, resp)
+			}
+		}
+		return nil
+	case generated.ListDiagrams200JSONResponse:
+		want := diagramID(slug)
+		for _, d := range resp {
+			if d.DiagramId == want {
+				return fmt.Errorf("expected diagrams not to include %s, got %+v", want, resp)
 			}
 		}
 		return nil
@@ -148,6 +164,14 @@ func (w *world) responseIsEmptyList() error {
 	case generated.ListConcepts200JSONResponse:
 		if len(resp) != 0 {
 			return fmt.Errorf("expected an empty list, got %d concepts", len(resp))
+		}
+	case generated.ListInstruments200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d instruments", len(resp))
+		}
+	case generated.ListDiagrams200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d diagrams", len(resp))
 		}
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
@@ -199,7 +223,10 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ListLearningPaths403JSONResponse,
 		generated.ReplaceLearningPath403JSONResponse,
 		generated.CreateSkill403JSONResponse,
-		generated.CreateConcept403JSONResponse:
+		generated.CreateConcept403JSONResponse,
+		generated.CreateInstrument403JSONResponse,
+		generated.CreateDiagram403JSONResponse,
+		generated.UpdateDiagram403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -233,7 +260,9 @@ func (w *world) requestRefusedNotFound() error {
 		generated.UpdateExpandedContent404JSONResponse,
 		generated.DeleteExpandedContent404JSONResponse,
 		generated.ReplaceLearningPath404JSONResponse,
-		generated.UpdateMyLocale404JSONResponse:
+		generated.UpdateMyLocale404JSONResponse,
+		generated.GetDiagram404JSONResponse,
+		generated.UpdateDiagram404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -290,7 +319,13 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListSkills401JSONResponse,
 		generated.CreateSkill401JSONResponse,
 		generated.ListConcepts401JSONResponse,
-		generated.CreateConcept401JSONResponse:
+		generated.CreateConcept401JSONResponse,
+		generated.ListInstruments401JSONResponse,
+		generated.CreateInstrument401JSONResponse,
+		generated.ListDiagrams401JSONResponse,
+		generated.CreateDiagram401JSONResponse,
+		generated.GetDiagram401JSONResponse,
+		generated.UpdateDiagram401JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 401 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -353,6 +388,12 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateSkill400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateConcept400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateInstrument400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateDiagram400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateDiagram400JSONResponse:
 		return resp.Errors, nil
 	default:
 		return nil, fmt.Errorf("expected a 400 response with validation errors, got %#v (err=%v)", w.lastResp, w.lastErr)

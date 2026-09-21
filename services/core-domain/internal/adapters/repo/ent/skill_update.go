@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -116,6 +118,21 @@ func (_u *SkillUpdate) AddExercises(v ...*Exercise) *SkillUpdate {
 	return _u.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_u *SkillUpdate) AddDiagramIDs(ids ...uuid.UUID) *SkillUpdate {
+	_u.mutation.AddDiagramIDs(ids...)
+	return _u
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_u *SkillUpdate) AddDiagrams(v ...*Diagram) *SkillUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
 func (_u *SkillUpdate) AddContentNodeSkillIDs(ids ...int) *SkillUpdate {
 	_u.mutation.AddContentNodeSkillIDs(ids...)
@@ -144,6 +161,21 @@ func (_u *SkillUpdate) AddExerciseSkills(v ...*ExerciseSkill) *SkillUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseSkillIDs(ids...)
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (_u *SkillUpdate) AddDiagramSkillIDs(ids ...int) *SkillUpdate {
+	_u.mutation.AddDiagramSkillIDs(ids...)
+	return _u
+}
+
+// AddDiagramSkills adds the "diagram_skills" edges to the DiagramSkill entity.
+func (_u *SkillUpdate) AddDiagramSkills(v ...*DiagramSkill) *SkillUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramSkillIDs(ids...)
 }
 
 // Mutation returns the SkillMutation object of the builder.
@@ -220,6 +252,27 @@ func (_u *SkillUpdate) RemoveExercises(v ...*Exercise) *SkillUpdate {
 	return _u.RemoveExerciseIDs(ids...)
 }
 
+// ClearDiagrams clears all "diagrams" edges to the Diagram entity.
+func (_u *SkillUpdate) ClearDiagrams() *SkillUpdate {
+	_u.mutation.ClearDiagrams()
+	return _u
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to Diagram entities by IDs.
+func (_u *SkillUpdate) RemoveDiagramIDs(ids ...uuid.UUID) *SkillUpdate {
+	_u.mutation.RemoveDiagramIDs(ids...)
+	return _u
+}
+
+// RemoveDiagrams removes "diagrams" edges to Diagram entities.
+func (_u *SkillUpdate) RemoveDiagrams(v ...*Diagram) *SkillUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramIDs(ids...)
+}
+
 // ClearContentNodeSkills clears all "content_node_skills" edges to the ContentNodeSkill entity.
 func (_u *SkillUpdate) ClearContentNodeSkills() *SkillUpdate {
 	_u.mutation.ClearContentNodeSkills()
@@ -260,6 +313,27 @@ func (_u *SkillUpdate) RemoveExerciseSkills(v ...*ExerciseSkill) *SkillUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseSkillIDs(ids...)
+}
+
+// ClearDiagramSkills clears all "diagram_skills" edges to the DiagramSkill entity.
+func (_u *SkillUpdate) ClearDiagramSkills() *SkillUpdate {
+	_u.mutation.ClearDiagramSkills()
+	return _u
+}
+
+// RemoveDiagramSkillIDs removes the "diagram_skills" edge to DiagramSkill entities by IDs.
+func (_u *SkillUpdate) RemoveDiagramSkillIDs(ids ...int) *SkillUpdate {
+	_u.mutation.RemoveDiagramSkillIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramSkills removes "diagram_skills" edges to DiagramSkill entities.
+func (_u *SkillUpdate) RemoveDiagramSkills(v ...*DiagramSkill) *SkillUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramSkillIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -489,6 +563,63 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramsIDs(); len(nodes) > 0 && !_u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeSkillsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -572,6 +703,51 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramSkillsIDs(); len(nodes) > 0 && !_u.mutation.DiagramSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -683,6 +859,21 @@ func (_u *SkillUpdateOne) AddExercises(v ...*Exercise) *SkillUpdateOne {
 	return _u.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_u *SkillUpdateOne) AddDiagramIDs(ids ...uuid.UUID) *SkillUpdateOne {
+	_u.mutation.AddDiagramIDs(ids...)
+	return _u
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_u *SkillUpdateOne) AddDiagrams(v ...*Diagram) *SkillUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
 func (_u *SkillUpdateOne) AddContentNodeSkillIDs(ids ...int) *SkillUpdateOne {
 	_u.mutation.AddContentNodeSkillIDs(ids...)
@@ -711,6 +902,21 @@ func (_u *SkillUpdateOne) AddExerciseSkills(v ...*ExerciseSkill) *SkillUpdateOne
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseSkillIDs(ids...)
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (_u *SkillUpdateOne) AddDiagramSkillIDs(ids ...int) *SkillUpdateOne {
+	_u.mutation.AddDiagramSkillIDs(ids...)
+	return _u
+}
+
+// AddDiagramSkills adds the "diagram_skills" edges to the DiagramSkill entity.
+func (_u *SkillUpdateOne) AddDiagramSkills(v ...*DiagramSkill) *SkillUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramSkillIDs(ids...)
 }
 
 // Mutation returns the SkillMutation object of the builder.
@@ -787,6 +993,27 @@ func (_u *SkillUpdateOne) RemoveExercises(v ...*Exercise) *SkillUpdateOne {
 	return _u.RemoveExerciseIDs(ids...)
 }
 
+// ClearDiagrams clears all "diagrams" edges to the Diagram entity.
+func (_u *SkillUpdateOne) ClearDiagrams() *SkillUpdateOne {
+	_u.mutation.ClearDiagrams()
+	return _u
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to Diagram entities by IDs.
+func (_u *SkillUpdateOne) RemoveDiagramIDs(ids ...uuid.UUID) *SkillUpdateOne {
+	_u.mutation.RemoveDiagramIDs(ids...)
+	return _u
+}
+
+// RemoveDiagrams removes "diagrams" edges to Diagram entities.
+func (_u *SkillUpdateOne) RemoveDiagrams(v ...*Diagram) *SkillUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramIDs(ids...)
+}
+
 // ClearContentNodeSkills clears all "content_node_skills" edges to the ContentNodeSkill entity.
 func (_u *SkillUpdateOne) ClearContentNodeSkills() *SkillUpdateOne {
 	_u.mutation.ClearContentNodeSkills()
@@ -827,6 +1054,27 @@ func (_u *SkillUpdateOne) RemoveExerciseSkills(v ...*ExerciseSkill) *SkillUpdate
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseSkillIDs(ids...)
+}
+
+// ClearDiagramSkills clears all "diagram_skills" edges to the DiagramSkill entity.
+func (_u *SkillUpdateOne) ClearDiagramSkills() *SkillUpdateOne {
+	_u.mutation.ClearDiagramSkills()
+	return _u
+}
+
+// RemoveDiagramSkillIDs removes the "diagram_skills" edge to DiagramSkill entities by IDs.
+func (_u *SkillUpdateOne) RemoveDiagramSkillIDs(ids ...int) *SkillUpdateOne {
+	_u.mutation.RemoveDiagramSkillIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramSkills removes "diagram_skills" edges to DiagramSkill entities.
+func (_u *SkillUpdateOne) RemoveDiagramSkills(v ...*DiagramSkill) *SkillUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramSkillIDs(ids...)
 }
 
 // Where appends a list predicates to the SkillUpdate builder.
@@ -1086,6 +1334,63 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramsIDs(); len(nodes) > 0 && !_u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   skill.DiagramsTable,
+			Columns: skill.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeSkillsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1169,6 +1474,51 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramSkillsIDs(); len(nodes) > 0 && !_u.mutation.DiagramSkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   skill.DiagramSkillsTable,
+			Columns: []string{skill.DiagramSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramskill.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

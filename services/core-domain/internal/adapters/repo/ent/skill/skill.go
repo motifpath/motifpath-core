@@ -25,10 +25,14 @@ const (
 	EdgeContentNodes = "content_nodes"
 	// EdgeExercises holds the string denoting the exercises edge name in mutations.
 	EdgeExercises = "exercises"
+	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
+	EdgeDiagrams = "diagrams"
 	// EdgeContentNodeSkills holds the string denoting the content_node_skills edge name in mutations.
 	EdgeContentNodeSkills = "content_node_skills"
 	// EdgeExerciseSkills holds the string denoting the exercise_skills edge name in mutations.
 	EdgeExerciseSkills = "exercise_skills"
+	// EdgeDiagramSkills holds the string denoting the diagram_skills edge name in mutations.
+	EdgeDiagramSkills = "diagram_skills"
 	// Table holds the table name of the skill in the database.
 	Table = "skills"
 	// ChildrenTable is the table that holds the children relation/edge.
@@ -49,6 +53,11 @@ const (
 	// ExercisesInverseTable is the table name for the Exercise entity.
 	// It exists in this package in order to avoid circular dependency with the "exercise" package.
 	ExercisesInverseTable = "exercises"
+	// DiagramsTable is the table that holds the diagrams relation/edge. The primary key declared below.
+	DiagramsTable = "diagram_skills"
+	// DiagramsInverseTable is the table name for the Diagram entity.
+	// It exists in this package in order to avoid circular dependency with the "diagram" package.
+	DiagramsInverseTable = "diagrams"
 	// ContentNodeSkillsTable is the table that holds the content_node_skills relation/edge.
 	ContentNodeSkillsTable = "content_node_skills"
 	// ContentNodeSkillsInverseTable is the table name for the ContentNodeSkill entity.
@@ -63,6 +72,13 @@ const (
 	ExerciseSkillsInverseTable = "exercise_skills"
 	// ExerciseSkillsColumn is the table column denoting the exercise_skills relation/edge.
 	ExerciseSkillsColumn = "skill_id"
+	// DiagramSkillsTable is the table that holds the diagram_skills relation/edge.
+	DiagramSkillsTable = "diagram_skills"
+	// DiagramSkillsInverseTable is the table name for the DiagramSkill entity.
+	// It exists in this package in order to avoid circular dependency with the "diagramskill" package.
+	DiagramSkillsInverseTable = "diagram_skills"
+	// DiagramSkillsColumn is the table column denoting the diagram_skills relation/edge.
+	DiagramSkillsColumn = "skill_id"
 )
 
 // Columns holds all SQL columns for skill fields.
@@ -79,6 +95,9 @@ var (
 	// ExercisesPrimaryKey and ExercisesColumn2 are the table columns denoting the
 	// primary key for the exercises relation (M2M).
 	ExercisesPrimaryKey = []string{"exercise_id", "skill_id"}
+	// DiagramsPrimaryKey and DiagramsColumn2 are the table columns denoting the
+	// primary key for the diagrams relation (M2M).
+	DiagramsPrimaryKey = []string{"diagram_id", "skill_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -163,6 +182,20 @@ func ByExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDiagramsCount orders the results by diagrams count.
+func ByDiagramsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramsStep(), opts...)
+	}
+}
+
+// ByDiagrams orders the results by diagrams terms.
+func ByDiagrams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByContentNodeSkillsCount orders the results by content_node_skills count.
 func ByContentNodeSkillsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -188,6 +221,20 @@ func ByExerciseSkillsCount(opts ...sql.OrderTermOption) OrderOption {
 func ByExerciseSkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newExerciseSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByDiagramSkillsCount orders the results by diagram_skills count.
+func ByDiagramSkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramSkillsStep(), opts...)
+	}
+}
+
+// ByDiagramSkills orders the results by diagram_skills terms.
+func ByDiagramSkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 func newChildrenStep() *sqlgraph.Step {
@@ -218,6 +265,13 @@ func newExercisesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, true, ExercisesTable, ExercisesPrimaryKey...),
 	)
 }
+func newDiagramsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, DiagramsTable, DiagramsPrimaryKey...),
+	)
+}
 func newContentNodeSkillsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -230,5 +284,12 @@ func newExerciseSkillsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ExerciseSkillsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseSkillsTable, ExerciseSkillsColumn),
+	)
+}
+func newDiagramSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramSkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, DiagramSkillsTable, DiagramSkillsColumn),
 	)
 }

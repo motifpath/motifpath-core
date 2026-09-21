@@ -20,16 +20,21 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
@@ -100,16 +105,21 @@ func checkColumn(t, c string) error {
 			contentnodeexercise.Table: contentnodeexercise.ValidColumn,
 			contentnodelanguage.Table: contentnodelanguage.ValidColumn,
 			contentnodeskill.Table:    contentnodeskill.ValidColumn,
+			diagram.Table:             diagram.ValidColumn,
+			diagramconcept.Table:      diagramconcept.ValidColumn,
+			diagramskill.Table:        diagramskill.ValidColumn,
 			exercise.Table:            exercise.ValidColumn,
 			exerciseconcept.Table:     exerciseconcept.ValidColumn,
 			exerciselanguage.Table:    exerciselanguage.ValidColumn,
 			exerciseoption.Table:      exerciseoption.ValidColumn,
 			exerciseskill.Table:       exerciseskill.ValidColumn,
 			expandedcontent.Table:     expandedcontent.ValidColumn,
+			instrument.Table:          instrument.ValidColumn,
 			language.Table:            language.ValidColumn,
 			learningpath.Table:        learningpath.ValidColumn,
 			learningpathitem.Table:    learningpathitem.ValidColumn,
 			pathassignment.Table:      pathassignment.ValidColumn,
+			position.Table:            position.ValidColumn,
 			skill.Table:               skill.ValidColumn,
 			user.Table:                user.ValidColumn,
 		})

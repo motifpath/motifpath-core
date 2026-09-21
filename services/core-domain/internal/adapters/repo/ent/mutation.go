@@ -20,16 +20,21 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
@@ -52,16 +57,21 @@ const (
 	TypeContentNodeExercise = "ContentNodeExercise"
 	TypeContentNodeLanguage = "ContentNodeLanguage"
 	TypeContentNodeSkill    = "ContentNodeSkill"
+	TypeDiagram             = "Diagram"
+	TypeDiagramConcept      = "DiagramConcept"
+	TypeDiagramSkill        = "DiagramSkill"
 	TypeExercise            = "Exercise"
 	TypeExerciseConcept     = "ExerciseConcept"
 	TypeExerciseLanguage    = "ExerciseLanguage"
 	TypeExerciseOption      = "ExerciseOption"
 	TypeExerciseSkill       = "ExerciseSkill"
 	TypeExpandedContent     = "ExpandedContent"
+	TypeInstrument          = "Instrument"
 	TypeLanguage            = "Language"
 	TypeLearningPath        = "LearningPath"
 	TypeLearningPathItem    = "LearningPathItem"
 	TypePathAssignment      = "PathAssignment"
+	TypePosition            = "Position"
 	TypeSkill               = "Skill"
 	TypeUser                = "User"
 )
@@ -1635,12 +1645,18 @@ type ConceptMutation struct {
 	exercises                    map[uuid.UUID]struct{}
 	removedexercises             map[uuid.UUID]struct{}
 	clearedexercises             bool
+	diagrams                     map[uuid.UUID]struct{}
+	removeddiagrams              map[uuid.UUID]struct{}
+	cleareddiagrams              bool
 	content_node_concepts        map[int]struct{}
 	removedcontent_node_concepts map[int]struct{}
 	clearedcontent_node_concepts bool
 	exercise_concepts            map[int]struct{}
 	removedexercise_concepts     map[int]struct{}
 	clearedexercise_concepts     bool
+	diagram_concepts             map[int]struct{}
+	removeddiagram_concepts      map[int]struct{}
+	cleareddiagram_concepts      bool
 	done                         bool
 	oldValue                     func(context.Context) (*Concept, error)
 	predicates                   []predicate.Concept
@@ -2024,6 +2040,60 @@ func (m *ConceptMutation) ResetExercises() {
 	m.removedexercises = nil
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
+func (m *ConceptMutation) AddDiagramIDs(ids ...uuid.UUID) {
+	if m.diagrams == nil {
+		m.diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagrams clears the "diagrams" edge to the Diagram entity.
+func (m *ConceptMutation) ClearDiagrams() {
+	m.cleareddiagrams = true
+}
+
+// DiagramsCleared reports if the "diagrams" edge to the Diagram entity was cleared.
+func (m *ConceptMutation) DiagramsCleared() bool {
+	return m.cleareddiagrams
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to the Diagram entity by IDs.
+func (m *ConceptMutation) RemoveDiagramIDs(ids ...uuid.UUID) {
+	if m.removeddiagrams == nil {
+		m.removeddiagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.diagrams, ids[i])
+		m.removeddiagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagrams returns the removed IDs of the "diagrams" edge to the Diagram entity.
+func (m *ConceptMutation) RemovedDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removeddiagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramsIDs returns the "diagrams" edge IDs in the mutation.
+func (m *ConceptMutation) DiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagrams resets all changes to the "diagrams" edge.
+func (m *ConceptMutation) ResetDiagrams() {
+	m.diagrams = nil
+	m.cleareddiagrams = false
+	m.removeddiagrams = nil
+}
+
 // AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by ids.
 func (m *ConceptMutation) AddContentNodeConceptIDs(ids ...int) {
 	if m.content_node_concepts == nil {
@@ -2130,6 +2200,60 @@ func (m *ConceptMutation) ResetExerciseConcepts() {
 	m.exercise_concepts = nil
 	m.clearedexercise_concepts = false
 	m.removedexercise_concepts = nil
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by ids.
+func (m *ConceptMutation) AddDiagramConceptIDs(ids ...int) {
+	if m.diagram_concepts == nil {
+		m.diagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramConcepts clears the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *ConceptMutation) ClearDiagramConcepts() {
+	m.cleareddiagram_concepts = true
+}
+
+// DiagramConceptsCleared reports if the "diagram_concepts" edge to the DiagramConcept entity was cleared.
+func (m *ConceptMutation) DiagramConceptsCleared() bool {
+	return m.cleareddiagram_concepts
+}
+
+// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (m *ConceptMutation) RemoveDiagramConceptIDs(ids ...int) {
+	if m.removeddiagram_concepts == nil {
+		m.removeddiagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_concepts, ids[i])
+		m.removeddiagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramConcepts returns the removed IDs of the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *ConceptMutation) RemovedDiagramConceptsIDs() (ids []int) {
+	for id := range m.removeddiagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramConceptsIDs returns the "diagram_concepts" edge IDs in the mutation.
+func (m *ConceptMutation) DiagramConceptsIDs() (ids []int) {
+	for id := range m.diagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramConcepts resets all changes to the "diagram_concepts" edge.
+func (m *ConceptMutation) ResetDiagramConcepts() {
+	m.diagram_concepts = nil
+	m.cleareddiagram_concepts = false
+	m.removeddiagram_concepts = nil
 }
 
 // Where appends a list predicates to the ConceptMutation builder.
@@ -2291,7 +2415,7 @@ func (m *ConceptMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ConceptMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.children != nil {
 		edges = append(edges, concept.EdgeChildren)
 	}
@@ -2304,11 +2428,17 @@ func (m *ConceptMutation) AddedEdges() []string {
 	if m.exercises != nil {
 		edges = append(edges, concept.EdgeExercises)
 	}
+	if m.diagrams != nil {
+		edges = append(edges, concept.EdgeDiagrams)
+	}
 	if m.content_node_concepts != nil {
 		edges = append(edges, concept.EdgeContentNodeConcepts)
 	}
 	if m.exercise_concepts != nil {
 		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	if m.diagram_concepts != nil {
+		edges = append(edges, concept.EdgeDiagramConcepts)
 	}
 	return edges
 }
@@ -2339,6 +2469,12 @@ func (m *ConceptMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case concept.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.diagrams))
+		for id := range m.diagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case concept.EdgeContentNodeConcepts:
 		ids := make([]ent.Value, 0, len(m.content_node_concepts))
 		for id := range m.content_node_concepts {
@@ -2351,13 +2487,19 @@ func (m *ConceptMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case concept.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.diagram_concepts))
+		for id := range m.diagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ConceptMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.removedchildren != nil {
 		edges = append(edges, concept.EdgeChildren)
 	}
@@ -2367,11 +2509,17 @@ func (m *ConceptMutation) RemovedEdges() []string {
 	if m.removedexercises != nil {
 		edges = append(edges, concept.EdgeExercises)
 	}
+	if m.removeddiagrams != nil {
+		edges = append(edges, concept.EdgeDiagrams)
+	}
 	if m.removedcontent_node_concepts != nil {
 		edges = append(edges, concept.EdgeContentNodeConcepts)
 	}
 	if m.removedexercise_concepts != nil {
 		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	if m.removeddiagram_concepts != nil {
+		edges = append(edges, concept.EdgeDiagramConcepts)
 	}
 	return edges
 }
@@ -2398,6 +2546,12 @@ func (m *ConceptMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case concept.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.removeddiagrams))
+		for id := range m.removeddiagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case concept.EdgeContentNodeConcepts:
 		ids := make([]ent.Value, 0, len(m.removedcontent_node_concepts))
 		for id := range m.removedcontent_node_concepts {
@@ -2410,13 +2564,19 @@ func (m *ConceptMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case concept.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_concepts))
+		for id := range m.removeddiagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ConceptMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.clearedchildren {
 		edges = append(edges, concept.EdgeChildren)
 	}
@@ -2429,11 +2589,17 @@ func (m *ConceptMutation) ClearedEdges() []string {
 	if m.clearedexercises {
 		edges = append(edges, concept.EdgeExercises)
 	}
+	if m.cleareddiagrams {
+		edges = append(edges, concept.EdgeDiagrams)
+	}
 	if m.clearedcontent_node_concepts {
 		edges = append(edges, concept.EdgeContentNodeConcepts)
 	}
 	if m.clearedexercise_concepts {
 		edges = append(edges, concept.EdgeExerciseConcepts)
+	}
+	if m.cleareddiagram_concepts {
+		edges = append(edges, concept.EdgeDiagramConcepts)
 	}
 	return edges
 }
@@ -2450,10 +2616,14 @@ func (m *ConceptMutation) EdgeCleared(name string) bool {
 		return m.clearedcontent_nodes
 	case concept.EdgeExercises:
 		return m.clearedexercises
+	case concept.EdgeDiagrams:
+		return m.cleareddiagrams
 	case concept.EdgeContentNodeConcepts:
 		return m.clearedcontent_node_concepts
 	case concept.EdgeExerciseConcepts:
 		return m.clearedexercise_concepts
+	case concept.EdgeDiagramConcepts:
+		return m.cleareddiagram_concepts
 	}
 	return false
 }
@@ -2485,11 +2655,17 @@ func (m *ConceptMutation) ResetEdge(name string) error {
 	case concept.EdgeExercises:
 		m.ResetExercises()
 		return nil
+	case concept.EdgeDiagrams:
+		m.ResetDiagrams()
+		return nil
 	case concept.EdgeContentNodeConcepts:
 		m.ResetContentNodeConcepts()
 		return nil
 	case concept.EdgeExerciseConcepts:
 		m.ResetExerciseConcepts()
+		return nil
+	case concept.EdgeDiagramConcepts:
+		m.ResetDiagramConcepts()
 		return nil
 	}
 	return fmt.Errorf("unknown Concept edge %s", name)
@@ -6054,6 +6230,1985 @@ func (m *ContentNodeSkillMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNodeSkill edge %s", name)
+}
+
+// DiagramMutation represents an operation that mutates the Diagram nodes in the graph.
+type DiagramMutation struct {
+	config
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	name                    *string
+	created_at              *time.Time
+	clearedFields           map[string]struct{}
+	instrument              *uuid.UUID
+	clearedinstrument       bool
+	positions               map[uuid.UUID]struct{}
+	removedpositions        map[uuid.UUID]struct{}
+	clearedpositions        bool
+	skills                  map[uuid.UUID]struct{}
+	removedskills           map[uuid.UUID]struct{}
+	clearedskills           bool
+	concepts                map[uuid.UUID]struct{}
+	removedconcepts         map[uuid.UUID]struct{}
+	clearedconcepts         bool
+	diagram_skills          map[int]struct{}
+	removeddiagram_skills   map[int]struct{}
+	cleareddiagram_skills   bool
+	diagram_concepts        map[int]struct{}
+	removeddiagram_concepts map[int]struct{}
+	cleareddiagram_concepts bool
+	done                    bool
+	oldValue                func(context.Context) (*Diagram, error)
+	predicates              []predicate.Diagram
+}
+
+var _ ent.Mutation = (*DiagramMutation)(nil)
+
+// diagramOption allows management of the mutation configuration using functional options.
+type diagramOption func(*DiagramMutation)
+
+// newDiagramMutation creates new mutation for the Diagram entity.
+func newDiagramMutation(c config, op Op, opts ...diagramOption) *DiagramMutation {
+	m := &DiagramMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagram,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramID sets the ID field of the mutation.
+func withDiagramID(id uuid.UUID) diagramOption {
+	return func(m *DiagramMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Diagram
+		)
+		m.oldValue = func(ctx context.Context) (*Diagram, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Diagram.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagram sets the old Diagram of the mutation.
+func withDiagram(node *Diagram) diagramOption {
+	return func(m *DiagramMutation) {
+		m.oldValue = func(context.Context) (*Diagram, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Diagram entities.
+func (m *DiagramMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Diagram.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *DiagramMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *DiagramMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *DiagramMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetName sets the "name" field.
+func (m *DiagramMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *DiagramMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *DiagramMutation) ResetName() {
+	m.name = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DiagramMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DiagramMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DiagramMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *DiagramMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[diagram.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *DiagramMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *DiagramMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *DiagramMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// AddPositionIDs adds the "positions" edge to the Position entity by ids.
+func (m *DiagramMutation) AddPositionIDs(ids ...uuid.UUID) {
+	if m.positions == nil {
+		m.positions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.positions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPositions clears the "positions" edge to the Position entity.
+func (m *DiagramMutation) ClearPositions() {
+	m.clearedpositions = true
+}
+
+// PositionsCleared reports if the "positions" edge to the Position entity was cleared.
+func (m *DiagramMutation) PositionsCleared() bool {
+	return m.clearedpositions
+}
+
+// RemovePositionIDs removes the "positions" edge to the Position entity by IDs.
+func (m *DiagramMutation) RemovePositionIDs(ids ...uuid.UUID) {
+	if m.removedpositions == nil {
+		m.removedpositions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.positions, ids[i])
+		m.removedpositions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPositions returns the removed IDs of the "positions" edge to the Position entity.
+func (m *DiagramMutation) RemovedPositionsIDs() (ids []uuid.UUID) {
+	for id := range m.removedpositions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PositionsIDs returns the "positions" edge IDs in the mutation.
+func (m *DiagramMutation) PositionsIDs() (ids []uuid.UUID) {
+	for id := range m.positions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPositions resets all changes to the "positions" edge.
+func (m *DiagramMutation) ResetPositions() {
+	m.positions = nil
+	m.clearedpositions = false
+	m.removedpositions = nil
+}
+
+// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+func (m *DiagramMutation) AddSkillIDs(ids ...uuid.UUID) {
+	if m.skills == nil {
+		m.skills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkills clears the "skills" edge to the Skill entity.
+func (m *DiagramMutation) ClearSkills() {
+	m.clearedskills = true
+}
+
+// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+func (m *DiagramMutation) SkillsCleared() bool {
+	return m.clearedskills
+}
+
+// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+func (m *DiagramMutation) RemoveSkillIDs(ids ...uuid.UUID) {
+	if m.removedskills == nil {
+		m.removedskills = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skills, ids[i])
+		m.removedskills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+func (m *DiagramMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
+	for id := range m.removedskills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillsIDs returns the "skills" edge IDs in the mutation.
+func (m *DiagramMutation) SkillsIDs() (ids []uuid.UUID) {
+	for id := range m.skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkills resets all changes to the "skills" edge.
+func (m *DiagramMutation) ResetSkills() {
+	m.skills = nil
+	m.clearedskills = false
+	m.removedskills = nil
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+func (m *DiagramMutation) AddConceptIDs(ids ...uuid.UUID) {
+	if m.concepts == nil {
+		m.concepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConcepts clears the "concepts" edge to the Concept entity.
+func (m *DiagramMutation) ClearConcepts() {
+	m.clearedconcepts = true
+}
+
+// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+func (m *DiagramMutation) ConceptsCleared() bool {
+	return m.clearedconcepts
+}
+
+// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+func (m *DiagramMutation) RemoveConceptIDs(ids ...uuid.UUID) {
+	if m.removedconcepts == nil {
+		m.removedconcepts = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concepts, ids[i])
+		m.removedconcepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+func (m *DiagramMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptsIDs returns the "concepts" edge IDs in the mutation.
+func (m *DiagramMutation) ConceptsIDs() (ids []uuid.UUID) {
+	for id := range m.concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConcepts resets all changes to the "concepts" edge.
+func (m *DiagramMutation) ResetConcepts() {
+	m.concepts = nil
+	m.clearedconcepts = false
+	m.removedconcepts = nil
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by ids.
+func (m *DiagramMutation) AddDiagramSkillIDs(ids ...int) {
+	if m.diagram_skills == nil {
+		m.diagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramSkills clears the "diagram_skills" edge to the DiagramSkill entity.
+func (m *DiagramMutation) ClearDiagramSkills() {
+	m.cleareddiagram_skills = true
+}
+
+// DiagramSkillsCleared reports if the "diagram_skills" edge to the DiagramSkill entity was cleared.
+func (m *DiagramMutation) DiagramSkillsCleared() bool {
+	return m.cleareddiagram_skills
+}
+
+// RemoveDiagramSkillIDs removes the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (m *DiagramMutation) RemoveDiagramSkillIDs(ids ...int) {
+	if m.removeddiagram_skills == nil {
+		m.removeddiagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_skills, ids[i])
+		m.removeddiagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramSkills returns the removed IDs of the "diagram_skills" edge to the DiagramSkill entity.
+func (m *DiagramMutation) RemovedDiagramSkillsIDs() (ids []int) {
+	for id := range m.removeddiagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramSkillsIDs returns the "diagram_skills" edge IDs in the mutation.
+func (m *DiagramMutation) DiagramSkillsIDs() (ids []int) {
+	for id := range m.diagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramSkills resets all changes to the "diagram_skills" edge.
+func (m *DiagramMutation) ResetDiagramSkills() {
+	m.diagram_skills = nil
+	m.cleareddiagram_skills = false
+	m.removeddiagram_skills = nil
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by ids.
+func (m *DiagramMutation) AddDiagramConceptIDs(ids ...int) {
+	if m.diagram_concepts == nil {
+		m.diagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramConcepts clears the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *DiagramMutation) ClearDiagramConcepts() {
+	m.cleareddiagram_concepts = true
+}
+
+// DiagramConceptsCleared reports if the "diagram_concepts" edge to the DiagramConcept entity was cleared.
+func (m *DiagramMutation) DiagramConceptsCleared() bool {
+	return m.cleareddiagram_concepts
+}
+
+// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (m *DiagramMutation) RemoveDiagramConceptIDs(ids ...int) {
+	if m.removeddiagram_concepts == nil {
+		m.removeddiagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_concepts, ids[i])
+		m.removeddiagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramConcepts returns the removed IDs of the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *DiagramMutation) RemovedDiagramConceptsIDs() (ids []int) {
+	for id := range m.removeddiagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramConceptsIDs returns the "diagram_concepts" edge IDs in the mutation.
+func (m *DiagramMutation) DiagramConceptsIDs() (ids []int) {
+	for id := range m.diagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramConcepts resets all changes to the "diagram_concepts" edge.
+func (m *DiagramMutation) ResetDiagramConcepts() {
+	m.diagram_concepts = nil
+	m.cleareddiagram_concepts = false
+	m.removeddiagram_concepts = nil
+}
+
+// Where appends a list predicates to the DiagramMutation builder.
+func (m *DiagramMutation) Where(ps ...predicate.Diagram) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Diagram, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Diagram).
+func (m *DiagramMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.instrument != nil {
+		fields = append(fields, diagram.FieldInstrumentID)
+	}
+	if m.name != nil {
+		fields = append(fields, diagram.FieldName)
+	}
+	if m.created_at != nil {
+		fields = append(fields, diagram.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagram.FieldInstrumentID:
+		return m.InstrumentID()
+	case diagram.FieldName:
+		return m.Name()
+	case diagram.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagram.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case diagram.FieldName:
+		return m.OldName(ctx)
+	case diagram.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Diagram field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagram.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case diagram.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case diagram.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Diagram field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Diagram numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Diagram nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramMutation) ResetField(name string) error {
+	switch name {
+	case diagram.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case diagram.FieldName:
+		m.ResetName()
+		return nil
+	case diagram.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Diagram field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramMutation) AddedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.instrument != nil {
+		edges = append(edges, diagram.EdgeInstrument)
+	}
+	if m.positions != nil {
+		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.skills != nil {
+		edges = append(edges, diagram.EdgeSkills)
+	}
+	if m.concepts != nil {
+		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.diagram_skills != nil {
+		edges = append(edges, diagram.EdgeDiagramSkills)
+	}
+	if m.diagram_concepts != nil {
+		edges = append(edges, diagram.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagram.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	case diagram.EdgePositions:
+		ids := make([]ent.Value, 0, len(m.positions))
+		for id := range m.positions {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.skills))
+		for id := range m.skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.concepts))
+		for id := range m.concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.diagram_skills))
+		for id := range m.diagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.diagram_concepts))
+		for id := range m.diagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.removedpositions != nil {
+		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.removedskills != nil {
+		edges = append(edges, diagram.EdgeSkills)
+	}
+	if m.removedconcepts != nil {
+		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.removeddiagram_skills != nil {
+		edges = append(edges, diagram.EdgeDiagramSkills)
+	}
+	if m.removeddiagram_concepts != nil {
+		edges = append(edges, diagram.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case diagram.EdgePositions:
+		ids := make([]ent.Value, 0, len(m.removedpositions))
+		for id := range m.removedpositions {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.removedskills))
+		for id := range m.removedskills {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedconcepts))
+		for id := range m.removedconcepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_skills))
+		for id := range m.removeddiagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_concepts))
+		for id := range m.removeddiagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 6)
+	if m.clearedinstrument {
+		edges = append(edges, diagram.EdgeInstrument)
+	}
+	if m.clearedpositions {
+		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.clearedskills {
+		edges = append(edges, diagram.EdgeSkills)
+	}
+	if m.clearedconcepts {
+		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.cleareddiagram_skills {
+		edges = append(edges, diagram.EdgeDiagramSkills)
+	}
+	if m.cleareddiagram_concepts {
+		edges = append(edges, diagram.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagram.EdgeInstrument:
+		return m.clearedinstrument
+	case diagram.EdgePositions:
+		return m.clearedpositions
+	case diagram.EdgeSkills:
+		return m.clearedskills
+	case diagram.EdgeConcepts:
+		return m.clearedconcepts
+	case diagram.EdgeDiagramSkills:
+		return m.cleareddiagram_skills
+	case diagram.EdgeDiagramConcepts:
+		return m.cleareddiagram_concepts
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramMutation) ClearEdge(name string) error {
+	switch name {
+	case diagram.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown Diagram unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramMutation) ResetEdge(name string) error {
+	switch name {
+	case diagram.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	case diagram.EdgePositions:
+		m.ResetPositions()
+		return nil
+	case diagram.EdgeSkills:
+		m.ResetSkills()
+		return nil
+	case diagram.EdgeConcepts:
+		m.ResetConcepts()
+		return nil
+	case diagram.EdgeDiagramSkills:
+		m.ResetDiagramSkills()
+		return nil
+	case diagram.EdgeDiagramConcepts:
+		m.ResetDiagramConcepts()
+		return nil
+	}
+	return fmt.Errorf("unknown Diagram edge %s", name)
+}
+
+// DiagramConceptMutation represents an operation that mutates the DiagramConcept nodes in the graph.
+type DiagramConceptMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	linked_at      *time.Time
+	clearedFields  map[string]struct{}
+	diagram        *uuid.UUID
+	cleareddiagram bool
+	concept        *uuid.UUID
+	clearedconcept bool
+	done           bool
+	oldValue       func(context.Context) (*DiagramConcept, error)
+	predicates     []predicate.DiagramConcept
+}
+
+var _ ent.Mutation = (*DiagramConceptMutation)(nil)
+
+// diagramconceptOption allows management of the mutation configuration using functional options.
+type diagramconceptOption func(*DiagramConceptMutation)
+
+// newDiagramConceptMutation creates new mutation for the DiagramConcept entity.
+func newDiagramConceptMutation(c config, op Op, opts ...diagramconceptOption) *DiagramConceptMutation {
+	m := &DiagramConceptMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramConcept,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramConceptID sets the ID field of the mutation.
+func withDiagramConceptID(id int) diagramconceptOption {
+	return func(m *DiagramConceptMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramConcept
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramConcept, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramConcept.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramConcept sets the old DiagramConcept of the mutation.
+func withDiagramConcept(node *DiagramConcept) diagramconceptOption {
+	return func(m *DiagramConceptMutation) {
+		m.oldValue = func(context.Context) (*DiagramConcept, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramConceptMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramConceptMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramConceptMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramConceptMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramConcept.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *DiagramConceptMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *DiagramConceptMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the DiagramConcept entity.
+// If the DiagramConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramConceptMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *DiagramConceptMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetConceptID sets the "concept_id" field.
+func (m *DiagramConceptMutation) SetConceptID(u uuid.UUID) {
+	m.concept = &u
+}
+
+// ConceptID returns the value of the "concept_id" field in the mutation.
+func (m *DiagramConceptMutation) ConceptID() (r uuid.UUID, exists bool) {
+	v := m.concept
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConceptID returns the old "concept_id" field's value of the DiagramConcept entity.
+// If the DiagramConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramConceptMutation) OldConceptID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConceptID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConceptID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConceptID: %w", err)
+	}
+	return oldValue.ConceptID, nil
+}
+
+// ResetConceptID resets all changes to the "concept_id" field.
+func (m *DiagramConceptMutation) ResetConceptID() {
+	m.concept = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *DiagramConceptMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *DiagramConceptMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the DiagramConcept entity.
+// If the DiagramConcept object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramConceptMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *DiagramConceptMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *DiagramConceptMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[diagramconcept.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *DiagramConceptMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *DiagramConceptMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *DiagramConceptMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// ClearConcept clears the "concept" edge to the Concept entity.
+func (m *DiagramConceptMutation) ClearConcept() {
+	m.clearedconcept = true
+	m.clearedFields[diagramconcept.FieldConceptID] = struct{}{}
+}
+
+// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+func (m *DiagramConceptMutation) ConceptCleared() bool {
+	return m.clearedconcept
+}
+
+// ConceptIDs returns the "concept" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ConceptID instead. It exists only for internal usage by the builders.
+func (m *DiagramConceptMutation) ConceptIDs() (ids []uuid.UUID) {
+	if id := m.concept; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetConcept resets all changes to the "concept" edge.
+func (m *DiagramConceptMutation) ResetConcept() {
+	m.concept = nil
+	m.clearedconcept = false
+}
+
+// Where appends a list predicates to the DiagramConceptMutation builder.
+func (m *DiagramConceptMutation) Where(ps ...predicate.DiagramConcept) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramConceptMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramConceptMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramConcept, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramConceptMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramConceptMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramConcept).
+func (m *DiagramConceptMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramConceptMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.diagram != nil {
+		fields = append(fields, diagramconcept.FieldDiagramID)
+	}
+	if m.concept != nil {
+		fields = append(fields, diagramconcept.FieldConceptID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, diagramconcept.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramConceptMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagramconcept.FieldDiagramID:
+		return m.DiagramID()
+	case diagramconcept.FieldConceptID:
+		return m.ConceptID()
+	case diagramconcept.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramConceptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagramconcept.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case diagramconcept.FieldConceptID:
+		return m.OldConceptID(ctx)
+	case diagramconcept.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramConcept field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramConceptMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagramconcept.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case diagramconcept.FieldConceptID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConceptID(v)
+		return nil
+	case diagramconcept.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramConcept field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramConceptMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramConceptMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramConceptMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramConcept numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramConceptMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramConceptMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramConceptMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DiagramConcept nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramConceptMutation) ResetField(name string) error {
+	switch name {
+	case diagramconcept.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case diagramconcept.FieldConceptID:
+		m.ResetConceptID()
+		return nil
+	case diagramconcept.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramConcept field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramConceptMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.diagram != nil {
+		edges = append(edges, diagramconcept.EdgeDiagram)
+	}
+	if m.concept != nil {
+		edges = append(edges, diagramconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramConceptMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagramconcept.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	case diagramconcept.EdgeConcept:
+		if id := m.concept; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramConceptMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramConceptMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramConceptMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareddiagram {
+		edges = append(edges, diagramconcept.EdgeDiagram)
+	}
+	if m.clearedconcept {
+		edges = append(edges, diagramconcept.EdgeConcept)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramConceptMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagramconcept.EdgeDiagram:
+		return m.cleareddiagram
+	case diagramconcept.EdgeConcept:
+		return m.clearedconcept
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramConceptMutation) ClearEdge(name string) error {
+	switch name {
+	case diagramconcept.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	case diagramconcept.EdgeConcept:
+		m.ClearConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramConcept unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramConceptMutation) ResetEdge(name string) error {
+	switch name {
+	case diagramconcept.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	case diagramconcept.EdgeConcept:
+		m.ResetConcept()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramConcept edge %s", name)
+}
+
+// DiagramSkillMutation represents an operation that mutates the DiagramSkill nodes in the graph.
+type DiagramSkillMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	linked_at      *time.Time
+	clearedFields  map[string]struct{}
+	diagram        *uuid.UUID
+	cleareddiagram bool
+	skill          *uuid.UUID
+	clearedskill   bool
+	done           bool
+	oldValue       func(context.Context) (*DiagramSkill, error)
+	predicates     []predicate.DiagramSkill
+}
+
+var _ ent.Mutation = (*DiagramSkillMutation)(nil)
+
+// diagramskillOption allows management of the mutation configuration using functional options.
+type diagramskillOption func(*DiagramSkillMutation)
+
+// newDiagramSkillMutation creates new mutation for the DiagramSkill entity.
+func newDiagramSkillMutation(c config, op Op, opts ...diagramskillOption) *DiagramSkillMutation {
+	m := &DiagramSkillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramSkill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramSkillID sets the ID field of the mutation.
+func withDiagramSkillID(id int) diagramskillOption {
+	return func(m *DiagramSkillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramSkill
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramSkill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramSkill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramSkill sets the old DiagramSkill of the mutation.
+func withDiagramSkill(node *DiagramSkill) diagramskillOption {
+	return func(m *DiagramSkillMutation) {
+		m.oldValue = func(context.Context) (*DiagramSkill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramSkillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramSkillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramSkillMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramSkillMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramSkill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *DiagramSkillMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *DiagramSkillMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the DiagramSkill entity.
+// If the DiagramSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramSkillMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *DiagramSkillMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *DiagramSkillMutation) SetSkillID(u uuid.UUID) {
+	m.skill = &u
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *DiagramSkillMutation) SkillID() (r uuid.UUID, exists bool) {
+	v := m.skill
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the DiagramSkill entity.
+// If the DiagramSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramSkillMutation) OldSkillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *DiagramSkillMutation) ResetSkillID() {
+	m.skill = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *DiagramSkillMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *DiagramSkillMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the DiagramSkill entity.
+// If the DiagramSkill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramSkillMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *DiagramSkillMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *DiagramSkillMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[diagramskill.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *DiagramSkillMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *DiagramSkillMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *DiagramSkillMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// ClearSkill clears the "skill" edge to the Skill entity.
+func (m *DiagramSkillMutation) ClearSkill() {
+	m.clearedskill = true
+	m.clearedFields[diagramskill.FieldSkillID] = struct{}{}
+}
+
+// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+func (m *DiagramSkillMutation) SkillCleared() bool {
+	return m.clearedskill
+}
+
+// SkillIDs returns the "skill" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SkillID instead. It exists only for internal usage by the builders.
+func (m *DiagramSkillMutation) SkillIDs() (ids []uuid.UUID) {
+	if id := m.skill; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSkill resets all changes to the "skill" edge.
+func (m *DiagramSkillMutation) ResetSkill() {
+	m.skill = nil
+	m.clearedskill = false
+}
+
+// Where appends a list predicates to the DiagramSkillMutation builder.
+func (m *DiagramSkillMutation) Where(ps ...predicate.DiagramSkill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramSkillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramSkillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramSkill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramSkillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramSkillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramSkill).
+func (m *DiagramSkillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramSkillMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.diagram != nil {
+		fields = append(fields, diagramskill.FieldDiagramID)
+	}
+	if m.skill != nil {
+		fields = append(fields, diagramskill.FieldSkillID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, diagramskill.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramSkillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagramskill.FieldDiagramID:
+		return m.DiagramID()
+	case diagramskill.FieldSkillID:
+		return m.SkillID()
+	case diagramskill.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramSkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagramskill.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case diagramskill.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case diagramskill.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramSkill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramSkillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagramskill.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case diagramskill.FieldSkillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case diagramskill.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramSkill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramSkillMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramSkillMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramSkillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramSkill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramSkillMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramSkillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramSkillMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DiagramSkill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramSkillMutation) ResetField(name string) error {
+	switch name {
+	case diagramskill.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case diagramskill.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case diagramskill.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramSkill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramSkillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.diagram != nil {
+		edges = append(edges, diagramskill.EdgeDiagram)
+	}
+	if m.skill != nil {
+		edges = append(edges, diagramskill.EdgeSkill)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramSkillMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagramskill.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	case diagramskill.EdgeSkill:
+		if id := m.skill; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramSkillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramSkillMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramSkillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareddiagram {
+		edges = append(edges, diagramskill.EdgeDiagram)
+	}
+	if m.clearedskill {
+		edges = append(edges, diagramskill.EdgeSkill)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramSkillMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagramskill.EdgeDiagram:
+		return m.cleareddiagram
+	case diagramskill.EdgeSkill:
+		return m.clearedskill
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramSkillMutation) ClearEdge(name string) error {
+	switch name {
+	case diagramskill.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	case diagramskill.EdgeSkill:
+		m.ClearSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramSkill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramSkillMutation) ResetEdge(name string) error {
+	switch name {
+	case diagramskill.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	case diagramskill.EdgeSkill:
+		m.ResetSkill()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramSkill edge %s", name)
 }
 
 // ExerciseMutation represents an operation that mutates the Exercise nodes in the graph.
@@ -11666,6 +13821,834 @@ func (m *ExpandedContentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ExpandedContent edge %s", name)
 }
 
+// InstrumentMutation represents an operation that mutates the Instrument nodes in the graph.
+type InstrumentMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	name              *string
+	family            *instrument.Family
+	string_count      *int
+	addstring_count   *int
+	tuning            *[]string
+	appendtuning      []string
+	key_range_lowest  *string
+	key_range_highest *string
+	clearedFields     map[string]struct{}
+	diagrams          map[uuid.UUID]struct{}
+	removeddiagrams   map[uuid.UUID]struct{}
+	cleareddiagrams   bool
+	done              bool
+	oldValue          func(context.Context) (*Instrument, error)
+	predicates        []predicate.Instrument
+}
+
+var _ ent.Mutation = (*InstrumentMutation)(nil)
+
+// instrumentOption allows management of the mutation configuration using functional options.
+type instrumentOption func(*InstrumentMutation)
+
+// newInstrumentMutation creates new mutation for the Instrument entity.
+func newInstrumentMutation(c config, op Op, opts ...instrumentOption) *InstrumentMutation {
+	m := &InstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withInstrumentID sets the ID field of the mutation.
+func withInstrumentID(id uuid.UUID) instrumentOption {
+	return func(m *InstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Instrument
+		)
+		m.oldValue = func(ctx context.Context) (*Instrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Instrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withInstrument sets the old Instrument of the mutation.
+func withInstrument(node *Instrument) instrumentOption {
+	return func(m *InstrumentMutation) {
+		m.oldValue = func(context.Context) (*Instrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m InstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m InstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Instrument entities.
+func (m *InstrumentMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *InstrumentMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *InstrumentMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Instrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *InstrumentMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *InstrumentMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *InstrumentMutation) ResetName() {
+	m.name = nil
+}
+
+// SetFamily sets the "family" field.
+func (m *InstrumentMutation) SetFamily(i instrument.Family) {
+	m.family = &i
+}
+
+// Family returns the value of the "family" field in the mutation.
+func (m *InstrumentMutation) Family() (r instrument.Family, exists bool) {
+	v := m.family
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFamily returns the old "family" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldFamily(ctx context.Context) (v instrument.Family, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFamily: %w", err)
+	}
+	return oldValue.Family, nil
+}
+
+// ResetFamily resets all changes to the "family" field.
+func (m *InstrumentMutation) ResetFamily() {
+	m.family = nil
+}
+
+// SetStringCount sets the "string_count" field.
+func (m *InstrumentMutation) SetStringCount(i int) {
+	m.string_count = &i
+	m.addstring_count = nil
+}
+
+// StringCount returns the value of the "string_count" field in the mutation.
+func (m *InstrumentMutation) StringCount() (r int, exists bool) {
+	v := m.string_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStringCount returns the old "string_count" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldStringCount(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStringCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStringCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStringCount: %w", err)
+	}
+	return oldValue.StringCount, nil
+}
+
+// AddStringCount adds i to the "string_count" field.
+func (m *InstrumentMutation) AddStringCount(i int) {
+	if m.addstring_count != nil {
+		*m.addstring_count += i
+	} else {
+		m.addstring_count = &i
+	}
+}
+
+// AddedStringCount returns the value that was added to the "string_count" field in this mutation.
+func (m *InstrumentMutation) AddedStringCount() (r int, exists bool) {
+	v := m.addstring_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStringCount clears the value of the "string_count" field.
+func (m *InstrumentMutation) ClearStringCount() {
+	m.string_count = nil
+	m.addstring_count = nil
+	m.clearedFields[instrument.FieldStringCount] = struct{}{}
+}
+
+// StringCountCleared returns if the "string_count" field was cleared in this mutation.
+func (m *InstrumentMutation) StringCountCleared() bool {
+	_, ok := m.clearedFields[instrument.FieldStringCount]
+	return ok
+}
+
+// ResetStringCount resets all changes to the "string_count" field.
+func (m *InstrumentMutation) ResetStringCount() {
+	m.string_count = nil
+	m.addstring_count = nil
+	delete(m.clearedFields, instrument.FieldStringCount)
+}
+
+// SetTuning sets the "tuning" field.
+func (m *InstrumentMutation) SetTuning(s []string) {
+	m.tuning = &s
+	m.appendtuning = nil
+}
+
+// Tuning returns the value of the "tuning" field in the mutation.
+func (m *InstrumentMutation) Tuning() (r []string, exists bool) {
+	v := m.tuning
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTuning returns the old "tuning" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldTuning(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTuning is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTuning requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTuning: %w", err)
+	}
+	return oldValue.Tuning, nil
+}
+
+// AppendTuning adds s to the "tuning" field.
+func (m *InstrumentMutation) AppendTuning(s []string) {
+	m.appendtuning = append(m.appendtuning, s...)
+}
+
+// AppendedTuning returns the list of values that were appended to the "tuning" field in this mutation.
+func (m *InstrumentMutation) AppendedTuning() ([]string, bool) {
+	if len(m.appendtuning) == 0 {
+		return nil, false
+	}
+	return m.appendtuning, true
+}
+
+// ClearTuning clears the value of the "tuning" field.
+func (m *InstrumentMutation) ClearTuning() {
+	m.tuning = nil
+	m.appendtuning = nil
+	m.clearedFields[instrument.FieldTuning] = struct{}{}
+}
+
+// TuningCleared returns if the "tuning" field was cleared in this mutation.
+func (m *InstrumentMutation) TuningCleared() bool {
+	_, ok := m.clearedFields[instrument.FieldTuning]
+	return ok
+}
+
+// ResetTuning resets all changes to the "tuning" field.
+func (m *InstrumentMutation) ResetTuning() {
+	m.tuning = nil
+	m.appendtuning = nil
+	delete(m.clearedFields, instrument.FieldTuning)
+}
+
+// SetKeyRangeLowest sets the "key_range_lowest" field.
+func (m *InstrumentMutation) SetKeyRangeLowest(s string) {
+	m.key_range_lowest = &s
+}
+
+// KeyRangeLowest returns the value of the "key_range_lowest" field in the mutation.
+func (m *InstrumentMutation) KeyRangeLowest() (r string, exists bool) {
+	v := m.key_range_lowest
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyRangeLowest returns the old "key_range_lowest" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldKeyRangeLowest(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyRangeLowest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyRangeLowest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyRangeLowest: %w", err)
+	}
+	return oldValue.KeyRangeLowest, nil
+}
+
+// ClearKeyRangeLowest clears the value of the "key_range_lowest" field.
+func (m *InstrumentMutation) ClearKeyRangeLowest() {
+	m.key_range_lowest = nil
+	m.clearedFields[instrument.FieldKeyRangeLowest] = struct{}{}
+}
+
+// KeyRangeLowestCleared returns if the "key_range_lowest" field was cleared in this mutation.
+func (m *InstrumentMutation) KeyRangeLowestCleared() bool {
+	_, ok := m.clearedFields[instrument.FieldKeyRangeLowest]
+	return ok
+}
+
+// ResetKeyRangeLowest resets all changes to the "key_range_lowest" field.
+func (m *InstrumentMutation) ResetKeyRangeLowest() {
+	m.key_range_lowest = nil
+	delete(m.clearedFields, instrument.FieldKeyRangeLowest)
+}
+
+// SetKeyRangeHighest sets the "key_range_highest" field.
+func (m *InstrumentMutation) SetKeyRangeHighest(s string) {
+	m.key_range_highest = &s
+}
+
+// KeyRangeHighest returns the value of the "key_range_highest" field in the mutation.
+func (m *InstrumentMutation) KeyRangeHighest() (r string, exists bool) {
+	v := m.key_range_highest
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyRangeHighest returns the old "key_range_highest" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldKeyRangeHighest(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyRangeHighest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyRangeHighest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyRangeHighest: %w", err)
+	}
+	return oldValue.KeyRangeHighest, nil
+}
+
+// ClearKeyRangeHighest clears the value of the "key_range_highest" field.
+func (m *InstrumentMutation) ClearKeyRangeHighest() {
+	m.key_range_highest = nil
+	m.clearedFields[instrument.FieldKeyRangeHighest] = struct{}{}
+}
+
+// KeyRangeHighestCleared returns if the "key_range_highest" field was cleared in this mutation.
+func (m *InstrumentMutation) KeyRangeHighestCleared() bool {
+	_, ok := m.clearedFields[instrument.FieldKeyRangeHighest]
+	return ok
+}
+
+// ResetKeyRangeHighest resets all changes to the "key_range_highest" field.
+func (m *InstrumentMutation) ResetKeyRangeHighest() {
+	m.key_range_highest = nil
+	delete(m.clearedFields, instrument.FieldKeyRangeHighest)
+}
+
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
+func (m *InstrumentMutation) AddDiagramIDs(ids ...uuid.UUID) {
+	if m.diagrams == nil {
+		m.diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagrams clears the "diagrams" edge to the Diagram entity.
+func (m *InstrumentMutation) ClearDiagrams() {
+	m.cleareddiagrams = true
+}
+
+// DiagramsCleared reports if the "diagrams" edge to the Diagram entity was cleared.
+func (m *InstrumentMutation) DiagramsCleared() bool {
+	return m.cleareddiagrams
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to the Diagram entity by IDs.
+func (m *InstrumentMutation) RemoveDiagramIDs(ids ...uuid.UUID) {
+	if m.removeddiagrams == nil {
+		m.removeddiagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.diagrams, ids[i])
+		m.removeddiagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagrams returns the removed IDs of the "diagrams" edge to the Diagram entity.
+func (m *InstrumentMutation) RemovedDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removeddiagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramsIDs returns the "diagrams" edge IDs in the mutation.
+func (m *InstrumentMutation) DiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagrams resets all changes to the "diagrams" edge.
+func (m *InstrumentMutation) ResetDiagrams() {
+	m.diagrams = nil
+	m.cleareddiagrams = false
+	m.removeddiagrams = nil
+}
+
+// Where appends a list predicates to the InstrumentMutation builder.
+func (m *InstrumentMutation) Where(ps ...predicate.Instrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the InstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *InstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Instrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *InstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *InstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Instrument).
+func (m *InstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *InstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.name != nil {
+		fields = append(fields, instrument.FieldName)
+	}
+	if m.family != nil {
+		fields = append(fields, instrument.FieldFamily)
+	}
+	if m.string_count != nil {
+		fields = append(fields, instrument.FieldStringCount)
+	}
+	if m.tuning != nil {
+		fields = append(fields, instrument.FieldTuning)
+	}
+	if m.key_range_lowest != nil {
+		fields = append(fields, instrument.FieldKeyRangeLowest)
+	}
+	if m.key_range_highest != nil {
+		fields = append(fields, instrument.FieldKeyRangeHighest)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *InstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case instrument.FieldName:
+		return m.Name()
+	case instrument.FieldFamily:
+		return m.Family()
+	case instrument.FieldStringCount:
+		return m.StringCount()
+	case instrument.FieldTuning:
+		return m.Tuning()
+	case instrument.FieldKeyRangeLowest:
+		return m.KeyRangeLowest()
+	case instrument.FieldKeyRangeHighest:
+		return m.KeyRangeHighest()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *InstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case instrument.FieldName:
+		return m.OldName(ctx)
+	case instrument.FieldFamily:
+		return m.OldFamily(ctx)
+	case instrument.FieldStringCount:
+		return m.OldStringCount(ctx)
+	case instrument.FieldTuning:
+		return m.OldTuning(ctx)
+	case instrument.FieldKeyRangeLowest:
+		return m.OldKeyRangeLowest(ctx)
+	case instrument.FieldKeyRangeHighest:
+		return m.OldKeyRangeHighest(ctx)
+	}
+	return nil, fmt.Errorf("unknown Instrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case instrument.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case instrument.FieldFamily:
+		v, ok := value.(instrument.Family)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFamily(v)
+		return nil
+	case instrument.FieldStringCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStringCount(v)
+		return nil
+	case instrument.FieldTuning:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTuning(v)
+		return nil
+	case instrument.FieldKeyRangeLowest:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyRangeLowest(v)
+		return nil
+	case instrument.FieldKeyRangeHighest:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyRangeHighest(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Instrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *InstrumentMutation) AddedFields() []string {
+	var fields []string
+	if m.addstring_count != nil {
+		fields = append(fields, instrument.FieldStringCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *InstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case instrument.FieldStringCount:
+		return m.AddedStringCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case instrument.FieldStringCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStringCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Instrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *InstrumentMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(instrument.FieldStringCount) {
+		fields = append(fields, instrument.FieldStringCount)
+	}
+	if m.FieldCleared(instrument.FieldTuning) {
+		fields = append(fields, instrument.FieldTuning)
+	}
+	if m.FieldCleared(instrument.FieldKeyRangeLowest) {
+		fields = append(fields, instrument.FieldKeyRangeLowest)
+	}
+	if m.FieldCleared(instrument.FieldKeyRangeHighest) {
+		fields = append(fields, instrument.FieldKeyRangeHighest)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *InstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *InstrumentMutation) ClearField(name string) error {
+	switch name {
+	case instrument.FieldStringCount:
+		m.ClearStringCount()
+		return nil
+	case instrument.FieldTuning:
+		m.ClearTuning()
+		return nil
+	case instrument.FieldKeyRangeLowest:
+		m.ClearKeyRangeLowest()
+		return nil
+	case instrument.FieldKeyRangeHighest:
+		m.ClearKeyRangeHighest()
+		return nil
+	}
+	return fmt.Errorf("unknown Instrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *InstrumentMutation) ResetField(name string) error {
+	switch name {
+	case instrument.FieldName:
+		m.ResetName()
+		return nil
+	case instrument.FieldFamily:
+		m.ResetFamily()
+		return nil
+	case instrument.FieldStringCount:
+		m.ResetStringCount()
+		return nil
+	case instrument.FieldTuning:
+		m.ResetTuning()
+		return nil
+	case instrument.FieldKeyRangeLowest:
+		m.ResetKeyRangeLowest()
+		return nil
+	case instrument.FieldKeyRangeHighest:
+		m.ResetKeyRangeHighest()
+		return nil
+	}
+	return fmt.Errorf("unknown Instrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *InstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.diagrams != nil {
+		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case instrument.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.diagrams))
+		for id := range m.diagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *InstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removeddiagrams != nil {
+		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case instrument.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.removeddiagrams))
+		for id := range m.removeddiagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *InstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddiagrams {
+		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *InstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case instrument.EdgeDiagrams:
+		return m.cleareddiagrams
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *InstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Instrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *InstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case instrument.EdgeDiagrams:
+		m.ResetDiagrams()
+		return nil
+	}
+	return fmt.Errorf("unknown Instrument edge %s", name)
+}
+
 // LanguageMutation represents an operation that mutates the Language nodes in the graph.
 type LanguageMutation struct {
 	config
@@ -13880,6 +16863,987 @@ func (m *PathAssignmentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown PathAssignment edge %s", name)
 }
 
+// PositionMutation represents an operation that mutates the Position nodes in the graph.
+type PositionMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	ordinal           *int
+	addordinal        *int
+	interval          *string
+	note_name         *string
+	sequence_index    *int
+	addsequence_index *int
+	string_number     *int
+	addstring_number  *int
+	fret              *int
+	addfret           *int
+	key               *string
+	clearedFields     map[string]struct{}
+	diagram           *uuid.UUID
+	cleareddiagram    bool
+	done              bool
+	oldValue          func(context.Context) (*Position, error)
+	predicates        []predicate.Position
+}
+
+var _ ent.Mutation = (*PositionMutation)(nil)
+
+// positionOption allows management of the mutation configuration using functional options.
+type positionOption func(*PositionMutation)
+
+// newPositionMutation creates new mutation for the Position entity.
+func newPositionMutation(c config, op Op, opts ...positionOption) *PositionMutation {
+	m := &PositionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePosition,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPositionID sets the ID field of the mutation.
+func withPositionID(id uuid.UUID) positionOption {
+	return func(m *PositionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Position
+		)
+		m.oldValue = func(ctx context.Context) (*Position, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Position.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPosition sets the old Position of the mutation.
+func withPosition(node *Position) positionOption {
+	return func(m *PositionMutation) {
+		m.oldValue = func(context.Context) (*Position, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PositionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PositionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Position entities.
+func (m *PositionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PositionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PositionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Position.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *PositionMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *PositionMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *PositionMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetOrdinal sets the "ordinal" field.
+func (m *PositionMutation) SetOrdinal(i int) {
+	m.ordinal = &i
+	m.addordinal = nil
+}
+
+// Ordinal returns the value of the "ordinal" field in the mutation.
+func (m *PositionMutation) Ordinal() (r int, exists bool) {
+	v := m.ordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrdinal returns the old "ordinal" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldOrdinal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrdinal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrdinal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrdinal: %w", err)
+	}
+	return oldValue.Ordinal, nil
+}
+
+// AddOrdinal adds i to the "ordinal" field.
+func (m *PositionMutation) AddOrdinal(i int) {
+	if m.addordinal != nil {
+		*m.addordinal += i
+	} else {
+		m.addordinal = &i
+	}
+}
+
+// AddedOrdinal returns the value that was added to the "ordinal" field in this mutation.
+func (m *PositionMutation) AddedOrdinal() (r int, exists bool) {
+	v := m.addordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrdinal resets all changes to the "ordinal" field.
+func (m *PositionMutation) ResetOrdinal() {
+	m.ordinal = nil
+	m.addordinal = nil
+}
+
+// SetInterval sets the "interval" field.
+func (m *PositionMutation) SetInterval(s string) {
+	m.interval = &s
+}
+
+// Interval returns the value of the "interval" field in the mutation.
+func (m *PositionMutation) Interval() (r string, exists bool) {
+	v := m.interval
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInterval returns the old "interval" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldInterval(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInterval is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInterval requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInterval: %w", err)
+	}
+	return oldValue.Interval, nil
+}
+
+// ResetInterval resets all changes to the "interval" field.
+func (m *PositionMutation) ResetInterval() {
+	m.interval = nil
+}
+
+// SetNoteName sets the "note_name" field.
+func (m *PositionMutation) SetNoteName(s string) {
+	m.note_name = &s
+}
+
+// NoteName returns the value of the "note_name" field in the mutation.
+func (m *PositionMutation) NoteName() (r string, exists bool) {
+	v := m.note_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNoteName returns the old "note_name" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldNoteName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNoteName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNoteName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNoteName: %w", err)
+	}
+	return oldValue.NoteName, nil
+}
+
+// ResetNoteName resets all changes to the "note_name" field.
+func (m *PositionMutation) ResetNoteName() {
+	m.note_name = nil
+}
+
+// SetSequenceIndex sets the "sequence_index" field.
+func (m *PositionMutation) SetSequenceIndex(i int) {
+	m.sequence_index = &i
+	m.addsequence_index = nil
+}
+
+// SequenceIndex returns the value of the "sequence_index" field in the mutation.
+func (m *PositionMutation) SequenceIndex() (r int, exists bool) {
+	v := m.sequence_index
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequenceIndex returns the old "sequence_index" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldSequenceIndex(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequenceIndex is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequenceIndex requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequenceIndex: %w", err)
+	}
+	return oldValue.SequenceIndex, nil
+}
+
+// AddSequenceIndex adds i to the "sequence_index" field.
+func (m *PositionMutation) AddSequenceIndex(i int) {
+	if m.addsequence_index != nil {
+		*m.addsequence_index += i
+	} else {
+		m.addsequence_index = &i
+	}
+}
+
+// AddedSequenceIndex returns the value that was added to the "sequence_index" field in this mutation.
+func (m *PositionMutation) AddedSequenceIndex() (r int, exists bool) {
+	v := m.addsequence_index
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSequenceIndex clears the value of the "sequence_index" field.
+func (m *PositionMutation) ClearSequenceIndex() {
+	m.sequence_index = nil
+	m.addsequence_index = nil
+	m.clearedFields[position.FieldSequenceIndex] = struct{}{}
+}
+
+// SequenceIndexCleared returns if the "sequence_index" field was cleared in this mutation.
+func (m *PositionMutation) SequenceIndexCleared() bool {
+	_, ok := m.clearedFields[position.FieldSequenceIndex]
+	return ok
+}
+
+// ResetSequenceIndex resets all changes to the "sequence_index" field.
+func (m *PositionMutation) ResetSequenceIndex() {
+	m.sequence_index = nil
+	m.addsequence_index = nil
+	delete(m.clearedFields, position.FieldSequenceIndex)
+}
+
+// SetStringNumber sets the "string_number" field.
+func (m *PositionMutation) SetStringNumber(i int) {
+	m.string_number = &i
+	m.addstring_number = nil
+}
+
+// StringNumber returns the value of the "string_number" field in the mutation.
+func (m *PositionMutation) StringNumber() (r int, exists bool) {
+	v := m.string_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStringNumber returns the old "string_number" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldStringNumber(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStringNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStringNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStringNumber: %w", err)
+	}
+	return oldValue.StringNumber, nil
+}
+
+// AddStringNumber adds i to the "string_number" field.
+func (m *PositionMutation) AddStringNumber(i int) {
+	if m.addstring_number != nil {
+		*m.addstring_number += i
+	} else {
+		m.addstring_number = &i
+	}
+}
+
+// AddedStringNumber returns the value that was added to the "string_number" field in this mutation.
+func (m *PositionMutation) AddedStringNumber() (r int, exists bool) {
+	v := m.addstring_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStringNumber clears the value of the "string_number" field.
+func (m *PositionMutation) ClearStringNumber() {
+	m.string_number = nil
+	m.addstring_number = nil
+	m.clearedFields[position.FieldStringNumber] = struct{}{}
+}
+
+// StringNumberCleared returns if the "string_number" field was cleared in this mutation.
+func (m *PositionMutation) StringNumberCleared() bool {
+	_, ok := m.clearedFields[position.FieldStringNumber]
+	return ok
+}
+
+// ResetStringNumber resets all changes to the "string_number" field.
+func (m *PositionMutation) ResetStringNumber() {
+	m.string_number = nil
+	m.addstring_number = nil
+	delete(m.clearedFields, position.FieldStringNumber)
+}
+
+// SetFret sets the "fret" field.
+func (m *PositionMutation) SetFret(i int) {
+	m.fret = &i
+	m.addfret = nil
+}
+
+// Fret returns the value of the "fret" field in the mutation.
+func (m *PositionMutation) Fret() (r int, exists bool) {
+	v := m.fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFret returns the old "fret" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldFret(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFret: %w", err)
+	}
+	return oldValue.Fret, nil
+}
+
+// AddFret adds i to the "fret" field.
+func (m *PositionMutation) AddFret(i int) {
+	if m.addfret != nil {
+		*m.addfret += i
+	} else {
+		m.addfret = &i
+	}
+}
+
+// AddedFret returns the value that was added to the "fret" field in this mutation.
+func (m *PositionMutation) AddedFret() (r int, exists bool) {
+	v := m.addfret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearFret clears the value of the "fret" field.
+func (m *PositionMutation) ClearFret() {
+	m.fret = nil
+	m.addfret = nil
+	m.clearedFields[position.FieldFret] = struct{}{}
+}
+
+// FretCleared returns if the "fret" field was cleared in this mutation.
+func (m *PositionMutation) FretCleared() bool {
+	_, ok := m.clearedFields[position.FieldFret]
+	return ok
+}
+
+// ResetFret resets all changes to the "fret" field.
+func (m *PositionMutation) ResetFret() {
+	m.fret = nil
+	m.addfret = nil
+	delete(m.clearedFields, position.FieldFret)
+}
+
+// SetKey sets the "key" field.
+func (m *PositionMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *PositionMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ClearKey clears the value of the "key" field.
+func (m *PositionMutation) ClearKey() {
+	m.key = nil
+	m.clearedFields[position.FieldKey] = struct{}{}
+}
+
+// KeyCleared returns if the "key" field was cleared in this mutation.
+func (m *PositionMutation) KeyCleared() bool {
+	_, ok := m.clearedFields[position.FieldKey]
+	return ok
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *PositionMutation) ResetKey() {
+	m.key = nil
+	delete(m.clearedFields, position.FieldKey)
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *PositionMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[position.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *PositionMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *PositionMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *PositionMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// Where appends a list predicates to the PositionMutation builder.
+func (m *PositionMutation) Where(ps ...predicate.Position) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PositionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PositionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Position, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PositionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PositionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Position).
+func (m *PositionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PositionMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.diagram != nil {
+		fields = append(fields, position.FieldDiagramID)
+	}
+	if m.ordinal != nil {
+		fields = append(fields, position.FieldOrdinal)
+	}
+	if m.interval != nil {
+		fields = append(fields, position.FieldInterval)
+	}
+	if m.note_name != nil {
+		fields = append(fields, position.FieldNoteName)
+	}
+	if m.sequence_index != nil {
+		fields = append(fields, position.FieldSequenceIndex)
+	}
+	if m.string_number != nil {
+		fields = append(fields, position.FieldStringNumber)
+	}
+	if m.fret != nil {
+		fields = append(fields, position.FieldFret)
+	}
+	if m.key != nil {
+		fields = append(fields, position.FieldKey)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PositionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case position.FieldDiagramID:
+		return m.DiagramID()
+	case position.FieldOrdinal:
+		return m.Ordinal()
+	case position.FieldInterval:
+		return m.Interval()
+	case position.FieldNoteName:
+		return m.NoteName()
+	case position.FieldSequenceIndex:
+		return m.SequenceIndex()
+	case position.FieldStringNumber:
+		return m.StringNumber()
+	case position.FieldFret:
+		return m.Fret()
+	case position.FieldKey:
+		return m.Key()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PositionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case position.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case position.FieldOrdinal:
+		return m.OldOrdinal(ctx)
+	case position.FieldInterval:
+		return m.OldInterval(ctx)
+	case position.FieldNoteName:
+		return m.OldNoteName(ctx)
+	case position.FieldSequenceIndex:
+		return m.OldSequenceIndex(ctx)
+	case position.FieldStringNumber:
+		return m.OldStringNumber(ctx)
+	case position.FieldFret:
+		return m.OldFret(ctx)
+	case position.FieldKey:
+		return m.OldKey(ctx)
+	}
+	return nil, fmt.Errorf("unknown Position field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PositionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case position.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case position.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrdinal(v)
+		return nil
+	case position.FieldInterval:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInterval(v)
+		return nil
+	case position.FieldNoteName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNoteName(v)
+		return nil
+	case position.FieldSequenceIndex:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequenceIndex(v)
+		return nil
+	case position.FieldStringNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStringNumber(v)
+		return nil
+	case position.FieldFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFret(v)
+		return nil
+	case position.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Position field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PositionMutation) AddedFields() []string {
+	var fields []string
+	if m.addordinal != nil {
+		fields = append(fields, position.FieldOrdinal)
+	}
+	if m.addsequence_index != nil {
+		fields = append(fields, position.FieldSequenceIndex)
+	}
+	if m.addstring_number != nil {
+		fields = append(fields, position.FieldStringNumber)
+	}
+	if m.addfret != nil {
+		fields = append(fields, position.FieldFret)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PositionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case position.FieldOrdinal:
+		return m.AddedOrdinal()
+	case position.FieldSequenceIndex:
+		return m.AddedSequenceIndex()
+	case position.FieldStringNumber:
+		return m.AddedStringNumber()
+	case position.FieldFret:
+		return m.AddedFret()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PositionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case position.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrdinal(v)
+		return nil
+	case position.FieldSequenceIndex:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSequenceIndex(v)
+		return nil
+	case position.FieldStringNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStringNumber(v)
+		return nil
+	case position.FieldFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFret(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Position numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PositionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(position.FieldSequenceIndex) {
+		fields = append(fields, position.FieldSequenceIndex)
+	}
+	if m.FieldCleared(position.FieldStringNumber) {
+		fields = append(fields, position.FieldStringNumber)
+	}
+	if m.FieldCleared(position.FieldFret) {
+		fields = append(fields, position.FieldFret)
+	}
+	if m.FieldCleared(position.FieldKey) {
+		fields = append(fields, position.FieldKey)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PositionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PositionMutation) ClearField(name string) error {
+	switch name {
+	case position.FieldSequenceIndex:
+		m.ClearSequenceIndex()
+		return nil
+	case position.FieldStringNumber:
+		m.ClearStringNumber()
+		return nil
+	case position.FieldFret:
+		m.ClearFret()
+		return nil
+	case position.FieldKey:
+		m.ClearKey()
+		return nil
+	}
+	return fmt.Errorf("unknown Position nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PositionMutation) ResetField(name string) error {
+	switch name {
+	case position.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case position.FieldOrdinal:
+		m.ResetOrdinal()
+		return nil
+	case position.FieldInterval:
+		m.ResetInterval()
+		return nil
+	case position.FieldNoteName:
+		m.ResetNoteName()
+		return nil
+	case position.FieldSequenceIndex:
+		m.ResetSequenceIndex()
+		return nil
+	case position.FieldStringNumber:
+		m.ResetStringNumber()
+		return nil
+	case position.FieldFret:
+		m.ResetFret()
+		return nil
+	case position.FieldKey:
+		m.ResetKey()
+		return nil
+	}
+	return fmt.Errorf("unknown Position field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PositionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.diagram != nil {
+		edges = append(edges, position.EdgeDiagram)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PositionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case position.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PositionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PositionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PositionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddiagram {
+		edges = append(edges, position.EdgeDiagram)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PositionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case position.EdgeDiagram:
+		return m.cleareddiagram
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PositionMutation) ClearEdge(name string) error {
+	switch name {
+	case position.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	}
+	return fmt.Errorf("unknown Position unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PositionMutation) ResetEdge(name string) error {
+	switch name {
+	case position.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	}
+	return fmt.Errorf("unknown Position edge %s", name)
+}
+
 // SkillMutation represents an operation that mutates the Skill nodes in the graph.
 type SkillMutation struct {
 	config
@@ -13899,12 +17863,18 @@ type SkillMutation struct {
 	exercises                  map[uuid.UUID]struct{}
 	removedexercises           map[uuid.UUID]struct{}
 	clearedexercises           bool
+	diagrams                   map[uuid.UUID]struct{}
+	removeddiagrams            map[uuid.UUID]struct{}
+	cleareddiagrams            bool
 	content_node_skills        map[int]struct{}
 	removedcontent_node_skills map[int]struct{}
 	clearedcontent_node_skills bool
 	exercise_skills            map[int]struct{}
 	removedexercise_skills     map[int]struct{}
 	clearedexercise_skills     bool
+	diagram_skills             map[int]struct{}
+	removeddiagram_skills      map[int]struct{}
+	cleareddiagram_skills      bool
 	done                       bool
 	oldValue                   func(context.Context) (*Skill, error)
 	predicates                 []predicate.Skill
@@ -14288,6 +18258,60 @@ func (m *SkillMutation) ResetExercises() {
 	m.removedexercises = nil
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
+func (m *SkillMutation) AddDiagramIDs(ids ...uuid.UUID) {
+	if m.diagrams == nil {
+		m.diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagrams clears the "diagrams" edge to the Diagram entity.
+func (m *SkillMutation) ClearDiagrams() {
+	m.cleareddiagrams = true
+}
+
+// DiagramsCleared reports if the "diagrams" edge to the Diagram entity was cleared.
+func (m *SkillMutation) DiagramsCleared() bool {
+	return m.cleareddiagrams
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to the Diagram entity by IDs.
+func (m *SkillMutation) RemoveDiagramIDs(ids ...uuid.UUID) {
+	if m.removeddiagrams == nil {
+		m.removeddiagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.diagrams, ids[i])
+		m.removeddiagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagrams returns the removed IDs of the "diagrams" edge to the Diagram entity.
+func (m *SkillMutation) RemovedDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removeddiagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramsIDs returns the "diagrams" edge IDs in the mutation.
+func (m *SkillMutation) DiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagrams resets all changes to the "diagrams" edge.
+func (m *SkillMutation) ResetDiagrams() {
+	m.diagrams = nil
+	m.cleareddiagrams = false
+	m.removeddiagrams = nil
+}
+
 // AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by ids.
 func (m *SkillMutation) AddContentNodeSkillIDs(ids ...int) {
 	if m.content_node_skills == nil {
@@ -14394,6 +18418,60 @@ func (m *SkillMutation) ResetExerciseSkills() {
 	m.exercise_skills = nil
 	m.clearedexercise_skills = false
 	m.removedexercise_skills = nil
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by ids.
+func (m *SkillMutation) AddDiagramSkillIDs(ids ...int) {
+	if m.diagram_skills == nil {
+		m.diagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramSkills clears the "diagram_skills" edge to the DiagramSkill entity.
+func (m *SkillMutation) ClearDiagramSkills() {
+	m.cleareddiagram_skills = true
+}
+
+// DiagramSkillsCleared reports if the "diagram_skills" edge to the DiagramSkill entity was cleared.
+func (m *SkillMutation) DiagramSkillsCleared() bool {
+	return m.cleareddiagram_skills
+}
+
+// RemoveDiagramSkillIDs removes the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (m *SkillMutation) RemoveDiagramSkillIDs(ids ...int) {
+	if m.removeddiagram_skills == nil {
+		m.removeddiagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_skills, ids[i])
+		m.removeddiagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramSkills returns the removed IDs of the "diagram_skills" edge to the DiagramSkill entity.
+func (m *SkillMutation) RemovedDiagramSkillsIDs() (ids []int) {
+	for id := range m.removeddiagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramSkillsIDs returns the "diagram_skills" edge IDs in the mutation.
+func (m *SkillMutation) DiagramSkillsIDs() (ids []int) {
+	for id := range m.diagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramSkills resets all changes to the "diagram_skills" edge.
+func (m *SkillMutation) ResetDiagramSkills() {
+	m.diagram_skills = nil
+	m.cleareddiagram_skills = false
+	m.removeddiagram_skills = nil
 }
 
 // Where appends a list predicates to the SkillMutation builder.
@@ -14555,7 +18633,7 @@ func (m *SkillMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SkillMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.children != nil {
 		edges = append(edges, skill.EdgeChildren)
 	}
@@ -14568,11 +18646,17 @@ func (m *SkillMutation) AddedEdges() []string {
 	if m.exercises != nil {
 		edges = append(edges, skill.EdgeExercises)
 	}
+	if m.diagrams != nil {
+		edges = append(edges, skill.EdgeDiagrams)
+	}
 	if m.content_node_skills != nil {
 		edges = append(edges, skill.EdgeContentNodeSkills)
 	}
 	if m.exercise_skills != nil {
 		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	if m.diagram_skills != nil {
+		edges = append(edges, skill.EdgeDiagramSkills)
 	}
 	return edges
 }
@@ -14603,6 +18687,12 @@ func (m *SkillMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case skill.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.diagrams))
+		for id := range m.diagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case skill.EdgeContentNodeSkills:
 		ids := make([]ent.Value, 0, len(m.content_node_skills))
 		for id := range m.content_node_skills {
@@ -14615,13 +18705,19 @@ func (m *SkillMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case skill.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.diagram_skills))
+		for id := range m.diagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SkillMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.removedchildren != nil {
 		edges = append(edges, skill.EdgeChildren)
 	}
@@ -14631,11 +18727,17 @@ func (m *SkillMutation) RemovedEdges() []string {
 	if m.removedexercises != nil {
 		edges = append(edges, skill.EdgeExercises)
 	}
+	if m.removeddiagrams != nil {
+		edges = append(edges, skill.EdgeDiagrams)
+	}
 	if m.removedcontent_node_skills != nil {
 		edges = append(edges, skill.EdgeContentNodeSkills)
 	}
 	if m.removedexercise_skills != nil {
 		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	if m.removeddiagram_skills != nil {
+		edges = append(edges, skill.EdgeDiagramSkills)
 	}
 	return edges
 }
@@ -14662,6 +18764,12 @@ func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case skill.EdgeDiagrams:
+		ids := make([]ent.Value, 0, len(m.removeddiagrams))
+		for id := range m.removeddiagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case skill.EdgeContentNodeSkills:
 		ids := make([]ent.Value, 0, len(m.removedcontent_node_skills))
 		for id := range m.removedcontent_node_skills {
@@ -14674,13 +18782,19 @@ func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case skill.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_skills))
+		for id := range m.removeddiagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SkillMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 8)
 	if m.clearedchildren {
 		edges = append(edges, skill.EdgeChildren)
 	}
@@ -14693,11 +18807,17 @@ func (m *SkillMutation) ClearedEdges() []string {
 	if m.clearedexercises {
 		edges = append(edges, skill.EdgeExercises)
 	}
+	if m.cleareddiagrams {
+		edges = append(edges, skill.EdgeDiagrams)
+	}
 	if m.clearedcontent_node_skills {
 		edges = append(edges, skill.EdgeContentNodeSkills)
 	}
 	if m.clearedexercise_skills {
 		edges = append(edges, skill.EdgeExerciseSkills)
+	}
+	if m.cleareddiagram_skills {
+		edges = append(edges, skill.EdgeDiagramSkills)
 	}
 	return edges
 }
@@ -14714,10 +18834,14 @@ func (m *SkillMutation) EdgeCleared(name string) bool {
 		return m.clearedcontent_nodes
 	case skill.EdgeExercises:
 		return m.clearedexercises
+	case skill.EdgeDiagrams:
+		return m.cleareddiagrams
 	case skill.EdgeContentNodeSkills:
 		return m.clearedcontent_node_skills
 	case skill.EdgeExerciseSkills:
 		return m.clearedexercise_skills
+	case skill.EdgeDiagramSkills:
+		return m.cleareddiagram_skills
 	}
 	return false
 }
@@ -14749,11 +18873,17 @@ func (m *SkillMutation) ResetEdge(name string) error {
 	case skill.EdgeExercises:
 		m.ResetExercises()
 		return nil
+	case skill.EdgeDiagrams:
+		m.ResetDiagrams()
+		return nil
 	case skill.EdgeContentNodeSkills:
 		m.ResetContentNodeSkills()
 		return nil
 	case skill.EdgeExerciseSkills:
 		m.ResetExerciseSkills()
+		return nil
+	case skill.EdgeDiagramSkills:
+		m.ResetDiagramSkills()
 		return nil
 	}
 	return fmt.Errorf("unknown Skill edge %s", name)

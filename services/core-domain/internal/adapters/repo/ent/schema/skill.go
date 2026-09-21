@@ -46,5 +46,9 @@ func (Skill) Edges() []ent.Edge {
 		edge.From("exercises", Exercise.Type).
 			Ref("skills").
 			Through("exercise_skills", ExerciseSkill.Type),
+
+		edge.From("diagrams", Diagram.Type).
+			Ref("skills").
+			Through("diagram_skills", DiagramSkill.Type),
 	}
 }

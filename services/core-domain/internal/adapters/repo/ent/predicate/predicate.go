@@ -30,6 +30,15 @@ type ContentNodeLanguage func(*sql.Selector)
 // ContentNodeSkill is the predicate function for contentnodeskill builders.
 type ContentNodeSkill func(*sql.Selector)
 
+// Diagram is the predicate function for diagram builders.
+type Diagram func(*sql.Selector)
+
+// DiagramConcept is the predicate function for diagramconcept builders.
+type DiagramConcept func(*sql.Selector)
+
+// DiagramSkill is the predicate function for diagramskill builders.
+type DiagramSkill func(*sql.Selector)
+
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)
 
@@ -48,6 +57,9 @@ type ExerciseSkill func(*sql.Selector)
 // ExpandedContent is the predicate function for expandedcontent builders.
 type ExpandedContent func(*sql.Selector)
 
+// Instrument is the predicate function for instrument builders.
+type Instrument func(*sql.Selector)
+
 // Language is the predicate function for language builders.
 type Language func(*sql.Selector)
 
@@ -59,6 +71,9 @@ type LearningPathItem func(*sql.Selector)
 
 // PathAssignment is the predicate function for pathassignment builders.
 type PathAssignment func(*sql.Selector)
+
+// Position is the predicate function for position builders.
+type Position func(*sql.Selector)
 
 // Skill is the predicate function for skill builders.
 type Skill func(*sql.Selector)

@@ -48,12 +48,14 @@ const (
 // Defines values for ContentNodeContentType.
 const (
 	ContentNodeContentTypeArticle ContentNodeContentType = "article"
+	ContentNodeContentTypeDiagram ContentNodeContentType = "diagram"
 	ContentNodeContentTypeVideo   ContentNodeContentType = "video"
 )
 
 // Defines values for CreateContentNodeRequestContentType.
 const (
 	CreateContentNodeRequestContentTypeArticle CreateContentNodeRequestContentType = "article"
+	CreateContentNodeRequestContentTypeDiagram CreateContentNodeRequestContentType = "diagram"
 	CreateContentNodeRequestContentTypeVideo   CreateContentNodeRequestContentType = "video"
 )
 
@@ -73,6 +75,12 @@ const (
 	CreateExpandedContentRequestContentTypeRichText CreateExpandedContentRequestContentType = "rich_text"
 )
 
+// Defines values for CreateInstrumentRequestFamily.
+const (
+	CreateInstrumentRequestFamilyFretted  CreateInstrumentRequestFamily = "fretted"
+	CreateInstrumentRequestFamilyKeyboard CreateInstrumentRequestFamily = "keyboard"
+)
+
 // Defines values for CreateMediaUploadUrlRequestContentType.
 const (
 	CreateMediaUploadUrlRequestContentTypeAudio CreateMediaUploadUrlRequestContentType = "audio"
@@ -83,6 +91,12 @@ const (
 const (
 	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
 	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
+)
+
+// Defines values for DiagramRefPlaybackDirection.
+const (
+	AsAuthored DiagramRefPlaybackDirection = "as_authored"
+	Reversed   DiagramRefPlaybackDirection = "reversed"
 )
 
 // Defines values for ExerciseExerciseType.
@@ -113,9 +127,16 @@ const (
 	HealthStatusStatusOk       HealthStatusStatus = "ok"
 )
 
+// Defines values for InstrumentFamily.
+const (
+	InstrumentFamilyFretted  InstrumentFamily = "fretted"
+	InstrumentFamilyKeyboard InstrumentFamily = "keyboard"
+)
+
 // Defines values for LearningPathItemContentType.
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
+	LearningPathItemContentTypeDiagram LearningPathItemContentType = "diagram"
 	LearningPathItemContentTypeVideo   LearningPathItemContentType = "video"
 )
 
@@ -166,6 +187,7 @@ const (
 // Defines values for StudentPathItemContentType.
 const (
 	StudentPathItemContentTypeArticle StudentPathItemContentType = "article"
+	StudentPathItemContentTypeDiagram StudentPathItemContentType = "diagram"
 	StudentPathItemContentTypeVideo   StudentPathItemContentType = "video"
 )
 
@@ -193,8 +215,9 @@ const (
 
 // Defines values for ListContentNodesParamsContentType.
 const (
-	Article ListContentNodesParamsContentType = "article"
-	Video   ListContentNodesParamsContentType = "video"
+	ListContentNodesParamsContentTypeArticle ListContentNodesParamsContentType = "article"
+	ListContentNodesParamsContentTypeDiagram ListContentNodesParamsContentType = "diagram"
+	ListContentNodesParamsContentTypeVideo   ListContentNodesParamsContentType = "video"
 )
 
 // Defines values for ListContentNodesParamsDifficultyLevel.
@@ -367,6 +390,19 @@ type ContentNode struct {
 	// CreatedAt Timestamp at which the content node was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// Languages The language(s) this content node is available in, or a single
 	// "any" entry for language-agnostic content. A student whose locale
 	// matches none of these (and "any" is absent) sees this node
@@ -466,6 +502,19 @@ type CreateContentNodeRequest struct {
 	// ContentType The media format of this content node.
 	ContentType CreateContentNodeRequestContentType `json:"content_type"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// LanguageCodes One or more Language.code values this content node is available
 	// in. A single-element array containing "any" marks the content as
 	// language-agnostic; "any" cannot be combined with other language
@@ -476,7 +525,7 @@ type CreateContentNodeRequest struct {
 
 	// MediaUrl The video file or embeddable video URL students watch. Required
 	// when content_type is video; must be absent when content_type is
-	// article.
+	// article or diagram.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent A structured rich-text document, authored with MotifPath's
@@ -498,6 +547,30 @@ type CreateContentNodeRequest struct {
 // CreateContentNodeRequestContentType The media format of this content node.
 type CreateContentNodeRequestContentType string
 
+// CreateDiagramRequest Payload for creating a new diagram. Every position's string/fret vs.
+// key must match the referenced instrument's family — the API rejects
+// a request that mixes shapes or supplies the wrong shape for the
+// instrument.
+type CreateDiagramRequest struct {
+	// Classification Classification for a new or updated Diagram. Diagrams share the
+	// exact Skill/Concept tree ContentNode and Exercise use (see
+	// ClassificationInput) — not a separate tagging scheme — but carry no
+	// difficulty_level; a diagram is a reusable shape, not a leveled
+	// piece of content.
+	Classification DiagramClassificationInput `json:"classification"`
+
+	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// Name Human-readable name for this diagram.
+	Name string `json:"name"`
+
+	// Positions Every marked position in this diagram, in the coordinate shape
+	// matching the referenced instrument's family. position_id may be
+	// supplied by the client or left for the server to assign.
+	Positions []DiagramPosition `json:"positions"`
+}
+
 // CreateExerciseRequest Payload for creating a standalone, reusable exercise.
 type CreateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
@@ -508,6 +581,19 @@ type CreateExerciseRequest struct {
 	// Must not be empty; each id must reference an existing concept.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
 	// exercise once. Optional — used to fit practice sessions and
 	// challenges to a student's available time.
@@ -516,13 +602,15 @@ type CreateExerciseRequest struct {
 	// ExerciseType The type of practice interaction, which determines how its
 	// options are authored and rendered. text_response and
 	// audio_recognition options carry a text label; image_recognition
-	// options carry a region on image_url; image_choice options each
-	// carry their own image_url; audio_selection options each carry
-	// their own audio_url.
+	// options carry a region on image_url (or are derived from
+	// diagram_ref/diagram_stack_ref — see below); image_choice
+	// options each carry their own image_url or diagram_ref;
+	// audio_selection options each carry their own audio_url.
 	ExerciseType CreateExerciseRequestExerciseType `json:"exercise_type"`
 
-	// ImageUrl The stimulus image for this exercise. Required when exercise_type
-	// is image_recognition; absent otherwise.
+	// ImageUrl The stimulus image for this exercise. For exercise_type
+	// image_recognition, required unless diagram_ref or
+	// diagram_stack_ref is given instead; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
 
 	// LanguageCodes One or more Language.code values this exercise is available in.
@@ -535,8 +623,11 @@ type CreateExerciseRequest struct {
 
 	// Options The exercise's selectable answer choices. At least one option
 	// must have is_correct set to true — an exercise with no correct
-	// option cannot be graded.
-	Options []Option `json:"options"`
+	// option cannot be graded. Required unless exercise_type is
+	// image_recognition and diagram_ref or diagram_stack_ref is
+	// given, in which case options are derived automatically from the
+	// diagram's positions and must be omitted here.
+	Options *[]Option `json:"options,omitempty"`
 
 	// Prompt A structured rich-text document, authored with MotifPath's
 	// Tiptap-based content-authoring editor and persisted exactly as the
@@ -570,9 +661,10 @@ type CreateExerciseRequest struct {
 // CreateExerciseRequestExerciseType The type of practice interaction, which determines how its
 // options are authored and rendered. text_response and
 // audio_recognition options carry a text label; image_recognition
-// options carry a region on image_url; image_choice options each
-// carry their own image_url; audio_selection options each carry
-// their own audio_url.
+// options carry a region on image_url (or are derived from
+// diagram_ref/diagram_stack_ref — see below); image_choice
+// options each carry their own image_url or diagram_ref;
+// audio_selection options each carry their own audio_url.
 type CreateExerciseRequestExerciseType string
 
 // CreateExpandedContentRequest Payload for attaching an expositive item to a content node. The
@@ -624,6 +716,37 @@ type CreateExpandedContentRequest struct {
 // media_url; rich_text requires rich_content instead — the two
 // are mutually exclusive.
 type CreateExpandedContentRequestContentType string
+
+// CreateInstrumentRequest Payload for creating a new instrument. There is no update or delete
+// endpoint yet — instruments are expected to be created rarely, and
+// changing family or string/key shape after Diagrams exist against it
+// is a deliberately open question.
+type CreateInstrumentRequest struct {
+	// Family Which coordinate shape Diagrams against this instrument will use.
+	Family CreateInstrumentRequestFamily `json:"family"`
+
+	// KeyRange Required when family is keyboard; must be absent when family is fretted.
+	KeyRange *struct {
+		// Highest Note name of the highest key (e.g. "C8").
+		Highest string `json:"highest"`
+
+		// Lowest Note name of the lowest key (e.g. "A0").
+		Lowest string `json:"lowest"`
+	} `json:"key_range,omitempty"`
+
+	// Name Human-readable name for this instrument.
+	Name string `json:"name"`
+
+	// StringCount Required when family is fretted; must be absent when family is keyboard.
+	StringCount *int `json:"string_count,omitempty"`
+
+	// Tuning Required when family is fretted, with length equal to
+	// string_count; must be absent when family is keyboard.
+	Tuning *[]string `json:"tuning,omitempty"`
+}
+
+// CreateInstrumentRequestFamily Which coordinate shape Diagrams against this instrument will use.
+type CreateInstrumentRequestFamily string
 
 // CreateLearningPathRequest Payload for creating a learning path.
 type CreateLearningPathRequest struct {
@@ -683,6 +806,181 @@ type CreateSkillRequest struct {
 	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
 }
 
+// Diagram A prebuilt, reusable diagram — structured position data for a scale,
+// chord, or similar pattern on a specific instrument. Never stores a
+// rendered image or SVG; motifpath-web renders positions client-side
+// per the layer/styling/playback config carried in whatever diagram_ref
+// points at this diagram.
+type Diagram struct {
+	// Classification A Diagram's classification as returned by the API — skills/concepts
+	// embedded in full (id, name, parent_id), the same convention
+	// Classification uses for ContentNode.
+	Classification DiagramClassification `json:"classification"`
+
+	// CreatedAt Timestamp at which the diagram was created.
+	CreatedAt time.Time `json:"created_at"`
+
+	// DiagramId Stable identifier for this diagram.
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+
+	// InstrumentId The instrument this diagram is authored against.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// Name Human-readable name (e.g. "Minor Pentatonic — Position 1").
+	Name string `json:"name"`
+
+	// Positions Every marked position in this diagram. All positions share the
+	// same coordinate shape, decided by this diagram's instrument's
+	// family.
+	Positions []DiagramPosition `json:"positions"`
+}
+
+// DiagramClassification A Diagram's classification as returned by the API — skills/concepts
+// embedded in full (id, name, parent_id), the same convention
+// Classification uses for ContentNode.
+type DiagramClassification struct {
+	// Concepts The Concept tree node(s) this diagram addresses, in full.
+	Concepts []Concept `json:"concepts"`
+
+	// Skills The Skill tree node(s) this diagram illustrates, in full.
+	Skills []Skill `json:"skills"`
+}
+
+// DiagramClassificationInput Classification for a new or updated Diagram. Diagrams share the
+// exact Skill/Concept tree ContentNode and Exercise use (see
+// ClassificationInput) — not a separate tagging scheme — but carry no
+// difficulty_level; a diagram is a reusable shape, not a leveled
+// piece of content.
+type DiagramClassificationInput struct {
+	// ConceptIds The id(s) of the Concept tree node(s) this diagram addresses.
+	// Must not be empty; each id must reference an existing concept.
+	ConceptIds []openapi_types.UUID `json:"concept_ids"`
+
+	// SkillIds The id(s) of the Skill tree node(s) this diagram illustrates.
+	// Must not be empty; each id must reference an existing skill.
+	SkillIds []openapi_types.UUID `json:"skill_ids"`
+}
+
+// DiagramPosition One marked location in a Diagram — a note the diagram shows, at a
+// specific physical location on its instrument. interval, note_name,
+// and sequence_index are shared by every instrument family; string/
+// fret vs. key depend on the parent Diagram's Instrument.family and
+// are mutually exclusive, mirroring how Option's per-type fields
+// (region, image_url, audio_url) already work in this spec.
+type DiagramPosition struct {
+	// Fret Which fret this position is on. Present only when the parent
+	// Diagram's instrument family is fretted; absent when keyboard.
+	Fret *int `json:"fret,omitempty"`
+
+	// Interval The interval this position represents, relative to the
+	// Diagram's own (unstated) root — e.g. "R", "b3", "4", "5", "b7",
+	// "2", "3", "6", "7". Not globally standardized beyond being
+	// consistent within one Diagram; MotifPath does not validate
+	// interval names against a fixed enum.
+	Interval string `json:"interval"`
+
+	// Key Note name of the key, relative to the Diagram's own root (e.g.
+	// "C4"). Present only when the parent Diagram's instrument family
+	// is keyboard; absent when fretted.
+	Key *string `json:"key,omitempty"`
+
+	// NoteName The concrete note name this position sounds at the Diagram's own
+	// root (e.g. "A", "C"). A diagram_ref's root_override recomputes
+	// the note actually shown; note_name here is always relative to
+	// this Diagram's own authored root.
+	NoteName string `json:"note_name"`
+
+	// PositionId Stable identifier for this position, addressable independently
+	// of its array order — used to derive Exercise options from a
+	// diagram-driven image_recognition exercise (see Option). Always
+	// present in a response; optional in a create/update request —
+	// omitted values are assigned by the server.
+	PositionId *openapi_types.UUID `json:"position_id,omitempty"`
+
+	// SequenceIndex This position's order in an authored playback sequence (e.g. a
+	// scale run). Null means this position is not part of any defined
+	// sequence — playback (see DiagramRef) skips it regardless of
+	// playback config.
+	SequenceIndex *int `json:"sequence_index"`
+
+	// String Which string this position is on (1 = highest-pitched string).
+	// Present only when the parent Diagram's instrument family is
+	// fretted; absent when keyboard.
+	String *int `json:"string,omitempty"`
+}
+
+// DiagramRef A usage of one Diagram — its render config, never a stored variant
+// of the diagram itself. The same Diagram can be pointed at by any
+// number of DiagramRefs with different configs.
+type DiagramRef struct {
+	// CorrectIntervals Which interval value(s) among this diagram's currently-visible
+	// positions (after layers.subset filtering) are correct answers.
+	// Meaningful, and required, only when this diagram_ref is an
+	// Exercise's image_recognition stimulus (see Exercise.diagram_ref)
+	// — ignored when used as a ContentNode body or as an image_choice
+	// Option's own diagram_ref.
+	CorrectIntervals *[]string `json:"correct_intervals"`
+
+	// DiagramId The diagram this ref points at. Must reference an existing diagram.
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+
+	// Layers Which optional layers are shown, decorating the diagram's base positions.
+	Layers struct {
+		// Intervals Whether to show each visible position's interval label.
+		Intervals bool `json:"intervals"`
+
+		// ShapeOverlay Identifier of a shape overlay style (e.g. a box outline) to
+		// draw around the currently-visible positions. Null shows no
+		// overlay.
+		ShapeOverlay *string `json:"shape_overlay"`
+
+		// Subset Interval names to show; positions with any other interval
+		// are hidden. Null shows every position.
+		Subset *[]string `json:"subset"`
+	} `json:"layers"`
+
+	// Playback Sequenced playback config. Only affects positions with a
+	// non-null sequence_index; null means this usage does not play
+	// back.
+	Playback *struct {
+		// Direction Order to step through sequence_index values in.
+		Direction DiagramRefPlaybackDirection `json:"direction"`
+
+		// StepMs Milliseconds between each position during playback.
+		StepMs int `json:"step_ms"`
+	} `json:"playback"`
+
+	// RootOverride Transposes the diagram to this root note (e.g. "C"). Null uses
+	// the diagram's own authored root. The actual transposition math
+	// is motifpath-web rendering logic, not decided by this schema.
+	RootOverride *string `json:"root_override"`
+
+	// Styling Author-chosen colors for this usage. Null uses motifpath-web's
+	// default colors entirely.
+	Styling *struct {
+		// IntervalColor Color for every visible non-root position. Null uses the default.
+		IntervalColor *string `json:"interval_color"`
+
+		// RootColor Color for root-interval positions. Null uses the default.
+		RootColor *string `json:"root_color"`
+	} `json:"styling"`
+}
+
+// DiagramRefPlaybackDirection Order to step through sequence_index values in.
+type DiagramRefPlaybackDirection string
+
+// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+// overlaid on its relative major, at the same fretboard position.
+// Painted in array order; later entries render on top of earlier
+// ones. Every entry must reference a Diagram on the same instrument —
+// stacking diagrams from different instruments is rejected, since
+// there is no shared coordinate space to composite into.
+type DiagramStackRef struct {
+	// Stack The diagrams to composite, in paint order. Every referenced
+	// Diagram must share the same instrument_id.
+	Stack []DiagramRef `json:"stack"`
+}
+
 // Exercise A reusable, standalone practice item classified by Skill/Concept
 // tree references and independent of any single challenge. The
 // exercise_id is the value the SPA supplies in exercise-family
@@ -710,6 +1008,19 @@ type Exercise struct {
 	// CreatedAt Timestamp at which the exercise was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
 	// exercise once. Used to fit a practice session to the time a
 	// student reports having available, and to size a challenge's
@@ -722,7 +1033,8 @@ type Exercise struct {
 	// ExerciseType The type of practice interaction.
 	ExerciseType ExerciseExerciseType `json:"exercise_type"`
 
-	// ImageUrl The stimulus image for this exercise, present when exercise_type is image_recognition.
+	// ImageUrl The stimulus image for this exercise, present when exercise_type
+	// is image_recognition and diagram_ref/diagram_stack_ref are absent.
 	ImageUrl *string `json:"image_url,omitempty"`
 
 	// Languages The language(s) this exercise is available in, or a single "any"
@@ -732,7 +1044,10 @@ type Exercise struct {
 	// from.
 	Languages []Language `json:"languages"`
 
-	// Options The exercise's selectable answer choices.
+	// Options The exercise's selectable answer choices. When diagram_ref or
+	// diagram_stack_ref is present, these are derived automatically
+	// from the diagram's positions (see Option.diagram_position_id)
+	// rather than authored directly.
 	Options []Option `json:"options"`
 
 	// Prompt A structured rich-text document, authored with MotifPath's
@@ -835,6 +1150,54 @@ type HealthStatusChecks string
 // used only on the readiness probe when the service should be taken out of rotation.
 type HealthStatusStatus string
 
+// Instrument An instrument a Diagram can be authored against. family decides the
+// shape of every Diagram.positions[].coordinate written for this
+// instrument — fretted instruments (guitar, bass, ...) share one
+// coordinate shape (string, fret); keyboard instruments (piano) use a
+// different one (key). family is open-ended: a genuinely new
+// coordinate shape is a new family value plus new coordinate fields,
+// not a breaking change to existing instruments or diagrams.
+type Instrument struct {
+	// Family Which coordinate shape Diagrams authored against this
+	// instrument use. fretted diagrams populate
+	// positions[].string/positions[].fret; keyboard diagrams populate
+	// positions[].key. A single Diagram cannot mix families.
+	Family InstrumentFamily `json:"family"`
+
+	// InstrumentId Stable identifier for this instrument.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// KeyRange The lowest and highest playable key, by note name. Present only
+	// when family is keyboard; absent when family is fretted.
+	KeyRange *struct {
+		// Highest Note name of the highest key (e.g. "C8").
+		Highest string `json:"highest"`
+
+		// Lowest Note name of the lowest key (e.g. "A0").
+		Lowest string `json:"lowest"`
+	} `json:"key_range,omitempty"`
+
+	// Name Human-readable name (e.g. "6-string guitar, standard tuning",
+	// "4-string bass", "Piano").
+	Name string `json:"name"`
+
+	// StringCount Number of strings/courses. Present only when family is fretted;
+	// absent when family is keyboard.
+	StringCount *int `json:"string_count,omitempty"`
+
+	// Tuning Open-string note name per string, lowest string first (e.g.
+	// ["E", "A", "D", "G", "B", "E"] for standard guitar tuning).
+	// Present only when family is fretted, with length equal to
+	// string_count; absent when family is keyboard.
+	Tuning *[]string `json:"tuning,omitempty"`
+}
+
+// InstrumentFamily Which coordinate shape Diagrams authored against this
+// instrument use. fretted diagrams populate
+// positions[].string/positions[].fret; keyboard diagrams populate
+// positions[].key. A single Diagram cannot mix families.
+type InstrumentFamily string
+
 // Language A language MotifPath content or a user's locale preference can be
 // tagged with. Includes the literal code "any", which marks content as
 // language-agnostic (e.g. an image with no spoken or written words)
@@ -916,16 +1279,36 @@ type NotFoundError struct {
 // correct answer is expressed by marking one or more options as
 // is_correct. The fields expected beyond option_id and is_correct
 // depend on the parent exercise's exercise_type: image_recognition
-// options carry region, image_choice options carry image_url,
-// audio_selection options carry audio_url, and text_response /
-// audio_recognition options carry label.
+// options carry region, or are entirely server-derived (see
+// diagram_id/diagram_position_id) when the exercise uses diagram_ref/
+// diagram_stack_ref instead of image_url; image_choice options carry
+// image_url or diagram_ref; audio_selection options carry audio_url;
+// text_response/audio_recognition options carry label.
 type Option struct {
 	// AudioUrl The audio clip shown for this option. Required for
 	// audio_selection options; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
-	// ImageUrl The image shown for this option. Required for image_choice
-	// options; absent otherwise.
+	// DiagramId Which Diagram this option's clickable position came from.
+	// Server-derived and read-only: present only on options belonging
+	// to an image_recognition exercise whose stimulus is diagram_ref/
+	// diagram_stack_ref, absent for every authored option (including
+	// image_choice's own diagram_ref, which is a per-option thumbnail,
+	// not a source of derived options).
+	DiagramId *openapi_types.UUID `json:"diagram_id,omitempty"`
+
+	// DiagramPositionId Which position (DiagramPosition.position_id) within diagram_id
+	// this option represents. Server-derived and read-only, present
+	// under the same condition as diagram_id.
+	DiagramPositionId *openapi_types.UUID `json:"diagram_position_id,omitempty"`
+
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// ImageUrl The image shown for this option. For image_choice options,
+	// required unless diagram_ref is given instead; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
 
 	// IsCorrect Whether selecting this option counts as a correct answer.
@@ -1270,6 +1653,19 @@ type UpdateContentNodeRequest struct {
 	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// LanguageCodes One or more Language.code values this content node is available
 	// in, replacing its current set. A single-element array containing
 	// "any" marks the content as language-agnostic; "any" cannot be
@@ -1279,7 +1675,7 @@ type UpdateContentNodeRequest struct {
 
 	// MediaUrl The video file or embeddable video URL students watch, replacing
 	// the current value. Required when the content node's content_type
-	// is video; must be absent when it is article.
+	// is video; must be absent when it is article or diagram.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent A structured rich-text document, authored with MotifPath's
@@ -1298,6 +1694,27 @@ type UpdateContentNodeRequest struct {
 	Title string `json:"title"`
 }
 
+// UpdateDiagramRequest Payload for replacing an existing diagram's name, positions, or
+// classification. instrument_id is not present here — it cannot be
+// changed after creation, since every position's coordinate shape
+// depends on it.
+type UpdateDiagramRequest struct {
+	// Classification Classification for a new or updated Diagram. Diagrams share the
+	// exact Skill/Concept tree ContentNode and Exercise use (see
+	// ClassificationInput) — not a separate tagging scheme — but carry no
+	// difficulty_level; a diagram is a reusable shape, not a leveled
+	// piece of content.
+	Classification *DiagramClassificationInput `json:"classification,omitempty"`
+
+	// Name Human-readable name for this diagram, replacing the current value.
+	Name *string `json:"name,omitempty"`
+
+	// Positions The diagram's full position list, replacing the current set. A
+	// caller that only wants to change one position must resend the
+	// full set.
+	Positions *[]DiagramPosition `json:"positions,omitempty"`
+}
+
 // UpdateExerciseRequest Payload for replacing an existing exercise's authored content.
 // exercise_type is not present here — it cannot be changed after
 // creation. options fully replaces the exercise's current options, the
@@ -1313,13 +1730,27 @@ type UpdateExerciseRequest struct {
 	// reference an existing concept.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
+
 	// EstimatedDurationSeconds Authoring estimate of the time a student needs to attempt this
 	// exercise once. Optional — used to fit practice sessions and
 	// challenges to a student's available time.
 	EstimatedDurationSeconds *int `json:"estimated_duration_seconds,omitempty"`
 
-	// ImageUrl The stimulus image for this exercise. Required when the
-	// exercise's exercise_type is image_recognition; absent otherwise.
+	// ImageUrl The stimulus image for this exercise. For exercise_type
+	// image_recognition, required unless diagram_ref or
+	// diagram_stack_ref is given instead; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
 
 	// LanguageCodes One or more Language.code values this exercise is available in,
@@ -1331,8 +1762,10 @@ type UpdateExerciseRequest struct {
 
 	// Options The exercise's selectable answer choices, replacing its current
 	// set. At least one option must have is_correct set to true — an
-	// exercise with no correct option cannot be graded.
-	Options []Option `json:"options"`
+	// exercise with no correct option cannot be graded. Must be
+	// omitted when the exercise's exercise_type is image_recognition
+	// and diagram_ref or diagram_stack_ref is given.
+	Options *[]Option `json:"options,omitempty"`
 
 	// Prompt A structured rich-text document, authored with MotifPath's
 	// Tiptap-based content-authoring editor and persisted exactly as the
@@ -1477,6 +1910,18 @@ type ListContentNodesParamsContentType string
 // ListContentNodesParamsDifficultyLevel defines parameters for ListContentNodes.
 type ListContentNodesParamsDifficultyLevel string
 
+// ListDiagramsParams defines parameters for ListDiagrams.
+type ListDiagramsParams struct {
+	// InstrumentId When given, only diagrams authored against this instrument are returned.
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+
+	// SkillId When given, only diagrams with this exact skill id among their linked skills are returned.
+	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
+
+	// ConceptId When given, only diagrams with this exact concept id among their linked concepts are returned.
+	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
+}
+
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
 	// SkillId When given, only exercises linked to this exact skill id are
@@ -1518,6 +1963,12 @@ type CreateChallengeJSONRequestBody = CreateChallengeRequest
 // CreateExpandedContentJSONRequestBody defines body for CreateExpandedContent for application/json ContentType.
 type CreateExpandedContentJSONRequestBody = CreateExpandedContentRequest
 
+// CreateDiagramJSONRequestBody defines body for CreateDiagram for application/json ContentType.
+type CreateDiagramJSONRequestBody = CreateDiagramRequest
+
+// UpdateDiagramJSONRequestBody defines body for UpdateDiagram for application/json ContentType.
+type UpdateDiagramJSONRequestBody = UpdateDiagramRequest
+
 // CreateExerciseJSONRequestBody defines body for CreateExercise for application/json ContentType.
 type CreateExerciseJSONRequestBody = CreateExerciseRequest
 
@@ -1526,6 +1977,9 @@ type UpdateExerciseJSONRequestBody = UpdateExerciseRequest
 
 // UpdateExpandedContentJSONRequestBody defines body for UpdateExpandedContent for application/json ContentType.
 type UpdateExpandedContentJSONRequestBody = UpdateExpandedContentRequest
+
+// CreateInstrumentJSONRequestBody defines body for CreateInstrument for application/json ContentType.
+type CreateInstrumentJSONRequestBody = CreateInstrumentRequest
 
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
@@ -1604,6 +2058,18 @@ type ServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// List prebuilt diagrams for authoring
+	// (GET /diagrams)
+	ListDiagrams(w http.ResponseWriter, r *http.Request, params ListDiagramsParams)
+	// Create a prebuilt diagram
+	// (POST /diagrams)
+	CreateDiagram(w http.ResponseWriter, r *http.Request)
+	// Retrieve a diagram by ID
+	// (GET /diagrams/{diagram_id})
+	GetDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID)
+	// Update a diagram's name, positions, or classification
+	// (PATCH /diagrams/{diagram_id})
+	UpdateDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID)
 	// List standalone exercises for authoring
 	// (GET /exercises)
 	ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams)
@@ -1628,6 +2094,12 @@ type ServerInterface interface {
 	// Liveness probe
 	// (GET /healthz)
 	LivenessCheck(w http.ResponseWriter, r *http.Request)
+	// List all known instruments
+	// (GET /instruments)
+	ListInstruments(w http.ResponseWriter, r *http.Request)
+	// Create an instrument
+	// (POST /instruments)
+	CreateInstrument(w http.ResponseWriter, r *http.Request)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(w http.ResponseWriter, r *http.Request)
@@ -1784,6 +2256,30 @@ func (_ Unimplemented) CreateExpandedContent(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List prebuilt diagrams for authoring
+// (GET /diagrams)
+func (_ Unimplemented) ListDiagrams(w http.ResponseWriter, r *http.Request, params ListDiagramsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a prebuilt diagram
+// (POST /diagrams)
+func (_ Unimplemented) CreateDiagram(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Retrieve a diagram by ID
+// (GET /diagrams/{diagram_id})
+func (_ Unimplemented) GetDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update a diagram's name, positions, or classification
+// (PATCH /diagrams/{diagram_id})
+func (_ Unimplemented) UpdateDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // List standalone exercises for authoring
 // (GET /exercises)
 func (_ Unimplemented) ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams) {
@@ -1829,6 +2325,18 @@ func (_ Unimplemented) UpdateExpandedContent(w http.ResponseWriter, r *http.Requ
 // Liveness probe
 // (GET /healthz)
 func (_ Unimplemented) LivenessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all known instruments
+// (GET /instruments)
+func (_ Unimplemented) ListInstruments(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create an instrument
+// (POST /instruments)
+func (_ Unimplemented) CreateInstrument(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2512,6 +3020,137 @@ func (siw *ServerInterfaceWrapper) CreateExpandedContent(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// ListDiagrams operation middleware
+func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDiagramsParams
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_id", r.URL.Query(), &params.SkillId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDiagrams(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateDiagram operation middleware
+func (siw *ServerInterfaceWrapper) CreateDiagram(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateDiagram(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDiagram operation middleware
+func (siw *ServerInterfaceWrapper) GetDiagram(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "diagram_id" -------------
+	var diagramId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "diagram_id", chi.URLParam(r, "diagram_id"), &diagramId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "diagram_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDiagram(w, r, diagramId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateDiagram operation middleware
+func (siw *ServerInterfaceWrapper) UpdateDiagram(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "diagram_id" -------------
+	var diagramId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "diagram_id", chi.URLParam(r, "diagram_id"), &diagramId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "diagram_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateDiagram(w, r, diagramId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListExercises operation middleware
 func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.Request) {
 
@@ -2733,6 +3372,46 @@ func (siw *ServerInterfaceWrapper) LivenessCheck(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LivenessCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListInstruments operation middleware
+func (siw *ServerInterfaceWrapper) ListInstruments(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListInstruments(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateInstrument operation middleware
+func (siw *ServerInterfaceWrapper) CreateInstrument(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateInstrument(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3245,6 +3924,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/expanded-content", wrapper.CreateExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/diagrams", wrapper.ListDiagrams)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/diagrams", wrapper.CreateDiagram)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/diagrams/{diagram_id}", wrapper.GetDiagram)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/diagrams/{diagram_id}", wrapper.UpdateDiagram)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises", wrapper.ListExercises)
 	})
 	r.Group(func(r chi.Router) {
@@ -3267,6 +3958,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.LivenessCheck)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/instruments", wrapper.ListInstruments)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instruments", wrapper.CreateInstrument)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths", wrapper.ListLearningPaths)
@@ -4090,6 +4787,165 @@ func (response CreateExpandedContent404JSONResponse) VisitCreateExpandedContentR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListDiagramsRequestObject struct {
+	Params ListDiagramsParams
+}
+
+type ListDiagramsResponseObject interface {
+	VisitListDiagramsResponse(w http.ResponseWriter) error
+}
+
+type ListDiagrams200JSONResponse []Diagram
+
+func (response ListDiagrams200JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagrams401JSONResponse UnauthorizedError
+
+func (response ListDiagrams401JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateDiagramRequestObject struct {
+	Body *CreateDiagramJSONRequestBody
+}
+
+type CreateDiagramResponseObject interface {
+	VisitCreateDiagramResponse(w http.ResponseWriter) error
+}
+
+type CreateDiagram201JSONResponse Diagram
+
+func (response CreateDiagram201JSONResponse) VisitCreateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateDiagram400JSONResponse ValidationError
+
+func (response CreateDiagram400JSONResponse) VisitCreateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateDiagram401JSONResponse UnauthorizedError
+
+func (response CreateDiagram401JSONResponse) VisitCreateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateDiagram403JSONResponse ForbiddenError
+
+func (response CreateDiagram403JSONResponse) VisitCreateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDiagramRequestObject struct {
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+}
+
+type GetDiagramResponseObject interface {
+	VisitGetDiagramResponse(w http.ResponseWriter) error
+}
+
+type GetDiagram200JSONResponse Diagram
+
+func (response GetDiagram200JSONResponse) VisitGetDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDiagram401JSONResponse UnauthorizedError
+
+func (response GetDiagram401JSONResponse) VisitGetDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetDiagram404JSONResponse NotFoundError
+
+func (response GetDiagram404JSONResponse) VisitGetDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagramRequestObject struct {
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+	Body      *UpdateDiagramJSONRequestBody
+}
+
+type UpdateDiagramResponseObject interface {
+	VisitUpdateDiagramResponse(w http.ResponseWriter) error
+}
+
+type UpdateDiagram200JSONResponse Diagram
+
+func (response UpdateDiagram200JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagram400JSONResponse ValidationError
+
+func (response UpdateDiagram400JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagram401JSONResponse UnauthorizedError
+
+func (response UpdateDiagram401JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagram403JSONResponse ForbiddenError
+
+func (response UpdateDiagram403JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagram404JSONResponse NotFoundError
+
+func (response UpdateDiagram404JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListExercisesRequestObject struct {
 	Params ListExercisesParams
 }
@@ -4402,6 +5258,75 @@ type LivenessCheck200JSONResponse HealthStatus
 func (response LivenessCheck200JSONResponse) VisitLivenessCheckResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListInstrumentsRequestObject struct {
+}
+
+type ListInstrumentsResponseObject interface {
+	VisitListInstrumentsResponse(w http.ResponseWriter) error
+}
+
+type ListInstruments200JSONResponse []Instrument
+
+func (response ListInstruments200JSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListInstruments401JSONResponse UnauthorizedError
+
+func (response ListInstruments401JSONResponse) VisitListInstrumentsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInstrumentRequestObject struct {
+	Body *CreateInstrumentJSONRequestBody
+}
+
+type CreateInstrumentResponseObject interface {
+	VisitCreateInstrumentResponse(w http.ResponseWriter) error
+}
+
+type CreateInstrument201JSONResponse Instrument
+
+func (response CreateInstrument201JSONResponse) VisitCreateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInstrument400JSONResponse ValidationError
+
+func (response CreateInstrument400JSONResponse) VisitCreateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInstrument401JSONResponse UnauthorizedError
+
+func (response CreateInstrument401JSONResponse) VisitCreateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateInstrument403JSONResponse ForbiddenError
+
+func (response CreateInstrument403JSONResponse) VisitCreateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -5030,6 +5955,18 @@ type StrictServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(ctx context.Context, request CreateExpandedContentRequestObject) (CreateExpandedContentResponseObject, error)
+	// List prebuilt diagrams for authoring
+	// (GET /diagrams)
+	ListDiagrams(ctx context.Context, request ListDiagramsRequestObject) (ListDiagramsResponseObject, error)
+	// Create a prebuilt diagram
+	// (POST /diagrams)
+	CreateDiagram(ctx context.Context, request CreateDiagramRequestObject) (CreateDiagramResponseObject, error)
+	// Retrieve a diagram by ID
+	// (GET /diagrams/{diagram_id})
+	GetDiagram(ctx context.Context, request GetDiagramRequestObject) (GetDiagramResponseObject, error)
+	// Update a diagram's name, positions, or classification
+	// (PATCH /diagrams/{diagram_id})
+	UpdateDiagram(ctx context.Context, request UpdateDiagramRequestObject) (UpdateDiagramResponseObject, error)
 	// List standalone exercises for authoring
 	// (GET /exercises)
 	ListExercises(ctx context.Context, request ListExercisesRequestObject) (ListExercisesResponseObject, error)
@@ -5054,6 +5991,12 @@ type StrictServerInterface interface {
 	// Liveness probe
 	// (GET /healthz)
 	LivenessCheck(ctx context.Context, request LivenessCheckRequestObject) (LivenessCheckResponseObject, error)
+	// List all known instruments
+	// (GET /instruments)
+	ListInstruments(ctx context.Context, request ListInstrumentsRequestObject) (ListInstrumentsResponseObject, error)
+	// Create an instrument
+	// (POST /instruments)
+	CreateInstrument(ctx context.Context, request CreateInstrumentRequestObject) (CreateInstrumentResponseObject, error)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(ctx context.Context, request ListLearningPathsRequestObject) (ListLearningPathsResponseObject, error)
@@ -5635,6 +6578,122 @@ func (sh *strictHandler) CreateExpandedContent(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// ListDiagrams operation middleware
+func (sh *strictHandler) ListDiagrams(w http.ResponseWriter, r *http.Request, params ListDiagramsParams) {
+	var request ListDiagramsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDiagrams(ctx, request.(ListDiagramsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDiagrams")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDiagramsResponseObject); ok {
+		if err := validResponse.VisitListDiagramsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateDiagram operation middleware
+func (sh *strictHandler) CreateDiagram(w http.ResponseWriter, r *http.Request) {
+	var request CreateDiagramRequestObject
+
+	var body CreateDiagramJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateDiagram(ctx, request.(CreateDiagramRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateDiagram")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateDiagramResponseObject); ok {
+		if err := validResponse.VisitCreateDiagramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDiagram operation middleware
+func (sh *strictHandler) GetDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID) {
+	var request GetDiagramRequestObject
+
+	request.DiagramId = diagramId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDiagram(ctx, request.(GetDiagramRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDiagram")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDiagramResponseObject); ok {
+		if err := validResponse.VisitGetDiagramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateDiagram operation middleware
+func (sh *strictHandler) UpdateDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID) {
+	var request UpdateDiagramRequestObject
+
+	request.DiagramId = diagramId
+
+	var body UpdateDiagramJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateDiagram(ctx, request.(UpdateDiagramRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateDiagram")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateDiagramResponseObject); ok {
+		if err := validResponse.VisitUpdateDiagramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListExercises operation middleware
 func (sh *strictHandler) ListExercises(w http.ResponseWriter, r *http.Request, params ListExercisesParams) {
 	var request ListExercisesRequestObject
@@ -5853,6 +6912,61 @@ func (sh *strictHandler) LivenessCheck(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LivenessCheckResponseObject); ok {
 		if err := validResponse.VisitLivenessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListInstruments operation middleware
+func (sh *strictHandler) ListInstruments(w http.ResponseWriter, r *http.Request) {
+	var request ListInstrumentsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListInstruments(ctx, request.(ListInstrumentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListInstruments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListInstrumentsResponseObject); ok {
+		if err := validResponse.VisitListInstrumentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateInstrument operation middleware
+func (sh *strictHandler) CreateInstrument(w http.ResponseWriter, r *http.Request) {
+	var request CreateInstrumentRequestObject
+
+	var body CreateInstrumentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateInstrument(ctx, request.(CreateInstrumentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateInstrument")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateInstrumentResponseObject); ok {
+		if err := validResponse.VisitCreateInstrumentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

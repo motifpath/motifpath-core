@@ -45,6 +45,8 @@ type Handler struct {
 	media      *application.MediaService
 	path       *application.LearningPathService
 	assignment *application.PathAssignmentService
+	instrument *application.InstrumentService
+	diagram    *application.DiagramService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -64,6 +66,8 @@ func NewHandler(
 	media *application.MediaService,
 	path *application.LearningPathService,
 	assignment *application.PathAssignmentService,
+	instrument *application.InstrumentService,
+	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
 ) *Handler {
@@ -77,6 +81,8 @@ func NewHandler(
 		media:                 media,
 		path:                  path,
 		assignment:            assignment,
+		instrument:            instrument,
+		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
 	}
@@ -367,7 +373,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
 		domain.ExerciseType(body.ExerciseType), uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
-		body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		body.ImageUrl, body.AudioUrl, toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -439,7 +445,7 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
 		uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
-		body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		body.ImageUrl, body.AudioUrl, toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -981,4 +987,136 @@ func (h *Handler) CreateConcept(ctx context.Context, request generated.CreateCon
 	}
 
 	return generated.CreateConcept201JSONResponse(toGeneratedConcept(concept)), nil
+}
+
+func (h *Handler) ListInstruments(ctx context.Context, _ generated.ListInstrumentsRequestObject) (generated.ListInstrumentsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListInstruments401JSONResponse(unauthorizedError()), nil
+	}
+
+	instruments, err := h.instrument.ListInstruments(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListInstruments200JSONResponse(toGeneratedInstruments(instruments)), nil
+}
+
+func (h *Handler) CreateInstrument(ctx context.Context, request generated.CreateInstrumentRequestObject) (generated.CreateInstrumentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateInstrument401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	var tuning []string
+	if body.Tuning != nil {
+		tuning = *body.Tuning
+	}
+	var keyRange *domain.KeyRange
+	if body.KeyRange != nil {
+		keyRange = &domain.KeyRange{Lowest: body.KeyRange.Lowest, Highest: body.KeyRange.Highest}
+	}
+	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Name, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateInstrument400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateInstrument403JSONResponse(forbiddenError("only teachers and admins may create an instrument")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateInstrument201JSONResponse(toGeneratedInstrument(instrument)), nil
+}
+
+func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagramsRequestObject) (generated.ListDiagramsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListDiagrams401JSONResponse(unauthorizedError()), nil
+	}
+
+	diagrams, err := h.diagram.ListDiagrams(ctx,
+		uuidPtrToString(request.Params.InstrumentId), uuidPtrToString(request.Params.SkillId), uuidPtrToString(request.Params.ConceptId))
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListDiagrams200JSONResponse(toGeneratedDiagrams(diagrams)), nil
+}
+
+func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDiagramRequestObject) (generated.CreateDiagramResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	diagram, err := h.diagram.CreateDiagram(ctx, caller, body.InstrumentId.String(), body.Name, toDomainPositions(body.Positions),
+		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateDiagram403JSONResponse(forbiddenError("only teachers and admins may create a diagram")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateDiagram201JSONResponse(toGeneratedDiagram(diagram)), nil
+}
+
+func (h *Handler) GetDiagram(ctx context.Context, request generated.GetDiagramRequestObject) (generated.GetDiagramResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	diagram, err := h.diagram.GetDiagram(ctx, request.DiagramId.String())
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindNotFound {
+			return generated.GetDiagram404JSONResponse(notFoundError("no diagram exists with the given diagram_id")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetDiagram200JSONResponse(toGeneratedDiagram(diagram)), nil
+}
+
+func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDiagramRequestObject) (generated.UpdateDiagramResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateDiagram401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	update := application.DiagramUpdate{Name: body.Name}
+	if body.Positions != nil {
+		update.Positions = toDomainPositions(*body.Positions)
+	}
+	if body.Classification != nil {
+		update.SkillIDs = uuidsToStrings(body.Classification.SkillIds)
+		update.ConceptIDs = uuidsToStrings(body.Classification.ConceptIds)
+	}
+
+	diagram, err := h.diagram.UpdateDiagram(ctx, caller, request.DiagramId.String(), update)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateDiagram403JSONResponse(forbiddenError("only teachers and admins may update a diagram")), nil
+		case errKindNotFound:
+			return generated.UpdateDiagram404JSONResponse(notFoundError("no diagram exists with the given diagram_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateDiagram200JSONResponse(toGeneratedDiagram(diagram)), nil
 }

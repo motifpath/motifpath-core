@@ -16,6 +16,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -32,8 +34,10 @@ type ConceptQuery struct {
 	withParent              *ConceptQuery
 	withContentNodes        *ContentNodeQuery
 	withExercises           *ExerciseQuery
+	withDiagrams            *DiagramQuery
 	withContentNodeConcepts *ContentNodeConceptQuery
 	withExerciseConcepts    *ExerciseConceptQuery
+	withDiagramConcepts     *DiagramConceptQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -158,6 +162,28 @@ func (_q *ConceptQuery) QueryExercises() *ExerciseQuery {
 	return query
 }
 
+// QueryDiagrams chains the current query on the "diagrams" edge.
+func (_q *ConceptQuery) QueryDiagrams() *DiagramQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(concept.Table, concept.FieldID, selector),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, concept.DiagramsTable, concept.DiagramsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryContentNodeConcepts chains the current query on the "content_node_concepts" edge.
 func (_q *ConceptQuery) QueryContentNodeConcepts() *ContentNodeConceptQuery {
 	query := (&ContentNodeConceptClient{config: _q.config}).Query()
@@ -195,6 +221,28 @@ func (_q *ConceptQuery) QueryExerciseConcepts() *ExerciseConceptQuery {
 			sqlgraph.From(concept.Table, concept.FieldID, selector),
 			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, concept.ExerciseConceptsTable, concept.ExerciseConceptsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDiagramConcepts chains the current query on the "diagram_concepts" edge.
+func (_q *ConceptQuery) QueryDiagramConcepts() *DiagramConceptQuery {
+	query := (&DiagramConceptClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(concept.Table, concept.FieldID, selector),
+			sqlgraph.To(diagramconcept.Table, diagramconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, concept.DiagramConceptsTable, concept.DiagramConceptsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -398,8 +446,10 @@ func (_q *ConceptQuery) Clone() *ConceptQuery {
 		withParent:              _q.withParent.Clone(),
 		withContentNodes:        _q.withContentNodes.Clone(),
 		withExercises:           _q.withExercises.Clone(),
+		withDiagrams:            _q.withDiagrams.Clone(),
 		withContentNodeConcepts: _q.withContentNodeConcepts.Clone(),
 		withExerciseConcepts:    _q.withExerciseConcepts.Clone(),
+		withDiagramConcepts:     _q.withDiagramConcepts.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -450,6 +500,17 @@ func (_q *ConceptQuery) WithExercises(opts ...func(*ExerciseQuery)) *ConceptQuer
 	return _q
 }
 
+// WithDiagrams tells the query-builder to eager-load the nodes that are connected to
+// the "diagrams" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ConceptQuery) WithDiagrams(opts ...func(*DiagramQuery)) *ConceptQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDiagrams = query
+	return _q
+}
+
 // WithContentNodeConcepts tells the query-builder to eager-load the nodes that are connected to
 // the "content_node_concepts" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *ConceptQuery) WithContentNodeConcepts(opts ...func(*ContentNodeConceptQuery)) *ConceptQuery {
@@ -469,6 +530,17 @@ func (_q *ConceptQuery) WithExerciseConcepts(opts ...func(*ExerciseConceptQuery)
 		opt(query)
 	}
 	_q.withExerciseConcepts = query
+	return _q
+}
+
+// WithDiagramConcepts tells the query-builder to eager-load the nodes that are connected to
+// the "diagram_concepts" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ConceptQuery) WithDiagramConcepts(opts ...func(*DiagramConceptQuery)) *ConceptQuery {
+	query := (&DiagramConceptClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDiagramConcepts = query
 	return _q
 }
 
@@ -550,13 +622,15 @@ func (_q *ConceptQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Conc
 	var (
 		nodes       = []*Concept{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [8]bool{
 			_q.withChildren != nil,
 			_q.withParent != nil,
 			_q.withContentNodes != nil,
 			_q.withExercises != nil,
+			_q.withDiagrams != nil,
 			_q.withContentNodeConcepts != nil,
 			_q.withExerciseConcepts != nil,
+			_q.withDiagramConcepts != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -604,6 +678,13 @@ func (_q *ConceptQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Conc
 			return nil, err
 		}
 	}
+	if query := _q.withDiagrams; query != nil {
+		if err := _q.loadDiagrams(ctx, query, nodes,
+			func(n *Concept) { n.Edges.Diagrams = []*Diagram{} },
+			func(n *Concept, e *Diagram) { n.Edges.Diagrams = append(n.Edges.Diagrams, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withContentNodeConcepts; query != nil {
 		if err := _q.loadContentNodeConcepts(ctx, query, nodes,
 			func(n *Concept) { n.Edges.ContentNodeConcepts = []*ContentNodeConcept{} },
@@ -617,6 +698,13 @@ func (_q *ConceptQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Conc
 		if err := _q.loadExerciseConcepts(ctx, query, nodes,
 			func(n *Concept) { n.Edges.ExerciseConcepts = []*ExerciseConcept{} },
 			func(n *Concept, e *ExerciseConcept) { n.Edges.ExerciseConcepts = append(n.Edges.ExerciseConcepts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDiagramConcepts; query != nil {
+		if err := _q.loadDiagramConcepts(ctx, query, nodes,
+			func(n *Concept) { n.Edges.DiagramConcepts = []*DiagramConcept{} },
+			func(n *Concept, e *DiagramConcept) { n.Edges.DiagramConcepts = append(n.Edges.DiagramConcepts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -810,6 +898,67 @@ func (_q *ConceptQuery) loadExercises(ctx context.Context, query *ExerciseQuery,
 	}
 	return nil
 }
+func (_q *ConceptQuery) loadDiagrams(ctx context.Context, query *DiagramQuery, nodes []*Concept, init func(*Concept), assign func(*Concept, *Diagram)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Concept)
+	nids := make(map[uuid.UUID]map[*Concept]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(concept.DiagramsTable)
+		s.Join(joinT).On(s.C(diagram.FieldID), joinT.C(concept.DiagramsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(concept.DiagramsPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(concept.DiagramsPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Concept]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Diagram](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "diagrams" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
 func (_q *ConceptQuery) loadContentNodeConcepts(ctx context.Context, query *ContentNodeConceptQuery, nodes []*Concept, init func(*Concept), assign func(*Concept, *ContentNodeConcept)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[uuid.UUID]*Concept)
@@ -855,6 +1004,36 @@ func (_q *ConceptQuery) loadExerciseConcepts(ctx context.Context, query *Exercis
 	}
 	query.Where(predicate.ExerciseConcept(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(concept.ExerciseConceptsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ConceptID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "concept_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ConceptQuery) loadDiagramConcepts(ctx context.Context, query *DiagramConceptQuery, nodes []*Concept, init func(*Concept), assign func(*Concept, *DiagramConcept)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Concept)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(diagramconcept.FieldConceptID)
+	}
+	query.Where(predicate.DiagramConcept(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(concept.DiagramConceptsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

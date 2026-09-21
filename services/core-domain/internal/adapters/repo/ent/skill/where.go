@@ -251,6 +251,29 @@ func HasExercisesWith(preds ...predicate.Exercise) predicate.Skill {
 	})
 }
 
+// HasDiagrams applies the HasEdge predicate on the "diagrams" edge.
+func HasDiagrams() predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, DiagramsTable, DiagramsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDiagramsWith applies the HasEdge predicate on the "diagrams" edge with a given conditions (other predicates).
+func HasDiagramsWith(preds ...predicate.Diagram) predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := newDiagramsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasContentNodeSkills applies the HasEdge predicate on the "content_node_skills" edge.
 func HasContentNodeSkills() predicate.Skill {
 	return predicate.Skill(func(s *sql.Selector) {
@@ -289,6 +312,29 @@ func HasExerciseSkills() predicate.Skill {
 func HasExerciseSkillsWith(preds ...predicate.ExerciseSkill) predicate.Skill {
 	return predicate.Skill(func(s *sql.Selector) {
 		step := newExerciseSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDiagramSkills applies the HasEdge predicate on the "diagram_skills" edge.
+func HasDiagramSkills() predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, DiagramSkillsTable, DiagramSkillsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDiagramSkillsWith applies the HasEdge predicate on the "diagram_skills" edge with a given conditions (other predicates).
+func HasDiagramSkillsWith(preds ...predicate.DiagramSkill) predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := newDiagramSkillsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

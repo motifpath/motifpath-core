@@ -13,6 +13,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 )
@@ -108,6 +110,21 @@ func (_c *ConceptCreate) AddExercises(v ...*Exercise) *ConceptCreate {
 	return _c.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_c *ConceptCreate) AddDiagramIDs(ids ...uuid.UUID) *ConceptCreate {
+	_c.mutation.AddDiagramIDs(ids...)
+	return _c
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_c *ConceptCreate) AddDiagrams(v ...*Diagram) *ConceptCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
 func (_c *ConceptCreate) AddContentNodeConceptIDs(ids ...int) *ConceptCreate {
 	_c.mutation.AddContentNodeConceptIDs(ids...)
@@ -136,6 +153,21 @@ func (_c *ConceptCreate) AddExerciseConcepts(v ...*ExerciseConcept) *ConceptCrea
 		ids[i] = v[i].ID
 	}
 	return _c.AddExerciseConceptIDs(ids...)
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (_c *ConceptCreate) AddDiagramConceptIDs(ids ...int) *ConceptCreate {
+	_c.mutation.AddDiagramConceptIDs(ids...)
+	return _c
+}
+
+// AddDiagramConcepts adds the "diagram_concepts" edges to the DiagramConcept entity.
+func (_c *ConceptCreate) AddDiagramConcepts(v ...*DiagramConcept) *ConceptCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramConceptIDs(ids...)
 }
 
 // Mutation returns the ConceptMutation object of the builder.
@@ -296,6 +328,26 @@ func (_c *ConceptCreate) createSpec() (*Concept, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramConceptCreate{config: _c.config, mutation: newDiagramConceptMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ContentNodeConceptsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -321,6 +373,22 @@ func (_c *ConceptCreate) createSpec() (*Concept, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DiagramConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

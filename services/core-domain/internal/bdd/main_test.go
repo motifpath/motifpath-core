@@ -59,6 +59,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerLocaleSteps(sc, w)
 	registerContentNodeSteps(sc, w)
 	registerSkillSteps(sc, w)
+	registerInstrumentSteps(sc, w)
+	registerDiagramSteps(sc, w)
 	registerConceptSteps(sc, w)
 	registerChallengeSteps(sc, w)
 	registerExerciseSteps(sc, w)

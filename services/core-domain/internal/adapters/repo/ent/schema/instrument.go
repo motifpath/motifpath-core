@@ -1,0 +1,53 @@
+package schema
+
+import (
+	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+)
+
+// Instrument is what a Diagram is authored against. family decides which
+// field group is populated: string_count and tuning for fretted, the
+// key_range_* pair for keyboard — the other group stays null. The
+// combination is validated in the domain constructor, since neither a
+// column constraint nor ent expresses "these fields iff that enum value".
+type Instrument struct {
+	ent.Schema
+}
+
+func (Instrument) Fields() []ent.Field {
+	return []ent.Field{
+		field.UUID("id", uuid.UUID{}).
+			Default(uuid.New).
+			Immutable(),
+
+		field.String("name"),
+
+		field.Enum("family").
+			Values("fretted", "keyboard").
+			Immutable(),
+
+		field.Int("string_count").
+			Optional().
+			Nillable(),
+
+		field.Strings("tuning").
+			Optional(),
+
+		field.String("key_range_lowest").
+			Optional().
+			Nillable(),
+
+		field.String("key_range_highest").
+			Optional().
+			Nillable(),
+	}
+}
+
+func (Instrument) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("diagrams", Diagram.Type).
+			Ref("instrument"),
+	}
+}

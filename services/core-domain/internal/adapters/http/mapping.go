@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/application"
@@ -401,4 +402,104 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 		CurrentPosition: v.CurrentPosition,
 		Items:           items,
 	}
+}
+
+// derefOptions returns the options a request carried, or nil when the field
+// was omitted. Omission is legitimate only for a diagram-driven exercise; the
+// application layer decides whether it is acceptable for the exercise type.
+func derefOptions(options *[]generated.Option) []generated.Option {
+	if options == nil {
+		return nil
+	}
+	return *options
+}
+
+// uuidPtrToString converts an optional query-parameter UUID to a string id,
+// with "" meaning "no filter".
+func uuidPtrToString(id *openapi_types.UUID) string {
+	if id == nil {
+		return ""
+	}
+	return id.String()
+}
+
+func toGeneratedInstrument(i domain.Instrument) generated.Instrument {
+	instrument := generated.Instrument{
+		InstrumentId: mustUUID(i.ID),
+		Name:         i.Name,
+		Family:       generated.InstrumentFamily(i.Family),
+		StringCount:  i.StringCount,
+	}
+	if len(i.Tuning) > 0 {
+		tuning := i.Tuning
+		instrument.Tuning = &tuning
+	}
+	if i.KeyRange != nil {
+		instrument.KeyRange = &struct {
+			Highest string `json:"highest"`
+			Lowest  string `json:"lowest"`
+		}{Highest: i.KeyRange.Highest, Lowest: i.KeyRange.Lowest}
+	}
+	return instrument
+}
+
+func toGeneratedInstruments(instruments []domain.Instrument) []generated.Instrument {
+	result := make([]generated.Instrument, len(instruments))
+	for i, instrument := range instruments {
+		result[i] = toGeneratedInstrument(instrument)
+	}
+	return result
+}
+
+func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
+	positions := make([]generated.DiagramPosition, len(d.Positions))
+	for i, p := range d.Positions {
+		id := mustUUID(p.ID)
+		positions[i] = generated.DiagramPosition{
+			PositionId:    &id,
+			Interval:      p.Interval,
+			NoteName:      p.NoteName,
+			SequenceIndex: p.SequenceIndex,
+			String:        p.String,
+			Fret:          p.Fret,
+			Key:           p.Key,
+		}
+	}
+	return generated.Diagram{
+		DiagramId:    mustUUID(d.ID),
+		InstrumentId: mustUUID(d.InstrumentID),
+		Name:         d.Name,
+		Positions:    positions,
+		Classification: generated.DiagramClassification{
+			Skills:   toGeneratedSkills(d.Skills),
+			Concepts: toGeneratedConcepts(d.Concepts),
+		},
+		CreatedAt: d.CreatedAt,
+	}
+}
+
+func toGeneratedDiagrams(diagrams []domain.Diagram) []generated.Diagram {
+	result := make([]generated.Diagram, len(diagrams))
+	for i, d := range diagrams {
+		result[i] = toGeneratedDiagram(d)
+	}
+	return result
+}
+
+func toDomainPositions(positions []generated.DiagramPosition) []domain.Position {
+	result := make([]domain.Position, len(positions))
+	for i, p := range positions {
+		result[i] = domain.Position{
+			Interval:      p.Interval,
+			NoteName:      p.NoteName,
+			SequenceIndex: p.SequenceIndex,
+			String:        p.String,
+			Fret:          p.Fret,
+			Key:           p.Key,
+		}
+		if p.PositionId != nil {
+			result[i].ID = p.PositionId.String()
+		}
+	}
+	return result
 }

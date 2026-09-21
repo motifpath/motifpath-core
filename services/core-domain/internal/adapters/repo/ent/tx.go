@@ -28,6 +28,12 @@ type Tx struct {
 	ContentNodeLanguage *ContentNodeLanguageClient
 	// ContentNodeSkill is the client for interacting with the ContentNodeSkill builders.
 	ContentNodeSkill *ContentNodeSkillClient
+	// Diagram is the client for interacting with the Diagram builders.
+	Diagram *DiagramClient
+	// DiagramConcept is the client for interacting with the DiagramConcept builders.
+	DiagramConcept *DiagramConceptClient
+	// DiagramSkill is the client for interacting with the DiagramSkill builders.
+	DiagramSkill *DiagramSkillClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -40,6 +46,8 @@ type Tx struct {
 	ExerciseSkill *ExerciseSkillClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// Instrument is the client for interacting with the Instrument builders.
+	Instrument *InstrumentClient
 	// Language is the client for interacting with the Language builders.
 	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
@@ -48,6 +56,8 @@ type Tx struct {
 	LearningPathItem *LearningPathItemClient
 	// PathAssignment is the client for interacting with the PathAssignment builders.
 	PathAssignment *PathAssignmentClient
+	// Position is the client for interacting with the Position builders.
+	Position *PositionClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
 	// User is the client for interacting with the User builders.
@@ -191,16 +201,21 @@ func (tx *Tx) init() {
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
+	tx.Diagram = NewDiagramClient(tx.config)
+	tx.DiagramConcept = NewDiagramConceptClient(tx.config)
+	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)
 	tx.ExerciseLanguage = NewExerciseLanguageClient(tx.config)
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
 	tx.ExerciseSkill = NewExerciseSkillClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)
+	tx.Instrument = NewInstrumentClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.PathAssignment = NewPathAssignmentClient(tx.config)
+	tx.Position = NewPositionClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
