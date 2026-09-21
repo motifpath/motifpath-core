@@ -28,6 +28,12 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" creates a video content node titled "([^"]+)" with skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsContentNode(domain.ContentTypeVideo))
 	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsContentNode(domain.ContentTypeArticle))
+	sc.Step(`^"([^"]+)" creates a video content node titled "([^"]+)" with media url "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsVideoContentNodeWithMediaURL)
+	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with article body "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsArticleContentNodeWithBody)
+	sc.Step(`^"([^"]+)" submits a create video content node request with the media_url field omitted$`, w.submitsVideoWithoutMediaURL)
+	sc.Step(`^"([^"]+)" submits a create article content node request with the rich_content field omitted$`, w.submitsArticleWithoutBody)
+	sc.Step(`^"([^"]+)" submits a create video content node request carrying rich_content$`, w.submitsVideoCarryingRichContent)
+	sc.Step(`^"([^"]+)" submits a create article content node request carrying media_url$`, w.submitsArticleCarryingMediaURL)
 	sc.Step(`^"([^"]+)" retrieves the content node "([^"]+)"$`, w.retrievesContentNode)
 	sc.Step(`^"([^"]+)" submits a create content node request with the title field omitted$`, w.submitsContentNodeMissingTitle)
 	sc.Step(`^"([^"]+)" submits a create content node request with the classification field omitted$`, w.submitsContentNodeMissingClassification)
@@ -43,6 +49,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the content node is created and assigned a stable identifier$`, w.contentNodeCreated)
 	sc.Step(`^the classification review state is "([^"]+)"$`, w.classificationReviewStateIs)
 	sc.Step(`^the content node records "([^"]+)" as the owner$`, w.contentNodeRecordsOwner)
+	sc.Step(`^the content node's media url is "([^"]+)"$`, w.contentNodeMediaURLIs)
 	sc.Step(`^the response returns the content node's title, type, and classification$`, w.contentNodeResponseComplete)
 	sc.Step(`^the content node's classification carries skills "([^"]+)"$`, w.contentNodeClassificationCarriesSkills)
 
@@ -180,11 +187,18 @@ func (w *world) listsContentNodesByConcept(name, conceptName string) error {
 }
 
 func (w *world) updatesContentNodeFull(name, slug, title, skills, concepts, difficulty string) error {
+	existing, err := w.nodes.GetByID(w.ctx(), nodeID(slug).String())
+	if err != nil {
+		return err
+	}
+	mediaURL, richContent := bodyFor(existing)
 	resp, err := w.handler.UpdateContentNode(w.ctx(), generated.UpdateContentNodeRequestObject{
 		ContentNodeId: nodeID(slug),
 		Body: &generated.UpdateContentNodeRequest{
 			Title:          title,
 			Classification: w.classificationInputFor(skills, concepts, difficulty),
+			MediaUrl:       mediaURL,
+			RichContent:    richContent,
 			LanguageCodes:  []string{"en"},
 		},
 	})
@@ -202,10 +216,13 @@ func (w *world) updatesContentNodeSkillsOnly(name, slug, skills string) error {
 	if err != nil {
 		return err
 	}
+	mediaURL, richContent := bodyFor(existing)
 	resp, err := w.handler.UpdateContentNode(w.ctx(), generated.UpdateContentNodeRequestObject{
 		ContentNodeId: nodeID(slug),
 		Body: &generated.UpdateContentNodeRequest{
-			Title: existing.Title,
+			Title:       existing.Title,
+			MediaUrl:    mediaURL,
+			RichContent: richContent,
 			Classification: generated.ClassificationInput{
 				SkillIds:        w.skillIDsFor(skills),
 				ConceptIds:      idsOfConcepts(existing.Classification.Concepts),
@@ -242,10 +259,13 @@ func (w *world) updatesContentNodeTitleOnly(name, slug, title string) error {
 	if err != nil {
 		return err
 	}
+	mediaURL, richContent := bodyFor(existing)
 	resp, err := w.handler.UpdateContentNode(w.ctx(), generated.UpdateContentNodeRequestObject{
 		ContentNodeId: nodeID(slug),
 		Body: &generated.UpdateContentNodeRequest{
-			Title: title,
+			Title:       title,
+			MediaUrl:    mediaURL,
+			RichContent: richContent,
 			Classification: generated.ClassificationInput{
 				SkillIds:        idsOfSkills(existing.Classification.Skills),
 				ConceptIds:      idsOfConcepts(existing.Classification.Concepts),
@@ -373,7 +393,7 @@ func (w *world) contentNodeClassificationCarriesSkills(names string) error {
 // content node's classification for the subject-membership check to pass.
 func (w *world) putContentNode(slug string, contentType domain.ContentType) error {
 	w.lastNodeSlug = slug
-	w.nodes.put(domain.ContentNode{
+	node := domain.ContentNode{
 		ID:          nodeID(slug).String(),
 		TeacherID:   w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:       slug,
@@ -396,7 +416,14 @@ func (w *world) putContentNode(slug string, contentType domain.ContentType) erro
 		// prerequisite-based lock state unaffected by it.
 		Languages: []domain.Language{{Code: "en"}},
 		CreatedAt: fixedNow,
-	})
+	}
+	if contentType == domain.ContentTypeArticle {
+		body := domain.NewPlainTextPrompt("Default article body.")
+		node.RichContent = &body
+	} else {
+		node.MediaURL = defaultMediaURL()
+	}
+	w.nodes.put(node)
 	return nil
 }
 
@@ -411,17 +438,92 @@ func (w *world) contentNodesExist(a, b, c string) error {
 
 func (w *world) createsContentNode(contentType domain.ContentType) func(name, title, skills, concepts, difficulty string) error {
 	return func(name, title, skills, concepts, difficulty string) error {
-		resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
-			Body: &generated.CreateContentNodeRequest{
-				Title:          title,
-				ContentType:    generated.CreateContentNodeRequestContentType(contentType),
-				Classification: w.classificationInputFor(skills, concepts, difficulty),
-				LanguageCodes:  []string{"en"},
-			},
-		})
-		w.lastResp, w.lastErr = resp, err
-		return err
+		if contentType == domain.ContentTypeVideo {
+			return w.createsContentNodeWithBody(contentType, title, skills, concepts, difficulty, defaultMediaURL(), nil)
+		}
+		return w.createsContentNodeWithBody(contentType, title, skills, concepts, difficulty, nil, defaultArticleBody())
 	}
+}
+
+func (w *world) createsVideoContentNodeWithMediaURL(name, title, mediaURL, skills, concepts, difficulty string) error {
+	return w.createsContentNodeWithBody(domain.ContentTypeVideo, title, skills, concepts, difficulty, &mediaURL, nil)
+}
+
+func (w *world) createsArticleContentNodeWithBody(name, title, body, skills, concepts, difficulty string) error {
+	doc := promptDocFor(body)
+	return w.createsContentNodeWithBody(domain.ContentTypeArticle, title, skills, concepts, difficulty, nil, &doc)
+}
+
+func (w *world) createsContentNodeWithBody(contentType domain.ContentType, title, skills, concepts, difficulty string, mediaURL *string, richContent *generated.PromptDocument) error {
+	resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
+		Body: &generated.CreateContentNodeRequest{
+			Title:          title,
+			ContentType:    generated.CreateContentNodeRequestContentType(contentType),
+			Classification: w.classificationInputFor(skills, concepts, difficulty),
+			MediaUrl:       mediaURL,
+			RichContent:    richContent,
+			LanguageCodes:  []string{"en"},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// submitsContentNodeWithBody submits a create request of contentType whose
+// body fields are exactly mediaURL/richContent, for scenarios that break the
+// video-xor-article body rule on purpose.
+func (w *world) submitsContentNodeWithBody(contentType domain.ContentType, mediaURL *string, richContent *generated.PromptDocument) error {
+	return w.createsContentNodeWithBody(contentType, "Title", "s", "c", "beginner", mediaURL, richContent)
+}
+
+func (w *world) submitsVideoWithoutMediaURL(string) error {
+	return w.submitsContentNodeWithBody(domain.ContentTypeVideo, nil, nil)
+}
+
+func (w *world) submitsArticleWithoutBody(string) error {
+	return w.submitsContentNodeWithBody(domain.ContentTypeArticle, nil, nil)
+}
+
+func (w *world) submitsVideoCarryingRichContent(string) error {
+	return w.submitsContentNodeWithBody(domain.ContentTypeVideo, defaultMediaURL(), defaultArticleBody())
+}
+
+func (w *world) submitsArticleCarryingMediaURL(string) error {
+	return w.submitsContentNodeWithBody(domain.ContentTypeArticle, defaultMediaURL(), defaultArticleBody())
+}
+
+func (w *world) contentNodeMediaURLIs(want string) error {
+	resp, ok := w.lastResp.(generated.CreateContentNode201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	}
+	if resp.MediaUrl == nil || *resp.MediaUrl != want {
+		return fmt.Errorf("expected media_url %q, got %v", want, resp.MediaUrl)
+	}
+	return nil
+}
+
+// defaultMediaURL is the video body steps that don't care about the body
+// submit, so a fully valid create/update request carries one.
+func defaultMediaURL() *string {
+	url := "https://cdn.motifpath.io/videos/default.mp4"
+	return &url
+}
+
+// defaultArticleBody is defaultMediaURL's counterpart for article nodes.
+func defaultArticleBody() *generated.PromptDocument {
+	doc := promptDocFor("Default article body.")
+	return &doc
+}
+
+// bodyFor returns the request body fields a full-replace update of existing
+// must resend: its own media_url for a video, and a default document for an
+// article (the fake repository does not round-trip the wire-format document).
+func bodyFor(existing domain.ContentNode) (*string, *generated.PromptDocument) {
+	if existing.ContentType == domain.ContentTypeArticle {
+		return nil, defaultArticleBody()
+	}
+	return defaultMediaURL(), nil
 }
 
 func (w *world) retrievesContentNode(name, slug string) error {
@@ -434,6 +536,7 @@ func (w *world) submitsContentNodeMissingTitle(string) error {
 	resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
 		Body: &generated.CreateContentNodeRequest{
 			ContentType:    generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:       defaultMediaURL(),
 			Classification: w.classificationInputFor("s", "c", "beginner"),
 			LanguageCodes:  []string{"en"},
 		},
@@ -459,6 +562,7 @@ func (w *world) submitsContentNodeBadDifficulty(name, difficulty string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:          "Title",
 			ContentType:    generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:       defaultMediaURL(),
 			Classification: w.classificationInputFor("s", "c", difficulty),
 			LanguageCodes:  []string{"en"},
 		},
@@ -472,6 +576,7 @@ func (w *world) submitsContentNodeEmptySkills(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:       "Title",
 			ContentType: generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:    defaultMediaURL(),
 			Classification: generated.ClassificationInput{
 				SkillIds: nil, ConceptIds: w.conceptIDsFor("c"), DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
@@ -487,6 +592,7 @@ func (w *world) submitsContentNodeEmptyConcepts(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:       "Title",
 			ContentType: generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:    defaultMediaURL(),
 			Classification: generated.ClassificationInput{
 				SkillIds: w.skillIDsFor("s"), ConceptIds: nil, DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
@@ -503,6 +609,7 @@ func (w *world) submitsContentNodeBadSkillID(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:       "Title",
 			ContentType: generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:    defaultMediaURL(),
 			Classification: generated.ClassificationInput{
 				SkillIds: []uuid.UUID{missing}, ConceptIds: w.conceptIDsFor("c"), DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
@@ -519,6 +626,7 @@ func (w *world) submitsContentNodeBadConceptID(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:       "Title",
 			ContentType: generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:    defaultMediaURL(),
 			Classification: generated.ClassificationInput{
 				SkillIds: w.skillIDsFor("s"), ConceptIds: []uuid.UUID{missing}, DifficultyLevel: generated.ClassificationInputDifficultyLevelBeginner,
 			},
@@ -534,6 +642,7 @@ func (w *world) attemptsCreateContentNode(string) error {
 		Body: &generated.CreateContentNodeRequest{
 			Title:          "Title",
 			ContentType:    generated.CreateContentNodeRequestContentTypeVideo,
+			MediaUrl:       defaultMediaURL(),
 			Classification: w.classificationInputFor("s", "c", "beginner"),
 			LanguageCodes:  []string{"en"},
 		},
