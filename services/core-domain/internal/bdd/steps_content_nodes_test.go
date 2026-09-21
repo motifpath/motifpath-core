@@ -31,6 +31,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" creates a video content node titled "([^"]+)" with media url "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsVideoContentNodeWithMediaURL)
 	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with article body "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsArticleContentNodeWithBody)
 	sc.Step(`^"([^"]+)" submits a create video content node request with the media_url field omitted$`, w.submitsVideoWithoutMediaURL)
+	sc.Step(`^"([^"]+)" submits a create video content node request with media url "([^"]*)"$`, w.submitsVideoWithMediaURL)
 	sc.Step(`^"([^"]+)" submits a create article content node request with the rich_content field omitted$`, w.submitsArticleWithoutBody)
 	sc.Step(`^"([^"]+)" submits a create video content node request carrying rich_content$`, w.submitsVideoCarryingRichContent)
 	sc.Step(`^"([^"]+)" submits a create article content node request carrying media_url$`, w.submitsArticleCarryingMediaURL)
@@ -68,6 +69,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" attempts to update content node "([^"]+)" with title "([^"]+)"$`, w.updatesContentNodeTitleOnly)
 	sc.Step(`^an unauthenticated request attempts to update content node "([^"]+)" with title "([^"]+)"$`, w.unauthUpdatesContentNode)
 	sc.Step(`^"([^"]+)" submits an update content node request for "([^"]+)" with the title field omitted$`, w.submitsUpdateContentNodeMissingTitle)
+	sc.Step(`^"([^"]+)" submits an update content node request for "([^"]+)" with media url "([^"]*)"$`, w.submitsUpdateContentNodeWithMediaURL)
 	sc.Step(`^"([^"]+)" submits an update content node request for "([^"]+)" with the classification field omitted$`, w.submitsUpdateContentNodeMissingClassification)
 	sc.Step(`^"([^"]+)" attempts to update a content node with an ID that does not exist$`, w.attemptsUpdateMissingContentNode)
 
@@ -294,6 +296,19 @@ func (w *world) submitsUpdateContentNodeMissingTitle(name, slug string) error {
 	return err
 }
 
+func (w *world) submitsUpdateContentNodeWithMediaURL(_, slug, mediaURL string) error {
+	resp, err := w.handler.UpdateContentNode(w.ctx(), generated.UpdateContentNodeRequestObject{
+		ContentNodeId: nodeID(slug),
+		Body: &generated.UpdateContentNodeRequest{
+			Title:          "Title",
+			Classification: w.classificationInputFor("s", "c", "beginner"),
+			MediaUrl:       &mediaURL,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
 func (w *world) submitsUpdateContentNodeMissingClassification(name, slug string) error {
 	resp, err := w.handler.UpdateContentNode(w.ctx(), generated.UpdateContentNodeRequestObject{
 		ContentNodeId: nodeID(slug),
@@ -478,6 +493,10 @@ func (w *world) submitsContentNodeWithBody(contentType domain.ContentType, media
 
 func (w *world) submitsVideoWithoutMediaURL(string) error {
 	return w.submitsContentNodeWithBody(domain.ContentTypeVideo, nil, nil)
+}
+
+func (w *world) submitsVideoWithMediaURL(_, mediaURL string) error {
+	return w.submitsContentNodeWithBody(domain.ContentTypeVideo, &mediaURL, nil)
 }
 
 func (w *world) submitsArticleWithoutBody(string) error {
