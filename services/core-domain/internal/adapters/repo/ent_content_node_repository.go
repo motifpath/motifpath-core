@@ -148,6 +148,10 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	langIDs, err := languageIDsByCode(ctx, r.client.Language, node.Languages)
+	if err != nil {
+		return err
+	}
 	richContentJSON, err := marshalRichContent(node.RichContent)
 	if err != nil {
 		return err
@@ -160,7 +164,9 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
-		AddConceptIDs(conceptIDs...)
+		AddConceptIDs(conceptIDs...).
+		ClearLanguages().
+		AddLanguageIDs(langIDs...)
 	// A nil body field means the caller cleared it (e.g. the other content
 	// type's field), so the stored column must be cleared too — the Nillable
 	// setters alone would leave a stale value in place.
