@@ -39,6 +39,8 @@ type world struct {
 	completion  *fakeCompletionReader
 	skills      *fakeSkillRepo
 	concepts    *fakeConceptRepo
+	instruments *fakeInstrumentRepo
+	diagrams    *fakeDiagramRepo
 	pgPinger    *fakePinger
 	mongoPinger *fakePinger
 	handler     *appHTTP.Handler
@@ -120,6 +122,8 @@ func newWorld() *world {
 		completion:  newFakeCompletionReader(),
 		skills:      skills,
 		concepts:    concepts,
+		instruments: newFakeInstrumentRepo(),
+		diagrams:    newFakeDiagramRepo(skills, concepts),
 		pgPinger:    &fakePinger{},
 		mongoPinger: &fakePinger{},
 		userMotifID: map[string]uuid.UUID{},
@@ -141,7 +145,10 @@ func newWorld() *world {
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.nodes, w.exercises, w.completion, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, assignment, w.pgPinger, w.mongoPinger)
+	instrument := application.NewInstrumentService(w.instruments, newID)
+	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newID, now)
+
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, assignment, instrument, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 
@@ -194,6 +201,8 @@ func challengeID(slug string) uuid.UUID { return deterministicUUID("challenge", 
 func exerciseID(slug string) uuid.UUID  { return deterministicUUID("exercise", slug) }
 func pathID(slug string) uuid.UUID      { return deterministicUUID("path", slug) }
 func expandedID(slug string) uuid.UUID  { return deterministicUUID("expanded", slug) }
+func instrumentID(name string) uuid.UUID { return deterministicUUID("instrument", name) }
+func diagramID(slug string) uuid.UUID    { return deterministicUUID("diagram", slug) }
 
 // putSkill seeds a Skill directly into w.skills (mirroring how content nodes
 // are seeded via w.nodes.put rather than the real handler) and registers it

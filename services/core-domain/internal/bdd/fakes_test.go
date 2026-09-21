@@ -5,6 +5,7 @@ package bdd
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -904,4 +905,135 @@ func samePointerValue(a, b *string) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+type fakeInstrumentRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Instrument
+}
+
+func newFakeInstrumentRepo() *fakeInstrumentRepo {
+	return &fakeInstrumentRepo{byID: map[string]domain.Instrument{}}
+}
+
+func (f *fakeInstrumentRepo) Create(_ context.Context, i domain.Instrument) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[i.ID] = i
+	return nil
+}
+
+func (f *fakeInstrumentRepo) GetByID(_ context.Context, id string) (domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	i, ok := f.byID[id]
+	if !ok {
+		return domain.Instrument{}, domain.ErrNotFound
+	}
+	return i, nil
+}
+
+func (f *fakeInstrumentRepo) List(_ context.Context) ([]domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Instrument, 0, len(f.byID))
+	for _, i := range f.byID {
+		result = append(result, i)
+	}
+	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
+	return result, nil
+}
+
+func (f *fakeInstrumentRepo) put(i domain.Instrument) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[i.ID] = i
+}
+
+type fakeDiagramRepo struct {
+	mu       sync.Mutex
+	byID     map[string]domain.Diagram
+	skills   *fakeSkillRepo
+	concepts *fakeConceptRepo
+}
+
+func newFakeDiagramRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeDiagramRepo {
+	return &fakeDiagramRepo{byID: map[string]domain.Diagram{}, skills: skills, concepts: concepts}
+}
+
+// resolveClassification replaces d.Skills/Concepts (id-only until read
+// back) with the full records from f.skills/f.concepts — mirroring the real
+// ent adapter's WithSkills()/WithConcepts() join on read.
+func (f *fakeDiagramRepo) resolveClassification(d domain.Diagram) domain.Diagram {
+	skills := make([]domain.Skill, len(d.Skills))
+	for i, s := range d.Skills {
+		if full, ok := f.skills.byID[s.ID]; ok {
+			skills[i] = full
+		} else {
+			skills[i] = s
+		}
+	}
+	concepts := make([]domain.Concept, len(d.Concepts))
+	for i, c := range d.Concepts {
+		if full, ok := f.concepts.byID[c.ID]; ok {
+			concepts[i] = full
+		} else {
+			concepts[i] = c
+		}
+	}
+	d.Skills, d.Concepts = skills, concepts
+	return d
+}
+
+func (f *fakeDiagramRepo) Create(_ context.Context, d domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[d.ID] = d
+	return nil
+}
+
+func (f *fakeDiagramRepo) GetByID(_ context.Context, id string) (domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.byID[id]
+	if !ok {
+		return domain.Diagram{}, domain.ErrNotFound
+	}
+	return f.resolveClassification(d), nil
+}
+
+func (f *fakeDiagramRepo) List(_ context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.Diagram{}
+	for _, d := range f.byID {
+		if instrumentID != "" && d.InstrumentID != instrumentID {
+			continue
+		}
+		if skillID != "" && !containsID(d.SkillIDs(), skillID) {
+			continue
+		}
+		if conceptID != "" && !containsID(d.ConceptIDs(), conceptID) {
+			continue
+		}
+		result = append(result, f.resolveClassification(d))
+	}
+	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
+	return result, nil
+}
+
+func (f *fakeDiagramRepo) Update(_ context.Context, d domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[d.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[d.ID] = d
+	return nil
+}
+
+func (f *fakeDiagramRepo) put(d domain.Diagram) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[d.ID] = d
 }
