@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -871,4 +872,105 @@ func samePointerValue(a, b *string) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+// fakeInstrumentRepository is a minimal in-memory ports.InstrumentRepository.
+type fakeInstrumentRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.Instrument
+}
+
+func newFakeInstrumentRepository() *fakeInstrumentRepository {
+	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}}
+}
+
+func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.Instrument) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[instrument.ID] = instrument
+	return nil
+}
+
+func (f *fakeInstrumentRepository) GetByID(_ context.Context, id string) (domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	instrument, ok := f.byID[id]
+	if !ok {
+		return domain.Instrument{}, domain.ErrNotFound
+	}
+	return instrument, nil
+}
+
+func (f *fakeInstrumentRepository) List(_ context.Context) ([]domain.Instrument, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Instrument, 0, len(f.byID))
+	for _, instrument := range f.byID {
+		result = append(result, instrument)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+func (f *fakeInstrumentRepository) put(instrument domain.Instrument) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[instrument.ID] = instrument
+}
+
+// fakeDiagramRepository is a minimal in-memory ports.DiagramRepository.
+type fakeDiagramRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.Diagram
+}
+
+func newFakeDiagramRepository() *fakeDiagramRepository {
+	return &fakeDiagramRepository{byID: map[string]domain.Diagram{}}
+}
+
+func (f *fakeDiagramRepository) Create(_ context.Context, diagram domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[diagram.ID] = diagram
+	return nil
+}
+
+func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	diagram, ok := f.byID[id]
+	if !ok {
+		return domain.Diagram{}, domain.ErrNotFound
+	}
+	return diagram, nil
+}
+
+func (f *fakeDiagramRepository) List(_ context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.Diagram{}
+	for _, diagram := range f.byID {
+		if instrumentID != "" && diagram.InstrumentID != instrumentID {
+			continue
+		}
+		if skillID != "" && !containsID(diagram.SkillIDs(), skillID) {
+			continue
+		}
+		if conceptID != "" && !containsID(diagram.ConceptIDs(), conceptID) {
+			continue
+		}
+		result = append(result, diagram)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+func (f *fakeDiagramRepository) Update(_ context.Context, diagram domain.Diagram) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[diagram.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[diagram.ID] = diagram
+	return nil
 }
