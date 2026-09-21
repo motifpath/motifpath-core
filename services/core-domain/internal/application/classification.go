@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"golang.org/x/sync/errgroup"
 
@@ -13,12 +14,38 @@ import (
 // "skill_ids"/"concept_ids" if any id in skillIDs/conceptIDs does not
 // reference an existing Skill/Concept. The two checks hit independent
 // tables, so they run concurrently rather than as two sequential round
-// trips.
+// trips. A non-ValidationError (e.g. a DB failure) from either check is
+// returned as-is; if both checks report a ValidationError, skill_ids takes
+// precedence — a fixed order, rather than whichever goroutine happens to
+// finish first, so the same request always reports the same field.
 func checkSkillsAndConceptsExist(ctx context.Context, skills ports.SkillRepository, concepts ports.ConceptRepository, skillIDs, conceptIDs []string) error {
 	g, gCtx := errgroup.WithContext(ctx)
-	g.Go(func() error { return checkSkillIDsExist(gCtx, skills, skillIDs) })
-	g.Go(func() error { return checkConceptIDsExist(gCtx, concepts, conceptIDs) })
-	return g.Wait()
+	var skillErr, conceptErr error
+	g.Go(func() error {
+		err := checkSkillIDsExist(gCtx, skills, skillIDs)
+		var valErr *domain.ValidationError
+		if errors.As(err, &valErr) {
+			skillErr = err
+			return nil
+		}
+		return err
+	})
+	g.Go(func() error {
+		err := checkConceptIDsExist(gCtx, concepts, conceptIDs)
+		var valErr *domain.ValidationError
+		if errors.As(err, &valErr) {
+			conceptErr = err
+			return nil
+		}
+		return err
+	})
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	if skillErr != nil {
+		return skillErr
+	}
+	return conceptErr
 }
 
 // checkSkillIDsExist reports a domain.ValidationError under "skill_ids" if
