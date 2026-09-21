@@ -7,6 +7,14 @@ import (
 // TaxonomyRepository persists a Skill or Concept tree — see
 // domain.TaxonomyNode's doc comment for the shared shape. There is no
 // update/delete method: neither resource has an update/delete endpoint yet.
+//
+// T's constraint is `any` because this interface only ever moves a T value
+// through, never inspects or operates on it — a generic type parameter is a
+// compile-time stand-in for a concrete, statically known type (here,
+// domain.Skill or domain.Concept, fixed by TaxonomyRepository[T]'s two
+// instantiations in skill_repository.go/concept_repository.go), not the
+// untyped, runtime-checked "any value at all" this repo's `any`/
+// interface{} ban targets.
 type TaxonomyRepository[T any] interface {
 	Create(ctx context.Context, node T) error
 

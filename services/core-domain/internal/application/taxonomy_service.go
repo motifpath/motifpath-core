@@ -13,7 +13,9 @@ import (
 // TaxonomyService manages a Skill or Concept tree — see
 // domain.TaxonomyNode's doc comment for the shared shape. There is
 // deliberately no update/delete method, matching the OpenAPI surface (no
-// PUT/DELETE /skills or /concepts endpoint yet).
+// PUT/DELETE /skills or /concepts endpoint yet). See
+// ports.TaxonomyRepository's doc comment for why T's `any` constraint here
+// doesn't conflict with this repo's ban on interface{}/any.
 type TaxonomyService[T any] struct {
 	repo      ports.TaxonomyRepository[T]
 	newID     func() string
