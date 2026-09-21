@@ -128,13 +128,14 @@ func run() error {
 
 // classificationSeeder resolves plain skill/concept names to real Skill/
 // Concept tree node ids, creating a fresh root node the first time a given
-// name is seen in this run and reusing it thereafter — ADR-026 rejected
-// find-or-create as an API-level pattern (an ambiguous operation once names
-// aren't globally unique), but this script isn't the API: it seeds a known,
-// disjoint set of root-level names it fully controls, so a same-run cache is
-// enough. Re-running this script against a database that already has these
-// root names would fail on the sibling-uniqueness check — a real limitation,
-// left as-is since this tool targets a fresh dev database.
+// name is seen in this run and reusing it thereafter. The API deliberately
+// has no find-or-create endpoint (an ambiguous operation once names aren't
+// globally unique across the tree), but this script isn't the API: it seeds
+// a known, disjoint set of root-level names it fully controls, so a
+// same-run cache is enough. Re-running this script against a database that
+// already has these root names would fail on the sibling-uniqueness check —
+// a real limitation, left as-is since this tool targets a fresh dev
+// database.
 type classificationSeeder struct {
 	skills     *application.SkillService
 	concepts   *application.ConceptService
