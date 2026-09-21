@@ -218,3 +218,69 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 		assert.Equal(t, 1, count, "only the one replaced position of the real diagram may exist")
 	})
 }
+
+func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	instruments, diagrams := NewEntInstrumentRepository(client), NewEntDiagramRepository(client)
+
+	guitar := frettedInstrument()
+	require.NoError(t, instruments.Create(ctx, guitar))
+	skill := seedSkill(t, ctx, client, "s-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "c-"+uuid.NewString())
+
+	newDiagram := func(positionID string) domain.Diagram {
+		return domain.Diagram{
+			ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "D",
+			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}},
+			Skills:    []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
+		}
+	}
+	sharedID := uuid.NewString()
+	owner := newDiagram(sharedID)
+	require.NoError(t, diagrams.Create(ctx, owner))
+
+	requirePositionsRejection := func(t *testing.T, err error) {
+		t.Helper()
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		require.Len(t, valErr.Fields, 1)
+		assert.Equal(t, "positions", valErr.Fields[0].Field)
+	}
+
+	t.Run("creating a diagram with another diagram's position id is a validation error", func(t *testing.T) {
+		thief := newDiagram(sharedID)
+
+		err := diagrams.Create(ctx, thief)
+
+		requirePositionsRejection(t, err)
+		_, getErr := diagrams.GetByID(ctx, thief.ID)
+		require.ErrorIs(t, getErr, domain.ErrNotFound, "the rejected diagram must not be partly persisted")
+	})
+
+	t.Run("updating a diagram with another diagram's position id is a validation error and changes nothing", func(t *testing.T) {
+		other := newDiagram(uuid.NewString())
+		require.NoError(t, diagrams.Create(ctx, other))
+		update := other
+		update.Name = "Renamed"
+		update.Positions = []domain.Position{{ID: sharedID, Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}}
+
+		err := diagrams.Update(ctx, update)
+
+		requirePositionsRejection(t, err)
+		got, getErr := diagrams.GetByID(ctx, other.ID)
+		require.NoError(t, getErr)
+		assert.Equal(t, other, got)
+	})
+
+	t.Run("a diagram may resend its own position ids on update", func(t *testing.T) {
+		update := owner
+		update.Name = "Renamed"
+
+		require.NoError(t, diagrams.Update(ctx, update))
+
+		got, err := diagrams.GetByID(ctx, owner.ID)
+		require.NoError(t, err)
+		assert.Equal(t, update, got)
+	})
+}

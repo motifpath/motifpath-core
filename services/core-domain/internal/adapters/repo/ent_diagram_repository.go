@@ -184,6 +184,12 @@ func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, posit
 			SetNillableKey(p.Key)
 	}
 	_, err := tx.Position.CreateBulk(builders...).Save(ctx)
+	if ent.IsConstraintError(err) {
+		// The diagram row exists and ordinals are generated 0..n-1, so the
+		// only constraint a caller can trip here is the global uniqueness of
+		// a client-supplied position id already owned by another diagram.
+		return domain.NewValidationError("positions", "a position_id is already used by another diagram")
+	}
 	return err
 }
 
