@@ -3,18 +3,22 @@ package application
 import (
 	"context"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // checkSkillsAndConceptsExist reports a domain.ValidationError under
 // "skill_ids"/"concept_ids" if any id in skillIDs/conceptIDs does not
-// reference an existing Skill/Concept.
+// reference an existing Skill/Concept. The two checks hit independent
+// tables, so they run concurrently rather than as two sequential round
+// trips.
 func checkSkillsAndConceptsExist(ctx context.Context, skills ports.SkillRepository, concepts ports.ConceptRepository, skillIDs, conceptIDs []string) error {
-	if err := checkSkillIDsExist(ctx, skills, skillIDs); err != nil {
-		return err
-	}
-	return checkConceptIDsExist(ctx, concepts, conceptIDs)
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error { return checkSkillIDsExist(gCtx, skills, skillIDs) })
+	g.Go(func() error { return checkConceptIDsExist(gCtx, concepts, conceptIDs) })
+	return g.Wait()
 }
 
 // checkSkillIDsExist reports a domain.ValidationError under "skill_ids" if
