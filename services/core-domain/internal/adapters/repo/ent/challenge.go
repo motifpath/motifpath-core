@@ -20,8 +20,10 @@ type Challenge struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// ContentNodeID holds the value of the "content_node_id" field.
 	ContentNodeID uuid.UUID `json:"content_node_id,omitempty"`
-	// SubjectTag holds the value of the "subject_tag" field.
-	SubjectTag string `json:"subject_tag,omitempty"`
+	// SubjectSkillID holds the value of the "subject_skill_id" field.
+	SubjectSkillID *uuid.UUID `json:"subject_skill_id,omitempty"`
+	// SubjectConceptID holds the value of the "subject_concept_id" field.
+	SubjectConceptID *uuid.UUID `json:"subject_concept_id,omitempty"`
 	// PassThreshold holds the value of the "pass_threshold" field.
 	PassThreshold int `json:"pass_threshold,omitempty"`
 	// TimeThresholdMs holds the value of the "time_threshold_ms" field.
@@ -72,12 +74,12 @@ func (*Challenge) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case challenge.FieldSubjectSkillID, challenge.FieldSubjectConceptID:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case challenge.FieldShuffleExercises, challenge.FieldShuffleOptions:
 			values[i] = new(sql.NullBool)
 		case challenge.FieldPassThreshold, challenge.FieldTimeThresholdMs:
 			values[i] = new(sql.NullInt64)
-		case challenge.FieldSubjectTag:
-			values[i] = new(sql.NullString)
 		case challenge.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case challenge.FieldID, challenge.FieldContentNodeID:
@@ -109,11 +111,19 @@ func (_m *Challenge) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ContentNodeID = *value
 			}
-		case challenge.FieldSubjectTag:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field subject_tag", values[i])
+		case challenge.FieldSubjectSkillID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field subject_skill_id", values[i])
 			} else if value.Valid {
-				_m.SubjectTag = value.String
+				_m.SubjectSkillID = new(uuid.UUID)
+				*_m.SubjectSkillID = *value.S.(*uuid.UUID)
+			}
+		case challenge.FieldSubjectConceptID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field subject_concept_id", values[i])
+			} else if value.Valid {
+				_m.SubjectConceptID = new(uuid.UUID)
+				*_m.SubjectConceptID = *value.S.(*uuid.UUID)
 			}
 		case challenge.FieldPassThreshold:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -195,8 +205,15 @@ func (_m *Challenge) String() string {
 	builder.WriteString("content_node_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ContentNodeID))
 	builder.WriteString(", ")
-	builder.WriteString("subject_tag=")
-	builder.WriteString(_m.SubjectTag)
+	if v := _m.SubjectSkillID; v != nil {
+		builder.WriteString("subject_skill_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.SubjectConceptID; v != nil {
+		builder.WriteString("subject_concept_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("pass_threshold=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PassThreshold))

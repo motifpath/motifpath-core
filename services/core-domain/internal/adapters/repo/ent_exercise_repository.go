@@ -11,6 +11,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -43,7 +44,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -53,13 +54,14 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
 		SetExerciseType(exercise.ExerciseType(ex.ExerciseType)).
-		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		SetNillableRemediationTargets(remediationJSON).
 		SetCreatedAt(ex.CreatedAt).
-		AddLanguageIDs(langIDs...)
+		AddLanguageIDs(langIDs...).
+		AddSkillIDs(skillIDs...).
+		AddConceptIDs(conceptIDs...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -80,6 +82,25 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 // buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
 // opt, shared by Create and Update since both fully (re)establish an
 // exercise's options the same way.
+// resolveExerciseEdgeIDs resolves ex's Languages/Skills/Concepts to the row
+// ids Create/Update need to (re)establish those edges, shared by both since
+// they resolve the same three edges the same way.
+func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (langIDs, skillIDs, conceptIDs []uuid.UUID, err error) {
+	langIDs, err = languageIDsByCode(ctx, tx.Language, ex.Languages)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	skillIDs, err = parseUUIDs(skillIDsOf(ex.Skills))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	conceptIDs, err = parseUUIDs(conceptIDsOf(ex.Concepts))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return langIDs, skillIDs, conceptIDs, nil
+}
+
 func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
 	builders := make([]*ent.ExerciseOptionCreate, len(options))
 	for i, opt := range options {
@@ -118,6 +139,8 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithSkills().
+		WithConcepts().
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -194,14 +217,7 @@ func (r *EntExerciseRepository) ListByChallengeIDs(ctx context.Context, challeng
 		return result, nil
 	}
 
-	parsed := make([]uuid.UUID, 0, len(challengeIDs))
-	for _, id := range challengeIDs {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			continue // not a valid id, so it can never match — left absent from result
-		}
-		parsed = append(parsed, u)
-	}
+	parsed := parseUUIDsSkippingInvalid(challengeIDs)
 	if len(parsed) == 0 {
 		return result, nil
 	}
@@ -322,6 +338,8 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithSkills().
+		WithConcepts().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -333,67 +351,55 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 	return byID, nil
 }
 
-// ListBySkillTag filters in Go rather than in the query — skill_tags is a
-// JSON array field with no generated "contains element" predicate, and MVP
-// catalog scale doesn't warrant a schema change to support one yet.
-func (r *EntExerciseRepository) ListBySkillTag(ctx context.Context, skillTag string) ([]domain.Exercise, error) {
+// ListBySkillID returns every exercise linked to the skill identified by
+// skillID, via the skills edge.
+func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error) {
+	parsed, err := uuid.Parse(skillID)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := r.client.Exercise.Query().
+		Where(exercise.HasSkillsWith(skill.ID(parsed))).
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithSkills().
+		WithConcepts().
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	var matched []*ent.Exercise
-	for _, row := range rows {
-		for _, tag := range row.SkillTags {
-			if tag == skillTag {
-				matched = append(matched, row)
-				break
-			}
-		}
-	}
-	return toDomainExercises(matched), nil
+	return toDomainExercises(rows), nil
 }
 
 // List returns exercises from the whole pool, optionally narrowed by
-// skillTag and/or exerciseType. exerciseType filters in the query itself;
-// skillTag filters in Go, same as ListBySkillTag, since skill_tags is a JSON
-// array field with no generated "contains element" predicate and MVP
-// catalog scale doesn't warrant a schema change to support one yet.
-func (r *EntExerciseRepository) List(ctx context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+// skillID and/or exerciseType, both filtered in the query itself.
+func (r *EntExerciseRepository) List(ctx context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
 	query := r.client.Exercise.Query().
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithSkills().
+		WithConcepts().
 		Order(exercise.ByCreatedAt())
 	if exerciseType != "" {
 		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(exerciseType)))
+	}
+	if skillID != "" {
+		parsed, err := uuid.Parse(skillID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where(exercise.HasSkillsWith(skill.ID(parsed)))
 	}
 
 	rows, err := query.All(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	if skillTag == "" {
-		return toDomainExercises(rows), nil
-	}
-
-	var matched []*ent.Exercise
-	for _, row := range rows {
-		for _, tag := range row.SkillTags {
-			if tag == skillTag {
-				matched = append(matched, row)
-				break
-			}
-		}
-	}
-	return toDomainExercises(matched), nil
+	return toDomainExercises(rows), nil
 }
 
 // Update replaces ex's mutable fields (title, prompt, skill_tags, image_url,
@@ -420,7 +426,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, err := languageIDsByCode(ctx, tx.Language, ex.Languages)
+	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -428,12 +434,15 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
-		SetSkillTags(ex.SkillTags).
 		SetNillableImageURL(ex.ImageURL).
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		ClearLanguages().
-		AddLanguageIDs(langIDs...)
+		AddLanguageIDs(langIDs...).
+		ClearSkills().
+		AddSkillIDs(skillIDs...).
+		ClearConcepts().
+		AddConceptIDs(conceptIDs...)
 	if remediationJSON != nil {
 		updateBuilder = updateBuilder.SetRemediationTargets(*remediationJSON)
 	} else {
@@ -497,7 +506,8 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		Title:                    row.Title,
 		Prompt:                   unmarshalPrompt(row.Prompt),
 		ExerciseType:             domain.ExerciseType(row.ExerciseType),
-		SkillTags:                row.SkillTags,
+		Skills:                   domainSkillsFromEdges(row.Edges.Skills),
+		Concepts:                 domainConceptsFromEdges(row.Edges.Concepts),
 		ImageURL:                 row.ImageURL,
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,

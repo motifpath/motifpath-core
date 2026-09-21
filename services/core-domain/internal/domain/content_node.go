@@ -10,13 +10,16 @@ const (
 	ContentTypeArticle ContentType = "article"
 )
 
-// DifficultyLevel is one of a ContentNode's three classification dimensions.
+// DifficultyLevel is one of a ContentNode's classification dimensions,
+// ordered beginner < early_intermediate < intermediate < advanced < expert.
 type DifficultyLevel string
 
 const (
-	DifficultyLevelBeginner     DifficultyLevel = "beginner"
-	DifficultyLevelIntermediate DifficultyLevel = "intermediate"
-	DifficultyLevelAdvanced     DifficultyLevel = "advanced"
+	DifficultyLevelBeginner          DifficultyLevel = "beginner"
+	DifficultyLevelEarlyIntermediate DifficultyLevel = "early_intermediate"
+	DifficultyLevelIntermediate      DifficultyLevel = "intermediate"
+	DifficultyLevelAdvanced          DifficultyLevel = "advanced"
+	DifficultyLevelExpert            DifficultyLevel = "expert"
 )
 
 // ReviewState tracks whether an admin has confirmed a ContentNode's
@@ -30,14 +33,37 @@ const (
 )
 
 // Classification is the minimum semantic layer required for gap detection
-// and the rules-based recommendation engine to function: the skill and
-// concept a ContentNode teaches, its difficulty, and whether an admin has
-// confirmed it.
+// and the rules-based recommendation engine to function: the Skill(s) and
+// Concept(s) a ContentNode teaches (each a reference into the shared
+// Skill/Concept tree, requiring at least one of each), its difficulty, and
+// whether an admin has confirmed it.
+//
+// Skills/Concepts carry only ID until this ContentNode is read back from
+// the repository with its Skill/Concept rows joined in — the same
+// construct-then-refetch convention Languages already follows.
 type Classification struct {
-	Skill           string
-	Concept         string
+	Skills          []Skill
+	Concepts        []Concept
 	DifficultyLevel DifficultyLevel
 	ReviewState     ReviewState
+}
+
+// SkillIDs returns the ids of c.Skills, in order.
+func (c Classification) SkillIDs() []string {
+	ids := make([]string, len(c.Skills))
+	for i, s := range c.Skills {
+		ids[i] = s.ID
+	}
+	return ids
+}
+
+// ConceptIDs returns the ids of c.Concepts, in order.
+func (c Classification) ConceptIDs() []string {
+	ids := make([]string, len(c.Concepts))
+	for i, cn := range c.Concepts {
+		ids[i] = cn.ID
+	}
+	return ids
 }
 
 // ContentNode is the base unit of a class — a video or article published by
@@ -59,10 +85,15 @@ type ContentNode struct {
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
 // always forced to pending, regardless of any caller-supplied value — only
-// an admin confirms a classification, never the teacher who created it. See
+// an admin confirms a classification, never the teacher who created it.
+// skillIDs/conceptIDs carry only the request-supplied ids until this node is
+// read back from the repository with its Skill/Concept rows joined in — see
 // validateContentNodeClassification for the shared classification rules.
-func NewContentNode(id, teacherID, title string, contentType ContentType, skill, concept string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
-	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+// Whether each id actually references an existing Skill/Concept is an
+// application-layer concern, requiring a repository round trip this
+// constructor can't perform.
+func NewContentNode(id, teacherID, title string, contentType ContentType, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
+	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 
 	switch contentType {
@@ -81,8 +112,8 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 		Title:       title,
 		ContentType: contentType,
 		Classification: Classification{
-			Skill:           skill,
-			Concept:         concept,
+			Skills:          skillsFromIDs(skillIDs),
+			Concepts:        conceptsFromIDs(conceptIDs),
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
@@ -97,8 +128,8 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skill,
 // determines which ExpandedContent trigger fields are valid for items
 // already attached to this node, and an edit does not reset or require
 // re-confirming an admin's prior review.
-func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyLevel, languageCodes []string) (ContentNode, error) {
-	errs := validateContentNodeClassification(title, skill, concept, difficulty)
+func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string) (ContentNode, error) {
+	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
@@ -106,27 +137,55 @@ func (n ContentNode) Update(title, skill, concept string, difficulty DifficultyL
 
 	updated := n
 	updated.Title = title
-	updated.Classification.Skill = skill
-	updated.Classification.Concept = concept
+	updated.Classification.Skills = skillsFromIDs(skillIDs)
+	updated.Classification.Concepts = conceptsFromIDs(conceptIDs)
 	updated.Classification.DifficultyLevel = difficulty
 	updated.Languages = languagesFromCodes(languageCodes)
 	return updated, nil
+}
+
+// skillsFromIDs builds placeholder Skill entries (ID only, no Name/ParentID)
+// from a request's skill_ids — mirrors languagesFromCodes' role for
+// Languages. The full Skill objects are populated only once the owning
+// ContentNode/Exercise is read back from the repository with its Skill rows
+// joined in.
+func skillsFromIDs(ids []string) []Skill {
+	if len(ids) == 0 {
+		return nil
+	}
+	skills := make([]Skill, len(ids))
+	for i, id := range ids {
+		skills[i] = Skill{ID: id}
+	}
+	return skills
+}
+
+// conceptsFromIDs is skillsFromIDs' counterpart for concept_ids.
+func conceptsFromIDs(ids []string) []Concept {
+	if len(ids) == 0 {
+		return nil
+	}
+	concepts := make([]Concept, len(ids))
+	for i, id := range ids {
+		concepts[i] = Concept{ID: id}
+	}
+	return concepts
 }
 
 // validateContentNodeClassification checks the fields shared by creation and
 // update — everything except content_type itself, which only creation
 // validates (it cannot be changed after creation).
 //
-// When skill, concept, and difficulty are all zero-valued, the failure is
-// reported against the single field "classification" rather than three
-// separate sub-fields: oapi-codegen decodes a JSON body with the
+// When skillIDs, conceptIDs, and difficulty are all empty/zero-valued, the
+// failure is reported against the single field "classification" rather than
+// three separate sub-fields: oapi-codegen decodes a JSON body with the
 // classification key omitted into the same zero-value struct as one with
 // classification present but empty, so this is the only signal available to
 // tell "the whole object was left out" apart from "one field inside it was
 // invalid" — which matters because the two are reported under different
 // field names in the merged Gherkin scenarios (register-user-style "whole
 // object omitted" -> "classification"; a single bad value -> its own field).
-func validateContentNodeClassification(title, skill, concept string, difficulty DifficultyLevel) []FieldError {
+func validateContentNodeClassification(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
@@ -135,22 +194,22 @@ func validateContentNodeClassification(title, skill, concept string, difficulty 
 
 	difficultyValid := false
 	switch difficulty {
-	case DifficultyLevelBeginner, DifficultyLevelIntermediate, DifficultyLevelAdvanced:
+	case DifficultyLevelBeginner, DifficultyLevelEarlyIntermediate, DifficultyLevelIntermediate, DifficultyLevelAdvanced, DifficultyLevelExpert:
 		difficultyValid = true
 	}
 
 	switch {
-	case skill == "" && concept == "" && difficulty == "":
+	case len(skillIDs) == 0 && len(conceptIDs) == 0 && difficulty == "":
 		errs = append(errs, FieldError{Field: "classification", Reason: "must not be empty"})
 	default:
-		if skill == "" {
-			errs = append(errs, FieldError{Field: "skill", Reason: "must not be empty"})
+		if len(skillIDs) == 0 {
+			errs = append(errs, FieldError{Field: "skill_ids", Reason: "must not be empty"})
 		}
-		if concept == "" {
-			errs = append(errs, FieldError{Field: "concept", Reason: "must not be empty"})
+		if len(conceptIDs) == 0 {
+			errs = append(errs, FieldError{Field: "concept_ids", Reason: "must not be empty"})
 		}
 		if !difficultyValid {
-			errs = append(errs, FieldError{Field: "difficulty_level", Reason: "must be beginner, intermediate, or advanced"})
+			errs = append(errs, FieldError{Field: "difficulty_level", Reason: "must be beginner, early_intermediate, intermediate, advanced, or expert"})
 		}
 	}
 

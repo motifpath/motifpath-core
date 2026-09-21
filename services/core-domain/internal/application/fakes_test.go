@@ -92,9 +92,9 @@ type fakeLanguageRepository struct {
 
 func newFakeLanguageRepository() *fakeLanguageRepository {
 	return &fakeLanguageRepository{byCode: map[string]domain.Language{
-		"en":                    {Code: "en", Name: "English"},
-		"pt_BR":                 {Code: "pt_BR", Name: "Portuguese (Brazil)"},
-		domain.LanguageCodeAny:  {Code: domain.LanguageCodeAny, Name: "Language-agnostic"},
+		"en":                   {Code: "en", Name: "English"},
+		"pt_BR":                {Code: "pt_BR", Name: "Portuguese (Brazil)"},
+		domain.LanguageCodeAny: {Code: domain.LanguageCodeAny, Name: "Language-agnostic"},
 	}}
 }
 
@@ -164,7 +164,7 @@ func (f *fakeContentNodeRepository) put(node domain.ContentNode) {
 	f.byID[node.ID] = node
 }
 
-func (f *fakeContentNodeRepository) List(_ context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+func (f *fakeContentNodeRepository) List(_ context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.ContentNode
@@ -172,7 +172,10 @@ func (f *fakeContentNodeRepository) List(_ context.Context, contentType domain.C
 		if contentType != "" && node.ContentType != contentType {
 			continue
 		}
-		if skill != "" && node.Classification.Skill != skill {
+		if skillID != "" && !containsID(node.Classification.SkillIDs(), skillID) {
+			continue
+		}
+		if conceptID != "" && !containsID(node.Classification.ConceptIDs(), conceptID) {
 			continue
 		}
 		if difficulty != "" && node.Classification.DifficultyLevel != difficulty {
@@ -181,6 +184,15 @@ func (f *fakeContentNodeRepository) List(_ context.Context, contentType domain.C
 		result = append(result, node)
 	}
 	return result, nil
+}
+
+func containsID(ids []string, id string) bool {
+	for _, existing := range ids {
+		if existing == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *fakeContentNodeRepository) Update(_ context.Context, node domain.ContentNode) error {
@@ -409,22 +421,19 @@ func (f *fakeExerciseRepository) ListByContentNodeID(_ context.Context, contentN
 	return result, nil
 }
 
-func (f *fakeExerciseRepository) ListBySkillTag(_ context.Context, skillTag string) ([]domain.Exercise, error) {
+func (f *fakeExerciseRepository) ListBySkillID(_ context.Context, skillID string) ([]domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.Exercise
 	for _, ex := range f.byID {
-		for _, tag := range ex.SkillTags {
-			if tag == skillTag {
-				result = append(result, ex)
-				break
-			}
+		if containsID(exerciseSkillIDs(ex), skillID) {
+			result = append(result, ex)
 		}
 	}
 	return result, nil
 }
 
-func (f *fakeExerciseRepository) List(_ context.Context, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+func (f *fakeExerciseRepository) List(_ context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.Exercise
@@ -432,21 +441,20 @@ func (f *fakeExerciseRepository) List(_ context.Context, skillTag string, exerci
 		if exerciseType != "" && ex.ExerciseType != exerciseType {
 			continue
 		}
-		if skillTag != "" {
-			matched := false
-			for _, tag := range ex.SkillTags {
-				if tag == skillTag {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
+		if skillID != "" && !containsID(exerciseSkillIDs(ex), skillID) {
+			continue
 		}
 		result = append(result, ex)
 	}
 	return result, nil
+}
+
+func exerciseSkillIDs(ex domain.Exercise) []string {
+	ids := make([]string, len(ex.Skills))
+	for i, s := range ex.Skills {
+		ids[i] = s.ID
+	}
+	return ids
 }
 
 func (f *fakeExerciseRepository) Update(_ context.Context, exercise domain.Exercise) error {
@@ -715,4 +723,152 @@ func idSequence() func() string {
 		n++
 		return "id-" + strconv.Itoa(n)
 	}
+}
+
+// fakeSkillRepository is a minimal in-memory ports.SkillRepository.
+type fakeSkillRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.Skill
+}
+
+func newFakeSkillRepository() *fakeSkillRepository {
+	return &fakeSkillRepository{byID: map[string]domain.Skill{}}
+}
+
+func (f *fakeSkillRepository) Create(_ context.Context, skill domain.Skill) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[skill.ID] = skill
+	return nil
+}
+
+func (f *fakeSkillRepository) GetByID(_ context.Context, id string) (domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	skill, ok := f.byID[id]
+	if !ok {
+		return domain.Skill{}, domain.ErrNotFound
+	}
+	return skill, nil
+}
+
+func (f *fakeSkillRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.Skill{}
+	for _, id := range ids {
+		if skill, ok := f.byID[id]; ok {
+			result[id] = skill
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeSkillRepository) List(_ context.Context) ([]domain.Skill, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Skill, 0, len(f.byID))
+	for _, skill := range f.byID {
+		result = append(result, skill)
+	}
+	return result, nil
+}
+
+func (f *fakeSkillRepository) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, skill := range f.byID {
+		if skill.Name != name {
+			continue
+		}
+		if samePointerValue(skill.ParentID, parentID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeSkillRepository) put(skill domain.Skill) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[skill.ID] = skill
+}
+
+// fakeConceptRepository is a minimal in-memory ports.ConceptRepository.
+type fakeConceptRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.Concept
+}
+
+func newFakeConceptRepository() *fakeConceptRepository {
+	return &fakeConceptRepository{byID: map[string]domain.Concept{}}
+}
+
+func (f *fakeConceptRepository) Create(_ context.Context, concept domain.Concept) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[concept.ID] = concept
+	return nil
+}
+
+func (f *fakeConceptRepository) GetByID(_ context.Context, id string) (domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	concept, ok := f.byID[id]
+	if !ok {
+		return domain.Concept{}, domain.ErrNotFound
+	}
+	return concept, nil
+}
+
+func (f *fakeConceptRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.Concept{}
+	for _, id := range ids {
+		if concept, ok := f.byID[id]; ok {
+			result[id] = concept
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeConceptRepository) List(_ context.Context) ([]domain.Concept, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Concept, 0, len(f.byID))
+	for _, concept := range f.byID {
+		result = append(result, concept)
+	}
+	return result, nil
+}
+
+func (f *fakeConceptRepository) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, concept := range f.byID {
+		if concept.Name != name {
+			continue
+		}
+		if samePointerValue(concept.ParentID, parentID) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeConceptRepository) put(concept domain.Concept) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[concept.ID] = concept
+}
+
+// samePointerValue reports whether a and b are both nil, or both non-nil
+// and pointing at equal values — the "same parent_id" comparison
+// ExistsSibling needs on plain *string ids.
+func samePointerValue(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

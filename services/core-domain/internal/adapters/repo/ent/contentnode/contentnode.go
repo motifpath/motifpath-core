@@ -22,10 +22,6 @@ const (
 	FieldTitle = "title"
 	// FieldContentType holds the string denoting the content_type field in the database.
 	FieldContentType = "content_type"
-	// FieldSkill holds the string denoting the skill field in the database.
-	FieldSkill = "skill"
-	// FieldConcept holds the string denoting the concept field in the database.
-	FieldConcept = "concept"
 	// FieldDifficultyLevel holds the string denoting the difficulty_level field in the database.
 	FieldDifficultyLevel = "difficulty_level"
 	// FieldReviewState holds the string denoting the review_state field in the database.
@@ -36,10 +32,18 @@ const (
 	EdgePathExercises = "path_exercises"
 	// EdgeLanguages holds the string denoting the languages edge name in mutations.
 	EdgeLanguages = "languages"
+	// EdgeSkills holds the string denoting the skills edge name in mutations.
+	EdgeSkills = "skills"
+	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
+	EdgeConcepts = "concepts"
 	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
 	EdgeContentNodeExercises = "content_node_exercises"
 	// EdgeContentNodeLanguages holds the string denoting the content_node_languages edge name in mutations.
 	EdgeContentNodeLanguages = "content_node_languages"
+	// EdgeContentNodeSkills holds the string denoting the content_node_skills edge name in mutations.
+	EdgeContentNodeSkills = "content_node_skills"
+	// EdgeContentNodeConcepts holds the string denoting the content_node_concepts edge name in mutations.
+	EdgeContentNodeConcepts = "content_node_concepts"
 	// Table holds the table name of the contentnode in the database.
 	Table = "content_nodes"
 	// PathExercisesTable is the table that holds the path_exercises relation/edge. The primary key declared below.
@@ -52,6 +56,16 @@ const (
 	// LanguagesInverseTable is the table name for the Language entity.
 	// It exists in this package in order to avoid circular dependency with the "language" package.
 	LanguagesInverseTable = "languages"
+	// SkillsTable is the table that holds the skills relation/edge. The primary key declared below.
+	SkillsTable = "content_node_skills"
+	// SkillsInverseTable is the table name for the Skill entity.
+	// It exists in this package in order to avoid circular dependency with the "skill" package.
+	SkillsInverseTable = "skills"
+	// ConceptsTable is the table that holds the concepts relation/edge. The primary key declared below.
+	ConceptsTable = "content_node_concepts"
+	// ConceptsInverseTable is the table name for the Concept entity.
+	// It exists in this package in order to avoid circular dependency with the "concept" package.
+	ConceptsInverseTable = "concepts"
 	// ContentNodeExercisesTable is the table that holds the content_node_exercises relation/edge.
 	ContentNodeExercisesTable = "content_node_exercises"
 	// ContentNodeExercisesInverseTable is the table name for the ContentNodeExercise entity.
@@ -66,6 +80,20 @@ const (
 	ContentNodeLanguagesInverseTable = "content_node_languages"
 	// ContentNodeLanguagesColumn is the table column denoting the content_node_languages relation/edge.
 	ContentNodeLanguagesColumn = "content_node_id"
+	// ContentNodeSkillsTable is the table that holds the content_node_skills relation/edge.
+	ContentNodeSkillsTable = "content_node_skills"
+	// ContentNodeSkillsInverseTable is the table name for the ContentNodeSkill entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeskill" package.
+	ContentNodeSkillsInverseTable = "content_node_skills"
+	// ContentNodeSkillsColumn is the table column denoting the content_node_skills relation/edge.
+	ContentNodeSkillsColumn = "content_node_id"
+	// ContentNodeConceptsTable is the table that holds the content_node_concepts relation/edge.
+	ContentNodeConceptsTable = "content_node_concepts"
+	// ContentNodeConceptsInverseTable is the table name for the ContentNodeConcept entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeconcept" package.
+	ContentNodeConceptsInverseTable = "content_node_concepts"
+	// ContentNodeConceptsColumn is the table column denoting the content_node_concepts relation/edge.
+	ContentNodeConceptsColumn = "content_node_id"
 )
 
 // Columns holds all SQL columns for contentnode fields.
@@ -74,8 +102,6 @@ var Columns = []string{
 	FieldTeacherID,
 	FieldTitle,
 	FieldContentType,
-	FieldSkill,
-	FieldConcept,
 	FieldDifficultyLevel,
 	FieldReviewState,
 	FieldCreatedAt,
@@ -88,6 +114,12 @@ var (
 	// LanguagesPrimaryKey and LanguagesColumn2 are the table columns denoting the
 	// primary key for the languages relation (M2M).
 	LanguagesPrimaryKey = []string{"content_node_id", "language_id"}
+	// SkillsPrimaryKey and SkillsColumn2 are the table columns denoting the
+	// primary key for the skills relation (M2M).
+	SkillsPrimaryKey = []string{"content_node_id", "skill_id"}
+	// ConceptsPrimaryKey and ConceptsColumn2 are the table columns denoting the
+	// primary key for the concepts relation (M2M).
+	ConceptsPrimaryKey = []string{"content_node_id", "concept_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -135,9 +167,11 @@ type DifficultyLevel string
 
 // DifficultyLevel values.
 const (
-	DifficultyLevelBeginner     DifficultyLevel = "beginner"
-	DifficultyLevelIntermediate DifficultyLevel = "intermediate"
-	DifficultyLevelAdvanced     DifficultyLevel = "advanced"
+	DifficultyLevelBeginner          DifficultyLevel = "beginner"
+	DifficultyLevelEarlyIntermediate DifficultyLevel = "early_intermediate"
+	DifficultyLevelIntermediate      DifficultyLevel = "intermediate"
+	DifficultyLevelAdvanced          DifficultyLevel = "advanced"
+	DifficultyLevelExpert            DifficultyLevel = "expert"
 )
 
 func (dl DifficultyLevel) String() string {
@@ -147,7 +181,7 @@ func (dl DifficultyLevel) String() string {
 // DifficultyLevelValidator is a validator for the "difficulty_level" field enum values. It is called by the builders before save.
 func DifficultyLevelValidator(dl DifficultyLevel) error {
 	switch dl {
-	case DifficultyLevelBeginner, DifficultyLevelIntermediate, DifficultyLevelAdvanced:
+	case DifficultyLevelBeginner, DifficultyLevelEarlyIntermediate, DifficultyLevelIntermediate, DifficultyLevelAdvanced, DifficultyLevelExpert:
 		return nil
 	default:
 		return fmt.Errorf("contentnode: invalid enum value for difficulty_level field: %q", dl)
@@ -204,16 +238,6 @@ func ByContentType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContentType, opts...).ToFunc()
 }
 
-// BySkill orders the results by the skill field.
-func BySkill(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSkill, opts...).ToFunc()
-}
-
-// ByConcept orders the results by the concept field.
-func ByConcept(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldConcept, opts...).ToFunc()
-}
-
 // ByDifficultyLevel orders the results by the difficulty_level field.
 func ByDifficultyLevel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDifficultyLevel, opts...).ToFunc()
@@ -257,6 +281,34 @@ func ByLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySkillsCount orders the results by skills count.
+func BySkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSkillsStep(), opts...)
+	}
+}
+
+// BySkills orders the results by skills terms.
+func BySkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByConceptsCount orders the results by concepts count.
+func ByConceptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newConceptsStep(), opts...)
+	}
+}
+
+// ByConcepts orders the results by concepts terms.
+func ByConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByContentNodeExercisesCount orders the results by content_node_exercises count.
 func ByContentNodeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -284,6 +336,34 @@ func ByContentNodeLanguages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpt
 		sqlgraph.OrderByNeighborTerms(s, newContentNodeLanguagesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByContentNodeSkillsCount orders the results by content_node_skills count.
+func ByContentNodeSkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeSkillsStep(), opts...)
+	}
+}
+
+// ByContentNodeSkills orders the results by content_node_skills terms.
+func ByContentNodeSkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByContentNodeConceptsCount orders the results by content_node_concepts count.
+func ByContentNodeConceptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeConceptsStep(), opts...)
+	}
+}
+
+// ByContentNodeConcepts orders the results by content_node_concepts terms.
+func ByContentNodeConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newPathExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -298,6 +378,20 @@ func newLanguagesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, false, LanguagesTable, LanguagesPrimaryKey...),
 	)
 }
+func newSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, SkillsTable, SkillsPrimaryKey...),
+	)
+}
+func newConceptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ConceptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+	)
+}
 func newContentNodeExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -310,5 +404,19 @@ func newContentNodeLanguagesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ContentNodeLanguagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeLanguagesTable, ContentNodeLanguagesColumn),
+	)
+}
+func newContentNodeSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeSkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeSkillsTable, ContentNodeSkillsColumn),
+	)
+}
+func newContentNodeConceptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeConceptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeConceptsTable, ContentNodeConceptsColumn),
 	)
 }

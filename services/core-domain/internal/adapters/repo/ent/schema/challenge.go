@@ -11,11 +11,21 @@ import (
 )
 
 // Challenge is the assessment unit for a content node: it groups exercises
-// and carries the subject tag and pass threshold used by the rules-based
-// recommendation engine, plus an optional, purely informational time
-// threshold. Remediation targets are not modeled here — see Exercise's
-// remediation_targets, which attaches remediation to the specific exercise
-// a student struggled with rather than the whole challenge.
+// and carries the subject (a reference to exactly one Skill or Concept tree
+// node — subject_skill_id/subject_concept_id are mutually exclusive, one of
+// them always set) and pass threshold used by the rules-based recommendation
+// engine, plus an optional, purely informational time threshold. Remediation
+// targets are not modeled here — see Exercise's remediation_targets, which
+// attaches remediation to the specific exercise a student struggled with
+// rather than the whole challenge.
+//
+// subject_skill_id/subject_concept_id are stored as plain, unenforced UUID
+// columns rather than ent edges — matching how content_node_id and
+// teacher_id already reference other entities elsewhere in this schema
+// package — since the membership rule that actually matters (the id must
+// appear in the parent ContentNode's linked skill_ids/concept_ids) is a
+// cross-entity invariant the domain/application layer enforces, not
+// something a foreign key alone could express.
 type Challenge struct {
 	ent.Schema
 }
@@ -29,7 +39,14 @@ func (Challenge) Fields() []ent.Field {
 		field.UUID("content_node_id", uuid.UUID{}).
 			Immutable(),
 
-		field.String("subject_tag"),
+		field.UUID("subject_skill_id", uuid.UUID{}).
+			Optional().
+			Nillable(),
+
+		field.UUID("subject_concept_id", uuid.UUID{}).
+			Optional().
+			Nillable(),
+
 		field.Int("pass_threshold"),
 
 		// time_threshold_ms is the teacher's explicit override only — never

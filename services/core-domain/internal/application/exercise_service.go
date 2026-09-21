@@ -15,6 +15,8 @@ type ExerciseService struct {
 	challenges ports.ChallengeRepository
 	exercises  ports.ExerciseRepository
 	nodes      ports.ContentNodeRepository
+	skills     ports.SkillRepository
+	concepts   ports.ConceptRepository
 	newID      func() string
 	now        func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
@@ -27,16 +29,18 @@ func NewExerciseService(
 	challenges ports.ChallengeRepository,
 	exercises ports.ExerciseRepository,
 	nodes ports.ContentNodeRepository,
+	skills ports.SkillRepository,
+	concepts ports.ConceptRepository,
 	newID func() string,
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, newID: newID, now: now, shuffle: shuffle}
 }
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -45,16 +49,19 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages, s.now())
+	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages, s.now())
 	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := s.exercises.Create(ctx, exercise); err != nil {
 		return domain.Exercise{}, err
 	}
-	// Re-fetched rather than returned as constructed: exercise.Languages only
-	// carries the request-supplied codes until read back with its Language
-	// rows (and their Name) joined in.
+	// Re-fetched rather than returned as constructed: exercise.Languages/
+	// Skills/Concepts only carry the request-supplied codes/ids until read
+	// back with their rows joined in.
 	return s.exercises.GetByID(ctx, exercise.ID)
 }
 
@@ -97,24 +104,24 @@ func (s *ExerciseService) GetExercise(ctx context.Context, id string) (domain.Ex
 }
 
 // ListExercises returns exercises from the reusable pool, optionally
-// narrowed by skillTag and/or exerciseType (either may be "" for "no
+// narrowed by skillID and/or exerciseType (either may be "" for "no
 // filter"). Only teachers and admins may list exercises — the pool is an
 // authoring surface, unlike GetExercise which any authenticated user may
 // call for a specific known id.
-func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, skillTag string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return nil, domain.ErrForbidden
 	}
-	return s.exercises.List(ctx, skillTag, exerciseType)
+	return s.exercises.List(ctx, skillID, exerciseType)
 }
 
-// UpdateExercise replaces the given exercise's title, prompt, skill tags,
-// stimulus media, options, estimated duration, remediation targets, and
-// languages. exercise_type cannot be changed, and the exercise's
+// UpdateExercise replaces the given exercise's title, prompt, skill/concept
+// links, stimulus media, options, estimated duration, remediation targets,
+// and languages. exercise_type cannot be changed, and the exercise's
 // challenge/content-node links are untouched. Only teachers and admins may
 // update an exercise. Returns domain.ErrNotFound if no exercise exists with
 // the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillTags []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -128,15 +135,20 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	updated, err := existing.Update(title, prompt, skillTags, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages)
+	updated, err := existing.Update(title, prompt, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages)
 	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
 		return domain.Exercise{}, err
 	}
 
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}
-	return updated, nil
+	// Re-fetched rather than returned as updated: same construct-then-refetch
+	// convention CreateExercise follows, for the same reason (see its comment).
+	return s.exercises.GetByID(ctx, updated.ID)
 }
 
 // LinkExerciseToChallenge links an existing exercise into a challenge. Only
@@ -295,18 +307,18 @@ func (s *ExerciseService) ListPathExercisesForContentNode(ctx context.Context, c
 // returns a fresh selection and ID on every call.
 type PracticeSession struct {
 	ID        string
-	SkillTag  string
+	SkillID   string
 	Exercises []domain.Exercise
 }
 
-// StartPracticeSession selects up to count exercises tagged with skillTag,
-// in random order with each exercise's options also randomized, under a
-// fresh session ID. Returns fewer than count exercises if the tagged pool
-// is smaller. Any authenticated user may start a practice session.
-func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillTag string, count int) (PracticeSession, error) {
+// StartPracticeSession selects up to count exercises linked to skillID, in
+// random order with each exercise's options also randomized, under a fresh
+// session ID. Returns fewer than count exercises if the linked pool is
+// smaller. Any authenticated user may start a practice session.
+func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillID string, count int) (PracticeSession, error) {
 	var errs []domain.FieldError
-	if skillTag == "" {
-		errs = append(errs, domain.FieldError{Field: "skill_tag", Reason: "must not be empty"})
+	if skillID == "" {
+		errs = append(errs, domain.FieldError{Field: "skill_id", Reason: "must not be empty"})
 	}
 	if count < 1 || count > 50 {
 		errs = append(errs, domain.FieldError{Field: "count", Reason: "must be between 1 and 50"})
@@ -315,7 +327,7 @@ func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillTag str
 		return PracticeSession{}, &domain.ValidationError{Fields: errs}
 	}
 
-	pool, err := s.exercises.ListBySkillTag(ctx, skillTag)
+	pool, err := s.exercises.ListBySkillID(ctx, skillID)
 	if err != nil {
 		return PracticeSession{}, err
 	}
@@ -328,7 +340,7 @@ func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillTag str
 		s.shuffleOptions(pool[i].Options)
 	}
 
-	return PracticeSession{ID: s.newID(), SkillTag: skillTag, Exercises: pool}, nil
+	return PracticeSession{ID: s.newID(), SkillID: skillID, Exercises: pool}, nil
 }
 
 func (s *ExerciseService) shuffleOptions(options []domain.Option) {

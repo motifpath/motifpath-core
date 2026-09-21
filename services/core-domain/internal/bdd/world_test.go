@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for deterministic test UUIDs, not security
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,6 +37,8 @@ type world struct {
 	paths       *fakeLearningPathRepo
 	assignments *fakePathAssignmentRepo
 	completion  *fakeCompletionReader
+	skills      *fakeSkillRepo
+	concepts    *fakeConceptRepo
 	pgPinger    *fakePinger
 	mongoPinger *fakePinger
 	handler     *appHTTP.Handler
@@ -49,6 +52,18 @@ type world struct {
 	// for content nodes/challenges/etc., a user's MotifPath id can't be
 	// derived from its display name; it's assigned by IdentityService.
 	userMotifID map[string]uuid.UUID
+
+	// skillIDByName/conceptIDByName cache the id of every Skill/Concept
+	// created or seeded so far, keyed by name — the "current" id for that
+	// name, last-writer-wins. Two different branches may share a name (see
+	// skills.feature/concepts.feature), so a step that creates a
+	// same-named node under a different parent intentionally overwrites the
+	// prior entry; that scenario asserts on the two returned entities
+	// directly rather than re-resolving either by name afterward. Every
+	// other scenario has at most one node per name, so last-writer-wins
+	// never actually differs from "the one node with this name" for them.
+	skillIDByName   map[string]uuid.UUID
+	conceptIDByName map[string]uuid.UUID
 
 	hasToken bool
 	clerkSub string // the "sub" claim of whichever identity is currently authenticated
@@ -92,32 +107,41 @@ type world struct {
 }
 
 func newWorld() *world {
+	skills := newFakeSkillRepo()
+	concepts := newFakeConceptRepo()
 	w := &world{
 		users:       newFakeUserRepo(),
-		nodes:       newFakeContentNodeRepo(),
+		nodes:       newFakeContentNodeRepo(skills, concepts),
 		challenges:  newFakeChallengeRepo(),
-		exercises:   newFakeExerciseRepo(),
+		exercises:   newFakeExerciseRepo(skills, concepts),
 		expanded:    newFakeExpandedContentRepo(),
 		paths:       newFakeLearningPathRepo(),
 		assignments: newFakePathAssignmentRepo(),
 		completion:  newFakeCompletionReader(),
+		skills:      skills,
+		concepts:    concepts,
 		pgPinger:    &fakePinger{},
 		mongoPinger: &fakePinger{},
 		userMotifID: map[string]uuid.UUID{},
+
+		skillIDByName:   map[string]uuid.UUID{},
+		conceptIDByName: map[string]uuid.UUID{},
 	}
 
 	newID := idSequence()
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, newID, now, noShuffle)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, newID, now, noShuffle)
+	skill := application.NewSkillService(w.skills, newID)
+	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.nodes, w.exercises, w.completion, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, media, path, assignment, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, assignment, w.pgPinger, w.mongoPinger)
 	return w
 }
 
@@ -170,6 +194,87 @@ func challengeID(slug string) uuid.UUID { return deterministicUUID("challenge", 
 func exerciseID(slug string) uuid.UUID  { return deterministicUUID("exercise", slug) }
 func pathID(slug string) uuid.UUID      { return deterministicUUID("path", slug) }
 func expandedID(slug string) uuid.UUID  { return deterministicUUID("expanded", slug) }
+
+// putSkill seeds a Skill directly into w.skills (mirroring how content nodes
+// are seeded via w.nodes.put rather than the real handler) and registers it
+// under name in w.skillIDByName. parentID nil means a root skill.
+func (w *world) putSkill(name string, parentID *uuid.UUID) uuid.UUID {
+	var id uuid.UUID
+	var parentIDStr *string
+	if parentID != nil {
+		id = deterministicUUID("skill", parentID.String(), name)
+		s := parentID.String()
+		parentIDStr = &s
+	} else {
+		id = deterministicUUID("skill", "root", name)
+	}
+	w.skills.put(domain.Skill{ID: id.String(), Name: name, ParentID: parentIDStr})
+	w.skillIDByName[name] = id
+	return id
+}
+
+// skillIDFor resolves name to the id of the Skill previously created/seeded
+// under that name, auto-creating it as a root skill on first reference —
+// most content-node/exercise/challenge scenarios reference a skill by plain
+// name with no prior "a skill exists" step, since which specific tree node
+// it is doesn't matter to them.
+func (w *world) skillIDFor(name string) uuid.UUID {
+	if id, ok := w.skillIDByName[name]; ok {
+		return id
+	}
+	return w.putSkill(name, nil)
+}
+
+// putConcept/conceptIDFor are putSkill/skillIDFor's counterparts for Concept.
+func (w *world) putConcept(name string, parentID *uuid.UUID) uuid.UUID {
+	var id uuid.UUID
+	var parentIDStr *string
+	if parentID != nil {
+		id = deterministicUUID("concept", parentID.String(), name)
+		s := parentID.String()
+		parentIDStr = &s
+	} else {
+		id = deterministicUUID("concept", "root", name)
+	}
+	w.concepts.put(domain.Concept{ID: id.String(), Name: name, ParentID: parentIDStr})
+	w.conceptIDByName[name] = id
+	return id
+}
+
+func (w *world) conceptIDFor(name string) uuid.UUID {
+	if id, ok := w.conceptIDByName[name]; ok {
+		return id
+	}
+	return w.putConcept(name, nil)
+}
+
+// skillIDsFor/conceptIDsFor resolve a comma-separated Gherkin skill/concept
+// list ("alternate-picking, string-muting") to its ids, in order.
+func (w *world) skillIDsFor(list string) []uuid.UUID {
+	names := splitCommaList(list)
+	ids := make([]uuid.UUID, len(names))
+	for i, name := range names {
+		ids[i] = w.skillIDFor(name)
+	}
+	return ids
+}
+
+func (w *world) conceptIDsFor(list string) []uuid.UUID {
+	names := splitCommaList(list)
+	ids := make([]uuid.UUID, len(names))
+	for i, name := range names {
+		ids[i] = w.conceptIDFor(name)
+	}
+	return ids
+}
+
+func splitCommaList(list string) []string {
+	var names []string
+	for _, part := range strings.Split(list, ",") {
+		names = append(names, strings.TrimSpace(part))
+	}
+	return names
+}
 
 // ensureRegistered registers name (if not already) via the real RegisterUser
 // handler path for student/teacher, or by seeding the repo directly for

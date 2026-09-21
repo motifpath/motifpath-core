@@ -29,9 +29,31 @@ func (_c *ChallengeCreate) SetContentNodeID(v uuid.UUID) *ChallengeCreate {
 	return _c
 }
 
-// SetSubjectTag sets the "subject_tag" field.
-func (_c *ChallengeCreate) SetSubjectTag(v string) *ChallengeCreate {
-	_c.mutation.SetSubjectTag(v)
+// SetSubjectSkillID sets the "subject_skill_id" field.
+func (_c *ChallengeCreate) SetSubjectSkillID(v uuid.UUID) *ChallengeCreate {
+	_c.mutation.SetSubjectSkillID(v)
+	return _c
+}
+
+// SetNillableSubjectSkillID sets the "subject_skill_id" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableSubjectSkillID(v *uuid.UUID) *ChallengeCreate {
+	if v != nil {
+		_c.SetSubjectSkillID(*v)
+	}
+	return _c
+}
+
+// SetSubjectConceptID sets the "subject_concept_id" field.
+func (_c *ChallengeCreate) SetSubjectConceptID(v uuid.UUID) *ChallengeCreate {
+	_c.mutation.SetSubjectConceptID(v)
+	return _c
+}
+
+// SetNillableSubjectConceptID sets the "subject_concept_id" field if the given value is not nil.
+func (_c *ChallengeCreate) SetNillableSubjectConceptID(v *uuid.UUID) *ChallengeCreate {
+	if v != nil {
+		_c.SetSubjectConceptID(*v)
+	}
 	return _c
 }
 
@@ -199,9 +221,6 @@ func (_c *ChallengeCreate) check() error {
 	if _, ok := _c.mutation.ContentNodeID(); !ok {
 		return &ValidationError{Name: "content_node_id", err: errors.New(`ent: missing required field "Challenge.content_node_id"`)}
 	}
-	if _, ok := _c.mutation.SubjectTag(); !ok {
-		return &ValidationError{Name: "subject_tag", err: errors.New(`ent: missing required field "Challenge.subject_tag"`)}
-	}
 	if _, ok := _c.mutation.PassThreshold(); !ok {
 		return &ValidationError{Name: "pass_threshold", err: errors.New(`ent: missing required field "Challenge.pass_threshold"`)}
 	}
@@ -253,9 +272,13 @@ func (_c *ChallengeCreate) createSpec() (*Challenge, *sqlgraph.CreateSpec) {
 		_spec.SetField(challenge.FieldContentNodeID, field.TypeUUID, value)
 		_node.ContentNodeID = value
 	}
-	if value, ok := _c.mutation.SubjectTag(); ok {
-		_spec.SetField(challenge.FieldSubjectTag, field.TypeString, value)
-		_node.SubjectTag = value
+	if value, ok := _c.mutation.SubjectSkillID(); ok {
+		_spec.SetField(challenge.FieldSubjectSkillID, field.TypeUUID, value)
+		_node.SubjectSkillID = &value
+	}
+	if value, ok := _c.mutation.SubjectConceptID(); ok {
+		_spec.SetField(challenge.FieldSubjectConceptID, field.TypeUUID, value)
+		_node.SubjectConceptID = &value
 	}
 	if value, ok := _c.mutation.PassThreshold(); ok {
 		_spec.SetField(challenge.FieldPassThreshold, field.TypeInt, value)

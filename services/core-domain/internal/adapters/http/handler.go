@@ -4,11 +4,33 @@ import (
 	"context"
 	"errors"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
+
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
+
+// uuidsToStrings converts a slice of parsed request UUIDs to the plain
+// string ids the application layer works in.
+func uuidsToStrings(ids []openapi_types.UUID) []string {
+	result := make([]string, len(ids))
+	for i, id := range ids {
+		result[i] = id.String()
+	}
+	return result
+}
+
+// uuidPtrToStringPtr converts an optional request UUID to an optional
+// string id, preserving nil.
+func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
+}
 
 // Handler implements generated.StrictServerInterface — one method per
 // OpenAPI operation, each translating between generated wire types and the
@@ -18,6 +40,8 @@ type Handler struct {
 	content    *application.ContentService
 	challenge  *application.ChallengeService
 	exercise   *application.ExerciseService
+	skill      *application.SkillService
+	concept    *application.ConceptService
 	media      *application.MediaService
 	path       *application.LearningPathService
 	assignment *application.PathAssignmentService
@@ -35,6 +59,8 @@ func NewHandler(
 	content *application.ContentService,
 	challenge *application.ChallengeService,
 	exercise *application.ExerciseService,
+	skill *application.SkillService,
+	concept *application.ConceptService,
 	media *application.MediaService,
 	path *application.LearningPathService,
 	assignment *application.PathAssignmentService,
@@ -46,6 +72,8 @@ func NewHandler(
 		content:               content,
 		challenge:             challenge,
 		exercise:              exercise,
+		skill:                 skill,
+		concept:               concept,
 		media:                 media,
 		path:                  path,
 		assignment:            assignment,
@@ -146,7 +174,7 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 	body := request.Body
 	node, err := h.content.CreateContentNode(ctx, caller, body.Title,
 		domain.ContentType(body.ContentType),
-		body.Classification.Skill, body.Classification.Concept,
+		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
 		domain.DifficultyLevel(body.Classification.DifficultyLevel),
 		body.LanguageCodes)
 	if err != nil {
@@ -190,16 +218,20 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 	if request.Params.ContentType != nil {
 		contentType = domain.ContentType(*request.Params.ContentType)
 	}
-	var skill string
-	if request.Params.Skill != nil {
-		skill = *request.Params.Skill
+	var skillID string
+	if request.Params.SkillId != nil {
+		skillID = request.Params.SkillId.String()
+	}
+	var conceptID string
+	if request.Params.ConceptId != nil {
+		conceptID = request.Params.ConceptId.String()
 	}
 	var difficulty domain.DifficultyLevel
 	if request.Params.DifficultyLevel != nil {
 		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
 	}
 
-	nodes, err := h.content.ListContentNodes(ctx, caller, contentType, skill, difficulty)
+	nodes, err := h.content.ListContentNodes(ctx, caller, contentType, skillID, conceptID, difficulty)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
@@ -218,7 +250,8 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 
 	body := request.Body
 	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
-		body.Classification.Skill, body.Classification.Concept, domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes)
+		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
+		domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -251,7 +284,8 @@ func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateC
 	}
 
 	challenge, err := h.challenge.CreateChallenge(ctx, caller, request.ContentNodeId.String(),
-		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+		uuidPtrToStringPtr(request.Body.SubjectSkillId), uuidPtrToStringPtr(request.Body.SubjectConceptId),
+		request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -284,7 +318,8 @@ func (h *Handler) UpdateChallenge(ctx context.Context, request generated.UpdateC
 	}
 
 	challenge, err := h.challenge.UpdateChallenge(ctx, caller, request.ChallengeId.String(),
-		request.Body.SubjectTag, request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
+		uuidPtrToStringPtr(request.Body.SubjectSkillId), uuidPtrToStringPtr(request.Body.SubjectConceptId),
+		request.Body.PassThreshold, request.Body.TimeThresholdMs, shuffleExercises, shuffleOptions)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -325,16 +360,13 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	}
 
 	body := request.Body
-	var skillTags []string
-	if body.SkillTags != nil {
-		skillTags = *body.SkillTags
-	}
 	var remediationTargets []generated.RemediationTarget
 	if body.RemediationTargets != nil {
 		remediationTargets = *body.RemediationTargets
 	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
-		domain.ExerciseType(body.ExerciseType), skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		domain.ExerciseType(body.ExerciseType), uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
+		body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -373,16 +405,16 @@ func (h *Handler) ListExercises(ctx context.Context, request generated.ListExerc
 		return generated.ListExercises401JSONResponse(unauthorizedError()), nil
 	}
 
-	var skillTag string
-	if request.Params.SkillTag != nil {
-		skillTag = *request.Params.SkillTag
+	var skillID string
+	if request.Params.SkillId != nil {
+		skillID = request.Params.SkillId.String()
 	}
 	var exerciseType domain.ExerciseType
 	if request.Params.ExerciseType != nil {
 		exerciseType = domain.ExerciseType(*request.Params.ExerciseType)
 	}
 
-	exercises, err := h.exercise.ListExercises(ctx, caller, skillTag, exerciseType)
+	exercises, err := h.exercise.ListExercises(ctx, caller, skillID, exerciseType)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
@@ -400,16 +432,13 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	}
 
 	body := request.Body
-	var skillTags []string
-	if body.SkillTags != nil {
-		skillTags = *body.SkillTags
-	}
 	var remediationTargets []generated.RemediationTarget
 	if body.RemediationTargets != nil {
 		remediationTargets = *body.RemediationTargets
 	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
-		skillTags, body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
+		uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
+		body.ImageUrl, body.AudioUrl, toDomainOptions(body.Options), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -862,7 +891,17 @@ func (h *Handler) StartPracticeSession(ctx context.Context, request generated.St
 		count = *request.Params.Count
 	}
 
-	session, err := h.exercise.StartPracticeSession(ctx, request.Params.SkillTag, count)
+	// SkillId is a required, non-pointer field: the generated chi router
+	// rejects a request that omits skill_id before this handler ever runs,
+	// but request objects built directly (as this package's own tests do)
+	// bypass that layer and land here with the zero uuid.UUID — treated the
+	// same as "" so ExerciseService's own validation still catches it.
+	var skillID string
+	if request.Params.SkillId != (openapi_types.UUID{}) {
+		skillID = request.Params.SkillId.String()
+	}
+
+	session, err := h.exercise.StartPracticeSession(ctx, skillID, count)
 	if err != nil {
 		if kind, valErr := classify(err); kind == errKindValidation {
 			return generated.StartPracticeSession400JSONResponse(validationErrorResponse(valErr)), nil
@@ -871,4 +910,74 @@ func (h *Handler) StartPracticeSession(ctx context.Context, request generated.St
 	}
 
 	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session)), nil
+}
+
+func (h *Handler) ListSkills(ctx context.Context, _ generated.ListSkillsRequestObject) (generated.ListSkillsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListSkills401JSONResponse(unauthorizedError()), nil
+	}
+
+	skills, err := h.skill.ListSkills(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListSkills200JSONResponse(toGeneratedSkills(skills)), nil
+}
+
+func (h *Handler) CreateSkill(ctx context.Context, request generated.CreateSkillRequestObject) (generated.CreateSkillResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateSkill401JSONResponse(unauthorizedError()), nil
+	}
+
+	skill, err := h.skill.CreateSkill(ctx, caller, request.Body.Name, uuidPtrToStringPtr(request.Body.ParentId))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateSkill400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateSkill403JSONResponse(forbiddenError("only teachers and admins may create a skill")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateSkill201JSONResponse(toGeneratedSkill(skill)), nil
+}
+
+func (h *Handler) ListConcepts(ctx context.Context, _ generated.ListConceptsRequestObject) (generated.ListConceptsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListConcepts401JSONResponse(unauthorizedError()), nil
+	}
+
+	concepts, err := h.concept.ListConcepts(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListConcepts200JSONResponse(toGeneratedConcepts(concepts)), nil
+}
+
+func (h *Handler) CreateConcept(ctx context.Context, request generated.CreateConceptRequestObject) (generated.CreateConceptResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateConcept401JSONResponse(unauthorizedError()), nil
+	}
+
+	concept, err := h.concept.CreateConcept(ctx, caller, request.Body.Name, uuidPtrToStringPtr(request.Body.ParentId))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateConcept400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateConcept403JSONResponse(forbiddenError("only teachers and admins may create a concept")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateConcept201JSONResponse(toGeneratedConcept(concept)), nil
 }

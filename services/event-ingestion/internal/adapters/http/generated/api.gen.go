@@ -549,11 +549,11 @@ type TriggerContext struct {
 	// session itself is not a stored resource.
 	PracticeSessionId *openapi_types.UUID `json:"practice_session_id,omitempty"`
 
-	// SkillTag The skill tag this exercise was selected for. Present only when
-	// source is practice_session — the tag passed to
+	// SkillId ID of the Skill this exercise was selected for. Present only when
+	// source is practice_session — the skill_id passed to
 	// GET /practice-sessions. Lets the Aggregation Worker compute
 	// per-skill accuracy for the recommendation engine.
-	SkillTag *string `json:"skill_tag,omitempty"`
+	SkillId *openapi_types.UUID `json:"skill_id,omitempty"`
 
 	// Source What triggered this exercise session. challenge_sequence = part of a
 	// node's challenge; path_exercise = one of a node's static,

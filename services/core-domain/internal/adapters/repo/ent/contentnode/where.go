@@ -66,16 +66,6 @@ func Title(v string) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldTitle, v))
 }
 
-// Skill applies equality check predicate on the "skill" field. It's identical to SkillEQ.
-func Skill(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEQ(FieldSkill, v))
-}
-
-// Concept applies equality check predicate on the "concept" field. It's identical to ConceptEQ.
-func Concept(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEQ(FieldConcept, v))
-}
-
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldCreatedAt, v))
@@ -206,136 +196,6 @@ func ContentTypeNotIn(vs ...ContentType) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldNotIn(FieldContentType, vs...))
 }
 
-// SkillEQ applies the EQ predicate on the "skill" field.
-func SkillEQ(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEQ(FieldSkill, v))
-}
-
-// SkillNEQ applies the NEQ predicate on the "skill" field.
-func SkillNEQ(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldNEQ(FieldSkill, v))
-}
-
-// SkillIn applies the In predicate on the "skill" field.
-func SkillIn(vs ...string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldIn(FieldSkill, vs...))
-}
-
-// SkillNotIn applies the NotIn predicate on the "skill" field.
-func SkillNotIn(vs ...string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldNotIn(FieldSkill, vs...))
-}
-
-// SkillGT applies the GT predicate on the "skill" field.
-func SkillGT(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldGT(FieldSkill, v))
-}
-
-// SkillGTE applies the GTE predicate on the "skill" field.
-func SkillGTE(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldGTE(FieldSkill, v))
-}
-
-// SkillLT applies the LT predicate on the "skill" field.
-func SkillLT(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldLT(FieldSkill, v))
-}
-
-// SkillLTE applies the LTE predicate on the "skill" field.
-func SkillLTE(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldLTE(FieldSkill, v))
-}
-
-// SkillContains applies the Contains predicate on the "skill" field.
-func SkillContains(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldContains(FieldSkill, v))
-}
-
-// SkillHasPrefix applies the HasPrefix predicate on the "skill" field.
-func SkillHasPrefix(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldHasPrefix(FieldSkill, v))
-}
-
-// SkillHasSuffix applies the HasSuffix predicate on the "skill" field.
-func SkillHasSuffix(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldHasSuffix(FieldSkill, v))
-}
-
-// SkillEqualFold applies the EqualFold predicate on the "skill" field.
-func SkillEqualFold(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEqualFold(FieldSkill, v))
-}
-
-// SkillContainsFold applies the ContainsFold predicate on the "skill" field.
-func SkillContainsFold(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldContainsFold(FieldSkill, v))
-}
-
-// ConceptEQ applies the EQ predicate on the "concept" field.
-func ConceptEQ(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEQ(FieldConcept, v))
-}
-
-// ConceptNEQ applies the NEQ predicate on the "concept" field.
-func ConceptNEQ(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldNEQ(FieldConcept, v))
-}
-
-// ConceptIn applies the In predicate on the "concept" field.
-func ConceptIn(vs ...string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldIn(FieldConcept, vs...))
-}
-
-// ConceptNotIn applies the NotIn predicate on the "concept" field.
-func ConceptNotIn(vs ...string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldNotIn(FieldConcept, vs...))
-}
-
-// ConceptGT applies the GT predicate on the "concept" field.
-func ConceptGT(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldGT(FieldConcept, v))
-}
-
-// ConceptGTE applies the GTE predicate on the "concept" field.
-func ConceptGTE(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldGTE(FieldConcept, v))
-}
-
-// ConceptLT applies the LT predicate on the "concept" field.
-func ConceptLT(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldLT(FieldConcept, v))
-}
-
-// ConceptLTE applies the LTE predicate on the "concept" field.
-func ConceptLTE(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldLTE(FieldConcept, v))
-}
-
-// ConceptContains applies the Contains predicate on the "concept" field.
-func ConceptContains(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldContains(FieldConcept, v))
-}
-
-// ConceptHasPrefix applies the HasPrefix predicate on the "concept" field.
-func ConceptHasPrefix(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldHasPrefix(FieldConcept, v))
-}
-
-// ConceptHasSuffix applies the HasSuffix predicate on the "concept" field.
-func ConceptHasSuffix(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldHasSuffix(FieldConcept, v))
-}
-
-// ConceptEqualFold applies the EqualFold predicate on the "concept" field.
-func ConceptEqualFold(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldEqualFold(FieldConcept, v))
-}
-
-// ConceptContainsFold applies the ContainsFold predicate on the "concept" field.
-func ConceptContainsFold(v string) predicate.ContentNode {
-	return predicate.ContentNode(sql.FieldContainsFold(FieldConcept, v))
-}
-
 // DifficultyLevelEQ applies the EQ predicate on the "difficulty_level" field.
 func DifficultyLevelEQ(v DifficultyLevel) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldDifficultyLevel, v))
@@ -462,6 +322,52 @@ func HasLanguagesWith(preds ...predicate.Language) predicate.ContentNode {
 	})
 }
 
+// HasSkills applies the HasEdge predicate on the "skills" edge.
+func HasSkills() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, SkillsTable, SkillsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSkillsWith applies the HasEdge predicate on the "skills" edge with a given conditions (other predicates).
+func HasSkillsWith(preds ...predicate.Skill) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasConcepts applies the HasEdge predicate on the "concepts" edge.
+func HasConcepts() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasConceptsWith applies the HasEdge predicate on the "concepts" edge with a given conditions (other predicates).
+func HasConceptsWith(preds ...predicate.Concept) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasContentNodeExercises applies the HasEdge predicate on the "content_node_exercises" edge.
 func HasContentNodeExercises() predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
@@ -500,6 +406,52 @@ func HasContentNodeLanguages() predicate.ContentNode {
 func HasContentNodeLanguagesWith(preds ...predicate.ContentNodeLanguage) predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
 		step := newContentNodeLanguagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeSkills applies the HasEdge predicate on the "content_node_skills" edge.
+func HasContentNodeSkills() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeSkillsTable, ContentNodeSkillsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeSkillsWith applies the HasEdge predicate on the "content_node_skills" edge with a given conditions (other predicates).
+func HasContentNodeSkillsWith(preds ...predicate.ContentNodeSkill) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeConcepts applies the HasEdge predicate on the "content_node_concepts" edge.
+func HasContentNodeConcepts() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeConceptsTable, ContentNodeConceptsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeConceptsWith applies the HasEdge predicate on the "content_node_concepts" edge with a given conditions (other predicates).
+func HasContentNodeConceptsWith(preds ...predicate.ContentNodeConcept) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeConceptsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

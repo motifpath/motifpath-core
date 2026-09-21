@@ -16,18 +16,28 @@ type Tx struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
+	// Concept is the client for interacting with the Concept builders.
+	Concept *ConceptClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
+	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
+	ContentNodeConcept *ContentNodeConceptClient
 	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
 	ContentNodeExercise *ContentNodeExerciseClient
 	// ContentNodeLanguage is the client for interacting with the ContentNodeLanguage builders.
 	ContentNodeLanguage *ContentNodeLanguageClient
+	// ContentNodeSkill is the client for interacting with the ContentNodeSkill builders.
+	ContentNodeSkill *ContentNodeSkillClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
+	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
+	ExerciseConcept *ExerciseConceptClient
 	// ExerciseLanguage is the client for interacting with the ExerciseLanguage builders.
 	ExerciseLanguage *ExerciseLanguageClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
 	ExerciseOption *ExerciseOptionClient
+	// ExerciseSkill is the client for interacting with the ExerciseSkill builders.
+	ExerciseSkill *ExerciseSkillClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
 	// Language is the client for interacting with the Language builders.
@@ -38,6 +48,8 @@ type Tx struct {
 	LearningPathItem *LearningPathItemClient
 	// PathAssignment is the client for interacting with the PathAssignment builders.
 	PathAssignment *PathAssignmentClient
+	// Skill is the client for interacting with the Skill builders.
+	Skill *SkillClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -173,17 +185,23 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Challenge = NewChallengeClient(tx.config)
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
+	tx.Concept = NewConceptClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
+	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
+	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
+	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)
 	tx.ExerciseLanguage = NewExerciseLanguageClient(tx.config)
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
+	tx.ExerciseSkill = NewExerciseSkillClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.PathAssignment = NewPathAssignmentClient(tx.config)
+	tx.Skill = NewSkillClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

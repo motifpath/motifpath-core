@@ -17,8 +17,10 @@ const (
 	FieldID = "id"
 	// FieldContentNodeID holds the string denoting the content_node_id field in the database.
 	FieldContentNodeID = "content_node_id"
-	// FieldSubjectTag holds the string denoting the subject_tag field in the database.
-	FieldSubjectTag = "subject_tag"
+	// FieldSubjectSkillID holds the string denoting the subject_skill_id field in the database.
+	FieldSubjectSkillID = "subject_skill_id"
+	// FieldSubjectConceptID holds the string denoting the subject_concept_id field in the database.
+	FieldSubjectConceptID = "subject_concept_id"
 	// FieldPassThreshold holds the string denoting the pass_threshold field in the database.
 	FieldPassThreshold = "pass_threshold"
 	// FieldTimeThresholdMs holds the string denoting the time_threshold_ms field in the database.
@@ -53,7 +55,8 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldContentNodeID,
-	FieldSubjectTag,
+	FieldSubjectSkillID,
+	FieldSubjectConceptID,
 	FieldPassThreshold,
 	FieldTimeThresholdMs,
 	FieldShuffleExercises,
@@ -101,9 +104,14 @@ func ByContentNodeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContentNodeID, opts...).ToFunc()
 }
 
-// BySubjectTag orders the results by the subject_tag field.
-func BySubjectTag(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSubjectTag, opts...).ToFunc()
+// BySubjectSkillID orders the results by the subject_skill_id field.
+func BySubjectSkillID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubjectSkillID, opts...).ToFunc()
+}
+
+// BySubjectConceptID orders the results by the subject_concept_id field.
+func BySubjectConceptID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubjectConceptID, opts...).ToFunc()
 }
 
 // ByPassThreshold orders the results by the pass_threshold field.

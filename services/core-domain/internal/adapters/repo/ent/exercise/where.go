@@ -241,16 +241,6 @@ func ExerciseTypeNotIn(vs ...ExerciseType) predicate.Exercise {
 	return predicate.Exercise(sql.FieldNotIn(FieldExerciseType, vs...))
 }
 
-// SkillTagsIsNil applies the IsNil predicate on the "skill_tags" field.
-func SkillTagsIsNil() predicate.Exercise {
-	return predicate.Exercise(sql.FieldIsNull(FieldSkillTags))
-}
-
-// SkillTagsNotNil applies the NotNil predicate on the "skill_tags" field.
-func SkillTagsNotNil() predicate.Exercise {
-	return predicate.Exercise(sql.FieldNotNull(FieldSkillTags))
-}
-
 // ImageURLEQ applies the EQ predicate on the "image_url" field.
 func ImageURLEQ(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldImageURL, v))
@@ -658,6 +648,52 @@ func HasLanguagesWith(preds ...predicate.Language) predicate.Exercise {
 	})
 }
 
+// HasSkills applies the HasEdge predicate on the "skills" edge.
+func HasSkills() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, SkillsTable, SkillsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSkillsWith applies the HasEdge predicate on the "skills" edge with a given conditions (other predicates).
+func HasSkillsWith(preds ...predicate.Skill) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasConcepts applies the HasEdge predicate on the "concepts" edge.
+func HasConcepts() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasConceptsWith applies the HasEdge predicate on the "concepts" edge with a given conditions (other predicates).
+func HasConceptsWith(preds ...predicate.Concept) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasChallengeExercises applies the HasEdge predicate on the "challenge_exercises" edge.
 func HasChallengeExercises() predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
@@ -719,6 +755,52 @@ func HasExerciseLanguages() predicate.Exercise {
 func HasExerciseLanguagesWith(preds ...predicate.ExerciseLanguage) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newExerciseLanguagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasExerciseSkills applies the HasEdge predicate on the "exercise_skills" edge.
+func HasExerciseSkills() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ExerciseSkillsTable, ExerciseSkillsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExerciseSkillsWith applies the HasEdge predicate on the "exercise_skills" edge with a given conditions (other predicates).
+func HasExerciseSkillsWith(preds ...predicate.ExerciseSkill) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newExerciseSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasExerciseConcepts applies the HasEdge predicate on the "exercise_concepts" edge.
+func HasExerciseConcepts() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ExerciseConceptsTable, ExerciseConceptsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExerciseConceptsWith applies the HasEdge predicate on the "exercise_concepts" edge with a given conditions (other predicates).
+func HasExerciseConceptsWith(preds ...predicate.ExerciseConcept) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newExerciseConceptsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

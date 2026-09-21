@@ -10,7 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Exercise is a reusable, standalone practice item classified by skill tags
+// Exercise is a reusable, standalone practice item classified by Skill/
+// Concept tree references (the same trees ContentNode classifies against)
 // and independent of any single challenge — it may be linked to zero, one,
 // or many challenges via the many-to-many "challenges" edge.
 type Exercise struct {
@@ -34,9 +35,6 @@ func (Exercise) Fields() []ent.Field {
 		field.Enum("exercise_type").
 			Values("text_response", "audio_recognition", "image_recognition", "image_choice", "audio_selection").
 			Immutable(),
-
-		field.JSON("skill_tags", []string{}).
-			Optional(),
 
 		field.String("image_url").
 			Optional().
@@ -72,5 +70,11 @@ func (Exercise) Edges() []ent.Edge {
 		edge.To("options", ExerciseOption.Type),
 		edge.To("languages", Language.Type).
 			Through("exercise_languages", ExerciseLanguage.Type),
+
+		edge.To("skills", Skill.Type).
+			Through("exercise_skills", ExerciseSkill.Type),
+
+		edge.To("concepts", Concept.Type).
+			Through("exercise_concepts", ExerciseConcept.Type),
 	}
 }

@@ -34,6 +34,14 @@ func TestFeatures(t *testing.T) {
 			// of truth and CI checks it out from its default branch, so an
 			// unimplemented scenario must fail the build, not whisper.
 			Strict: true,
+			// Strict makes the suite fail on any scenario without step
+			// definitions, and motifpath-specs runs ahead of this repo by
+			// design (spec first). A scenario tagged @wip is a spec whose
+			// implementation has not landed yet; excluding it keeps the build
+			// green for unrelated work. Strict still applies to everything
+			// untagged, so an untagged scenario cannot go undefined silently.
+			// Remove the tag in motifpath-specs when the feature is implemented.
+			Tags: "~@wip",
 		},
 	}
 
@@ -50,6 +58,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerUserRegistrationSteps(sc, w)
 	registerLocaleSteps(sc, w)
 	registerContentNodeSteps(sc, w)
+	registerSkillSteps(sc, w)
+	registerConceptSteps(sc, w)
 	registerChallengeSteps(sc, w)
 	registerExerciseSteps(sc, w)
 	registerPracticeSessionSteps(sc, w)

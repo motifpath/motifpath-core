@@ -6,8 +6,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -33,17 +35,25 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	skillIDs, err := parseUUIDs(node.Classification.SkillIDs())
+	if err != nil {
+		return err
+	}
+	conceptIDs, err := parseUUIDs(node.Classification.ConceptIDs())
+	if err != nil {
+		return err
+	}
 	_, err = r.client.ContentNode.Create().
 		SetID(id).
 		SetTeacherID(teacherID).
 		SetTitle(node.Title).
 		SetContentType(contentnode.ContentType(node.ContentType)).
-		SetSkill(node.Classification.Skill).
-		SetConcept(node.Classification.Concept).
 		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
 		SetReviewState(contentnode.ReviewState(node.Classification.ReviewState)).
 		SetCreatedAt(node.CreatedAt).
 		AddLanguageIDs(langIDs...).
+		AddSkillIDs(skillIDs...).
+		AddConceptIDs(conceptIDs...).
 		Save(ctx)
 	return err
 }
@@ -56,6 +66,8 @@ func (r *EntContentNodeRepository) GetByID(ctx context.Context, id string) (doma
 	row, err := r.client.ContentNode.Query().
 		Where(contentnode.ID(parsed)).
 		WithLanguages().
+		WithSkills().
+		WithConcepts().
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -72,16 +84,8 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 		return result, nil
 	}
 
-	parsed := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			continue // not a valid id, so it can never match — left absent from result
-		}
-		parsed = append(parsed, u)
-	}
-
-	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parsed...)).WithLanguages().All(ctx)
+	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parseUUIDsSkippingInvalid(ids)...)).
+		WithLanguages().WithSkills().WithConcepts().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,13 +95,24 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 	return result, nil
 }
 
-func (r *EntContentNodeRepository) List(ctx context.Context, contentType domain.ContentType, skill string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
-	query := r.client.ContentNode.Query()
+func (r *EntContentNodeRepository) List(ctx context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+	query := r.client.ContentNode.Query().WithLanguages().WithSkills().WithConcepts()
 	if contentType != "" {
 		query = query.Where(contentnode.ContentTypeEQ(contentnode.ContentType(contentType)))
 	}
-	if skill != "" {
-		query = query.Where(contentnode.SkillEQ(skill))
+	if skillID != "" {
+		parsed, err := uuid.Parse(skillID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where(contentnode.HasSkillsWith(skill.ID(parsed)))
+	}
+	if conceptID != "" {
+		parsed, err := uuid.Parse(conceptID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where(contentnode.HasConceptsWith(concept.ID(parsed)))
 	}
 	if difficulty != "" {
 		query = query.Where(contentnode.DifficultyLevelEQ(contentnode.DifficultyLevel(difficulty)))
@@ -119,11 +134,21 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	if err != nil {
 		return domain.ErrNotFound
 	}
+	skillIDs, err := parseUUIDs(node.Classification.SkillIDs())
+	if err != nil {
+		return err
+	}
+	conceptIDs, err := parseUUIDs(node.Classification.ConceptIDs())
+	if err != nil {
+		return err
+	}
 	_, err = r.client.ContentNode.UpdateOneID(id).
 		SetTitle(node.Title).
-		SetSkill(node.Classification.Skill).
-		SetConcept(node.Classification.Concept).
 		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
+		ClearSkills().
+		AddSkillIDs(skillIDs...).
+		ClearConcepts().
+		AddConceptIDs(conceptIDs...).
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -145,8 +170,8 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 		Title:       row.Title,
 		ContentType: domain.ContentType(row.ContentType),
 		Classification: domain.Classification{
-			Skill:           row.Skill,
-			Concept:         row.Concept,
+			Skills:          domainSkillsFromEdges(row.Edges.Skills),
+			Concepts:        domainConceptsFromEdges(row.Edges.Concepts),
 			DifficultyLevel: domain.DifficultyLevel(row.DifficultyLevel),
 			ReviewState:     domain.ReviewState(row.ReviewState),
 		},

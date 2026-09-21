@@ -11,11 +11,15 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ContentNodeCreate is the builder for creating a ContentNode entity.
@@ -40,18 +44,6 @@ func (_c *ContentNodeCreate) SetTitle(v string) *ContentNodeCreate {
 // SetContentType sets the "content_type" field.
 func (_c *ContentNodeCreate) SetContentType(v contentnode.ContentType) *ContentNodeCreate {
 	_c.mutation.SetContentType(v)
-	return _c
-}
-
-// SetSkill sets the "skill" field.
-func (_c *ContentNodeCreate) SetSkill(v string) *ContentNodeCreate {
-	_c.mutation.SetSkill(v)
-	return _c
-}
-
-// SetConcept sets the "concept" field.
-func (_c *ContentNodeCreate) SetConcept(v string) *ContentNodeCreate {
-	_c.mutation.SetConcept(v)
 	return _c
 }
 
@@ -133,6 +125,36 @@ func (_c *ContentNodeCreate) AddLanguages(v ...*Language) *ContentNodeCreate {
 	return _c.AddLanguageIDs(ids...)
 }
 
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_c *ContentNodeCreate) AddSkillIDs(ids ...uuid.UUID) *ContentNodeCreate {
+	_c.mutation.AddSkillIDs(ids...)
+	return _c
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_c *ContentNodeCreate) AddSkills(v ...*Skill) *ContentNodeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddSkillIDs(ids...)
+}
+
+// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+func (_c *ContentNodeCreate) AddConceptIDs(ids ...uuid.UUID) *ContentNodeCreate {
+	_c.mutation.AddConceptIDs(ids...)
+	return _c
+}
+
+// AddConcepts adds the "concepts" edges to the Concept entity.
+func (_c *ContentNodeCreate) AddConcepts(v ...*Concept) *ContentNodeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddConceptIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_c *ContentNodeCreate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeCreate {
 	_c.mutation.AddContentNodeExerciseIDs(ids...)
@@ -161,6 +183,36 @@ func (_c *ContentNodeCreate) AddContentNodeLanguages(v ...*ContentNodeLanguage) 
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeLanguageIDs(ids...)
+}
+
+// AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
+func (_c *ContentNodeCreate) AddContentNodeSkillIDs(ids ...int) *ContentNodeCreate {
+	_c.mutation.AddContentNodeSkillIDs(ids...)
+	return _c
+}
+
+// AddContentNodeSkills adds the "content_node_skills" edges to the ContentNodeSkill entity.
+func (_c *ContentNodeCreate) AddContentNodeSkills(v ...*ContentNodeSkill) *ContentNodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeSkillIDs(ids...)
+}
+
+// AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
+func (_c *ContentNodeCreate) AddContentNodeConceptIDs(ids ...int) *ContentNodeCreate {
+	_c.mutation.AddContentNodeConceptIDs(ids...)
+	return _c
+}
+
+// AddContentNodeConcepts adds the "content_node_concepts" edges to the ContentNodeConcept entity.
+func (_c *ContentNodeCreate) AddContentNodeConcepts(v ...*ContentNodeConcept) *ContentNodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeConceptIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -228,12 +280,6 @@ func (_c *ContentNodeCreate) check() error {
 			return &ValidationError{Name: "content_type", err: fmt.Errorf(`ent: validator failed for field "ContentNode.content_type": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Skill(); !ok {
-		return &ValidationError{Name: "skill", err: errors.New(`ent: missing required field "ContentNode.skill"`)}
-	}
-	if _, ok := _c.mutation.Concept(); !ok {
-		return &ValidationError{Name: "concept", err: errors.New(`ent: missing required field "ContentNode.concept"`)}
-	}
 	if _, ok := _c.mutation.DifficultyLevel(); !ok {
 		return &ValidationError{Name: "difficulty_level", err: errors.New(`ent: missing required field "ContentNode.difficulty_level"`)}
 	}
@@ -300,14 +346,6 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 		_spec.SetField(contentnode.FieldContentType, field.TypeEnum, value)
 		_node.ContentType = value
 	}
-	if value, ok := _c.mutation.Skill(); ok {
-		_spec.SetField(contentnode.FieldSkill, field.TypeString, value)
-		_node.Skill = value
-	}
-	if value, ok := _c.mutation.Concept(); ok {
-		_spec.SetField(contentnode.FieldConcept, field.TypeString, value)
-		_node.Concept = value
-	}
 	if value, ok := _c.mutation.DifficultyLevel(); ok {
 		_spec.SetField(contentnode.FieldDifficultyLevel, field.TypeEnum, value)
 		_node.DifficultyLevel = value
@@ -360,6 +398,46 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.SkillsTable,
+			Columns: contentnode.SkillsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeSkillCreate{config: _c.config, mutation: newContentNodeSkillMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.ConceptsTable,
+			Columns: contentnode.ConceptsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeConceptCreate{config: _c.config, mutation: newContentNodeConceptMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -385,6 +463,38 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodelanguage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeSkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeSkillsTable,
+			Columns: []string{contentnode.ContentNodeSkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeConceptsTable,
+			Columns: []string{contentnode.ContentNodeConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeconcept.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -25,17 +25,21 @@ func NewChallengeService(nodes ports.ContentNodeRepository, challenges ports.Cha
 
 // CreateChallenge creates a challenge attached to contentNodeID. Only
 // teachers and admins may create challenges.
-func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.User, contentNodeID, subjectTag string, passThreshold int, timeThresholdMS *int, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
+func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.User, contentNodeID string, subjectSkillID, subjectConceptID *string, passThreshold int, timeThresholdMS *int, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Challenge{}, domain.ErrForbidden
 	}
 
-	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+	node, err := s.nodes.GetByID(ctx, contentNodeID)
+	if err != nil {
 		return domain.Challenge{}, err
 	}
 
-	challenge, err := domain.NewChallenge(s.newID(), contentNodeID, subjectTag, passThreshold, timeThresholdMS, shuffleExercises, shuffleOptions, s.now())
+	challenge, err := domain.NewChallenge(s.newID(), contentNodeID, subjectSkillID, subjectConceptID, passThreshold, timeThresholdMS, shuffleExercises, shuffleOptions, s.now())
 	if err != nil {
+		return domain.Challenge{}, err
+	}
+	if err := checkSubjectInClassification(node, subjectSkillID, subjectConceptID); err != nil {
 		return domain.Challenge{}, err
 	}
 	if err := s.challenges.Create(ctx, challenge); err != nil {
@@ -46,6 +50,31 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, caller domain.Us
 	// linked" — skip straight to that outcome instead of paying for a
 	// guaranteed-empty round trip.
 	return challenge, nil
+}
+
+// checkSubjectInClassification reports a domain.ValidationError unless the
+// challenge's subject id (whichever of subjectSkillID/subjectConceptID is
+// set — domain.NewChallenge already rejects "both" or "neither") appears
+// among node's own classification. Reports under subject_skill_id or
+// subject_concept_id to match whichever one was actually supplied.
+func checkSubjectInClassification(node domain.ContentNode, subjectSkillID, subjectConceptID *string) error {
+	if subjectSkillID != nil && *subjectSkillID != "" {
+		for _, id := range node.Classification.SkillIDs() {
+			if id == *subjectSkillID {
+				return nil
+			}
+		}
+		return domain.NewValidationError("subject_skill_id", "must be one of the parent content node's linked skill_ids")
+	}
+	if subjectConceptID != nil && *subjectConceptID != "" {
+		for _, id := range node.Classification.ConceptIDs() {
+			if id == *subjectConceptID {
+				return nil
+			}
+		}
+		return domain.NewValidationError("subject_concept_id", "must be one of the parent content node's linked concept_ids")
+	}
+	return nil
 }
 
 // GetChallenge returns the challenge with the given id. Any authenticated
@@ -77,7 +106,7 @@ func (s *ChallengeService) ListChallengesForContentNode(ctx context.Context, con
 // linked exercises are untouched. Only the teacher who created the
 // challenge's content node, or an admin, may update it. Returns
 // domain.ErrNotFound if no challenge exists with the given id.
-func (s *ChallengeService) UpdateChallenge(ctx context.Context, caller domain.User, id, subjectTag string, passThreshold int, timeThresholdMS *int, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
+func (s *ChallengeService) UpdateChallenge(ctx context.Context, caller domain.User, id string, subjectSkillID, subjectConceptID *string, passThreshold int, timeThresholdMS *int, shuffleExercises, shuffleOptions bool) (domain.Challenge, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Challenge{}, domain.ErrForbidden
 	}
@@ -94,8 +123,11 @@ func (s *ChallengeService) UpdateChallenge(ctx context.Context, caller domain.Us
 		return domain.Challenge{}, err
 	}
 
-	updated, err := existing.Update(subjectTag, passThreshold, timeThresholdMS, shuffleExercises, shuffleOptions)
+	updated, err := existing.Update(subjectSkillID, subjectConceptID, passThreshold, timeThresholdMS, shuffleExercises, shuffleOptions)
 	if err != nil {
+		return domain.Challenge{}, err
+	}
+	if err := checkSubjectInClassification(node, subjectSkillID, subjectConceptID); err != nil {
 		return domain.Challenge{}, err
 	}
 

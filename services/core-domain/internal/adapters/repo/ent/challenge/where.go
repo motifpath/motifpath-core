@@ -61,9 +61,14 @@ func ContentNodeID(v uuid.UUID) predicate.Challenge {
 	return predicate.Challenge(sql.FieldEQ(FieldContentNodeID, v))
 }
 
-// SubjectTag applies equality check predicate on the "subject_tag" field. It's identical to SubjectTagEQ.
-func SubjectTag(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldEQ(FieldSubjectTag, v))
+// SubjectSkillID applies equality check predicate on the "subject_skill_id" field. It's identical to SubjectSkillIDEQ.
+func SubjectSkillID(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldSubjectSkillID, v))
+}
+
+// SubjectConceptID applies equality check predicate on the "subject_concept_id" field. It's identical to SubjectConceptIDEQ.
+func SubjectConceptID(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldSubjectConceptID, v))
 }
 
 // PassThreshold applies equality check predicate on the "pass_threshold" field. It's identical to PassThresholdEQ.
@@ -131,69 +136,104 @@ func ContentNodeIDLTE(v uuid.UUID) predicate.Challenge {
 	return predicate.Challenge(sql.FieldLTE(FieldContentNodeID, v))
 }
 
-// SubjectTagEQ applies the EQ predicate on the "subject_tag" field.
-func SubjectTagEQ(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldEQ(FieldSubjectTag, v))
+// SubjectSkillIDEQ applies the EQ predicate on the "subject_skill_id" field.
+func SubjectSkillIDEQ(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldSubjectSkillID, v))
 }
 
-// SubjectTagNEQ applies the NEQ predicate on the "subject_tag" field.
-func SubjectTagNEQ(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldNEQ(FieldSubjectTag, v))
+// SubjectSkillIDNEQ applies the NEQ predicate on the "subject_skill_id" field.
+func SubjectSkillIDNEQ(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNEQ(FieldSubjectSkillID, v))
 }
 
-// SubjectTagIn applies the In predicate on the "subject_tag" field.
-func SubjectTagIn(vs ...string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldIn(FieldSubjectTag, vs...))
+// SubjectSkillIDIn applies the In predicate on the "subject_skill_id" field.
+func SubjectSkillIDIn(vs ...uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldIn(FieldSubjectSkillID, vs...))
 }
 
-// SubjectTagNotIn applies the NotIn predicate on the "subject_tag" field.
-func SubjectTagNotIn(vs ...string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldNotIn(FieldSubjectTag, vs...))
+// SubjectSkillIDNotIn applies the NotIn predicate on the "subject_skill_id" field.
+func SubjectSkillIDNotIn(vs ...uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotIn(FieldSubjectSkillID, vs...))
 }
 
-// SubjectTagGT applies the GT predicate on the "subject_tag" field.
-func SubjectTagGT(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldGT(FieldSubjectTag, v))
+// SubjectSkillIDGT applies the GT predicate on the "subject_skill_id" field.
+func SubjectSkillIDGT(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGT(FieldSubjectSkillID, v))
 }
 
-// SubjectTagGTE applies the GTE predicate on the "subject_tag" field.
-func SubjectTagGTE(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldGTE(FieldSubjectTag, v))
+// SubjectSkillIDGTE applies the GTE predicate on the "subject_skill_id" field.
+func SubjectSkillIDGTE(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGTE(FieldSubjectSkillID, v))
 }
 
-// SubjectTagLT applies the LT predicate on the "subject_tag" field.
-func SubjectTagLT(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldLT(FieldSubjectTag, v))
+// SubjectSkillIDLT applies the LT predicate on the "subject_skill_id" field.
+func SubjectSkillIDLT(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLT(FieldSubjectSkillID, v))
 }
 
-// SubjectTagLTE applies the LTE predicate on the "subject_tag" field.
-func SubjectTagLTE(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldLTE(FieldSubjectTag, v))
+// SubjectSkillIDLTE applies the LTE predicate on the "subject_skill_id" field.
+func SubjectSkillIDLTE(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLTE(FieldSubjectSkillID, v))
 }
 
-// SubjectTagContains applies the Contains predicate on the "subject_tag" field.
-func SubjectTagContains(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldContains(FieldSubjectTag, v))
+// SubjectSkillIDIsNil applies the IsNil predicate on the "subject_skill_id" field.
+func SubjectSkillIDIsNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldIsNull(FieldSubjectSkillID))
 }
 
-// SubjectTagHasPrefix applies the HasPrefix predicate on the "subject_tag" field.
-func SubjectTagHasPrefix(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldHasPrefix(FieldSubjectTag, v))
+// SubjectSkillIDNotNil applies the NotNil predicate on the "subject_skill_id" field.
+func SubjectSkillIDNotNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotNull(FieldSubjectSkillID))
 }
 
-// SubjectTagHasSuffix applies the HasSuffix predicate on the "subject_tag" field.
-func SubjectTagHasSuffix(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldHasSuffix(FieldSubjectTag, v))
+// SubjectConceptIDEQ applies the EQ predicate on the "subject_concept_id" field.
+func SubjectConceptIDEQ(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldEQ(FieldSubjectConceptID, v))
 }
 
-// SubjectTagEqualFold applies the EqualFold predicate on the "subject_tag" field.
-func SubjectTagEqualFold(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldEqualFold(FieldSubjectTag, v))
+// SubjectConceptIDNEQ applies the NEQ predicate on the "subject_concept_id" field.
+func SubjectConceptIDNEQ(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNEQ(FieldSubjectConceptID, v))
 }
 
-// SubjectTagContainsFold applies the ContainsFold predicate on the "subject_tag" field.
-func SubjectTagContainsFold(v string) predicate.Challenge {
-	return predicate.Challenge(sql.FieldContainsFold(FieldSubjectTag, v))
+// SubjectConceptIDIn applies the In predicate on the "subject_concept_id" field.
+func SubjectConceptIDIn(vs ...uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldIn(FieldSubjectConceptID, vs...))
+}
+
+// SubjectConceptIDNotIn applies the NotIn predicate on the "subject_concept_id" field.
+func SubjectConceptIDNotIn(vs ...uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotIn(FieldSubjectConceptID, vs...))
+}
+
+// SubjectConceptIDGT applies the GT predicate on the "subject_concept_id" field.
+func SubjectConceptIDGT(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGT(FieldSubjectConceptID, v))
+}
+
+// SubjectConceptIDGTE applies the GTE predicate on the "subject_concept_id" field.
+func SubjectConceptIDGTE(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldGTE(FieldSubjectConceptID, v))
+}
+
+// SubjectConceptIDLT applies the LT predicate on the "subject_concept_id" field.
+func SubjectConceptIDLT(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLT(FieldSubjectConceptID, v))
+}
+
+// SubjectConceptIDLTE applies the LTE predicate on the "subject_concept_id" field.
+func SubjectConceptIDLTE(v uuid.UUID) predicate.Challenge {
+	return predicate.Challenge(sql.FieldLTE(FieldSubjectConceptID, v))
+}
+
+// SubjectConceptIDIsNil applies the IsNil predicate on the "subject_concept_id" field.
+func SubjectConceptIDIsNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldIsNull(FieldSubjectConceptID))
+}
+
+// SubjectConceptIDNotNil applies the NotNil predicate on the "subject_concept_id" field.
+func SubjectConceptIDNotNil() predicate.Challenge {
+	return predicate.Challenge(sql.FieldNotNull(FieldSubjectConceptID))
 }
 
 // PassThresholdEQ applies the EQ predicate on the "pass_threshold" field.
