@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 // ContentType is the media format of a ContentNode.
 type ContentType string
@@ -164,8 +167,11 @@ func validateContentNodeBody(contentType ContentType, mediaURL *string, richCont
 
 	switch contentType {
 	case ContentTypeVideo:
-		if mediaURL == nil || *mediaURL == "" {
+		switch {
+		case mediaURL == nil || *mediaURL == "":
 			errs = append(errs, FieldError{Field: "media_url", Reason: "is required when content_type is video"})
+		case !isHTTPURL(*mediaURL):
+			errs = append(errs, FieldError{Field: "media_url", Reason: "must be an absolute http or https URL"})
 		}
 		if richContent != nil {
 			errs = append(errs, FieldError{Field: "rich_content", Reason: "must be absent when content_type is video"})
@@ -184,6 +190,17 @@ func validateContentNodeBody(contentType ContentType, mediaURL *string, richCont
 	}
 
 	return errs
+}
+
+// isHTTPURL reports whether raw is an absolute http or https URL with a host.
+// Restricting the scheme matters because students' players load this value:
+// a bare "format: uri" check would also admit javascript: and ftp: values.
+func isHTTPURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
 // skillsFromIDs builds placeholder Skill entries (ID only, no Name/ParentID)
