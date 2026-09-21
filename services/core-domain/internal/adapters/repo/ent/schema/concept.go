@@ -43,5 +43,9 @@ func (Concept) Edges() []ent.Edge {
 		edge.From("exercises", Exercise.Type).
 			Ref("concepts").
 			Through("exercise_concepts", ExerciseConcept.Type),
+
+		edge.From("diagrams", Diagram.Type).
+			Ref("concepts").
+			Through("diagram_concepts", DiagramConcept.Type),
 	}
 }
