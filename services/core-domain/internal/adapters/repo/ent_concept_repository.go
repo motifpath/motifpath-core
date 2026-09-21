@@ -10,87 +10,100 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// EntConceptRepository persists Concept records via ent/Postgres.
+// EntConceptRepository persists Concept records via ent/Postgres. See
+// EntSkillRepository's doc comment for the shared shape and rationale.
 type EntConceptRepository struct {
-	client *ent.Client
+	*entTaxonomyRepository[domain.Concept]
 }
 
 func NewEntConceptRepository(client *ent.Client) *EntConceptRepository {
-	return &EntConceptRepository{client: client}
+	return &EntConceptRepository{entTaxonomyRepository: &entTaxonomyRepository[domain.Concept]{
+		create:        func(ctx context.Context, row entTaxonomyRow) error { return conceptCreate(ctx, client, row) },
+		getByID:       func(ctx context.Context, id uuid.UUID) (entTaxonomyRow, error) { return conceptGetByID(ctx, client, id) },
+		getByIDs:      func(ctx context.Context, ids []uuid.UUID) ([]entTaxonomyRow, error) { return conceptGetByIDs(ctx, client, ids) },
+		list:          func(ctx context.Context) ([]entTaxonomyRow, error) { return conceptList(ctx, client) },
+		existsSibling: func(ctx context.Context, parentID *uuid.UUID, name string) (bool, error) { return conceptExistsSibling(ctx, client, parentID, name) },
+		wrap:          conceptRowToDomain,
+		unwrap:        conceptDomainToRow,
+	}}
 }
 
-func (r *EntConceptRepository) Create(ctx context.Context, c domain.Concept) error {
-	id, err := uuid.Parse(c.ID)
-	if err != nil {
-		return err
-	}
-	builder := r.client.Concept.Create().
-		SetID(id).
-		SetName(c.Name)
-	if c.ParentID != nil && *c.ParentID != "" {
-		parentID, err := uuid.Parse(*c.ParentID)
-		if err != nil {
-			return err
-		}
-		builder = builder.SetParentID(parentID)
+func conceptCreate(ctx context.Context, client *ent.Client, row entTaxonomyRow) error {
+	builder := client.Concept.Create().SetID(row.ID).SetName(row.Name)
+	if row.ParentID != nil {
+		builder = builder.SetParentID(*row.ParentID)
 	}
 	return builder.Exec(ctx)
 }
 
-func (r *EntConceptRepository) GetByID(ctx context.Context, id string) (domain.Concept, error) {
-	parsed, err := uuid.Parse(id)
-	if err != nil {
-		return domain.Concept{}, domain.ErrNotFound
-	}
-	row, err := r.client.Concept.Query().Where(concept.ID(parsed)).Only(ctx)
+func conceptGetByID(ctx context.Context, client *ent.Client, id uuid.UUID) (entTaxonomyRow, error) {
+	row, err := client.Concept.Query().Where(concept.ID(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return domain.Concept{}, domain.ErrNotFound
+			return entTaxonomyRow{}, domain.ErrNotFound
 		}
-		return domain.Concept{}, err
+		return entTaxonomyRow{}, err
 	}
-	return toDomainConcept(row), nil
+	return entRowFromConcept(row), nil
 }
 
-func (r *EntConceptRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Concept, error) {
-	result := map[string]domain.Concept{}
-	if len(ids) == 0 {
-		return result, nil
-	}
-	rows, err := r.client.Concept.Query().Where(concept.IDIn(parseUUIDsSkippingInvalid(ids)...)).All(ctx)
+func conceptGetByIDs(ctx context.Context, client *ent.Client, ids []uuid.UUID) ([]entTaxonomyRow, error) {
+	rows, err := client.Concept.Query().Where(concept.IDIn(ids...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, row := range rows {
-		result[row.ID.String()] = toDomainConcept(row)
-	}
-	return result, nil
+	return entRowsFromConcepts(rows), nil
 }
 
-func (r *EntConceptRepository) List(ctx context.Context) ([]domain.Concept, error) {
-	rows, err := r.client.Concept.Query().Order(concept.ByName()).All(ctx)
+func conceptList(ctx context.Context, client *ent.Client) ([]entTaxonomyRow, error) {
+	rows, err := client.Concept.Query().Order(concept.ByName()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.Concept, len(rows))
-	for i, row := range rows {
-		result[i] = toDomainConcept(row)
-	}
-	return result, nil
+	return entRowsFromConcepts(rows), nil
 }
 
-func (r *EntConceptRepository) ExistsSibling(ctx context.Context, parentID *string, name string) (bool, error) {
-	query := r.client.Concept.Query().Where(concept.NameEQ(name))
-	if parentID != nil && *parentID != "" {
-		parsed, err := uuid.Parse(*parentID)
-		if err != nil {
-			return false, err
-		}
-		query = query.Where(concept.ParentIDEQ(parsed))
+func conceptExistsSibling(ctx context.Context, client *ent.Client, parentID *uuid.UUID, name string) (bool, error) {
+	query := client.Concept.Query().Where(concept.NameEQ(name))
+	if parentID != nil {
+		query = query.Where(concept.ParentIDEQ(*parentID))
 	} else {
 		query = query.Where(concept.ParentIDIsNil())
 	}
 	return query.Exist(ctx)
+}
+
+func conceptRowToDomain(row entTaxonomyRow) domain.Concept {
+	c := domain.Concept{ID: row.ID.String(), Name: row.Name}
+	if row.ParentID != nil {
+		parentID := row.ParentID.String()
+		c.ParentID = &parentID
+	}
+	return c
+}
+
+func conceptDomainToRow(c domain.Concept) (entTaxonomyRow, error) {
+	id, err := uuid.Parse(c.ID)
+	if err != nil {
+		return entTaxonomyRow{}, err
+	}
+	parentID, err := parseOptionalUUID(c.ParentID)
+	if err != nil {
+		return entTaxonomyRow{}, err
+	}
+	return entTaxonomyRow{ID: id, Name: c.Name, ParentID: parentID}, nil
+}
+
+func entRowFromConcept(row *ent.Concept) entTaxonomyRow {
+	return entTaxonomyRow{ID: row.ID, Name: row.Name, ParentID: row.ParentID}
+}
+
+func entRowsFromConcepts(rows []*ent.Concept) []entTaxonomyRow {
+	result := make([]entTaxonomyRow, len(rows))
+	for i, row := range rows {
+		result[i] = entRowFromConcept(row)
+	}
+	return result
 }
 
 func toDomainConcept(row *ent.Concept) domain.Concept {

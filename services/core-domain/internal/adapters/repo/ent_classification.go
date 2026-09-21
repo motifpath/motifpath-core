@@ -25,6 +25,20 @@ func parseUUIDs(ids []string) ([]uuid.UUID, error) {
 	return parsed, nil
 }
 
+// parseOptionalUUID parses *s if s is non-nil and non-empty, returning nil
+// otherwise — the shape a self-referential optional parent_id field takes
+// at this layer.
+func parseOptionalUUID(s *string) (*uuid.UUID, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+	parsed, err := uuid.Parse(*s)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
 // parseUUIDsSkippingInvalid is parseUUIDs' counterpart for lookup filters
 // following the "not found, simply absent" convention: an id that isn't a
 // valid uuid can never match a row, so it's dropped rather than failing the

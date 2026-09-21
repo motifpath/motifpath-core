@@ -10,87 +10,101 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// EntSkillRepository persists Skill records via ent/Postgres.
+// EntSkillRepository persists Skill records via ent/Postgres. It's a thin
+// instantiation of entTaxonomyRepository, which holds the logic shared with
+// EntConceptRepository — see entTaxonomyRepository's doc comment.
 type EntSkillRepository struct {
-	client *ent.Client
+	*entTaxonomyRepository[domain.Skill]
 }
 
 func NewEntSkillRepository(client *ent.Client) *EntSkillRepository {
-	return &EntSkillRepository{client: client}
+	return &EntSkillRepository{entTaxonomyRepository: &entTaxonomyRepository[domain.Skill]{
+		create:        func(ctx context.Context, row entTaxonomyRow) error { return skillCreate(ctx, client, row) },
+		getByID:       func(ctx context.Context, id uuid.UUID) (entTaxonomyRow, error) { return skillGetByID(ctx, client, id) },
+		getByIDs:      func(ctx context.Context, ids []uuid.UUID) ([]entTaxonomyRow, error) { return skillGetByIDs(ctx, client, ids) },
+		list:          func(ctx context.Context) ([]entTaxonomyRow, error) { return skillList(ctx, client) },
+		existsSibling: func(ctx context.Context, parentID *uuid.UUID, name string) (bool, error) { return skillExistsSibling(ctx, client, parentID, name) },
+		wrap:          skillRowToDomain,
+		unwrap:        skillDomainToRow,
+	}}
 }
 
-func (r *EntSkillRepository) Create(ctx context.Context, s domain.Skill) error {
-	id, err := uuid.Parse(s.ID)
-	if err != nil {
-		return err
-	}
-	builder := r.client.Skill.Create().
-		SetID(id).
-		SetName(s.Name)
-	if s.ParentID != nil && *s.ParentID != "" {
-		parentID, err := uuid.Parse(*s.ParentID)
-		if err != nil {
-			return err
-		}
-		builder = builder.SetParentID(parentID)
+func skillCreate(ctx context.Context, client *ent.Client, row entTaxonomyRow) error {
+	builder := client.Skill.Create().SetID(row.ID).SetName(row.Name)
+	if row.ParentID != nil {
+		builder = builder.SetParentID(*row.ParentID)
 	}
 	return builder.Exec(ctx)
 }
 
-func (r *EntSkillRepository) GetByID(ctx context.Context, id string) (domain.Skill, error) {
-	parsed, err := uuid.Parse(id)
-	if err != nil {
-		return domain.Skill{}, domain.ErrNotFound
-	}
-	row, err := r.client.Skill.Query().Where(skill.ID(parsed)).Only(ctx)
+func skillGetByID(ctx context.Context, client *ent.Client, id uuid.UUID) (entTaxonomyRow, error) {
+	row, err := client.Skill.Query().Where(skill.ID(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return domain.Skill{}, domain.ErrNotFound
+			return entTaxonomyRow{}, domain.ErrNotFound
 		}
-		return domain.Skill{}, err
+		return entTaxonomyRow{}, err
 	}
-	return toDomainSkill(row), nil
+	return entRowFromSkill(row), nil
 }
 
-func (r *EntSkillRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Skill, error) {
-	result := map[string]domain.Skill{}
-	if len(ids) == 0 {
-		return result, nil
-	}
-	rows, err := r.client.Skill.Query().Where(skill.IDIn(parseUUIDsSkippingInvalid(ids)...)).All(ctx)
+func skillGetByIDs(ctx context.Context, client *ent.Client, ids []uuid.UUID) ([]entTaxonomyRow, error) {
+	rows, err := client.Skill.Query().Where(skill.IDIn(ids...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, row := range rows {
-		result[row.ID.String()] = toDomainSkill(row)
-	}
-	return result, nil
+	return entRowsFromSkills(rows), nil
 }
 
-func (r *EntSkillRepository) List(ctx context.Context) ([]domain.Skill, error) {
-	rows, err := r.client.Skill.Query().Order(skill.ByName()).All(ctx)
+func skillList(ctx context.Context, client *ent.Client) ([]entTaxonomyRow, error) {
+	rows, err := client.Skill.Query().Order(skill.ByName()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domain.Skill, len(rows))
-	for i, row := range rows {
-		result[i] = toDomainSkill(row)
-	}
-	return result, nil
+	return entRowsFromSkills(rows), nil
 }
 
-func (r *EntSkillRepository) ExistsSibling(ctx context.Context, parentID *string, name string) (bool, error) {
-	query := r.client.Skill.Query().Where(skill.NameEQ(name))
-	if parentID != nil && *parentID != "" {
-		parsed, err := uuid.Parse(*parentID)
-		if err != nil {
-			return false, err
-		}
-		query = query.Where(skill.ParentIDEQ(parsed))
+func skillExistsSibling(ctx context.Context, client *ent.Client, parentID *uuid.UUID, name string) (bool, error) {
+	query := client.Skill.Query().Where(skill.NameEQ(name))
+	if parentID != nil {
+		query = query.Where(skill.ParentIDEQ(*parentID))
 	} else {
 		query = query.Where(skill.ParentIDIsNil())
 	}
 	return query.Exist(ctx)
+}
+
+func skillRowToDomain(row entTaxonomyRow) domain.Skill {
+	s := domain.Skill{ID: row.ID.String(), Name: row.Name}
+	if row.ParentID != nil {
+		parentID := row.ParentID.String()
+		s.ParentID = &parentID
+	}
+	return s
+}
+
+func skillDomainToRow(s domain.Skill) (entTaxonomyRow, error) {
+	id, err := uuid.Parse(s.ID)
+	if err != nil {
+		return entTaxonomyRow{}, err
+	}
+	parentID, err := parseOptionalUUID(s.ParentID)
+	if err != nil {
+		return entTaxonomyRow{}, err
+	}
+	return entTaxonomyRow{ID: id, Name: s.Name, ParentID: parentID}, nil
+}
+
+func entRowFromSkill(row *ent.Skill) entTaxonomyRow {
+	return entTaxonomyRow{ID: row.ID, Name: row.Name, ParentID: row.ParentID}
+}
+
+func entRowsFromSkills(rows []*ent.Skill) []entTaxonomyRow {
+	result := make([]entTaxonomyRow, len(rows))
+	for i, row := range rows {
+		result[i] = entRowFromSkill(row)
+	}
+	return result
 }
 
 func toDomainSkill(row *ent.Skill) domain.Skill {
