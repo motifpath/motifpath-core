@@ -125,6 +125,67 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, byIDs[node2.ID].Languages)
 }
 
+// TestEntContentNodeRepository_Update_ReplacesLanguages confirms Update fully
+// replaces the node's language tags rather than ignoring them or merging with
+// the old set — the same complete-replacement contract it already gives skills
+// and concepts. A node created with no languages (older data) must be able to
+// gain them, since a node with none is locked for every student who has not
+// already completed it.
+func TestEntContentNodeRepository_Update_ReplacesLanguages(t *testing.T) {
+	tests := []struct {
+		name     string
+		existing []domain.Language
+		updated  []domain.Language
+		want     []domain.Language
+	}{
+		{
+			name:     "replaces the existing languages",
+			existing: []domain.Language{{Code: "en"}},
+			updated:  []domain.Language{{Code: "pt_BR"}},
+			want:     []domain.Language{{Code: "pt_BR", Name: "Portuguese (Brazil)"}},
+		},
+		{
+			name:     "adds languages to a node that has none",
+			existing: nil,
+			updated:  []domain.Language{{Code: "any"}},
+			want:     []domain.Language{{Code: "any", Name: "Language-agnostic"}},
+		},
+		{
+			name:     "keeps the languages that are still listed and drops the rest",
+			existing: []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
+			updated:  []domain.Language{{Code: "en"}},
+			want:     []domain.Language{{Code: "en", Name: "English"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			client := setupPostgres(t)
+			repo := NewEntContentNodeRepository(client)
+
+			node := domain.ContentNode{
+				ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
+				Classification: domain.Classification{
+					Skills:          []domain.Skill{seedSkill(t, ctx, client, "skill-"+uuid.NewString())},
+					Concepts:        []domain.Concept{seedConcept(t, ctx, client, "concept-"+uuid.NewString())},
+					DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
+				},
+				Languages: tt.existing,
+				CreatedAt: fixedAt,
+			}
+			require.NoError(t, repo.Create(ctx, node))
+
+			node.Languages = tt.updated
+			require.NoError(t, repo.Update(ctx, node))
+
+			got, err := repo.GetByID(ctx, node.ID)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, got.Languages)
+		})
+	}
+}
+
 func TestEntContentNodeRepository_PersistsAndUpdatesBody(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
