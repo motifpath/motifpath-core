@@ -93,6 +93,8 @@ var (
 		{Name: "teacher_id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString},
 		{Name: "content_type", Type: field.TypeEnum, Enums: []string{"video", "article"}},
+		{Name: "media_url", Type: field.TypeString, Nullable: true},
+		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "difficulty_level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "review_state", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "overridden"}, Default: "pending"},
 		{Name: "created_at", Type: field.TypeTime},

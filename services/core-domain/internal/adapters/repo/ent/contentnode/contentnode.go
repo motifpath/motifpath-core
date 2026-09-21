@@ -22,6 +22,10 @@ const (
 	FieldTitle = "title"
 	// FieldContentType holds the string denoting the content_type field in the database.
 	FieldContentType = "content_type"
+	// FieldMediaURL holds the string denoting the media_url field in the database.
+	FieldMediaURL = "media_url"
+	// FieldRichContent holds the string denoting the rich_content field in the database.
+	FieldRichContent = "rich_content"
 	// FieldDifficultyLevel holds the string denoting the difficulty_level field in the database.
 	FieldDifficultyLevel = "difficulty_level"
 	// FieldReviewState holds the string denoting the review_state field in the database.
@@ -102,6 +106,8 @@ var Columns = []string{
 	FieldTeacherID,
 	FieldTitle,
 	FieldContentType,
+	FieldMediaURL,
+	FieldRichContent,
 	FieldDifficultyLevel,
 	FieldReviewState,
 	FieldCreatedAt,
@@ -236,6 +242,16 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 // ByContentType orders the results by the content_type field.
 func ByContentType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContentType, opts...).ToFunc()
+}
+
+// ByMediaURL orders the results by the media_url field.
+func ByMediaURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMediaURL, opts...).ToFunc()
+}
+
+// ByRichContent orders the results by the rich_content field.
+func ByRichContent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRichContent, opts...).ToFunc()
 }
 
 // ByDifficultyLevel orders the results by the difficulty_level field.

@@ -47,6 +47,34 @@ func (_c *ContentNodeCreate) SetContentType(v contentnode.ContentType) *ContentN
 	return _c
 }
 
+// SetMediaURL sets the "media_url" field.
+func (_c *ContentNodeCreate) SetMediaURL(v string) *ContentNodeCreate {
+	_c.mutation.SetMediaURL(v)
+	return _c
+}
+
+// SetNillableMediaURL sets the "media_url" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableMediaURL(v *string) *ContentNodeCreate {
+	if v != nil {
+		_c.SetMediaURL(*v)
+	}
+	return _c
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_c *ContentNodeCreate) SetRichContent(v string) *ContentNodeCreate {
+	_c.mutation.SetRichContent(v)
+	return _c
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableRichContent(v *string) *ContentNodeCreate {
+	if v != nil {
+		_c.SetRichContent(*v)
+	}
+	return _c
+}
+
 // SetDifficultyLevel sets the "difficulty_level" field.
 func (_c *ContentNodeCreate) SetDifficultyLevel(v contentnode.DifficultyLevel) *ContentNodeCreate {
 	_c.mutation.SetDifficultyLevel(v)
@@ -345,6 +373,14 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ContentType(); ok {
 		_spec.SetField(contentnode.FieldContentType, field.TypeEnum, value)
 		_node.ContentType = value
+	}
+	if value, ok := _c.mutation.MediaURL(); ok {
+		_spec.SetField(contentnode.FieldMediaURL, field.TypeString, value)
+		_node.MediaURL = &value
+	}
+	if value, ok := _c.mutation.RichContent(); ok {
+		_spec.SetField(contentnode.FieldRichContent, field.TypeString, value)
+		_node.RichContent = &value
 	}
 	if value, ok := _c.mutation.DifficultyLevel(); ok {
 		_spec.SetField(contentnode.FieldDifficultyLevel, field.TypeEnum, value)
