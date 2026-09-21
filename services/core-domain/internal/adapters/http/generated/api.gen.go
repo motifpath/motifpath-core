@@ -373,6 +373,22 @@ type ContentNode struct {
 	// locked.
 	Languages []Language `json:"languages"`
 
+	// MediaUrl The video file or embeddable video URL students watch. Present
+	// only when content_type is video.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
+
 	// TeacherId The user_id of the teacher who created this content node.
 	TeacherId openapi_types.UUID `json:"teacher_id"`
 
@@ -457,6 +473,23 @@ type CreateContentNodeRequest struct {
 	// explicitly tagged as either specific language(s) or
 	// language-agnostic, never left unclassified.
 	LanguageCodes []string `json:"language_codes"`
+
+	// MediaUrl The video file or embeddable video URL students watch. Required
+	// when content_type is video; must be absent when content_type is
+	// article.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
@@ -1243,6 +1276,23 @@ type UpdateContentNodeRequest struct {
 	// combined with other language codes in the same array. Must not
 	// be empty.
 	LanguageCodes []string `json:"language_codes"`
+
+	// MediaUrl The video file or embeddable video URL students watch, replacing
+	// the current value. Required when the content node's content_type
+	// is video; must be absent when it is article.
+	MediaUrl *string `json:"media_url,omitempty"`
+
+	// RichContent A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
