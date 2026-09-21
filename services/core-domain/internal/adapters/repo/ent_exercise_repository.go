@@ -356,7 +356,7 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error) {
 	parsed, err := uuid.Parse(skillID)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	rows, err := r.client.Exercise.Query().
 		Where(exercise.HasSkillsWith(skill.ID(parsed))).
