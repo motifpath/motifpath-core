@@ -7,10 +7,12 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// parseUUIDs parses each of ids, skipping (rather than failing on) any value
-// that isn't a valid uuid — the same "not found, simply absent" convention
-// ContentNodeRepository.GetByIDs documents, since ids reaching this layer
-// have already been validated non-empty by the domain/application layers.
+// parseUUIDs parses each of ids, failing on the first value that isn't a
+// valid uuid. Unlike GetByIDs' "not found, simply absent" convention, a
+// malformed id here is a hard error: by the time ids reach this layer they
+// have already been checked to reference real Skill/Concept rows (and are
+// therefore expected to be well-formed uuids), so a parse failure signals a
+// bug upstream rather than a legitimately absent reference.
 func parseUUIDs(ids []string) ([]uuid.UUID, error) {
 	parsed := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
@@ -21,6 +23,20 @@ func parseUUIDs(ids []string) ([]uuid.UUID, error) {
 		parsed = append(parsed, u)
 	}
 	return parsed, nil
+}
+
+// parseUUIDsSkippingInvalid is parseUUIDs' counterpart for lookup filters
+// following the "not found, simply absent" convention: an id that isn't a
+// valid uuid can never match a row, so it's dropped rather than failing the
+// whole lookup.
+func parseUUIDsSkippingInvalid(ids []string) []uuid.UUID {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	return parsed
 }
 
 // domainSkillsFromEdges converts an eager-loaded []*ent.Skill edge slice to

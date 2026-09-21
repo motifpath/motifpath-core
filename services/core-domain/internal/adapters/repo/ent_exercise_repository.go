@@ -217,14 +217,7 @@ func (r *EntExerciseRepository) ListByChallengeIDs(ctx context.Context, challeng
 		return result, nil
 	}
 
-	parsed := make([]uuid.UUID, 0, len(challengeIDs))
-	for _, id := range challengeIDs {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			continue // not a valid id, so it can never match — left absent from result
-		}
-		parsed = append(parsed, u)
-	}
+	parsed := parseUUIDsSkippingInvalid(challengeIDs)
 	if len(parsed) == 0 {
 		return result, nil
 	}
@@ -397,7 +390,7 @@ func (r *EntExerciseRepository) List(ctx context.Context, skillID string, exerci
 	if skillID != "" {
 		parsed, err := uuid.Parse(skillID)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		query = query.Where(exercise.HasSkillsWith(skill.ID(parsed)))
 	}

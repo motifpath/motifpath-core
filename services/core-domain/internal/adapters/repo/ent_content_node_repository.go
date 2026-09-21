@@ -84,16 +84,7 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 		return result, nil
 	}
 
-	parsed := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			continue // not a valid id, so it can never match — left absent from result
-		}
-		parsed = append(parsed, u)
-	}
-
-	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parsed...)).
+	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parseUUIDsSkippingInvalid(ids)...)).
 		WithLanguages().WithSkills().WithConcepts().All(ctx)
 	if err != nil {
 		return nil, err
@@ -112,14 +103,14 @@ func (r *EntContentNodeRepository) List(ctx context.Context, contentType domain.
 	if skillID != "" {
 		parsed, err := uuid.Parse(skillID)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		query = query.Where(contentnode.HasSkillsWith(skill.ID(parsed)))
 	}
 	if conceptID != "" {
 		parsed, err := uuid.Parse(conceptID)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		query = query.Where(contentnode.HasConceptsWith(concept.ID(parsed)))
 	}

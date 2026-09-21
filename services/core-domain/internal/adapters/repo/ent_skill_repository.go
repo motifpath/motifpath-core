@@ -57,15 +57,7 @@ func (r *EntSkillRepository) GetByIDs(ctx context.Context, ids []string) (map[st
 	if len(ids) == 0 {
 		return result, nil
 	}
-	parsed := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		u, err := uuid.Parse(id)
-		if err != nil {
-			continue // not a valid id, so it can never match — left absent from result
-		}
-		parsed = append(parsed, u)
-	}
-	rows, err := r.client.Skill.Query().Where(skill.IDIn(parsed...)).All(ctx)
+	rows, err := r.client.Skill.Query().Where(skill.IDIn(parseUUIDsSkippingInvalid(ids)...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
