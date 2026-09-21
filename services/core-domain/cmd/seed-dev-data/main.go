@@ -201,6 +201,8 @@ func seedPathAndProgress(
 		{"12-bar blues solo, backing track", "Improvisation", "Full-length solo", domain.DifficultyLevelAdvanced, "Improvisation"},
 	}
 
+	seedVideoURL := "https://cdn.motifpath.io/videos/seed-placeholder.mp4"
+
 	var items []application.PathItemInput
 	var nodeIDs []string
 	for _, spec := range specs {
@@ -212,7 +214,7 @@ func seedPathAndProgress(
 		if err != nil {
 			return nil, err
 		}
-		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, spec.difficulty, []string{"en"})
+		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, spec.difficulty, []string{"en"}, &seedVideoURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}

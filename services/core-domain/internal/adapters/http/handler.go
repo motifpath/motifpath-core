@@ -176,7 +176,7 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 		domain.ContentType(body.ContentType),
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
 		domain.DifficultyLevel(body.Classification.DifficultyLevel),
-		body.LanguageCodes)
+		body.LanguageCodes, body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -251,7 +251,8 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 	body := request.Body
 	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes)
+		domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes,
+		body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

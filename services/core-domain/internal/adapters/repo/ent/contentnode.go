@@ -24,6 +24,10 @@ type ContentNode struct {
 	Title string `json:"title,omitempty"`
 	// ContentType holds the value of the "content_type" field.
 	ContentType contentnode.ContentType `json:"content_type,omitempty"`
+	// MediaURL holds the value of the "media_url" field.
+	MediaURL *string `json:"media_url,omitempty"`
+	// RichContent holds the value of the "rich_content" field.
+	RichContent *string `json:"rich_content,omitempty"`
 	// DifficultyLevel holds the value of the "difficulty_level" field.
 	DifficultyLevel contentnode.DifficultyLevel `json:"difficulty_level,omitempty"`
 	// ReviewState holds the value of the "review_state" field.
@@ -136,7 +140,7 @@ func (*ContentNode) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
+		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
 			values[i] = new(sql.NullString)
 		case contentnode.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -180,6 +184,20 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field content_type", values[i])
 			} else if value.Valid {
 				_m.ContentType = contentnode.ContentType(value.String)
+			}
+		case contentnode.FieldMediaURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field media_url", values[i])
+			} else if value.Valid {
+				_m.MediaURL = new(string)
+				*_m.MediaURL = value.String
+			}
+		case contentnode.FieldRichContent:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field rich_content", values[i])
+			} else if value.Valid {
+				_m.RichContent = new(string)
+				*_m.RichContent = value.String
 			}
 		case contentnode.FieldDifficultyLevel:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -283,6 +301,16 @@ func (_m *ContentNode) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("content_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ContentType))
+	builder.WriteString(", ")
+	if v := _m.MediaURL; v != nil {
+		builder.WriteString("media_url=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.RichContent; v != nil {
+		builder.WriteString("rich_content=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("difficulty_level=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DifficultyLevel))

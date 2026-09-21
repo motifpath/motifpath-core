@@ -25,12 +25,12 @@ func NewContentService(nodes ports.ContentNodeRepository, expanded ports.Expande
 
 // CreateContentNode creates a content node owned by caller. Only teachers
 // and admins may create content nodes.
-func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.User, title string, contentType domain.ContentType, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string) (domain.ContentNode, error) {
+func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.User, title string, contentType domain.ContentType, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string, mediaURL *string, richContent *domain.PromptDocument) (domain.ContentNode, error) {
 	if !canManageContent(caller.Role) {
 		return domain.ContentNode{}, domain.ErrForbidden
 	}
 
-	node, err := domain.NewContentNode(s.newID(), caller.ID, title, contentType, skillIDs, conceptIDs, difficulty, languages, s.now())
+	node, err := domain.NewContentNode(s.newID(), caller.ID, title, contentType, skillIDs, conceptIDs, difficulty, languages, mediaURL, richContent, s.now())
 	if err != nil {
 		return domain.ContentNode{}, err
 	}
@@ -69,7 +69,7 @@ func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.Use
 // untouched. Only the creating teacher or an admin may update a content
 // node. Returns domain.ErrNotFound if no content node exists with the given
 // id.
-func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id, title string, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string) (domain.ContentNode, error) {
+func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id, title string, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string, mediaURL *string, richContent *domain.PromptDocument) (domain.ContentNode, error) {
 	if !canManageContent(caller.Role) {
 		return domain.ContentNode{}, domain.ErrForbidden
 	}
@@ -82,7 +82,7 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 
-	updated, err := existing.Update(title, skillIDs, conceptIDs, difficulty, languages)
+	updated, err := existing.Update(title, skillIDs, conceptIDs, difficulty, languages, mediaURL, richContent)
 	if err != nil {
 		return domain.ContentNode{}, err
 	}

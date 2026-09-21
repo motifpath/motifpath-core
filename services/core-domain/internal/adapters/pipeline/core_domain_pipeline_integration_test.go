@@ -104,7 +104,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}}
 
 	skillID, conceptID := seedClassification(t, ctx, p, teacher, "triads")
-	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, domain.DifficultyLevelBeginner, []string{"en"})
+	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
 	require.NoError(t, err)
 
 	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, &skillID, nil, 70, nil, false, false)
@@ -147,7 +147,7 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	seedStudentInto(t, ctx, p, student)
 
 	skillID1, conceptID1 := seedClassification(t, ctx, p, teacher, "n1")
-	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, []string{skillID1}, []string{conceptID1}, domain.DifficultyLevelBeginner, []string{"en"})
+	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, []string{skillID1}, []string{conceptID1}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
 	require.NoError(t, err)
 	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
 	require.NoError(t, err)
@@ -165,7 +165,7 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	require.NoError(t, err)
 
 	skillID2, conceptID2 := seedClassification(t, ctx, p, teacher, "n2")
-	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, []string{skillID2}, []string{conceptID2}, domain.DifficultyLevelBeginner, []string{"en"})
+	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, []string{skillID2}, []string{conceptID2}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
 	require.NoError(t, err)
 	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
 	require.NoError(t, err)
@@ -193,4 +193,9 @@ func seedStudentInto(t *testing.T, ctx context.Context, p *pipeline, student dom
 	student.ClerkUserID = "clerk-" + student.ID
 	student.RegisteredAt = time.Now().UTC()
 	require.NoError(t, p.users.Create(ctx, student))
+}
+
+func testVideoURL() *string {
+	url := "https://cdn.motifpath.io/videos/pipeline-test.mp4"
+	return &url
 }

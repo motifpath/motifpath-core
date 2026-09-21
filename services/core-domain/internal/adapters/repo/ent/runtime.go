@@ -66,7 +66,7 @@ func init() {
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
-	contentnodeDescCreatedAt := contentnodeFields[6].Descriptor()
+	contentnodeDescCreatedAt := contentnodeFields[8].Descriptor()
 	// contentnode.DefaultCreatedAt holds the default value on creation for the created_at field.
 	contentnode.DefaultCreatedAt = contentnodeDescCreatedAt.Default.(func() time.Time)
 	// contentnodeDescID is the schema descriptor for id field.

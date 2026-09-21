@@ -51,7 +51,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		node, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Introduction to Triad Shapes",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "teacher-1", node.TeacherID)
@@ -62,7 +62,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), adminCaller(), "Sweep Picking Fundamentals",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelAdvanced, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelAdvanced, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 	})
@@ -71,7 +71,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), studentCaller(), "Title",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -80,7 +80,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -91,7 +91,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, nil, nil, "", []string{"en"})
+			domain.ContentTypeVideo, nil, nil, "", []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -102,7 +102,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevel("master"), []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevel("master"), []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -113,7 +113,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, nil, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, nil, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -124,7 +124,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, []string{"skill-1"}, nil, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, nil, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -135,7 +135,7 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, []string{"missing-skill"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"missing-skill"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -146,12 +146,95 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title",
-			domain.ContentTypeVideo, []string{"skill-1"}, []string{"missing-concept"}, domain.DifficultyLevelBeginner, []string{"en"})
+			domain.ContentTypeVideo, []string{"skill-1"}, []string{"missing-concept"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
 		assertHasField(t, valErr, "concept_ids")
 	})
+}
+
+func TestContentService_CreateContentNodeBody(t *testing.T) {
+	malformed := domain.PromptDocument{Type: "not-a-doc"}
+
+	tests := []struct {
+		name        string
+		contentType domain.ContentType
+		mediaURL    *string
+		richContent *domain.PromptDocument
+		wantField   string
+	}{
+		{"a video node with a media url is created", domain.ContentTypeVideo, videoMediaURL(), nil, ""},
+		{"an article node with a rich content body is created", domain.ContentTypeArticle, nil, articleBody(), ""},
+		{"a video node without a media url is rejected", domain.ContentTypeVideo, nil, nil, "media_url"},
+		{"a video node with an empty media url is rejected", domain.ContentTypeVideo, strPtr(""), nil, "media_url"},
+		{"a video node carrying rich content is rejected", domain.ContentTypeVideo, videoMediaURL(), articleBody(), "rich_content"},
+		{"an article node without a body is rejected", domain.ContentTypeArticle, nil, nil, "rich_content"},
+		{"an article node carrying a media url is rejected", domain.ContentTypeArticle, videoMediaURL(), articleBody(), "media_url"},
+		{"an article node with a malformed body is rejected", domain.ContentTypeArticle, nil, &malformed, "rich_content"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+			node, err := svc.CreateContentNode(context.Background(), teacherCaller(), "Title", tt.contentType,
+				[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, tt.mediaURL, tt.richContent)
+
+			if tt.wantField == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tt.mediaURL, node.MediaURL)
+				assert.Equal(t, tt.richContent, node.RichContent)
+				return
+			}
+			var valErr *domain.ValidationError
+			require.True(t, errors.As(err, &valErr))
+			assertHasField(t, valErr, tt.wantField)
+		})
+	}
+}
+
+func TestContentService_UpdateContentNodeBody(t *testing.T) {
+	newArticleNode := func() domain.ContentNode {
+		node := articleNode("node-1")
+		node.RichContent = articleBody()
+		return node
+	}
+	revised := richTextContent("Revised body")
+
+	tests := []struct {
+		name        string
+		node        domain.ContentNode
+		mediaURL    *string
+		richContent *domain.PromptDocument
+		wantField   string
+	}{
+		{"a teacher replaces a video's media url", videoNode("node-1"), strPtr("https://cdn.motifpath.io/videos/new.mp4"), nil, ""},
+		{"a teacher replaces an article's body", newArticleNode(), nil, &revised, ""},
+		{"updating a video without a media url is rejected", videoNode("node-1"), nil, nil, "media_url"},
+		{"updating an article without a body is rejected", newArticleNode(), nil, nil, "rich_content"},
+		{"updating an article with a media url is rejected", newArticleNode(), videoMediaURL(), &revised, "media_url"},
+		{"updating a video with rich content is rejected", videoNode("node-1"), videoMediaURL(), &revised, "rich_content"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodes := newFakeContentNodeRepository()
+			nodes.put(tt.node)
+			svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+			got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Title",
+				[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, tt.mediaURL, tt.richContent)
+
+			if tt.wantField == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tt.mediaURL, got.MediaURL)
+				assert.Equal(t, tt.richContent, got.RichContent)
+				return
+			}
+			var valErr *domain.ValidationError
+			require.True(t, errors.As(err, &valErr))
+			assertHasField(t, valErr, tt.wantField)
+		})
+	}
 }
 
 func TestContentService_GetContentNode(t *testing.T) {
@@ -267,7 +350,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title",
-			[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelIntermediate, []string{"en"})
+			[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelIntermediate, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Revised title", got.Title)
@@ -283,7 +366,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Title",
-			[]string{"skill-1", "skill-2"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			[]string{"skill-1", "skill-2"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"skill-1", "skill-2"}, got.Classification.SkillIDs())
@@ -295,7 +378,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title",
-			[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+			[]string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.ContentTypeVideo, got.ContentType)
@@ -309,7 +392,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		got, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Revised title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.ReviewStateConfirmed, got.Classification.ReviewState)
@@ -320,7 +403,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -332,7 +415,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Title", nil, nil, "", []string{"en"})
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "node-1", "Title", nil, nil, "", []string{"en"}, videoMediaURL(), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -344,7 +427,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		_, err := svc.UpdateContentNode(context.Background(), studentCaller(), "node-1", "Hijacked title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		_, err := svc.UpdateContentNode(context.Background(), studentCaller(), "node-1", "Hijacked title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -354,7 +437,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes.put(videoNode("node-1")) // owned by teacher-1
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		_, err := svc.UpdateContentNode(context.Background(), otherTeacherCaller(), "node-1", "Hijacked title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		_, err := svc.UpdateContentNode(context.Background(), otherTeacherCaller(), "node-1", "Hijacked title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -364,7 +447,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes.put(videoNode("node-1")) // owned by teacher-1
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.UpdateContentNode(context.Background(), adminCaller(), "node-1", "Revised by admin", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		got, err := svc.UpdateContentNode(context.Background(), adminCaller(), "node-1", "Revised by admin", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Revised by admin", got.Title)
@@ -373,7 +456,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 	t.Run("updating a content node that does not exist returns not found", func(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
-		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "missing", "Title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"})
+		_, err := svc.UpdateContentNode(context.Background(), teacherCaller(), "missing", "Title", []string{"skill-1"}, []string{"concept-1"}, domain.DifficultyLevelBeginner, []string{"en"}, videoMediaURL(), nil)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -389,6 +472,15 @@ func articleNode(id string) domain.ContentNode {
 
 func intPtr(v int) *int       { return &v }
 func strPtr(v string) *string { return &v }
+
+func videoMediaURL() *string {
+	return strPtr("https://cdn.motifpath.io/videos/triad-shapes-intro.mp4")
+}
+
+func articleBody() *domain.PromptDocument {
+	doc := richTextContent("Chord theory explains how notes combine into triads.")
+	return &doc
+}
 
 func TestContentService_CreateExpandedContent(t *testing.T) {
 	t.Run("a teacher adds an image to a video lesson at a specific timestamp", func(t *testing.T) {

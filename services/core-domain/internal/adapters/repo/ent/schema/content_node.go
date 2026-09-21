@@ -32,6 +32,15 @@ func (ContentNode) Fields() []ent.Field {
 			Values("video", "article").
 			Immutable(),
 
+		// media_url is the video students watch; rich_content stores the
+		// article's marshaled PromptDocument JSON as text, the same encoding
+		// ExpandedContent uses. Exactly one is populated per content_type —
+		// that XOR is enforced in the domain layer, not here. Both are
+		// nullable so video nodes created before media_url existed still load.
+		field.String("media_url").Optional().Nillable(),
+
+		field.Text("rich_content").Optional().Nillable(),
+
 		field.Enum("difficulty_level").
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert"),
 
