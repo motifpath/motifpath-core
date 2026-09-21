@@ -244,6 +244,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
 	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
 	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
 
@@ -259,9 +261,11 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
+	instrumentService := application.NewInstrumentService(instrumentRepo, newID)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, assignmentService,
-		learningGraphPinger, completionReader), nil
+		instrumentService, diagramService, learningGraphPinger, completionReader), nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go
