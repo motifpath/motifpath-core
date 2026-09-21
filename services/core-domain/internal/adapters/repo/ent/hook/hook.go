@@ -105,6 +105,42 @@ func (f ContentNodeSkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeSkillMutation", m)
 }
 
+// The DiagramFunc type is an adapter to allow the use of ordinary
+// function as Diagram mutator.
+type DiagramFunc func(context.Context, *ent.DiagramMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramMutation", m)
+}
+
+// The DiagramConceptFunc type is an adapter to allow the use of ordinary
+// function as DiagramConcept mutator.
+type DiagramConceptFunc func(context.Context, *ent.DiagramConceptMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramConceptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramConceptMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramConceptMutation", m)
+}
+
+// The DiagramSkillFunc type is an adapter to allow the use of ordinary
+// function as DiagramSkill mutator.
+type DiagramSkillFunc func(context.Context, *ent.DiagramSkillMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramSkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramSkillMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramSkillMutation", m)
+}
+
 // The ExerciseFunc type is an adapter to allow the use of ordinary
 // function as Exercise mutator.
 type ExerciseFunc func(context.Context, *ent.ExerciseMutation) (ent.Value, error)
@@ -177,6 +213,18 @@ func (f ExpandedContentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExpandedContentMutation", m)
 }
 
+// The InstrumentFunc type is an adapter to allow the use of ordinary
+// function as Instrument mutator.
+type InstrumentFunc func(context.Context, *ent.InstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InstrumentMutation", m)
+}
+
 // The LanguageFunc type is an adapter to allow the use of ordinary
 // function as Language mutator.
 type LanguageFunc func(context.Context, *ent.LanguageMutation) (ent.Value, error)
@@ -223,6 +271,18 @@ func (f PathAssignmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PathAssignmentMutation", m)
+}
+
+// The PositionFunc type is an adapter to allow the use of ordinary
+// function as Position mutator.
+type PositionFunc func(context.Context, *ent.PositionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PositionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PositionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PositionMutation", m)
 }
 
 // The SkillFunc type is an adapter to allow the use of ordinary

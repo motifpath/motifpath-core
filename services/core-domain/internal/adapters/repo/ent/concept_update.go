@@ -14,6 +14,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -116,6 +118,21 @@ func (_u *ConceptUpdate) AddExercises(v ...*Exercise) *ConceptUpdate {
 	return _u.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_u *ConceptUpdate) AddDiagramIDs(ids ...uuid.UUID) *ConceptUpdate {
+	_u.mutation.AddDiagramIDs(ids...)
+	return _u
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_u *ConceptUpdate) AddDiagrams(v ...*Diagram) *ConceptUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
 func (_u *ConceptUpdate) AddContentNodeConceptIDs(ids ...int) *ConceptUpdate {
 	_u.mutation.AddContentNodeConceptIDs(ids...)
@@ -144,6 +161,21 @@ func (_u *ConceptUpdate) AddExerciseConcepts(v ...*ExerciseConcept) *ConceptUpda
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseConceptIDs(ids...)
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (_u *ConceptUpdate) AddDiagramConceptIDs(ids ...int) *ConceptUpdate {
+	_u.mutation.AddDiagramConceptIDs(ids...)
+	return _u
+}
+
+// AddDiagramConcepts adds the "diagram_concepts" edges to the DiagramConcept entity.
+func (_u *ConceptUpdate) AddDiagramConcepts(v ...*DiagramConcept) *ConceptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramConceptIDs(ids...)
 }
 
 // Mutation returns the ConceptMutation object of the builder.
@@ -220,6 +252,27 @@ func (_u *ConceptUpdate) RemoveExercises(v ...*Exercise) *ConceptUpdate {
 	return _u.RemoveExerciseIDs(ids...)
 }
 
+// ClearDiagrams clears all "diagrams" edges to the Diagram entity.
+func (_u *ConceptUpdate) ClearDiagrams() *ConceptUpdate {
+	_u.mutation.ClearDiagrams()
+	return _u
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to Diagram entities by IDs.
+func (_u *ConceptUpdate) RemoveDiagramIDs(ids ...uuid.UUID) *ConceptUpdate {
+	_u.mutation.RemoveDiagramIDs(ids...)
+	return _u
+}
+
+// RemoveDiagrams removes "diagrams" edges to Diagram entities.
+func (_u *ConceptUpdate) RemoveDiagrams(v ...*Diagram) *ConceptUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramIDs(ids...)
+}
+
 // ClearContentNodeConcepts clears all "content_node_concepts" edges to the ContentNodeConcept entity.
 func (_u *ConceptUpdate) ClearContentNodeConcepts() *ConceptUpdate {
 	_u.mutation.ClearContentNodeConcepts()
@@ -260,6 +313,27 @@ func (_u *ConceptUpdate) RemoveExerciseConcepts(v ...*ExerciseConcept) *ConceptU
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseConceptIDs(ids...)
+}
+
+// ClearDiagramConcepts clears all "diagram_concepts" edges to the DiagramConcept entity.
+func (_u *ConceptUpdate) ClearDiagramConcepts() *ConceptUpdate {
+	_u.mutation.ClearDiagramConcepts()
+	return _u
+}
+
+// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to DiagramConcept entities by IDs.
+func (_u *ConceptUpdate) RemoveDiagramConceptIDs(ids ...int) *ConceptUpdate {
+	_u.mutation.RemoveDiagramConceptIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramConcepts removes "diagram_concepts" edges to DiagramConcept entities.
+func (_u *ConceptUpdate) RemoveDiagramConcepts(v ...*DiagramConcept) *ConceptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramConceptIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -489,6 +563,63 @@ func (_u *ConceptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramsIDs(); len(nodes) > 0 && !_u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeConceptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -572,6 +703,51 @@ func (_u *ConceptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramConceptsIDs(); len(nodes) > 0 && !_u.mutation.DiagramConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -683,6 +859,21 @@ func (_u *ConceptUpdateOne) AddExercises(v ...*Exercise) *ConceptUpdateOne {
 	return _u.AddExerciseIDs(ids...)
 }
 
+// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
+func (_u *ConceptUpdateOne) AddDiagramIDs(ids ...uuid.UUID) *ConceptUpdateOne {
+	_u.mutation.AddDiagramIDs(ids...)
+	return _u
+}
+
+// AddDiagrams adds the "diagrams" edges to the Diagram entity.
+func (_u *ConceptUpdateOne) AddDiagrams(v ...*Diagram) *ConceptUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramIDs(ids...)
+}
+
 // AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
 func (_u *ConceptUpdateOne) AddContentNodeConceptIDs(ids ...int) *ConceptUpdateOne {
 	_u.mutation.AddContentNodeConceptIDs(ids...)
@@ -711,6 +902,21 @@ func (_u *ConceptUpdateOne) AddExerciseConcepts(v ...*ExerciseConcept) *ConceptU
 		ids[i] = v[i].ID
 	}
 	return _u.AddExerciseConceptIDs(ids...)
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (_u *ConceptUpdateOne) AddDiagramConceptIDs(ids ...int) *ConceptUpdateOne {
+	_u.mutation.AddDiagramConceptIDs(ids...)
+	return _u
+}
+
+// AddDiagramConcepts adds the "diagram_concepts" edges to the DiagramConcept entity.
+func (_u *ConceptUpdateOne) AddDiagramConcepts(v ...*DiagramConcept) *ConceptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramConceptIDs(ids...)
 }
 
 // Mutation returns the ConceptMutation object of the builder.
@@ -787,6 +993,27 @@ func (_u *ConceptUpdateOne) RemoveExercises(v ...*Exercise) *ConceptUpdateOne {
 	return _u.RemoveExerciseIDs(ids...)
 }
 
+// ClearDiagrams clears all "diagrams" edges to the Diagram entity.
+func (_u *ConceptUpdateOne) ClearDiagrams() *ConceptUpdateOne {
+	_u.mutation.ClearDiagrams()
+	return _u
+}
+
+// RemoveDiagramIDs removes the "diagrams" edge to Diagram entities by IDs.
+func (_u *ConceptUpdateOne) RemoveDiagramIDs(ids ...uuid.UUID) *ConceptUpdateOne {
+	_u.mutation.RemoveDiagramIDs(ids...)
+	return _u
+}
+
+// RemoveDiagrams removes "diagrams" edges to Diagram entities.
+func (_u *ConceptUpdateOne) RemoveDiagrams(v ...*Diagram) *ConceptUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramIDs(ids...)
+}
+
 // ClearContentNodeConcepts clears all "content_node_concepts" edges to the ContentNodeConcept entity.
 func (_u *ConceptUpdateOne) ClearContentNodeConcepts() *ConceptUpdateOne {
 	_u.mutation.ClearContentNodeConcepts()
@@ -827,6 +1054,27 @@ func (_u *ConceptUpdateOne) RemoveExerciseConcepts(v ...*ExerciseConcept) *Conce
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveExerciseConceptIDs(ids...)
+}
+
+// ClearDiagramConcepts clears all "diagram_concepts" edges to the DiagramConcept entity.
+func (_u *ConceptUpdateOne) ClearDiagramConcepts() *ConceptUpdateOne {
+	_u.mutation.ClearDiagramConcepts()
+	return _u
+}
+
+// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to DiagramConcept entities by IDs.
+func (_u *ConceptUpdateOne) RemoveDiagramConceptIDs(ids ...int) *ConceptUpdateOne {
+	_u.mutation.RemoveDiagramConceptIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramConcepts removes "diagram_concepts" edges to DiagramConcept entities.
+func (_u *ConceptUpdateOne) RemoveDiagramConcepts(v ...*DiagramConcept) *ConceptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramConceptIDs(ids...)
 }
 
 // Where appends a list predicates to the ConceptUpdate builder.
@@ -1086,6 +1334,63 @@ func (_u *ConceptUpdateOne) sqlSave(ctx context.Context) (_node *Concept, err er
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramsIDs(); len(nodes) > 0 && !_u.mutation.DiagramsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   concept.DiagramsTable,
+			Columns: concept.DiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeConceptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1169,6 +1474,51 @@ func (_u *ConceptUpdateOne) sqlSave(ctx context.Context) (_node *Concept, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramConceptsIDs(); len(nodes) > 0 && !_u.mutation.DiagramConceptsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramConceptsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   concept.DiagramConceptsTable,
+			Columns: []string{concept.DiagramConceptsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramconcept.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

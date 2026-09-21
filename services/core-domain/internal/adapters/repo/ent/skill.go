@@ -37,13 +37,17 @@ type SkillEdges struct {
 	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
 	// Exercises holds the value of the exercises edge.
 	Exercises []*Exercise `json:"exercises,omitempty"`
+	// Diagrams holds the value of the diagrams edge.
+	Diagrams []*Diagram `json:"diagrams,omitempty"`
 	// ContentNodeSkills holds the value of the content_node_skills edge.
 	ContentNodeSkills []*ContentNodeSkill `json:"content_node_skills,omitempty"`
 	// ExerciseSkills holds the value of the exercise_skills edge.
 	ExerciseSkills []*ExerciseSkill `json:"exercise_skills,omitempty"`
+	// DiagramSkills holds the value of the diagram_skills edge.
+	DiagramSkills []*DiagramSkill `json:"diagram_skills,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [8]bool
 }
 
 // ChildrenOrErr returns the Children value or an error if the edge
@@ -84,10 +88,19 @@ func (e SkillEdges) ExercisesOrErr() ([]*Exercise, error) {
 	return nil, &NotLoadedError{edge: "exercises"}
 }
 
+// DiagramsOrErr returns the Diagrams value or an error if the edge
+// was not loaded in eager-loading.
+func (e SkillEdges) DiagramsOrErr() ([]*Diagram, error) {
+	if e.loadedTypes[4] {
+		return e.Diagrams, nil
+	}
+	return nil, &NotLoadedError{edge: "diagrams"}
+}
+
 // ContentNodeSkillsOrErr returns the ContentNodeSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e SkillEdges) ContentNodeSkillsOrErr() ([]*ContentNodeSkill, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.ContentNodeSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_skills"}
@@ -96,10 +109,19 @@ func (e SkillEdges) ContentNodeSkillsOrErr() ([]*ContentNodeSkill, error) {
 // ExerciseSkillsOrErr returns the ExerciseSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e SkillEdges) ExerciseSkillsOrErr() ([]*ExerciseSkill, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.ExerciseSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_skills"}
+}
+
+// DiagramSkillsOrErr returns the DiagramSkills value or an error if the edge
+// was not loaded in eager-loading.
+func (e SkillEdges) DiagramSkillsOrErr() ([]*DiagramSkill, error) {
+	if e.loadedTypes[7] {
+		return e.DiagramSkills, nil
+	}
+	return nil, &NotLoadedError{edge: "diagram_skills"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -180,6 +202,11 @@ func (_m *Skill) QueryExercises() *ExerciseQuery {
 	return NewSkillClient(_m.config).QueryExercises(_m)
 }
 
+// QueryDiagrams queries the "diagrams" edge of the Skill entity.
+func (_m *Skill) QueryDiagrams() *DiagramQuery {
+	return NewSkillClient(_m.config).QueryDiagrams(_m)
+}
+
 // QueryContentNodeSkills queries the "content_node_skills" edge of the Skill entity.
 func (_m *Skill) QueryContentNodeSkills() *ContentNodeSkillQuery {
 	return NewSkillClient(_m.config).QueryContentNodeSkills(_m)
@@ -188,6 +215,11 @@ func (_m *Skill) QueryContentNodeSkills() *ContentNodeSkillQuery {
 // QueryExerciseSkills queries the "exercise_skills" edge of the Skill entity.
 func (_m *Skill) QueryExerciseSkills() *ExerciseSkillQuery {
 	return NewSkillClient(_m.config).QueryExerciseSkills(_m)
+}
+
+// QueryDiagramSkills queries the "diagram_skills" edge of the Skill entity.
+func (_m *Skill) QueryDiagramSkills() *DiagramSkillQuery {
+	return NewSkillClient(_m.config).QueryDiagramSkills(_m)
 }
 
 // Update returns a builder for updating this Skill.

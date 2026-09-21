@@ -239,6 +239,95 @@ var (
 			},
 		},
 	}
+	// DiagramsColumns holds the columns for the "diagrams" table.
+	DiagramsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// DiagramsTable holds the schema information for the "diagrams" table.
+	DiagramsTable = &schema.Table{
+		Name:       "diagrams",
+		Columns:    DiagramsColumns,
+		PrimaryKey: []*schema.Column{DiagramsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagrams_instruments_instrument",
+				Columns:    []*schema.Column{DiagramsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// DiagramConceptsColumns holds the columns for the "diagram_concepts" table.
+	DiagramConceptsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "diagram_id", Type: field.TypeUUID},
+		{Name: "concept_id", Type: field.TypeUUID},
+	}
+	// DiagramConceptsTable holds the schema information for the "diagram_concepts" table.
+	DiagramConceptsTable = &schema.Table{
+		Name:       "diagram_concepts",
+		Columns:    DiagramConceptsColumns,
+		PrimaryKey: []*schema.Column{DiagramConceptsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagram_concepts_diagrams_diagram",
+				Columns:    []*schema.Column{DiagramConceptsColumns[2]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "diagram_concepts_concepts_concept",
+				Columns:    []*schema.Column{DiagramConceptsColumns[3]},
+				RefColumns: []*schema.Column{ConceptsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "diagramconcept_diagram_id_concept_id",
+				Unique:  true,
+				Columns: []*schema.Column{DiagramConceptsColumns[2], DiagramConceptsColumns[3]},
+			},
+		},
+	}
+	// DiagramSkillsColumns holds the columns for the "diagram_skills" table.
+	DiagramSkillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "diagram_id", Type: field.TypeUUID},
+		{Name: "skill_id", Type: field.TypeUUID},
+	}
+	// DiagramSkillsTable holds the schema information for the "diagram_skills" table.
+	DiagramSkillsTable = &schema.Table{
+		Name:       "diagram_skills",
+		Columns:    DiagramSkillsColumns,
+		PrimaryKey: []*schema.Column{DiagramSkillsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagram_skills_diagrams_diagram",
+				Columns:    []*schema.Column{DiagramSkillsColumns[2]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "diagram_skills_skills_skill",
+				Columns:    []*schema.Column{DiagramSkillsColumns[3]},
+				RefColumns: []*schema.Column{SkillsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "diagramskill_diagram_id_skill_id",
+				Unique:  true,
+				Columns: []*schema.Column{DiagramSkillsColumns[2], DiagramSkillsColumns[3]},
+			},
+		},
+	}
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -421,6 +510,22 @@ var (
 			},
 		},
 	}
+	// InstrumentsColumns holds the columns for the "instruments" table.
+	InstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "family", Type: field.TypeEnum, Enums: []string{"fretted", "keyboard"}},
+		{Name: "string_count", Type: field.TypeInt, Nullable: true},
+		{Name: "tuning", Type: field.TypeJSON, Nullable: true},
+		{Name: "key_range_lowest", Type: field.TypeString, Nullable: true},
+		{Name: "key_range_highest", Type: field.TypeString, Nullable: true},
+	}
+	// InstrumentsTable holds the schema information for the "instruments" table.
+	InstrumentsTable = &schema.Table{
+		Name:       "instruments",
+		Columns:    InstrumentsColumns,
+		PrimaryKey: []*schema.Column{InstrumentsColumns[0]},
+	}
 	// LanguagesColumns holds the columns for the "languages" table.
 	LanguagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -481,6 +586,39 @@ var (
 		Columns:    PathAssignmentsColumns,
 		PrimaryKey: []*schema.Column{PathAssignmentsColumns[0]},
 	}
+	// PositionsColumns holds the columns for the "positions" table.
+	PositionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "ordinal", Type: field.TypeInt},
+		{Name: "interval", Type: field.TypeString},
+		{Name: "note_name", Type: field.TypeString},
+		{Name: "sequence_index", Type: field.TypeInt, Nullable: true},
+		{Name: "string_number", Type: field.TypeInt, Nullable: true},
+		{Name: "fret", Type: field.TypeInt, Nullable: true},
+		{Name: "key", Type: field.TypeString, Nullable: true},
+		{Name: "diagram_id", Type: field.TypeUUID},
+	}
+	// PositionsTable holds the schema information for the "positions" table.
+	PositionsTable = &schema.Table{
+		Name:       "positions",
+		Columns:    PositionsColumns,
+		PrimaryKey: []*schema.Column{PositionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "positions_diagrams_positions",
+				Columns:    []*schema.Column{PositionsColumns[8]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "position_diagram_id_ordinal",
+				Unique:  true,
+				Columns: []*schema.Column{PositionsColumns[8], PositionsColumns[1]},
+			},
+		},
+	}
 	// SkillsColumns holds the columns for the "skills" table.
 	SkillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -533,16 +671,21 @@ var (
 		ContentNodeExercisesTable,
 		ContentNodeLanguagesTable,
 		ContentNodeSkillsTable,
+		DiagramsTable,
+		DiagramConceptsTable,
+		DiagramSkillsTable,
 		ExercisesTable,
 		ExerciseConceptsTable,
 		ExerciseLanguagesTable,
 		ExerciseOptionsTable,
 		ExerciseSkillsTable,
 		ExpandedContentsTable,
+		InstrumentsTable,
 		LanguagesTable,
 		LearningPathsTable,
 		LearningPathItemsTable,
 		PathAssignmentsTable,
+		PositionsTable,
 		SkillsTable,
 		UsersTable,
 	}
@@ -560,6 +703,11 @@ func init() {
 	ContentNodeLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
 	ContentNodeSkillsTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	DiagramsTable.ForeignKeys[0].RefTable = InstrumentsTable
+	DiagramConceptsTable.ForeignKeys[0].RefTable = DiagramsTable
+	DiagramConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
+	DiagramSkillsTable.ForeignKeys[1].RefTable = SkillsTable
 	ExerciseConceptsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
 	ExerciseLanguagesTable.ForeignKeys[0].RefTable = ExercisesTable
@@ -567,6 +715,7 @@ func init() {
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	PositionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	SkillsTable.ForeignKeys[0].RefTable = SkillsTable
 	UsersTable.ForeignKeys[0].RefTable = LanguagesTable
 }

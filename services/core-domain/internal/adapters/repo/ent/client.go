@@ -24,16 +24,21 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
@@ -59,6 +64,12 @@ type Client struct {
 	ContentNodeLanguage *ContentNodeLanguageClient
 	// ContentNodeSkill is the client for interacting with the ContentNodeSkill builders.
 	ContentNodeSkill *ContentNodeSkillClient
+	// Diagram is the client for interacting with the Diagram builders.
+	Diagram *DiagramClient
+	// DiagramConcept is the client for interacting with the DiagramConcept builders.
+	DiagramConcept *DiagramConceptClient
+	// DiagramSkill is the client for interacting with the DiagramSkill builders.
+	DiagramSkill *DiagramSkillClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -71,6 +82,8 @@ type Client struct {
 	ExerciseSkill *ExerciseSkillClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// Instrument is the client for interacting with the Instrument builders.
+	Instrument *InstrumentClient
 	// Language is the client for interacting with the Language builders.
 	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
@@ -79,6 +92,8 @@ type Client struct {
 	LearningPathItem *LearningPathItemClient
 	// PathAssignment is the client for interacting with the PathAssignment builders.
 	PathAssignment *PathAssignmentClient
+	// Position is the client for interacting with the Position builders.
+	Position *PositionClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
 	// User is the client for interacting with the User builders.
@@ -102,16 +117,21 @@ func (c *Client) init() {
 	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
 	c.ContentNodeLanguage = NewContentNodeLanguageClient(c.config)
 	c.ContentNodeSkill = NewContentNodeSkillClient(c.config)
+	c.Diagram = NewDiagramClient(c.config)
+	c.DiagramConcept = NewDiagramConceptClient(c.config)
+	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseConcept = NewExerciseConceptClient(c.config)
 	c.ExerciseLanguage = NewExerciseLanguageClient(c.config)
 	c.ExerciseOption = NewExerciseOptionClient(c.config)
 	c.ExerciseSkill = NewExerciseSkillClient(c.config)
 	c.ExpandedContent = NewExpandedContentClient(c.config)
+	c.Instrument = NewInstrumentClient(c.config)
 	c.Language = NewLanguageClient(c.config)
 	c.LearningPath = NewLearningPathClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.PathAssignment = NewPathAssignmentClient(c.config)
+	c.Position = NewPositionClient(c.config)
 	c.Skill = NewSkillClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -214,16 +234,21 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
 		ContentNodeLanguage: NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:    NewContentNodeSkillClient(cfg),
+		Diagram:             NewDiagramClient(cfg),
+		DiagramConcept:      NewDiagramConceptClient(cfg),
+		DiagramSkill:        NewDiagramSkillClient(cfg),
 		Exercise:            NewExerciseClient(cfg),
 		ExerciseConcept:     NewExerciseConceptClient(cfg),
 		ExerciseLanguage:    NewExerciseLanguageClient(cfg),
 		ExerciseOption:      NewExerciseOptionClient(cfg),
 		ExerciseSkill:       NewExerciseSkillClient(cfg),
 		ExpandedContent:     NewExpandedContentClient(cfg),
+		Instrument:          NewInstrumentClient(cfg),
 		Language:            NewLanguageClient(cfg),
 		LearningPath:        NewLearningPathClient(cfg),
 		LearningPathItem:    NewLearningPathItemClient(cfg),
 		PathAssignment:      NewPathAssignmentClient(cfg),
+		Position:            NewPositionClient(cfg),
 		Skill:               NewSkillClient(cfg),
 		User:                NewUserClient(cfg),
 	}, nil
@@ -253,16 +278,21 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ContentNodeExercise: NewContentNodeExerciseClient(cfg),
 		ContentNodeLanguage: NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:    NewContentNodeSkillClient(cfg),
+		Diagram:             NewDiagramClient(cfg),
+		DiagramConcept:      NewDiagramConceptClient(cfg),
+		DiagramSkill:        NewDiagramSkillClient(cfg),
 		Exercise:            NewExerciseClient(cfg),
 		ExerciseConcept:     NewExerciseConceptClient(cfg),
 		ExerciseLanguage:    NewExerciseLanguageClient(cfg),
 		ExerciseOption:      NewExerciseOptionClient(cfg),
 		ExerciseSkill:       NewExerciseSkillClient(cfg),
 		ExpandedContent:     NewExpandedContentClient(cfg),
+		Instrument:          NewInstrumentClient(cfg),
 		Language:            NewLanguageClient(cfg),
 		LearningPath:        NewLearningPathClient(cfg),
 		LearningPathItem:    NewLearningPathItemClient(cfg),
 		PathAssignment:      NewPathAssignmentClient(cfg),
+		Position:            NewPositionClient(cfg),
 		Skill:               NewSkillClient(cfg),
 		User:                NewUserClient(cfg),
 	}, nil
@@ -296,9 +326,10 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Language,
-		c.LearningPath, c.LearningPathItem, c.PathAssignment, c.Skill, c.User,
+		c.ContentNodeSkill, c.Diagram, c.DiagramConcept, c.DiagramSkill, c.Exercise,
+		c.ExerciseConcept, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.Instrument, c.Language, c.LearningPath,
+		c.LearningPathItem, c.PathAssignment, c.Position, c.Skill, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -310,9 +341,10 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Language,
-		c.LearningPath, c.LearningPathItem, c.PathAssignment, c.Skill, c.User,
+		c.ContentNodeSkill, c.Diagram, c.DiagramConcept, c.DiagramSkill, c.Exercise,
+		c.ExerciseConcept, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.Instrument, c.Language, c.LearningPath,
+		c.LearningPathItem, c.PathAssignment, c.Position, c.Skill, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -337,6 +369,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ContentNodeLanguage.mutate(ctx, m)
 	case *ContentNodeSkillMutation:
 		return c.ContentNodeSkill.mutate(ctx, m)
+	case *DiagramMutation:
+		return c.Diagram.mutate(ctx, m)
+	case *DiagramConceptMutation:
+		return c.DiagramConcept.mutate(ctx, m)
+	case *DiagramSkillMutation:
+		return c.DiagramSkill.mutate(ctx, m)
 	case *ExerciseMutation:
 		return c.Exercise.mutate(ctx, m)
 	case *ExerciseConceptMutation:
@@ -349,6 +387,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ExerciseSkill.mutate(ctx, m)
 	case *ExpandedContentMutation:
 		return c.ExpandedContent.mutate(ctx, m)
+	case *InstrumentMutation:
+		return c.Instrument.mutate(ctx, m)
 	case *LanguageMutation:
 		return c.Language.mutate(ctx, m)
 	case *LearningPathMutation:
@@ -357,6 +397,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LearningPathItem.mutate(ctx, m)
 	case *PathAssignmentMutation:
 		return c.PathAssignment.mutate(ctx, m)
+	case *PositionMutation:
+		return c.Position.mutate(ctx, m)
 	case *SkillMutation:
 		return c.Skill.mutate(ctx, m)
 	case *UserMutation:
@@ -868,6 +910,22 @@ func (c *ConceptClient) QueryExercises(_m *Concept) *ExerciseQuery {
 	return query
 }
 
+// QueryDiagrams queries the diagrams edge of a Concept.
+func (c *ConceptClient) QueryDiagrams(_m *Concept) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(concept.Table, concept.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, concept.DiagramsTable, concept.DiagramsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryContentNodeConcepts queries the content_node_concepts edge of a Concept.
 func (c *ConceptClient) QueryContentNodeConcepts(_m *Concept) *ContentNodeConceptQuery {
 	query := (&ContentNodeConceptClient{config: c.config}).Query()
@@ -893,6 +951,22 @@ func (c *ConceptClient) QueryExerciseConcepts(_m *Concept) *ExerciseConceptQuery
 			sqlgraph.From(concept.Table, concept.FieldID, id),
 			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, concept.ExerciseConceptsTable, concept.ExerciseConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramConcepts queries the diagram_concepts edge of a Concept.
+func (c *ConceptClient) QueryDiagramConcepts(_m *Concept) *DiagramConceptQuery {
+	query := (&DiagramConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(concept.Table, concept.FieldID, id),
+			sqlgraph.To(diagramconcept.Table, diagramconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, concept.DiagramConceptsTable, concept.DiagramConceptsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1843,6 +1917,565 @@ func (c *ContentNodeSkillClient) mutate(ctx context.Context, m *ContentNodeSkill
 		return (&ContentNodeSkillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ContentNodeSkill mutation op: %q", m.Op())
+	}
+}
+
+// DiagramClient is a client for the Diagram schema.
+type DiagramClient struct {
+	config
+}
+
+// NewDiagramClient returns a client for the Diagram from the given config.
+func NewDiagramClient(c config) *DiagramClient {
+	return &DiagramClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagram.Hooks(f(g(h())))`.
+func (c *DiagramClient) Use(hooks ...Hook) {
+	c.hooks.Diagram = append(c.hooks.Diagram, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagram.Intercept(f(g(h())))`.
+func (c *DiagramClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Diagram = append(c.inters.Diagram, interceptors...)
+}
+
+// Create returns a builder for creating a Diagram entity.
+func (c *DiagramClient) Create() *DiagramCreate {
+	mutation := newDiagramMutation(c.config, OpCreate)
+	return &DiagramCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Diagram entities.
+func (c *DiagramClient) CreateBulk(builders ...*DiagramCreate) *DiagramCreateBulk {
+	return &DiagramCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramClient) MapCreateBulk(slice any, setFunc func(*DiagramCreate, int)) *DiagramCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramCreateBulk{err: fmt.Errorf("calling to DiagramClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Diagram.
+func (c *DiagramClient) Update() *DiagramUpdate {
+	mutation := newDiagramMutation(c.config, OpUpdate)
+	return &DiagramUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramClient) UpdateOne(_m *Diagram) *DiagramUpdateOne {
+	mutation := newDiagramMutation(c.config, OpUpdateOne, withDiagram(_m))
+	return &DiagramUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramClient) UpdateOneID(id uuid.UUID) *DiagramUpdateOne {
+	mutation := newDiagramMutation(c.config, OpUpdateOne, withDiagramID(id))
+	return &DiagramUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Diagram.
+func (c *DiagramClient) Delete() *DiagramDelete {
+	mutation := newDiagramMutation(c.config, OpDelete)
+	return &DiagramDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramClient) DeleteOne(_m *Diagram) *DiagramDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramClient) DeleteOneID(id uuid.UUID) *DiagramDeleteOne {
+	builder := c.Delete().Where(diagram.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramDeleteOne{builder}
+}
+
+// Query returns a query builder for Diagram.
+func (c *DiagramClient) Query() *DiagramQuery {
+	return &DiagramQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagram},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Diagram entity by its id.
+func (c *DiagramClient) Get(ctx context.Context, id uuid.UUID) (*Diagram, error) {
+	return c.Query().Where(diagram.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramClient) GetX(ctx context.Context, id uuid.UUID) *Diagram {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryInstrument queries the instrument edge of a Diagram.
+func (c *DiagramClient) QueryInstrument(_m *Diagram) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagram.InstrumentTable, diagram.InstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryPositions queries the positions edge of a Diagram.
+func (c *DiagramClient) QueryPositions(_m *Diagram) *PositionQuery {
+	query := (&PositionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(position.Table, position.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, diagram.PositionsTable, diagram.PositionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySkills queries the skills edge of a Diagram.
+func (c *DiagramClient) QuerySkills(_m *Diagram) *SkillQuery {
+	query := (&SkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, diagram.SkillsTable, diagram.SkillsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConcepts queries the concepts edge of a Diagram.
+func (c *DiagramClient) QueryConcepts(_m *Diagram) *ConceptQuery {
+	query := (&ConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, diagram.ConceptsTable, diagram.ConceptsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramSkills queries the diagram_skills edge of a Diagram.
+func (c *DiagramClient) QueryDiagramSkills(_m *Diagram) *DiagramSkillQuery {
+	query := (&DiagramSkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(diagramskill.Table, diagramskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, diagram.DiagramSkillsTable, diagram.DiagramSkillsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramConcepts queries the diagram_concepts edge of a Diagram.
+func (c *DiagramClient) QueryDiagramConcepts(_m *Diagram) *DiagramConceptQuery {
+	query := (&DiagramConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(diagramconcept.Table, diagramconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, diagram.DiagramConceptsTable, diagram.DiagramConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramClient) Hooks() []Hook {
+	return c.hooks.Diagram
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramClient) Interceptors() []Interceptor {
+	return c.inters.Diagram
+}
+
+func (c *DiagramClient) mutate(ctx context.Context, m *DiagramMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Diagram mutation op: %q", m.Op())
+	}
+}
+
+// DiagramConceptClient is a client for the DiagramConcept schema.
+type DiagramConceptClient struct {
+	config
+}
+
+// NewDiagramConceptClient returns a client for the DiagramConcept from the given config.
+func NewDiagramConceptClient(c config) *DiagramConceptClient {
+	return &DiagramConceptClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagramconcept.Hooks(f(g(h())))`.
+func (c *DiagramConceptClient) Use(hooks ...Hook) {
+	c.hooks.DiagramConcept = append(c.hooks.DiagramConcept, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagramconcept.Intercept(f(g(h())))`.
+func (c *DiagramConceptClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramConcept = append(c.inters.DiagramConcept, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramConcept entity.
+func (c *DiagramConceptClient) Create() *DiagramConceptCreate {
+	mutation := newDiagramConceptMutation(c.config, OpCreate)
+	return &DiagramConceptCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramConcept entities.
+func (c *DiagramConceptClient) CreateBulk(builders ...*DiagramConceptCreate) *DiagramConceptCreateBulk {
+	return &DiagramConceptCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramConceptClient) MapCreateBulk(slice any, setFunc func(*DiagramConceptCreate, int)) *DiagramConceptCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramConceptCreateBulk{err: fmt.Errorf("calling to DiagramConceptClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramConceptCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramConceptCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramConcept.
+func (c *DiagramConceptClient) Update() *DiagramConceptUpdate {
+	mutation := newDiagramConceptMutation(c.config, OpUpdate)
+	return &DiagramConceptUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramConceptClient) UpdateOne(_m *DiagramConcept) *DiagramConceptUpdateOne {
+	mutation := newDiagramConceptMutation(c.config, OpUpdateOne, withDiagramConcept(_m))
+	return &DiagramConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramConceptClient) UpdateOneID(id int) *DiagramConceptUpdateOne {
+	mutation := newDiagramConceptMutation(c.config, OpUpdateOne, withDiagramConceptID(id))
+	return &DiagramConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramConcept.
+func (c *DiagramConceptClient) Delete() *DiagramConceptDelete {
+	mutation := newDiagramConceptMutation(c.config, OpDelete)
+	return &DiagramConceptDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramConceptClient) DeleteOne(_m *DiagramConcept) *DiagramConceptDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramConceptClient) DeleteOneID(id int) *DiagramConceptDeleteOne {
+	builder := c.Delete().Where(diagramconcept.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramConceptDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramConcept.
+func (c *DiagramConceptClient) Query() *DiagramConceptQuery {
+	return &DiagramConceptQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramConcept},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramConcept entity by its id.
+func (c *DiagramConceptClient) Get(ctx context.Context, id int) (*DiagramConcept, error) {
+	return c.Query().Where(diagramconcept.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramConceptClient) GetX(ctx context.Context, id int) *DiagramConcept {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a DiagramConcept.
+func (c *DiagramConceptClient) QueryDiagram(_m *DiagramConcept) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramconcept.Table, diagramconcept.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagramconcept.DiagramTable, diagramconcept.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConcept queries the concept edge of a DiagramConcept.
+func (c *DiagramConceptClient) QueryConcept(_m *DiagramConcept) *ConceptQuery {
+	query := (&ConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramconcept.Table, diagramconcept.FieldID, id),
+			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagramconcept.ConceptTable, diagramconcept.ConceptColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramConceptClient) Hooks() []Hook {
+	return c.hooks.DiagramConcept
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramConceptClient) Interceptors() []Interceptor {
+	return c.inters.DiagramConcept
+}
+
+func (c *DiagramConceptClient) mutate(ctx context.Context, m *DiagramConceptMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramConceptCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramConceptUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramConceptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramConcept mutation op: %q", m.Op())
+	}
+}
+
+// DiagramSkillClient is a client for the DiagramSkill schema.
+type DiagramSkillClient struct {
+	config
+}
+
+// NewDiagramSkillClient returns a client for the DiagramSkill from the given config.
+func NewDiagramSkillClient(c config) *DiagramSkillClient {
+	return &DiagramSkillClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagramskill.Hooks(f(g(h())))`.
+func (c *DiagramSkillClient) Use(hooks ...Hook) {
+	c.hooks.DiagramSkill = append(c.hooks.DiagramSkill, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagramskill.Intercept(f(g(h())))`.
+func (c *DiagramSkillClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramSkill = append(c.inters.DiagramSkill, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramSkill entity.
+func (c *DiagramSkillClient) Create() *DiagramSkillCreate {
+	mutation := newDiagramSkillMutation(c.config, OpCreate)
+	return &DiagramSkillCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramSkill entities.
+func (c *DiagramSkillClient) CreateBulk(builders ...*DiagramSkillCreate) *DiagramSkillCreateBulk {
+	return &DiagramSkillCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramSkillClient) MapCreateBulk(slice any, setFunc func(*DiagramSkillCreate, int)) *DiagramSkillCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramSkillCreateBulk{err: fmt.Errorf("calling to DiagramSkillClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramSkillCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramSkillCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramSkill.
+func (c *DiagramSkillClient) Update() *DiagramSkillUpdate {
+	mutation := newDiagramSkillMutation(c.config, OpUpdate)
+	return &DiagramSkillUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramSkillClient) UpdateOne(_m *DiagramSkill) *DiagramSkillUpdateOne {
+	mutation := newDiagramSkillMutation(c.config, OpUpdateOne, withDiagramSkill(_m))
+	return &DiagramSkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramSkillClient) UpdateOneID(id int) *DiagramSkillUpdateOne {
+	mutation := newDiagramSkillMutation(c.config, OpUpdateOne, withDiagramSkillID(id))
+	return &DiagramSkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramSkill.
+func (c *DiagramSkillClient) Delete() *DiagramSkillDelete {
+	mutation := newDiagramSkillMutation(c.config, OpDelete)
+	return &DiagramSkillDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramSkillClient) DeleteOne(_m *DiagramSkill) *DiagramSkillDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramSkillClient) DeleteOneID(id int) *DiagramSkillDeleteOne {
+	builder := c.Delete().Where(diagramskill.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramSkillDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramSkill.
+func (c *DiagramSkillClient) Query() *DiagramSkillQuery {
+	return &DiagramSkillQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramSkill},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramSkill entity by its id.
+func (c *DiagramSkillClient) Get(ctx context.Context, id int) (*DiagramSkill, error) {
+	return c.Query().Where(diagramskill.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramSkillClient) GetX(ctx context.Context, id int) *DiagramSkill {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a DiagramSkill.
+func (c *DiagramSkillClient) QueryDiagram(_m *DiagramSkill) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramskill.Table, diagramskill.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagramskill.DiagramTable, diagramskill.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySkill queries the skill edge of a DiagramSkill.
+func (c *DiagramSkillClient) QuerySkill(_m *DiagramSkill) *SkillQuery {
+	query := (&SkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramskill.Table, diagramskill.FieldID, id),
+			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagramskill.SkillTable, diagramskill.SkillColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramSkillClient) Hooks() []Hook {
+	return c.hooks.DiagramSkill
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramSkillClient) Interceptors() []Interceptor {
+	return c.inters.DiagramSkill
+}
+
+func (c *DiagramSkillClient) mutate(ctx context.Context, m *DiagramSkillMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramSkillCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramSkillUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramSkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramSkillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramSkill mutation op: %q", m.Op())
 	}
 }
 
@@ -2932,6 +3565,155 @@ func (c *ExpandedContentClient) mutate(ctx context.Context, m *ExpandedContentMu
 	}
 }
 
+// InstrumentClient is a client for the Instrument schema.
+type InstrumentClient struct {
+	config
+}
+
+// NewInstrumentClient returns a client for the Instrument from the given config.
+func NewInstrumentClient(c config) *InstrumentClient {
+	return &InstrumentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `instrument.Hooks(f(g(h())))`.
+func (c *InstrumentClient) Use(hooks ...Hook) {
+	c.hooks.Instrument = append(c.hooks.Instrument, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `instrument.Intercept(f(g(h())))`.
+func (c *InstrumentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Instrument = append(c.inters.Instrument, interceptors...)
+}
+
+// Create returns a builder for creating a Instrument entity.
+func (c *InstrumentClient) Create() *InstrumentCreate {
+	mutation := newInstrumentMutation(c.config, OpCreate)
+	return &InstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Instrument entities.
+func (c *InstrumentClient) CreateBulk(builders ...*InstrumentCreate) *InstrumentCreateBulk {
+	return &InstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *InstrumentClient) MapCreateBulk(slice any, setFunc func(*InstrumentCreate, int)) *InstrumentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &InstrumentCreateBulk{err: fmt.Errorf("calling to InstrumentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*InstrumentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &InstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Instrument.
+func (c *InstrumentClient) Update() *InstrumentUpdate {
+	mutation := newInstrumentMutation(c.config, OpUpdate)
+	return &InstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *InstrumentClient) UpdateOne(_m *Instrument) *InstrumentUpdateOne {
+	mutation := newInstrumentMutation(c.config, OpUpdateOne, withInstrument(_m))
+	return &InstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *InstrumentClient) UpdateOneID(id uuid.UUID) *InstrumentUpdateOne {
+	mutation := newInstrumentMutation(c.config, OpUpdateOne, withInstrumentID(id))
+	return &InstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Instrument.
+func (c *InstrumentClient) Delete() *InstrumentDelete {
+	mutation := newInstrumentMutation(c.config, OpDelete)
+	return &InstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *InstrumentClient) DeleteOne(_m *Instrument) *InstrumentDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *InstrumentClient) DeleteOneID(id uuid.UUID) *InstrumentDeleteOne {
+	builder := c.Delete().Where(instrument.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &InstrumentDeleteOne{builder}
+}
+
+// Query returns a query builder for Instrument.
+func (c *InstrumentClient) Query() *InstrumentQuery {
+	return &InstrumentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeInstrument},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Instrument entity by its id.
+func (c *InstrumentClient) Get(ctx context.Context, id uuid.UUID) (*Instrument, error) {
+	return c.Query().Where(instrument.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *InstrumentClient) GetX(ctx context.Context, id uuid.UUID) *Instrument {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagrams queries the diagrams edge of a Instrument.
+func (c *InstrumentClient) QueryDiagrams(_m *Instrument) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, instrument.DiagramsTable, instrument.DiagramsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *InstrumentClient) Hooks() []Hook {
+	return c.hooks.Instrument
+}
+
+// Interceptors returns the client interceptors.
+func (c *InstrumentClient) Interceptors() []Interceptor {
+	return c.inters.Instrument
+}
+
+func (c *InstrumentClient) mutate(ctx context.Context, m *InstrumentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&InstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&InstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&InstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&InstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Instrument mutation op: %q", m.Op())
+	}
+}
+
 // LanguageClient is a client for the Language schema.
 type LanguageClient struct {
 	config
@@ -3528,6 +4310,155 @@ func (c *PathAssignmentClient) mutate(ctx context.Context, m *PathAssignmentMuta
 	}
 }
 
+// PositionClient is a client for the Position schema.
+type PositionClient struct {
+	config
+}
+
+// NewPositionClient returns a client for the Position from the given config.
+func NewPositionClient(c config) *PositionClient {
+	return &PositionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `position.Hooks(f(g(h())))`.
+func (c *PositionClient) Use(hooks ...Hook) {
+	c.hooks.Position = append(c.hooks.Position, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `position.Intercept(f(g(h())))`.
+func (c *PositionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Position = append(c.inters.Position, interceptors...)
+}
+
+// Create returns a builder for creating a Position entity.
+func (c *PositionClient) Create() *PositionCreate {
+	mutation := newPositionMutation(c.config, OpCreate)
+	return &PositionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Position entities.
+func (c *PositionClient) CreateBulk(builders ...*PositionCreate) *PositionCreateBulk {
+	return &PositionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PositionClient) MapCreateBulk(slice any, setFunc func(*PositionCreate, int)) *PositionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PositionCreateBulk{err: fmt.Errorf("calling to PositionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PositionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PositionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Position.
+func (c *PositionClient) Update() *PositionUpdate {
+	mutation := newPositionMutation(c.config, OpUpdate)
+	return &PositionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PositionClient) UpdateOne(_m *Position) *PositionUpdateOne {
+	mutation := newPositionMutation(c.config, OpUpdateOne, withPosition(_m))
+	return &PositionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PositionClient) UpdateOneID(id uuid.UUID) *PositionUpdateOne {
+	mutation := newPositionMutation(c.config, OpUpdateOne, withPositionID(id))
+	return &PositionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Position.
+func (c *PositionClient) Delete() *PositionDelete {
+	mutation := newPositionMutation(c.config, OpDelete)
+	return &PositionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PositionClient) DeleteOne(_m *Position) *PositionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PositionClient) DeleteOneID(id uuid.UUID) *PositionDeleteOne {
+	builder := c.Delete().Where(position.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PositionDeleteOne{builder}
+}
+
+// Query returns a query builder for Position.
+func (c *PositionClient) Query() *PositionQuery {
+	return &PositionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePosition},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Position entity by its id.
+func (c *PositionClient) Get(ctx context.Context, id uuid.UUID) (*Position, error) {
+	return c.Query().Where(position.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PositionClient) GetX(ctx context.Context, id uuid.UUID) *Position {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a Position.
+func (c *PositionClient) QueryDiagram(_m *Position) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(position.Table, position.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, position.DiagramTable, position.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *PositionClient) Hooks() []Hook {
+	return c.hooks.Position
+}
+
+// Interceptors returns the client interceptors.
+func (c *PositionClient) Interceptors() []Interceptor {
+	return c.inters.Position
+}
+
+func (c *PositionClient) mutate(ctx context.Context, m *PositionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PositionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PositionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PositionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PositionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Position mutation op: %q", m.Op())
+	}
+}
+
 // SkillClient is a client for the Skill schema.
 type SkillClient struct {
 	config
@@ -3700,6 +4631,22 @@ func (c *SkillClient) QueryExercises(_m *Skill) *ExerciseQuery {
 	return query
 }
 
+// QueryDiagrams queries the diagrams edge of a Skill.
+func (c *SkillClient) QueryDiagrams(_m *Skill) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(skill.Table, skill.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, skill.DiagramsTable, skill.DiagramsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryContentNodeSkills queries the content_node_skills edge of a Skill.
 func (c *SkillClient) QueryContentNodeSkills(_m *Skill) *ContentNodeSkillQuery {
 	query := (&ContentNodeSkillClient{config: c.config}).Query()
@@ -3725,6 +4672,22 @@ func (c *SkillClient) QueryExerciseSkills(_m *Skill) *ExerciseSkillQuery {
 			sqlgraph.From(skill.Table, skill.FieldID, id),
 			sqlgraph.To(exerciseskill.Table, exerciseskill.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, skill.ExerciseSkillsTable, skill.ExerciseSkillsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramSkills queries the diagram_skills edge of a Skill.
+func (c *SkillClient) QueryDiagramSkills(_m *Skill) *DiagramSkillQuery {
+	query := (&DiagramSkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(skill.Table, skill.FieldID, id),
+			sqlgraph.To(diagramskill.Table, diagramskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, skill.DiagramSkillsTable, skill.DiagramSkillsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -3910,16 +4873,18 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
-		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, Exercise,
-		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
-		ExpandedContent, Language, LearningPath, LearningPathItem, PathAssignment,
-		Skill, User []ent.Hook
+		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, Diagram,
+		DiagramConcept, DiagramSkill, Exercise, ExerciseConcept, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, Language,
+		LearningPath, LearningPathItem, PathAssignment, Position, Skill,
+		User []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
-		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, Exercise,
-		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
-		ExpandedContent, Language, LearningPath, LearningPathItem, PathAssignment,
-		Skill, User []ent.Interceptor
+		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, Diagram,
+		DiagramConcept, DiagramSkill, Exercise, ExerciseConcept, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, Language,
+		LearningPath, LearningPathItem, PathAssignment, Position, Skill,
+		User []ent.Interceptor
 	}
 )

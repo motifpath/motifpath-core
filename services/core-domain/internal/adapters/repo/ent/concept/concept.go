@@ -25,10 +25,14 @@ const (
 	EdgeContentNodes = "content_nodes"
 	// EdgeExercises holds the string denoting the exercises edge name in mutations.
 	EdgeExercises = "exercises"
+	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
+	EdgeDiagrams = "diagrams"
 	// EdgeContentNodeConcepts holds the string denoting the content_node_concepts edge name in mutations.
 	EdgeContentNodeConcepts = "content_node_concepts"
 	// EdgeExerciseConcepts holds the string denoting the exercise_concepts edge name in mutations.
 	EdgeExerciseConcepts = "exercise_concepts"
+	// EdgeDiagramConcepts holds the string denoting the diagram_concepts edge name in mutations.
+	EdgeDiagramConcepts = "diagram_concepts"
 	// Table holds the table name of the concept in the database.
 	Table = "concepts"
 	// ChildrenTable is the table that holds the children relation/edge.
@@ -49,6 +53,11 @@ const (
 	// ExercisesInverseTable is the table name for the Exercise entity.
 	// It exists in this package in order to avoid circular dependency with the "exercise" package.
 	ExercisesInverseTable = "exercises"
+	// DiagramsTable is the table that holds the diagrams relation/edge. The primary key declared below.
+	DiagramsTable = "diagram_concepts"
+	// DiagramsInverseTable is the table name for the Diagram entity.
+	// It exists in this package in order to avoid circular dependency with the "diagram" package.
+	DiagramsInverseTable = "diagrams"
 	// ContentNodeConceptsTable is the table that holds the content_node_concepts relation/edge.
 	ContentNodeConceptsTable = "content_node_concepts"
 	// ContentNodeConceptsInverseTable is the table name for the ContentNodeConcept entity.
@@ -63,6 +72,13 @@ const (
 	ExerciseConceptsInverseTable = "exercise_concepts"
 	// ExerciseConceptsColumn is the table column denoting the exercise_concepts relation/edge.
 	ExerciseConceptsColumn = "concept_id"
+	// DiagramConceptsTable is the table that holds the diagram_concepts relation/edge.
+	DiagramConceptsTable = "diagram_concepts"
+	// DiagramConceptsInverseTable is the table name for the DiagramConcept entity.
+	// It exists in this package in order to avoid circular dependency with the "diagramconcept" package.
+	DiagramConceptsInverseTable = "diagram_concepts"
+	// DiagramConceptsColumn is the table column denoting the diagram_concepts relation/edge.
+	DiagramConceptsColumn = "concept_id"
 )
 
 // Columns holds all SQL columns for concept fields.
@@ -79,6 +95,9 @@ var (
 	// ExercisesPrimaryKey and ExercisesColumn2 are the table columns denoting the
 	// primary key for the exercises relation (M2M).
 	ExercisesPrimaryKey = []string{"exercise_id", "concept_id"}
+	// DiagramsPrimaryKey and DiagramsColumn2 are the table columns denoting the
+	// primary key for the diagrams relation (M2M).
+	DiagramsPrimaryKey = []string{"diagram_id", "concept_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -163,6 +182,20 @@ func ByExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDiagramsCount orders the results by diagrams count.
+func ByDiagramsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramsStep(), opts...)
+	}
+}
+
+// ByDiagrams orders the results by diagrams terms.
+func ByDiagrams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByContentNodeConceptsCount orders the results by content_node_concepts count.
 func ByContentNodeConceptsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -188,6 +221,20 @@ func ByExerciseConceptsCount(opts ...sql.OrderTermOption) OrderOption {
 func ByExerciseConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newExerciseConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByDiagramConceptsCount orders the results by diagram_concepts count.
+func ByDiagramConceptsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramConceptsStep(), opts...)
+	}
+}
+
+// ByDiagramConcepts orders the results by diagram_concepts terms.
+func ByDiagramConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 func newChildrenStep() *sqlgraph.Step {
@@ -218,6 +265,13 @@ func newExercisesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, true, ExercisesTable, ExercisesPrimaryKey...),
 	)
 }
+func newDiagramsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, DiagramsTable, DiagramsPrimaryKey...),
+	)
+}
 func newContentNodeConceptsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -230,5 +284,12 @@ func newExerciseConceptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ExerciseConceptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseConceptsTable, ExerciseConceptsColumn),
+	)
+}
+func newDiagramConceptsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramConceptsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, DiagramConceptsTable, DiagramConceptsColumn),
 	)
 }

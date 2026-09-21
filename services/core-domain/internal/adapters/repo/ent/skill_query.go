@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -32,8 +34,10 @@ type SkillQuery struct {
 	withParent            *SkillQuery
 	withContentNodes      *ContentNodeQuery
 	withExercises         *ExerciseQuery
+	withDiagrams          *DiagramQuery
 	withContentNodeSkills *ContentNodeSkillQuery
 	withExerciseSkills    *ExerciseSkillQuery
+	withDiagramSkills     *DiagramSkillQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -158,6 +162,28 @@ func (_q *SkillQuery) QueryExercises() *ExerciseQuery {
 	return query
 }
 
+// QueryDiagrams chains the current query on the "diagrams" edge.
+func (_q *SkillQuery) QueryDiagrams() *DiagramQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(skill.Table, skill.FieldID, selector),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, skill.DiagramsTable, skill.DiagramsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryContentNodeSkills chains the current query on the "content_node_skills" edge.
 func (_q *SkillQuery) QueryContentNodeSkills() *ContentNodeSkillQuery {
 	query := (&ContentNodeSkillClient{config: _q.config}).Query()
@@ -195,6 +221,28 @@ func (_q *SkillQuery) QueryExerciseSkills() *ExerciseSkillQuery {
 			sqlgraph.From(skill.Table, skill.FieldID, selector),
 			sqlgraph.To(exerciseskill.Table, exerciseskill.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, skill.ExerciseSkillsTable, skill.ExerciseSkillsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDiagramSkills chains the current query on the "diagram_skills" edge.
+func (_q *SkillQuery) QueryDiagramSkills() *DiagramSkillQuery {
+	query := (&DiagramSkillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(skill.Table, skill.FieldID, selector),
+			sqlgraph.To(diagramskill.Table, diagramskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, skill.DiagramSkillsTable, skill.DiagramSkillsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -398,8 +446,10 @@ func (_q *SkillQuery) Clone() *SkillQuery {
 		withParent:            _q.withParent.Clone(),
 		withContentNodes:      _q.withContentNodes.Clone(),
 		withExercises:         _q.withExercises.Clone(),
+		withDiagrams:          _q.withDiagrams.Clone(),
 		withContentNodeSkills: _q.withContentNodeSkills.Clone(),
 		withExerciseSkills:    _q.withExerciseSkills.Clone(),
+		withDiagramSkills:     _q.withDiagramSkills.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -450,6 +500,17 @@ func (_q *SkillQuery) WithExercises(opts ...func(*ExerciseQuery)) *SkillQuery {
 	return _q
 }
 
+// WithDiagrams tells the query-builder to eager-load the nodes that are connected to
+// the "diagrams" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SkillQuery) WithDiagrams(opts ...func(*DiagramQuery)) *SkillQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDiagrams = query
+	return _q
+}
+
 // WithContentNodeSkills tells the query-builder to eager-load the nodes that are connected to
 // the "content_node_skills" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *SkillQuery) WithContentNodeSkills(opts ...func(*ContentNodeSkillQuery)) *SkillQuery {
@@ -469,6 +530,17 @@ func (_q *SkillQuery) WithExerciseSkills(opts ...func(*ExerciseSkillQuery)) *Ski
 		opt(query)
 	}
 	_q.withExerciseSkills = query
+	return _q
+}
+
+// WithDiagramSkills tells the query-builder to eager-load the nodes that are connected to
+// the "diagram_skills" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SkillQuery) WithDiagramSkills(opts ...func(*DiagramSkillQuery)) *SkillQuery {
+	query := (&DiagramSkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDiagramSkills = query
 	return _q
 }
 
@@ -550,13 +622,15 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	var (
 		nodes       = []*Skill{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [8]bool{
 			_q.withChildren != nil,
 			_q.withParent != nil,
 			_q.withContentNodes != nil,
 			_q.withExercises != nil,
+			_q.withDiagrams != nil,
 			_q.withContentNodeSkills != nil,
 			_q.withExerciseSkills != nil,
+			_q.withDiagramSkills != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -604,6 +678,13 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 			return nil, err
 		}
 	}
+	if query := _q.withDiagrams; query != nil {
+		if err := _q.loadDiagrams(ctx, query, nodes,
+			func(n *Skill) { n.Edges.Diagrams = []*Diagram{} },
+			func(n *Skill, e *Diagram) { n.Edges.Diagrams = append(n.Edges.Diagrams, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withContentNodeSkills; query != nil {
 		if err := _q.loadContentNodeSkills(ctx, query, nodes,
 			func(n *Skill) { n.Edges.ContentNodeSkills = []*ContentNodeSkill{} },
@@ -615,6 +696,13 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 		if err := _q.loadExerciseSkills(ctx, query, nodes,
 			func(n *Skill) { n.Edges.ExerciseSkills = []*ExerciseSkill{} },
 			func(n *Skill, e *ExerciseSkill) { n.Edges.ExerciseSkills = append(n.Edges.ExerciseSkills, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDiagramSkills; query != nil {
+		if err := _q.loadDiagramSkills(ctx, query, nodes,
+			func(n *Skill) { n.Edges.DiagramSkills = []*DiagramSkill{} },
+			func(n *Skill, e *DiagramSkill) { n.Edges.DiagramSkills = append(n.Edges.DiagramSkills, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -808,6 +896,67 @@ func (_q *SkillQuery) loadExercises(ctx context.Context, query *ExerciseQuery, n
 	}
 	return nil
 }
+func (_q *SkillQuery) loadDiagrams(ctx context.Context, query *DiagramQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *Diagram)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Skill)
+	nids := make(map[uuid.UUID]map[*Skill]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(skill.DiagramsTable)
+		s.Join(joinT).On(s.C(diagram.FieldID), joinT.C(skill.DiagramsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(skill.DiagramsPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(skill.DiagramsPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Skill]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Diagram](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "diagrams" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
 func (_q *SkillQuery) loadContentNodeSkills(ctx context.Context, query *ContentNodeSkillQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *ContentNodeSkill)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[uuid.UUID]*Skill)
@@ -853,6 +1002,36 @@ func (_q *SkillQuery) loadExerciseSkills(ctx context.Context, query *ExerciseSki
 	}
 	query.Where(predicate.ExerciseSkill(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(skill.ExerciseSkillsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.SkillID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "skill_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *SkillQuery) loadDiagramSkills(ctx context.Context, query *DiagramSkillQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *DiagramSkill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Skill)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(diagramskill.FieldSkillID)
+	}
+	query.Where(predicate.DiagramSkill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(skill.DiagramSkillsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

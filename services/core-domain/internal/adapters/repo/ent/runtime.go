@@ -14,16 +14,21 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
@@ -97,6 +102,28 @@ func init() {
 	contentnodeskillDescLinkedAt := contentnodeskillFields[2].Descriptor()
 	// contentnodeskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	contentnodeskill.DefaultLinkedAt = contentnodeskillDescLinkedAt.Default.(func() time.Time)
+	diagramFields := schema.Diagram{}.Fields()
+	_ = diagramFields
+	// diagramDescCreatedAt is the schema descriptor for created_at field.
+	diagramDescCreatedAt := diagramFields[3].Descriptor()
+	// diagram.DefaultCreatedAt holds the default value on creation for the created_at field.
+	diagram.DefaultCreatedAt = diagramDescCreatedAt.Default.(func() time.Time)
+	// diagramDescID is the schema descriptor for id field.
+	diagramDescID := diagramFields[0].Descriptor()
+	// diagram.DefaultID holds the default value on creation for the id field.
+	diagram.DefaultID = diagramDescID.Default.(func() uuid.UUID)
+	diagramconceptFields := schema.DiagramConcept{}.Fields()
+	_ = diagramconceptFields
+	// diagramconceptDescLinkedAt is the schema descriptor for linked_at field.
+	diagramconceptDescLinkedAt := diagramconceptFields[2].Descriptor()
+	// diagramconcept.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	diagramconcept.DefaultLinkedAt = diagramconceptDescLinkedAt.Default.(func() time.Time)
+	diagramskillFields := schema.DiagramSkill{}.Fields()
+	_ = diagramskillFields
+	// diagramskillDescLinkedAt is the schema descriptor for linked_at field.
+	diagramskillDescLinkedAt := diagramskillFields[2].Descriptor()
+	// diagramskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	diagramskill.DefaultLinkedAt = diagramskillDescLinkedAt.Default.(func() time.Time)
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.
@@ -141,6 +168,12 @@ func init() {
 	expandedcontentDescID := expandedcontentFields[0].Descriptor()
 	// expandedcontent.DefaultID holds the default value on creation for the id field.
 	expandedcontent.DefaultID = expandedcontentDescID.Default.(func() uuid.UUID)
+	instrumentFields := schema.Instrument{}.Fields()
+	_ = instrumentFields
+	// instrumentDescID is the schema descriptor for id field.
+	instrumentDescID := instrumentFields[0].Descriptor()
+	// instrument.DefaultID holds the default value on creation for the id field.
+	instrument.DefaultID = instrumentDescID.Default.(func() uuid.UUID)
 	languageFields := schema.Language{}.Fields()
 	_ = languageFields
 	// languageDescID is the schema descriptor for id field.
@@ -173,6 +206,12 @@ func init() {
 	pathassignmentDescID := pathassignmentFields[0].Descriptor()
 	// pathassignment.DefaultID holds the default value on creation for the id field.
 	pathassignment.DefaultID = pathassignmentDescID.Default.(func() uuid.UUID)
+	positionFields := schema.Position{}.Fields()
+	_ = positionFields
+	// positionDescID is the schema descriptor for id field.
+	positionDescID := positionFields[0].Descriptor()
+	// position.DefaultID holds the default value on creation for the id field.
+	position.DefaultID = positionDescID.Default.(func() uuid.UUID)
 	skillFields := schema.Skill{}.Fields()
 	_ = skillFields
 	// skillDescID is the schema descriptor for id field.
