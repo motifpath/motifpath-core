@@ -74,6 +74,11 @@ type ContentNode struct {
 	Title          string
 	ContentType    ContentType
 	Classification Classification
+	// MediaURL is the video students watch. Set only for video nodes; nil on
+	// article nodes, and on video nodes created before this field existed.
+	MediaURL *string
+	// RichContent is the article's body. Set only for article nodes.
+	RichContent *PromptDocument
 	// Languages are the languages this content node is available in, or a
 	// single LanguageCodeAny entry for language-agnostic content. Never
 	// empty — a node must be explicitly tagged. Name is populated only once
@@ -92,7 +97,7 @@ type ContentNode struct {
 // Whether each id actually references an existing Skill/Concept is an
 // application-layer concern, requiring a repository round trip this
 // constructor can't perform.
-func NewContentNode(id, teacherID, title string, contentType ContentType, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, createdAt time.Time) (ContentNode, error) {
+func NewContentNode(id, teacherID, title string, contentType ContentType, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument, createdAt time.Time) (ContentNode, error) {
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 
@@ -101,6 +106,7 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 	default:
 		errs = append(errs, FieldError{Field: "content_type", Reason: "must be video or article"})
 	}
+	errs = append(errs, validateContentNodeBody(contentType, mediaURL, richContent)...)
 
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
@@ -117,8 +123,10 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
-		Languages: languagesFromCodes(languageCodes),
-		CreatedAt: createdAt,
+		MediaURL:    mediaURL,
+		RichContent: richContent,
+		Languages:   languagesFromCodes(languageCodes),
+		CreatedAt:   createdAt,
 	}, nil
 }
 
@@ -128,9 +136,10 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 // determines which ExpandedContent trigger fields are valid for items
 // already attached to this node, and an edit does not reset or require
 // re-confirming an admin's prior review.
-func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string) (ContentNode, error) {
+func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument) (ContentNode, error) {
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	errs = append(errs, validateContentNodeBody(n.ContentType, mediaURL, richContent)...)
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
 	}
@@ -140,8 +149,41 @@ func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficu
 	updated.Classification.Skills = skillsFromIDs(skillIDs)
 	updated.Classification.Concepts = conceptsFromIDs(conceptIDs)
 	updated.Classification.DifficultyLevel = difficulty
+	updated.MediaURL = mediaURL
+	updated.RichContent = richContent
 	updated.Languages = languagesFromCodes(languageCodes)
 	return updated, nil
+}
+
+// validateContentNodeBody checks the media_url/rich_content pair shared by
+// creation and update: a video requires media_url and forbids rich_content;
+// an article requires rich_content and forbids media_url. An unrecognised
+// content type is reported separately by the caller, so it adds nothing here.
+func validateContentNodeBody(contentType ContentType, mediaURL *string, richContent *PromptDocument) []FieldError {
+	var errs []FieldError
+
+	switch contentType {
+	case ContentTypeVideo:
+		if mediaURL == nil || *mediaURL == "" {
+			errs = append(errs, FieldError{Field: "media_url", Reason: "is required when content_type is video"})
+		}
+		if richContent != nil {
+			errs = append(errs, FieldError{Field: "rich_content", Reason: "must be absent when content_type is video"})
+		}
+	case ContentTypeArticle:
+		if mediaURL != nil {
+			errs = append(errs, FieldError{Field: "media_url", Reason: "must be absent when content_type is article"})
+		}
+		if richContent == nil {
+			errs = append(errs, FieldError{Field: "rich_content", Reason: "is required when content_type is article"})
+		} else {
+			for _, docErr := range validatePromptDocument(*richContent, true) {
+				errs = append(errs, FieldError{Field: "rich_content", Reason: docErr.Reason})
+			}
+		}
+	}
+
+	return errs
 }
 
 // skillsFromIDs builds placeholder Skill entries (ID only, no Name/ParentID)

@@ -76,7 +76,7 @@ func toGeneratedConcepts(concepts []domain.Concept) []generated.Concept {
 }
 
 func toContentNode(n domain.ContentNode) generated.ContentNode {
-	return generated.ContentNode{
+	result := generated.ContentNode{
 		ContentNodeId: mustUUID(n.ID),
 		TeacherId:     mustUUID(n.TeacherID),
 		Title:         n.Title,
@@ -87,9 +87,15 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 			DifficultyLevel: generated.ClassificationDifficultyLevel(n.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(n.Classification.ReviewState),
 		},
+		MediaUrl:  n.MediaURL,
 		Languages: toGeneratedLanguages(n.Languages),
 		CreatedAt: n.CreatedAt,
 	}
+	if n.RichContent != nil {
+		doc := toGeneratedPromptDocument(*n.RichContent)
+		result.RichContent = &doc
+	}
+	return result
 }
 
 func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
