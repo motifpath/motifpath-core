@@ -526,6 +526,8 @@ type CreateContentNodeRequest struct {
 	// MediaUrl The video file or embeddable video URL students watch. Required
 	// when content_type is video; must be absent when content_type is
 	// article or diagram.
+	// Must be an absolute http or https URL; any other scheme, or a
+	// value that is not a URL at all, is rejected.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent A structured rich-text document, authored with MotifPath's
@@ -1676,6 +1678,8 @@ type UpdateContentNodeRequest struct {
 	// MediaUrl The video file or embeddable video URL students watch, replacing
 	// the current value. Required when the content node's content_type
 	// is video; must be absent when it is article or diagram.
+	// Must be an absolute http or https URL; any other scheme, or a
+	// value that is not a URL at all, is rejected.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent A structured rich-text document, authored with MotifPath's
