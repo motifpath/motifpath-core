@@ -125,6 +125,48 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, byIDs[node2.ID].Languages)
 }
 
+func TestEntContentNodeRepository_PersistsAndUpdatesBody(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntContentNodeRepository(client)
+
+	video := seedContentNode(t, ctx, repo)
+	video.MediaURL = strPtr("https://cdn.motifpath.io/videos/triad-shapes-intro.mp4")
+	require.NoError(t, repo.Update(ctx, video))
+
+	gotVideo, err := repo.GetByID(ctx, video.ID)
+	require.NoError(t, err)
+	assert.Equal(t, video.MediaURL, gotVideo.MediaURL)
+	assert.Nil(t, gotVideo.RichContent)
+
+	body := domain.NewPlainTextPrompt("Chord theory explains how notes combine into triads.")
+	article := seedContentNode(t, ctx, repo)
+	article.ContentType = domain.ContentTypeArticle
+	article.RichContent = &body
+	articleID := uuid.NewString()
+	article.ID = articleID
+	require.NoError(t, repo.Create(ctx, article))
+
+	gotArticle, err := repo.GetByID(ctx, articleID)
+	require.NoError(t, err)
+	assert.Nil(t, gotArticle.MediaURL)
+	require.NotNil(t, gotArticle.RichContent)
+	assert.Equal(t, body, *gotArticle.RichContent)
+
+	revised := domain.NewPlainTextPrompt("Revised body")
+	article.RichContent = &revised
+	require.NoError(t, repo.Update(ctx, article))
+	gotRevised, err := repo.GetByID(ctx, articleID)
+	require.NoError(t, err)
+	require.NotNil(t, gotRevised.RichContent)
+	assert.Equal(t, revised, *gotRevised.RichContent)
+
+	listed, err := repo.GetByIDs(ctx, []string{video.ID, articleID})
+	require.NoError(t, err)
+	assert.Equal(t, video.MediaURL, listed[video.ID].MediaURL)
+	assert.Equal(t, revised, *listed[articleID].RichContent)
+}
+
 func TestEntLanguageRepository_GetByCode(t *testing.T) {
 	repo := NewEntLanguageRepository(setupPostgres(t))
 	ctx := context.Background()

@@ -50,6 +50,46 @@ func (_u *ContentNodeUpdate) SetNillableTitle(v *string) *ContentNodeUpdate {
 	return _u
 }
 
+// SetMediaURL sets the "media_url" field.
+func (_u *ContentNodeUpdate) SetMediaURL(v string) *ContentNodeUpdate {
+	_u.mutation.SetMediaURL(v)
+	return _u
+}
+
+// SetNillableMediaURL sets the "media_url" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableMediaURL(v *string) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetMediaURL(*v)
+	}
+	return _u
+}
+
+// ClearMediaURL clears the value of the "media_url" field.
+func (_u *ContentNodeUpdate) ClearMediaURL() *ContentNodeUpdate {
+	_u.mutation.ClearMediaURL()
+	return _u
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_u *ContentNodeUpdate) SetRichContent(v string) *ContentNodeUpdate {
+	_u.mutation.SetRichContent(v)
+	return _u
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableRichContent(v *string) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetRichContent(*v)
+	}
+	return _u
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (_u *ContentNodeUpdate) ClearRichContent() *ContentNodeUpdate {
+	_u.mutation.ClearRichContent()
+	return _u
+}
+
 // SetDifficultyLevel sets the "difficulty_level" field.
 func (_u *ContentNodeUpdate) SetDifficultyLevel(v contentnode.DifficultyLevel) *ContentNodeUpdate {
 	_u.mutation.SetDifficultyLevel(v)
@@ -427,6 +467,18 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(contentnode.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MediaURL(); ok {
+		_spec.SetField(contentnode.FieldMediaURL, field.TypeString, value)
+	}
+	if _u.mutation.MediaURLCleared() {
+		_spec.ClearField(contentnode.FieldMediaURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.RichContent(); ok {
+		_spec.SetField(contentnode.FieldRichContent, field.TypeString, value)
+	}
+	if _u.mutation.RichContentCleared() {
+		_spec.ClearField(contentnode.FieldRichContent, field.TypeString)
 	}
 	if value, ok := _u.mutation.DifficultyLevel(); ok {
 		_spec.SetField(contentnode.FieldDifficultyLevel, field.TypeEnum, value)
@@ -876,6 +928,46 @@ func (_u *ContentNodeUpdateOne) SetNillableTitle(v *string) *ContentNodeUpdateOn
 	return _u
 }
 
+// SetMediaURL sets the "media_url" field.
+func (_u *ContentNodeUpdateOne) SetMediaURL(v string) *ContentNodeUpdateOne {
+	_u.mutation.SetMediaURL(v)
+	return _u
+}
+
+// SetNillableMediaURL sets the "media_url" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableMediaURL(v *string) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetMediaURL(*v)
+	}
+	return _u
+}
+
+// ClearMediaURL clears the value of the "media_url" field.
+func (_u *ContentNodeUpdateOne) ClearMediaURL() *ContentNodeUpdateOne {
+	_u.mutation.ClearMediaURL()
+	return _u
+}
+
+// SetRichContent sets the "rich_content" field.
+func (_u *ContentNodeUpdateOne) SetRichContent(v string) *ContentNodeUpdateOne {
+	_u.mutation.SetRichContent(v)
+	return _u
+}
+
+// SetNillableRichContent sets the "rich_content" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableRichContent(v *string) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetRichContent(*v)
+	}
+	return _u
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (_u *ContentNodeUpdateOne) ClearRichContent() *ContentNodeUpdateOne {
+	_u.mutation.ClearRichContent()
+	return _u
+}
+
 // SetDifficultyLevel sets the "difficulty_level" field.
 func (_u *ContentNodeUpdateOne) SetDifficultyLevel(v contentnode.DifficultyLevel) *ContentNodeUpdateOne {
 	_u.mutation.SetDifficultyLevel(v)
@@ -1283,6 +1375,18 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(contentnode.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MediaURL(); ok {
+		_spec.SetField(contentnode.FieldMediaURL, field.TypeString, value)
+	}
+	if _u.mutation.MediaURLCleared() {
+		_spec.ClearField(contentnode.FieldMediaURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.RichContent(); ok {
+		_spec.SetField(contentnode.FieldRichContent, field.TypeString, value)
+	}
+	if _u.mutation.RichContentCleared() {
+		_spec.ClearField(contentnode.FieldRichContent, field.TypeString)
 	}
 	if value, ok := _u.mutation.DifficultyLevel(); ok {
 		_spec.SetField(contentnode.FieldDifficultyLevel, field.TypeEnum, value)

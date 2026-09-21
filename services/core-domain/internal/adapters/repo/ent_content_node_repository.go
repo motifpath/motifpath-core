@@ -43,11 +43,17 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	richContentJSON, err := marshalRichContent(node.RichContent)
+	if err != nil {
+		return err
+	}
 	_, err = r.client.ContentNode.Create().
 		SetID(id).
 		SetTeacherID(teacherID).
 		SetTitle(node.Title).
 		SetContentType(contentnode.ContentType(node.ContentType)).
+		SetNillableMediaURL(node.MediaURL).
+		SetNillableRichContent(richContentJSON).
 		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
 		SetReviewState(contentnode.ReviewState(node.Classification.ReviewState)).
 		SetCreatedAt(node.CreatedAt).
@@ -142,14 +148,29 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
-	_, err = r.client.ContentNode.UpdateOneID(id).
+	richContentJSON, err := marshalRichContent(node.RichContent)
+	if err != nil {
+		return err
+	}
+	update := r.client.ContentNode.UpdateOneID(id).
 		SetTitle(node.Title).
+		SetNillableMediaURL(node.MediaURL).
+		SetNillableRichContent(richContentJSON).
 		SetDifficultyLevel(contentnode.DifficultyLevel(node.Classification.DifficultyLevel)).
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
-		AddConceptIDs(conceptIDs...).
-		Save(ctx)
+		AddConceptIDs(conceptIDs...)
+	// A nil body field means the caller cleared it (e.g. the other content
+	// type's field), so the stored column must be cleared too — the Nillable
+	// setters alone would leave a stale value in place.
+	if node.MediaURL == nil {
+		update = update.ClearMediaURL()
+	}
+	if richContentJSON == nil {
+		update = update.ClearRichContent()
+	}
+	_, err = update.Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.ErrNotFound
@@ -175,8 +196,10 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 			DifficultyLevel: domain.DifficultyLevel(row.DifficultyLevel),
 			ReviewState:     domain.ReviewState(row.ReviewState),
 		},
-		Languages: languages,
-		CreatedAt: row.CreatedAt,
+		MediaURL:    row.MediaURL,
+		RichContent: unmarshalRichContent(row.RichContent),
+		Languages:   languages,
+		CreatedAt:   row.CreatedAt,
 	}
 }
 

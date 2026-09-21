@@ -1,4 +1,4 @@
-h1:S0PBtMruTX7qBJdFoVgpHY+iXPRsca70KQOkDOk610g=
+h1:MGdza3XK4RuS4VW7Tkx5EQ6Fjp5h9oJ+DElNfqcumoM=
 20260826200228_core-domain-initial-schema.up.sql h1:vGtBw0KPCKXvzhcv9kADPyNx0CaAV5I9tRj7hA5BvFo=
 20260906105417_learning_path_item_section_label.up.sql h1:zfqSmJArdqvUK19IMMKEeRPUck1D0Ucy9zu4Iqz7Jd8=
 20260913234948_pb40_exercise_authoring.up.sql h1:DWrdUZNcBGhY9rAiHpIQU8pQv4P1rNO8EJOYvcYUeVw=
@@ -10,4 +10,5 @@ h1:S0PBtMruTX7qBJdFoVgpHY+iXPRsca70KQOkDOk610g=
 20260918184716_expanded-content-rich-text-and-exercise-remediation-targets.up.sql h1:Mv9IfitQjDiIcJyhG30ox2RhZ0WGJ7nQ3SBIAJFiMUg=
 20260918221420_add_language_i18n.up.sql h1:bLxCav64c3eAnIB6gTQ6YNSOM5f+54z+CYfLVoiIccA=
 20260920145403_pb33_content_classification_graph.up.sql h1:NGSvjBg61YSwk8xPljnBU1m3GNur+sYVRqIVk+4U1Pc=
-20260921112516_pb57_prebuilt_diagram_content.up.sql h1:SEw4uS1J1syztbakUAcJV/ABHENp4jkW/jpz48sXD88=
+20260921111452_content_node_body.up.sql h1:MmeWCtmIqu/2hp7rpUivoNDwT5xa+2pQ40vmTca5c0Q=
+20260921112516_pb57_prebuilt_diagram_content.up.sql h1:sPiJnjnlxxnS86Gv3CKh7OETgGTSOO3aKWxHluNYrhk=

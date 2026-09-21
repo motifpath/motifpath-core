@@ -66,6 +66,16 @@ func Title(v string) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldTitle, v))
 }
 
+// MediaURL applies equality check predicate on the "media_url" field. It's identical to MediaURLEQ.
+func MediaURL(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldMediaURL, v))
+}
+
+// RichContent applies equality check predicate on the "rich_content" field. It's identical to RichContentEQ.
+func RichContent(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldRichContent, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldCreatedAt, v))
@@ -194,6 +204,156 @@ func ContentTypeIn(vs ...ContentType) predicate.ContentNode {
 // ContentTypeNotIn applies the NotIn predicate on the "content_type" field.
 func ContentTypeNotIn(vs ...ContentType) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldNotIn(FieldContentType, vs...))
+}
+
+// MediaURLEQ applies the EQ predicate on the "media_url" field.
+func MediaURLEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldMediaURL, v))
+}
+
+// MediaURLNEQ applies the NEQ predicate on the "media_url" field.
+func MediaURLNEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldMediaURL, v))
+}
+
+// MediaURLIn applies the In predicate on the "media_url" field.
+func MediaURLIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIn(FieldMediaURL, vs...))
+}
+
+// MediaURLNotIn applies the NotIn predicate on the "media_url" field.
+func MediaURLNotIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotIn(FieldMediaURL, vs...))
+}
+
+// MediaURLGT applies the GT predicate on the "media_url" field.
+func MediaURLGT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGT(FieldMediaURL, v))
+}
+
+// MediaURLGTE applies the GTE predicate on the "media_url" field.
+func MediaURLGTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGTE(FieldMediaURL, v))
+}
+
+// MediaURLLT applies the LT predicate on the "media_url" field.
+func MediaURLLT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLT(FieldMediaURL, v))
+}
+
+// MediaURLLTE applies the LTE predicate on the "media_url" field.
+func MediaURLLTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLTE(FieldMediaURL, v))
+}
+
+// MediaURLContains applies the Contains predicate on the "media_url" field.
+func MediaURLContains(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContains(FieldMediaURL, v))
+}
+
+// MediaURLHasPrefix applies the HasPrefix predicate on the "media_url" field.
+func MediaURLHasPrefix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasPrefix(FieldMediaURL, v))
+}
+
+// MediaURLHasSuffix applies the HasSuffix predicate on the "media_url" field.
+func MediaURLHasSuffix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasSuffix(FieldMediaURL, v))
+}
+
+// MediaURLIsNil applies the IsNil predicate on the "media_url" field.
+func MediaURLIsNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIsNull(FieldMediaURL))
+}
+
+// MediaURLNotNil applies the NotNil predicate on the "media_url" field.
+func MediaURLNotNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotNull(FieldMediaURL))
+}
+
+// MediaURLEqualFold applies the EqualFold predicate on the "media_url" field.
+func MediaURLEqualFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEqualFold(FieldMediaURL, v))
+}
+
+// MediaURLContainsFold applies the ContainsFold predicate on the "media_url" field.
+func MediaURLContainsFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContainsFold(FieldMediaURL, v))
+}
+
+// RichContentEQ applies the EQ predicate on the "rich_content" field.
+func RichContentEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldRichContent, v))
+}
+
+// RichContentNEQ applies the NEQ predicate on the "rich_content" field.
+func RichContentNEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldRichContent, v))
+}
+
+// RichContentIn applies the In predicate on the "rich_content" field.
+func RichContentIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIn(FieldRichContent, vs...))
+}
+
+// RichContentNotIn applies the NotIn predicate on the "rich_content" field.
+func RichContentNotIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotIn(FieldRichContent, vs...))
+}
+
+// RichContentGT applies the GT predicate on the "rich_content" field.
+func RichContentGT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGT(FieldRichContent, v))
+}
+
+// RichContentGTE applies the GTE predicate on the "rich_content" field.
+func RichContentGTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGTE(FieldRichContent, v))
+}
+
+// RichContentLT applies the LT predicate on the "rich_content" field.
+func RichContentLT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLT(FieldRichContent, v))
+}
+
+// RichContentLTE applies the LTE predicate on the "rich_content" field.
+func RichContentLTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLTE(FieldRichContent, v))
+}
+
+// RichContentContains applies the Contains predicate on the "rich_content" field.
+func RichContentContains(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContains(FieldRichContent, v))
+}
+
+// RichContentHasPrefix applies the HasPrefix predicate on the "rich_content" field.
+func RichContentHasPrefix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasPrefix(FieldRichContent, v))
+}
+
+// RichContentHasSuffix applies the HasSuffix predicate on the "rich_content" field.
+func RichContentHasSuffix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasSuffix(FieldRichContent, v))
+}
+
+// RichContentIsNil applies the IsNil predicate on the "rich_content" field.
+func RichContentIsNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIsNull(FieldRichContent))
+}
+
+// RichContentNotNil applies the NotNil predicate on the "rich_content" field.
+func RichContentNotNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotNull(FieldRichContent))
+}
+
+// RichContentEqualFold applies the EqualFold predicate on the "rich_content" field.
+func RichContentEqualFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEqualFold(FieldRichContent, v))
+}
+
+// RichContentContainsFold applies the ContainsFold predicate on the "rich_content" field.
+func RichContentContainsFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContainsFold(FieldRichContent, v))
 }
 
 // DifficultyLevelEQ applies the EQ predicate on the "difficulty_level" field.

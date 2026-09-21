@@ -2680,6 +2680,8 @@ type ContentNodeMutation struct {
 	teacher_id                    *uuid.UUID
 	title                         *string
 	content_type                  *contentnode.ContentType
+	media_url                     *string
+	rich_content                  *string
 	difficulty_level              *contentnode.DifficultyLevel
 	review_state                  *contentnode.ReviewState
 	created_at                    *time.Time
@@ -2923,6 +2925,104 @@ func (m *ContentNodeMutation) OldContentType(ctx context.Context) (v contentnode
 // ResetContentType resets all changes to the "content_type" field.
 func (m *ContentNodeMutation) ResetContentType() {
 	m.content_type = nil
+}
+
+// SetMediaURL sets the "media_url" field.
+func (m *ContentNodeMutation) SetMediaURL(s string) {
+	m.media_url = &s
+}
+
+// MediaURL returns the value of the "media_url" field in the mutation.
+func (m *ContentNodeMutation) MediaURL() (r string, exists bool) {
+	v := m.media_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMediaURL returns the old "media_url" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldMediaURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMediaURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMediaURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMediaURL: %w", err)
+	}
+	return oldValue.MediaURL, nil
+}
+
+// ClearMediaURL clears the value of the "media_url" field.
+func (m *ContentNodeMutation) ClearMediaURL() {
+	m.media_url = nil
+	m.clearedFields[contentnode.FieldMediaURL] = struct{}{}
+}
+
+// MediaURLCleared returns if the "media_url" field was cleared in this mutation.
+func (m *ContentNodeMutation) MediaURLCleared() bool {
+	_, ok := m.clearedFields[contentnode.FieldMediaURL]
+	return ok
+}
+
+// ResetMediaURL resets all changes to the "media_url" field.
+func (m *ContentNodeMutation) ResetMediaURL() {
+	m.media_url = nil
+	delete(m.clearedFields, contentnode.FieldMediaURL)
+}
+
+// SetRichContent sets the "rich_content" field.
+func (m *ContentNodeMutation) SetRichContent(s string) {
+	m.rich_content = &s
+}
+
+// RichContent returns the value of the "rich_content" field in the mutation.
+func (m *ContentNodeMutation) RichContent() (r string, exists bool) {
+	v := m.rich_content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRichContent returns the old "rich_content" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldRichContent(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRichContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRichContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRichContent: %w", err)
+	}
+	return oldValue.RichContent, nil
+}
+
+// ClearRichContent clears the value of the "rich_content" field.
+func (m *ContentNodeMutation) ClearRichContent() {
+	m.rich_content = nil
+	m.clearedFields[contentnode.FieldRichContent] = struct{}{}
+}
+
+// RichContentCleared returns if the "rich_content" field was cleared in this mutation.
+func (m *ContentNodeMutation) RichContentCleared() bool {
+	_, ok := m.clearedFields[contentnode.FieldRichContent]
+	return ok
+}
+
+// ResetRichContent resets all changes to the "rich_content" field.
+func (m *ContentNodeMutation) ResetRichContent() {
+	m.rich_content = nil
+	delete(m.clearedFields, contentnode.FieldRichContent)
 }
 
 // SetDifficultyLevel sets the "difficulty_level" field.
@@ -3499,7 +3599,7 @@ func (m *ContentNodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.teacher_id != nil {
 		fields = append(fields, contentnode.FieldTeacherID)
 	}
@@ -3508,6 +3608,12 @@ func (m *ContentNodeMutation) Fields() []string {
 	}
 	if m.content_type != nil {
 		fields = append(fields, contentnode.FieldContentType)
+	}
+	if m.media_url != nil {
+		fields = append(fields, contentnode.FieldMediaURL)
+	}
+	if m.rich_content != nil {
+		fields = append(fields, contentnode.FieldRichContent)
 	}
 	if m.difficulty_level != nil {
 		fields = append(fields, contentnode.FieldDifficultyLevel)
@@ -3532,6 +3638,10 @@ func (m *ContentNodeMutation) Field(name string) (ent.Value, bool) {
 		return m.Title()
 	case contentnode.FieldContentType:
 		return m.ContentType()
+	case contentnode.FieldMediaURL:
+		return m.MediaURL()
+	case contentnode.FieldRichContent:
+		return m.RichContent()
 	case contentnode.FieldDifficultyLevel:
 		return m.DifficultyLevel()
 	case contentnode.FieldReviewState:
@@ -3553,6 +3663,10 @@ func (m *ContentNodeMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldTitle(ctx)
 	case contentnode.FieldContentType:
 		return m.OldContentType(ctx)
+	case contentnode.FieldMediaURL:
+		return m.OldMediaURL(ctx)
+	case contentnode.FieldRichContent:
+		return m.OldRichContent(ctx)
 	case contentnode.FieldDifficultyLevel:
 		return m.OldDifficultyLevel(ctx)
 	case contentnode.FieldReviewState:
@@ -3588,6 +3702,20 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetContentType(v)
+		return nil
+	case contentnode.FieldMediaURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMediaURL(v)
+		return nil
+	case contentnode.FieldRichContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRichContent(v)
 		return nil
 	case contentnode.FieldDifficultyLevel:
 		v, ok := value.(contentnode.DifficultyLevel)
@@ -3639,7 +3767,14 @@ func (m *ContentNodeMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ContentNodeMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(contentnode.FieldMediaURL) {
+		fields = append(fields, contentnode.FieldMediaURL)
+	}
+	if m.FieldCleared(contentnode.FieldRichContent) {
+		fields = append(fields, contentnode.FieldRichContent)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -3652,6 +3787,14 @@ func (m *ContentNodeMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ContentNodeMutation) ClearField(name string) error {
+	switch name {
+	case contentnode.FieldMediaURL:
+		m.ClearMediaURL()
+		return nil
+	case contentnode.FieldRichContent:
+		m.ClearRichContent()
+		return nil
+	}
 	return fmt.Errorf("unknown ContentNode nullable field %s", name)
 }
 
@@ -3667,6 +3810,12 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 		return nil
 	case contentnode.FieldContentType:
 		m.ResetContentType()
+		return nil
+	case contentnode.FieldMediaURL:
+		m.ResetMediaURL()
+		return nil
+	case contentnode.FieldRichContent:
+		m.ResetRichContent()
 		return nil
 	case contentnode.FieldDifficultyLevel:
 		m.ResetDifficultyLevel()
