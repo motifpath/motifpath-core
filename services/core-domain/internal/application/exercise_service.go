@@ -146,6 +146,8 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}
+	// Re-fetched rather than returned as updated: same construct-then-refetch
+	// convention CreateExercise follows, for the same reason (see its comment).
 	return s.exercises.GetByID(ctx, updated.ID)
 }
 

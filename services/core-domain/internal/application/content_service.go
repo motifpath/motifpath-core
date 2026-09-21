@@ -93,6 +93,9 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err := s.nodes.Update(ctx, updated); err != nil {
 		return domain.ContentNode{}, err
 	}
+	// Re-fetched rather than returned as updated: updated.Skills/Concepts
+	// only carry the request-supplied ids until read back with their rows
+	// (Name/ParentID) joined in — same convention CreateContentNode follows.
 	return s.nodes.GetByID(ctx, updated.ID)
 }
 
