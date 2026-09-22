@@ -9,6 +9,13 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
+// canActAsStudent reports whether role may hold and progress through a
+// course enrollment or standalone student path — a real student, or an
+// admin using their own identity to dogfood the learner experience.
+func canActAsStudent(role domain.Role) bool {
+	return role == domain.RoleStudent || role == domain.RoleAdmin
+}
+
 // StudentPathService assigns learning paths to students by copying a
 // template's items into a new StudentPath, and composes a student's
 // current StudentPath with their per-node completion state for GetMyPath.
@@ -126,11 +133,12 @@ func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller doma
 	if err != nil {
 		return domain.StudentPath{}, err
 	}
-	if student.Role != domain.RoleStudent {
-		// A user that exists but isn't a student is reported as not found,
-		// not forbidden — the assignment target space is students, so a
-		// teacher_id simply isn't a valid target, same as an id that
-		// doesn't exist at all.
+	if !canActAsStudent(student.Role) {
+		// A user that exists but can't act as a student is reported as not
+		// found, not forbidden — the assignment target space is students
+		// (plus admins dogfooding the learner experience under their own
+		// identity), so a teacher_id simply isn't a valid target, same as an
+		// id that doesn't exist at all.
 		return domain.StudentPath{}, domain.ErrNotFound
 	}
 
@@ -402,7 +410,7 @@ type SetCurrentPathInput struct {
 // system) isn't something the caller should be able to distinguish
 // "exists but isn't yours" from "doesn't exist" by response code alone.
 func (s *StudentPathService) SetCurrentPath(ctx context.Context, caller domain.User, input SetCurrentPathInput) (StudentPathView, error) {
-	if caller.Role != domain.RoleStudent {
+	if !canActAsStudent(caller.Role) {
 		return StudentPathView{}, domain.ErrForbidden
 	}
 	if (input.CourseEnrollmentID == nil) == (input.StudentPathID == nil) {

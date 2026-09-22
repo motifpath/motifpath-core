@@ -91,6 +91,22 @@ func TestCourseEnrollmentService_CreateCourseEnrollment(t *testing.T) {
 		assert.Equal(t, enrollment.ID, *sp.SourceCourseEnrollmentID)
 	})
 
+	t.Run("an admin acting as their own student identity self-enrolls in a published course", func(t *testing.T) {
+		f := courseEnrollmentFixtures{
+			paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
+			studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
+		}
+		f.paths.put(threeItemTemplate())
+		publishedCourseWithCheckpoint(f.courses, f.courseVersions, "course-1", "path-1")
+		svc := newCourseEnrollmentService(f)
+
+		enrollment, err := svc.CreateCourseEnrollment(context.Background(), adminCaller(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "admin-1", enrollment.StudentID)
+		assert.Equal(t, domain.CourseEnrollmentStatusActive, enrollment.Status)
+	})
+
 	t.Run("sets the new enrollment as current only if nothing is currently set", func(t *testing.T) {
 		f := courseEnrollmentFixtures{
 			paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),

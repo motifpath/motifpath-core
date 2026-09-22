@@ -62,7 +62,8 @@ func NewCourseEnrollmentService(
 // LearningPath template into a new StudentPath, and sets the new enrollment
 // as caller's current course only if nothing is currently set — a student
 // actively running another course or a standalone path is never silently
-// switched away from it. Only students may self-enroll. Refused with
+// switched away from it. Only students, and admins acting as their own
+// student identity, may self-enroll. Refused with
 // domain.ErrNotFound if courseID does not exist, the course is draft or
 // retired, or its latest published version is not currently available for
 // new enrollments. Refused with domain.ErrConflict if caller already holds
@@ -70,7 +71,7 @@ func NewCourseEnrollmentService(
 // later abandoned or completed does not count, so re-enrolling after
 // leaving a course is allowed.
 func (s *CourseEnrollmentService) CreateCourseEnrollment(ctx context.Context, caller domain.User, courseID string) (domain.CourseEnrollment, error) {
-	if caller.Role != domain.RoleStudent {
+	if !canActAsStudent(caller.Role) {
 		return domain.CourseEnrollment{}, domain.ErrForbidden
 	}
 
@@ -177,7 +178,7 @@ func (s *CourseEnrollmentService) setCurrentIfNothingSet(ctx context.Context, st
 // just-completed course's final state, and neither should have to wait for
 // a separate detection step.
 func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, caller domain.User) ([]domain.CourseEnrollment, error) {
-	if caller.Role != domain.RoleStudent {
+	if !canActAsStudent(caller.Role) {
 		return nil, domain.ErrForbidden
 	}
 
@@ -213,7 +214,7 @@ func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, c
 // it first via SetCurrentPath — and allowed, clearing the current pointer,
 // only when nothing else exists to become current.
 func (s *CourseEnrollmentService) AbandonCourseEnrollment(ctx context.Context, caller domain.User, enrollmentID string) (domain.CourseEnrollment, error) {
-	if caller.Role != domain.RoleStudent {
+	if !canActAsStudent(caller.Role) {
 		return domain.CourseEnrollment{}, domain.ErrForbidden
 	}
 
