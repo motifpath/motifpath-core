@@ -15,6 +15,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
@@ -115,6 +117,22 @@ func init() {
 	contentnodeversionDescID := contentnodeversionFields[0].Descriptor()
 	// contentnodeversion.DefaultID holds the default value on creation for the id field.
 	contentnodeversion.DefaultID = contentnodeversionDescID.Default.(func() uuid.UUID)
+	courseFields := schema.Course{}.Fields()
+	_ = courseFields
+	// courseDescCreatedAt is the schema descriptor for created_at field.
+	courseDescCreatedAt := courseFields[6].Descriptor()
+	// course.DefaultCreatedAt holds the default value on creation for the created_at field.
+	course.DefaultCreatedAt = courseDescCreatedAt.Default.(func() time.Time)
+	// courseDescID is the schema descriptor for id field.
+	courseDescID := courseFields[0].Descriptor()
+	// course.DefaultID holds the default value on creation for the id field.
+	course.DefaultID = courseDescID.Default.(func() uuid.UUID)
+	coursecheckpointFields := schema.CourseCheckpoint{}.Fields()
+	_ = coursecheckpointFields
+	// coursecheckpointDescID is the schema descriptor for id field.
+	coursecheckpointDescID := coursecheckpointFields[0].Descriptor()
+	// coursecheckpoint.DefaultID holds the default value on creation for the id field.
+	coursecheckpoint.DefaultID = coursecheckpointDescID.Default.(func() uuid.UUID)
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
 	// diagramDescCreatedAt is the schema descriptor for created_at field.

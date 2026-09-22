@@ -534,3 +534,81 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 	}
 	return result
 }
+
+// isStaff reports whether role is teacher or admin — the HTTP layer's own
+// copy of the teacher-or-admin check, used only to decide response shape
+// (e.g. whether to include has_unpublished_changes on a catalog entry).
+// The actual authorization gate for an operation is enforced in the
+// application layer, not here.
+func isStaff(role domain.Role) bool {
+	return role == domain.RoleTeacher || role == domain.RoleAdmin
+}
+
+func toCourseCheckpoint(cp domain.CourseCheckpoint) generated.CourseCheckpoint {
+	return generated.CourseCheckpoint{
+		Position:       cp.Position,
+		LearningPathId: mustUUID(cp.LearningPathID),
+		Title:          cp.Title,
+		EffectiveTitle: cp.EffectiveTitle,
+	}
+}
+
+func toCourseCheckpoints(checkpoints []domain.CourseCheckpoint) []generated.CourseCheckpoint {
+	result := make([]generated.CourseCheckpoint, len(checkpoints))
+	for i, cp := range checkpoints {
+		result[i] = toCourseCheckpoint(cp)
+	}
+	return result
+}
+
+// toCourse renders c as its live, currently-being-authored draft — the
+// teacher/admin-only representation returned by CreateCourse/GetCourse/
+// ReplaceCourse. No CourseVersion exists yet in this slice of the feature,
+// so a course can never have been published: latest_published_version is
+// always nil and has_unpublished_changes is always true, matching the
+// OpenAPI contract's "or nothing has been published yet" case.
+func toCourse(c domain.Course) generated.Course {
+	return generated.Course{
+		CourseId:               mustUUID(c.ID),
+		Title:                  c.Title,
+		Summary:                c.Summary,
+		Level:                  generated.CourseLevel(c.Level),
+		Status:                 generated.CourseStatus(c.Status),
+		CreatedBy:              mustUUID(c.CreatedBy),
+		CreatedAt:              c.CreatedAt,
+		LatestPublishedVersion: nil,
+		HasUnpublishedChanges:  true,
+		Checkpoints:            toCourseCheckpoints(c.Checkpoints),
+	}
+}
+
+// toCourseCatalogEntry renders c as a lightweight catalog entry for the
+// given caller — never a checkpoint's learning_path_id or other live-draft
+// authoring detail, matching the OpenAPI CourseCatalogEntry contract.
+// has_unpublished_changes is included only for teachers/admins; a student
+// never receives it. No CourseVersion exists yet in this slice of the
+// feature, so published_at is always nil and, for staff,
+// has_unpublished_changes is always true.
+func toCourseCatalogEntry(c domain.Course, caller domain.User) generated.CourseCatalogEntry {
+	entry := generated.CourseCatalogEntry{
+		CourseId:    mustUUID(c.ID),
+		Title:       c.Title,
+		Summary:     c.Summary,
+		Level:       generated.CourseCatalogEntryLevel(c.Level),
+		Status:      generated.CourseCatalogEntryStatus(c.Status),
+		PublishedAt: nil,
+	}
+	if isStaff(caller.Role) {
+		hasUnpublishedChanges := true
+		entry.HasUnpublishedChanges = &hasUnpublishedChanges
+	}
+	return entry
+}
+
+func toCourseCatalogEntries(courses []domain.Course, caller domain.User) []generated.CourseCatalogEntry {
+	result := make([]generated.CourseCatalogEntry, len(courses))
+	for i, c := range courses {
+		result[i] = toCourseCatalogEntry(c, caller)
+	}
+	return result
+}

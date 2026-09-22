@@ -25,6 +25,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
@@ -69,6 +71,10 @@ type Client struct {
 	ContentNodeSkill *ContentNodeSkillClient
 	// ContentNodeVersion is the client for interacting with the ContentNodeVersion builders.
 	ContentNodeVersion *ContentNodeVersionClient
+	// Course is the client for interacting with the Course builders.
+	Course *CourseClient
+	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
+	CourseCheckpoint *CourseCheckpointClient
 	// Diagram is the client for interacting with the Diagram builders.
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
@@ -127,6 +133,8 @@ func (c *Client) init() {
 	c.ContentNodeLanguage = NewContentNodeLanguageClient(c.config)
 	c.ContentNodeSkill = NewContentNodeSkillClient(c.config)
 	c.ContentNodeVersion = NewContentNodeVersionClient(c.config)
+	c.Course = NewCourseClient(c.config)
+	c.CourseCheckpoint = NewCourseCheckpointClient(c.config)
 	c.Diagram = NewDiagramClient(c.config)
 	c.DiagramConcept = NewDiagramConceptClient(c.config)
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
@@ -247,6 +255,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ContentNodeLanguage:  NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:     NewContentNodeSkillClient(cfg),
 		ContentNodeVersion:   NewContentNodeVersionClient(cfg),
+		Course:               NewCourseClient(cfg),
+		CourseCheckpoint:     NewCourseCheckpointClient(cfg),
 		Diagram:              NewDiagramClient(cfg),
 		DiagramConcept:       NewDiagramConceptClient(cfg),
 		DiagramSkill:         NewDiagramSkillClient(cfg),
@@ -294,6 +304,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ContentNodeLanguage:  NewContentNodeLanguageClient(cfg),
 		ContentNodeSkill:     NewContentNodeSkillClient(cfg),
 		ContentNodeVersion:   NewContentNodeVersionClient(cfg),
+		Course:               NewCourseClient(cfg),
+		CourseCheckpoint:     NewCourseCheckpointClient(cfg),
 		Diagram:              NewDiagramClient(cfg),
 		DiagramConcept:       NewDiagramConceptClient(cfg),
 		DiagramSkill:         NewDiagramSkillClient(cfg),
@@ -344,11 +356,11 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Diagram, c.DiagramConcept,
-		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
-		c.LearningPath, c.LearningPathItem, c.Position, c.Skill,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
+		c.Diagram, c.DiagramConcept, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.Instrument, c.Language, c.LearningPath, c.LearningPathItem, c.Position,
+		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -360,11 +372,11 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Diagram, c.DiagramConcept,
-		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
-		c.LearningPath, c.LearningPathItem, c.Position, c.Skill,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
+		c.Diagram, c.DiagramConcept, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.Instrument, c.Language, c.LearningPath, c.LearningPathItem, c.Position,
+		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -391,6 +403,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ContentNodeSkill.mutate(ctx, m)
 	case *ContentNodeVersionMutation:
 		return c.ContentNodeVersion.mutate(ctx, m)
+	case *CourseMutation:
+		return c.Course.mutate(ctx, m)
+	case *CourseCheckpointMutation:
+		return c.CourseCheckpoint.mutate(ctx, m)
 	case *DiagramMutation:
 		return c.Diagram.mutate(ctx, m)
 	case *DiagramConceptMutation:
@@ -2076,6 +2092,272 @@ func (c *ContentNodeVersionClient) mutate(ctx context.Context, m *ContentNodeVer
 		return (&ContentNodeVersionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ContentNodeVersion mutation op: %q", m.Op())
+	}
+}
+
+// CourseClient is a client for the Course schema.
+type CourseClient struct {
+	config
+}
+
+// NewCourseClient returns a client for the Course from the given config.
+func NewCourseClient(c config) *CourseClient {
+	return &CourseClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `course.Hooks(f(g(h())))`.
+func (c *CourseClient) Use(hooks ...Hook) {
+	c.hooks.Course = append(c.hooks.Course, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `course.Intercept(f(g(h())))`.
+func (c *CourseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Course = append(c.inters.Course, interceptors...)
+}
+
+// Create returns a builder for creating a Course entity.
+func (c *CourseClient) Create() *CourseCreate {
+	mutation := newCourseMutation(c.config, OpCreate)
+	return &CourseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Course entities.
+func (c *CourseClient) CreateBulk(builders ...*CourseCreate) *CourseCreateBulk {
+	return &CourseCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CourseClient) MapCreateBulk(slice any, setFunc func(*CourseCreate, int)) *CourseCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CourseCreateBulk{err: fmt.Errorf("calling to CourseClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CourseCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CourseCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Course.
+func (c *CourseClient) Update() *CourseUpdate {
+	mutation := newCourseMutation(c.config, OpUpdate)
+	return &CourseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CourseClient) UpdateOne(_m *Course) *CourseUpdateOne {
+	mutation := newCourseMutation(c.config, OpUpdateOne, withCourse(_m))
+	return &CourseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CourseClient) UpdateOneID(id uuid.UUID) *CourseUpdateOne {
+	mutation := newCourseMutation(c.config, OpUpdateOne, withCourseID(id))
+	return &CourseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Course.
+func (c *CourseClient) Delete() *CourseDelete {
+	mutation := newCourseMutation(c.config, OpDelete)
+	return &CourseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CourseClient) DeleteOne(_m *Course) *CourseDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CourseClient) DeleteOneID(id uuid.UUID) *CourseDeleteOne {
+	builder := c.Delete().Where(course.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CourseDeleteOne{builder}
+}
+
+// Query returns a query builder for Course.
+func (c *CourseClient) Query() *CourseQuery {
+	return &CourseQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCourse},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Course entity by its id.
+func (c *CourseClient) Get(ctx context.Context, id uuid.UUID) (*Course, error) {
+	return c.Query().Where(course.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CourseClient) GetX(ctx context.Context, id uuid.UUID) *Course {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *CourseClient) Hooks() []Hook {
+	return c.hooks.Course
+}
+
+// Interceptors returns the client interceptors.
+func (c *CourseClient) Interceptors() []Interceptor {
+	return c.inters.Course
+}
+
+func (c *CourseClient) mutate(ctx context.Context, m *CourseMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CourseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CourseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CourseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CourseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Course mutation op: %q", m.Op())
+	}
+}
+
+// CourseCheckpointClient is a client for the CourseCheckpoint schema.
+type CourseCheckpointClient struct {
+	config
+}
+
+// NewCourseCheckpointClient returns a client for the CourseCheckpoint from the given config.
+func NewCourseCheckpointClient(c config) *CourseCheckpointClient {
+	return &CourseCheckpointClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `coursecheckpoint.Hooks(f(g(h())))`.
+func (c *CourseCheckpointClient) Use(hooks ...Hook) {
+	c.hooks.CourseCheckpoint = append(c.hooks.CourseCheckpoint, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `coursecheckpoint.Intercept(f(g(h())))`.
+func (c *CourseCheckpointClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CourseCheckpoint = append(c.inters.CourseCheckpoint, interceptors...)
+}
+
+// Create returns a builder for creating a CourseCheckpoint entity.
+func (c *CourseCheckpointClient) Create() *CourseCheckpointCreate {
+	mutation := newCourseCheckpointMutation(c.config, OpCreate)
+	return &CourseCheckpointCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CourseCheckpoint entities.
+func (c *CourseCheckpointClient) CreateBulk(builders ...*CourseCheckpointCreate) *CourseCheckpointCreateBulk {
+	return &CourseCheckpointCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CourseCheckpointClient) MapCreateBulk(slice any, setFunc func(*CourseCheckpointCreate, int)) *CourseCheckpointCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CourseCheckpointCreateBulk{err: fmt.Errorf("calling to CourseCheckpointClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CourseCheckpointCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CourseCheckpointCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CourseCheckpoint.
+func (c *CourseCheckpointClient) Update() *CourseCheckpointUpdate {
+	mutation := newCourseCheckpointMutation(c.config, OpUpdate)
+	return &CourseCheckpointUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CourseCheckpointClient) UpdateOne(_m *CourseCheckpoint) *CourseCheckpointUpdateOne {
+	mutation := newCourseCheckpointMutation(c.config, OpUpdateOne, withCourseCheckpoint(_m))
+	return &CourseCheckpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CourseCheckpointClient) UpdateOneID(id uuid.UUID) *CourseCheckpointUpdateOne {
+	mutation := newCourseCheckpointMutation(c.config, OpUpdateOne, withCourseCheckpointID(id))
+	return &CourseCheckpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CourseCheckpoint.
+func (c *CourseCheckpointClient) Delete() *CourseCheckpointDelete {
+	mutation := newCourseCheckpointMutation(c.config, OpDelete)
+	return &CourseCheckpointDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CourseCheckpointClient) DeleteOne(_m *CourseCheckpoint) *CourseCheckpointDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CourseCheckpointClient) DeleteOneID(id uuid.UUID) *CourseCheckpointDeleteOne {
+	builder := c.Delete().Where(coursecheckpoint.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CourseCheckpointDeleteOne{builder}
+}
+
+// Query returns a query builder for CourseCheckpoint.
+func (c *CourseCheckpointClient) Query() *CourseCheckpointQuery {
+	return &CourseCheckpointQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCourseCheckpoint},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CourseCheckpoint entity by its id.
+func (c *CourseCheckpointClient) Get(ctx context.Context, id uuid.UUID) (*CourseCheckpoint, error) {
+	return c.Query().Where(coursecheckpoint.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CourseCheckpointClient) GetX(ctx context.Context, id uuid.UUID) *CourseCheckpoint {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *CourseCheckpointClient) Hooks() []Hook {
+	return c.hooks.CourseCheckpoint
+}
+
+// Interceptors returns the client interceptors.
+func (c *CourseCheckpointClient) Interceptors() []Interceptor {
+	return c.inters.CourseCheckpoint
+}
+
+func (c *CourseCheckpointClient) mutate(ctx context.Context, m *CourseCheckpointMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CourseCheckpointCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CourseCheckpointUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CourseCheckpointUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CourseCheckpointDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CourseCheckpoint mutation op: %q", m.Op())
 	}
 }
 
@@ -5299,17 +5581,19 @@ type (
 	hooks struct {
 		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
 		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion,
-		Diagram, DiagramConcept, DiagramSkill, Exercise, ExerciseConcept,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		Language, LearningPath, LearningPathItem, Position, Skill,
-		StudentLearningState, StudentPath, StudentPathItem, User []ent.Hook
+		Course, CourseCheckpoint, Diagram, DiagramConcept, DiagramSkill, Exercise,
+		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		ExpandedContent, Instrument, Language, LearningPath, LearningPathItem,
+		Position, Skill, StudentLearningState, StudentPath, StudentPathItem,
+		User []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
 		ContentNodeExercise, ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion,
-		Diagram, DiagramConcept, DiagramSkill, Exercise, ExerciseConcept,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		Language, LearningPath, LearningPathItem, Position, Skill,
-		StudentLearningState, StudentPath, StudentPathItem, User []ent.Interceptor
+		Course, CourseCheckpoint, Diagram, DiagramConcept, DiagramSkill, Exercise,
+		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		ExpandedContent, Instrument, Language, LearningPath, LearningPathItem,
+		Position, Skill, StudentLearningState, StudentPath, StudentPathItem,
+		User []ent.Interceptor
 	}
 )

@@ -117,6 +117,30 @@ func (f ContentNodeVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeVersionMutation", m)
 }
 
+// The CourseFunc type is an adapter to allow the use of ordinary
+// function as Course mutator.
+type CourseFunc func(context.Context, *ent.CourseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseMutation", m)
+}
+
+// The CourseCheckpointFunc type is an adapter to allow the use of ordinary
+// function as CourseCheckpoint mutator.
+type CourseCheckpointFunc func(context.Context, *ent.CourseCheckpointMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseCheckpointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseCheckpointMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseCheckpointMutation", m)
+}
+
 // The DiagramFunc type is an adapter to allow the use of ordinary
 // function as Diagram mutator.
 type DiagramFunc func(context.Context, *ent.DiagramMutation) (ent.Value, error)

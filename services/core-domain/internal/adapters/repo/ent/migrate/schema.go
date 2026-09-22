@@ -266,6 +266,43 @@ var (
 			},
 		},
 	}
+	// CoursesColumns holds the columns for the "courses" table.
+	CoursesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "title", Type: field.TypeString},
+		{Name: "summary", Type: field.TypeString},
+		{Name: "level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published", "retired"}, Default: "draft"},
+		{Name: "created_by", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// CoursesTable holds the schema information for the "courses" table.
+	CoursesTable = &schema.Table{
+		Name:       "courses",
+		Columns:    CoursesColumns,
+		PrimaryKey: []*schema.Column{CoursesColumns[0]},
+	}
+	// CourseCheckpointsColumns holds the columns for the "course_checkpoints" table.
+	CourseCheckpointsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "course_id", Type: field.TypeUUID},
+		{Name: "learning_path_id", Type: field.TypeUUID},
+		{Name: "position", Type: field.TypeInt},
+		{Name: "title", Type: field.TypeString, Nullable: true},
+	}
+	// CourseCheckpointsTable holds the schema information for the "course_checkpoints" table.
+	CourseCheckpointsTable = &schema.Table{
+		Name:       "course_checkpoints",
+		Columns:    CourseCheckpointsColumns,
+		PrimaryKey: []*schema.Column{CourseCheckpointsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "coursecheckpoint_course_id_position",
+				Unique:  true,
+				Columns: []*schema.Column{CourseCheckpointsColumns[1], CourseCheckpointsColumns[3]},
+			},
+		},
+	}
 	// DiagramsColumns holds the columns for the "diagrams" table.
 	DiagramsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -738,6 +775,8 @@ var (
 		ContentNodeLanguagesTable,
 		ContentNodeSkillsTable,
 		ContentNodeVersionsTable,
+		CoursesTable,
+		CourseCheckpointsTable,
 		DiagramsTable,
 		DiagramConceptsTable,
 		DiagramSkillsTable,

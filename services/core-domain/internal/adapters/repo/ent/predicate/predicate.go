@@ -33,6 +33,12 @@ type ContentNodeSkill func(*sql.Selector)
 // ContentNodeVersion is the predicate function for contentnodeversion builders.
 type ContentNodeVersion func(*sql.Selector)
 
+// Course is the predicate function for course builders.
+type Course func(*sql.Selector)
+
+// CourseCheckpoint is the predicate function for coursecheckpoint builders.
+type CourseCheckpoint func(*sql.Selector)
+
 // Diagram is the predicate function for diagram builders.
 type Diagram func(*sql.Selector)
 

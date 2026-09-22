@@ -672,6 +672,61 @@ func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath)
 	return nil
 }
 
+type fakeCourseRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Course
+}
+
+func newFakeCourseRepo() *fakeCourseRepo {
+	return &fakeCourseRepo{byID: map[string]domain.Course{}}
+}
+
+func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.Course{}, domain.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeCourseRepo) List(_ context.Context, status *domain.CourseStatus) ([]domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Course, 0, len(f.byID))
+	for _, c := range f.byID {
+		if status != nil && c.Status != *status {
+			continue
+		}
+		result = append(result, c)
+	}
+	return result, nil
+}
+
+func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[c.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) put(c domain.Course) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+}
+
 type fakeStudentPathRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.StudentPath

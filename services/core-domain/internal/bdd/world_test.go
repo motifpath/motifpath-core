@@ -36,6 +36,7 @@ type world struct {
 	expanded      *fakeExpandedContentRepo
 	paths         *fakeLearningPathRepo
 	studentPaths  *fakeStudentPathRepo
+	courses       *fakeCourseRepo
 	versions      *fakeContentNodeVersionRepo
 	learningState *fakeStudentLearningStateRepo
 	completion    *fakeCompletionReader
@@ -127,6 +128,7 @@ func newWorld() *world {
 		expanded:      newFakeExpandedContentRepo(),
 		paths:         newFakeLearningPathRepo(),
 		studentPaths:  newFakeStudentPathRepo(),
+		courses:       newFakeCourseRepo(),
 		versions:      newFakeContentNodeVersionRepo(),
 		learningState: newFakeStudentLearningStateRepo(),
 		completion:    newFakeCompletionReader(),
@@ -154,11 +156,12 @@ func newWorld() *world {
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.nodes, w.exercises, w.completion, newID, now)
+	course := application.NewCourseService(w.paths, w.courses, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, newID)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, instrument, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, instrument, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 

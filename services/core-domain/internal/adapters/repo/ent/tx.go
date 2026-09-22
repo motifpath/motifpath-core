@@ -30,6 +30,10 @@ type Tx struct {
 	ContentNodeSkill *ContentNodeSkillClient
 	// ContentNodeVersion is the client for interacting with the ContentNodeVersion builders.
 	ContentNodeVersion *ContentNodeVersionClient
+	// Course is the client for interacting with the Course builders.
+	Course *CourseClient
+	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
+	CourseCheckpoint *CourseCheckpointClient
 	// Diagram is the client for interacting with the Diagram builders.
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
@@ -208,6 +212,8 @@ func (tx *Tx) init() {
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
 	tx.ContentNodeVersion = NewContentNodeVersionClient(tx.config)
+	tx.Course = NewCourseClient(tx.config)
+	tx.CourseCheckpoint = NewCourseCheckpointClient(tx.config)
 	tx.Diagram = NewDiagramClient(tx.config)
 	tx.DiagramConcept = NewDiagramConceptClient(tx.config)
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)

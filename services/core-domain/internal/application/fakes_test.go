@@ -627,6 +627,62 @@ func (f *fakeLearningPathRepository) Replace(_ context.Context, path domain.Lear
 	return nil
 }
 
+// fakeCourseRepository is a minimal in-memory ports.CourseRepository.
+type fakeCourseRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.Course
+}
+
+func newFakeCourseRepository() *fakeCourseRepository {
+	return &fakeCourseRepository{byID: map[string]domain.Course{}}
+}
+
+func (f *fakeCourseRepository) Create(_ context.Context, course domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[course.ID] = course
+	return nil
+}
+
+func (f *fakeCourseRepository) GetByID(_ context.Context, id string) (domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	course, ok := f.byID[id]
+	if !ok {
+		return domain.Course{}, domain.ErrNotFound
+	}
+	return course, nil
+}
+
+func (f *fakeCourseRepository) List(_ context.Context, status *domain.CourseStatus) ([]domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Course, 0, len(f.byID))
+	for _, course := range f.byID {
+		if status != nil && course.Status != *status {
+			continue
+		}
+		result = append(result, course)
+	}
+	return result, nil
+}
+
+func (f *fakeCourseRepository) Replace(_ context.Context, course domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[course.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[course.ID] = course
+	return nil
+}
+
+func (f *fakeCourseRepository) put(course domain.Course) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[course.ID] = course
+}
+
 // fakeStudentPathRepository is a minimal in-memory ports.StudentPathRepository.
 type fakeStudentPathRepository struct {
 	mu        sync.Mutex

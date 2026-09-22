@@ -45,6 +45,7 @@ type Handler struct {
 	media       *application.MediaService
 	path        *application.LearningPathService
 	studentPath *application.StudentPathService
+	course      *application.CourseService
 	instrument  *application.InstrumentService
 	diagram     *application.DiagramService
 
@@ -66,6 +67,7 @@ func NewHandler(
 	media *application.MediaService,
 	path *application.LearningPathService,
 	studentPath *application.StudentPathService,
+	course *application.CourseService,
 	instrument *application.InstrumentService,
 	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
@@ -81,6 +83,7 @@ func NewHandler(
 		media:                 media,
 		path:                  path,
 		studentPath:           studentPath,
+		course:                course,
 		instrument:            instrument,
 		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
@@ -841,26 +844,117 @@ func (h *Handler) PublishContentNode(ctx context.Context, request generated.Publ
 
 // The following handlers cover the course catalog / self-enrollment /
 // current-path-switch HTTP surface (Course, CourseVersion, CourseEnrollment)
-// defined in the OpenAPI spec. Their application-layer services are not
-// implemented yet — each returns an error, surfaced as a 500, until that
-// work lands. Implementing generated.StrictServerInterface requires every
-// operation to have a method, even one not yet backed by real behavior.
+// defined in the OpenAPI spec. Publishing, self-enrollment, and the
+// current-path switch are not implemented yet — each of those still
+// returns an error, surfaced as a 500, until that work lands. Implementing
+// generated.StrictServerInterface requires every operation to have a
+// method, even one not yet backed by real behavior.
 var errNotYetImplemented = errors.New("this operation is defined in the API contract but not yet implemented")
 
-func (h *Handler) ListCourses(context.Context, generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListCourses401JSONResponse(unauthorizedError()), nil
+	}
+
+	var status *domain.CourseStatus
+	if request.Params.Status != nil {
+		s := domain.CourseStatus(*request.Params.Status)
+		status = &s
+	}
+
+	courses, err := h.course.ListCourses(ctx, caller, status)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListCourses200JSONResponse(toCourseCatalogEntries(courses, caller)), nil
 }
 
-func (h *Handler) CreateCourse(context.Context, generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.CreateCourse(ctx, caller, request.Body.Title, request.Body.Summary,
+		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateCourse403JSONResponse(forbiddenError("only teachers and admins may create courses")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateCourse201JSONResponse(toCourse(course)), nil
 }
 
-func (h *Handler) GetCourse(context.Context, generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.GetCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.GetCourse403JSONResponse(forbiddenError("only teachers and admins may view a course's live state")), nil
+		case errKindNotFound:
+			return generated.GetCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.GetCourse200JSONResponse(toCourse(course)), nil
 }
 
-func (h *Handler) ReplaceCourse(context.Context, generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), request.Body.Title, request.Body.Summary,
+		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ReplaceCourse403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this course")), nil
+		case errKindNotFound:
+			return generated.ReplaceCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.ReplaceCourse200JSONResponse(toCourse(course)), nil
 }
 
 func (h *Handler) PublishCourse(context.Context, generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {

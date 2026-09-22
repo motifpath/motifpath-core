@@ -242,6 +242,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
 	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
+	courseRepo := repo.NewEntCourseRepository(entClient)
 	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
 	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
@@ -263,11 +264,12 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
+	courseService := application.NewCourseService(pathRepo, courseRepo, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, newID)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
-		instrumentService, diagramService, learningGraphPinger, completionReader), nil
+		courseService, instrumentService, diagramService, learningGraphPinger, completionReader), nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go
