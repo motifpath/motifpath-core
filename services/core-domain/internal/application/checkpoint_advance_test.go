@@ -152,7 +152,7 @@ func TestStudentPathService_ChecksCheckpointCompletionOnRead(t *testing.T) {
 		assert.Equal(t, 1, *view.CourseCheckpointPosition)
 	})
 
-	t.Run("completing the last checkpoint's items completes the course, clears the current pointer, and GetMyPath now reports no current path", func(t *testing.T) {
+	t.Run("completing the last checkpoint's items completes the course: the triggering GetMyPath reports course_completed with the finished checkpoint's items, clears the current pointer, and every later GetMyPath reports no current path", func(t *testing.T) {
 		f := newCheckpointAdvanceFixtures()
 		seedActiveCheckpoint1(f)
 		f.completion.set("student-1", "node-01", domain.CompletionStatusCompleted)
@@ -161,9 +161,13 @@ func TestStudentPathService_ChecksCheckpointCompletionOnRead(t *testing.T) {
 		require.NoError(t, err)
 		f.completion.set("student-1", "node-02", domain.CompletionStatusCompleted)
 
-		_, err = svc.GetMyPath(context.Background(), studentCaller())
+		view, err := svc.GetMyPath(context.Background(), studentCaller())
 
-		assert.ErrorIs(t, err, domain.ErrNotFound)
+		require.NoError(t, err)
+		assert.True(t, view.CourseCompleted)
+		require.Len(t, view.Items, 1)
+		assert.Equal(t, "node-02", view.Items[0].ContentNodeID)
+		assert.Equal(t, domain.CompletionStatusCompleted, view.Items[0].Status)
 		enrollment, err := f.enrollments.GetByID(context.Background(), "enrollment-1")
 		require.NoError(t, err)
 		assert.Equal(t, domain.CourseEnrollmentStatusCompleted, enrollment.Status)
@@ -172,6 +176,10 @@ func TestStudentPathService_ChecksCheckpointCompletionOnRead(t *testing.T) {
 		state, err := f.state.GetByStudentID(context.Background(), "student-1")
 		require.NoError(t, err)
 		assert.False(t, state.HasCurrent())
+
+		_, err = svc.GetMyPath(context.Background(), studentCaller())
+
+		assert.ErrorIs(t, err, domain.ErrNotFound, "a read after the triggering one finds no current path, and never re-signals completion")
 	})
 
 	t.Run("SetCurrentPath discovers the same checkpoint advance when switching onto the course", func(t *testing.T) {

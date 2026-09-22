@@ -433,6 +433,7 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 		CurrentPosition:          v.CurrentPosition,
 		Items:                    items,
 		CourseCheckpointPosition: v.CourseCheckpointPosition,
+		CourseCompleted:          v.CourseCompleted,
 	}
 	if v.CourseEnrollmentID != nil {
 		id := mustUUID(*v.CourseEnrollmentID)

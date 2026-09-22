@@ -48,7 +48,6 @@ const (
 // Defines values for ContentNodeContentType.
 const (
 	ContentNodeContentTypeArticle ContentNodeContentType = "article"
-	ContentNodeContentTypeDiagram ContentNodeContentType = "diagram"
 	ContentNodeContentTypeVideo   ContentNodeContentType = "video"
 )
 
@@ -119,7 +118,6 @@ const (
 // Defines values for CreateContentNodeRequestContentType.
 const (
 	CreateContentNodeRequestContentTypeArticle CreateContentNodeRequestContentType = "article"
-	CreateContentNodeRequestContentTypeDiagram CreateContentNodeRequestContentType = "diagram"
 	CreateContentNodeRequestContentTypeVideo   CreateContentNodeRequestContentType = "video"
 )
 
@@ -143,6 +141,7 @@ const (
 
 // Defines values for CreateExpandedContentRequestContentType.
 const (
+	CreateExpandedContentRequestContentTypeDiagram  CreateExpandedContentRequestContentType = "diagram"
 	CreateExpandedContentRequestContentTypeGif      CreateExpandedContentRequestContentType = "gif"
 	CreateExpandedContentRequestContentTypeImage    CreateExpandedContentRequestContentType = "image"
 	CreateExpandedContentRequestContentTypeRichText CreateExpandedContentRequestContentType = "rich_text"
@@ -183,6 +182,7 @@ const (
 
 // Defines values for ExpandedContentContentType.
 const (
+	ExpandedContentContentTypeDiagram  ExpandedContentContentType = "diagram"
 	ExpandedContentContentTypeGif      ExpandedContentContentType = "gif"
 	ExpandedContentContentTypeImage    ExpandedContentContentType = "image"
 	ExpandedContentContentTypeRichText ExpandedContentContentType = "rich_text"
@@ -209,7 +209,6 @@ const (
 // Defines values for LearningPathItemContentType.
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
-	LearningPathItemContentTypeDiagram LearningPathItemContentType = "diagram"
 	LearningPathItemContentTypeVideo   LearningPathItemContentType = "video"
 )
 
@@ -238,6 +237,7 @@ const (
 const (
 	PromptNodeTypeAudio       PromptNodeType = "audio"
 	PromptNodeTypeBulletList  PromptNodeType = "bulletList"
+	PromptNodeTypeDiagram     PromptNodeType = "diagram"
 	PromptNodeTypeHeading     PromptNodeType = "heading"
 	PromptNodeTypeImage       PromptNodeType = "image"
 	PromptNodeTypeListItem    PromptNodeType = "listItem"
@@ -269,7 +269,6 @@ const (
 // Defines values for StudentPathItemContentType.
 const (
 	StudentPathItemContentTypeArticle StudentPathItemContentType = "article"
-	StudentPathItemContentTypeDiagram StudentPathItemContentType = "diagram"
 	StudentPathItemContentTypeVideo   StudentPathItemContentType = "video"
 )
 
@@ -283,9 +282,10 @@ const (
 
 // Defines values for UpdateExpandedContentRequestContentType.
 const (
-	Gif      UpdateExpandedContentRequestContentType = "gif"
-	Image    UpdateExpandedContentRequestContentType = "image"
-	RichText UpdateExpandedContentRequestContentType = "rich_text"
+	UpdateExpandedContentRequestContentTypeDiagram  UpdateExpandedContentRequestContentType = "diagram"
+	UpdateExpandedContentRequestContentTypeGif      UpdateExpandedContentRequestContentType = "gif"
+	UpdateExpandedContentRequestContentTypeImage    UpdateExpandedContentRequestContentType = "image"
+	UpdateExpandedContentRequestContentTypeRichText UpdateExpandedContentRequestContentType = "rich_text"
 )
 
 // Defines values for UserProfileRole.
@@ -297,9 +297,8 @@ const (
 
 // Defines values for ListContentNodesParamsContentType.
 const (
-	ListContentNodesParamsContentTypeArticle ListContentNodesParamsContentType = "article"
-	ListContentNodesParamsContentTypeDiagram ListContentNodesParamsContentType = "diagram"
-	ListContentNodesParamsContentTypeVideo   ListContentNodesParamsContentType = "video"
+	Article ListContentNodesParamsContentType = "article"
+	Video   ListContentNodesParamsContentType = "video"
 )
 
 // Defines values for ListContentNodesParamsDifficultyLevel.
@@ -479,19 +478,6 @@ type ContentNode struct {
 	// CreatedAt Timestamp at which the content node was created.
 	CreatedAt time.Time `json:"created_at"`
 
-	// DiagramRef A usage of one Diagram — its render config, never a stored variant
-	// of the diagram itself. The same Diagram can be pointed at by any
-	// number of DiagramRefs with different configs.
-	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
-
-	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
-	// overlaid on its relative major, at the same fretboard position.
-	// Painted in array order; later entries render on top of earlier
-	// ones. Every entry must reference a Diagram on the same instrument —
-	// stacking diagrams from different instruments is rejected, since
-	// there is no shared coordinate space to composite into.
-	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
-
 	// Languages The language(s) this content node is available in, or a single
 	// "any" entry for language-agnostic content. A student whose locale
 	// matches none of these (and "any" is absent) sees this node
@@ -544,19 +530,6 @@ type ContentNodeVersion struct {
 
 	// ContentNodeId The content node this version belongs to.
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
-
-	// DiagramRefSnapshot A usage of one Diagram — its render config, never a stored variant
-	// of the diagram itself. The same Diagram can be pointed at by any
-	// number of DiagramRefs with different configs.
-	DiagramRefSnapshot *DiagramRef `json:"diagram_ref_snapshot,omitempty"`
-
-	// DiagramStackRefSnapshot Two or more DiagramRefs composited into one view — e.g. a scale
-	// overlaid on its relative major, at the same fretboard position.
-	// Painted in array order; later entries render on top of earlier
-	// ones. Every entry must reference a Diagram on the same instrument —
-	// stacking diagrams from different instruments is rejected, since
-	// there is no shared coordinate space to composite into.
-	DiagramStackRefSnapshot *DiagramStackRef `json:"diagram_stack_ref_snapshot,omitempty"`
 
 	// LanguagesSnapshot The node's available languages at the moment of publishing.
 	LanguagesSnapshot []Language `json:"languages_snapshot"`
@@ -860,21 +833,10 @@ type CreateContentNodeRequest struct {
 	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
-	// ContentType The media format of this content node.
+	// ContentType The media format of this content node. A diagram is not a
+	// content_type of its own — embed one inline in rich_content via a
+	// PromptNode, or attach it via ExpandedContent, on either type.
 	ContentType CreateContentNodeRequestContentType `json:"content_type"`
-
-	// DiagramRef A usage of one Diagram — its render config, never a stored variant
-	// of the diagram itself. The same Diagram can be pointed at by any
-	// number of DiagramRefs with different configs.
-	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
-
-	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
-	// overlaid on its relative major, at the same fretboard position.
-	// Painted in array order; later entries render on top of earlier
-	// ones. Every entry must reference a Diagram on the same instrument —
-	// stacking diagrams from different instruments is rejected, since
-	// there is no shared coordinate space to composite into.
-	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
 	// LanguageCodes One or more Language.code values this content node is available
 	// in. A single-element array containing "any" marks the content as
@@ -886,7 +848,7 @@ type CreateContentNodeRequest struct {
 
 	// MediaUrl The video file or embeddable video URL students watch. Required
 	// when content_type is video; must be absent when content_type is
-	// article or diagram.
+	// article.
 	// Must be an absolute http or https URL; any other scheme, or a
 	// value that is not a URL at all, is rejected.
 	MediaUrl *string `json:"media_url,omitempty"`
@@ -907,7 +869,9 @@ type CreateContentNodeRequest struct {
 	Title string `json:"title"`
 }
 
-// CreateContentNodeRequestContentType The media format of this content node.
+// CreateContentNodeRequestContentType The media format of this content node. A diagram is not a
+// content_type of its own — embed one inline in rich_content via a
+// PromptNode, or attach it via ExpandedContent, on either type.
 type CreateContentNodeRequestContentType string
 
 // CreateCourseEnrollmentRequest Payload for self-enrolling in a course.
@@ -1071,9 +1035,23 @@ type CreateExpandedContentRequest struct {
 	Caption *string `json:"caption,omitempty"`
 
 	// ContentType The format of the expanded content item. image and gif require
-	// media_url; rich_text requires rich_content instead — the two
-	// are mutually exclusive.
+	// media_url; rich_text requires rich_content instead; diagram
+	// requires diagram_ref or diagram_stack_ref instead — each is
+	// mutually exclusive with the others.
 	ContentType CreateExpandedContentRequestContentType `json:"content_type"`
+
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
 	// DurationMs Article nodes only. How long to display this item in milliseconds
 	// after it is triggered. Must be absent for video nodes.
@@ -1085,13 +1063,13 @@ type CreateExpandedContentRequest struct {
 	HideAtSeconds *int `json:"hide_at_seconds,omitempty"`
 
 	// MediaUrl External URL of the image or GIF to display. Required when
-	// content_type is image or gif; must be absent when content_type
-	// is rich_text.
+	// content_type is image or gif; must be absent otherwise.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent Rich content authored with the Tiptap-based content editor,
-	// which may embed video or audio alongside text and images —
-	// no separate video/audio content_type is needed. Required when
+	// which may embed video, audio, or a diagram alongside text and
+	// images — no separate video/audio/diagram content_type is
+	// needed for an *inline* embed (see PromptNode). Required when
 	// content_type is rich_text; must be absent otherwise.
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
@@ -1105,8 +1083,9 @@ type CreateExpandedContentRequest struct {
 }
 
 // CreateExpandedContentRequestContentType The format of the expanded content item. image and gif require
-// media_url; rich_text requires rich_content instead — the two
-// are mutually exclusive.
+// media_url; rich_text requires rich_content instead; diagram
+// requires diagram_ref or diagram_stack_ref instead — each is
+// mutually exclusive with the others.
 type CreateExpandedContentRequestContentType string
 
 // CreateInstrumentRequest Payload for creating a new instrument. There is no update or delete
@@ -1309,8 +1288,8 @@ type DiagramRef struct {
 	// positions (after layers.subset filtering) are correct answers.
 	// Meaningful, and required, only when this diagram_ref is an
 	// Exercise's image_recognition stimulus (see Exercise.diagram_ref)
-	// — ignored when used as a ContentNode body or as an image_choice
-	// Option's own diagram_ref.
+	// — ignored when used inline via a PromptNode, attached via
+	// ExpandedContent, or as an image_choice Option's own diagram_ref.
 	CorrectIntervals *[]string `json:"correct_intervals"`
 
 	// DiagramId The diagram this ref points at. Must reference an existing diagram.
@@ -1469,8 +1448,8 @@ type Exercise struct {
 // ExerciseExerciseType The type of practice interaction.
 type ExerciseExerciseType string
 
-// ExpandedContent An expositive item (image, GIF, or rich content) attached to a
-// content node and shown to the student at a specific point during
+// ExpandedContent An expositive item (image, GIF, rich content, or diagram) attached to
+// a content node and shown to the student at a specific point during
 // content consumption. For video nodes the item is synced to the
 // video timeline; for article nodes it is triggered by paragraph
 // position.
@@ -1482,11 +1461,25 @@ type ExpandedContent struct {
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
 
 	// ContentType The format of this item. image and gif carry media_url;
-	// rich_text carries rich_content instead.
+	// rich_text carries rich_content instead; diagram carries
+	// diagram_ref or diagram_stack_ref instead.
 	ContentType ExpandedContentContentType `json:"content_type"`
 
 	// CreatedAt Timestamp at which this expanded content item was created.
 	CreatedAt time.Time `json:"created_at"`
+
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
 	// DurationMs Article nodes only. Display duration in milliseconds.
 	DurationMs *int `json:"duration_ms,omitempty"`
@@ -1501,8 +1494,8 @@ type ExpandedContent struct {
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent Rich content authored with the Tiptap-based content editor,
-	// which may embed video or audio. Present only when content_type
-	// is rich_text.
+	// which may embed video, audio, or a diagram. Present only when
+	// content_type is rich_text.
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
 	// TriggerAtParagraph Article nodes only. 1-based paragraph index at which this item is shown.
@@ -1513,7 +1506,8 @@ type ExpandedContent struct {
 }
 
 // ExpandedContentContentType The format of this item. image and gif carry media_url;
-// rich_text carries rich_content instead.
+// rich_text carries rich_content instead; diagram carries
+// diagram_ref or diagram_stack_ref instead.
 type ExpandedContentContentType string
 
 // ForbiddenError Returned when the authenticated user lacks permission for the requested operation.
@@ -1807,9 +1801,11 @@ type PromptMarkType string
 // content; the text node is a leaf that carries the literal string
 // under text and any inline marks under marks. attrs holds
 // type-specific attributes (e.g. heading's level, paragraph/heading's
-// text alignment, image's src and alt, audio/video's src, table
-// cell's colspan, rowspan, backgroundColor, and borderColor) and is
-// validated by the authoring editor, not by this schema.
+// text alignment, image's src and alt, audio/video's src, diagram's
+// diagram_ref or diagram_stack_ref (the same shapes DiagramRef/
+// DiagramStackRef carry elsewhere in this spec), table cell's colspan,
+// rowspan, backgroundColor, and borderColor) and is validated by the
+// authoring editor, not by this schema.
 type PromptNode struct {
 	// Attrs Type-specific attributes for this node. Absent when the node
 	// type has none set.
@@ -1826,17 +1822,21 @@ type PromptNode struct {
 	// Text The literal text content. Present only when type is text.
 	Text *string `json:"text,omitempty"`
 
-	// Type The kind of node this is. audio and video are available to
-	// rich_text expanded content and remediation content; the
-	// exercise-prompt authoring toolbar does not offer them, so they
-	// do not appear in a PromptDocument used as an exercise's prompt.
+	// Type The kind of node this is. audio, video, and diagram are
+	// available to rich_text expanded content and remediation
+	// content; the exercise-prompt authoring toolbar does not offer
+	// audio/video, but does offer diagram — a diagram can be embedded
+	// inline in any PromptDocument, including an exercise's own
+	// prompt.
 	Type PromptNodeType `json:"type"`
 }
 
-// PromptNodeType The kind of node this is. audio and video are available to
-// rich_text expanded content and remediation content; the
-// exercise-prompt authoring toolbar does not offer them, so they
-// do not appear in a PromptDocument used as an exercise's prompt.
+// PromptNodeType The kind of node this is. audio, video, and diagram are
+// available to rich_text expanded content and remediation
+// content; the exercise-prompt authoring toolbar does not offer
+// audio/video, but does offer diagram — a diagram can be embedded
+// inline in any PromptDocument, including an exercise's own
+// prompt.
 type PromptNodeType string
 
 // RegisterUserRequest Payload for registering a new MotifPath user.
@@ -2031,6 +2031,9 @@ type StudentPathView struct {
 	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with course_enrollment_id.
 	CourseCheckpointPosition *int `json:"course_checkpoint_position"`
 
+	// CourseCompleted True when this response reflects the checkpoint that just completed the student's course — every item shown here is complete, the request that returned this view was the one that discovered it, and the student's current course/path pointer has already been cleared as a result. Always false for a standalone path, and false on every subsequent read (the pointer is null afterward, so there is nothing left to return this flag on). The client should treat true as a one-time signal to show course completion, not a recheckable status field.
+	CourseCompleted bool `json:"course_completed"`
+
 	// CourseEnrollmentId The CourseEnrollment this is a checkpoint of, or null when the caller's current path is a standalone path. Set together with course_checkpoint_position.
 	CourseEnrollmentId *openapi_types.UUID `json:"course_enrollment_id"`
 
@@ -2100,19 +2103,6 @@ type UpdateContentNodeRequest struct {
 	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
-	// DiagramRef A usage of one Diagram — its render config, never a stored variant
-	// of the diagram itself. The same Diagram can be pointed at by any
-	// number of DiagramRefs with different configs.
-	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
-
-	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
-	// overlaid on its relative major, at the same fretboard position.
-	// Painted in array order; later entries render on top of earlier
-	// ones. Every entry must reference a Diagram on the same instrument —
-	// stacking diagrams from different instruments is rejected, since
-	// there is no shared coordinate space to composite into.
-	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
-
 	// LanguageCodes One or more Language.code values this content node is available
 	// in, replacing its current set. A single-element array containing
 	// "any" marks the content as language-agnostic; "any" cannot be
@@ -2122,7 +2112,7 @@ type UpdateContentNodeRequest struct {
 
 	// MediaUrl The video file or embeddable video URL students watch, replacing
 	// the current value. Required when the content node's content_type
-	// is video; must be absent when it is article or diagram.
+	// is video; must be absent when it is article.
 	// Must be an absolute http or https URL; any other scheme, or a
 	// value that is not a URL at all, is rejected.
 	MediaUrl *string `json:"media_url,omitempty"`
@@ -2249,14 +2239,28 @@ type UpdateExerciseRequest struct {
 // content node's type (seconds-based for video, paragraph-based for
 // article) — the parent content node's own type cannot change, so
 // which trigger group is valid is unchanged by this update. The
-// item's own content_type (image/gif/rich_text) may change.
+// item's own content_type (image/gif/rich_text/diagram) may change.
 type UpdateExpandedContentRequest struct {
 	// Caption Optional caption displayed alongside the item.
 	Caption *string `json:"caption,omitempty"`
 
 	// ContentType The format of the expanded content item. image and gif require
-	// media_url; rich_text requires rich_content instead.
+	// media_url; rich_text requires rich_content instead; diagram
+	// requires diagram_ref or diagram_stack_ref instead.
 	ContentType UpdateExpandedContentRequestContentType `json:"content_type"`
+
+	// DiagramRef A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
 	// DurationMs Article nodes only. Must be absent for video nodes.
 	DurationMs *int `json:"duration_ms,omitempty"`
@@ -2266,8 +2270,7 @@ type UpdateExpandedContentRequest struct {
 	HideAtSeconds *int `json:"hide_at_seconds,omitempty"`
 
 	// MediaUrl External URL of the image or GIF to display. Required when
-	// content_type is image or gif; must be absent when content_type
-	// is rich_text.
+	// content_type is image or gif; must be absent otherwise.
 	MediaUrl *string `json:"media_url,omitempty"`
 
 	// RichContent Rich content authored with the Tiptap-based content editor.
@@ -2283,7 +2286,8 @@ type UpdateExpandedContentRequest struct {
 }
 
 // UpdateExpandedContentRequestContentType The format of the expanded content item. image and gif require
-// media_url; rich_text requires rich_content instead.
+// media_url; rich_text requires rich_content instead; diagram
+// requires diagram_ref or diagram_stack_ref instead.
 type UpdateExpandedContentRequestContentType string
 
 // UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
@@ -2603,6 +2607,9 @@ type ServerInterface interface {
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(w http.ResponseWriter, r *http.Request)
+	// Delete a learning path template
+	// (DELETE /learning-paths/{learning_path_id})
+	DeleteLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
@@ -2909,6 +2916,12 @@ func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request)
 // Create a learning path
 // (POST /learning-paths)
 func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete a learning path template
+// (DELETE /learning-paths/{learning_path_id})
+func (_ Unimplemented) DeleteLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4290,6 +4303,37 @@ func (siw *ServerInterfaceWrapper) CreateLearningPath(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteLearningPath operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLearningPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learning_path_id" -------------
+	var learningPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learning_path_id", chi.URLParam(r, "learning_path_id"), &learningPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learning_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) GetLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -4945,6 +4989,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/learning-paths", wrapper.CreateLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.DeleteLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.GetLearningPath)
@@ -6734,6 +6781,58 @@ func (response CreateLearningPath403JSONResponse) VisitCreateLearningPathRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type DeleteLearningPathRequestObject struct {
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+}
+
+type DeleteLearningPathResponseObject interface {
+	VisitDeleteLearningPathResponse(w http.ResponseWriter) error
+}
+
+type DeleteLearningPath204Response struct {
+}
+
+func (response DeleteLearningPath204Response) VisitDeleteLearningPathResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteLearningPath401JSONResponse UnauthorizedError
+
+func (response DeleteLearningPath401JSONResponse) VisitDeleteLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteLearningPath403JSONResponse ForbiddenError
+
+func (response DeleteLearningPath403JSONResponse) VisitDeleteLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteLearningPath404JSONResponse NotFoundError
+
+func (response DeleteLearningPath404JSONResponse) VisitDeleteLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteLearningPath409JSONResponse ConflictError
+
+func (response DeleteLearningPath409JSONResponse) VisitDeleteLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetLearningPathRequestObject struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
@@ -7607,6 +7706,9 @@ type StrictServerInterface interface {
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(ctx context.Context, request CreateLearningPathRequestObject) (CreateLearningPathResponseObject, error)
+	// Delete a learning path template
+	// (DELETE /learning-paths/{learning_path_id})
+	DeleteLearningPath(ctx context.Context, request DeleteLearningPathRequestObject) (DeleteLearningPathResponseObject, error)
 	// Get a learning path by ID
 	// (GET /learning-paths/{learning_path_id})
 	GetLearningPath(ctx context.Context, request GetLearningPathRequestObject) (GetLearningPathResponseObject, error)
@@ -8861,6 +8963,32 @@ func (sh *strictHandler) CreateLearningPath(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateLearningPathResponseObject); ok {
 		if err := validResponse.VisitCreateLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteLearningPath operation middleware
+func (sh *strictHandler) DeleteLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	var request DeleteLearningPathRequestObject
+
+	request.LearningPathId = learningPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteLearningPath(ctx, request.(DeleteLearningPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteLearningPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteLearningPathResponseObject); ok {
+		if err := validResponse.VisitDeleteLearningPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

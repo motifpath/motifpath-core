@@ -180,6 +180,14 @@ type StudentPathView struct {
 	// CourseCheckpointPosition is the 1-based position of this checkpoint
 	// within its course, or nil for a standalone path.
 	CourseCheckpointPosition *int
+	// CourseCompleted is true only on the specific response that discovers
+	// this checkpoint completing the student's course: every item in Items
+	// is complete, and the caller's current pointer has already been
+	// cleared as a result of this same call. Always false for a standalone
+	// path, and false again on every subsequent read — the pointer is nil
+	// afterward, so there is nothing left to signal completion on. A
+	// one-time signal, never a recheckable status.
+	CourseCompleted bool
 }
 
 // CopyTemplateForCheckpoint copies template's items into a new StudentPath
@@ -210,48 +218,54 @@ func (s *StudentPathService) CopyTemplateForCheckpoint(ctx context.Context, stud
 // resolveCurrentStudentPath returns the StudentPath the caller's current
 // pointer resolves to, plus the CourseEnrollment/checkpoint-position pair
 // when that pointer is a course enrollment (both nil for a standalone
-// path). Returns domain.ErrNotFound if caller has no current path set, or
-// if their current course enrollment has no active checkpoint (completed or
-// abandoned — GetMyPath/SetCurrentPath have nothing resolvable to show in
-// that case).
+// path), plus whether this call is the one that just discovered the
+// course completing. Returns domain.ErrNotFound if caller has no current
+// path set, or if their current course enrollment has no active checkpoint
+// (completed or abandoned on a prior call — GetMyPath/SetCurrentPath have
+// nothing resolvable to show in that case).
 //
 // When the pointer is a course enrollment, this is also where checkpoint
 // completion is discovered: checkAndAdvanceCheckpoint runs against the
 // enrollment before its StudentPath is resolved, so a just-finished
-// checkpoint's items are never shown stale, and a just-finished course
-// (nothing left to advance to) is reported the same way as any other caller
-// with no current path — domain.ErrNotFound, since the pointer that would
-// have resolved anything has just been cleared.
-func (s *StudentPathService) resolveCurrentStudentPath(ctx context.Context, caller domain.User, state domain.StudentLearningState) (domain.StudentPath, *string, *int, error) {
+// checkpoint's items are never shown stale. If that call reports the course
+// itself just completed, the view is still built — from the checkpoint that
+// was active going into this call, now fully completed — with the
+// completion flag set, rather than short-circuiting to domain.ErrNotFound;
+// every subsequent call finds no active checkpoint at the guard above and
+// falls back to domain.ErrNotFound as before.
+func (s *StudentPathService) resolveCurrentStudentPath(ctx context.Context, caller domain.User, state domain.StudentLearningState) (domain.StudentPath, *string, *int, bool, error) {
 	switch {
 	case state.CurrentStandalonePathID != nil:
 		sp, err := s.studentPaths.GetByID(ctx, *state.CurrentStandalonePathID)
-		return sp, nil, nil, err
+		return sp, nil, nil, false, err
 
 	case state.CurrentCourseEnrollmentID != nil:
 		enrollment, err := s.enrollments.GetByID(ctx, *state.CurrentCourseEnrollmentID)
 		if err != nil {
-			return domain.StudentPath{}, nil, nil, err
+			return domain.StudentPath{}, nil, nil, false, err
 		}
 		if enrollment.ActiveCheckpointStudentPathID == nil {
-			return domain.StudentPath{}, nil, nil, domain.ErrNotFound
+			return domain.StudentPath{}, nil, nil, false, domain.ErrNotFound
 		}
+		triggeringCheckpointID := *enrollment.ActiveCheckpointStudentPathID
+		triggeringPosition := enrollment.ActiveCheckpointPosition
 
 		updated, _, courseCompleted, err := checkAndAdvanceCheckpoint(
 			ctx, s.completion, s.studentPaths, s.courseVersions, s.paths, s.enrollments, s.state, s, s.now, enrollment,
 		)
 		if err != nil {
-			return domain.StudentPath{}, nil, nil, err
+			return domain.StudentPath{}, nil, nil, false, err
 		}
 		if courseCompleted {
-			return domain.StudentPath{}, nil, nil, domain.ErrNotFound
+			sp, err := s.studentPaths.GetByID(ctx, triggeringCheckpointID)
+			return sp, &updated.ID, triggeringPosition, true, err
 		}
 
 		sp, err := s.studentPaths.GetByID(ctx, *updated.ActiveCheckpointStudentPathID)
-		return sp, &updated.ID, updated.ActiveCheckpointPosition, err
+		return sp, &updated.ID, updated.ActiveCheckpointPosition, false, err
 
 	default:
-		return domain.StudentPath{}, nil, nil, domain.ErrNotFound
+		return domain.StudentPath{}, nil, nil, false, domain.ErrNotFound
 	}
 }
 
@@ -267,18 +281,18 @@ func (s *StudentPathService) GetMyPath(ctx context.Context, caller domain.User) 
 		return StudentPathView{}, err
 	}
 
-	sp, courseEnrollmentID, checkpointPosition, err := s.resolveCurrentStudentPath(ctx, caller, state)
+	sp, courseEnrollmentID, checkpointPosition, courseCompleted, err := s.resolveCurrentStudentPath(ctx, caller, state)
 	if err != nil {
 		return StudentPathView{}, err
 	}
 
-	return s.composeView(ctx, caller, sp, courseEnrollmentID, checkpointPosition)
+	return s.composeView(ctx, caller, sp, courseEnrollmentID, checkpointPosition, courseCompleted)
 }
 
 // composeView builds the StudentPathView for sp — the shared "resolve
 // items, completion state, and language locks" logic GetMyPath and
 // SetCurrentPath both need.
-func (s *StudentPathService) composeView(ctx context.Context, caller domain.User, sp domain.StudentPath, courseEnrollmentID *string, checkpointPosition *int) (StudentPathView, error) {
+func (s *StudentPathService) composeView(ctx context.Context, caller domain.User, sp domain.StudentPath, courseEnrollmentID *string, checkpointPosition *int, courseCompleted bool) (StudentPathView, error) {
 	items := make([]domain.LearningPathItem, len(sp.Items))
 	versionByNode := make(map[string]string, len(sp.Items))
 	nodeIDs := make([]string, len(sp.Items))
@@ -325,6 +339,7 @@ func (s *StudentPathService) composeView(ctx context.Context, caller domain.User
 		Items:                    viewItems,
 		CourseEnrollmentID:       courseEnrollmentID,
 		CourseCheckpointPosition: checkpointPosition,
+		CourseCompleted:          courseCompleted,
 	}, nil
 }
 
