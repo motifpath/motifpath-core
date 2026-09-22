@@ -67,7 +67,7 @@ func run() error {
 	nodeRepo := repo.NewEntContentNodeRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, nil, nil, nil, nil, rand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, nil, nil, nil, nil, nil, rand.Shuffle)
 
 	teacher := domain.User{ID: "dev-tool", Role: domain.RoleTeacher}
 

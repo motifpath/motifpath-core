@@ -93,6 +93,7 @@ func run() error {
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -101,7 +102,7 @@ func run() error {
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 
@@ -317,7 +318,7 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	}
 	for _, spec := range specs {
 		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse,
-			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, spec.options, nil, nil, []string{"en"})
+			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, nil, nil, spec.options, nil, nil, []string{"en"})
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}
