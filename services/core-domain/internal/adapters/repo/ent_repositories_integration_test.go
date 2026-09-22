@@ -906,6 +906,65 @@ func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
 	assert.Equal(t, "Revised Journey", latest.TitleSnapshot)
 }
 
+// TestEntCourseVersionRepository_GetLatestByCourseIDs confirms the batched
+// lookup returns each course's highest-version_number CourseVersion (with
+// checkpoints attached), in one call rather than one round-trip per course
+// — the ListCourses catalog endpoint's only caller needs this to avoid an
+// N+1 query per page load. A course id with no published version is simply
+// absent from the result map, never an error.
+func TestEntCourseVersionRepository_GetLatestByCourseIDs(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	published := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, published))
+	require.NoError(t, repo.Create(ctx, domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: published.ID, VersionNumber: 1,
+		TitleSnapshot: "Fingerstyle Journey v1", SummarySnapshot: published.Summary, LevelSnapshot: published.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}))
+	require.NoError(t, repo.Create(ctx, domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: published.ID, VersionNumber: 2,
+		TitleSnapshot: "Fingerstyle Journey v2", SummarySnapshot: published.Summary, LevelSnapshot: published.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt.Add(time.Hour),
+		AvailableForNewEnrollments: true,
+	}))
+
+	draftOnly := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Draft Only",
+		Summary: "Never published.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, draftOnly))
+
+	result, err := repo.GetLatestByCourseIDs(ctx, []string{published.ID, draftOnly.ID})
+	require.NoError(t, err)
+
+	require.Contains(t, result, published.ID)
+	assert.Equal(t, 2, result[published.ID].VersionNumber)
+	assert.Equal(t, "Fingerstyle Journey v2", result[published.ID].TitleSnapshot)
+	require.Len(t, result[published.ID].Checkpoints, 1)
+	assert.Equal(t, path.ID, result[published.ID].Checkpoints[0].LearningPathID)
+
+	assert.NotContains(t, result, draftOnly.ID)
+}
+
 // TestEntCourseVersionRepository_IsLearningPathReferenced confirms the
 // check finds a learning path referenced by a published CourseVersion's
 // checkpoint, keeps finding it after the owning course's status changes

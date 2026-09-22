@@ -207,6 +207,36 @@ func TestCourseService_ListCourses(t *testing.T) {
 	})
 }
 
+func TestCourseService_LatestVersions(t *testing.T) {
+	t.Run("resolves every given course's latest version in one call", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		versions := newFakeCourseVersionRepository()
+		svc := newCourseService(newFakeLearningPathRepository(), courses, versions)
+
+		_, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		_, err = svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+
+		got, err := svc.LatestVersions(context.Background(), []string{"course-1", "never-published"})
+
+		require.NoError(t, err)
+		require.Contains(t, got, "course-1")
+		assert.Equal(t, 2, got["course-1"].VersionNumber)
+		assert.NotContains(t, got, "never-published")
+	})
+
+	t.Run("an empty course id list resolves to an empty map", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		got, err := svc.LatestVersions(context.Background(), nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func TestCourseService_ReplaceCourse(t *testing.T) {
 	t.Run("a teacher reorders a course's checkpoints", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()

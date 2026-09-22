@@ -190,6 +190,15 @@ func (s *CourseService) LatestVersion(ctx context.Context, id string) (domain.Co
 	return s.versions.GetLatestByCourseID(ctx, id)
 }
 
+// LatestVersions is LatestVersion batched across several courses in one
+// call — used by ListCourses to resolve every catalog entry's
+// has_unpublished_changes/latest_published_version without one round-trip
+// per course. A course id with no published version is simply absent from
+// the result map.
+func (s *CourseService) LatestVersions(ctx context.Context, ids []string) (map[string]domain.CourseVersion, error) {
+	return s.versions.GetLatestByCourseIDs(ctx, ids)
+}
+
 // CourseOutlineItem is one content node's title within a published
 // checkpoint's outline — resolved live from its LearningPath template
 // rather than from any snapshot, the same "resolve live from current

@@ -885,8 +885,20 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 		return nil, err
 	}
 
+	courseIDs := make([]string, len(courses))
+	for i, c := range courses {
+		courseIDs[i] = c.ID
+	}
+	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	entries, err := toCourseCatalogEntries(courses, caller, func(courseID string) (*domain.CourseVersion, error) {
-		return h.latestCourseVersion(ctx, courseID)
+		if v, ok := latestByCourse[courseID]; ok {
+			return &v, nil
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return nil, err

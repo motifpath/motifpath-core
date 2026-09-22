@@ -781,6 +781,26 @@ func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID 
 	return latest, nil
 }
 
+func (f *fakeCourseVersionRepo) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make(map[string]domain.CourseVersion, len(courseIDs))
+	for _, courseID := range courseIDs {
+		versions := f.byCourse[courseID]
+		if len(versions) == 0 {
+			continue
+		}
+		latest := versions[0]
+		for _, v := range versions[1:] {
+			if v.VersionNumber > latest.VersionNumber {
+				latest = v
+			}
+		}
+		result[courseID] = latest
+	}
+	return result, nil
+}
+
 func (f *fakeCourseVersionRepo) IsLearningPathReferenced(_ context.Context, learningPathID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

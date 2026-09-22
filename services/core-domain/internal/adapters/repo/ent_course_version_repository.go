@@ -105,6 +105,74 @@ func (r *EntCourseVersionRepository) GetLatestByCourseID(ctx context.Context, co
 	}, nil
 }
 
+func (r *EntCourseVersionRepository) GetLatestByCourseIDs(ctx context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
+	if len(courseIDs) == 0 {
+		return map[string]domain.CourseVersion{}, nil
+	}
+
+	parsed := make([]uuid.UUID, 0, len(courseIDs))
+	for _, id := range courseIDs {
+		p, err := uuid.Parse(id)
+		if err != nil {
+			continue
+		}
+		parsed = append(parsed, p)
+	}
+	if len(parsed) == 0 {
+		return map[string]domain.CourseVersion{}, nil
+	}
+
+	rows, err := r.client.CourseVersion.Query().
+		Where(courseversion.CourseIDIn(parsed...)).
+		Order(ent.Asc(courseversion.FieldCourseID), ent.Desc(courseversion.FieldVersionNumber)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	latestByCourse := make(map[uuid.UUID]*ent.CourseVersion, len(courseIDs))
+	versionIDs := make([]uuid.UUID, 0, len(courseIDs))
+	for _, row := range rows {
+		if _, ok := latestByCourse[row.CourseID]; ok {
+			continue
+		}
+		latestByCourse[row.CourseID] = row
+		versionIDs = append(versionIDs, row.ID)
+	}
+
+	checkpointRows, err := r.client.CourseVersionCheckpoint.Query().
+		Where(courseversioncheckpoint.CourseVersionIDIn(versionIDs...)).
+		Order(courseversioncheckpoint.ByPosition()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	checkpointsByVersion := make(map[uuid.UUID][]domain.CourseVersionCheckpoint, len(versionIDs))
+	for _, cp := range checkpointRows {
+		checkpointsByVersion[cp.CourseVersionID] = append(checkpointsByVersion[cp.CourseVersionID], domain.CourseVersionCheckpoint{
+			Position:       cp.Position,
+			LearningPathID: cp.LearningPathID.String(),
+			EffectiveTitle: cp.EffectiveTitle,
+		})
+	}
+
+	result := make(map[string]domain.CourseVersion, len(latestByCourse))
+	for courseID, row := range latestByCourse {
+		result[courseID.String()] = domain.CourseVersion{
+			ID:                         row.ID.String(),
+			CourseID:                   row.CourseID.String(),
+			VersionNumber:              row.VersionNumber,
+			TitleSnapshot:              row.TitleSnapshot,
+			SummarySnapshot:            row.SummarySnapshot,
+			LevelSnapshot:              domain.DifficultyLevel(row.LevelSnapshot),
+			Checkpoints:                checkpointsByVersion[row.ID],
+			PublishedAt:                row.PublishedAt,
+			AvailableForNewEnrollments: row.AvailableForNewEnrollments,
+		}
+	}
+	return result, nil
+}
+
 func (r *EntCourseVersionRepository) IsLearningPathReferenced(ctx context.Context, learningPathID string) (bool, error) {
 	parsed, err := uuid.Parse(learningPathID)
 	if err != nil {

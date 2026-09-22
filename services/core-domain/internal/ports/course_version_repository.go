@@ -17,6 +17,13 @@ type CourseVersionRepository interface {
 	// Returns domain.ErrNotFound if the course has never been published.
 	GetLatestByCourseID(ctx context.Context, courseID string) (domain.CourseVersion, error)
 
+	// GetLatestByCourseIDs is GetLatestByCourseID batched across several
+	// courses in one round-trip — for a catalog listing that needs every
+	// course's latest version rather than looping GetLatestByCourseID once
+	// per course. A courseID with no published version is simply absent
+	// from the result map, never an error.
+	GetLatestByCourseIDs(ctx context.Context, courseIDs []string) (map[string]domain.CourseVersion, error)
+
 	// IsLearningPathReferenced reports whether learningPathID is the
 	// template behind any checkpoint of any CourseVersion ever published —
 	// every CourseVersion row is itself a point-in-time publish snapshot,
