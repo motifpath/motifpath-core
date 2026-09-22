@@ -627,6 +627,16 @@ func (f *fakeLearningPathRepository) Replace(_ context.Context, path domain.Lear
 	return nil
 }
 
+func (f *fakeLearningPathRepository) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
 // fakeCourseRepository is a minimal in-memory ports.CourseRepository.
 type fakeCourseRepository struct {
 	mu   sync.Mutex
@@ -731,6 +741,21 @@ func (f *fakeCourseVersionRepository) GetLatestByCourseID(_ context.Context, cou
 		}
 	}
 	return latest, nil
+}
+
+func (f *fakeCourseVersionRepository) IsLearningPathReferenced(_ context.Context, learningPathID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, versions := range f.byCourse {
+		for _, v := range versions {
+			for _, cp := range v.Checkpoints {
+				if cp.LearningPathID == learningPathID {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 // fakeStudentPathRepository is a minimal in-memory ports.StudentPathRepository.

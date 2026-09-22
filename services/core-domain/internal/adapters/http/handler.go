@@ -758,6 +758,29 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path)), nil
 }
 
+func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.DeleteLearningPathRequestObject) (generated.DeleteLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.path.DeleteLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.DeleteLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.DeleteLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.DeleteLearningPath409JSONResponse(conflictError("this learning path is referenced by a checkpoint of at least one published course version")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteLearningPath204Response{}, nil
+}
+
 func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {

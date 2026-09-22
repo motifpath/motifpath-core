@@ -117,6 +117,19 @@ type world struct {
 	// following assign overwrites lastResp — needed by the "additive
 	// assign" and "editing a copy" scenarios to refer back to it.
 	priorStudentPathID string
+
+	// courseIDBySlug caches the server-generated course_id for every course
+	// seeded via a "a course ... exists ..." step, keyed by the Gherkin
+	// slug — needed because, unlike a learning path's deterministic
+	// pathID(slug), a Course's id is assigned by CourseService at create
+	// time.
+	courseIDBySlug map[string]uuid.UUID
+
+	// lastDeletedPathSlug is the slug most recently targeted by a "deletes
+	// the learning path" step, so a following "the learning path is
+	// deleted" Then step (whose DeleteLearningPath response carries no
+	// body to identify it from) knows which id to check against w.paths.
+	lastDeletedPathSlug string
 }
 
 func newWorld() *world {
@@ -146,6 +159,7 @@ func newWorld() *world {
 
 		skillIDByName:   map[string]uuid.UUID{},
 		conceptIDByName: map[string]uuid.UUID{},
+		courseIDBySlug:  map[string]uuid.UUID{},
 	}
 
 	newID := idSequence()
@@ -158,7 +172,7 @@ func newWorld() *world {
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)

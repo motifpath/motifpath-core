@@ -105,6 +105,17 @@ func (r *EntCourseVersionRepository) GetLatestByCourseID(ctx context.Context, co
 	}, nil
 }
 
+func (r *EntCourseVersionRepository) IsLearningPathReferenced(ctx context.Context, learningPathID string) (bool, error) {
+	parsed, err := uuid.Parse(learningPathID)
+	if err != nil {
+		return false, nil
+	}
+
+	return r.client.CourseVersionCheckpoint.Query().
+		Where(courseversioncheckpoint.LearningPathID(parsed)).
+		Exist(ctx)
+}
+
 // createCourseVersionCheckpoints bulk-inserts checkpoints under
 // courseVersionID within tx.
 func createCourseVersionCheckpoints(ctx context.Context, tx *ent.Tx, courseVersionID uuid.UUID, checkpoints []domain.CourseVersionCheckpoint) error {

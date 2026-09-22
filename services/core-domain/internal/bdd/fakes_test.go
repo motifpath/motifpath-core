@@ -672,6 +672,16 @@ func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath)
 	return nil
 }
 
+func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
 type fakeCourseRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.Course
@@ -769,6 +779,21 @@ func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID 
 		}
 	}
 	return latest, nil
+}
+
+func (f *fakeCourseVersionRepo) IsLearningPathReferenced(_ context.Context, learningPathID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, versions := range f.byCourse {
+		for _, v := range versions {
+			for _, cp := range v.Checkpoints {
+				if cp.LearningPathID == learningPathID {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 type fakeStudentPathRepo struct {

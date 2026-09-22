@@ -222,6 +222,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.DeleteExpandedContent403JSONResponse,
 		generated.ListLearningPaths403JSONResponse,
 		generated.ReplaceLearningPath403JSONResponse,
+		generated.DeleteLearningPath403JSONResponse,
 		generated.CreateSkill403JSONResponse,
 		generated.CreateConcept403JSONResponse,
 		generated.CreateInstrument403JSONResponse,
@@ -262,6 +263,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.UpdateExpandedContent404JSONResponse,
 		generated.DeleteExpandedContent404JSONResponse,
 		generated.ReplaceLearningPath404JSONResponse,
+		generated.DeleteLearningPath404JSONResponse,
 		generated.UpdateMyLocale404JSONResponse,
 		generated.GetDiagram404JSONResponse,
 		generated.UpdateDiagram404JSONResponse,
@@ -278,7 +280,8 @@ func (w *world) requestRefusedConflict() error {
 	case generated.RegisterUser409JSONResponse,
 		generated.LinkExerciseToChallenge409JSONResponse,
 		generated.LinkExerciseToContentNode409JSONResponse,
-		generated.ArchiveStandaloneStudentPath409JSONResponse:
+		generated.ArchiveStandaloneStudentPath409JSONResponse,
+		generated.DeleteLearningPath409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -320,6 +323,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.DeleteExpandedContent401JSONResponse,
 		generated.ListLearningPaths401JSONResponse,
 		generated.ReplaceLearningPath401JSONResponse,
+		generated.DeleteLearningPath401JSONResponse,
 		generated.UpdateMyLocale401JSONResponse,
 		generated.ListSkills401JSONResponse,
 		generated.CreateSkill401JSONResponse,

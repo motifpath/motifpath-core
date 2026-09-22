@@ -16,4 +16,13 @@ type CourseVersionRepository interface {
 	// for courseID, with its checkpoint snapshots ordered by position.
 	// Returns domain.ErrNotFound if the course has never been published.
 	GetLatestByCourseID(ctx context.Context, courseID string) (domain.CourseVersion, error)
+
+	// IsLearningPathReferenced reports whether learningPathID is the
+	// template behind any checkpoint of any CourseVersion ever published —
+	// every CourseVersion row is itself a point-in-time publish snapshot,
+	// so this never needs to consult a Course's current status: a version
+	// belonging to a since-retired course still counts, since that
+	// version's checkpoint sequence must always resolve for anyone still
+	// reading it.
+	IsLearningPathReferenced(ctx context.Context, learningPathID string) (bool, error)
 }

@@ -264,7 +264,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)

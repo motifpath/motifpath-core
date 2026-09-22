@@ -750,6 +750,33 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	assert.Equal(t, pathB, byID[pathB.ID])
 }
 
+// TestEntLearningPathRepository_Delete confirms Delete removes both the
+// LearningPath row and its LearningPathItem rows, and returns
+// domain.ErrNotFound for an id that doesn't exist — never a bare SQL
+// "no rows" error.
+func TestEntLearningPathRepository_Delete(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntLearningPathRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := domain.LearningPath{
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Week 1",
+		Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, path))
+
+	require.NoError(t, repo.Delete(ctx, path.ID))
+
+	_, err := repo.GetByID(ctx, path.ID)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+
+	err = repo.Delete(ctx, uuid.NewString())
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
 func TestEntStudentPathRepository(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -877,6 +904,61 @@ func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, latest.VersionNumber)
 	assert.Equal(t, "Revised Journey", latest.TitleSnapshot)
+}
+
+// TestEntCourseVersionRepository_IsLearningPathReferenced confirms the
+// check finds a learning path referenced by a published CourseVersion's
+// checkpoint, keeps finding it after the owning course's status changes
+// (the check only ever consults course_version_checkpoints, never joins
+// back to courses), and reports false for a path no version references.
+func TestEntCourseVersionRepository_IsLearningPathReferenced(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	referenced := seedLearningPath(t, ctx, pathRepo, node)
+	unreferenced := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: referenced.ID, EffectiveTitle: referenced.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, course))
+
+	got, err := repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.False(t, got, "a checkpoint on the live draft alone (no published CourseVersion yet) must not count")
+
+	v1 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 1,
+		TitleSnapshot: course.Title, SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: referenced.ID, EffectiveTitle: referenced.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	got, err = repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.True(t, got)
+
+	got, err = repo.IsLearningPathReferenced(ctx, unreferenced.ID)
+	require.NoError(t, err)
+	assert.False(t, got)
+
+	// Retiring the course never touches its published CourseVersion or
+	// checkpoint rows — the reference (and the guard) must survive it.
+	require.NoError(t, courseRepo.UpdateStatus(ctx, course.ID, domain.CourseStatusRetired))
+
+	got, err = repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.True(t, got, "a version belonging to a since-retired course still counts")
 }
 
 func TestEntCourseRepository_UpdateStatus(t *testing.T) {

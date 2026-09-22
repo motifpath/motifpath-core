@@ -97,7 +97,7 @@ func run() error {
 	now := func() time.Time { return time.Now().UTC() }
 
 	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, newID, now)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle)
