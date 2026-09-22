@@ -226,7 +226,9 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateConcept403JSONResponse,
 		generated.CreateInstrument403JSONResponse,
 		generated.CreateDiagram403JSONResponse,
-		generated.UpdateDiagram403JSONResponse:
+		generated.UpdateDiagram403JSONResponse,
+		generated.PublishContentNode403JSONResponse,
+		generated.ArchiveStandaloneStudentPath403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -262,7 +264,9 @@ func (w *world) requestRefusedNotFound() error {
 		generated.ReplaceLearningPath404JSONResponse,
 		generated.UpdateMyLocale404JSONResponse,
 		generated.GetDiagram404JSONResponse,
-		generated.UpdateDiagram404JSONResponse:
+		generated.UpdateDiagram404JSONResponse,
+		generated.PublishContentNode404JSONResponse,
+		generated.ArchiveStandaloneStudentPath404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -273,7 +277,8 @@ func (w *world) requestRefusedConflict() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser409JSONResponse,
 		generated.LinkExerciseToChallenge409JSONResponse,
-		generated.LinkExerciseToContentNode409JSONResponse:
+		generated.LinkExerciseToContentNode409JSONResponse,
+		generated.ArchiveStandaloneStudentPath409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -325,7 +330,9 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListDiagrams401JSONResponse,
 		generated.CreateDiagram401JSONResponse,
 		generated.GetDiagram401JSONResponse,
-		generated.UpdateDiagram401JSONResponse:
+		generated.UpdateDiagram401JSONResponse,
+		generated.PublishContentNode401JSONResponse,
+		generated.ArchiveStandaloneStudentPath401JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 401 response, got %#v (err=%v)", w.lastResp, w.lastErr)

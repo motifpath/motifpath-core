@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cucumber/godog"
@@ -15,6 +16,8 @@ import (
 func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)", "([^"]+)"$`, w.putLearningPathThreeItems)
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)"$`, w.putLearningPathTwoItems)
+	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)"$`, w.putLearningPathOneItem)
+	sc.Step(`^a second learning path "([^"]+)" exists with items "([^"]+)"$`, w.putLearningPathOneItem)
 	sc.Step(`^a learning path "([^"]+)" exists with "([^"]+)" and "([^"]+)" in section "([^"]+)" and "([^"]+)" in section "([^"]+)"$`, w.putLearningPathThreeItemsWithSections)
 	sc.Step(`^a learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
 	sc.Step(`^a second learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
@@ -187,11 +190,42 @@ type pathItemSpec struct {
 	sectionLabel string
 }
 
+// autoPublishNode seeds a version 1 ContentNodeVersion for the content node
+// slug, unless one already exists. A learning path "exists in the system"
+// ready to be assigned implies its items' content nodes are already
+// published — assigning refuses any path whose content node has never
+// been published (content-node-versioning.feature), so every
+// putLearningPath* helper here publishes each item's node by default.
+// Scenarios that specifically need an unpublished node instead seed it
+// directly via putContentNode (never through these helpers).
+func (w *world) autoPublishNode(slug string) {
+	ctx := context.Background()
+	node, err := w.nodes.GetByID(ctx, nodeID(slug).String())
+	if err != nil {
+		return
+	}
+	if _, err := w.versions.GetLatestByContentNodeID(ctx, node.ID); err == nil {
+		return
+	}
+	_ = w.versions.Create(ctx, domain.ContentNodeVersion{
+		ID:            deterministicUUID("content-node-version", slug, "1").String(),
+		ContentNodeID: node.ID,
+		VersionNumber: 1,
+		Title:         node.Title,
+		ContentType:   node.ContentType,
+		MediaURL:      node.MediaURL,
+		RichContent:   node.RichContent,
+		PublishedBy:   node.TeacherID,
+		PublishedAt:   fixedNow,
+	})
+}
+
 func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	for _, n := range []string{n1, n2, n3} {
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
@@ -207,11 +241,32 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	return nil
 }
 
+// putLearningPathOneItem deliberately does NOT auto-publish its item's
+// content node (unlike the multi-item variants below) — every scenario
+// that uses the single-item form is in content-node-versioning.feature,
+// which manages publishing explicitly itself as the thing under test.
+func (w *world) putLearningPathOneItem(slug, n1 string) error {
+	if err := w.putContentNode(n1, domain.ContentTypeVideo); err != nil {
+		return err
+	}
+	w.paths.put(domain.LearningPath{
+		ID:        pathID(slug).String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
+		Title:     slug,
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
+		},
+		CreatedAt: fixedNow,
+	})
+	return nil
+}
+
 func (w *world) putLearningPathTwoItems(slug, n1, n2 string) error {
 	for _, n := range []string{n1, n2} {
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
@@ -234,6 +289,7 @@ func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 		items[i] = domain.LearningPathItem{
 			Position:      i + 1,
 			ContentNodeID: nodeID(n).String(),
@@ -256,6 +312,7 @@ func (w *world) putLearningPathDefault(slug string) error {
 	if err := w.putContentNode("default-node-for-"+slug, domain.ContentTypeVideo); err != nil {
 		return err
 	}
+	w.autoPublishNode("default-node-for-" + slug)
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
 		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),

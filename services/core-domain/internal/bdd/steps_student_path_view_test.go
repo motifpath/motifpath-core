@@ -3,21 +3,25 @@
 package bdd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cucumber/godog"
 
+	appHTTP "github.com/motifpath/core-domain/internal/adapters/http"
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
 func registerStudentPathViewSteps(sc *godog.ScenarioContext, w *world) {
-	sc.Step(`^"([^"]+)" has "([^"]+)" assigned with no progress recorded$`, w.alreadyHasAssigned)
-	sc.Step(`^"([^"]+)" has "([^"]+)" assigned$`, w.alreadyHasAssigned)
+	sc.Step(`^"([^"]+)" has "([^"]+)" assigned as her current path with no progress recorded on this new copy$`, w.alreadyHasAssigned)
+	sc.Step(`^"([^"]+)" has "([^"]+)" assigned as her current path with no progress recorded$`, w.alreadyHasAssigned)
+	sc.Step(`^"([^"]+)" has "([^"]+)" assigned as her current path$`, w.alreadyHasAssigned)
 	sc.Step(`^"([^"]+)" has completed "([^"]+)"$`, w.hasCompletedNode)
+	sc.Step(`^"([^"]+)" has completed "([^"]+)" through an earlier, unrelated student path$`, w.hasCompletedNode)
 	sc.Step(`^"([^"]+)" has completed "([^"]+)", "([^"]+)", and "([^"]+)"$`, w.hasCompletedThreeNodes)
 	sc.Step(`^"([^"]+)" has started but not completed "([^"]+)"$`, w.hasStartedNode)
-	sc.Step(`^"([^"]+)" has no active path assignment$`, func(string) error { return nil })
+	sc.Step(`^"([^"]+)" has no current path set$`, func(string) error { return nil })
 
 	sc.Step(`^"([^"]+)" retrieves her current path$`, w.retrievesCurrentPath)
 	sc.Step(`^"([^"]+)" requests GET /students/me/path$`, w.retrievesCurrentPath)
@@ -25,6 +29,7 @@ func registerStudentPathViewSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the response contains all three items in order$`, w.responseContainsThreeItemsInOrder)
 	sc.Step(`^"([^"]+)" has status "([^"]+)"$`, w.nodeHasStatus)
+	sc.Step(`^"([^"]+)"'s new copy of "([^"]+)" shows status "([^"]+)"$`, w.nodeHasStatus2)
 	sc.Step(`^all three items have status "([^"]+)"$`, w.allItemsHaveStatus)
 	sc.Step(`^the current_position is (\d+)$`, w.currentPositionIs)
 	sc.Step(`^each item in the response includes a title and content_type$`, w.eachItemHasTitleAndContentType)
@@ -104,6 +109,21 @@ func (w *world) nodeHasStatus(nodeSlug, status string) error {
 		}
 	}
 	return fmt.Errorf("no item found for content node %q", nodeSlug)
+}
+
+// nodeHasStatus2 backs the content-node-versioning.feature phrasing
+// "alice"'s new copy of "node-01" shows status "completed" — unlike
+// nodeHasStatus, this assertion step is never preceded by its own explicit
+// "alice retrieves her current path" step in that feature, so it resolves
+// the view itself before delegating the same status check.
+func (w *world) nodeHasStatus2(studentName, nodeSlug, status string) error {
+	ctx := appHTTP.WithClerkUserID(context.Background(), clerkSub(studentName))
+	resp, err := w.handler.GetMyPath(ctx, generated.GetMyPathRequestObject{})
+	if err != nil {
+		return err
+	}
+	w.lastResp, w.lastErr = resp, nil
+	return w.nodeHasStatus(nodeSlug, status)
 }
 
 func (w *world) allItemsHaveStatus(status string) error {
