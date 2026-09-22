@@ -30,6 +30,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsContentNode(domain.ContentTypeArticle))
 	sc.Step(`^"([^"]+)" creates a video content node titled "([^"]+)" with media url "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsVideoContentNodeWithMediaURL)
 	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with article body "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsArticleContentNodeWithBody)
+	sc.Step(`^"([^"]+)" creates an article content node titled "([^"]+)" with article body containing an inline diagram embed of "([^"]+)", skills "([^"]+)", concepts "([^"]+)", and difficulty "([^"]+)"$`, w.createsArticleContentNodeWithDiagramEmbed)
 	sc.Step(`^"([^"]+)" submits a create video content node request with the media_url field omitted$`, w.submitsVideoWithoutMediaURL)
 	sc.Step(`^"([^"]+)" submits a create video content node request with media url "([^"]*)"$`, w.submitsVideoWithMediaURL)
 	sc.Step(`^"([^"]+)" submits a create article content node request with the rich_content field omitted$`, w.submitsArticleWithoutBody)
@@ -39,6 +40,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a create content node request with the title field omitted$`, w.submitsContentNodeMissingTitle)
 	sc.Step(`^"([^"]+)" submits a create content node request with the classification field omitted$`, w.submitsContentNodeMissingClassification)
 	sc.Step(`^"([^"]+)" submits a create content node request with difficulty level "([^"]+)"$`, w.submitsContentNodeBadDifficulty)
+	sc.Step(`^"([^"]+)" submits a create content node request with content_type "([^"]+)"$`, w.submitsContentNodeWithContentType)
 	sc.Step(`^"([^"]+)" submits a create content node request with an empty skills list$`, w.submitsContentNodeEmptySkills)
 	sc.Step(`^"([^"]+)" submits a create content node request with an empty concepts list$`, w.submitsContentNodeEmptyConcepts)
 	sc.Step(`^"([^"]+)" submits a create content node request with a skill id that does not exist$`, w.submitsContentNodeBadSkillID)
@@ -53,6 +55,7 @@ func registerContentNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the content node's media url is "([^"]+)"$`, w.contentNodeMediaURLIs)
 	sc.Step(`^the response returns the content node's title, type, and classification$`, w.contentNodeResponseComplete)
 	sc.Step(`^the content node's classification carries skills "([^"]+)"$`, w.contentNodeClassificationCarriesSkills)
+	sc.Step(`^the content node's rich content contains a diagram node$`, w.contentNodeRichContentHasDiagramNode)
 
 	sc.Step(`^an admin has confirmed the classification of content node "([^"]+)"$`, w.adminConfirmsClassification)
 
@@ -469,6 +472,44 @@ func (w *world) createsArticleContentNodeWithBody(name, title, body, skills, con
 	return w.createsContentNodeWithBody(domain.ContentTypeArticle, title, skills, concepts, difficulty, nil, &doc)
 }
 
+// diagramPromptNode builds a "diagram" PromptNode embedding diagramSlug via
+// diagramRef — the generated.PromptNode.Attrs field is a generic map
+// (validated by the authoring editor, not this schema), so the key names
+// here must match domain.PromptNodeAttrs.DiagramRef's own json tag
+// ("diagramRef", camelCase, ProseMirror's attrs convention) and
+// domain.DiagramRef's own tags (snake_case) for the generic
+// toDomainPromptDocument JSON round trip to decode it correctly.
+func diagramPromptNode(diagramSlug string) generated.PromptNode {
+	attrs := map[string]interface{}{
+		"diagramRef": map[string]interface{}{
+			"diagram_id": diagramID(diagramSlug).String(),
+			"layers":     map[string]interface{}{"intervals": true},
+		},
+	}
+	return generated.PromptNode{Type: generated.PromptNodeTypeDiagram, Attrs: &attrs}
+}
+
+func (w *world) createsArticleContentNodeWithDiagramEmbed(name, title, diagramSlug, skills, concepts, difficulty string) error {
+	doc := generated.PromptDocument{Type: generated.Doc, Content: []generated.PromptNode{diagramPromptNode(diagramSlug)}}
+	return w.createsContentNodeWithBody(domain.ContentTypeArticle, title, skills, concepts, difficulty, nil, &doc)
+}
+
+func (w *world) contentNodeRichContentHasDiagramNode() error {
+	resp, ok := w.lastResp.(generated.CreateContentNode201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.RichContent == nil {
+		return fmt.Errorf("expected rich_content to be set, got %+v", resp)
+	}
+	for _, node := range resp.RichContent.Content {
+		if node.Type == generated.PromptNodeTypeDiagram {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected rich_content to contain a diagram node, got %+v", resp.RichContent)
+}
+
 func (w *world) createsContentNodeWithBody(contentType domain.ContentType, title, skills, concepts, difficulty string, mediaURL *string, richContent *generated.PromptDocument) error {
 	resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
 		Body: &generated.CreateContentNodeRequest{
@@ -583,6 +624,27 @@ func (w *world) submitsContentNodeBadDifficulty(name, difficulty string) error {
 			ContentType:    generated.CreateContentNodeRequestContentTypeVideo,
 			MediaUrl:       defaultMediaURL(),
 			Classification: w.classificationInputFor("s", "c", difficulty),
+			LanguageCodes:  []string{"en"},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// submitsContentNodeWithContentType submits a create request with an
+// arbitrary content_type string, for scenarios proving a value outside
+// video/article (e.g. "diagram" — never a ContentNode's own content_type,
+// only ever an inline PromptNode embed within one) is rejected. The
+// generated request type only defines Video/Article constants, so an
+// out-of-enum value needs an explicit string conversion rather than one of
+// those constants.
+func (w *world) submitsContentNodeWithContentType(name, contentType string) error {
+	resp, err := w.handler.CreateContentNode(w.ctx(), generated.CreateContentNodeRequestObject{
+		Body: &generated.CreateContentNodeRequest{
+			Title:          "Title",
+			ContentType:    generated.CreateContentNodeRequestContentType(contentType),
+			MediaUrl:       defaultMediaURL(),
+			Classification: w.classificationInputFor("s", "c", "beginner"),
 			LanguageCodes:  []string{"en"},
 		},
 	})

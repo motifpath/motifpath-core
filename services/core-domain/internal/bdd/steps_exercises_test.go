@@ -20,6 +20,13 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" creates a(?:n)? (\S+) exercise titled "([^"]+)" with prompt "([^"]+)" and one correct option$`, w.createsExercise)
 	sc.Step(`^"([^"]+)" creates a(?:n)? (\S+) exercise titled "([^"]+)" with prompt "([^"]+)" and one correct option and skills "([^"]+)" and concepts "([^"]+)"$`, w.createsExerciseWithSkillsAndConcepts)
+	sc.Step(`^"([^"]+)" creates an image_recognition exercise titled "([^"]+)" with prompt "([^"]+)" from diagram "([^"]+)" showing only interval "([^"]+)" as the correct answer$`, w.createsDiagramDrivenImageRecognitionExercise)
+	sc.Step(`^"([^"]+)" creates an image_choice exercise titled "([^"]+)" with prompt "([^"]+)" and options rendered from diagrams "([^"]+)" with "([^"]+)" correct$`, w.createsDiagramChoiceExercise)
+	sc.Step(`^the exercise's options are derived from diagram "([^"]+)"$`, w.exerciseOptionsDerivedFromDiagram)
+	sc.Step(`^the exercise has (\d+) options?, one per visible root position$`, w.exerciseHasNOptions)
+	sc.Step(`^the exercise has (\d+) options$`, w.exerciseHasNOptions)
+	sc.Step(`^every option derived from the diagram is marked correct$`, w.everyExerciseOptionCorrect)
+	sc.Step(`^the option rendered from diagram "([^"]+)" is marked correct$`, w.diagramRenderedOptionIsCorrect)
 	sc.Step(`^"([^"]+)" retrieves the exercise "([^"]+)"$`, w.retrievesExercise)
 	sc.Step(`^"([^"]+)" submits a create exercise request with the title field omitted$`, w.submitsExerciseMissingTitle)
 	sc.Step(`^"([^"]+)" submits a create exercise request with the prompt field omitted$`, w.submitsExerciseMissingPrompt)
@@ -541,6 +548,114 @@ func (w *world) createsExerciseWithSkillsAndConcepts(name, exerciseType, title, 
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
+}
+
+// diagramRefWithIntervalsLayer builds a minimal generated.DiagramRef showing
+// the intervals layer for diagramSlug — Layers is an anonymous struct type
+// on generated.DiagramRef, so its zero value (rather than repeating the
+// struct's field list here) is what gives a literal of the right type.
+func diagramRefWithIntervalsLayer(diagramSlug string) generated.DiagramRef {
+	var ref generated.DiagramRef
+	ref.DiagramId = diagramID(diagramSlug)
+	ref.Layers.Intervals = true
+	return ref
+}
+
+func (w *world) createsDiagramDrivenImageRecognitionExercise(name, title, prompt, diagramSlug, correctInterval string) error {
+	ref := diagramRefWithIntervalsLayer(diagramSlug)
+	ref.Layers.Subset = &[]string{correctInterval}
+	ref.CorrectIntervals = &[]string{correctInterval}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			SkillIds: w.skillIDsFor("skill-1"), ConceptIds: w.conceptIDsFor("concept-1"),
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: generated.CreateExerciseRequestExerciseTypeImageRecognition,
+			DiagramRef:    &ref,
+			LanguageCodes: []string{"en"},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsDiagramChoiceExercise(name, title, prompt, diagramsCSV, correctSlug string) error {
+	slugs := splitCommaList(diagramsCSV)
+	options := make([]generated.Option, len(slugs))
+	for i, slug := range slugs {
+		ref := diagramRefWithIntervalsLayer(slug)
+		options[i] = generated.Option{OptionId: uuid.New(), IsCorrect: slug == correctSlug, DiagramRef: &ref}
+	}
+	resp, err := w.handler.CreateExercise(w.ctx(), generated.CreateExerciseRequestObject{
+		Body: &generated.CreateExerciseRequest{
+			SkillIds: w.skillIDsFor("skill-1"), ConceptIds: w.conceptIDsFor("concept-1"),
+			Title: title, Prompt: promptDocFor(prompt), ExerciseType: generated.CreateExerciseRequestExerciseTypeImageChoice,
+			Options:       opts(options),
+			LanguageCodes: []string{"en"},
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) exerciseOptionsDerivedFromDiagram(diagramSlug string) error {
+	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if len(resp.Options) == 0 {
+		return fmt.Errorf("expected derived options, got none")
+	}
+	want := diagramID(diagramSlug)
+	for _, opt := range resp.Options {
+		if opt.DiagramId == nil || *opt.DiagramId != want {
+			return fmt.Errorf("expected every option to carry diagram_id %s, got %+v", want, opt)
+		}
+	}
+	return nil
+}
+
+func (w *world) exerciseHasNOptions(countStr string) error {
+	count, err := parseInt(countStr)
+	if err != nil {
+		return err
+	}
+	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if len(resp.Options) != count {
+		return fmt.Errorf("expected %d options, got %d: %+v", count, len(resp.Options), resp.Options)
+	}
+	return nil
+}
+
+func (w *world) everyExerciseOptionCorrect() error {
+	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	for _, opt := range resp.Options {
+		if !opt.IsCorrect {
+			return fmt.Errorf("expected every option to be correct, got %+v", opt)
+		}
+	}
+	return nil
+}
+
+func (w *world) diagramRenderedOptionIsCorrect(diagramSlug string) error {
+	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	want := diagramID(diagramSlug)
+	for _, opt := range resp.Options {
+		if opt.DiagramRef != nil && opt.DiagramRef.DiagramId == want {
+			if !opt.IsCorrect {
+				return fmt.Errorf("expected the option rendered from diagram %s to be correct, got %+v", diagramSlug, opt)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("no option found rendered from diagram %s, got %+v", diagramSlug, resp.Options)
 }
 
 // richPromptDoc builds a generated.PromptDocument exercising a heading, a

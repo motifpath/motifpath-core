@@ -23,6 +23,12 @@ func registerExpandedContentSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" adds an image to "([^"]+)" with trigger_at_paragraph (\d+)\s+and duration_ms (\d+)$`, w.addsArticleExpandedContent(domain.ExpandedContentTypeImage))
 	sc.Step(`^"([^"]+)" adds a GIF to "([^"]+)" with trigger_at_paragraph (\d+)\s+and duration_ms (\d+)$`, w.addsArticleExpandedContent(domain.ExpandedContentTypeGif))
 	sc.Step(`^"([^"]+)" retrieves the expanded content item "([^"]+)"$`, w.retrievesExpandedContent)
+	sc.Step(`^"([^"]+)" adds diagram "([^"]+)" to "([^"]+)" with trigger_at_seconds (\d+) and hide_at_seconds (\d+)$`, w.addsDiagramExpandedContentAtSeconds)
+	sc.Step(`^"([^"]+)" adds a stack of diagrams "([^"]+)" to "([^"]+)" with trigger_at_paragraph (\d+) and duration_ms (\d+)$`, w.addsDiagramStackExpandedContentAtParagraph)
+	sc.Step(`^"([^"]+)" adds a stack of diagrams "([^"]+)" to "([^"]+)" with trigger_at_seconds (\d+) and hide_at_seconds (\d+)$`, w.addsDiagramStackExpandedContentAtSeconds)
+	sc.Step(`^the item's diagram stack has (\d+) layers$`, w.expandedContentDiagramStackHasLayers)
+	sc.Step(`^"([^"]+)" submits a create expanded content request with content_type "([^"]+)" and both diagram_ref and diagram_stack_ref omitted$`, w.submitsExpandedContentDiagramMissingRef)
+	sc.Step(`^"([^"]+)" submits a create expanded content request with content_type "([^"]+)" carrying both media_url and a diagram_ref to "([^"]+)"$`, w.submitsExpandedContentDiagramWithMediaURL)
 
 	sc.Step(`^"([^"]+)" submits a create expanded content request with the content_type field omitted$`, w.submitsExpandedContentMissingType)
 	sc.Step(`^"([^"]+)" submits a create expanded content request with the media_url field omitted$`, w.submitsExpandedContentMissingMediaURL)
@@ -185,6 +191,124 @@ func (w *world) addsRichTextExpandedContentWithVideo(name, nodeSlug, triggerStr,
 			ContentType:      generated.CreateExpandedContentRequestContentTypeRichText,
 			RichContent:      &rich,
 			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) addsDiagramExpandedContentAtSeconds(name, diagramSlug, nodeSlug, triggerStr, hideStr string) error {
+	trigger, err := parseInt(triggerStr)
+	if err != nil {
+		return err
+	}
+	hide, err := parseInt(hideStr)
+	if err != nil {
+		return err
+	}
+	ref := diagramRefWithIntervalsLayer(diagramSlug)
+	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		Body: &generated.CreateExpandedContentRequest{
+			ContentType:      generated.CreateExpandedContentRequestContentTypeDiagram,
+			DiagramRef:       &ref,
+			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// diagramStackRefFor builds a generated.DiagramStackRef showing the
+// intervals layer for every comma-separated diagram slug in diagramsCSV.
+func diagramStackRefFor(diagramsCSV string) generated.DiagramStackRef {
+	slugs := splitCommaList(diagramsCSV)
+	stack := make([]generated.DiagramRef, len(slugs))
+	for i, slug := range slugs {
+		stack[i] = diagramRefWithIntervalsLayer(slug)
+	}
+	return generated.DiagramStackRef{Stack: stack}
+}
+
+func (w *world) addsDiagramStackExpandedContentAtParagraph(name, diagramsCSV, nodeSlug, paragraphStr, durationStr string) error {
+	paragraph, err := parseInt(paragraphStr)
+	if err != nil {
+		return err
+	}
+	duration, err := parseInt(durationStr)
+	if err != nil {
+		return err
+	}
+	stack := diagramStackRefFor(diagramsCSV)
+	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		Body: &generated.CreateExpandedContentRequest{
+			ContentType:        generated.CreateExpandedContentRequestContentTypeDiagram,
+			DiagramStackRef:    &stack,
+			TriggerAtParagraph: &paragraph, DurationMs: &duration,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) addsDiagramStackExpandedContentAtSeconds(name, diagramsCSV, nodeSlug, triggerStr, hideStr string) error {
+	trigger, err := parseInt(triggerStr)
+	if err != nil {
+		return err
+	}
+	hide, err := parseInt(hideStr)
+	if err != nil {
+		return err
+	}
+	stack := diagramStackRefFor(diagramsCSV)
+	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
+		ContentNodeId: nodeID(nodeSlug),
+		Body: &generated.CreateExpandedContentRequest{
+			ContentType:      generated.CreateExpandedContentRequestContentTypeDiagram,
+			DiagramStackRef:  &stack,
+			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) expandedContentDiagramStackHasLayers(countStr string) error {
+	count, err := parseInt(countStr)
+	if err != nil {
+		return err
+	}
+	resp, ok := w.lastResp.(generated.CreateExpandedContent201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.DiagramStackRef == nil {
+		return fmt.Errorf("expected diagram_stack_ref to be set, got %+v", resp)
+	}
+	if len(resp.DiagramStackRef.Stack) != count {
+		return fmt.Errorf("expected %d stacked layers, got %d: %+v", count, len(resp.DiagramStackRef.Stack), resp.DiagramStackRef.Stack)
+	}
+	return nil
+}
+
+func (w *world) submitsExpandedContentDiagramMissingRef(name, contentType string) error {
+	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
+		ContentNodeId: nodeID(w.lastNodeSlug),
+		Body:          &generated.CreateExpandedContentRequest{ContentType: generated.CreateExpandedContentRequestContentType(contentType)},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) submitsExpandedContentDiagramWithMediaURL(name, contentType, diagramSlug string) error {
+	ref := diagramRefWithIntervalsLayer(diagramSlug)
+	resp, err := w.handler.CreateExpandedContent(w.ctx(), generated.CreateExpandedContentRequestObject{
+		ContentNodeId: nodeID(w.lastNodeSlug),
+		Body: &generated.CreateExpandedContentRequest{
+			ContentType: generated.CreateExpandedContentRequestContentType(contentType),
+			MediaUrl:    strPtr("https://cdn.example.com/media.png"),
+			DiagramRef:  &ref,
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
