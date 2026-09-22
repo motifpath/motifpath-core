@@ -241,6 +241,31 @@ var (
 			},
 		},
 	}
+	// ContentNodeVersionsColumns holds the columns for the "content_node_versions" table.
+	ContentNodeVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "content_node_id", Type: field.TypeUUID},
+		{Name: "version_number", Type: field.TypeInt},
+		{Name: "title", Type: field.TypeString},
+		{Name: "content_type", Type: field.TypeEnum, Enums: []string{"video", "article"}},
+		{Name: "media_url", Type: field.TypeString, Nullable: true},
+		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "published_by", Type: field.TypeUUID},
+		{Name: "published_at", Type: field.TypeTime},
+	}
+	// ContentNodeVersionsTable holds the schema information for the "content_node_versions" table.
+	ContentNodeVersionsTable = &schema.Table{
+		Name:       "content_node_versions",
+		Columns:    ContentNodeVersionsColumns,
+		PrimaryKey: []*schema.Column{ContentNodeVersionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "contentnodeversion_content_node_id_version_number",
+				Unique:  true,
+				Columns: []*schema.Column{ContentNodeVersionsColumns[1], ContentNodeVersionsColumns[2]},
+			},
+		},
+	}
 	// DiagramsColumns holds the columns for the "diagrams" table.
 	DiagramsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -574,20 +599,6 @@ var (
 			},
 		},
 	}
-	// PathAssignmentsColumns holds the columns for the "path_assignments" table.
-	PathAssignmentsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "student_id", Type: field.TypeUUID, Unique: true},
-		{Name: "learning_path_id", Type: field.TypeUUID},
-		{Name: "assigned_by", Type: field.TypeUUID},
-		{Name: "assigned_at", Type: field.TypeTime},
-	}
-	// PathAssignmentsTable holds the schema information for the "path_assignments" table.
-	PathAssignmentsTable = &schema.Table{
-		Name:       "path_assignments",
-		Columns:    PathAssignmentsColumns,
-		PrimaryKey: []*schema.Column{PathAssignmentsColumns[0]},
-	}
 	// PositionsColumns holds the columns for the "positions" table.
 	PositionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -641,6 +652,59 @@ var (
 			},
 		},
 	}
+	// StudentLearningStatesColumns holds the columns for the "student_learning_states" table.
+	StudentLearningStatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "student_id", Type: field.TypeUUID, Unique: true},
+		{Name: "current_course_enrollment_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "current_standalone_path_id", Type: field.TypeUUID, Nullable: true},
+	}
+	// StudentLearningStatesTable holds the schema information for the "student_learning_states" table.
+	StudentLearningStatesTable = &schema.Table{
+		Name:       "student_learning_states",
+		Columns:    StudentLearningStatesColumns,
+		PrimaryKey: []*schema.Column{StudentLearningStatesColumns[0]},
+	}
+	// StudentPathsColumns holds the columns for the "student_paths" table.
+	StudentPathsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "student_id", Type: field.TypeUUID},
+		{Name: "source_template_id", Type: field.TypeUUID},
+		{Name: "title", Type: field.TypeString},
+		{Name: "assigned_by", Type: field.TypeUUID},
+		{Name: "assigned_at", Type: field.TypeTime},
+		{Name: "archived_at", Type: field.TypeTime, Nullable: true},
+		{Name: "source_course_enrollment_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "course_checkpoint_position", Type: field.TypeInt, Nullable: true},
+	}
+	// StudentPathsTable holds the schema information for the "student_paths" table.
+	StudentPathsTable = &schema.Table{
+		Name:       "student_paths",
+		Columns:    StudentPathsColumns,
+		PrimaryKey: []*schema.Column{StudentPathsColumns[0]},
+	}
+	// StudentPathItemsColumns holds the columns for the "student_path_items" table.
+	StudentPathItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "student_path_id", Type: field.TypeUUID},
+		{Name: "content_node_id", Type: field.TypeUUID},
+		{Name: "content_node_version_id", Type: field.TypeUUID},
+		{Name: "position", Type: field.TypeInt},
+		{Name: "section_label", Type: field.TypeString, Nullable: true},
+	}
+	// StudentPathItemsTable holds the schema information for the "student_path_items" table.
+	StudentPathItemsTable = &schema.Table{
+		Name:       "student_path_items",
+		Columns:    StudentPathItemsColumns,
+		PrimaryKey: []*schema.Column{StudentPathItemsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "studentpathitem_student_path_id_position",
+				Unique:  true,
+				Columns: []*schema.Column{StudentPathItemsColumns[1], StudentPathItemsColumns[4]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -673,6 +737,7 @@ var (
 		ContentNodeExercisesTable,
 		ContentNodeLanguagesTable,
 		ContentNodeSkillsTable,
+		ContentNodeVersionsTable,
 		DiagramsTable,
 		DiagramConceptsTable,
 		DiagramSkillsTable,
@@ -686,9 +751,11 @@ var (
 		LanguagesTable,
 		LearningPathsTable,
 		LearningPathItemsTable,
-		PathAssignmentsTable,
 		PositionsTable,
 		SkillsTable,
+		StudentLearningStatesTable,
+		StudentPathsTable,
+		StudentPathItemsTable,
 		UsersTable,
 	}
 )
