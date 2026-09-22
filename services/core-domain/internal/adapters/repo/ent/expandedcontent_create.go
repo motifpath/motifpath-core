@@ -61,6 +61,34 @@ func (_c *ExpandedContentCreate) SetNillableRichContent(v *string) *ExpandedCont
 	return _c
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_c *ExpandedContentCreate) SetDiagramRef(v string) *ExpandedContentCreate {
+	_c.mutation.SetDiagramRef(v)
+	return _c
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_c *ExpandedContentCreate) SetNillableDiagramRef(v *string) *ExpandedContentCreate {
+	if v != nil {
+		_c.SetDiagramRef(*v)
+	}
+	return _c
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_c *ExpandedContentCreate) SetDiagramStackRef(v string) *ExpandedContentCreate {
+	_c.mutation.SetDiagramStackRef(v)
+	return _c
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_c *ExpandedContentCreate) SetNillableDiagramStackRef(v *string) *ExpandedContentCreate {
+	if v != nil {
+		_c.SetDiagramStackRef(*v)
+	}
+	return _c
+}
+
 // SetTriggerAtSeconds sets the "trigger_at_seconds" field.
 func (_c *ExpandedContentCreate) SetTriggerAtSeconds(v int) *ExpandedContentCreate {
 	_c.mutation.SetTriggerAtSeconds(v)
@@ -270,6 +298,14 @@ func (_c *ExpandedContentCreate) createSpec() (*ExpandedContent, *sqlgraph.Creat
 	if value, ok := _c.mutation.RichContent(); ok {
 		_spec.SetField(expandedcontent.FieldRichContent, field.TypeString, value)
 		_node.RichContent = &value
+	}
+	if value, ok := _c.mutation.DiagramRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramRef, field.TypeString, value)
+		_node.DiagramRef = &value
+	}
+	if value, ok := _c.mutation.DiagramStackRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramStackRef, field.TypeString, value)
+		_node.DiagramStackRef = &value
 	}
 	if value, ok := _c.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)

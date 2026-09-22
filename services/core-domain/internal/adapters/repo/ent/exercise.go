@@ -32,6 +32,10 @@ type Exercise struct {
 	EstimatedDurationSeconds *int `json:"estimated_duration_seconds,omitempty"`
 	// RemediationTargets holds the value of the "remediation_targets" field.
 	RemediationTargets *string `json:"remediation_targets,omitempty"`
+	// DiagramRef holds the value of the "diagram_ref" field.
+	DiagramRef *string `json:"diagram_ref,omitempty"`
+	// DiagramStackRef holds the value of the "diagram_stack_ref" field.
+	DiagramStackRef *string `json:"diagram_stack_ref,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -175,7 +179,7 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case exercise.FieldEstimatedDurationSeconds:
 			values[i] = new(sql.NullInt64)
-		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL, exercise.FieldRemediationTargets:
+		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL, exercise.FieldRemediationTargets, exercise.FieldDiagramRef, exercise.FieldDiagramStackRef:
 			values[i] = new(sql.NullString)
 		case exercise.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -247,6 +251,20 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RemediationTargets = new(string)
 				*_m.RemediationTargets = value.String
+			}
+		case exercise.FieldDiagramRef:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_ref", values[i])
+			} else if value.Valid {
+				_m.DiagramRef = new(string)
+				*_m.DiagramRef = value.String
+			}
+		case exercise.FieldDiagramStackRef:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_stack_ref", values[i])
+			} else if value.Valid {
+				_m.DiagramStackRef = new(string)
+				*_m.DiagramStackRef = value.String
 			}
 		case exercise.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -371,6 +389,16 @@ func (_m *Exercise) String() string {
 	builder.WriteString(", ")
 	if v := _m.RemediationTargets; v != nil {
 		builder.WriteString("remediation_targets=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramRef; v != nil {
+		builder.WriteString("diagram_ref=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramStackRef; v != nil {
+		builder.WriteString("diagram_stack_ref=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

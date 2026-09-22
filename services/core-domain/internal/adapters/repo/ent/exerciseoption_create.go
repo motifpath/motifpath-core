@@ -145,6 +145,48 @@ func (_c *ExerciseOptionCreate) SetNillableRegionShape(v *exerciseoption.RegionS
 	return _c
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_c *ExerciseOptionCreate) SetDiagramRef(v string) *ExerciseOptionCreate {
+	_c.mutation.SetDiagramRef(v)
+	return _c
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableDiagramRef(v *string) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetDiagramRef(*v)
+	}
+	return _c
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (_c *ExerciseOptionCreate) SetDiagramID(v uuid.UUID) *ExerciseOptionCreate {
+	_c.mutation.SetDiagramID(v)
+	return _c
+}
+
+// SetNillableDiagramID sets the "diagram_id" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableDiagramID(v *uuid.UUID) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetDiagramID(*v)
+	}
+	return _c
+}
+
+// SetDiagramPositionID sets the "diagram_position_id" field.
+func (_c *ExerciseOptionCreate) SetDiagramPositionID(v uuid.UUID) *ExerciseOptionCreate {
+	_c.mutation.SetDiagramPositionID(v)
+	return _c
+}
+
+// SetNillableDiagramPositionID sets the "diagram_position_id" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableDiagramPositionID(v *uuid.UUID) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetDiagramPositionID(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ExerciseOptionCreate) SetID(v uuid.UUID) *ExerciseOptionCreate {
 	_c.mutation.SetID(v)
@@ -291,6 +333,18 @@ func (_c *ExerciseOptionCreate) createSpec() (*ExerciseOption, *sqlgraph.CreateS
 	if value, ok := _c.mutation.RegionShape(); ok {
 		_spec.SetField(exerciseoption.FieldRegionShape, field.TypeEnum, value)
 		_node.RegionShape = &value
+	}
+	if value, ok := _c.mutation.DiagramRef(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramRef, field.TypeString, value)
+		_node.DiagramRef = &value
+	}
+	if value, ok := _c.mutation.DiagramID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramID, field.TypeUUID, value)
+		_node.DiagramID = &value
+	}
+	if value, ok := _c.mutation.DiagramPositionID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramPositionID, field.TypeUUID, value)
+		_node.DiagramPositionID = &value
 	}
 	if nodes := _c.mutation.ExerciseIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

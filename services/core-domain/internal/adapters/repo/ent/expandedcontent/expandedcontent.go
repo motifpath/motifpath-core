@@ -23,6 +23,10 @@ const (
 	FieldMediaURL = "media_url"
 	// FieldRichContent holds the string denoting the rich_content field in the database.
 	FieldRichContent = "rich_content"
+	// FieldDiagramRef holds the string denoting the diagram_ref field in the database.
+	FieldDiagramRef = "diagram_ref"
+	// FieldDiagramStackRef holds the string denoting the diagram_stack_ref field in the database.
+	FieldDiagramStackRef = "diagram_stack_ref"
 	// FieldTriggerAtSeconds holds the string denoting the trigger_at_seconds field in the database.
 	FieldTriggerAtSeconds = "trigger_at_seconds"
 	// FieldHideAtSeconds holds the string denoting the hide_at_seconds field in the database.
@@ -46,6 +50,8 @@ var Columns = []string{
 	FieldContentType,
 	FieldMediaURL,
 	FieldRichContent,
+	FieldDiagramRef,
+	FieldDiagramStackRef,
 	FieldTriggerAtSeconds,
 	FieldHideAtSeconds,
 	FieldTriggerAtParagraph,
@@ -79,6 +85,7 @@ const (
 	ContentTypeImage    ContentType = "image"
 	ContentTypeGif      ContentType = "gif"
 	ContentTypeRichText ContentType = "rich_text"
+	ContentTypeDiagram  ContentType = "diagram"
 )
 
 func (ct ContentType) String() string {
@@ -88,7 +95,7 @@ func (ct ContentType) String() string {
 // ContentTypeValidator is a validator for the "content_type" field enum values. It is called by the builders before save.
 func ContentTypeValidator(ct ContentType) error {
 	switch ct {
-	case ContentTypeImage, ContentTypeGif, ContentTypeRichText:
+	case ContentTypeImage, ContentTypeGif, ContentTypeRichText, ContentTypeDiagram:
 		return nil
 	default:
 		return fmt.Errorf("expandedcontent: invalid enum value for content_type field: %q", ct)
@@ -121,6 +128,16 @@ func ByMediaURL(opts ...sql.OrderTermOption) OrderOption {
 // ByRichContent orders the results by the rich_content field.
 func ByRichContent(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRichContent, opts...).ToFunc()
+}
+
+// ByDiagramRef orders the results by the diagram_ref field.
+func ByDiagramRef(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramRef, opts...).ToFunc()
+}
+
+// ByDiagramStackRef orders the results by the diagram_stack_ref field.
+func ByDiagramStackRef(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramStackRef, opts...).ToFunc()
 }
 
 // ByTriggerAtSeconds orders the results by the trigger_at_seconds field.

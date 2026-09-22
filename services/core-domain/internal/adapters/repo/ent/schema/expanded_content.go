@@ -9,14 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// ExpandedContent is an expositive item (image, GIF, or rich content)
-// attached to a content node and shown to the student at a specific point
-// during content consumption. Video nodes use
+// ExpandedContent is an expositive item (image, GIF, rich content, or
+// diagram) attached to a content node and shown to the student at a
+// specific point during content consumption. Video nodes use
 // trigger_at_seconds/hide_at_seconds; article nodes use
 // trigger_at_paragraph/duration_ms — the XOR between the two field groups is
 // enforced in the domain constructor, not here. image/gif carry media_url;
-// rich_text carries rich_content instead — that XOR is likewise enforced in
-// the domain layer.
+// rich_text carries rich_content instead; diagram carries diagram_ref or
+// diagram_stack_ref instead — that grouping is likewise enforced in the
+// domain layer.
 type ExpandedContent struct {
 	ent.Schema
 }
@@ -31,7 +32,7 @@ func (ExpandedContent) Fields() []ent.Field {
 			Immutable(),
 
 		field.Enum("content_type").
-			Values("image", "gif", "rich_text"),
+			Values("image", "gif", "rich_text", "diagram"),
 
 		field.String("media_url").Optional().Nillable(),
 
@@ -39,6 +40,13 @@ func (ExpandedContent) Fields() []ent.Field {
 		// same pattern Exercise.prompt uses — present only when content_type
 		// is rich_text.
 		field.Text("rich_content").Optional().Nillable(),
+
+		// diagram_ref/diagram_stack_ref store marshaled domain.DiagramRef/
+		// domain.DiagramStackRef JSON as text, the same pattern
+		// rich_content uses — present only when content_type is diagram, at
+		// most one of the two ever set.
+		field.Text("diagram_ref").Optional().Nillable(),
+		field.Text("diagram_stack_ref").Optional().Nillable(),
 
 		field.Int("trigger_at_seconds").Optional().Nillable(),
 		field.Int("hide_at_seconds").Optional().Nillable(),

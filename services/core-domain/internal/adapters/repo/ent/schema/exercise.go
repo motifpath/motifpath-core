@@ -55,6 +55,18 @@ func (Exercise) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		// diagram_ref/diagram_stack_ref store marshaled domain.DiagramRef/
+		// domain.DiagramStackRef JSON as text, the same pattern
+		// remediation_targets uses. Present only for an image_recognition
+		// exercise whose stimulus is a diagram rather than image_url — at
+		// most one of the two is ever set.
+		field.Text("diagram_ref").
+			Optional().
+			Nillable(),
+		field.Text("diagram_stack_ref").
+			Optional().
+			Nillable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

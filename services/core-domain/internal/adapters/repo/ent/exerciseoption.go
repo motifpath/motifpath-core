@@ -38,6 +38,12 @@ type ExerciseOption struct {
 	RegionHeight *float64 `json:"region_height,omitempty"`
 	// RegionShape holds the value of the "region_shape" field.
 	RegionShape *exerciseoption.RegionShape `json:"region_shape,omitempty"`
+	// DiagramRef holds the value of the "diagram_ref" field.
+	DiagramRef *string `json:"diagram_ref,omitempty"`
+	// DiagramID holds the value of the "diagram_id" field.
+	DiagramID *uuid.UUID `json:"diagram_id,omitempty"`
+	// DiagramPositionID holds the value of the "diagram_position_id" field.
+	DiagramPositionID *uuid.UUID `json:"diagram_position_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ExerciseOptionQuery when eager-loading is set.
 	Edges        ExerciseOptionEdges `json:"edges"`
@@ -69,11 +75,13 @@ func (*ExerciseOption) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case exerciseoption.FieldDiagramID, exerciseoption.FieldDiagramPositionID:
+			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case exerciseoption.FieldIsCorrect:
 			values[i] = new(sql.NullBool)
 		case exerciseoption.FieldRegionX, exerciseoption.FieldRegionY, exerciseoption.FieldRegionWidth, exerciseoption.FieldRegionHeight:
 			values[i] = new(sql.NullFloat64)
-		case exerciseoption.FieldLabel, exerciseoption.FieldImageURL, exerciseoption.FieldAudioURL, exerciseoption.FieldRegionShape:
+		case exerciseoption.FieldLabel, exerciseoption.FieldImageURL, exerciseoption.FieldAudioURL, exerciseoption.FieldRegionShape, exerciseoption.FieldDiagramRef:
 			values[i] = new(sql.NullString)
 		case exerciseoption.FieldID, exerciseoption.FieldExerciseID:
 			values[i] = new(uuid.UUID)
@@ -166,6 +174,27 @@ func (_m *ExerciseOption) assignValues(columns []string, values []any) error {
 				_m.RegionShape = new(exerciseoption.RegionShape)
 				*_m.RegionShape = exerciseoption.RegionShape(value.String)
 			}
+		case exerciseoption.FieldDiagramRef:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_ref", values[i])
+			} else if value.Valid {
+				_m.DiagramRef = new(string)
+				*_m.DiagramRef = value.String
+			}
+		case exerciseoption.FieldDiagramID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_id", values[i])
+			} else if value.Valid {
+				_m.DiagramID = new(uuid.UUID)
+				*_m.DiagramID = *value.S.(*uuid.UUID)
+			}
+		case exerciseoption.FieldDiagramPositionID:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_position_id", values[i])
+			} else if value.Valid {
+				_m.DiagramPositionID = new(uuid.UUID)
+				*_m.DiagramPositionID = *value.S.(*uuid.UUID)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -250,6 +279,21 @@ func (_m *ExerciseOption) String() string {
 	builder.WriteString(", ")
 	if v := _m.RegionShape; v != nil {
 		builder.WriteString("region_shape=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramRef; v != nil {
+		builder.WriteString("diagram_ref=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramID; v != nil {
+		builder.WriteString("diagram_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramPositionID; v != nil {
+		builder.WriteString("diagram_position_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteByte(')')

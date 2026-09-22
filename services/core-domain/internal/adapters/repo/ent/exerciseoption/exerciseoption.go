@@ -35,6 +35,12 @@ const (
 	FieldRegionHeight = "region_height"
 	// FieldRegionShape holds the string denoting the region_shape field in the database.
 	FieldRegionShape = "region_shape"
+	// FieldDiagramRef holds the string denoting the diagram_ref field in the database.
+	FieldDiagramRef = "diagram_ref"
+	// FieldDiagramID holds the string denoting the diagram_id field in the database.
+	FieldDiagramID = "diagram_id"
+	// FieldDiagramPositionID holds the string denoting the diagram_position_id field in the database.
+	FieldDiagramPositionID = "diagram_position_id"
 	// EdgeExercise holds the string denoting the exercise edge name in mutations.
 	EdgeExercise = "exercise"
 	// Table holds the table name of the exerciseoption in the database.
@@ -61,6 +67,9 @@ var Columns = []string{
 	FieldRegionWidth,
 	FieldRegionHeight,
 	FieldRegionShape,
+	FieldDiagramRef,
+	FieldDiagramID,
+	FieldDiagramPositionID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -157,6 +166,21 @@ func ByRegionHeight(opts ...sql.OrderTermOption) OrderOption {
 // ByRegionShape orders the results by the region_shape field.
 func ByRegionShape(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRegionShape, opts...).ToFunc()
+}
+
+// ByDiagramRef orders the results by the diagram_ref field.
+func ByDiagramRef(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramRef, opts...).ToFunc()
+}
+
+// ByDiagramID orders the results by the diagram_id field.
+func ByDiagramID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramID, opts...).ToFunc()
+}
+
+// ByDiagramPositionID orders the results by the diagram_position_id field.
+func ByDiagramPositionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramPositionID, opts...).ToFunc()
 }
 
 // ByExerciseField orders the results by exercise field.
