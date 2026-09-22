@@ -34,6 +34,8 @@ type Tx struct {
 	Course *CourseClient
 	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
 	CourseCheckpoint *CourseCheckpointClient
+	// CourseEnrollment is the client for interacting with the CourseEnrollment builders.
+	CourseEnrollment *CourseEnrollmentClient
 	// CourseVersion is the client for interacting with the CourseVersion builders.
 	CourseVersion *CourseVersionClient
 	// CourseVersionCheckpoint is the client for interacting with the CourseVersionCheckpoint builders.
@@ -218,6 +220,7 @@ func (tx *Tx) init() {
 	tx.ContentNodeVersion = NewContentNodeVersionClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.CourseCheckpoint = NewCourseCheckpointClient(tx.config)
+	tx.CourseEnrollment = NewCourseEnrollmentClient(tx.config)
 	tx.CourseVersion = NewCourseVersionClient(tx.config)
 	tx.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(tx.config)
 	tx.Diagram = NewDiagramClient(tx.config)

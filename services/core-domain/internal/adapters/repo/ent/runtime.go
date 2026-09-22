@@ -17,6 +17,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
@@ -135,6 +136,16 @@ func init() {
 	coursecheckpointDescID := coursecheckpointFields[0].Descriptor()
 	// coursecheckpoint.DefaultID holds the default value on creation for the id field.
 	coursecheckpoint.DefaultID = coursecheckpointDescID.Default.(func() uuid.UUID)
+	courseenrollmentFields := schema.CourseEnrollment{}.Fields()
+	_ = courseenrollmentFields
+	// courseenrollmentDescEnrolledAt is the schema descriptor for enrolled_at field.
+	courseenrollmentDescEnrolledAt := courseenrollmentFields[8].Descriptor()
+	// courseenrollment.DefaultEnrolledAt holds the default value on creation for the enrolled_at field.
+	courseenrollment.DefaultEnrolledAt = courseenrollmentDescEnrolledAt.Default.(func() time.Time)
+	// courseenrollmentDescID is the schema descriptor for id field.
+	courseenrollmentDescID := courseenrollmentFields[0].Descriptor()
+	// courseenrollment.DefaultID holds the default value on creation for the id field.
+	courseenrollment.DefaultID = courseenrollmentDescID.Default.(func() uuid.UUID)
 	courseversionFields := schema.CourseVersion{}.Fields()
 	_ = courseversionFields
 	// courseversionDescAvailableForNewEnrollments is the schema descriptor for available_for_new_enrollments field.

@@ -303,6 +303,24 @@ var (
 			},
 		},
 	}
+	// CourseEnrollmentsColumns holds the columns for the "course_enrollments" table.
+	CourseEnrollmentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "student_id", Type: field.TypeUUID},
+		{Name: "course_id", Type: field.TypeUUID},
+		{Name: "course_title", Type: field.TypeString},
+		{Name: "course_version_number", Type: field.TypeInt},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "completed", "abandoned"}, Default: "active"},
+		{Name: "active_checkpoint_student_path_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "active_checkpoint_position", Type: field.TypeInt, Nullable: true},
+		{Name: "enrolled_at", Type: field.TypeTime},
+	}
+	// CourseEnrollmentsTable holds the schema information for the "course_enrollments" table.
+	CourseEnrollmentsTable = &schema.Table{
+		Name:       "course_enrollments",
+		Columns:    CourseEnrollmentsColumns,
+		PrimaryKey: []*schema.Column{CourseEnrollmentsColumns[0]},
+	}
 	// CourseVersionsColumns holds the columns for the "course_versions" table.
 	CourseVersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -822,6 +840,7 @@ var (
 		ContentNodeVersionsTable,
 		CoursesTable,
 		CourseCheckpointsTable,
+		CourseEnrollmentsTable,
 		CourseVersionsTable,
 		CourseVersionCheckpointsTable,
 		DiagramsTable,

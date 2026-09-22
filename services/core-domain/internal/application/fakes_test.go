@@ -792,6 +792,89 @@ func (f *fakeStudentPathRepository) Archive(_ context.Context, id string, archiv
 	return nil
 }
 
+// fakeCourseEnrollmentRepository is a minimal in-memory
+// ports.CourseEnrollmentRepository.
+type fakeCourseEnrollmentRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.CourseEnrollment
+}
+
+func newFakeCourseEnrollmentRepository() *fakeCourseEnrollmentRepository {
+	return &fakeCourseEnrollmentRepository{byID: map[string]domain.CourseEnrollment{}}
+}
+
+func (f *fakeCourseEnrollmentRepository) Create(_ context.Context, e domain.CourseEnrollment) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepository) GetByID(_ context.Context, id string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.CourseEnrollment{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeCourseEnrollmentRepository) GetActiveByCourseID(_ context.Context, studentID, courseID string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.CourseID == courseID && e.IsActive() {
+			return e, nil
+		}
+	}
+	return domain.CourseEnrollment{}, domain.ErrNotFound
+}
+
+func (f *fakeCourseEnrollmentRepository) ListByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepository) ListActiveByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.IsActive() {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepository) Abandon(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusAbandoned
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepository) put(e domain.CourseEnrollment) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = e
+}
+
 // fakeContentNodeVersionRepository is a minimal in-memory
 // ports.ContentNodeVersionRepository.
 type fakeContentNodeVersionRepository struct {

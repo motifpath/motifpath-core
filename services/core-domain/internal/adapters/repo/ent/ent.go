@@ -23,6 +23,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
@@ -115,6 +116,7 @@ func checkColumn(t, c string) error {
 			contentnodeversion.Table:      contentnodeversion.ValidColumn,
 			course.Table:                  course.ValidColumn,
 			coursecheckpoint.Table:        coursecheckpoint.ValidColumn,
+			courseenrollment.Table:        courseenrollment.ValidColumn,
 			courseversion.Table:           courseversion.ValidColumn,
 			courseversioncheckpoint.Table: courseversioncheckpoint.ValidColumn,
 			diagram.Table:                 diagram.ValidColumn,

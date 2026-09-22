@@ -426,13 +426,45 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 	for i, item := range v.Items {
 		items[i] = toStudentPathItem(item)
 	}
-	return generated.StudentPathView{
-		StudentPathId:    mustUUID(v.StudentPathID),
-		SourceTemplateId: mustUUID(v.SourceTemplateID),
-		Title:            v.Title,
-		CurrentPosition:  v.CurrentPosition,
-		Items:            items,
+	view := generated.StudentPathView{
+		StudentPathId:            mustUUID(v.StudentPathID),
+		SourceTemplateId:         mustUUID(v.SourceTemplateID),
+		Title:                    v.Title,
+		CurrentPosition:          v.CurrentPosition,
+		Items:                    items,
+		CourseCheckpointPosition: v.CourseCheckpointPosition,
 	}
+	if v.CourseEnrollmentID != nil {
+		id := mustUUID(*v.CourseEnrollmentID)
+		view.CourseEnrollmentId = &id
+	}
+	return view
+}
+
+func toCourseEnrollment(e domain.CourseEnrollment) generated.CourseEnrollment {
+	result := generated.CourseEnrollment{
+		CourseEnrollmentId:       mustUUID(e.ID),
+		StudentId:                mustUUID(e.StudentID),
+		CourseId:                 mustUUID(e.CourseID),
+		CourseTitle:              e.CourseTitle,
+		CourseVersionNumber:      e.CourseVersionNumber,
+		Status:                   generated.CourseEnrollmentStatus(e.Status),
+		ActiveCheckpointPosition: e.ActiveCheckpointPosition,
+		EnrolledAt:               e.EnrolledAt,
+	}
+	if e.ActiveCheckpointStudentPathID != nil {
+		id := mustUUID(*e.ActiveCheckpointStudentPathID)
+		result.ActiveCheckpointStudentPathId = &id
+	}
+	return result
+}
+
+func toCourseEnrollments(enrollments []domain.CourseEnrollment) []generated.CourseEnrollment {
+	result := make([]generated.CourseEnrollment, len(enrollments))
+	for i, e := range enrollments {
+		result[i] = toCourseEnrollment(e)
+	}
+	return result
 }
 
 // derefOptions returns the options a request carried, or nil when the field

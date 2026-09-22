@@ -39,6 +39,9 @@ type Course func(*sql.Selector)
 // CourseCheckpoint is the predicate function for coursecheckpoint builders.
 type CourseCheckpoint func(*sql.Selector)
 
+// CourseEnrollment is the predicate function for courseenrollment builders.
+type CourseEnrollment func(*sql.Selector)
+
 // CourseVersion is the predicate function for courseversion builders.
 type CourseVersion func(*sql.Selector)
 

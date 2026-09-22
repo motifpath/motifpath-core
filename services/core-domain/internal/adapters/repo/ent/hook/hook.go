@@ -141,6 +141,18 @@ func (f CourseCheckpointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseCheckpointMutation", m)
 }
 
+// The CourseEnrollmentFunc type is an adapter to allow the use of ordinary
+// function as CourseEnrollment mutator.
+type CourseEnrollmentFunc func(context.Context, *ent.CourseEnrollmentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseEnrollmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseEnrollmentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseEnrollmentMutation", m)
+}
+
 // The CourseVersionFunc type is an adapter to allow the use of ordinary
 // function as CourseVersion mutator.
 type CourseVersionFunc func(context.Context, *ent.CourseVersionMutation) (ent.Value, error)

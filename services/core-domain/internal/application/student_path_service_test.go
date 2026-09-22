@@ -21,8 +21,9 @@ func newStudentPathService(
 	versions *fakeContentNodeVersionRepository,
 	state *fakeStudentLearningStateRepository,
 	completion *fakeCompletionStateReader,
+	enrollments ...*fakeCourseEnrollmentRepository,
 ) *application.StudentPathService {
-	return newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, newFakeContentNodeRepository(), newFakeExerciseRepository(), completion)
+	return newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, newFakeContentNodeRepository(), newFakeExerciseRepository(), completion, enrollments...)
 }
 
 func newStudentPathServiceWithContent(
@@ -34,8 +35,13 @@ func newStudentPathServiceWithContent(
 	contentNodes *fakeContentNodeRepository,
 	exercises *fakeExerciseRepository,
 	completion *fakeCompletionStateReader,
+	enrollments ...*fakeCourseEnrollmentRepository,
 ) *application.StudentPathService {
-	return application.NewStudentPathService(users, paths, studentPaths, versions, state, contentNodes, exercises, completion, idSequence(), func() time.Time { return fixedAssignedAt })
+	e := newFakeCourseEnrollmentRepository()
+	if len(enrollments) > 0 {
+		e = enrollments[0]
+	}
+	return application.NewStudentPathService(users, paths, studentPaths, versions, state, e, contentNodes, exercises, completion, idSequence(), func() time.Time { return fixedAssignedAt })
 }
 
 // publishedVersions returns a fakeContentNodeVersionRepository pre-seeded
@@ -290,10 +296,42 @@ func TestStudentPathService_GetMyPath(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, domain.CompletionStatusLocked, view.Items[0].Status)
 	})
+
+	t.Run("a student whose current pointer is a course enrollment sees that checkpoint's path, with course fields set", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := setup()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		enrollments := newFakeCourseEnrollmentRepository()
+		checkpointPathID := "checkpoint-path-1"
+		checkpointPosition := 1
+		enrollments.put(domain.CourseEnrollment{
+			ID:                            "enrollment-1",
+			StudentID:                     "alice",
+			CourseID:                      "course-1",
+			Status:                        domain.CourseEnrollmentStatusActive,
+			ActiveCheckpointStudentPathID: &checkpointPathID,
+			ActiveCheckpointPosition:      &checkpointPosition,
+		})
+		sp, err := domain.NewStudentPathFromTemplate(checkpointPathID, "alice", threeItemTemplate(), "alice", fixedAssignedAt, map[string]string{
+			"node-01": "version-node-01", "node-02": "version-node-02", "node-03": "version-node-03",
+		})
+		require.NoError(t, err)
+		require.NoError(t, studentPaths.Create(context.Background(), sp))
+		require.NoError(t, state.Upsert(context.Background(), domain.StudentLearningState{StudentID: "alice"}.WithCurrentCourseEnrollment("enrollment-1")))
+		svc := newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, newFakeContentNodeRepository(), newFakeExerciseRepository(), newFakeCompletionStateReader(), enrollments)
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent})
+
+		require.NoError(t, err)
+		require.NotNil(t, view.CourseEnrollmentID)
+		assert.Equal(t, "enrollment-1", *view.CourseEnrollmentID)
+		require.NotNil(t, view.CourseCheckpointPosition)
+		assert.Equal(t, 1, *view.CourseCheckpointPosition)
+	})
 }
 
 func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
-	t.Run("archiving the student's only current path with no other eligible path is a conflict", func(t *testing.T) {
+	t.Run("archiving the student's only current path with nothing else eligible succeeds and clears the current pointer", func(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
@@ -301,12 +339,33 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
-		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, sp.ID)
+		archived, err := svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, sp.ID)
+
+		require.NoError(t, err)
+		require.NotNil(t, archived.ArchivedAt)
+		got, err := state.GetByStudentID(context.Background(), "alice")
+		require.NoError(t, err)
+		assert.False(t, got.HasCurrent())
+	})
+
+	t.Run("archiving the current path while another eligible standalone path exists is a conflict — the student must switch first", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
+		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		require.NoError(t, err)
+		second, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
+		require.NoError(t, err)
+
+		// second is now current (AssignLearningPath sets current unconditionally).
+		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, second.ID)
 
 		assert.ErrorIs(t, err, domain.ErrConflict)
 	})
 
-	t.Run("archiving one of several eligible paths succeeds and clears the current pointer only if it was current", func(t *testing.T) {
+	t.Run("archiving one of several non-current paths succeeds without touching the current pointer", func(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
@@ -323,6 +382,21 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		require.NotNil(t, archived.ArchivedAt)
 	})
 
+	t.Run("archiving the current path while an active course enrollment exists is a conflict — the student must switch first", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		enrollments := newFakeCourseEnrollmentRepository()
+		enrollments.put(domain.CourseEnrollment{ID: "enrollment-1", StudentID: "alice", CourseID: "course-1", Status: domain.CourseEnrollmentStatusActive})
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader(), enrollments)
+		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		require.NoError(t, err)
+
+		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, sp.ID)
+
+		assert.ErrorIs(t, err, domain.ErrConflict)
+	})
+
 	t.Run("archiving a path owned by another student returns not found", func(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
@@ -334,5 +408,99 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "bob", Role: domain.RoleStudent}, sp.ID)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestStudentPathService_SetCurrentPath(t *testing.T) {
+	t.Run("switches current to a standalone path the student already owns", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
+		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		require.NoError(t, err)
+		_, err = svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
+		require.NoError(t, err)
+
+		view, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, application.SetCurrentPathInput{StudentPathID: &first.ID})
+
+		require.NoError(t, err)
+		assert.Equal(t, first.ID, view.StudentPathID)
+		got, err := state.GetByStudentID(context.Background(), "alice")
+		require.NoError(t, err)
+		require.NotNil(t, got.CurrentStandalonePathID)
+		assert.Equal(t, first.ID, *got.CurrentStandalonePathID)
+	})
+
+	t.Run("switches current to an active course enrollment the student already owns", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		enrollments := newFakeCourseEnrollmentRepository()
+		checkpointPathID := "checkpoint-path-1"
+		checkpointPosition := 1
+		enrollments.put(domain.CourseEnrollment{
+			ID: "enrollment-1", StudentID: "alice", CourseID: "course-1", Status: domain.CourseEnrollmentStatusActive,
+			ActiveCheckpointStudentPathID: &checkpointPathID, ActiveCheckpointPosition: &checkpointPosition,
+		})
+		sp, err := domain.NewStudentPathFromTemplate(checkpointPathID, "alice", threeItemTemplate(), "alice", fixedAssignedAt, map[string]string{
+			"node-01": "version-node-01", "node-02": "version-node-02", "node-03": "version-node-03",
+		})
+		require.NoError(t, err)
+		require.NoError(t, studentPaths.Create(context.Background(), sp))
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader(), enrollments)
+		enrollmentID := "enrollment-1"
+
+		view, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, application.SetCurrentPathInput{CourseEnrollmentID: &enrollmentID})
+
+		require.NoError(t, err)
+		require.NotNil(t, view.CourseEnrollmentID)
+		assert.Equal(t, "enrollment-1", *view.CourseEnrollmentID)
+		got, err := state.GetByStudentID(context.Background(), "alice")
+		require.NoError(t, err)
+		require.NotNil(t, got.CurrentCourseEnrollmentID)
+		assert.Equal(t, "enrollment-1", *got.CurrentCourseEnrollmentID)
+	})
+
+	t.Run("rejects a request with neither id given", func(t *testing.T) {
+		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+
+		_, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, application.SetCurrentPathInput{})
+
+		var valErr *domain.ValidationError
+		assert.ErrorAs(t, err, &valErr)
+	})
+
+	t.Run("rejects a request with both ids given", func(t *testing.T) {
+		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+		spID, enrollmentID := "sp-1", "enrollment-1"
+
+		_, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, application.SetCurrentPathInput{StudentPathID: &spID, CourseEnrollmentID: &enrollmentID})
+
+		var valErr *domain.ValidationError
+		assert.ErrorAs(t, err, &valErr)
+	})
+
+	t.Run("a standalone path not owned by the caller is not found", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths.put(threeItemTemplate())
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
+		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		require.NoError(t, err)
+
+		_, err = svc.SetCurrentPath(context.Background(), domain.User{ID: "bob", Role: domain.RoleStudent}, application.SetCurrentPathInput{StudentPathID: &sp.ID})
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("only students may switch their current path", func(t *testing.T) {
+		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+		spID := "sp-1"
+
+		_, err := svc.SetCurrentPath(context.Background(), teacherCaller(), application.SetCurrentPathInput{StudentPathID: &spID})
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }

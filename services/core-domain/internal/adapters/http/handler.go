@@ -36,18 +36,19 @@ func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
 // OpenAPI operation, each translating between generated wire types and the
 // application layer.
 type Handler struct {
-	identity    *application.IdentityService
-	content     *application.ContentService
-	challenge   *application.ChallengeService
-	exercise    *application.ExerciseService
-	skill       *application.SkillService
-	concept     *application.ConceptService
-	media       *application.MediaService
-	path        *application.LearningPathService
-	studentPath *application.StudentPathService
-	course      *application.CourseService
-	instrument  *application.InstrumentService
-	diagram     *application.DiagramService
+	identity         *application.IdentityService
+	content          *application.ContentService
+	challenge        *application.ChallengeService
+	exercise         *application.ExerciseService
+	skill            *application.SkillService
+	concept          *application.ConceptService
+	media            *application.MediaService
+	path             *application.LearningPathService
+	studentPath      *application.StudentPathService
+	course           *application.CourseService
+	courseEnrollment *application.CourseEnrollmentService
+	instrument       *application.InstrumentService
+	diagram          *application.DiagramService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -68,6 +69,7 @@ func NewHandler(
 	path *application.LearningPathService,
 	studentPath *application.StudentPathService,
 	course *application.CourseService,
+	courseEnrollment *application.CourseEnrollmentService,
 	instrument *application.InstrumentService,
 	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
@@ -84,6 +86,7 @@ func NewHandler(
 		path:                  path,
 		studentPath:           studentPath,
 		course:                course,
+		courseEnrollment:      courseEnrollment,
 		instrument:            instrument,
 		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
@@ -1032,20 +1035,98 @@ func (h *Handler) RetireCourse(context.Context, generated.RetireCourseRequestObj
 	return nil, errNotYetImplemented
 }
 
-func (h *Handler) ListMyCourseEnrollments(context.Context, generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyCourseEnrollments401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollments, err := h.courseEnrollment.ListMyCourseEnrollments(ctx, caller)
+	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return generated.ListMyCourseEnrollments403JSONResponse(forbiddenError("only students hold course enrollments")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListMyCourseEnrollments200JSONResponse(toCourseEnrollments(enrollments)), nil
 }
 
-func (h *Handler) CreateCourseEnrollment(context.Context, generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.CreateCourseEnrollment(ctx, caller, request.Body.CourseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.CreateCourseEnrollment403JSONResponse(forbiddenError("only students may self-enroll")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.CreateCourseEnrollment404JSONResponse(notFoundError("the course_id does not exist, the course is draft or retired, or its latest published version is not currently available for new enrollments")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateCourseEnrollment409JSONResponse(conflictError("the student already has an active course enrollment for this course")), nil
+		default:
+			var valErr *domain.ValidationError
+			if errors.As(err, &valErr) {
+				return generated.CreateCourseEnrollment400JSONResponse(validationErrorResponse(valErr)), nil
+			}
+			return nil, err
+		}
+	}
+
+	return generated.CreateCourseEnrollment201JSONResponse(toCourseEnrollment(enrollment)), nil
 }
 
-func (h *Handler) AbandonCourseEnrollment(context.Context, generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.AbandonCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.AbandonCourseEnrollment(ctx, caller, request.CourseEnrollmentId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.AbandonCourseEnrollment403JSONResponse(forbiddenError("only students hold course enrollments")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.AbandonCourseEnrollment404JSONResponse(notFoundError("no active enrollment with this id exists for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.AbandonCourseEnrollment409JSONResponse(conflictError("this is the caller's only current course or path with something else eligible to become current; switch to it first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.AbandonCourseEnrollment200JSONResponse(toCourseEnrollment(enrollment)), nil
 }
 
-func (h *Handler) SetCurrentPath(context.Context, generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.SetCurrentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	view, err := h.studentPath.SetCurrentPath(ctx, caller, application.SetCurrentPathInput{
+		CourseEnrollmentID: uuidPtrToStringPtr(request.Body.CourseEnrollmentId),
+		StudentPathID:      uuidPtrToStringPtr(request.Body.StudentPathId),
+	})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.SetCurrentPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.SetCurrentPath403JSONResponse(forbiddenError("only students hold a current course or path")), nil
+		case errKindNotFound:
+			return generated.SetCurrentPath404JSONResponse(notFoundError("the referenced course enrollment or student path does not exist or does not belong to the caller")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.SetCurrentPath200JSONResponse(toStudentPathView(view)), nil
 }
 
 func (h *Handler) ListContentNodeChallenges(ctx context.Context, request generated.ListContentNodeChallengesRequestObject) (generated.ListContentNodeChallengesResponseObject, error) {

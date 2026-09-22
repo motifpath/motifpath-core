@@ -934,6 +934,57 @@ func TestEntStudentLearningStateRepository(t *testing.T) {
 	assert.Nil(t, fetched.CurrentStandalonePathID)
 }
 
+func TestEntCourseEnrollmentRepository(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntCourseEnrollmentRepository(client)
+	studentID := uuid.NewString()
+	courseID := uuid.NewString()
+	checkpointPathID := uuid.NewString()
+	checkpointPosition := 1
+
+	enrollment := domain.CourseEnrollment{
+		ID: uuid.NewString(), StudentID: studentID, CourseID: courseID, CourseTitle: "Fingerstyle Journey",
+		CourseVersionNumber: 1, Status: domain.CourseEnrollmentStatusActive,
+		ActiveCheckpointStudentPathID: &checkpointPathID, ActiveCheckpointPosition: &checkpointPosition,
+		EnrolledAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, enrollment))
+
+	fetched, err := repo.GetByID(ctx, enrollment.ID)
+	require.NoError(t, err)
+	assert.Equal(t, enrollment, fetched)
+
+	active, err := repo.GetActiveByCourseID(ctx, studentID, courseID)
+	require.NoError(t, err)
+	assert.Equal(t, enrollment.ID, active.ID)
+
+	listed, err := repo.ListByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, enrollment.ID, listed[0].ID)
+
+	activeList, err := repo.ListActiveByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, activeList, 1)
+	assert.Equal(t, enrollment.ID, activeList[0].ID)
+
+	require.NoError(t, repo.Abandon(ctx, enrollment.ID))
+
+	fetched, err = repo.GetByID(ctx, enrollment.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.CourseEnrollmentStatusAbandoned, fetched.Status)
+	assert.Nil(t, fetched.ActiveCheckpointStudentPathID)
+	assert.Nil(t, fetched.ActiveCheckpointPosition)
+
+	_, err = repo.GetActiveByCourseID(ctx, studentID, courseID)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+
+	activeList, err = repo.ListActiveByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	assert.Empty(t, activeList)
+}
+
 func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepository) domain.ContentNode {
 	t.Helper()
 	skill := seedSkill(t, ctx, repo.client, "skill-"+uuid.NewString())
