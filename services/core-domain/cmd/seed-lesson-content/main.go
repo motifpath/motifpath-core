@@ -183,6 +183,7 @@ func run(completed int, current string) error {
 		repo.NewEntSkillRepository(conns.ent),
 		repo.NewEntConceptRepository(conns.ent),
 		repo.NewEntContentNodeVersionRepository(conns.ent),
+		repo.NewEntDiagramRepository(conns.ent),
 		newID, now,
 	)
 
@@ -499,7 +500,7 @@ func createCue(ctx context.Context, svc *application.ContentService, admin domai
 	} else {
 		mediaURL = strPtr("https://placehold.co/640x360/png?text=" + url.QueryEscape(cue.text))
 	}
-	if _, err := svc.CreateExpandedContent(ctx, admin, nodeID, cue.kind, mediaURL, rich, intPtr(cue.start), intPtr(cue.end), nil, nil, strPtr(cue.text)); err != nil {
+	if _, err := svc.CreateExpandedContent(ctx, admin, nodeID, cue.kind, mediaURL, rich, nil, nil, intPtr(cue.start), intPtr(cue.end), nil, nil, strPtr(cue.text)); err != nil {
 		return fmt.Errorf("create %s cue %q on %s: %w", cue.kind, cue.text, nodeID, err)
 	}
 	return nil

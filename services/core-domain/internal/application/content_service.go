@@ -18,12 +18,13 @@ type ContentService struct {
 	skills   ports.SkillRepository
 	concepts ports.ConceptRepository
 	versions ports.ContentNodeVersionRepository
+	diagrams ports.DiagramRepository
 	newID    func() string
 	now      func() time.Time
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, newID: newID, now: now}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now}
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -145,6 +146,8 @@ func (s *ContentService) CreateExpandedContent(
 	contentType domain.ExpandedContentType,
 	mediaURL *string,
 	richContent *domain.PromptDocument,
+	diagramRef *domain.DiagramRef,
+	diagramStackRef *domain.DiagramStackRef,
 	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
 	caption *string,
 ) (domain.ExpandedContent, error) {
@@ -158,10 +161,13 @@ func (s *ContentService) CreateExpandedContent(
 	}
 
 	item, err := domain.NewExpandedContent(
-		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL, richContent,
+		s.newID(), contentNodeID, node.ContentType, contentType, mediaURL, richContent, diagramRef, diagramStackRef,
 		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption, s.now(),
 	)
 	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := checkDiagramRefsExist(ctx, s.diagrams, diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 	if err := s.expanded.Create(ctx, item); err != nil {
@@ -196,6 +202,8 @@ func (s *ContentService) UpdateExpandedContent(
 	contentType domain.ExpandedContentType,
 	mediaURL *string,
 	richContent *domain.PromptDocument,
+	diagramRef *domain.DiagramRef,
+	diagramStackRef *domain.DiagramStackRef,
 	triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS *int,
 	caption *string,
 ) (domain.ExpandedContent, error) {
@@ -215,9 +223,12 @@ func (s *ContentService) UpdateExpandedContent(
 		return domain.ExpandedContent{}, err
 	}
 
-	updated, err := existing.Update(node.ContentType, contentType, mediaURL, richContent,
+	updated, err := existing.Update(node.ContentType, contentType, mediaURL, richContent, diagramRef, diagramStackRef,
 		triggerAtSeconds, hideAtSeconds, triggerAtParagraph, durationMS, caption)
 	if err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := checkDiagramRefsExist(ctx, s.diagrams, diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 
