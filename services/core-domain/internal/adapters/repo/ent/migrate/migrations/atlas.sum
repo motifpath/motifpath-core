@@ -1,5 +1,6 @@
-h1:dAyLXGH+F96rF0iV3BGEJgCcqU+iKaAdBmwsRz55N7w=
+h1:ueLfDpcQyaUqs4W+998RN1TpFwatl8mvzMz9MoMzJ94=
 20260922172448_initial_schema_student_path_and_content_versioning.up.sql h1:DTJlaJskch0SS4KJeracxn45WipONPrVf42g0LWYRJI=
 20260922180356_add_course_and_course_checkpoint.up.sql h1:KIefEsgObvQNHWLZ5FNgMrgjJIAPUbXoCmAeIdn5DFk=
 20260922181952_add_course_version.up.sql h1:H62FZAUVd4Q1DBgXnoTJapnk7zMUIgCOQcZzlKNd1qA=
 20260922183554_add_course_enrollment.up.sql h1:EwulLSBgc1r+8bj50aViiZL87o91O6Mo+a2se+t/XqU=
+20260922190000_seed_system_languages.up.sql h1:2vhYTwNQbcNHO7II7RdhUyzLB9GWOAYxmj4kzmhNpEw=
