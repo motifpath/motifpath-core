@@ -28,6 +28,18 @@ type Tx struct {
 	ContentNodeLanguage *ContentNodeLanguageClient
 	// ContentNodeSkill is the client for interacting with the ContentNodeSkill builders.
 	ContentNodeSkill *ContentNodeSkillClient
+	// ContentNodeVersion is the client for interacting with the ContentNodeVersion builders.
+	ContentNodeVersion *ContentNodeVersionClient
+	// Course is the client for interacting with the Course builders.
+	Course *CourseClient
+	// CourseCheckpoint is the client for interacting with the CourseCheckpoint builders.
+	CourseCheckpoint *CourseCheckpointClient
+	// CourseEnrollment is the client for interacting with the CourseEnrollment builders.
+	CourseEnrollment *CourseEnrollmentClient
+	// CourseVersion is the client for interacting with the CourseVersion builders.
+	CourseVersion *CourseVersionClient
+	// CourseVersionCheckpoint is the client for interacting with the CourseVersionCheckpoint builders.
+	CourseVersionCheckpoint *CourseVersionCheckpointClient
 	// Diagram is the client for interacting with the Diagram builders.
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
@@ -54,12 +66,16 @@ type Tx struct {
 	LearningPath *LearningPathClient
 	// LearningPathItem is the client for interacting with the LearningPathItem builders.
 	LearningPathItem *LearningPathItemClient
-	// PathAssignment is the client for interacting with the PathAssignment builders.
-	PathAssignment *PathAssignmentClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
+	// StudentLearningState is the client for interacting with the StudentLearningState builders.
+	StudentLearningState *StudentLearningStateClient
+	// StudentPath is the client for interacting with the StudentPath builders.
+	StudentPath *StudentPathClient
+	// StudentPathItem is the client for interacting with the StudentPathItem builders.
+	StudentPathItem *StudentPathItemClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -201,6 +217,12 @@ func (tx *Tx) init() {
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
+	tx.ContentNodeVersion = NewContentNodeVersionClient(tx.config)
+	tx.Course = NewCourseClient(tx.config)
+	tx.CourseCheckpoint = NewCourseCheckpointClient(tx.config)
+	tx.CourseEnrollment = NewCourseEnrollmentClient(tx.config)
+	tx.CourseVersion = NewCourseVersionClient(tx.config)
+	tx.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(tx.config)
 	tx.Diagram = NewDiagramClient(tx.config)
 	tx.DiagramConcept = NewDiagramConceptClient(tx.config)
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
@@ -214,9 +236,11 @@ func (tx *Tx) init() {
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
-	tx.PathAssignment = NewPathAssignmentClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)
+	tx.StudentLearningState = NewStudentLearningStateClient(tx.config)
+	tx.StudentPath = NewStudentPathClient(tx.config)
+	tx.StudentPathItem = NewStudentPathItemClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

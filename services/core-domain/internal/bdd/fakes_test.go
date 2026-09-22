@@ -672,30 +672,358 @@ func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath)
 	return nil
 }
 
-type fakePathAssignmentRepo struct {
-	mu          sync.Mutex
-	byStudentID map[string]domain.PathAssignment
-}
-
-func newFakePathAssignmentRepo() *fakePathAssignmentRepo {
-	return &fakePathAssignmentRepo{byStudentID: map[string]domain.PathAssignment{}}
-}
-
-func (f *fakePathAssignmentRepo) ReplaceActive(_ context.Context, a domain.PathAssignment) error {
+func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byStudentID[a.StudentID] = a
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
 	return nil
 }
 
-func (f *fakePathAssignmentRepo) GetActiveByStudentID(_ context.Context, studentID string) (domain.PathAssignment, error) {
+type fakeCourseRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Course
+}
+
+func newFakeCourseRepo() *fakeCourseRepo {
+	return &fakeCourseRepo{byID: map[string]domain.Course{}}
+}
+
+func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	a, ok := f.byStudentID[studentID]
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
 	if !ok {
-		return domain.PathAssignment{}, domain.ErrNotFound
+		return domain.Course{}, domain.ErrNotFound
 	}
-	return a, nil
+	return c, nil
+}
+
+func (f *fakeCourseRepo) List(_ context.Context, status *domain.CourseStatus) ([]domain.Course, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Course, 0, len(f.byID))
+	for _, c := range f.byID {
+		if status != nil && c.Status != *status {
+			continue
+		}
+		result = append(result, c)
+	}
+	return result, nil
+}
+
+func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[c.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[c.ID] = c
+	return nil
+}
+
+func (f *fakeCourseRepo) put(c domain.Course) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[c.ID] = c
+}
+
+func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domain.CourseStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.Status = status
+	f.byID[id] = c
+	return nil
+}
+
+type fakeCourseVersionRepo struct {
+	mu       sync.Mutex
+	byCourse map[string][]domain.CourseVersion
+}
+
+func newFakeCourseVersionRepo() *fakeCourseVersionRepo {
+	return &fakeCourseVersionRepo{byCourse: map[string][]domain.CourseVersion{}}
+}
+
+func (f *fakeCourseVersionRepo) Create(_ context.Context, v domain.CourseVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byCourse[v.CourseID] = append(f.byCourse[v.CourseID], v)
+	return nil
+}
+
+func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID string) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
+func (f *fakeCourseVersionRepo) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make(map[string]domain.CourseVersion, len(courseIDs))
+	for _, courseID := range courseIDs {
+		versions := f.byCourse[courseID]
+		if len(versions) == 0 {
+			continue
+		}
+		latest := versions[0]
+		for _, v := range versions[1:] {
+			if v.VersionNumber > latest.VersionNumber {
+				latest = v
+			}
+		}
+		result[courseID] = latest
+	}
+	return result, nil
+}
+
+func (f *fakeCourseVersionRepo) IsLearningPathReferenced(_ context.Context, learningPathID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, versions := range f.byCourse {
+		for _, v := range versions {
+			for _, cp := range v.Checkpoints {
+				if cp.LearningPathID == learningPathID {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
+type fakeStudentPathRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.StudentPath
+}
+
+func newFakeStudentPathRepo() *fakeStudentPathRepo {
+	return &fakeStudentPathRepo{byID: map[string]domain.StudentPath{}}
+}
+
+func (f *fakeStudentPathRepo) Create(_ context.Context, p domain.StudentPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[p.ID] = p
+	return nil
+}
+
+func (f *fakeStudentPathRepo) GetByID(_ context.Context, id string) (domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.StudentPath{}, domain.ErrNotFound
+	}
+	return p, nil
+}
+
+func (f *fakeStudentPathRepo) ListActiveStandaloneByStudentID(_ context.Context, studentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.StudentPath
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.ArchivedAt == nil && p.SourceCourseEnrollmentID == nil {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeStudentPathRepo) Archive(_ context.Context, id string, archivedAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	p.ArchivedAt = &archivedAt
+	f.byID[id] = p
+	return nil
+}
+
+type fakeContentNodeVersionRepo struct {
+	mu     sync.Mutex
+	byNode map[string][]domain.ContentNodeVersion
+}
+
+func newFakeContentNodeVersionRepo() *fakeContentNodeVersionRepo {
+	return &fakeContentNodeVersionRepo{byNode: map[string][]domain.ContentNodeVersion{}}
+}
+
+func (f *fakeContentNodeVersionRepo) Create(_ context.Context, v domain.ContentNodeVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byNode[v.ContentNodeID] = append(f.byNode[v.ContentNodeID], v)
+	return nil
+}
+
+func (f *fakeContentNodeVersionRepo) GetLatestByContentNodeID(_ context.Context, contentNodeID string) (domain.ContentNodeVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byNode[contentNodeID]
+	if len(versions) == 0 {
+		return domain.ContentNodeVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
+type fakeStudentLearningStateRepo struct {
+	mu        sync.Mutex
+	byStudent map[string]domain.StudentLearningState
+}
+
+func newFakeStudentLearningStateRepo() *fakeStudentLearningStateRepo {
+	return &fakeStudentLearningStateRepo{byStudent: map[string]domain.StudentLearningState{}}
+}
+
+func (f *fakeStudentLearningStateRepo) GetByStudentID(_ context.Context, studentID string) (domain.StudentLearningState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byStudent[studentID]
+	if !ok {
+		return domain.StudentLearningState{}, domain.ErrNotFound
+	}
+	return s, nil
+}
+
+func (f *fakeStudentLearningStateRepo) Upsert(_ context.Context, s domain.StudentLearningState) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byStudent[s.StudentID] = s
+	return nil
+}
+
+type fakeCourseEnrollmentRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.CourseEnrollment
+}
+
+func newFakeCourseEnrollmentRepo() *fakeCourseEnrollmentRepo {
+	return &fakeCourseEnrollmentRepo{byID: map[string]domain.CourseEnrollment{}}
+}
+
+func (f *fakeCourseEnrollmentRepo) Create(_ context.Context, e domain.CourseEnrollment) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) GetByID(_ context.Context, id string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.CourseEnrollment{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) GetActiveByCourseID(_ context.Context, studentID, courseID string) (domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.CourseID == courseID && e.IsActive() {
+			return e, nil
+		}
+	}
+	return domain.CourseEnrollment{}, domain.ErrNotFound
+}
+
+func (f *fakeCourseEnrollmentRepo) ListByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) ListActiveByStudentID(_ context.Context, studentID string) ([]domain.CourseEnrollment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []domain.CourseEnrollment
+	for _, e := range f.byID {
+		if e.StudentID == studentID && e.IsActive() {
+			result = append(result, e)
+		}
+	}
+	return result, nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Abandon(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusAbandoned
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) AdvanceCheckpoint(_ context.Context, id, studentPathID string, position int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ActiveCheckpointStudentPathID = &studentPathID
+	e.ActiveCheckpointPosition = &position
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Complete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusCompleted
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
 }
 
 type fakeCompletionReader struct {

@@ -20,7 +20,11 @@ func newContentService(nodes *fakeContentNodeRepository, expanded *fakeExpandedC
 }
 
 func newContentServiceWithClassification(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, skills, concepts, idSequence(), func() time.Time { return fixedCreatedAt })
+	return newContentServiceWithVersions(nodes, expanded, skills, concepts, newFakeContentNodeVersionRepository())
+}
+
+func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository) *application.ContentService {
+	return application.NewContentService(nodes, expanded, skills, concepts, versions, idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // seededSkillRepository/seededConceptRepository return fakes pre-populated
@@ -925,6 +929,83 @@ func TestContentService_GetExpandedContent(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.GetExpandedContent(context.Background(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestContentService_PublishContentNode(t *testing.T) {
+	t.Run("a teacher publishes a content node's draft for the first time", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		versions := newFakeContentNodeVersionRepository()
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+
+		version, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, version.VersionNumber)
+		assert.Equal(t, "node-01", version.ContentNodeID)
+
+		latest, err := versions.GetLatestByContentNodeID(context.Background(), "node-01")
+		require.NoError(t, err)
+		assert.Equal(t, 1, latest.VersionNumber)
+	})
+
+	t.Run("an admin publishes a content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		version, err := svc.PublishContentNode(context.Background(), adminCaller(), "node-01")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, version.VersionNumber)
+	})
+
+	t.Run("publishing a content node again creates a new version", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		versions := newFakeContentNodeVersionRepository()
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+
+		_, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
+		require.NoError(t, err)
+
+		edited := nodes.byID["node-01"]
+		edited.Title = "Revised title"
+		nodes.byID["node-01"] = edited
+
+		second, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
+		require.NoError(t, err)
+		assert.Equal(t, 2, second.VersionNumber)
+		assert.Equal(t, "Revised title", second.Title)
+	})
+
+	t.Run("a student cannot publish a content node", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.PublishContentNode(context.Background(), studentCaller(), "node-01")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher who did not create the content node, and is not an admin, cannot publish it", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-02")) // owned by teacher-1
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.PublishContentNode(context.Background(), otherTeacherCaller(), "node-02")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("publishing a content node that does not exist returns not found", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		_, err := svc.PublishContentNode(context.Background(), teacherCaller(), "missing")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})

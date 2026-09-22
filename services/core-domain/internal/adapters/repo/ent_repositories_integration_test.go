@@ -750,34 +750,380 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	assert.Equal(t, pathB, byID[pathB.ID])
 }
 
-func TestEntPathAssignmentRepository_ReplaceActive(t *testing.T) {
+// TestEntLearningPathRepository_Delete confirms Delete removes both the
+// LearningPath row and its LearningPathItem rows, and returns
+// domain.ErrNotFound for an id that doesn't exist — never a bare SQL
+// "no rows" error.
+func TestEntLearningPathRepository_Delete(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntLearningPathRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := domain.LearningPath{
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Week 1",
+		Items:     []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, path))
+
+	require.NoError(t, repo.Delete(ctx, path.ID))
+
+	_, err := repo.GetByID(ctx, path.ID)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+
+	err = repo.Delete(ctx, uuid.NewString())
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntStudentPathRepository(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
 	nodeRepo := NewEntContentNodeRepository(client)
 	pathRepo := NewEntLearningPathRepository(client)
-	repo := NewEntPathAssignmentRepository(client)
+	versionRepo := NewEntContentNodeVersionRepository(client)
+	repo := NewEntStudentPathRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
+	template := seedLearningPath(t, ctx, pathRepo, node)
+	studentID := uuid.NewString()
+	assignedBy := uuid.NewString()
+
+	version := domain.ContentNodeVersion{
+		ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1,
+		Title: node.Title, ContentType: node.ContentType, PublishedBy: assignedBy, PublishedAt: fixedAt,
+	}
+	require.NoError(t, versionRepo.Create(ctx, version))
+
+	sp := domain.StudentPath{
+		ID: uuid.NewString(), StudentID: studentID, SourceTemplateID: template.ID,
+		Title: template.Title, AssignedBy: assignedBy, AssignedAt: fixedAt,
+		Items: []domain.StudentPathItemRecord{
+			{Position: 1, ContentNodeID: node.ID, ContentNodeVersionID: version.ID},
+		},
+	}
+	require.NoError(t, repo.Create(ctx, sp))
+
+	fetched, err := repo.GetByID(ctx, sp.ID)
+	require.NoError(t, err)
+	assert.Equal(t, sp, fetched)
+
+	active, err := repo.ListActiveStandaloneByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, active, 1)
+	assert.Equal(t, sp.ID, active[0].ID)
+
+	require.NoError(t, repo.Archive(ctx, sp.ID, fixedAt.Add(time.Hour)))
+	fetched, err = repo.GetByID(ctx, sp.ID)
+	require.NoError(t, err)
+	require.NotNil(t, fetched.ArchivedAt)
+
+	active, err = repo.ListActiveStandaloneByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	assert.Empty(t, active)
+}
+
+func TestEntContentNodeVersionRepository_GetLatestByContentNodeID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntContentNodeVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	publishedBy := uuid.NewString()
+
+	_, err := repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	v1 := domain.ContentNodeVersion{ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1, Title: node.Title, ContentType: node.ContentType, PublishedBy: publishedBy, PublishedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	latest, err := repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, latest.VersionNumber)
+
+	v2 := domain.ContentNodeVersion{ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 2, Title: "Revised", ContentType: node.ContentType, PublishedBy: publishedBy, PublishedAt: fixedAt.Add(time.Hour)}
+	require.NoError(t, repo.Create(ctx, v2))
+
+	latest, err = repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, latest.VersionNumber)
+	assert.Equal(t, "Revised", latest.Title)
+}
+
+func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, course))
+
+	_, err := repo.GetLatestByCourseID(ctx, course.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	v1 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 1,
+		TitleSnapshot: course.Title, SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	latest, err := repo.GetLatestByCourseID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, latest.VersionNumber)
+	assert.Equal(t, "Fingerstyle Journey", latest.TitleSnapshot)
+	require.Len(t, latest.Checkpoints, 1)
+	assert.Equal(t, path.ID, latest.Checkpoints[0].LearningPathID)
+	assert.True(t, latest.AvailableForNewEnrollments)
+
+	v2 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 2,
+		TitleSnapshot: "Revised Journey", SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt.Add(time.Hour),
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v2))
+
+	latest, err = repo.GetLatestByCourseID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, latest.VersionNumber)
+	assert.Equal(t, "Revised Journey", latest.TitleSnapshot)
+}
+
+// TestEntCourseVersionRepository_GetLatestByCourseIDs confirms the batched
+// lookup returns each course's highest-version_number CourseVersion (with
+// checkpoints attached), in one call rather than one round-trip per course
+// — the ListCourses catalog endpoint's only caller needs this to avoid an
+// N+1 query per page load. A course id with no published version is simply
+// absent from the result map, never an error.
+func TestEntCourseVersionRepository_GetLatestByCourseIDs(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	published := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, published))
+	require.NoError(t, repo.Create(ctx, domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: published.ID, VersionNumber: 1,
+		TitleSnapshot: "Fingerstyle Journey v1", SummarySnapshot: published.Summary, LevelSnapshot: published.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}))
+	require.NoError(t, repo.Create(ctx, domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: published.ID, VersionNumber: 2,
+		TitleSnapshot: "Fingerstyle Journey v2", SummarySnapshot: published.Summary, LevelSnapshot: published.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt.Add(time.Hour),
+		AvailableForNewEnrollments: true,
+	}))
+
+	draftOnly := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Draft Only",
+		Summary: "Never published.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, draftOnly))
+
+	result, err := repo.GetLatestByCourseIDs(ctx, []string{published.ID, draftOnly.ID})
+	require.NoError(t, err)
+
+	require.Contains(t, result, published.ID)
+	assert.Equal(t, 2, result[published.ID].VersionNumber)
+	assert.Equal(t, "Fingerstyle Journey v2", result[published.ID].TitleSnapshot)
+	require.Len(t, result[published.ID].Checkpoints, 1)
+	assert.Equal(t, path.ID, result[published.ID].Checkpoints[0].LearningPathID)
+
+	assert.NotContains(t, result, draftOnly.ID)
+}
+
+// TestEntCourseVersionRepository_IsLearningPathReferenced confirms the
+// check finds a learning path referenced by a published CourseVersion's
+// checkpoint, keeps finding it after the owning course's status changes
+// (the check only ever consults course_version_checkpoints, never joins
+// back to courses), and reports false for a path no version references.
+func TestEntCourseVersionRepository_IsLearningPathReferenced(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	referenced := seedLearningPath(t, ctx, pathRepo, node)
+	unreferenced := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: referenced.ID, EffectiveTitle: referenced.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, course))
+
+	got, err := repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.False(t, got, "a checkpoint on the live draft alone (no published CourseVersion yet) must not count")
+
+	v1 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 1,
+		TitleSnapshot: course.Title, SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: referenced.ID, EffectiveTitle: referenced.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	got, err = repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.True(t, got)
+
+	got, err = repo.IsLearningPathReferenced(ctx, unreferenced.ID)
+	require.NoError(t, err)
+	assert.False(t, got)
+
+	// Retiring the course never touches its published CourseVersion or
+	// checkpoint rows — the reference (and the guard) must survive it.
+	require.NoError(t, courseRepo.UpdateStatus(ctx, course.ID, domain.CourseStatusRetired))
+
+	got, err = repo.IsLearningPathReferenced(ctx, referenced.ID)
+	require.NoError(t, err)
+	assert.True(t, got, "a version belonging to a since-retired course still counts")
+}
+
+func TestEntCourseRepository_UpdateStatus(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	repo := NewEntCourseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, repo.Create(ctx, course))
+
+	require.NoError(t, repo.UpdateStatus(ctx, course.ID, domain.CourseStatusPublished))
+
+	got, err := repo.GetByID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.CourseStatusPublished, got.Status)
+
+	err = repo.UpdateStatus(ctx, uuid.NewString(), domain.CourseStatusPublished)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntStudentLearningStateRepository(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntStudentLearningStateRepository(client)
 	studentID := uuid.NewString()
 
-	path1 := seedLearningPath(t, ctx, pathRepo, node)
-	first := domain.PathAssignment{ID: uuid.NewString(), StudentID: studentID, LearningPathID: path1.ID, AssignedBy: uuid.NewString(), AssignedAt: fixedAt}
-	require.NoError(t, repo.ReplaceActive(ctx, first))
+	_, err := repo.GetByStudentID(ctx, studentID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	active, err := repo.GetActiveByStudentID(ctx, studentID)
+	pathID := uuid.NewString()
+	state := domain.StudentLearningState{StudentID: studentID}.WithCurrentStandalonePath(pathID)
+	require.NoError(t, repo.Upsert(ctx, state))
+
+	fetched, err := repo.GetByStudentID(ctx, studentID)
 	require.NoError(t, err)
-	assert.Equal(t, first, active)
+	assert.Equal(t, pathID, *fetched.CurrentStandalonePathID)
+	assert.Nil(t, fetched.CurrentCourseEnrollmentID)
 
-	// Replacing an active assignment resets progress: the new assignment
-	// gets a fresh id and the old one is gone entirely, not merely updated.
-	path2 := seedLearningPath(t, ctx, pathRepo, node)
-	second := domain.PathAssignment{ID: uuid.NewString(), StudentID: studentID, LearningPathID: path2.ID, AssignedBy: uuid.NewString(), AssignedAt: fixedAt}
-	require.NoError(t, repo.ReplaceActive(ctx, second))
+	enrollmentID := uuid.NewString()
+	require.NoError(t, repo.Upsert(ctx, fetched.WithCurrentCourseEnrollment(enrollmentID)))
 
-	active, err = repo.GetActiveByStudentID(ctx, studentID)
+	fetched, err = repo.GetByStudentID(ctx, studentID)
 	require.NoError(t, err)
-	assert.Equal(t, second, active)
-	assert.NotEqual(t, first.ID, active.ID)
+	assert.Equal(t, enrollmentID, *fetched.CurrentCourseEnrollmentID)
+	assert.Nil(t, fetched.CurrentStandalonePathID)
+}
+
+func TestEntCourseEnrollmentRepository(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntCourseEnrollmentRepository(client)
+	studentID := uuid.NewString()
+	courseID := uuid.NewString()
+	checkpointPathID := uuid.NewString()
+	checkpointPosition := 1
+
+	enrollment := domain.CourseEnrollment{
+		ID: uuid.NewString(), StudentID: studentID, CourseID: courseID, CourseTitle: "Fingerstyle Journey",
+		CourseVersionNumber: 1, Status: domain.CourseEnrollmentStatusActive,
+		ActiveCheckpointStudentPathID: &checkpointPathID, ActiveCheckpointPosition: &checkpointPosition,
+		EnrolledAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, enrollment))
+
+	fetched, err := repo.GetByID(ctx, enrollment.ID)
+	require.NoError(t, err)
+	assert.Equal(t, enrollment, fetched)
+
+	active, err := repo.GetActiveByCourseID(ctx, studentID, courseID)
+	require.NoError(t, err)
+	assert.Equal(t, enrollment.ID, active.ID)
+
+	listed, err := repo.ListByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, enrollment.ID, listed[0].ID)
+
+	activeList, err := repo.ListActiveByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, activeList, 1)
+	assert.Equal(t, enrollment.ID, activeList[0].ID)
+
+	require.NoError(t, repo.Abandon(ctx, enrollment.ID))
+
+	fetched, err = repo.GetByID(ctx, enrollment.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.CourseEnrollmentStatusAbandoned, fetched.Status)
+	assert.Nil(t, fetched.ActiveCheckpointStudentPathID)
+	assert.Nil(t, fetched.ActiveCheckpointPosition)
+
+	_, err = repo.GetActiveByCourseID(ctx, studentID, courseID)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+
+	activeList, err = repo.ListActiveByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	assert.Empty(t, activeList)
 }
 
 func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepository) domain.ContentNode {

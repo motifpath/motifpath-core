@@ -28,14 +28,14 @@ import (
 )
 
 type pipeline struct {
-	content    *application.ContentService
-	challenge  *application.ChallengeService
-	path       *application.LearningPathService
-	assignment *application.PathAssignmentService
-	skills     *application.SkillService
-	concepts   *application.ConceptService
-	users      *repo.EntUserRepository
-	mongoDB    *mongo.Database
+	content     *application.ContentService
+	challenge   *application.ChallengeService
+	path        *application.LearningPathService
+	studentPath *application.StudentPathService
+	skills      *application.SkillService
+	concepts    *application.ConceptService
+	users       *repo.EntUserRepository
+	mongoDB     *mongo.Database
 }
 
 func setupPipeline(t *testing.T) *pipeline {
@@ -66,21 +66,25 @@ func setupPipeline(t *testing.T) *pipeline {
 	exercises := repo.NewEntExerciseRepository(entClient)
 	expanded := repo.NewEntExpandedContentRepository(entClient)
 	paths := repo.NewEntLearningPathRepository(entClient)
-	assignments := repo.NewEntPathAssignmentRepository(entClient)
+	studentPaths := repo.NewEntStudentPathRepository(entClient)
+	versions := repo.NewEntContentNodeVersionRepository(entClient)
+	learningState := repo.NewEntStudentLearningStateRepository(entClient)
+	courseEnrollments := repo.NewEntCourseEnrollmentRepository(entClient)
+	courseVersions := repo.NewEntCourseVersionRepository(entClient)
 	users := repo.NewEntUserRepository(entClient)
 	completion := repo.NewMongoCompletionStateReader(mongoDB)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 
 	return &pipeline{
-		content:    application.NewContentService(nodes, expanded, skillRepo, conceptRepo, newID, now),
-		challenge:  application.NewChallengeService(nodes, challenges, exercises, newID, now),
-		path:       application.NewLearningPathService(nodes, paths, newID, now),
-		assignment: application.NewPathAssignmentService(users, paths, assignments, nodes, exercises, completion, newID, now),
-		skills:     application.NewSkillService(skillRepo, newID),
-		concepts:   application.NewConceptService(conceptRepo, newID),
-		users:      users,
-		mongoDB:    mongoDB,
+		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, newID, now),
+		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
+		path:        application.NewLearningPathService(nodes, paths, courseVersions, newID, now),
+		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),
+		skills:      application.NewSkillService(skillRepo, newID),
+		concepts:    application.NewConceptService(conceptRepo, newID),
+		users:       users,
+		mongoDB:     mongoDB,
 	}
 }
 
@@ -119,9 +123,14 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	// than through IdentityService, which isn't part of this pipeline.
 	seedStudentInto(t, ctx, p, student)
 
-	assignment, err := p.assignment.AssignLearningPath(ctx, teacher, student.ID, learningPath.ID)
+	// Every content node a learning path's items reference must already
+	// have a published version before it can be copied into a StudentPath.
+	_, err = p.content.PublishContentNode(ctx, teacher, node.ID)
 	require.NoError(t, err)
-	assert.Equal(t, student.ID, assignment.StudentID)
+
+	studentPath, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, learningPath.ID)
+	require.NoError(t, err)
+	assert.Equal(t, student.ID, studentPath.StudentID)
 
 	// Simulate the Aggregation Worker (ADR-011) marking this node completed.
 	_, err = p.mongoDB.Collection("aggregates").InsertOne(ctx, bson.D{
@@ -132,14 +141,14 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	view, err := p.assignment.GetMyPath(ctx, student)
+	view, err := p.studentPath.GetMyPath(ctx, student)
 	require.NoError(t, err)
 	require.Len(t, view.Items, 1)
 	assert.Equal(t, domain.CompletionStatusCompleted, view.Items[0].Status)
 	assert.Equal(t, 1, view.CurrentPosition)
 }
 
-func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
+func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testing.T) {
 	p := setupPipeline(t)
 	ctx := context.Background()
 	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
@@ -149,13 +158,15 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	skillID1, conceptID1 := seedClassification(t, ctx, p, teacher, "n1")
 	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, []string{skillID1}, []string{conceptID1}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
 	require.NoError(t, err)
+	_, err = p.content.PublishContentNode(ctx, teacher, node1.ID)
+	require.NoError(t, err)
 	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
 	require.NoError(t, err)
 
-	first, err := p.assignment.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
+	first, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
 	require.NoError(t, err)
 
-	// Mark the first path's node completed under the first assignment.
+	// Mark the first path's node completed under the first StudentPath.
 	_, err = p.mongoDB.Collection("aggregates").InsertOne(ctx, bson.D{
 		{Key: "student_id", Value: student.ID},
 		{Key: "content_node_id", Value: node1.ID},
@@ -167,20 +178,29 @@ func TestCoreDomainPipeline_ReplacingAssignmentResetsProgress(t *testing.T) {
 	skillID2, conceptID2 := seedClassification(t, ctx, p, teacher, "n2")
 	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, []string{skillID2}, []string{conceptID2}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
 	require.NoError(t, err)
+	_, err = p.content.PublishContentNode(ctx, teacher, node2.ID)
+	require.NoError(t, err)
 	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
 	require.NoError(t, err)
 
-	second, err := p.assignment.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
+	second, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
 	require.NoError(t, err)
 	assert.NotEqual(t, first.ID, second.ID)
 
-	view, err := p.assignment.GetMyPath(ctx, student)
+	// The current pointer now resolves to the newly assigned copy.
+	view, err := p.studentPath.GetMyPath(ctx, student)
 	require.NoError(t, err)
 	require.Len(t, view.Items, 1)
-	assert.Equal(t, path2.ID, view.LearningPathID)
+	assert.Equal(t, path2.ID, view.SourceTemplateID)
 	// node2 has no aggregates document at all — not_started, not carried
 	// over from the old path's completed node1.
 	assert.Equal(t, domain.CompletionStatusNotStarted, view.Items[0].Status)
+
+	// The earlier copy of path1 still exists, untouched — assigning is
+	// additive, never a replace.
+	stillThere, err := p.studentPath.ArchiveStandaloneStudentPath(ctx, student, first.ID)
+	require.NoError(t, err)
+	require.NotNil(t, stillThere.ArchivedAt)
 }
 
 // seedStudentInto persists student (whose Locale the caller must already

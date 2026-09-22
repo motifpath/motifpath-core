@@ -30,6 +30,24 @@ type ContentNodeLanguage func(*sql.Selector)
 // ContentNodeSkill is the predicate function for contentnodeskill builders.
 type ContentNodeSkill func(*sql.Selector)
 
+// ContentNodeVersion is the predicate function for contentnodeversion builders.
+type ContentNodeVersion func(*sql.Selector)
+
+// Course is the predicate function for course builders.
+type Course func(*sql.Selector)
+
+// CourseCheckpoint is the predicate function for coursecheckpoint builders.
+type CourseCheckpoint func(*sql.Selector)
+
+// CourseEnrollment is the predicate function for courseenrollment builders.
+type CourseEnrollment func(*sql.Selector)
+
+// CourseVersion is the predicate function for courseversion builders.
+type CourseVersion func(*sql.Selector)
+
+// CourseVersionCheckpoint is the predicate function for courseversioncheckpoint builders.
+type CourseVersionCheckpoint func(*sql.Selector)
+
 // Diagram is the predicate function for diagram builders.
 type Diagram func(*sql.Selector)
 
@@ -69,14 +87,20 @@ type LearningPath func(*sql.Selector)
 // LearningPathItem is the predicate function for learningpathitem builders.
 type LearningPathItem func(*sql.Selector)
 
-// PathAssignment is the predicate function for pathassignment builders.
-type PathAssignment func(*sql.Selector)
-
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)
 
 // Skill is the predicate function for skill builders.
 type Skill func(*sql.Selector)
+
+// StudentLearningState is the predicate function for studentlearningstate builders.
+type StudentLearningState func(*sql.Selector)
+
+// StudentPath is the predicate function for studentpath builders.
+type StudentPath func(*sql.Selector)
+
+// StudentPathItem is the predicate function for studentpathitem builders.
+type StudentPathItem func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

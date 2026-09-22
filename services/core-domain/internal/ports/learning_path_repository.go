@@ -21,4 +21,10 @@ type LearningPathRepository interface {
 	// transaction. Returns domain.ErrNotFound if no path exists with the
 	// given id.
 	Replace(ctx context.Context, path domain.LearningPath) error
+
+	// Delete permanently removes the learning path with the given id and
+	// all of its items, in one transaction. Never touches any StudentPath
+	// already copied from it — those are independent snapshots. Returns
+	// domain.ErrNotFound if no path exists with the given id.
+	Delete(ctx context.Context, id string) error
 }

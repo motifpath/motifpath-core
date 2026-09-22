@@ -230,7 +230,7 @@ func (w *world) updatesExpandedContentAtSecondsWithCaption(name, slug, triggerSt
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: expandedID(slug),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType:      generated.Image,
+			ContentType:      generated.UpdateExpandedContentRequestContentTypeImage,
 			MediaUrl:         strPtr("https://cdn.example.com/media.png"),
 			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
 			Caption: &caption,
@@ -252,7 +252,7 @@ func (w *world) updatesExpandedContentAtParagraph(name, slug, paragraphStr, dura
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: expandedID(slug),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType:        generated.Image,
+			ContentType:        generated.UpdateExpandedContentRequestContentTypeImage,
 			MediaUrl:           strPtr("https://cdn.example.com/media.png"),
 			TriggerAtParagraph: &paragraph, DurationMs: &duration,
 		},
@@ -290,7 +290,7 @@ func (w *world) submitsUpdateExpandedContentAtSeconds(name, slug, triggerStr, hi
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: expandedID(slug),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType:      generated.Image,
+			ContentType:      generated.UpdateExpandedContentRequestContentTypeImage,
 			MediaUrl:         strPtr("https://cdn.example.com/media.png"),
 			TriggerAtSeconds: &trigger, HideAtSeconds: &hide,
 		},
@@ -303,7 +303,7 @@ func (w *world) submitsUpdateExpandedContentMissingMediaURL(name, slug string) e
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: expandedID(slug),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType: generated.Image,
+			ContentType: generated.UpdateExpandedContentRequestContentTypeImage,
 		},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -337,7 +337,7 @@ func (w *world) attemptsUpdateMissingExpandedContent(string) error {
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: deterministicUUID("expanded", "does-not-exist"),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType: generated.Image,
+			ContentType: generated.UpdateExpandedContentRequestContentTypeImage,
 			MediaUrl:    strPtr("https://cdn.example.com/media.png"),
 		},
 	})
@@ -355,7 +355,7 @@ func (w *world) attemptsUpdateExpandedContentCaption(name, slug, caption string)
 	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
 		ExpandedContentId: expandedID(slug),
 		Body: &generated.UpdateExpandedContentRequest{
-			ContentType: generated.Image,
+			ContentType: generated.UpdateExpandedContentRequestContentTypeImage,
 			MediaUrl:    strPtr("https://cdn.example.com/media.png"),
 			Caption:     &caption,
 		},

@@ -36,17 +36,19 @@ func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
 // OpenAPI operation, each translating between generated wire types and the
 // application layer.
 type Handler struct {
-	identity   *application.IdentityService
-	content    *application.ContentService
-	challenge  *application.ChallengeService
-	exercise   *application.ExerciseService
-	skill      *application.SkillService
-	concept    *application.ConceptService
-	media      *application.MediaService
-	path       *application.LearningPathService
-	assignment *application.PathAssignmentService
-	instrument *application.InstrumentService
-	diagram    *application.DiagramService
+	identity         *application.IdentityService
+	content          *application.ContentService
+	challenge        *application.ChallengeService
+	exercise         *application.ExerciseService
+	skill            *application.SkillService
+	concept          *application.ConceptService
+	media            *application.MediaService
+	path             *application.LearningPathService
+	studentPath      *application.StudentPathService
+	course           *application.CourseService
+	courseEnrollment *application.CourseEnrollmentService
+	instrument       *application.InstrumentService
+	diagram          *application.DiagramService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -65,7 +67,9 @@ func NewHandler(
 	concept *application.ConceptService,
 	media *application.MediaService,
 	path *application.LearningPathService,
-	assignment *application.PathAssignmentService,
+	studentPath *application.StudentPathService,
+	course *application.CourseService,
+	courseEnrollment *application.CourseEnrollmentService,
 	instrument *application.InstrumentService,
 	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
@@ -80,7 +84,9 @@ func NewHandler(
 		concept:               concept,
 		media:                 media,
 		path:                  path,
-		assignment:            assignment,
+		studentPath:           studentPath,
+		course:                course,
+		courseEnrollment:      courseEnrollment,
 		instrument:            instrument,
 		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
@@ -752,13 +758,36 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path)), nil
 }
 
+func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.DeleteLearningPathRequestObject) (generated.DeleteLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	err := h.path.DeleteLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.DeleteLearningPath403JSONResponse(forbiddenError("only the creating teacher or an admin may delete this learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.DeleteLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.DeleteLearningPath409JSONResponse(conflictError("this learning path is referenced by a checkpoint of at least one published course version")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteLearningPath204Response{}, nil
+}
+
 func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
 		return generated.AssignLearningPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	assignment, err := h.assignment.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
+	sp, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -767,13 +796,13 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		case errKindForbidden:
 			return generated.AssignLearningPath403JSONResponse(forbiddenError("only teachers and admins may assign learning paths")), nil
 		case errKindNotFound:
-			return generated.AssignLearningPath404JSONResponse(notFoundError("the student or learning path does not exist")), nil
+			return generated.AssignLearningPath404JSONResponse(notFoundError("the student_id or learning_path_id does not exist, the student's role is not student, or one of the path's content nodes has never been published")), nil
 		case errKindOther:
 			return nil, err
 		}
 	}
 
-	return generated.AssignLearningPath201JSONResponse(toPathAssignment(assignment)), nil
+	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp)), nil
 }
 
 func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
@@ -782,18 +811,371 @@ func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObj
 		return generated.GetMyPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	view, err := h.assignment.GetMyPath(ctx, caller)
+	view, err := h.studentPath.GetMyPath(ctx, caller)
 	if err != nil {
 		kind, _ := classify(err)
 		switch kind {
 		case errKindNotFound:
-			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no active path assignment")), nil
+			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no current path set")), nil
 		case errKindForbidden, errKindValidation, errKindOther:
 			return nil, err
 		}
 	}
 
 	return generated.GetMyPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request generated.ArchiveStandaloneStudentPathRequestObject) (generated.ArchiveStandaloneStudentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ArchiveStandaloneStudentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	sp, err := h.studentPath.ArchiveStandaloneStudentPath(ctx, caller, request.StudentPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.ArchiveStandaloneStudentPath404JSONResponse(notFoundError("no non-archived standalone student path exists with this id for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.ArchiveStandaloneStudentPath409JSONResponse(conflictError("this is the caller's only current course or path; switch to another one first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp)), nil
+}
+
+func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.content.PublishContentNode(ctx, caller, request.ContentNodeId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may publish this content node")), nil
+		case errKindNotFound:
+			return generated.PublishContentNode404JSONResponse(notFoundError("no content node exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishContentNode201JSONResponse(toContentNodeVersion(version)), nil
+}
+
+func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListCourses401JSONResponse(unauthorizedError()), nil
+	}
+
+	var status *domain.CourseStatus
+	if request.Params.Status != nil {
+		s := domain.CourseStatus(*request.Params.Status)
+		status = &s
+	}
+
+	courses, err := h.course.ListCourses(ctx, caller, status)
+	if err != nil {
+		return nil, err
+	}
+
+	courseIDs := make([]string, len(courses))
+	for i, c := range courses {
+		courseIDs[i] = c.ID
+	}
+	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := toCourseCatalogEntries(courses, caller, func(courseID string) (*domain.CourseVersion, error) {
+		if v, ok := latestByCourse[courseID]; ok {
+			return &v, nil
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListCourses200JSONResponse(entries), nil
+}
+
+// latestCourseVersion returns course's latest published CourseVersion, or
+// nil if it has never been published — the courseVersionLookup shape
+// toCourseCatalogEntries and the toCourse/toCourseCatalogEntry mappers
+// need to compute has_unpublished_changes and latest_published_version.
+func (h *Handler) latestCourseVersion(ctx context.Context, courseID string) (*domain.CourseVersion, error) {
+	version, err := h.course.LatestVersion(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.CreateCourse(ctx, caller, request.Body.Title, request.Body.Summary,
+		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.CreateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.CreateCourse403JSONResponse(forbiddenError("only teachers and admins may create courses")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.CreateCourse201JSONResponse(toCourse(course, nil)), nil
+}
+
+func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.GetCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.GetCourse403JSONResponse(forbiddenError("only teachers and admins may view a course's live state")), nil
+		case errKindNotFound:
+			return generated.GetCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.GetCourse200JSONResponse(toCourse(course, latest)), nil
+}
+
+func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReplaceCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	checkpoints := make([]application.CheckpointInput, len(request.Body.Checkpoints))
+	for i, cp := range request.Body.Checkpoints {
+		checkpoints[i] = application.CheckpointInput{
+			LearningPathID: cp.LearningPathId.String(),
+			Title:          cp.Title,
+		}
+	}
+
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), request.Body.Title, request.Body.Summary,
+		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ReplaceCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ReplaceCourse403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this course")), nil
+		case errKindNotFound:
+			return generated.ReplaceCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ReplaceCourse200JSONResponse(toCourse(course, latest)), nil
+}
+
+func (h *Handler) PublishCourse(ctx context.Context, request generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.course.PublishCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishCourse403JSONResponse(forbiddenError("only admins may publish a course")), nil
+		case errKindNotFound:
+			return generated.PublishCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishCourse201JSONResponse(toGeneratedCourseVersion(version)), nil
+}
+
+func (h *Handler) GetPublishedCourse(ctx context.Context, request generated.GetPublishedCourseRequestObject) (generated.GetPublishedCourseResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetPublishedCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	courseID := request.CourseId.String()
+	view, err := h.course.GetPublishedCourse(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return generated.GetPublishedCourse404JSONResponse(notFoundError("no course exists with the given id, or it has never been published")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view)), nil
+}
+
+func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.RetireCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.RetireCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.RetireCourse403JSONResponse(forbiddenError("only admins may retire a course")), nil
+		case errKindNotFound:
+			return generated.RetireCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.RetireCourse200JSONResponse(toCourse(course, latest)), nil
+}
+
+func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyCourseEnrollments401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollments, err := h.courseEnrollment.ListMyCourseEnrollments(ctx, caller)
+	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return generated.ListMyCourseEnrollments403JSONResponse(forbiddenError("only students hold course enrollments")), nil
+		}
+		return nil, err
+	}
+
+	return generated.ListMyCourseEnrollments200JSONResponse(toCourseEnrollments(enrollments)), nil
+}
+
+func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.CreateCourseEnrollment(ctx, caller, request.Body.CourseId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.CreateCourseEnrollment403JSONResponse(forbiddenError("only students may self-enroll")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.CreateCourseEnrollment404JSONResponse(notFoundError("the course_id does not exist, the course is draft or retired, or its latest published version is not currently available for new enrollments")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateCourseEnrollment409JSONResponse(conflictError("the student already has an active course enrollment for this course")), nil
+		default:
+			var valErr *domain.ValidationError
+			if errors.As(err, &valErr) {
+				return generated.CreateCourseEnrollment400JSONResponse(validationErrorResponse(valErr)), nil
+			}
+			return nil, err
+		}
+	}
+
+	return generated.CreateCourseEnrollment201JSONResponse(toCourseEnrollment(enrollment)), nil
+}
+
+func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.AbandonCourseEnrollment401JSONResponse(unauthorizedError()), nil
+	}
+
+	enrollment, err := h.courseEnrollment.AbandonCourseEnrollment(ctx, caller, request.CourseEnrollmentId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.AbandonCourseEnrollment403JSONResponse(forbiddenError("only students hold course enrollments")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.AbandonCourseEnrollment404JSONResponse(notFoundError("no active enrollment with this id exists for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.AbandonCourseEnrollment409JSONResponse(conflictError("this is the caller's only current course or path with something else eligible to become current; switch to it first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.AbandonCourseEnrollment200JSONResponse(toCourseEnrollment(enrollment)), nil
+}
+
+func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.SetCurrentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	view, err := h.studentPath.SetCurrentPath(ctx, caller, application.SetCurrentPathInput{
+		CourseEnrollmentID: uuidPtrToStringPtr(request.Body.CourseEnrollmentId),
+		StudentPathID:      uuidPtrToStringPtr(request.Body.StudentPathId),
+	})
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.SetCurrentPath400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.SetCurrentPath403JSONResponse(forbiddenError("only students hold a current course or path")), nil
+		case errKindNotFound:
+			return generated.SetCurrentPath404JSONResponse(notFoundError("the referenced course enrollment or student path does not exist or does not belong to the caller")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.SetCurrentPath200JSONResponse(toStudentPathView(view)), nil
 }
 
 func (h *Handler) ListContentNodeChallenges(ctx context.Context, request generated.ListContentNodeChallengesRequestObject) (generated.ListContentNodeChallengesResponseObject, error) {

@@ -1,0 +1,2 @@
+-- create "course_enrollments" table
+CREATE TABLE "course_enrollments" ("id" uuid NOT NULL, "student_id" uuid NOT NULL, "course_id" uuid NOT NULL, "course_title" character varying NOT NULL, "course_version_number" bigint NOT NULL, "status" character varying NOT NULL DEFAULT 'active', "active_checkpoint_student_path_id" uuid NULL, "active_checkpoint_position" bigint NULL, "enrolled_at" timestamptz NOT NULL, PRIMARY KEY ("id"));

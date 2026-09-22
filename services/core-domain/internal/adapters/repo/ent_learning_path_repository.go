@@ -253,6 +253,39 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 	return tx.Commit()
 }
 
+// Delete removes id's LearningPath row together with all of its
+// LearningPathItem rows, in one transaction. Returns domain.ErrNotFound if
+// no path exists with the given id. Neither table carries an ent edge back
+// from StudentPath/StudentPathItem — those copy a template's items at
+// assign time and never reference learning_paths again — so this never
+// needs to cascade or touch student progress data.
+func (r *EntLearningPathRepository) Delete(ctx context.Context, id string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.LearningPathItem.Delete().
+		Where(learningpathitem.LearningPathID(parsed)).
+		Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+
+	if err := tx.LearningPath.DeleteOneID(parsed).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return rollback(tx, domain.ErrNotFound)
+		}
+		return rollback(tx, err)
+	}
+
+	return tx.Commit()
+}
+
 // rollback rolls tx back and folds any rollback failure into the original
 // error rather than discarding it silently.
 func rollback(tx *ent.Tx, err error) error {

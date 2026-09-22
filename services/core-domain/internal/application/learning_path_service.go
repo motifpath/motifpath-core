@@ -11,14 +11,15 @@ import (
 // LearningPathService manages LearningPath — ordered sequences of content
 // nodes that students follow.
 type LearningPathService struct {
-	nodes ports.ContentNodeRepository
-	paths ports.LearningPathRepository
-	newID func() string
-	now   func() time.Time
+	nodes          ports.ContentNodeRepository
+	paths          ports.LearningPathRepository
+	courseVersions ports.CourseVersionRepository
+	newID          func() string
+	now            func() time.Time
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, newID: newID, now: now}
+func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, newID: newID, now: now}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -105,6 +106,39 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 		return domain.LearningPath{}, err
 	}
 	return replaced, nil
+}
+
+// DeleteLearningPath permanently deletes the learning path template with
+// the given id. Never touches any StudentPath already copied from this
+// template — each is an independent snapshot, unaffected by later changes
+// to (or removal of) the template it came from. Only the creating teacher
+// or an admin may delete a learning path. Refused with domain.ErrConflict
+// if the template is referenced by a checkpoint of any published
+// CourseVersion, even one belonging to a since-retired course — a
+// published course's checkpoint sequence must always resolve. Returns
+// domain.ErrNotFound if no path exists with the given id.
+func (s *LearningPathService) DeleteLearningPath(ctx context.Context, caller domain.User, id string) error {
+	if !canManageContent(caller.Role) {
+		return domain.ErrForbidden
+	}
+
+	existing, err := s.paths.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := requireOwner(caller, existing.TeacherID); err != nil {
+		return err
+	}
+
+	referenced, err := s.courseVersions.IsLearningPathReferenced(ctx, id)
+	if err != nil {
+		return err
+	}
+	if referenced {
+		return domain.ErrConflict
+	}
+
+	return s.paths.Delete(ctx, id)
 }
 
 // resolvePathItems turns pathItems into the resolved domain.NewLearningPathItem

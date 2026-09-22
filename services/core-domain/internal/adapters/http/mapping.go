@@ -76,6 +76,28 @@ func toGeneratedConcepts(concepts []domain.Concept) []generated.Concept {
 	return result
 }
 
+func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVersion {
+	result := generated.ContentNodeVersion{
+		ContentNodeId: mustUUID(v.ContentNodeID),
+		VersionNumber: v.VersionNumber,
+		TitleSnapshot: v.Title,
+		ClassificationSnapshot: generated.Classification{
+			Skills:          toGeneratedSkills(v.Classification.Skills),
+			Concepts:        toGeneratedConcepts(v.Classification.Concepts),
+			DifficultyLevel: generated.ClassificationDifficultyLevel(v.Classification.DifficultyLevel),
+			ReviewState:     generated.ClassificationReviewState(v.Classification.ReviewState),
+		},
+		LanguagesSnapshot: toGeneratedLanguages(v.Languages),
+		MediaUrlSnapshot:  v.MediaURL,
+		PublishedAt:       v.PublishedAt,
+	}
+	if v.RichContent != nil {
+		doc := toGeneratedPromptDocument(*v.RichContent)
+		result.RichContentSnapshot = &doc
+	}
+	return result
+}
+
 func toContentNode(n domain.ContentNode) generated.ContentNode {
 	result := generated.ContentNode{
 		ContentNodeId: mustUUID(n.ID),
@@ -369,24 +391,33 @@ func toLearningPaths(paths []domain.LearningPath) []generated.LearningPath {
 	return result
 }
 
-func toPathAssignment(a domain.PathAssignment) generated.PathAssignment {
-	return generated.PathAssignment{
-		AssignmentId:   mustUUID(a.ID),
-		StudentId:      mustUUID(a.StudentID),
-		LearningPathId: mustUUID(a.LearningPathID),
-		AssignedBy:     mustUUID(a.AssignedBy),
-		AssignedAt:     a.AssignedAt,
+func toStudentPath(sp domain.StudentPath) generated.StudentPath {
+	result := generated.StudentPath{
+		StudentPathId:            mustUUID(sp.ID),
+		StudentId:                mustUUID(sp.StudentID),
+		SourceTemplateId:         mustUUID(sp.SourceTemplateID),
+		Title:                    sp.Title,
+		AssignedBy:               mustUUID(sp.AssignedBy),
+		AssignedAt:               sp.AssignedAt,
+		ArchivedAt:               sp.ArchivedAt,
+		CourseCheckpointPosition: sp.CourseCheckpointPosition,
 	}
+	if sp.SourceCourseEnrollmentID != nil {
+		id := mustUUID(*sp.SourceCourseEnrollmentID)
+		result.SourceCourseEnrollmentId = &id
+	}
+	return result
 }
 
 func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
 	return generated.StudentPathItem{
-		Position:      item.Position,
-		ContentNodeId: mustUUID(item.ContentNodeID),
-		Title:         item.Title,
-		ContentType:   generated.StudentPathItemContentType(item.ContentType),
-		Status:        generated.StudentPathItemStatus(item.Status),
-		SectionLabel:  item.SectionLabel,
+		Position:             item.Position,
+		ContentNodeId:        mustUUID(item.ContentNodeID),
+		ContentNodeVersionId: mustUUID(item.ContentNodeVersionID),
+		Title:                item.Title,
+		ContentType:          generated.StudentPathItemContentType(item.ContentType),
+		Status:               generated.StudentPathItemStatus(item.Status),
+		SectionLabel:         item.SectionLabel,
 	}
 }
 
@@ -395,13 +426,46 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 	for i, item := range v.Items {
 		items[i] = toStudentPathItem(item)
 	}
-	return generated.StudentPathView{
-		AssignmentId:    mustUUID(v.AssignmentID),
-		LearningPathId:  mustUUID(v.LearningPathID),
-		Title:           v.Title,
-		CurrentPosition: v.CurrentPosition,
-		Items:           items,
+	view := generated.StudentPathView{
+		StudentPathId:            mustUUID(v.StudentPathID),
+		SourceTemplateId:         mustUUID(v.SourceTemplateID),
+		Title:                    v.Title,
+		CurrentPosition:          v.CurrentPosition,
+		Items:                    items,
+		CourseCheckpointPosition: v.CourseCheckpointPosition,
+		CourseCompleted:          v.CourseCompleted,
 	}
+	if v.CourseEnrollmentID != nil {
+		id := mustUUID(*v.CourseEnrollmentID)
+		view.CourseEnrollmentId = &id
+	}
+	return view
+}
+
+func toCourseEnrollment(e domain.CourseEnrollment) generated.CourseEnrollment {
+	result := generated.CourseEnrollment{
+		CourseEnrollmentId:       mustUUID(e.ID),
+		StudentId:                mustUUID(e.StudentID),
+		CourseId:                 mustUUID(e.CourseID),
+		CourseTitle:              e.CourseTitle,
+		CourseVersionNumber:      e.CourseVersionNumber,
+		Status:                   generated.CourseEnrollmentStatus(e.Status),
+		ActiveCheckpointPosition: e.ActiveCheckpointPosition,
+		EnrolledAt:               e.EnrolledAt,
+	}
+	if e.ActiveCheckpointStudentPathID != nil {
+		id := mustUUID(*e.ActiveCheckpointStudentPathID)
+		result.ActiveCheckpointStudentPathId = &id
+	}
+	return result
+}
+
+func toCourseEnrollments(enrollments []domain.CourseEnrollment) []generated.CourseEnrollment {
+	result := make([]generated.CourseEnrollment, len(enrollments))
+	for i, e := range enrollments {
+		result[i] = toCourseEnrollment(e)
+	}
+	return result
 }
 
 // derefOptions returns the options a request carried, or nil when the field
@@ -502,4 +566,140 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 		}
 	}
 	return result
+}
+
+// isStaff reports whether role is teacher or admin — the HTTP layer's own
+// copy of the teacher-or-admin check, used only to decide response shape
+// (e.g. whether to include has_unpublished_changes on a catalog entry).
+// The actual authorization gate for an operation is enforced in the
+// application layer, not here.
+func isStaff(role domain.Role) bool {
+	return role == domain.RoleTeacher || role == domain.RoleAdmin
+}
+
+func toCourseCheckpoint(cp domain.CourseCheckpoint) generated.CourseCheckpoint {
+	return generated.CourseCheckpoint{
+		Position:       cp.Position,
+		LearningPathId: mustUUID(cp.LearningPathID),
+		Title:          cp.Title,
+		EffectiveTitle: cp.EffectiveTitle,
+	}
+}
+
+func toCourseCheckpoints(checkpoints []domain.CourseCheckpoint) []generated.CourseCheckpoint {
+	result := make([]generated.CourseCheckpoint, len(checkpoints))
+	for i, cp := range checkpoints {
+		result[i] = toCourseCheckpoint(cp)
+	}
+	return result
+}
+
+// toCourse renders c as its live, currently-being-authored draft — the
+// teacher/admin-only representation returned by CreateCourse/GetCourse/
+// ReplaceCourse. latest is c's latest published CourseVersion, or nil if
+// the course has never been published; latest_published_version and
+// has_unpublished_changes are both derived from it via
+// domain.HasUnpublishedChanges, matching the OpenAPI contract's "or
+// nothing has been published yet" case.
+func toCourse(c domain.Course, latest *domain.CourseVersion) generated.Course {
+	result := generated.Course{
+		CourseId:              mustUUID(c.ID),
+		Title:                 c.Title,
+		Summary:               c.Summary,
+		Level:                 generated.CourseLevel(c.Level),
+		Status:                generated.CourseStatus(c.Status),
+		CreatedBy:             mustUUID(c.CreatedBy),
+		CreatedAt:             c.CreatedAt,
+		HasUnpublishedChanges: domain.HasUnpublishedChanges(c, latest),
+		Checkpoints:           toCourseCheckpoints(c.Checkpoints),
+	}
+	if latest != nil {
+		versionNumber := latest.VersionNumber
+		result.LatestPublishedVersion = &versionNumber
+	}
+	return result
+}
+
+// toCourseCatalogEntry renders c as a lightweight catalog entry for the
+// given caller — never a checkpoint's learning_path_id or other live-draft
+// authoring detail, matching the OpenAPI CourseCatalogEntry contract.
+// has_unpublished_changes is included only for teachers/admins; a student
+// never receives it. latest is c's latest published CourseVersion, or nil
+// if the course has never been published; published_at and
+// has_unpublished_changes are both derived from it.
+func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion) generated.CourseCatalogEntry {
+	entry := generated.CourseCatalogEntry{
+		CourseId: mustUUID(c.ID),
+		Title:    c.Title,
+		Summary:  c.Summary,
+		Level:    generated.CourseCatalogEntryLevel(c.Level),
+		Status:   generated.CourseCatalogEntryStatus(c.Status),
+	}
+	if latest != nil {
+		publishedAt := latest.PublishedAt
+		entry.PublishedAt = &publishedAt
+	}
+	if isStaff(caller.Role) {
+		hasUnpublishedChanges := domain.HasUnpublishedChanges(c, latest)
+		entry.HasUnpublishedChanges = &hasUnpublishedChanges
+	}
+	return entry
+}
+
+// courseVersionLookup returns c's latest published CourseVersion, or nil if
+// the course has never been published (domain.ErrNotFound). Any other
+// error is returned unchanged as the second value.
+type courseVersionLookup func(courseID string) (*domain.CourseVersion, error)
+
+func toCourseCatalogEntries(courses []domain.Course, caller domain.User, latest courseVersionLookup) ([]generated.CourseCatalogEntry, error) {
+	result := make([]generated.CourseCatalogEntry, len(courses))
+	for i, c := range courses {
+		version, err := latest(c.ID)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = toCourseCatalogEntry(c, caller, version)
+	}
+	return result, nil
+}
+
+func toGeneratedCourseVersion(v domain.CourseVersion) generated.CourseVersion {
+	return generated.CourseVersion{
+		CourseId:                   mustUUID(v.CourseID),
+		VersionNumber:              v.VersionNumber,
+		TitleSnapshot:              v.TitleSnapshot,
+		SummarySnapshot:            v.SummarySnapshot,
+		LevelSnapshot:              generated.CourseVersionLevelSnapshot(v.LevelSnapshot),
+		PublishedAt:                v.PublishedAt,
+		AvailableForNewEnrollments: v.AvailableForNewEnrollments,
+	}
+}
+
+func toCourseOutlineItem(item application.CourseOutlineItem) generated.CourseOutlineItem {
+	return generated.CourseOutlineItem{Title: item.Title, SectionLabel: item.SectionLabel}
+}
+
+func toCourseOutlineCheckpoint(cp application.CourseOutlineCheckpoint) generated.CourseOutlineCheckpoint {
+	items := make([]generated.CourseOutlineItem, len(cp.Items))
+	for i, item := range cp.Items {
+		items[i] = toCourseOutlineItem(item)
+	}
+	return generated.CourseOutlineCheckpoint{Position: cp.Position, Title: cp.Title, Items: items}
+}
+
+func toCourseDetail(courseID string, view application.PublishedCourseView) generated.CourseDetail {
+	checkpoints := make([]generated.CourseOutlineCheckpoint, len(view.Checkpoints))
+	for i, cp := range view.Checkpoints {
+		checkpoints[i] = toCourseOutlineCheckpoint(cp)
+	}
+	publishedAt := view.PublishedAt
+	return generated.CourseDetail{
+		CourseId:    mustUUID(courseID),
+		Title:       view.Title,
+		Summary:     view.Summary,
+		Level:       generated.CourseDetailLevel(view.Level),
+		Status:      generated.CourseDetailStatus(view.Status),
+		PublishedAt: &publishedAt,
+		Checkpoints: checkpoints,
+	}
 }

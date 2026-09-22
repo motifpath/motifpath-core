@@ -14,7 +14,11 @@ import (
 )
 
 func newLearningPathService(nodes *fakeContentNodeRepository, paths *fakeLearningPathRepository) *application.LearningPathService {
-	return application.NewLearningPathService(nodes, paths, idSequence(), func() time.Time { return fixedCreatedAt })
+	return newLearningPathServiceWithVersions(nodes, paths, newFakeCourseVersionRepository())
+}
+
+func newLearningPathServiceWithVersions(nodes *fakeContentNodeRepository, paths *fakeLearningPathRepository, courseVersions *fakeCourseVersionRepository) *application.LearningPathService {
+	return application.NewLearningPathService(nodes, paths, courseVersions, idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // pathItems builds an unlabelled PathItemInput slice from content node ids,
@@ -363,5 +367,86 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "missing", "Title", pathItems("node-01"))
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestLearningPathService_DeleteLearningPath(t *testing.T) {
+	t.Run("a teacher deletes a learning path they own", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), teacherCaller(), "path-1")
+
+		require.NoError(t, err)
+		_, err = paths.GetByID(context.Background(), "path-1")
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("an admin deletes a learning path created by a teacher", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), adminCaller(), "path-1")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("a teacher cannot delete another teacher's learning path", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), otherTeacherCaller(), "path-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+		_, getErr := paths.GetByID(context.Background(), "path-1")
+		assert.NoError(t, getErr, "the path must still exist after a rejected delete")
+	})
+
+	t.Run("a student cannot delete a learning path", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), studentCaller(), "path-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("deleting a learning path that does not exist returns not found", func(t *testing.T) {
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), newFakeLearningPathRepository(), newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), teacherCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("deleting a learning path referenced by a published course's checkpoint is refused", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		versions := newFakeCourseVersionRepository()
+		twoCheckpointCourseVersion(versions, "course-1", "path-1", "path-2")
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, versions)
+
+		err := svc.DeleteLearningPath(context.Background(), teacherCaller(), "path-1")
+
+		assert.ErrorIs(t, err, domain.ErrConflict)
+		_, getErr := paths.GetByID(context.Background(), "path-1")
+		assert.NoError(t, getErr, "the path must still exist after a rejected delete")
+	})
+
+	t.Run("deleting a learning path referenced only by an unpublished course draft is allowed", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
+		// A draft course's checkpoints live in CourseCheckpointRepository, not
+		// CourseVersionRepository — no CourseVersion has ever been published
+		// for it, so IsLearningPathReferenced finds nothing.
+		svc := newLearningPathServiceWithVersions(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository())
+
+		err := svc.DeleteLearningPath(context.Background(), teacherCaller(), "path-1")
+
+		require.NoError(t, err)
 	})
 }

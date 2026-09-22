@@ -182,6 +182,7 @@ func run(completed int, current string) error {
 		repo.NewEntExpandedContentRepository(conns.ent),
 		repo.NewEntSkillRepository(conns.ent),
 		repo.NewEntConceptRepository(conns.ent),
+		repo.NewEntContentNodeVersionRepository(conns.ent),
 		newID, now,
 	)
 
@@ -243,13 +244,20 @@ func enrichSteps(ctx context.Context, svc *application.ContentService, admin dom
 }
 
 func activePath(ctx context.Context, client *ent.Client, studentID string) (domain.LearningPath, error) {
-	assignment, err := repo.NewEntPathAssignmentRepository(client).GetActiveByStudentID(ctx, studentID)
+	state, err := repo.NewEntStudentLearningStateRepository(client).GetByStudentID(ctx, studentID)
 	if err != nil {
-		return domain.LearningPath{}, fmt.Errorf("find the active path assignment of user %s (run seed-dev-data first): %w", studentID, err)
+		return domain.LearningPath{}, fmt.Errorf("find the current path of user %s (run seed-dev-data first): %w", studentID, err)
 	}
-	path, err := repo.NewEntLearningPathRepository(client).GetByID(ctx, assignment.LearningPathID)
+	if state.CurrentStandalonePathID == nil {
+		return domain.LearningPath{}, fmt.Errorf("user %s has no current standalone path set (run seed-dev-data first)", studentID)
+	}
+	studentPath, err := repo.NewEntStudentPathRepository(client).GetByID(ctx, *state.CurrentStandalonePathID)
 	if err != nil {
-		return domain.LearningPath{}, fmt.Errorf("load learning path %s: %w", assignment.LearningPathID, err)
+		return domain.LearningPath{}, fmt.Errorf("load student path %s: %w", *state.CurrentStandalonePathID, err)
+	}
+	path, err := repo.NewEntLearningPathRepository(client).GetByID(ctx, studentPath.SourceTemplateID)
+	if err != nil {
+		return domain.LearningPath{}, fmt.Errorf("load learning path %s: %w", studentPath.SourceTemplateID, err)
 	}
 	return path, nil
 }

@@ -3,11 +3,14 @@
 package bdd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
 
+	appHTTP "github.com/motifpath/core-domain/internal/adapters/http"
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -15,6 +18,8 @@ import (
 func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)", "([^"]+)"$`, w.putLearningPathThreeItems)
 	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)"$`, w.putLearningPathTwoItems)
+	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)"$`, w.putLearningPathOneItem)
+	sc.Step(`^a second learning path "([^"]+)" exists with items "([^"]+)"$`, w.putLearningPathOneItem)
 	sc.Step(`^a learning path "([^"]+)" exists with "([^"]+)" and "([^"]+)" in section "([^"]+)" and "([^"]+)" in section "([^"]+)"$`, w.putLearningPathThreeItemsWithSections)
 	sc.Step(`^a learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
 	sc.Step(`^a second learning path "([^"]+)" exists in the system$`, w.putLearningPathDefault)
@@ -53,6 +58,21 @@ func registerLearningPathSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the items are returned with positions (\d+), (\d+), and (\d+) in the order "([^"]+)", "([^"]+)", "([^"]+)"$`, w.replaceItemsReturnedInOrder)
 	sc.Step(`^the learning path has (\d+) items$`, w.learningPathHasNItems)
+
+	// ── Deleting a learning path ────────────────────────────────────────────
+	sc.Step(`^a learning path "([^"]+)" exists with items "([^"]+)", "([^"]+)", "([^"]+)", owned by a different teacher$`, w.putLearningPathThreeItemsOtherTeacher)
+	sc.Step(`^student "([^"]+)" has "([^"]+)" assigned as a standalone path$`, w.alreadyHasAssigned)
+	sc.Step(`^a course "([^"]+)" exists, published, with checkpoints "([^"]+)"$`, w.courseExistsPublishedWithCheckpoint)
+	sc.Step(`^a course "([^"]+)" exists as a draft with checkpoints "([^"]+)"$`, w.courseExistsDraftWithCheckpoint)
+	sc.Step(`^"([^"]+)" has since been retired$`, w.courseHasBeenRetired)
+
+	sc.Step(`^"([^"]+)" deletes the learning path "([^"]+)"$`, w.deletesLearningPath)
+	sc.Step(`^"([^"]+)" attempts to delete the learning path "([^"]+)"$`, w.deletesLearningPath)
+	sc.Step(`^"([^"]+)" attempts to delete a learning path with an ID that does not exist$`, w.attemptsDeleteMissingLearningPath)
+	sc.Step(`^an unauthenticated request attempts to delete learning path "([^"]+)"$`, w.unauthDeletesLearningPath)
+
+	sc.Step(`^the learning path is deleted$`, w.learningPathIsDeleted)
+	sc.Step(`^"([^"]+)"'s copy of the path is unaffected$`, w.studentsCopyOfPathUnaffected)
 }
 
 func (w *world) listsAllLearningPaths(name string) error {
@@ -187,11 +207,42 @@ type pathItemSpec struct {
 	sectionLabel string
 }
 
+// autoPublishNode seeds a version 1 ContentNodeVersion for the content node
+// slug, unless one already exists. A learning path "exists in the system"
+// ready to be assigned implies its items' content nodes are already
+// published — assigning refuses any path whose content node has never
+// been published (content-node-versioning.feature), so every
+// putLearningPath* helper here publishes each item's node by default.
+// Scenarios that specifically need an unpublished node instead seed it
+// directly via putContentNode (never through these helpers).
+func (w *world) autoPublishNode(slug string) {
+	ctx := context.Background()
+	node, err := w.nodes.GetByID(ctx, nodeID(slug).String())
+	if err != nil {
+		return
+	}
+	if _, err := w.versions.GetLatestByContentNodeID(ctx, node.ID); err == nil {
+		return
+	}
+	_ = w.versions.Create(ctx, domain.ContentNodeVersion{
+		ID:            deterministicUUID("content-node-version", slug, "1").String(),
+		ContentNodeID: node.ID,
+		VersionNumber: 1,
+		Title:         node.Title,
+		ContentType:   node.ContentType,
+		MediaURL:      node.MediaURL,
+		RichContent:   node.RichContent,
+		PublishedBy:   node.TeacherID,
+		PublishedAt:   fixedNow,
+	})
+}
+
 func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	for _, n := range []string{n1, n2, n3} {
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
@@ -207,11 +258,32 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 	return nil
 }
 
+// putLearningPathOneItem deliberately does NOT auto-publish its item's
+// content node (unlike the multi-item variants below) — every scenario
+// that uses the single-item form is in content-node-versioning.feature,
+// which manages publishing explicitly itself as the thing under test.
+func (w *world) putLearningPathOneItem(slug, n1 string) error {
+	if err := w.putContentNode(n1, domain.ContentTypeVideo); err != nil {
+		return err
+	}
+	w.paths.put(domain.LearningPath{
+		ID:        pathID(slug).String(),
+		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
+		Title:     slug,
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
+		},
+		CreatedAt: fixedNow,
+	})
+	return nil
+}
+
 func (w *world) putLearningPathTwoItems(slug, n1, n2 string) error {
 	for _, n := range []string{n1, n2} {
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 	}
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
@@ -234,6 +306,7 @@ func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3
 		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
 			return err
 		}
+		w.autoPublishNode(n)
 		items[i] = domain.LearningPathItem{
 			Position:      i + 1,
 			ContentNodeID: nodeID(n).String(),
@@ -256,6 +329,7 @@ func (w *world) putLearningPathDefault(slug string) error {
 	if err := w.putContentNode("default-node-for-"+slug, domain.ContentTypeVideo); err != nil {
 		return err
 	}
+	w.autoPublishNode("default-node-for-" + slug)
 	w.paths.put(domain.LearningPath{
 		ID:        pathID(slug).String(),
 		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
@@ -430,6 +504,180 @@ func (w *world) learningPathResponseComplete() error {
 	}
 	if resp.Title == "" || resp.TeacherId.String() == "" || len(resp.Items) == 0 {
 		return fmt.Errorf("expected a fully populated learning path, got %+v", resp)
+	}
+	return nil
+}
+
+// putLearningPathThreeItemsOtherTeacher is putLearningPathThreeItems's
+// counterpart for the "owned by a different teacher" scenarios — every
+// other putLearningPath* helper here hardcodes "bob" as the owner, which is
+// exactly the teacher every ownership-rejection scenario authenticates as,
+// so this needs a distinct owner instead.
+func (w *world) putLearningPathThreeItemsOtherTeacher(slug, n1, n2, n3 string) error {
+	for _, n := range []string{n1, n2, n3} {
+		if err := w.putContentNode(n, domain.ContentTypeVideo); err != nil {
+			return err
+		}
+		w.autoPublishNode(n)
+	}
+	w.paths.put(domain.LearningPath{
+		ID:        pathID(slug).String(),
+		TeacherID: w.ensureRegistered("a-different-teacher-for-"+slug, domain.RoleTeacher).String(),
+		Title:     slug,
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: nodeID(n1).String(), Title: n1, ContentType: domain.ContentTypeVideo},
+			{Position: 2, ContentNodeID: nodeID(n2).String(), Title: n2, ContentType: domain.ContentTypeVideo},
+			{Position: 3, ContentNodeID: nodeID(n3).String(), Title: n3, ContentType: domain.ContentTypeVideo},
+		},
+		CreatedAt: fixedNow,
+	})
+	return nil
+}
+
+// courseExistsPublishedWithCheckpoint seeds a Course with a single
+// checkpoint referencing pathSlug's learning path and publishes it — the
+// "referenced by a published CourseVersion" precondition the deletion
+// guard scenarios need. Both the create and the publish run under an
+// isolated seed identity (mirroring alreadyHasAssigned), so this setup
+// never disturbs whichever identity the scenario itself is authenticated
+// as. Publishing requires an admin caller, distinct from the teacher who
+// creates the draft.
+func (w *world) courseExistsPublishedWithCheckpoint(courseSlug, pathSlug string) error {
+	return w.seedCourseWithCheckpoint(courseSlug, pathSlug, true)
+}
+
+// courseExistsDraftWithCheckpoint is courseExistsPublishedWithCheckpoint's
+// counterpart for "referenced only by an unpublished course draft" — the
+// checkpoint is recorded on the live Course draft but never snapshotted
+// into a CourseVersion, so the deletion guard (which only ever consults
+// CourseVersionCheckpoint) finds nothing.
+func (w *world) courseExistsDraftWithCheckpoint(courseSlug, pathSlug string) error {
+	return w.seedCourseWithCheckpoint(courseSlug, pathSlug, false)
+}
+
+func (w *world) seedCourseWithCheckpoint(courseSlug, pathSlug string, publish bool) error {
+	if _, err := w.paths.GetByID(context.Background(), pathID(pathSlug).String()); err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+		if err := w.putLearningPathDefault(pathSlug); err != nil {
+			return err
+		}
+	}
+
+	teacherName := "seed-teacher-for-" + courseSlug
+	w.ensureRegistered(teacherName, domain.RoleTeacher)
+	teacherCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(teacherName))
+
+	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{
+		Body: &generated.CreateCourseRequest{
+			Title:   courseSlug,
+			Summary: "Seeded for testing",
+			Level:   generated.CreateCourseRequestLevelBeginner,
+			Checkpoints: []struct {
+				LearningPathId uuid.UUID `json:"learning_path_id"`
+				Title          *string   `json:"title,omitempty"`
+			}{
+				{LearningPathId: pathID(pathSlug)},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	created, ok := resp.(generated.CreateCourse201JSONResponse)
+	if !ok {
+		return fmt.Errorf("setup: expected course creation to succeed, got %#v", resp)
+	}
+	w.courseIDBySlug[courseSlug] = created.CourseId
+
+	if !publish {
+		return nil
+	}
+
+	adminName := "seed-admin-for-" + courseSlug
+	w.ensureRegistered(adminName, domain.RoleAdmin)
+	adminCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(adminName))
+
+	publishResp, err := w.handler.PublishCourse(adminCtx, generated.PublishCourseRequestObject{CourseId: created.CourseId})
+	if err != nil {
+		return err
+	}
+	if _, ok := publishResp.(generated.PublishCourse201JSONResponse); !ok {
+		return fmt.Errorf("setup: expected course publish to succeed, got %#v", publishResp)
+	}
+	return nil
+}
+
+// courseHasBeenRetired sets courseSlug's status directly on the fake
+// CourseRepository rather than through the HTTP handler — this step only
+// needs the Course's status to read "retired" for the deletion guard
+// scenario to exercise its "even a since-retired course" clause; it never
+// asserts on RetireCourse's own request/response behavior, which
+// steps_courses_test.go's attemptsRetireCourse exercises for real.
+func (w *world) courseHasBeenRetired(courseSlug string) error {
+	courseID, ok := w.courseIDBySlug[courseSlug]
+	if !ok {
+		return fmt.Errorf("no course was seeded for slug %q", courseSlug)
+	}
+	return w.courses.UpdateStatus(context.Background(), courseID.String(), domain.CourseStatusRetired)
+}
+
+func (w *world) deletesLearningPath(name, slug string) error {
+	w.lastDeletedPathSlug = slug
+	resp, err := w.handler.DeleteLearningPath(w.ctx(), generated.DeleteLearningPathRequestObject{LearningPathId: pathID(slug)})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) attemptsDeleteMissingLearningPath(string) error {
+	resp, err := w.handler.DeleteLearningPath(w.ctx(), generated.DeleteLearningPathRequestObject{LearningPathId: deterministicUUID("path", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthDeletesLearningPath(slug string) error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.deletesLearningPath("", slug)
+}
+
+func (w *world) learningPathIsDeleted() error {
+	if _, ok := w.lastResp.(generated.DeleteLearningPath204Response); !ok {
+		return fmt.Errorf("expected a 204 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if w.lastDeletedPathSlug == "" {
+		return fmt.Errorf("no learning path slug was recorded to check")
+	}
+	if _, err := w.paths.GetByID(context.Background(), pathID(w.lastDeletedPathSlug).String()); !errors.Is(err, domain.ErrNotFound) {
+		return fmt.Errorf("expected learning path %q to no longer exist, got err=%v", w.lastDeletedPathSlug, err)
+	}
+	return nil
+}
+
+// studentsCopyOfPathUnaffected asserts studentName's own StudentPath copy —
+// resolved via their current-path pointer, the same way
+// studentPathBecomesCurrentPath does — still exists after the template it
+// was copied from is deleted. Each StudentPath is an independent snapshot
+// (see domain.StudentPath), so the template's deletion must never cascade
+// to it.
+func (w *world) studentsCopyOfPathUnaffected(studentName string) error {
+	studentMotifID, ok := w.userMotifID[studentName]
+	if !ok {
+		return fmt.Errorf("no user %q has been registered", studentName)
+	}
+	state, err := w.learningState.GetByStudentID(context.Background(), studentMotifID.String())
+	if err != nil {
+		return err
+	}
+	if state.CurrentStandalonePathID == nil {
+		return fmt.Errorf("%q has no current standalone path", studentName)
+	}
+	sp, err := w.studentPaths.GetByID(context.Background(), *state.CurrentStandalonePathID)
+	if err != nil {
+		return fmt.Errorf("expected %q's copy of the path to still exist: %w", studentName, err)
+	}
+	if sp.ArchivedAt != nil {
+		return fmt.Errorf("expected %q's copy of the path to remain unarchived", studentName)
 	}
 	return nil
 }

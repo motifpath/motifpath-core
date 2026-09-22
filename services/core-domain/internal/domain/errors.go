@@ -17,6 +17,12 @@ var (
 	// (e.g. a user record for a Clerk identity) already exists.
 	ErrAlreadyExists = errors.New("already exists")
 
+	// ErrConflict is returned when a request is individually well-formed but
+	// refused because of the resource's current state — e.g. archiving a
+	// student's only current course or path with nothing else eligible to
+	// become current.
+	ErrConflict = errors.New("conflict")
+
 	// ErrValidation is the sentinel every *ValidationError wraps. Callers
 	// that only need to know "was this a validation failure" can test with
 	// errors.Is(err, domain.ErrValidation); callers that need the

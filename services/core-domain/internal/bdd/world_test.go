@@ -29,21 +29,26 @@ func noShuffle(int, func(i, j int)) {}
 // by InitializeScenario for every scenario godog runs, giving each scenario
 // full isolation without an explicit teardown step.
 type world struct {
-	users       *fakeUserRepo
-	nodes       *fakeContentNodeRepo
-	challenges  *fakeChallengeRepo
-	exercises   *fakeExerciseRepo
-	expanded    *fakeExpandedContentRepo
-	paths       *fakeLearningPathRepo
-	assignments *fakePathAssignmentRepo
-	completion  *fakeCompletionReader
-	skills      *fakeSkillRepo
-	concepts    *fakeConceptRepo
-	instruments *fakeInstrumentRepo
-	diagrams    *fakeDiagramRepo
-	pgPinger    *fakePinger
-	mongoPinger *fakePinger
-	handler     *appHTTP.Handler
+	users             *fakeUserRepo
+	nodes             *fakeContentNodeRepo
+	challenges        *fakeChallengeRepo
+	exercises         *fakeExerciseRepo
+	expanded          *fakeExpandedContentRepo
+	paths             *fakeLearningPathRepo
+	studentPaths      *fakeStudentPathRepo
+	courses           *fakeCourseRepo
+	courseVersions    *fakeCourseVersionRepo
+	courseEnrollments *fakeCourseEnrollmentRepo
+	versions          *fakeContentNodeVersionRepo
+	learningState     *fakeStudentLearningStateRepo
+	completion        *fakeCompletionReader
+	skills            *fakeSkillRepo
+	concepts          *fakeConceptRepo
+	instruments       *fakeInstrumentRepo
+	diagrams          *fakeDiagramRepo
+	pgPinger          *fakePinger
+	mongoPinger       *fakePinger
+	handler           *appHTTP.Handler
 
 	// health probe responses from the most recent "probe is checked" step
 	livenessResp  generated.LivenessCheckResponseObject
@@ -106,49 +111,130 @@ type world struct {
 	// assertion after an action (like updating the challenge) whose own
 	// lastResp isn't exercise-shaped and so can't be asserted on directly.
 	lastExerciseSlug string
+
+	// priorStudentPathID holds the id of a StudentPath created by an
+	// earlier assign step in the same scenario, captured before a
+	// following assign overwrites lastResp — needed by the "additive
+	// assign" and "editing a copy" scenarios to refer back to it.
+	priorStudentPathID string
+
+	// courseIDBySlug caches the server-generated course_id for every course
+	// seeded via a "a course ... exists ..." step, keyed by the Gherkin
+	// slug — needed because, unlike a learning path's deterministic
+	// pathID(slug), a Course's id is assigned by CourseService at create
+	// time.
+	courseIDBySlug map[string]uuid.UUID
+
+	// lastDeletedPathSlug is the slug most recently targeted by a "deletes
+	// the learning path" step, so a following "the learning path is
+	// deleted" Then step (whose DeleteLearningPath response carries no
+	// body to identify it from) knows which id to check against w.paths.
+	lastDeletedPathSlug string
+
+	// lastCourseSlug is the slug most recently targeted by a course-scoped
+	// action (create/get/replace/publish/retire), so a following "the
+	// course's status becomes ..." Then step — whose triggering response
+	// isn't always course-shaped (PublishCourse returns a CourseVersion,
+	// not a Course) — knows which course to re-check via w.courses.
+	lastCourseSlug string
+
+	// lastRetrievedCourseCheckpoints holds the Checkpoints slice from the
+	// most recent GetCourse call, so a following "replaces course ... with
+	// the retrieved checkpoints reordered to: ..." step can resend them
+	// (title overrides included) in a new order, matching a teacher
+	// resubmitting exactly what they were shown.
+	lastRetrievedCourseCheckpoints []generated.CourseCheckpoint
+
+	// courseEnrollmentIDByKey caches every CourseEnrollment id created so
+	// far, keyed by studentName+"|"+courseSlug — needed because, unlike a
+	// course's id (courseIDBySlug), a scenario often names both the
+	// student and the course together ("alice" abandons her
+	// "fingerstyle-journey" enrollment) and more than one course
+	// enrollment can exist per student within a single scenario.
+	courseEnrollmentIDByKey map[string]string
+
+	// courseEnrollmentIDByStudent caches the most recently created
+	// CourseEnrollment id per student name, last-writer-wins — for the
+	// step wordings that name only the student ("carol"'s enrollment)
+	// without naming which course.
+	courseEnrollmentIDByStudent map[string]string
+
+	// lastCourseEnrollmentKey is the courseEnrollmentIDByKey key most
+	// recently acted upon (enrolled, abandoned, completed a checkpoint
+	// of), so a following Then step whose own wording names neither the
+	// student nor the course ("the enrollment status becomes ...") can
+	// still resolve which enrollment to check.
+	lastCourseEnrollmentKey string
+
+	// priorCourseEnrollmentID holds the id of a CourseEnrollment abandoned
+	// earlier in the same scenario, captured before a following
+	// re-enrollment overwrites lastResp — needed by the "re-enrolling
+	// starts a fresh enrollment" scenario to assert the new id differs
+	// from the old one.
+	priorCourseEnrollmentID string
+
+	// standalonePathIDByKey caches the id of every standalone StudentPath
+	// assigned so far, keyed by studentName+"|"+pathSlug — needed because a
+	// current-path-lifecycle scenario can hold more than one standalone
+	// path at once ("alice archives her standalone 'strumming-path' copy"
+	// while "open-chords-path" is also assigned), unlike priorStudentPathID
+	// which only ever tracks the single most recent one.
+	standalonePathIDByKey map[string]string
 }
 
 func newWorld() *world {
 	skills := newFakeSkillRepo()
 	concepts := newFakeConceptRepo()
 	w := &world{
-		users:       newFakeUserRepo(),
-		nodes:       newFakeContentNodeRepo(skills, concepts),
-		challenges:  newFakeChallengeRepo(),
-		exercises:   newFakeExerciseRepo(skills, concepts),
-		expanded:    newFakeExpandedContentRepo(),
-		paths:       newFakeLearningPathRepo(),
-		assignments: newFakePathAssignmentRepo(),
-		completion:  newFakeCompletionReader(),
-		skills:      skills,
-		concepts:    concepts,
-		instruments: newFakeInstrumentRepo(),
-		diagrams:    newFakeDiagramRepo(skills, concepts),
-		pgPinger:    &fakePinger{},
-		mongoPinger: &fakePinger{},
-		userMotifID: map[string]uuid.UUID{},
+		users:             newFakeUserRepo(),
+		nodes:             newFakeContentNodeRepo(skills, concepts),
+		challenges:        newFakeChallengeRepo(),
+		exercises:         newFakeExerciseRepo(skills, concepts),
+		expanded:          newFakeExpandedContentRepo(),
+		paths:             newFakeLearningPathRepo(),
+		studentPaths:      newFakeStudentPathRepo(),
+		courses:           newFakeCourseRepo(),
+		courseVersions:    newFakeCourseVersionRepo(),
+		courseEnrollments: newFakeCourseEnrollmentRepo(),
+		versions:          newFakeContentNodeVersionRepo(),
+		learningState:     newFakeStudentLearningStateRepo(),
+		completion:        newFakeCompletionReader(),
+		skills:            skills,
+		concepts:          concepts,
+		instruments:       newFakeInstrumentRepo(),
+		diagrams:          newFakeDiagramRepo(skills, concepts),
+		pgPinger:          &fakePinger{},
+		mongoPinger:       &fakePinger{},
+		userMotifID:       map[string]uuid.UUID{},
 
 		skillIDByName:   map[string]uuid.UUID{},
 		conceptIDByName: map[string]uuid.UUID{},
+		courseIDBySlug:  map[string]uuid.UUID{},
+
+		courseEnrollmentIDByKey:     map[string]string{},
+		courseEnrollmentIDByStudent: map[string]string{},
+		standalonePathIDByKey:       map[string]string{},
 	}
 
 	newID := idSequence()
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, newID, now, noShuffle)
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
-	assignment := application.NewPathAssignmentService(w.users, w.paths, w.assignments, w.nodes, w.exercises, w.completion, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, newID, now)
+	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
+	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, newID, now)
+	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, newID)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, assignment, instrument, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 
@@ -195,12 +281,12 @@ func deterministicUUID(parts ...string) uuid.UUID {
 	return id
 }
 
-func clerkSub(name string) string       { return deterministicUUID("clerk", name).String() }
-func nodeID(slug string) uuid.UUID      { return deterministicUUID("node", slug) }
-func challengeID(slug string) uuid.UUID { return deterministicUUID("challenge", slug) }
-func exerciseID(slug string) uuid.UUID  { return deterministicUUID("exercise", slug) }
-func pathID(slug string) uuid.UUID      { return deterministicUUID("path", slug) }
-func expandedID(slug string) uuid.UUID  { return deterministicUUID("expanded", slug) }
+func clerkSub(name string) string        { return deterministicUUID("clerk", name).String() }
+func nodeID(slug string) uuid.UUID       { return deterministicUUID("node", slug) }
+func challengeID(slug string) uuid.UUID  { return deterministicUUID("challenge", slug) }
+func exerciseID(slug string) uuid.UUID   { return deterministicUUID("exercise", slug) }
+func pathID(slug string) uuid.UUID       { return deterministicUUID("path", slug) }
+func expandedID(slug string) uuid.UUID   { return deterministicUUID("expanded", slug) }
 func instrumentID(name string) uuid.UUID { return deterministicUUID("instrument", name) }
 func diagramID(slug string) uuid.UUID    { return deterministicUUID("diagram", slug) }
 

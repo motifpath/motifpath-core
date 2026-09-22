@@ -105,6 +105,78 @@ func (f ContentNodeSkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeSkillMutation", m)
 }
 
+// The ContentNodeVersionFunc type is an adapter to allow the use of ordinary
+// function as ContentNodeVersion mutator.
+type ContentNodeVersionFunc func(context.Context, *ent.ContentNodeVersionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ContentNodeVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ContentNodeVersionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeVersionMutation", m)
+}
+
+// The CourseFunc type is an adapter to allow the use of ordinary
+// function as Course mutator.
+type CourseFunc func(context.Context, *ent.CourseMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseMutation", m)
+}
+
+// The CourseCheckpointFunc type is an adapter to allow the use of ordinary
+// function as CourseCheckpoint mutator.
+type CourseCheckpointFunc func(context.Context, *ent.CourseCheckpointMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseCheckpointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseCheckpointMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseCheckpointMutation", m)
+}
+
+// The CourseEnrollmentFunc type is an adapter to allow the use of ordinary
+// function as CourseEnrollment mutator.
+type CourseEnrollmentFunc func(context.Context, *ent.CourseEnrollmentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseEnrollmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseEnrollmentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseEnrollmentMutation", m)
+}
+
+// The CourseVersionFunc type is an adapter to allow the use of ordinary
+// function as CourseVersion mutator.
+type CourseVersionFunc func(context.Context, *ent.CourseVersionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseVersionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseVersionMutation", m)
+}
+
+// The CourseVersionCheckpointFunc type is an adapter to allow the use of ordinary
+// function as CourseVersionCheckpoint mutator.
+type CourseVersionCheckpointFunc func(context.Context, *ent.CourseVersionCheckpointMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseVersionCheckpointFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseVersionCheckpointMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseVersionCheckpointMutation", m)
+}
+
 // The DiagramFunc type is an adapter to allow the use of ordinary
 // function as Diagram mutator.
 type DiagramFunc func(context.Context, *ent.DiagramMutation) (ent.Value, error)
@@ -261,18 +333,6 @@ func (f LearningPathItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LearningPathItemMutation", m)
 }
 
-// The PathAssignmentFunc type is an adapter to allow the use of ordinary
-// function as PathAssignment mutator.
-type PathAssignmentFunc func(context.Context, *ent.PathAssignmentMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f PathAssignmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.PathAssignmentMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PathAssignmentMutation", m)
-}
-
 // The PositionFunc type is an adapter to allow the use of ordinary
 // function as Position mutator.
 type PositionFunc func(context.Context, *ent.PositionMutation) (ent.Value, error)
@@ -295,6 +355,42 @@ func (f SkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillMutation", m)
+}
+
+// The StudentLearningStateFunc type is an adapter to allow the use of ordinary
+// function as StudentLearningState mutator.
+type StudentLearningStateFunc func(context.Context, *ent.StudentLearningStateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StudentLearningStateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StudentLearningStateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StudentLearningStateMutation", m)
+}
+
+// The StudentPathFunc type is an adapter to allow the use of ordinary
+// function as StudentPath mutator.
+type StudentPathFunc func(context.Context, *ent.StudentPathMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StudentPathFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StudentPathMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StudentPathMutation", m)
+}
+
+// The StudentPathItemFunc type is an adapter to allow the use of ordinary
+// function as StudentPathItem mutator.
+type StudentPathItemFunc func(context.Context, *ent.StudentPathItemMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StudentPathItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StudentPathItemMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StudentPathItemMutation", m)
 }
 
 // The UserFunc type is an adapter to allow the use of ordinary
