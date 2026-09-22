@@ -296,19 +296,17 @@ func (d classificationDefaults) ensureLanguage(ctx context.Context, nodeID strin
 	return nil
 }
 
-// ensureExerciseLanguage links the default language to the exercise. Unlike
-// ensureLanguage it does not check first — callers already know the exercise
-// has none (exercisesMissingLanguage only returns those).
-func (d classificationDefaults) ensureExerciseLanguage(ctx context.Context, exerciseID string) error {
+// ensureExerciseLanguage links langID to the exercise. Unlike ensureLanguage
+// it does not check first — callers already know the exercise has none
+// (exercisesMissingLanguage only returns those) — and it takes the language
+// id rather than resolving it itself, so tagging many exercises resolves the
+// language row once, not once per exercise.
+func (d classificationDefaults) ensureExerciseLanguage(ctx context.Context, exerciseID string, langID uuid.UUID) error {
 	id, err := uuid.Parse(exerciseID)
 	if err != nil {
 		return fmt.Errorf("parse exercise id %q: %w", exerciseID, err)
 	}
-	lang, err := d.client.Language.Query().Where(language.Code(defaultLanguageCode)).Only(ctx)
-	if err != nil {
-		return fmt.Errorf("find language %q: %w", defaultLanguageCode, err)
-	}
-	if _, err := d.client.Exercise.UpdateOneID(id).AddLanguageIDs(lang.ID).Save(ctx); err != nil {
+	if _, err := d.client.Exercise.UpdateOneID(id).AddLanguageIDs(langID).Save(ctx); err != nil {
 		return fmt.Errorf("link language %q to exercise %s: %w", defaultLanguageCode, exerciseID, err)
 	}
 	log.Printf("exercise %s: linked language %q", exerciseID, defaultLanguageCode)
@@ -330,8 +328,16 @@ func ensureExerciseLanguages(ctx context.Context, sqlDB *sql.DB, defaults classi
 	if err != nil {
 		return fmt.Errorf("find exercises with no language: %w", err)
 	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	lang, err := defaults.client.Language.Query().Where(language.Code(defaultLanguageCode)).Only(ctx)
+	if err != nil {
+		return fmt.Errorf("find language %q: %w", defaultLanguageCode, err)
+	}
 	for _, id := range ids {
-		if err := defaults.ensureExerciseLanguage(ctx, id); err != nil {
+		if err := defaults.ensureExerciseLanguage(ctx, id, lang.ID); err != nil {
 			return err
 		}
 	}
