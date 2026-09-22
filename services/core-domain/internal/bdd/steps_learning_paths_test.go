@@ -556,6 +556,15 @@ func (w *world) courseExistsDraftWithCheckpoint(courseSlug, pathSlug string) err
 }
 
 func (w *world) seedCourseWithCheckpoint(courseSlug, pathSlug string, publish bool) error {
+	if _, err := w.paths.GetByID(context.Background(), pathID(pathSlug).String()); err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+		if err := w.putLearningPathDefault(pathSlug); err != nil {
+			return err
+		}
+	}
+
 	teacherName := "seed-teacher-for-" + courseSlug
 	w.ensureRegistered(teacherName, domain.RoleTeacher)
 	teacherCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(teacherName))
@@ -601,12 +610,11 @@ func (w *world) seedCourseWithCheckpoint(courseSlug, pathSlug string, publish bo
 }
 
 // courseHasBeenRetired sets courseSlug's status directly on the fake
-// CourseRepository rather than through the HTTP handler — RetireCourse's
-// real handler is not yet wired (a separate, pre-existing gap in Step 7's
-// scope, not this one), and this step only needs the Course's status to
-// read "retired" for the deletion guard scenario to exercise its "even a
-// since-retired course" clause; it never asserts on RetireCourse's own
-// behavior.
+// CourseRepository rather than through the HTTP handler — this step only
+// needs the Course's status to read "retired" for the deletion guard
+// scenario to exercise its "even a since-retired course" clause; it never
+// asserts on RetireCourse's own request/response behavior, which
+// steps_courses_test.go's attemptsRetireCourse exercises for real.
 func (w *world) courseHasBeenRetired(courseSlug string) error {
 	courseID, ok := w.courseIDBySlug[courseSlug]
 	if !ok {

@@ -130,6 +130,56 @@ type world struct {
 	// deleted" Then step (whose DeleteLearningPath response carries no
 	// body to identify it from) knows which id to check against w.paths.
 	lastDeletedPathSlug string
+
+	// lastCourseSlug is the slug most recently targeted by a course-scoped
+	// action (create/get/replace/publish/retire), so a following "the
+	// course's status becomes ..." Then step — whose triggering response
+	// isn't always course-shaped (PublishCourse returns a CourseVersion,
+	// not a Course) — knows which course to re-check via w.courses.
+	lastCourseSlug string
+
+	// lastRetrievedCourseCheckpoints holds the Checkpoints slice from the
+	// most recent GetCourse call, so a following "replaces course ... with
+	// the retrieved checkpoints reordered to: ..." step can resend them
+	// (title overrides included) in a new order, matching a teacher
+	// resubmitting exactly what they were shown.
+	lastRetrievedCourseCheckpoints []generated.CourseCheckpoint
+
+	// courseEnrollmentIDByKey caches every CourseEnrollment id created so
+	// far, keyed by studentName+"|"+courseSlug — needed because, unlike a
+	// course's id (courseIDBySlug), a scenario often names both the
+	// student and the course together ("alice" abandons her
+	// "fingerstyle-journey" enrollment) and more than one course
+	// enrollment can exist per student within a single scenario.
+	courseEnrollmentIDByKey map[string]string
+
+	// courseEnrollmentIDByStudent caches the most recently created
+	// CourseEnrollment id per student name, last-writer-wins — for the
+	// step wordings that name only the student ("carol"'s enrollment)
+	// without naming which course.
+	courseEnrollmentIDByStudent map[string]string
+
+	// lastCourseEnrollmentKey is the courseEnrollmentIDByKey key most
+	// recently acted upon (enrolled, abandoned, completed a checkpoint
+	// of), so a following Then step whose own wording names neither the
+	// student nor the course ("the enrollment status becomes ...") can
+	// still resolve which enrollment to check.
+	lastCourseEnrollmentKey string
+
+	// priorCourseEnrollmentID holds the id of a CourseEnrollment abandoned
+	// earlier in the same scenario, captured before a following
+	// re-enrollment overwrites lastResp — needed by the "re-enrolling
+	// starts a fresh enrollment" scenario to assert the new id differs
+	// from the old one.
+	priorCourseEnrollmentID string
+
+	// standalonePathIDByKey caches the id of every standalone StudentPath
+	// assigned so far, keyed by studentName+"|"+pathSlug — needed because a
+	// current-path-lifecycle scenario can hold more than one standalone
+	// path at once ("alice archives her standalone 'strumming-path' copy"
+	// while "open-chords-path" is also assigned), unlike priorStudentPathID
+	// which only ever tracks the single most recent one.
+	standalonePathIDByKey map[string]string
 }
 
 func newWorld() *world {
@@ -160,6 +210,10 @@ func newWorld() *world {
 		skillIDByName:   map[string]uuid.UUID{},
 		conceptIDByName: map[string]uuid.UUID{},
 		courseIDBySlug:  map[string]uuid.UUID{},
+
+		courseEnrollmentIDByKey:     map[string]string{},
+		courseEnrollmentIDByStudent: map[string]string{},
+		standalonePathIDByKey:       map[string]string{},
 	}
 
 	newID := idSequence()
