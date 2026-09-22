@@ -37,6 +37,34 @@ func seedConcept(t *testing.T, ctx context.Context, client *ent.Client, name str
 	return concept
 }
 
+// seedDiagram creates a real Instrument and Diagram row via the ent
+// repositories — Exercise/Option/ExpandedContent's diagram_ref/
+// diagram_stack_ref only carry a diagram_id, so a diagram-driven test needs
+// an actual Diagram row to reference (a DiagramService round trip is not
+// this file's concern; only that the id resolves for whatever reads it back
+// through the application layer).
+func seedDiagram(t *testing.T, ctx context.Context, client *ent.Client, instrumentName string) domain.Diagram {
+	t.Helper()
+	strings := 6
+	instrument := domain.Instrument{
+		ID: uuid.NewString(), Name: instrumentName, Family: domain.InstrumentFamilyFretted,
+		StringCount: &strings, Tuning: []string{"E", "A", "D", "G", "B", "E"},
+	}
+	require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, instrument))
+
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: instrument.ID, Name: "minor-pentatonic-" + uuid.NewString(),
+		Positions: []domain.Position{
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", String: intPtrRepo(6), Fret: intPtrRepo(5)},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", String: intPtrRepo(6), Fret: intPtrRepo(8)},
+		},
+	}
+	require.NoError(t, NewEntDiagramRepository(client).Create(ctx, diagram))
+	return diagram
+}
+
+func intPtrRepo(n int) *int { return &n }
+
 func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -632,6 +660,116 @@ func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
 	assert.Equal(t, []string{challengeB.ID}, got.ChallengeIDs)
 }
 
+// TestEntExerciseRepository_DiagramDrivenImageRecognition proves a diagram-
+// driven image_recognition exercise's stimulus (Exercise.DiagramRef) and its
+// diagram-derived options (Option.DiagramID/DiagramPositionID) both round
+// trip through the real Postgres repository — the application layer's
+// resolveDiagramOptions is unit-tested against fakes, but the JSON-column
+// persistence of the ref itself, and the option-level diagram_id/
+// diagram_position_id foreign-key-shaped columns, are only proven for real
+// here.
+func TestEntExerciseRepository_DiagramDrivenImageRecognition(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	diagram := seedDiagram(t, ctx, client, "guitar")
+	rootPositionID := diagram.Positions[0].ID
+
+	diagramRef := &domain.DiagramRef{
+		DiagramID:        diagram.ID,
+		Layers:           domain.DiagramLayers{Intervals: true},
+		CorrectIntervals: &[]string{"R"},
+	}
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Name the root", Prompt: domain.NewPlainTextPrompt("Which position is the root?"),
+		ExerciseType: domain.ExerciseTypeImageRecognition,
+		DiagramRef:   diagramRef,
+		Options: []domain.Option{
+			{ID: uuid.NewString(), IsCorrect: true, DiagramID: &diagram.ID, DiagramPositionID: &rootPositionID},
+			{ID: uuid.NewString(), IsCorrect: false, DiagramID: &diagram.ID, DiagramPositionID: &diagram.Positions[1].ID},
+		},
+		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.DiagramRef)
+	assert.Equal(t, *diagramRef, *got.DiagramRef)
+	require.Len(t, got.Options, 2)
+	for _, opt := range got.Options {
+		require.NotNil(t, opt.DiagramID)
+		assert.Equal(t, diagram.ID, *opt.DiagramID)
+		require.NotNil(t, opt.DiagramPositionID)
+	}
+}
+
+// TestEntExerciseRepository_ImageChoiceOptionDiagramRef proves an
+// image_choice Option's own DiagramRef (a per-option thumbnail, distinct
+// from an image_recognition exercise's shared DiagramRef stimulus) round
+// trips through the real Postgres repository.
+func TestEntExerciseRepository_ImageChoiceOptionDiagramRef(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	diagram := seedDiagram(t, ctx, client, "guitar")
+
+	optionRef := &domain.DiagramRef{DiagramID: diagram.ID, Layers: domain.DiagramLayers{Intervals: true}}
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Which diagram is the minor pentatonic scale?", Prompt: domain.NewPlainTextPrompt("Pick one"),
+		ExerciseType: domain.ExerciseTypeImageChoice,
+		Options: []domain.Option{
+			{ID: uuid.NewString(), IsCorrect: true, DiagramRef: optionRef},
+			{ID: uuid.NewString(), IsCorrect: false},
+		},
+		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	for _, opt := range got.Options {
+		if opt.IsCorrect {
+			require.NotNil(t, opt.DiagramRef)
+			assert.Equal(t, *optionRef, *opt.DiagramRef)
+		}
+	}
+}
+
+// TestEntExerciseRepository_DiagramStackRefRoundTrips proves
+// Exercise.DiagramStackRef round trips through the real Postgres
+// repository.
+func TestEntExerciseRepository_DiagramStackRefRoundTrips(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	first := seedDiagram(t, ctx, client, "guitar")
+	second := seedDiagram(t, ctx, client, "guitar")
+
+	stackRef := &domain.DiagramStackRef{Stack: []domain.DiagramRef{
+		{DiagramID: first.ID, Layers: domain.DiagramLayers{Intervals: true}},
+		{DiagramID: second.ID, Layers: domain.DiagramLayers{Intervals: true}},
+	}}
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Overlay of two scales", Prompt: domain.NewPlainTextPrompt("Tap the shared root"),
+		ExerciseType:    domain.ExerciseTypeImageRecognition,
+		DiagramStackRef: stackRef,
+		Options: []domain.Option{
+			{ID: uuid.NewString(), IsCorrect: true, DiagramID: &first.ID, DiagramPositionID: &first.Positions[0].ID},
+		},
+		ChallengeIDs: []string{}, ContentNodeIDs: []string{}, Languages: []domain.Language{{Code: "any"}},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.DiagramStackRef)
+	assert.Equal(t, *stackRef, *got.DiagramStackRef)
+}
+
 func TestEntExpandedContentRepository_CreateGetAndList(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
@@ -661,6 +799,47 @@ func TestEntExpandedContentRepository_CreateGetAndList(t *testing.T) {
 	assert.Equal(t, second, *listed[0].TriggerAtSeconds)
 	assert.Equal(t, third, *listed[1].TriggerAtSeconds)
 	assert.Equal(t, first, *listed[2].TriggerAtSeconds)
+}
+
+// TestEntExpandedContentRepository_Diagram proves a diagram expanded
+// content item's DiagramRef and DiagramStackRef both round trip through the
+// real Postgres repository, and that Update can replace one with the other.
+func TestEntExpandedContentRepository_Diagram(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntExpandedContentRepository(client)
+	node := seedContentNode(t, ctx, nodeRepo)
+	first := seedDiagram(t, ctx, client, "guitar")
+	second := seedDiagram(t, ctx, client, "guitar")
+
+	start, end := 150, 165
+	ref := &domain.DiagramRef{DiagramID: first.ID, Layers: domain.DiagramLayers{Intervals: true}}
+	item := domain.ExpandedContent{
+		ID: uuid.NewString(), ContentNodeID: node.ID, ContentType: domain.ExpandedContentTypeDiagram,
+		DiagramRef: ref, TriggerAtSeconds: &start, HideAtSeconds: &end, CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, item))
+
+	got, err := repo.GetByID(ctx, item.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.DiagramRef)
+	assert.Equal(t, *ref, *got.DiagramRef)
+	assert.Nil(t, got.DiagramStackRef)
+
+	stack := &domain.DiagramStackRef{Stack: []domain.DiagramRef{
+		{DiagramID: first.ID, Layers: domain.DiagramLayers{Intervals: true}},
+		{DiagramID: second.ID, Layers: domain.DiagramLayers{Intervals: true}},
+	}}
+	item.DiagramRef = nil
+	item.DiagramStackRef = stack
+	require.NoError(t, repo.Update(ctx, item))
+
+	updated, err := repo.GetByID(ctx, item.ID)
+	require.NoError(t, err)
+	assert.Nil(t, updated.DiagramRef)
+	require.NotNil(t, updated.DiagramStackRef)
+	assert.Equal(t, *stack, *updated.DiagramStackRef)
 }
 
 func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
