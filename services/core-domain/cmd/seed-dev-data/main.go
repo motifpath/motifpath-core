@@ -206,7 +206,9 @@ func seedPathAndProgress(
 		{"12-bar blues solo, backing track", "Improvisation", "Full-length solo", domain.DifficultyLevelAdvanced, "Improvisation"},
 	}
 
-	seedVideoURL := "https://cdn.motifpath.io/videos/seed-placeholder.mp4"
+	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
+	// resolve to anything, so a node seeded with it can never actually play.
+	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
 
 	var items []application.PathItemInput
 	var nodeIDs []string

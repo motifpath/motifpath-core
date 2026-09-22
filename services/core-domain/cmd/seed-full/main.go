@@ -81,11 +81,12 @@ func run() error {
 
 	svc, deps := wireServices(resources)
 
-	if err := ensureAdmin(ctx, resources.entClient, deps.userRepo, deps.newID, deps.now); err != nil {
+	admin, adminIsFresh, err := ensureAdmin(ctx, resources.entClient, deps.userRepo, deps.newID, deps.now)
+	if err != nil {
 		return fmt.Errorf("ensure admin: %w", err)
 	}
 
-	return seedAll(ctx, svc, deps, resources)
+	return seedAll(ctx, svc, deps, resources, admin, adminIsFresh)
 }
 
 // resources bundles the raw connections and their ent/mongo clients —
@@ -202,7 +203,7 @@ func wireServices(res resources) (services, seedDeps) {
 
 // seedAll runs every seeding step in dependency order, logging a one-line
 // summary after each.
-func seedAll(ctx context.Context, svc services, deps seedDeps, res resources) error {
+func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, admin domain.User, adminIsFresh bool) error {
 	teacher, classifier := deps.teacher, deps.classifier
 
 	students, err := seedStudents(ctx, svc.identity)
@@ -245,16 +246,23 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources) er
 	log.Printf("seeded courses: draft=%s published(2 checkpoints)=%s single-checkpoint=%s retired=%s",
 		courses.draft.ID, courses.published.ID, courses.single.ID, courses.retired.ID)
 
-	brunoEnrollmentID, err := seedEnrollments(ctx, svc, deps.courseEnrollmentRepo, students, courses, res.mongoDB)
+	brunoEnrollmentID, err := seedEnrollments(ctx, svc, deps.courseEnrollmentRepo, students, courses, nodes, res.mongoDB)
 	if err != nil {
 		return fmt.Errorf("seed enrollments: %w", err)
 	}
 	log.Println("seeded enrollments: active@checkpoint1, active@checkpoint2, completed, abandoned")
 
-	if err := seedStandalonePaths(ctx, svc, students, templateA.ID, templateB.ID, brunoEnrollmentID, res.mongoDB); err != nil {
+	if err := seedStandalonePaths(ctx, svc, students, templateA.ID, templateB.ID, brunoEnrollmentID, nodes, res.mongoDB); err != nil {
 		return fmt.Errorf("seed standalone paths: %w", err)
 	}
 	log.Println("seeded standalone paths: current, and archived-while-course-active")
+
+	if adminIsFresh {
+		if err := seedAdminZeroUser(ctx, svc, admin, courses, templateA.ID, nodes, res.mongoDB); err != nil {
+			return fmt.Errorf("seed admin zero-user state: %w", err)
+		}
+		log.Printf("seeded a course enrollment and a standalone path (with a completed node) for admin zero-user %s", admin.ID)
+	}
 
 	log.Println("done")
 	return nil
@@ -269,19 +277,30 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources) er
 // (self-registration can never grant admin — promotion is always an
 // out-of-band operation), so this mirrors what a hand-run SQL insert would
 // do instead.
-func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRepository, newID func() string, now func() time.Time) error {
+//
+// Returns the admin User (zero value if ADMIN_CLERK_USER_ID isn't set) and
+// whether it was created by this call — seedAll only gives this identity a
+// course enrollment and standalone path (its "zero-user" state) when it was
+// just created, never when it's a restored pre-reset identity that may
+// already carry real progress of its own.
+func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRepository, newID func() string, now func() time.Time) (domain.User, bool, error) {
 	clerkUserID := os.Getenv("ADMIN_CLERK_USER_ID")
 	if clerkUserID == "" {
 		log.Println("ADMIN_CLERK_USER_ID not set — skipping admin bootstrap; restore your own admin row separately")
-		return nil
+		return domain.User{}, false, nil
 	}
-	exists, err := client.User.Query().Where(user.ClerkUserIDEQ(clerkUserID)).Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if exists {
+	row, err := client.User.Query().Where(user.ClerkUserIDEQ(clerkUserID)).Only(ctx)
+	if err == nil {
 		log.Printf("admin %s already present — leaving it untouched", clerkUserID)
-		return nil
+		return domain.User{
+			ID:           row.ID.String(),
+			ClerkUserID:  row.ClerkUserID,
+			Role:         domain.Role(row.Role),
+			RegisteredAt: row.RegisteredAt,
+		}, false, nil
+	}
+	if !ent.IsNotFound(err) {
+		return domain.User{}, false, err
 	}
 	admin := domain.User{
 		ID:           newID(),
@@ -291,10 +310,10 @@ func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRep
 		RegisteredAt: now(),
 	}
 	if err := userRepo.Create(ctx, admin); err != nil {
-		return fmt.Errorf("create admin %s: %w", clerkUserID, err)
+		return domain.User{}, false, fmt.Errorf("create admin %s: %w", clerkUserID, err)
 	}
 	log.Printf("created %s as admin", clerkUserID)
-	return nil
+	return admin, true, nil
 }
 
 // classificationSeeder resolves plain skill/concept names to real Skill/
@@ -373,7 +392,10 @@ func seedStudents(ctx context.Context, identity *application.IdentityService) (m
 // consumer (learning path items, course checkpoints) needs a published
 // node to resolve.
 func seedContentNodes(ctx context.Context, teacher domain.User, content *application.ContentService, classifier *classificationSeeder) (map[string]domain.ContentNode, error) {
-	seedVideoURL := "https://cdn.motifpath.io/videos/seed-placeholder.mp4"
+	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
+	// resolve to anything, so a node seeded with it can never actually play.
+	// Matches the sample host cmd/seed-lesson-content already relies on.
+	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
 	type spec struct {
 		key         string
 		title       string
@@ -447,8 +469,10 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		return err
 	}
 	label := func(s string) *string { return &s }
-	imageURL := "https://cdn.motifpath.io/images/seed-fretboard.png"
-	audioURL := "https://cdn.motifpath.io/audio/seed-clip.mp3"
+	// Real, publicly reachable sample media — see seedContentNodes' video URL
+	// comment above for why cdn.motifpath.io can't be used here.
+	imageURL := "https://placehold.co/640x360/png?text=Fretboard"
+	audioURL := "https://samplelib.com/lib/preview/mp3/sample-3s.mp3"
 
 	type spec struct {
 		title        string
@@ -563,15 +587,16 @@ func seedCourses(ctx context.Context, teacher domain.User, courseSvc *applicatio
 
 // seedEnrollments drives every domain.CourseEnrollmentStatus, plus an
 // active enrollment past its first checkpoint: alice ends active at
-// checkpoint 1; bruno self-enrolls then is advanced straight to checkpoint
-// 2 (bypassing the real completion-discovery flow, which needs a real
-// CompletionStateReader this script doesn't wire up — the resulting row
-// shape is identical to what checkAndAdvanceCheckpoint would have produced,
-// just reached directly); carla's enrollment is marked completed; alice
-// also picks up a second, abandoned enrollment in the single-checkpoint
-// course, so her own enrollment list alone already shows active +
-// abandoned.
-func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.EntCourseEnrollmentRepository, students map[string]domain.User, courses seededCourses, mongoDB *mongo.Database) (string, error) {
+// checkpoint 1, with checkpoint 1's first item already completed so her
+// path isn't shown as entirely untouched; bruno self-enrolls then is
+// advanced straight to checkpoint 2 (bypassing the real completion-discovery
+// flow, which needs a real CompletionStateReader this script doesn't wire
+// up — the resulting row shape is identical to what
+// checkAndAdvanceCheckpoint would have produced, just reached directly);
+// carla's enrollment is marked completed; alice also picks up a second,
+// abandoned enrollment in the single-checkpoint course, so her own
+// enrollment list alone already shows active + abandoned.
+func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.EntCourseEnrollmentRepository, students map[string]domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) (string, error) {
 	aliceCtx := students["alice"]
 	brunoCtx := students["bruno"]
 	carlaCtx := students["carla"]
@@ -579,7 +604,10 @@ func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.Ent
 	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, aliceCtx, courses.published.ID); err != nil {
 		return "", fmt.Errorf("enroll alice in published course: %w", err)
 	}
-	if err := seedCompletionStatuses(ctx, mongoDB, aliceCtx.ID, map[string]string{}); err != nil {
+	// checkpoint 1 is templateA, whose first item is video-beginner.
+	if err := seedCompletionStatuses(ctx, mongoDB, aliceCtx.ID, map[string]string{
+		nodes["video-beginner"].ID: "completed",
+	}); err != nil {
 		return "", err
 	}
 
@@ -634,14 +662,15 @@ func resolveCheckpointTemplate(ctx context.Context, svc services, caller domain.
 	return domain.LearningPath{}, fmt.Errorf("no checkpoint at position %d", position)
 }
 
-// seedStandalonePaths gives carla a current standalone path alongside her
-// already-completed course enrollment, and gives bruno a standalone path
-// that ends up archived while his course enrollment is current — assigning
-// always sets current unconditionally, so bruno's path is switched back
-// off current before archiving it, exercising the same "archive a
-// non-current path" path the application layer's conflict guard allows
-// unconditionally.
-func seedStandalonePaths(ctx context.Context, svc services, students map[string]domain.User, templateAID, templateBID, brunoEnrollmentID string, mongoDB *mongo.Database) error {
+// seedStandalonePaths gives carla a current standalone path — with its
+// first item already completed, so it isn't shown as entirely untouched —
+// alongside her already-completed course enrollment, and gives bruno a
+// standalone path that ends up archived while his course enrollment is
+// current — assigning always sets current unconditionally, so bruno's path
+// is switched back off current before archiving it, exercising the same
+// "archive a non-current path" path the application layer's conflict guard
+// allows unconditionally.
+func seedStandalonePaths(ctx context.Context, svc services, students map[string]domain.User, templateAID, templateBID, brunoEnrollmentID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
 	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
 
 	carlaCtx := students["carla"]
@@ -670,7 +699,43 @@ func seedStandalonePaths(ctx context.Context, svc services, students map[string]
 		return fmt.Errorf("archive bruno's now-non-current standalone path: %w", err)
 	}
 
-	return seedCompletionStatuses(ctx, mongoDB, carlaCtx.ID, map[string]string{})
+	// carla's standalone path is templateA, whose first item is
+	// video-beginner.
+	return seedCompletionStatuses(ctx, mongoDB, carlaCtx.ID, map[string]string{
+		nodes["video-beginner"].ID: "completed",
+	})
+}
+
+// seedAdminZeroUser enrolls the freshly-bootstrapped admin
+// (ADMIN_CLERK_USER_ID) in a course and a standalone path exactly like the
+// synthetic students, each with its first item already completed — so
+// signing in as yourself after a reset shows real, populated state instead
+// of an empty dashboard.
+func seedAdminZeroUser(ctx context.Context, svc services, admin domain.User, courses seededCourses, templateAID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
+	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, admin, courses.single.ID); err != nil {
+		return fmt.Errorf("enroll admin in single-checkpoint course: %w", err)
+	}
+	// the single-checkpoint course's checkpoint is templateB, whose first
+	// item is video-intermediate.
+	if err := seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
+		nodes["video-intermediate"].ID: "completed",
+	}); err != nil {
+		return err
+	}
+
+	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
+	templateA, err := svc.path.GetLearningPath(ctx, teacher, templateAID)
+	if err != nil {
+		return fmt.Errorf("resolve template A for admin's standalone path: %w", err)
+	}
+	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, templateA.ID); err != nil {
+		return fmt.Errorf("assign standalone path to admin: %w", err)
+	}
+	// admin's standalone path is templateA, whose first item is
+	// video-beginner.
+	return seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
+		nodes["video-beginner"].ID: "completed",
+	})
 }
 
 func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID string, statuses map[string]string) error {
