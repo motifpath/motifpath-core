@@ -38,6 +38,14 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	diagramRefJSON, err := marshalDiagramRef(ex.DiagramRef)
+	if err != nil {
+		return err
+	}
+	diagramStackRefJSON, err := marshalDiagramStackRef(ex.DiagramStackRef)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -58,6 +66,8 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		SetNillableRemediationTargets(remediationJSON).
+		SetNillableDiagramRef(diagramRefJSON).
+		SetNillableDiagramStackRef(diagramStackRefJSON).
 		SetCreatedAt(ex.CreatedAt).
 		AddLanguageIDs(langIDs...).
 		AddSkillIDs(skillIDs...).
@@ -104,28 +114,59 @@ func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise)
 func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
 	builders := make([]*ent.ExerciseOptionCreate, len(options))
 	for i, opt := range options {
-		optionID, err := uuid.Parse(opt.ID)
+		builder, err := buildExerciseOptionCreate(tx, exerciseID, opt)
 		if err != nil {
 			return nil, err
 		}
-		optBuilder := tx.ExerciseOption.Create().
-			SetID(optionID).
-			SetExerciseID(exerciseID).
-			SetIsCorrect(opt.IsCorrect).
-			SetNillableLabel(opt.Label).
-			SetNillableImageURL(opt.ImageURL).
-			SetNillableAudioURL(opt.AudioURL)
-		if opt.Region != nil {
-			optBuilder = optBuilder.
-				SetRegionX(opt.Region.X).
-				SetRegionY(opt.Region.Y).
-				SetRegionWidth(opt.Region.Width).
-				SetRegionHeight(opt.Region.Height).
-				SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
-		}
-		builders[i] = optBuilder
+		builders[i] = builder
 	}
 	return builders, nil
+}
+
+// buildExerciseOptionCreate prepares the ExerciseOptionCreate builder for a
+// single option — split out of buildExerciseOptionCreates so that
+// function's per-option branching (region, diagram-derived id/position,
+// image_choice diagram_ref) doesn't also carry the loop's own complexity.
+func buildExerciseOptionCreate(tx *ent.Tx, exerciseID uuid.UUID, opt domain.Option) (*ent.ExerciseOptionCreate, error) {
+	optionID, err := uuid.Parse(opt.ID)
+	if err != nil {
+		return nil, err
+	}
+	diagramRefJSON, err := marshalDiagramRef(opt.DiagramRef)
+	if err != nil {
+		return nil, err
+	}
+	optBuilder := tx.ExerciseOption.Create().
+		SetID(optionID).
+		SetExerciseID(exerciseID).
+		SetIsCorrect(opt.IsCorrect).
+		SetNillableLabel(opt.Label).
+		SetNillableImageURL(opt.ImageURL).
+		SetNillableAudioURL(opt.AudioURL).
+		SetNillableDiagramRef(diagramRefJSON)
+	if opt.Region != nil {
+		optBuilder = optBuilder.
+			SetRegionX(opt.Region.X).
+			SetRegionY(opt.Region.Y).
+			SetRegionWidth(opt.Region.Width).
+			SetRegionHeight(opt.Region.Height).
+			SetRegionShape(exerciseoption.RegionShape(opt.Region.Shape))
+	}
+	if opt.DiagramID != nil {
+		diagramID, err := uuid.Parse(*opt.DiagramID)
+		if err != nil {
+			return nil, err
+		}
+		optBuilder = optBuilder.SetDiagramID(diagramID)
+	}
+	if opt.DiagramPositionID != nil {
+		positionID, err := uuid.Parse(*opt.DiagramPositionID)
+		if err != nil {
+			return nil, err
+		}
+		optBuilder = optBuilder.SetDiagramPositionID(positionID)
+	}
+	return optBuilder, nil
 }
 
 func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.Exercise, error) {
@@ -420,6 +461,14 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return err
 	}
+	diagramRefJSON, err := marshalDiagramRef(ex.DiagramRef)
+	if err != nil {
+		return err
+	}
+	diagramStackRefJSON, err := marshalDiagramStackRef(ex.DiagramStackRef)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -443,11 +492,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
 		AddConceptIDs(conceptIDs...)
-	if remediationJSON != nil {
-		updateBuilder = updateBuilder.SetRemediationTargets(*remediationJSON)
-	} else {
-		updateBuilder = updateBuilder.ClearRemediationTargets()
-	}
+	applyExerciseUpdateNillableJSON(updateBuilder, remediationJSON, diagramRefJSON, diagramStackRefJSON)
 	_, err = updateBuilder.Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -471,6 +516,28 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	}
 
 	return tx.Commit()
+}
+
+// applyExerciseUpdateNillableJSON sets or clears Exercise's three optional
+// JSON-text columns on builder, each following the same nil-means-cleared
+// convention — split out of Update so its own three-column branching
+// doesn't add to that function's complexity.
+func applyExerciseUpdateNillableJSON(builder *ent.ExerciseUpdateOne, remediationJSON, diagramRefJSON, diagramStackRefJSON *string) {
+	if remediationJSON != nil {
+		builder.SetRemediationTargets(*remediationJSON)
+	} else {
+		builder.ClearRemediationTargets()
+	}
+	if diagramRefJSON != nil {
+		builder.SetDiagramRef(*diagramRefJSON)
+	} else {
+		builder.ClearDiagramRef()
+	}
+	if diagramStackRefJSON != nil {
+		builder.SetDiagramStackRef(*diagramStackRefJSON)
+	} else {
+		builder.ClearDiagramStackRef()
+	}
 }
 
 func toDomainExercises(rows []*ent.Exercise) []domain.Exercise {
@@ -512,12 +579,70 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,
 		RemediationTargets:       unmarshalRemediationTargets(row.RemediationTargets),
+		DiagramRef:               unmarshalDiagramRef(row.DiagramRef),
+		DiagramStackRef:          unmarshalDiagramStackRef(row.DiagramStackRef),
 		Options:                  options,
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		Languages:                languages,
 		CreatedAt:                row.CreatedAt,
 	}
+}
+
+// marshalDiagramRef serializes ref to the JSON text stored in a
+// diagram_ref column, the same nil-means-unset convention
+// marshalRemediationTargets uses. Shared by the exercise, exercise option,
+// and expanded content repositories, which all store a DiagramRef the same
+// way.
+func marshalDiagramRef(ref *domain.DiagramRef) (*string, error) {
+	if ref == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(ref)
+	if err != nil {
+		return nil, err
+	}
+	s := string(data)
+	return &s, nil
+}
+
+// unmarshalDiagramRef parses a diagram_ref column back into a
+// *domain.DiagramRef, with the same fail-soft-to-nil reasoning
+// unmarshalRemediationTargets uses.
+func unmarshalDiagramRef(stored *string) *domain.DiagramRef {
+	if stored == nil {
+		return nil
+	}
+	var ref domain.DiagramRef
+	if err := json.Unmarshal([]byte(*stored), &ref); err != nil {
+		return nil
+	}
+	return &ref
+}
+
+// marshalDiagramStackRef/unmarshalDiagramStackRef are marshalDiagramRef/
+// unmarshalDiagramRef's counterparts for a diagram_stack_ref column.
+func marshalDiagramStackRef(stack *domain.DiagramStackRef) (*string, error) {
+	if stack == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(stack)
+	if err != nil {
+		return nil, err
+	}
+	s := string(data)
+	return &s, nil
+}
+
+func unmarshalDiagramStackRef(stored *string) *domain.DiagramStackRef {
+	if stored == nil {
+		return nil
+	}
+	var stack domain.DiagramStackRef
+	if err := json.Unmarshal([]byte(*stored), &stack); err != nil {
+		return nil
+	}
+	return &stack
 }
 
 // marshalRemediationTargets serializes targets to the JSON text stored in
@@ -557,11 +682,12 @@ func unmarshalRemediationTargets(stored *string) []domain.RemediationTarget {
 
 func toDomainOption(row *ent.ExerciseOption) domain.Option {
 	opt := domain.Option{
-		ID:        row.ID.String(),
-		IsCorrect: row.IsCorrect,
-		Label:     row.Label,
-		ImageURL:  row.ImageURL,
-		AudioURL:  row.AudioURL,
+		ID:         row.ID.String(),
+		IsCorrect:  row.IsCorrect,
+		Label:      row.Label,
+		ImageURL:   row.ImageURL,
+		AudioURL:   row.AudioURL,
+		DiagramRef: unmarshalDiagramRef(row.DiagramRef),
 	}
 	if row.RegionShape != nil {
 		opt.Region = &domain.OptionRegion{
@@ -571,6 +697,14 @@ func toDomainOption(row *ent.ExerciseOption) domain.Option {
 			Height: valueOrZero(row.RegionHeight),
 			Shape:  domain.OptionRegionShape(*row.RegionShape),
 		}
+	}
+	if row.DiagramID != nil {
+		id := row.DiagramID.String()
+		opt.DiagramID = &id
+	}
+	if row.DiagramPositionID != nil {
+		id := row.DiagramPositionID.String()
+		opt.DiagramPositionID = &id
 	}
 	return opt
 }

@@ -379,7 +379,8 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 	}
 	exercise, err := h.exercise.CreateExercise(ctx, caller, body.Title, toDomainPromptDocument(body.Prompt),
 		domain.ExerciseType(body.ExerciseType), uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
-		body.ImageUrl, body.AudioUrl, toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
+		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -451,7 +452,8 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 	}
 	exercise, err := h.exercise.UpdateExercise(ctx, caller, request.ExerciseId.String(), body.Title, toDomainPromptDocument(body.Prompt),
 		uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
-		body.ImageUrl, body.AudioUrl, toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
+		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
+		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -554,6 +556,7 @@ func (h *Handler) CreateExpandedContent(ctx context.Context, request generated.C
 	body := request.Body
 	item, err := h.content.CreateExpandedContent(ctx, caller, request.ContentNodeId.String(),
 		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
 		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
 	if err != nil {
 		kind, valErr := classify(err)
@@ -581,6 +584,7 @@ func (h *Handler) UpdateExpandedContent(ctx context.Context, request generated.U
 	body := request.Body
 	item, err := h.content.UpdateExpandedContent(ctx, caller, request.ExpandedContentId.String(),
 		domain.ExpandedContentType(body.ContentType), body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent),
+		toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
 		body.TriggerAtSeconds, body.HideAtSeconds, body.TriggerAtParagraph, body.DurationMs, body.Caption)
 	if err != nil {
 		kind, valErr := classify(err)

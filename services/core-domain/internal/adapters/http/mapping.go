@@ -234,6 +234,8 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
 		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
+		DiagramRef:               toGeneratedDiagramRefPtr(e.DiagramRef),
+		DiagramStackRef:          toGeneratedDiagramStackRefPtr(e.DiagramStackRef),
 	}
 	return exercise
 }
@@ -305,6 +307,15 @@ func toOption(o domain.Option) generated.Option {
 			Shape:  generated.OptionRegionShape(o.Region.Shape),
 		}
 	}
+	option.DiagramRef = toGeneratedDiagramRefPtr(o.DiagramRef)
+	if o.DiagramID != nil {
+		id := mustUUID(*o.DiagramID)
+		option.DiagramId = &id
+	}
+	if o.DiagramPositionID != nil {
+		id := mustUUID(*o.DiagramPositionID)
+		option.DiagramPositionId = &id
+	}
 	return option
 }
 
@@ -327,6 +338,7 @@ func toDomainOptions(options []generated.Option) []domain.Option {
 				Shape:  domain.OptionRegionShape(opt.Region.Shape),
 			}
 		}
+		result[i].DiagramRef = toDomainDiagramRefPtr(opt.DiagramRef)
 	}
 	return result
 }
@@ -351,6 +363,8 @@ func toExpandedContent(item domain.ExpandedContent) generated.ExpandedContent {
 		DurationMs:         item.DurationMS,
 		Caption:            item.Caption,
 		CreatedAt:          item.CreatedAt,
+		DiagramRef:         toGeneratedDiagramRefPtr(item.DiagramRef),
+		DiagramStackRef:    toGeneratedDiagramStackRefPtr(item.DiagramStackRef),
 	}
 	if item.RichContent != nil {
 		doc := toGeneratedPromptDocument(*item.RichContent)
@@ -485,6 +499,87 @@ func uuidPtrToString(id *openapi_types.UUID) string {
 		return ""
 	}
 	return id.String()
+}
+
+// toGeneratedDiagramRef converts a domain.DiagramRef to its wire shape via a
+// JSON round trip, the same bridging technique toGeneratedPromptDocument
+// uses: both sides share JSON field names (domain.DiagramRef is tagged to
+// match), so encoding/json bridges the two without a field-by-field
+// constructor. A failure here means the two shapes drifted out of sync,
+// which panicking surfaces immediately.
+func toGeneratedDiagramRef(ref domain.DiagramRef) generated.DiagramRef {
+	data, err := json.Marshal(ref)
+	if err != nil {
+		panic(err)
+	}
+	var out generated.DiagramRef
+	if err := json.Unmarshal(data, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func toGeneratedDiagramRefPtr(ref *domain.DiagramRef) *generated.DiagramRef {
+	if ref == nil {
+		return nil
+	}
+	out := toGeneratedDiagramRef(*ref)
+	return &out
+}
+
+func toGeneratedDiagramStackRef(stack domain.DiagramStackRef) generated.DiagramStackRef {
+	refs := make([]generated.DiagramRef, len(stack.Stack))
+	for i, ref := range stack.Stack {
+		refs[i] = toGeneratedDiagramRef(ref)
+	}
+	return generated.DiagramStackRef{Stack: refs}
+}
+
+func toGeneratedDiagramStackRefPtr(stack *domain.DiagramStackRef) *generated.DiagramStackRef {
+	if stack == nil {
+		return nil
+	}
+	out := toGeneratedDiagramStackRef(*stack)
+	return &out
+}
+
+// toDomainDiagramRef converts a generated.DiagramRef, as already decoded
+// from a request body, to its domain shape — the reverse of
+// toGeneratedDiagramRef, with the same unreachable-failure reasoning.
+func toDomainDiagramRef(ref generated.DiagramRef) domain.DiagramRef {
+	data, err := json.Marshal(ref)
+	if err != nil {
+		panic(err)
+	}
+	var out domain.DiagramRef
+	if err := json.Unmarshal(data, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
+func toDomainDiagramRefPtr(ref *generated.DiagramRef) *domain.DiagramRef {
+	if ref == nil {
+		return nil
+	}
+	out := toDomainDiagramRef(*ref)
+	return &out
+}
+
+func toDomainDiagramStackRef(stack generated.DiagramStackRef) domain.DiagramStackRef {
+	refs := make([]domain.DiagramRef, len(stack.Stack))
+	for i, ref := range stack.Stack {
+		refs[i] = toDomainDiagramRef(ref)
+	}
+	return domain.DiagramStackRef{Stack: refs}
+}
+
+func toDomainDiagramStackRefPtr(stack *generated.DiagramStackRef) *domain.DiagramStackRef {
+	if stack == nil {
+		return nil
+	}
+	out := toDomainDiagramStackRef(*stack)
+	return &out
 }
 
 func toGeneratedInstrument(i domain.Instrument) generated.Instrument {
