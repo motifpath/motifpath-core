@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -9,18 +10,53 @@ import (
 )
 
 // ContentService manages ContentNode and ExpandedContent — content-node
-// creation/retrieval and the expositive media items attached to them.
+// creation/retrieval, the expositive media items attached to them, and
+// publishing a content node's draft into an immutable ContentNodeVersion.
 type ContentService struct {
 	nodes    ports.ContentNodeRepository
 	expanded ports.ExpandedContentRepository
 	skills   ports.SkillRepository
 	concepts ports.ConceptRepository
+	versions ports.ContentNodeVersionRepository
 	newID    func() string
 	now      func() time.Time
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, newID: newID, now: now}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, newID: newID, now: now}
+}
+
+// PublishContentNode snapshots the content node identified by id into a new,
+// immutable ContentNodeVersion — the node's next version_number, one
+// greater than whatever was last published (or 1 if this is the first
+// publish). Only the creating teacher or an admin may publish it. A
+// StudentPath copied afterwards pins to this version; editing or
+// republishing the node later never retargets it.
+func (s *ContentService) PublishContentNode(ctx context.Context, caller domain.User, id string) (domain.ContentNodeVersion, error) {
+	if !canManageContent(caller.Role) {
+		return domain.ContentNodeVersion{}, domain.ErrForbidden
+	}
+
+	node, err := s.nodes.GetByID(ctx, id)
+	if err != nil {
+		return domain.ContentNodeVersion{}, err
+	}
+	if err := requireOwner(caller, node.TeacherID); err != nil {
+		return domain.ContentNodeVersion{}, err
+	}
+
+	nextVersionNumber := 1
+	if latest, err := s.versions.GetLatestByContentNodeID(ctx, id); err == nil {
+		nextVersionNumber = latest.VersionNumber + 1
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return domain.ContentNodeVersion{}, err
+	}
+
+	version := domain.NewContentNodeVersionSnapshot(s.newID(), node, nextVersionNumber, caller.ID, s.now())
+	if err := s.versions.Create(ctx, version); err != nil {
+		return domain.ContentNodeVersion{}, err
+	}
+	return version, nil
 }
 
 // CreateContentNode creates a content node owned by caller. Only teachers

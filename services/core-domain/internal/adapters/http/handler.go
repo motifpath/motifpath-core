@@ -36,17 +36,17 @@ func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
 // OpenAPI operation, each translating between generated wire types and the
 // application layer.
 type Handler struct {
-	identity   *application.IdentityService
-	content    *application.ContentService
-	challenge  *application.ChallengeService
-	exercise   *application.ExerciseService
-	skill      *application.SkillService
-	concept    *application.ConceptService
-	media      *application.MediaService
-	path       *application.LearningPathService
-	assignment *application.PathAssignmentService
-	instrument *application.InstrumentService
-	diagram    *application.DiagramService
+	identity    *application.IdentityService
+	content     *application.ContentService
+	challenge   *application.ChallengeService
+	exercise    *application.ExerciseService
+	skill       *application.SkillService
+	concept     *application.ConceptService
+	media       *application.MediaService
+	path        *application.LearningPathService
+	studentPath *application.StudentPathService
+	instrument  *application.InstrumentService
+	diagram     *application.DiagramService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -65,7 +65,7 @@ func NewHandler(
 	concept *application.ConceptService,
 	media *application.MediaService,
 	path *application.LearningPathService,
-	assignment *application.PathAssignmentService,
+	studentPath *application.StudentPathService,
 	instrument *application.InstrumentService,
 	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
@@ -80,7 +80,7 @@ func NewHandler(
 		concept:               concept,
 		media:                 media,
 		path:                  path,
-		assignment:            assignment,
+		studentPath:           studentPath,
 		instrument:            instrument,
 		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
@@ -758,7 +758,7 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		return generated.AssignLearningPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	assignment, err := h.assignment.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
+	sp, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -767,13 +767,13 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		case errKindForbidden:
 			return generated.AssignLearningPath403JSONResponse(forbiddenError("only teachers and admins may assign learning paths")), nil
 		case errKindNotFound:
-			return generated.AssignLearningPath404JSONResponse(notFoundError("the student or learning path does not exist")), nil
+			return generated.AssignLearningPath404JSONResponse(notFoundError("the student_id or learning_path_id does not exist, the student's role is not student, or one of the path's content nodes has never been published")), nil
 		case errKindOther:
 			return nil, err
 		}
 	}
 
-	return generated.AssignLearningPath201JSONResponse(toPathAssignment(assignment)), nil
+	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp)), nil
 }
 
 func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
@@ -782,18 +782,113 @@ func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObj
 		return generated.GetMyPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	view, err := h.assignment.GetMyPath(ctx, caller)
+	view, err := h.studentPath.GetMyPath(ctx, caller)
 	if err != nil {
 		kind, _ := classify(err)
 		switch kind {
 		case errKindNotFound:
-			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no active path assignment")), nil
+			return generated.GetMyPath404JSONResponse(notFoundError("the authenticated caller has no current path set")), nil
 		case errKindForbidden, errKindValidation, errKindOther:
 			return nil, err
 		}
 	}
 
 	return generated.GetMyPath200JSONResponse(toStudentPathView(view)), nil
+}
+
+func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request generated.ArchiveStandaloneStudentPathRequestObject) (generated.ArchiveStandaloneStudentPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ArchiveStandaloneStudentPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	sp, err := h.studentPath.ArchiveStandaloneStudentPath(ctx, caller, request.StudentPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.ArchiveStandaloneStudentPath404JSONResponse(notFoundError("no non-archived standalone student path exists with this id for the caller")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.ArchiveStandaloneStudentPath409JSONResponse(conflictError("this is the caller's only current course or path; switch to another one first")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp)), nil
+}
+
+func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishContentNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.content.PublishContentNode(ctx, caller, request.ContentNodeId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishContentNode403JSONResponse(forbiddenError("only the creating teacher or an admin may publish this content node")), nil
+		case errKindNotFound:
+			return generated.PublishContentNode404JSONResponse(notFoundError("no content node exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishContentNode201JSONResponse(toContentNodeVersion(version)), nil
+}
+
+// The following handlers cover the course catalog / self-enrollment /
+// current-path-switch HTTP surface (Course, CourseVersion, CourseEnrollment)
+// defined in the OpenAPI spec. Their application-layer services are not
+// implemented yet — each returns an error, surfaced as a 500, until that
+// work lands. Implementing generated.StrictServerInterface requires every
+// operation to have a method, even one not yet backed by real behavior.
+var errNotYetImplemented = errors.New("this operation is defined in the API contract but not yet implemented")
+
+func (h *Handler) ListCourses(context.Context, generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) CreateCourse(context.Context, generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) GetCourse(context.Context, generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) ReplaceCourse(context.Context, generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) PublishCourse(context.Context, generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) GetPublishedCourse(context.Context, generated.GetPublishedCourseRequestObject) (generated.GetPublishedCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) RetireCourse(context.Context, generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) ListMyCourseEnrollments(context.Context, generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) CreateCourseEnrollment(context.Context, generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) AbandonCourseEnrollment(context.Context, generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
+	return nil, errNotYetImplemented
+}
+
+func (h *Handler) SetCurrentPath(context.Context, generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
+	return nil, errNotYetImplemented
 }
 
 func (h *Handler) ListContentNodeChallenges(ctx context.Context, request generated.ListContentNodeChallengesRequestObject) (generated.ListContentNodeChallengesResponseObject, error) {

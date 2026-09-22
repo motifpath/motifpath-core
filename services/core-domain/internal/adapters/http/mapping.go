@@ -76,6 +76,28 @@ func toGeneratedConcepts(concepts []domain.Concept) []generated.Concept {
 	return result
 }
 
+func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVersion {
+	result := generated.ContentNodeVersion{
+		ContentNodeId: mustUUID(v.ContentNodeID),
+		VersionNumber: v.VersionNumber,
+		TitleSnapshot: v.Title,
+		ClassificationSnapshot: generated.Classification{
+			Skills:          toGeneratedSkills(v.Classification.Skills),
+			Concepts:        toGeneratedConcepts(v.Classification.Concepts),
+			DifficultyLevel: generated.ClassificationDifficultyLevel(v.Classification.DifficultyLevel),
+			ReviewState:     generated.ClassificationReviewState(v.Classification.ReviewState),
+		},
+		LanguagesSnapshot: toGeneratedLanguages(v.Languages),
+		MediaUrlSnapshot:  v.MediaURL,
+		PublishedAt:       v.PublishedAt,
+	}
+	if v.RichContent != nil {
+		doc := toGeneratedPromptDocument(*v.RichContent)
+		result.RichContentSnapshot = &doc
+	}
+	return result
+}
+
 func toContentNode(n domain.ContentNode) generated.ContentNode {
 	result := generated.ContentNode{
 		ContentNodeId: mustUUID(n.ID),
@@ -369,24 +391,33 @@ func toLearningPaths(paths []domain.LearningPath) []generated.LearningPath {
 	return result
 }
 
-func toPathAssignment(a domain.PathAssignment) generated.PathAssignment {
-	return generated.PathAssignment{
-		AssignmentId:   mustUUID(a.ID),
-		StudentId:      mustUUID(a.StudentID),
-		LearningPathId: mustUUID(a.LearningPathID),
-		AssignedBy:     mustUUID(a.AssignedBy),
-		AssignedAt:     a.AssignedAt,
+func toStudentPath(sp domain.StudentPath) generated.StudentPath {
+	result := generated.StudentPath{
+		StudentPathId:            mustUUID(sp.ID),
+		StudentId:                mustUUID(sp.StudentID),
+		SourceTemplateId:         mustUUID(sp.SourceTemplateID),
+		Title:                    sp.Title,
+		AssignedBy:               mustUUID(sp.AssignedBy),
+		AssignedAt:               sp.AssignedAt,
+		ArchivedAt:               sp.ArchivedAt,
+		CourseCheckpointPosition: sp.CourseCheckpointPosition,
 	}
+	if sp.SourceCourseEnrollmentID != nil {
+		id := mustUUID(*sp.SourceCourseEnrollmentID)
+		result.SourceCourseEnrollmentId = &id
+	}
+	return result
 }
 
 func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
 	return generated.StudentPathItem{
-		Position:      item.Position,
-		ContentNodeId: mustUUID(item.ContentNodeID),
-		Title:         item.Title,
-		ContentType:   generated.StudentPathItemContentType(item.ContentType),
-		Status:        generated.StudentPathItemStatus(item.Status),
-		SectionLabel:  item.SectionLabel,
+		Position:             item.Position,
+		ContentNodeId:        mustUUID(item.ContentNodeID),
+		ContentNodeVersionId: mustUUID(item.ContentNodeVersionID),
+		Title:                item.Title,
+		ContentType:          generated.StudentPathItemContentType(item.ContentType),
+		Status:               generated.StudentPathItemStatus(item.Status),
+		SectionLabel:         item.SectionLabel,
 	}
 }
 
@@ -396,11 +427,11 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 		items[i] = toStudentPathItem(item)
 	}
 	return generated.StudentPathView{
-		AssignmentId:    mustUUID(v.AssignmentID),
-		LearningPathId:  mustUUID(v.LearningPathID),
-		Title:           v.Title,
-		CurrentPosition: v.CurrentPosition,
-		Items:           items,
+		StudentPathId:    mustUUID(v.StudentPathID),
+		SourceTemplateId: mustUUID(v.SourceTemplateID),
+		Title:            v.Title,
+		CurrentPosition:  v.CurrentPosition,
+		Items:            items,
 	}
 }
 

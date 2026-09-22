@@ -52,11 +52,84 @@ const (
 	ContentNodeContentTypeVideo   ContentNodeContentType = "video"
 )
 
+// Defines values for CourseLevel.
+const (
+	CourseLevelAdvanced          CourseLevel = "advanced"
+	CourseLevelBeginner          CourseLevel = "beginner"
+	CourseLevelEarlyIntermediate CourseLevel = "early_intermediate"
+	CourseLevelExpert            CourseLevel = "expert"
+	CourseLevelIntermediate      CourseLevel = "intermediate"
+)
+
+// Defines values for CourseStatus.
+const (
+	CourseStatusDraft     CourseStatus = "draft"
+	CourseStatusPublished CourseStatus = "published"
+	CourseStatusRetired   CourseStatus = "retired"
+)
+
+// Defines values for CourseCatalogEntryLevel.
+const (
+	CourseCatalogEntryLevelAdvanced          CourseCatalogEntryLevel = "advanced"
+	CourseCatalogEntryLevelBeginner          CourseCatalogEntryLevel = "beginner"
+	CourseCatalogEntryLevelEarlyIntermediate CourseCatalogEntryLevel = "early_intermediate"
+	CourseCatalogEntryLevelExpert            CourseCatalogEntryLevel = "expert"
+	CourseCatalogEntryLevelIntermediate      CourseCatalogEntryLevel = "intermediate"
+)
+
+// Defines values for CourseCatalogEntryStatus.
+const (
+	CourseCatalogEntryStatusDraft     CourseCatalogEntryStatus = "draft"
+	CourseCatalogEntryStatusPublished CourseCatalogEntryStatus = "published"
+	CourseCatalogEntryStatusRetired   CourseCatalogEntryStatus = "retired"
+)
+
+// Defines values for CourseDetailLevel.
+const (
+	CourseDetailLevelAdvanced          CourseDetailLevel = "advanced"
+	CourseDetailLevelBeginner          CourseDetailLevel = "beginner"
+	CourseDetailLevelEarlyIntermediate CourseDetailLevel = "early_intermediate"
+	CourseDetailLevelExpert            CourseDetailLevel = "expert"
+	CourseDetailLevelIntermediate      CourseDetailLevel = "intermediate"
+)
+
+// Defines values for CourseDetailStatus.
+const (
+	CourseDetailStatusDraft     CourseDetailStatus = "draft"
+	CourseDetailStatusPublished CourseDetailStatus = "published"
+	CourseDetailStatusRetired   CourseDetailStatus = "retired"
+)
+
+// Defines values for CourseEnrollmentStatus.
+const (
+	CourseEnrollmentStatusAbandoned CourseEnrollmentStatus = "abandoned"
+	CourseEnrollmentStatusActive    CourseEnrollmentStatus = "active"
+	CourseEnrollmentStatusCompleted CourseEnrollmentStatus = "completed"
+)
+
+// Defines values for CourseVersionLevelSnapshot.
+const (
+	CourseVersionLevelSnapshotAdvanced          CourseVersionLevelSnapshot = "advanced"
+	CourseVersionLevelSnapshotBeginner          CourseVersionLevelSnapshot = "beginner"
+	CourseVersionLevelSnapshotEarlyIntermediate CourseVersionLevelSnapshot = "early_intermediate"
+	CourseVersionLevelSnapshotExpert            CourseVersionLevelSnapshot = "expert"
+	CourseVersionLevelSnapshotIntermediate      CourseVersionLevelSnapshot = "intermediate"
+)
+
 // Defines values for CreateContentNodeRequestContentType.
 const (
 	CreateContentNodeRequestContentTypeArticle CreateContentNodeRequestContentType = "article"
 	CreateContentNodeRequestContentTypeDiagram CreateContentNodeRequestContentType = "diagram"
 	CreateContentNodeRequestContentTypeVideo   CreateContentNodeRequestContentType = "video"
+)
+
+// Defines values for CreateCourseRequestLevel.
+const (
+	CreateCourseRequestLevelAdvanced          CreateCourseRequestLevel = "advanced"
+	CreateCourseRequestLevelBeginner          CreateCourseRequestLevel = "beginner"
+	CreateCourseRequestLevelEarlyIntermediate CreateCourseRequestLevel = "early_intermediate"
+	CreateCourseRequestLevelExpert            CreateCourseRequestLevel = "expert"
+	CreateCourseRequestLevelIntermediate      CreateCourseRequestLevel = "intermediate"
 )
 
 // Defines values for CreateExerciseRequestExerciseType.
@@ -184,6 +257,15 @@ const (
 	RegisterUserRequestRoleTeacher RegisterUserRequestRole = "teacher"
 )
 
+// Defines values for ReplaceCourseRequestLevel.
+const (
+	ReplaceCourseRequestLevelAdvanced          ReplaceCourseRequestLevel = "advanced"
+	ReplaceCourseRequestLevelBeginner          ReplaceCourseRequestLevel = "beginner"
+	ReplaceCourseRequestLevelEarlyIntermediate ReplaceCourseRequestLevel = "early_intermediate"
+	ReplaceCourseRequestLevelExpert            ReplaceCourseRequestLevel = "expert"
+	ReplaceCourseRequestLevelIntermediate      ReplaceCourseRequestLevel = "intermediate"
+)
+
 // Defines values for StudentPathItemContentType.
 const (
 	StudentPathItemContentTypeArticle StudentPathItemContentType = "article"
@@ -193,10 +275,10 @@ const (
 
 // Defines values for StudentPathItemStatus.
 const (
-	Completed  StudentPathItemStatus = "completed"
-	InProgress StudentPathItemStatus = "in_progress"
-	Locked     StudentPathItemStatus = "locked"
-	NotStarted StudentPathItemStatus = "not_started"
+	StudentPathItemStatusCompleted  StudentPathItemStatus = "completed"
+	StudentPathItemStatusInProgress StudentPathItemStatus = "in_progress"
+	StudentPathItemStatusLocked     StudentPathItemStatus = "locked"
+	StudentPathItemStatusNotStarted StudentPathItemStatus = "not_started"
 )
 
 // Defines values for UpdateExpandedContentRequestContentType.
@@ -227,6 +309,13 @@ const (
 	EarlyIntermediate ListContentNodesParamsDifficultyLevel = "early_intermediate"
 	Expert            ListContentNodesParamsDifficultyLevel = "expert"
 	Intermediate      ListContentNodesParamsDifficultyLevel = "intermediate"
+)
+
+// Defines values for ListCoursesParamsStatus.
+const (
+	ListCoursesParamsStatusDraft     ListCoursesParamsStatus = "draft"
+	ListCoursesParamsStatusPublished ListCoursesParamsStatus = "published"
+	ListCoursesParamsStatusRetired   ListCoursesParamsStatus = "retired"
 )
 
 // Defines values for ListExercisesParamsExerciseType.
@@ -409,6 +498,9 @@ type ContentNode struct {
 	// locked.
 	Languages []Language `json:"languages"`
 
+	// LatestPublishedVersion The version_number of the most recently published ContentNodeVersion, or null if this node has never been published. A node with no published version cannot be copied into a StudentPathItem.
+	LatestPublishedVersion *int `json:"latest_published_version"`
+
 	// MediaUrl The video file or embeddable video URL students watch. Present
 	// only when content_type is video.
 	MediaUrl *string `json:"media_url,omitempty"`
@@ -434,6 +526,275 @@ type ContentNode struct {
 
 // ContentNodeContentType The media format of this content node.
 type ContentNodeContentType string
+
+// ContentNodeVersion An immutable, permanent snapshot of a content node's
+// reader-facing state at the moment it was published. Every copy
+// of an item referencing this node resolves to the latest
+// ContentNodeVersion at the moment of copy and stores that
+// version's id; an already-copied item is never retargeted by a
+// later publish.
+type ContentNodeVersion struct {
+	// ClassificationSnapshot The classification of a content node as returned by the API —
+	// skills/concepts are embedded in full (id, name, parent_id) rather
+	// than left as bare ids, so a client can render each one's position
+	// in the tree without a follow-up lookup per id. Includes review
+	// state: all classifications start as pending and must be confirmed
+	// by an admin before the content node is considered fully ready.
+	ClassificationSnapshot Classification `json:"classification_snapshot"`
+
+	// ContentNodeId The content node this version belongs to.
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+	// DiagramRefSnapshot A usage of one Diagram — its render config, never a stored variant
+	// of the diagram itself. The same Diagram can be pointed at by any
+	// number of DiagramRefs with different configs.
+	DiagramRefSnapshot *DiagramRef `json:"diagram_ref_snapshot,omitempty"`
+
+	// DiagramStackRefSnapshot Two or more DiagramRefs composited into one view — e.g. a scale
+	// overlaid on its relative major, at the same fretboard position.
+	// Painted in array order; later entries render on top of earlier
+	// ones. Every entry must reference a Diagram on the same instrument —
+	// stacking diagrams from different instruments is rejected, since
+	// there is no shared coordinate space to composite into.
+	DiagramStackRefSnapshot *DiagramStackRef `json:"diagram_stack_ref_snapshot,omitempty"`
+
+	// LanguagesSnapshot The node's available languages at the moment of publishing.
+	LanguagesSnapshot []Language `json:"languages_snapshot"`
+
+	// MediaUrlSnapshot Present only when the node's content_type is video.
+	MediaUrlSnapshot *string `json:"media_url_snapshot,omitempty"`
+
+	// PublishedAt Timestamp at which this version was published.
+	PublishedAt time.Time `json:"published_at"`
+
+	// RichContentSnapshot A structured rich-text document, authored with MotifPath's
+	// Tiptap-based content-authoring editor and persisted exactly as the
+	// editor produces it (ProseMirror JSON). Used for an exercise's
+	// prompt, rich_text expanded content, and an exercise's
+	// remediation_targets rich content — the same document shape across
+	// all three, though which PromptNode types a given surface's own
+	// toolbar can actually produce varies (an exercise prompt's toolbar
+	// does not offer audio/video embeds; expanded content and remediation
+	// content may). Always has type "doc" at the root, with the
+	// document's block-level content nested beneath it.
+	RichContentSnapshot *PromptDocument `json:"rich_content_snapshot,omitempty"`
+
+	// TitleSnapshot The node's title at the moment of publishing.
+	TitleSnapshot string `json:"title_snapshot"`
+
+	// VersionNumber 1-based, increasing per content node.
+	VersionNumber int `json:"version_number"`
+}
+
+// Course A course: an ordered, author-editable journey of learning-path
+// checkpoints, with an explicit draft/publish split. This
+// representation is the live, currently-being-authored draft,
+// returned to teachers and admins. Editing it never affects what
+// an already-enrolled student sees — only publishing does that.
+type Course struct {
+	// Checkpoints The course's checkpoints, sorted by position ascending.
+	Checkpoints []CourseCheckpoint `json:"checkpoints"`
+
+	// CourseId Stable identifier for this course.
+	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CreatedAt Timestamp at which the course was created.
+	CreatedAt time.Time `json:"created_at"`
+
+	// CreatedBy The user_id of the teacher or admin who created this course.
+	CreatedBy openapi_types.UUID `json:"created_by"`
+
+	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet).
+	HasUnpublishedChanges bool `json:"has_unpublished_changes"`
+
+	// LatestPublishedVersion The version_number of the most recently published CourseVersion, or null if the course has never been published.
+	LatestPublishedVersion *int `json:"latest_published_version"`
+
+	// Level The level a student should be at to start this course.
+	Level CourseLevel `json:"level"`
+
+	// Status draft — never published. published — has at least one CourseVersion. retired — removed from the catalog for new enrollment only; existing enrollments are unaffected.
+	Status CourseStatus `json:"status"`
+
+	// Summary Short description of the course's current draft.
+	Summary string `json:"summary"`
+
+	// Title Title of the course's current draft.
+	Title string `json:"title"`
+}
+
+// CourseLevel The level a student should be at to start this course.
+type CourseLevel string
+
+// CourseStatus draft — never published. published — has at least one CourseVersion. retired — removed from the catalog for new enrollment only; existing enrollments are unaffected.
+type CourseStatus string
+
+// CourseCatalogEntry A course as it appears in the catalog list — enough to browse
+// and pick one, never authoring detail such as a checkpoint's
+// learning_path_id. Returned by GET /courses for every caller,
+// teacher/admin and student alike.
+type CourseCatalogEntry struct {
+	// CourseId Stable identifier for this course.
+	CourseId openapi_types.UUID `json:"course_id"`
+
+	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field.
+	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
+
+	// Level The level a student should be at to start this course.
+	Level CourseCatalogEntryLevel `json:"level"`
+
+	// PublishedAt Timestamp the latest published version was published at, or null if the course has never been published.
+	PublishedAt *time.Time `json:"published_at"`
+
+	// Status A student's result is always published. Teachers and admins may see any status.
+	Status CourseCatalogEntryStatus `json:"status"`
+
+	// Summary Short description of the course.
+	Summary string `json:"summary"`
+
+	// Title Title of the course.
+	Title string `json:"title"`
+}
+
+// CourseCatalogEntryLevel The level a student should be at to start this course.
+type CourseCatalogEntryLevel string
+
+// CourseCatalogEntryStatus A student's result is always published. Teachers and admins may see any status.
+type CourseCatalogEntryStatus string
+
+// CourseCheckpoint One stage of a course's journey, pointing at a learning path template.
+type CourseCheckpoint struct {
+	// EffectiveTitle The title actually shown for this checkpoint — the override if one was set, otherwise the learning path's own title.
+	EffectiveTitle string `json:"effective_title"`
+
+	// LearningPathId The learning path template at this checkpoint.
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+	// Position 1-based position of this checkpoint within the course.
+	Position int `json:"position"`
+
+	// Title The title override for this checkpoint, if one was set; absent when the checkpoint uses the learning path's own title.
+	Title *string `json:"title,omitempty"`
+}
+
+// CourseDetail A single course's detail. For a student, this is always the
+// latest published version's snapshot, rendered as an outline. For
+// a teacher or admin, this is the live draft with its checkpoints'
+// full outlines resolved.
+type CourseDetail struct {
+	// Checkpoints The course's checkpoints, sorted by position ascending.
+	Checkpoints []CourseOutlineCheckpoint `json:"checkpoints"`
+
+	// CourseId Stable identifier for this course.
+	CourseId openapi_types.UUID `json:"course_id"`
+
+	// Level The level a student should be at to start this course.
+	Level CourseDetailLevel `json:"level"`
+
+	// PublishedAt Timestamp the latest published version was published at, or null if the course has never been published.
+	PublishedAt *time.Time `json:"published_at"`
+
+	// Status The course's authoring status. A student's result is always published.
+	Status CourseDetailStatus `json:"status"`
+
+	// Summary Short description of the course.
+	Summary string `json:"summary"`
+
+	// Title Title of the course.
+	Title string `json:"title"`
+}
+
+// CourseDetailLevel The level a student should be at to start this course.
+type CourseDetailLevel string
+
+// CourseDetailStatus The course's authoring status. A student's result is always published.
+type CourseDetailStatus string
+
+// CourseEnrollment A student's enrollment in one course, tracking their active
+// checkpoint independently of whichever course or path is
+// currently focused.
+type CourseEnrollment struct {
+	// ActiveCheckpointPosition 1-based position of the active checkpoint within the course. Null once the enrollment is completed or abandoned.
+	ActiveCheckpointPosition *int `json:"active_checkpoint_position"`
+
+	// ActiveCheckpointStudentPathId The StudentPath for the checkpoint the student is currently working through. Null once the enrollment is completed or abandoned.
+	ActiveCheckpointStudentPathId *openapi_types.UUID `json:"active_checkpoint_student_path_id"`
+
+	// CourseEnrollmentId Stable identifier for this enrollment.
+	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
+
+	// CourseId The enrolled course.
+	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CourseTitle The course's title, as of the pinned version.
+	CourseTitle string `json:"course_title"`
+
+	// CourseVersionNumber The CourseVersion this enrollment is pinned to.
+	CourseVersionNumber int `json:"course_version_number"`
+
+	// EnrolledAt Timestamp at which the student enrolled.
+	EnrolledAt time.Time `json:"enrolled_at"`
+
+	// Status active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
+	Status CourseEnrollmentStatus `json:"status"`
+
+	// StudentId The user_id of the enrolled student.
+	StudentId openapi_types.UUID `json:"student_id"`
+}
+
+// CourseEnrollmentStatus active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
+type CourseEnrollmentStatus string
+
+// CourseOutlineCheckpoint A checkpoint as shown to a prospective or enrolled student — title and item outline, never lesson content.
+type CourseOutlineCheckpoint struct {
+	// Items The checkpoint's items, in order, as a title-only outline.
+	Items []CourseOutlineItem `json:"items"`
+
+	// Position 1-based position of this checkpoint within the course.
+	Position int `json:"position"`
+
+	// Title The title shown for this checkpoint.
+	Title string `json:"title"`
+}
+
+// CourseOutlineItem One content node's title within a checkpoint's outline.
+type CourseOutlineItem struct {
+	// SectionLabel Optional label grouping this item with its immediate neighbors under a named section, carried through from the underlying learning path.
+	SectionLabel *string `json:"section_label,omitempty"`
+
+	// Title Title of the content node.
+	Title string `json:"title"`
+}
+
+// CourseVersion An immutable, permanent snapshot of a course's title, summary,
+// level, and checkpoints at the moment it was published. Students
+// and the catalog only ever read the latest CourseVersion, never
+// the live draft.
+type CourseVersion struct {
+	// AvailableForNewEnrollments When false, this version can no longer be self-enrolled into, without retiring the course or requiring a newer version. Already-enrolled students are unaffected.
+	AvailableForNewEnrollments bool `json:"available_for_new_enrollments"`
+
+	// CourseId The course this version belongs to.
+	CourseId openapi_types.UUID `json:"course_id"`
+
+	// LevelSnapshot The course's level at the moment of publishing.
+	LevelSnapshot CourseVersionLevelSnapshot `json:"level_snapshot"`
+
+	// PublishedAt Timestamp at which this version was published.
+	PublishedAt time.Time `json:"published_at"`
+
+	// SummarySnapshot The course's summary at the moment of publishing.
+	SummarySnapshot string `json:"summary_snapshot"`
+
+	// TitleSnapshot The course's title at the moment of publishing.
+	TitleSnapshot string `json:"title_snapshot"`
+
+	// VersionNumber 1-based, increasing per course.
+	VersionNumber int `json:"version_number"`
+}
+
+// CourseVersionLevelSnapshot The course's level at the moment of publishing.
+type CourseVersionLevelSnapshot string
 
 // CreateChallengeRequest Payload for creating a challenge within a content node. Exactly one
 // of subject_skill_id or subject_concept_id must be set.
@@ -548,6 +909,35 @@ type CreateContentNodeRequest struct {
 
 // CreateContentNodeRequestContentType The media format of this content node.
 type CreateContentNodeRequestContentType string
+
+// CreateCourseEnrollmentRequest Payload for self-enrolling in a course.
+type CreateCourseEnrollmentRequest struct {
+	// CourseId The ID of the course to enroll in. Must be published and currently open to new enrollments.
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+// CreateCourseRequest Payload for creating a course as a draft.
+type CreateCourseRequest struct {
+	Checkpoints []struct {
+		// LearningPathId The learning path template at this checkpoint. Must exist in the system.
+		LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+		// Title Optional override shown for this checkpoint instead of the learning path's own title (e.g. "Stage 1: Open chords").
+		Title *string `json:"title,omitempty"`
+	} `json:"checkpoints"`
+
+	// Level The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+	Level CreateCourseRequestLevel `json:"level"`
+
+	// Summary Short description of the course shown in the catalog.
+	Summary string `json:"summary"`
+
+	// Title Title of the course.
+	Title string `json:"title"`
+}
+
+// CreateCourseRequestLevel The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+type CreateCourseRequestLevel string
 
 // CreateDiagramRequest Payload for creating a new diagram. Every position's string/fret vs.
 // key must match the referenced instrument's family — the API rejects
@@ -1352,25 +1742,6 @@ type OptionRegion struct {
 // OptionRegionShape The rendered shape of the region.
 type OptionRegionShape string
 
-// PathAssignment A record of a learning path being assigned to a student. One active
-// assignment exists per student at any time for MVP.
-type PathAssignment struct {
-	// AssignedAt Timestamp at which the assignment was created.
-	AssignedAt time.Time `json:"assigned_at"`
-
-	// AssignedBy The user_id of the teacher or admin who created this assignment.
-	AssignedBy openapi_types.UUID `json:"assigned_by"`
-
-	// AssignmentId Stable identifier for this assignment record.
-	AssignmentId openapi_types.UUID `json:"assignment_id"`
-
-	// LearningPathId The learning path assigned to the student.
-	LearningPathId openapi_types.UUID `json:"learning_path_id"`
-
-	// StudentId The user_id of the student this path is assigned to.
-	StudentId openapi_types.UUID `json:"student_id"`
-}
-
 // PracticeSession A generated, skill-targeted set of exercises for self-directed
 // practice, returned by GET /practice-sessions. Not a stored resource —
 // exists only in the response that generated it.
@@ -1519,6 +1890,29 @@ type RemediationTarget struct {
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
 }
 
+// ReplaceCourseRequest Payload for replacing a course's draft wholesale.
+type ReplaceCourseRequest struct {
+	Checkpoints []struct {
+		// LearningPathId The learning path template at this checkpoint. Must exist in the system.
+		LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+		// Title Optional override shown for this checkpoint instead of the learning path's own title.
+		Title *string `json:"title,omitempty"`
+	} `json:"checkpoints"`
+
+	// Level The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+	Level ReplaceCourseRequestLevel `json:"level"`
+
+	// Summary Short description of the course shown in the catalog.
+	Summary string `json:"summary"`
+
+	// Title Title of the course.
+	Title string `json:"title"`
+}
+
+// ReplaceCourseRequestLevel The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+type ReplaceCourseRequestLevel string
+
 // ReplaceLearningPathRequest Payload for replacing an existing learning path's title and items
 // wholesale — the same shape as CreateLearningPathRequest, since a
 // change to any single item (add, remove, reorder, relabel) is
@@ -1535,6 +1929,15 @@ type ReplaceLearningPathRequest struct {
 
 	// Title Human-readable name for this learning path, displayed to teachers and admins.
 	Title string `json:"title"`
+}
+
+// SetCurrentPathRequest Payload for switching the caller's current course or path. Exactly one of course_enrollment_id or student_path_id must be given.
+type SetCurrentPathRequest struct {
+	// CourseEnrollmentId An active CourseEnrollment already belonging to the caller, to make current.
+	CourseEnrollmentId *openapi_types.UUID `json:"course_enrollment_id,omitempty"`
+
+	// StudentPathId A non-archived standalone StudentPath already belonging to the caller, to make current.
+	StudentPathId *openapi_types.UUID `json:"student_path_id,omitempty"`
 }
 
 // Skill An observable, practicable skill a content node can teach. Skills
@@ -1554,10 +1957,46 @@ type Skill struct {
 	SkillId openapi_types.UUID `json:"skill_id"`
 }
 
+// StudentPath A student's own copy of a learning path template's items. Created by
+// copying a LearningPath at assign time; independently editable
+// afterwards and never affected by later changes to the template it
+// was copied from.
+type StudentPath struct {
+	// ArchivedAt Timestamp at which this StudentPath was archived, hiding it from the student. Null means the path is active and visible.
+	ArchivedAt *time.Time `json:"archived_at"`
+
+	// AssignedAt Timestamp at which this StudentPath was created.
+	AssignedAt time.Time `json:"assigned_at"`
+
+	// AssignedBy The user_id of the teacher or admin who assigned this path.
+	AssignedBy openapi_types.UUID `json:"assigned_by"`
+
+	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with source_course_enrollment_id.
+	CourseCheckpointPosition *int `json:"course_checkpoint_position"`
+
+	// SourceCourseEnrollmentId The CourseEnrollment this StudentPath is a checkpoint of, or null when it is a standalone path (staff-assigned directly, not via a course). Set together with course_checkpoint_position.
+	SourceCourseEnrollmentId *openapi_types.UUID `json:"source_course_enrollment_id"`
+
+	// SourceTemplateId The learning path this StudentPath was copied from.
+	SourceTemplateId openapi_types.UUID `json:"source_template_id"`
+
+	// StudentId The user_id of the student who owns this path.
+	StudentId openapi_types.UUID `json:"student_id"`
+
+	// StudentPathId Stable identifier for this StudentPath.
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+
+	// Title Title of the path, copied from the template at assign time and independently editable afterwards.
+	Title string `json:"title"`
+}
+
 // StudentPathItem A content node in the student's learning path with their current progress state.
 type StudentPathItem struct {
 	// ContentNodeId The ID of the content node at this position.
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+
+	// ContentNodeVersionId The specific ContentNodeVersion this item was copied at — the node's latest published version at the moment of copy. Never retargeted by a later publish of the same node.
+	ContentNodeVersionId openapi_types.UUID `json:"content_node_version_id"`
 
 	// ContentType Media format of the content node.
 	ContentType StudentPathItemContentType `json:"content_type"`
@@ -1585,12 +2024,15 @@ type StudentPathItemContentType string
 // locked — a preceding item must be completed first.
 type StudentPathItemStatus string
 
-// StudentPathView The student's active learning path with per-item progress state.
+// StudentPathView The student's current learning path with per-item progress state.
 // Returned by GET /students/me/path and used by the SPA to render
 // the main learning screen.
 type StudentPathView struct {
-	// AssignmentId The active assignment record ID.
-	AssignmentId openapi_types.UUID `json:"assignment_id"`
+	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with course_enrollment_id.
+	CourseCheckpointPosition *int `json:"course_checkpoint_position"`
+
+	// CourseEnrollmentId The CourseEnrollment this is a checkpoint of, or null when the caller's current path is a standalone path. Set together with course_checkpoint_position.
+	CourseEnrollmentId *openapi_types.UUID `json:"course_enrollment_id"`
 
 	// CurrentPosition The position of the item the student should work on next. Points to
 	// the first item that is not completed.
@@ -1599,10 +2041,13 @@ type StudentPathView struct {
 	// Items All path items with progress state, sorted by position ascending.
 	Items []StudentPathItem `json:"items"`
 
-	// LearningPathId The assigned learning path ID.
-	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+	// SourceTemplateId The learning path this StudentPath was copied from.
+	SourceTemplateId openapi_types.UUID `json:"source_template_id"`
 
-	// Title Title of the assigned learning path.
+	// StudentPathId The current StudentPath's ID.
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+
+	// Title Title of the current StudentPath.
 	Title string `json:"title"`
 }
 
@@ -1914,6 +2359,18 @@ type ListContentNodesParamsContentType string
 // ListContentNodesParamsDifficultyLevel defines parameters for ListContentNodes.
 type ListContentNodesParamsDifficultyLevel string
 
+// ListCoursesParams defines parameters for ListCourses.
+type ListCoursesParams struct {
+	// Status Restricts the results to courses in this status. Only
+	// teachers and admins may use this parameter; a student's
+	// results are always implicitly published regardless of this
+	// parameter.
+	Status *ListCoursesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListCoursesParamsStatus defines parameters for ListCourses.
+type ListCoursesParamsStatus string
+
 // ListDiagramsParams defines parameters for ListDiagrams.
 type ListDiagramsParams struct {
 	// InstrumentId When given, only diagrams authored against this instrument are returned.
@@ -1967,6 +2424,12 @@ type CreateChallengeJSONRequestBody = CreateChallengeRequest
 // CreateExpandedContentJSONRequestBody defines body for CreateExpandedContent for application/json ContentType.
 type CreateExpandedContentJSONRequestBody = CreateExpandedContentRequest
 
+// CreateCourseJSONRequestBody defines body for CreateCourse for application/json ContentType.
+type CreateCourseJSONRequestBody = CreateCourseRequest
+
+// ReplaceCourseJSONRequestBody defines body for ReplaceCourse for application/json ContentType.
+type ReplaceCourseJSONRequestBody = ReplaceCourseRequest
+
 // CreateDiagramJSONRequestBody defines body for CreateDiagram for application/json ContentType.
 type CreateDiagramJSONRequestBody = CreateDiagramRequest
 
@@ -1996,6 +2459,12 @@ type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
 // CreateSkillJSONRequestBody defines body for CreateSkill for application/json ContentType.
 type CreateSkillJSONRequestBody = CreateSkillRequest
+
+// CreateCourseEnrollmentJSONRequestBody defines body for CreateCourseEnrollment for application/json ContentType.
+type CreateCourseEnrollmentJSONRequestBody = CreateCourseEnrollmentRequest
+
+// SetCurrentPathJSONRequestBody defines body for SetCurrentPath for application/json ContentType.
+type SetCurrentPathJSONRequestBody = SetCurrentPathRequest
 
 // AssignLearningPathJSONRequestBody defines body for AssignLearningPath for application/json ContentType.
 type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
@@ -2062,6 +2531,30 @@ type ServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// Publish a content node's current draft
+	// (POST /content-nodes/{content_node_id}/publish)
+	PublishContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// List courses
+	// (GET /courses)
+	ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams)
+	// Create a course
+	// (POST /courses)
+	CreateCourse(w http.ResponseWriter, r *http.Request)
+	// Get a course's live, current state by ID
+	// (GET /courses/{course_id})
+	GetCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
+	// Replace a course's draft title, summary, level, and checkpoints
+	// (PUT /courses/{course_id})
+	ReplaceCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
+	// Publish a course's current draft
+	// (POST /courses/{course_id}/publish)
+	PublishCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
+	// Get a course's latest published version, as students see it
+	// (GET /courses/{course_id}/published)
+	GetPublishedCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
+	// Retire a course
+	// (POST /courses/{course_id}/retire)
+	RetireCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
 	// List prebuilt diagrams for authoring
 	// (GET /diagrams)
 	ListDiagrams(w http.ResponseWriter, r *http.Request, params ListDiagramsParams)
@@ -2131,11 +2624,26 @@ type ServerInterface interface {
 	// Create a skill node
 	// (POST /skills)
 	CreateSkill(w http.ResponseWriter, r *http.Request)
+	// List the authenticated student's course enrollments
+	// (GET /students/me/course-enrollments)
+	ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request)
+	// Self-enroll the authenticated student in a course
+	// (POST /students/me/course-enrollments)
+	CreateCourseEnrollment(w http.ResponseWriter, r *http.Request)
+	// Abandon a course enrollment
+	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
+	AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID)
+	// Switch the authenticated student's current course or path
+	// (PUT /students/me/current-path)
+	SetCurrentPath(w http.ResponseWriter, r *http.Request)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(w http.ResponseWriter, r *http.Request)
+	// Archive a standalone student path
+	// (POST /students/me/paths/{student_path_id}/archive)
+	ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
 	// Assign a learning path to a student
-	// (POST /students/{student_id}/path-assignments)
+	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID)
 	// Register an authenticated user
 	// (POST /users)
@@ -2257,6 +2765,54 @@ func (_ Unimplemented) ListExpandedContent(w http.ResponseWriter, r *http.Reques
 // Add an expanded content item to a content node
 // (POST /content-nodes/{content_node_id}/expanded-content)
 func (_ Unimplemented) CreateExpandedContent(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Publish a content node's current draft
+// (POST /content-nodes/{content_node_id}/publish)
+func (_ Unimplemented) PublishContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List courses
+// (GET /courses)
+func (_ Unimplemented) ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a course
+// (POST /courses)
+func (_ Unimplemented) CreateCourse(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a course's live, current state by ID
+// (GET /courses/{course_id})
+func (_ Unimplemented) GetCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace a course's draft title, summary, level, and checkpoints
+// (PUT /courses/{course_id})
+func (_ Unimplemented) ReplaceCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Publish a course's current draft
+// (POST /courses/{course_id}/publish)
+func (_ Unimplemented) PublishCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a course's latest published version, as students see it
+// (GET /courses/{course_id}/published)
+func (_ Unimplemented) GetPublishedCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Retire a course
+// (POST /courses/{course_id}/retire)
+func (_ Unimplemented) RetireCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2398,14 +2954,44 @@ func (_ Unimplemented) CreateSkill(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List the authenticated student's course enrollments
+// (GET /students/me/course-enrollments)
+func (_ Unimplemented) ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Self-enroll the authenticated student in a course
+// (POST /students/me/course-enrollments)
+func (_ Unimplemented) CreateCourseEnrollment(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Abandon a course enrollment
+// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
+func (_ Unimplemented) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Switch the authenticated student's current course or path
+// (PUT /students/me/current-path)
+func (_ Unimplemented) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get the authenticated student's current learning path and progress
 // (GET /students/me/path)
 func (_ Unimplemented) GetMyPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Archive a standalone student path
+// (POST /students/me/paths/{student_path_id}/archive)
+func (_ Unimplemented) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Assign a learning path to a student
-// (POST /students/{student_id}/path-assignments)
+// (POST /students/{student_id}/student-paths)
 func (_ Unimplemented) AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -3015,6 +3601,245 @@ func (siw *ServerInterfaceWrapper) CreateExpandedContent(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateExpandedContent(w, r, contentNodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishContentNode operation middleware
+func (siw *ServerInterfaceWrapper) PublishContentNode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "content_node_id" -------------
+	var contentNodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_node_id", chi.URLParam(r, "content_node_id"), &contentNodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishContentNode(w, r, contentNodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCourses operation middleware
+func (siw *ServerInterfaceWrapper) ListCourses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCoursesParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCourses(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCourse operation middleware
+func (siw *ServerInterfaceWrapper) CreateCourse(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCourse(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCourse operation middleware
+func (siw *ServerInterfaceWrapper) GetCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCourse(w, r, courseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReplaceCourse operation middleware
+func (siw *ServerInterfaceWrapper) ReplaceCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReplaceCourse(w, r, courseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishCourse operation middleware
+func (siw *ServerInterfaceWrapper) PublishCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishCourse(w, r, courseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPublishedCourse operation middleware
+func (siw *ServerInterfaceWrapper) GetPublishedCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPublishedCourse(w, r, courseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RetireCourse operation middleware
+func (siw *ServerInterfaceWrapper) RetireCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RetireCourse(w, r, courseId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3649,6 +4474,97 @@ func (siw *ServerInterfaceWrapper) CreateSkill(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ListMyCourseEnrollments operation middleware
+func (siw *ServerInterfaceWrapper) ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyCourseEnrollments(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCourseEnrollment operation middleware
+func (siw *ServerInterfaceWrapper) CreateCourseEnrollment(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCourseEnrollment(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AbandonCourseEnrollment operation middleware
+func (siw *ServerInterfaceWrapper) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_enrollment_id" -------------
+	var courseEnrollmentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_enrollment_id", chi.URLParam(r, "course_enrollment_id"), &courseEnrollmentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_enrollment_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AbandonCourseEnrollment(w, r, courseEnrollmentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetCurrentPath operation middleware
+func (siw *ServerInterfaceWrapper) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetCurrentPath(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMyPath operation middleware
 func (siw *ServerInterfaceWrapper) GetMyPath(w http.ResponseWriter, r *http.Request) {
 
@@ -3660,6 +4576,37 @@ func (siw *ServerInterfaceWrapper) GetMyPath(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMyPath(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveStandaloneStudentPath operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "student_path_id" -------------
+	var studentPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "student_path_id", chi.URLParam(r, "student_path_id"), &studentPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "student_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveStandaloneStudentPath(w, r, studentPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3928,6 +4875,30 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/expanded-content", wrapper.CreateExpandedContent)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/publish", wrapper.PublishContentNode)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/courses", wrapper.ListCourses)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/courses", wrapper.CreateCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/courses/{course_id}", wrapper.GetCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/courses/{course_id}", wrapper.ReplaceCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/courses/{course_id}/publish", wrapper.PublishCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/courses/{course_id}/published", wrapper.GetPublishedCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/courses/{course_id}/retire", wrapper.RetireCourse)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/diagrams", wrapper.ListDiagrams)
 	})
 	r.Group(func(r chi.Router) {
@@ -3997,10 +4968,25 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/skills", wrapper.CreateSkill)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/course-enrollments", wrapper.ListMyCourseEnrollments)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/course-enrollments", wrapper.CreateCourseEnrollment)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/course-enrollments/{course_enrollment_id}/abandon", wrapper.AbandonCourseEnrollment)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/students/me/current-path", wrapper.SetCurrentPath)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/path", wrapper.GetMyPath)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/students/{student_id}/path-assignments", wrapper.AssignLearningPath)
+		r.Post(options.BaseURL+"/students/me/paths/{student_path_id}/archive", wrapper.ArchiveStandaloneStudentPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/{student_id}/student-paths", wrapper.AssignLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users", wrapper.RegisterUser)
@@ -4785,6 +5771,341 @@ func (response CreateExpandedContent403JSONResponse) VisitCreateExpandedContentR
 type CreateExpandedContent404JSONResponse NotFoundError
 
 func (response CreateExpandedContent404JSONResponse) VisitCreateExpandedContentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishContentNodeRequestObject struct {
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+}
+
+type PublishContentNodeResponseObject interface {
+	VisitPublishContentNodeResponse(w http.ResponseWriter) error
+}
+
+type PublishContentNode201JSONResponse ContentNodeVersion
+
+func (response PublishContentNode201JSONResponse) VisitPublishContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishContentNode401JSONResponse UnauthorizedError
+
+func (response PublishContentNode401JSONResponse) VisitPublishContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishContentNode403JSONResponse ForbiddenError
+
+func (response PublishContentNode403JSONResponse) VisitPublishContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishContentNode404JSONResponse NotFoundError
+
+func (response PublishContentNode404JSONResponse) VisitPublishContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCoursesRequestObject struct {
+	Params ListCoursesParams
+}
+
+type ListCoursesResponseObject interface {
+	VisitListCoursesResponse(w http.ResponseWriter) error
+}
+
+type ListCourses200JSONResponse []CourseCatalogEntry
+
+func (response ListCourses200JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourses401JSONResponse UnauthorizedError
+
+func (response ListCourses401JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseRequestObject struct {
+	Body *CreateCourseJSONRequestBody
+}
+
+type CreateCourseResponseObject interface {
+	VisitCreateCourseResponse(w http.ResponseWriter) error
+}
+
+type CreateCourse201JSONResponse Course
+
+func (response CreateCourse201JSONResponse) VisitCreateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourse400JSONResponse ValidationError
+
+func (response CreateCourse400JSONResponse) VisitCreateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourse401JSONResponse UnauthorizedError
+
+func (response CreateCourse401JSONResponse) VisitCreateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourse403JSONResponse ForbiddenError
+
+func (response CreateCourse403JSONResponse) VisitCreateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+type GetCourseResponseObject interface {
+	VisitGetCourseResponse(w http.ResponseWriter) error
+}
+
+type GetCourse200JSONResponse Course
+
+func (response GetCourse200JSONResponse) VisitGetCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCourse401JSONResponse UnauthorizedError
+
+func (response GetCourse401JSONResponse) VisitGetCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCourse403JSONResponse ForbiddenError
+
+func (response GetCourse403JSONResponse) VisitGetCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCourse404JSONResponse NotFoundError
+
+func (response GetCourse404JSONResponse) VisitGetCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+	Body     *ReplaceCourseJSONRequestBody
+}
+
+type ReplaceCourseResponseObject interface {
+	VisitReplaceCourseResponse(w http.ResponseWriter) error
+}
+
+type ReplaceCourse200JSONResponse Course
+
+func (response ReplaceCourse200JSONResponse) VisitReplaceCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceCourse400JSONResponse ValidationError
+
+func (response ReplaceCourse400JSONResponse) VisitReplaceCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceCourse401JSONResponse UnauthorizedError
+
+func (response ReplaceCourse401JSONResponse) VisitReplaceCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceCourse403JSONResponse ForbiddenError
+
+func (response ReplaceCourse403JSONResponse) VisitReplaceCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReplaceCourse404JSONResponse NotFoundError
+
+func (response ReplaceCourse404JSONResponse) VisitReplaceCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+type PublishCourseResponseObject interface {
+	VisitPublishCourseResponse(w http.ResponseWriter) error
+}
+
+type PublishCourse201JSONResponse CourseVersion
+
+func (response PublishCourse201JSONResponse) VisitPublishCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishCourse401JSONResponse UnauthorizedError
+
+func (response PublishCourse401JSONResponse) VisitPublishCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishCourse403JSONResponse ForbiddenError
+
+func (response PublishCourse403JSONResponse) VisitPublishCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishCourse404JSONResponse NotFoundError
+
+func (response PublishCourse404JSONResponse) VisitPublishCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+type GetPublishedCourseResponseObject interface {
+	VisitGetPublishedCourseResponse(w http.ResponseWriter) error
+}
+
+type GetPublishedCourse200JSONResponse CourseDetail
+
+func (response GetPublishedCourse200JSONResponse) VisitGetPublishedCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedCourse401JSONResponse UnauthorizedError
+
+func (response GetPublishedCourse401JSONResponse) VisitGetPublishedCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedCourse404JSONResponse NotFoundError
+
+func (response GetPublishedCourse404JSONResponse) VisitGetPublishedCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetireCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+type RetireCourseResponseObject interface {
+	VisitRetireCourseResponse(w http.ResponseWriter) error
+}
+
+type RetireCourse200JSONResponse Course
+
+func (response RetireCourse200JSONResponse) VisitRetireCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetireCourse401JSONResponse UnauthorizedError
+
+func (response RetireCourse401JSONResponse) VisitRetireCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetireCourse403JSONResponse ForbiddenError
+
+func (response RetireCourse403JSONResponse) VisitRetireCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type RetireCourse404JSONResponse NotFoundError
+
+func (response RetireCourse404JSONResponse) VisitRetireCourseResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -5693,6 +7014,208 @@ func (response CreateSkill403JSONResponse) VisitCreateSkillResponse(w http.Respo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListMyCourseEnrollmentsRequestObject struct {
+}
+
+type ListMyCourseEnrollmentsResponseObject interface {
+	VisitListMyCourseEnrollmentsResponse(w http.ResponseWriter) error
+}
+
+type ListMyCourseEnrollments200JSONResponse []CourseEnrollment
+
+func (response ListMyCourseEnrollments200JSONResponse) VisitListMyCourseEnrollmentsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListMyCourseEnrollments401JSONResponse UnauthorizedError
+
+func (response ListMyCourseEnrollments401JSONResponse) VisitListMyCourseEnrollmentsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListMyCourseEnrollments403JSONResponse ForbiddenError
+
+func (response ListMyCourseEnrollments403JSONResponse) VisitListMyCourseEnrollmentsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollmentRequestObject struct {
+	Body *CreateCourseEnrollmentJSONRequestBody
+}
+
+type CreateCourseEnrollmentResponseObject interface {
+	VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error
+}
+
+type CreateCourseEnrollment201JSONResponse CourseEnrollment
+
+func (response CreateCourseEnrollment201JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollment400JSONResponse ValidationError
+
+func (response CreateCourseEnrollment400JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollment401JSONResponse UnauthorizedError
+
+func (response CreateCourseEnrollment401JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollment403JSONResponse ForbiddenError
+
+func (response CreateCourseEnrollment403JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollment404JSONResponse NotFoundError
+
+func (response CreateCourseEnrollment404JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCourseEnrollment409JSONResponse ConflictError
+
+func (response CreateCourseEnrollment409JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AbandonCourseEnrollmentRequestObject struct {
+	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
+}
+
+type AbandonCourseEnrollmentResponseObject interface {
+	VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error
+}
+
+type AbandonCourseEnrollment200JSONResponse CourseEnrollment
+
+func (response AbandonCourseEnrollment200JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AbandonCourseEnrollment401JSONResponse UnauthorizedError
+
+func (response AbandonCourseEnrollment401JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AbandonCourseEnrollment403JSONResponse ForbiddenError
+
+func (response AbandonCourseEnrollment403JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AbandonCourseEnrollment404JSONResponse NotFoundError
+
+func (response AbandonCourseEnrollment404JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AbandonCourseEnrollment409JSONResponse ConflictError
+
+func (response AbandonCourseEnrollment409JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetCurrentPathRequestObject struct {
+	Body *SetCurrentPathJSONRequestBody
+}
+
+type SetCurrentPathResponseObject interface {
+	VisitSetCurrentPathResponse(w http.ResponseWriter) error
+}
+
+type SetCurrentPath200JSONResponse StudentPathView
+
+func (response SetCurrentPath200JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetCurrentPath400JSONResponse ValidationError
+
+func (response SetCurrentPath400JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetCurrentPath401JSONResponse UnauthorizedError
+
+func (response SetCurrentPath401JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetCurrentPath403JSONResponse ForbiddenError
+
+func (response SetCurrentPath403JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SetCurrentPath404JSONResponse NotFoundError
+
+func (response SetCurrentPath404JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetMyPathRequestObject struct {
 }
 
@@ -5727,6 +7250,59 @@ func (response GetMyPath404JSONResponse) VisitGetMyPathResponse(w http.ResponseW
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ArchiveStandaloneStudentPathRequestObject struct {
+	StudentPathId openapi_types.UUID `json:"student_path_id"`
+}
+
+type ArchiveStandaloneStudentPathResponseObject interface {
+	VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error
+}
+
+type ArchiveStandaloneStudentPath200JSONResponse StudentPath
+
+func (response ArchiveStandaloneStudentPath200JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ArchiveStandaloneStudentPath401JSONResponse UnauthorizedError
+
+func (response ArchiveStandaloneStudentPath401JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ArchiveStandaloneStudentPath403JSONResponse ForbiddenError
+
+func (response ArchiveStandaloneStudentPath403JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ArchiveStandaloneStudentPath404JSONResponse NotFoundError
+
+func (response ArchiveStandaloneStudentPath404JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ArchiveStandaloneStudentPath409JSONResponse ConflictError
+
+func (response ArchiveStandaloneStudentPath409JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type AssignLearningPathRequestObject struct {
 	StudentId openapi_types.UUID `json:"student_id"`
 	Body      *AssignLearningPathJSONRequestBody
@@ -5736,7 +7312,7 @@ type AssignLearningPathResponseObject interface {
 	VisitAssignLearningPathResponse(w http.ResponseWriter) error
 }
 
-type AssignLearningPath201JSONResponse PathAssignment
+type AssignLearningPath201JSONResponse StudentPath
 
 func (response AssignLearningPath201JSONResponse) VisitAssignLearningPathResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -5959,6 +7535,30 @@ type StrictServerInterface interface {
 	// Add an expanded content item to a content node
 	// (POST /content-nodes/{content_node_id}/expanded-content)
 	CreateExpandedContent(ctx context.Context, request CreateExpandedContentRequestObject) (CreateExpandedContentResponseObject, error)
+	// Publish a content node's current draft
+	// (POST /content-nodes/{content_node_id}/publish)
+	PublishContentNode(ctx context.Context, request PublishContentNodeRequestObject) (PublishContentNodeResponseObject, error)
+	// List courses
+	// (GET /courses)
+	ListCourses(ctx context.Context, request ListCoursesRequestObject) (ListCoursesResponseObject, error)
+	// Create a course
+	// (POST /courses)
+	CreateCourse(ctx context.Context, request CreateCourseRequestObject) (CreateCourseResponseObject, error)
+	// Get a course's live, current state by ID
+	// (GET /courses/{course_id})
+	GetCourse(ctx context.Context, request GetCourseRequestObject) (GetCourseResponseObject, error)
+	// Replace a course's draft title, summary, level, and checkpoints
+	// (PUT /courses/{course_id})
+	ReplaceCourse(ctx context.Context, request ReplaceCourseRequestObject) (ReplaceCourseResponseObject, error)
+	// Publish a course's current draft
+	// (POST /courses/{course_id}/publish)
+	PublishCourse(ctx context.Context, request PublishCourseRequestObject) (PublishCourseResponseObject, error)
+	// Get a course's latest published version, as students see it
+	// (GET /courses/{course_id}/published)
+	GetPublishedCourse(ctx context.Context, request GetPublishedCourseRequestObject) (GetPublishedCourseResponseObject, error)
+	// Retire a course
+	// (POST /courses/{course_id}/retire)
+	RetireCourse(ctx context.Context, request RetireCourseRequestObject) (RetireCourseResponseObject, error)
 	// List prebuilt diagrams for authoring
 	// (GET /diagrams)
 	ListDiagrams(ctx context.Context, request ListDiagramsRequestObject) (ListDiagramsResponseObject, error)
@@ -6028,11 +7628,26 @@ type StrictServerInterface interface {
 	// Create a skill node
 	// (POST /skills)
 	CreateSkill(ctx context.Context, request CreateSkillRequestObject) (CreateSkillResponseObject, error)
+	// List the authenticated student's course enrollments
+	// (GET /students/me/course-enrollments)
+	ListMyCourseEnrollments(ctx context.Context, request ListMyCourseEnrollmentsRequestObject) (ListMyCourseEnrollmentsResponseObject, error)
+	// Self-enroll the authenticated student in a course
+	// (POST /students/me/course-enrollments)
+	CreateCourseEnrollment(ctx context.Context, request CreateCourseEnrollmentRequestObject) (CreateCourseEnrollmentResponseObject, error)
+	// Abandon a course enrollment
+	// (POST /students/me/course-enrollments/{course_enrollment_id}/abandon)
+	AbandonCourseEnrollment(ctx context.Context, request AbandonCourseEnrollmentRequestObject) (AbandonCourseEnrollmentResponseObject, error)
+	// Switch the authenticated student's current course or path
+	// (PUT /students/me/current-path)
+	SetCurrentPath(ctx context.Context, request SetCurrentPathRequestObject) (SetCurrentPathResponseObject, error)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(ctx context.Context, request GetMyPathRequestObject) (GetMyPathResponseObject, error)
+	// Archive a standalone student path
+	// (POST /students/me/paths/{student_path_id}/archive)
+	ArchiveStandaloneStudentPath(ctx context.Context, request ArchiveStandaloneStudentPathRequestObject) (ArchiveStandaloneStudentPathResponseObject, error)
 	// Assign a learning path to a student
-	// (POST /students/{student_id}/path-assignments)
+	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(ctx context.Context, request AssignLearningPathRequestObject) (AssignLearningPathResponseObject, error)
 	// Register an authenticated user
 	// (POST /users)
@@ -6575,6 +8190,226 @@ func (sh *strictHandler) CreateExpandedContent(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateExpandedContentResponseObject); ok {
 		if err := validResponse.VisitCreateExpandedContentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublishContentNode operation middleware
+func (sh *strictHandler) PublishContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	var request PublishContentNodeRequestObject
+
+	request.ContentNodeId = contentNodeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishContentNode(ctx, request.(PublishContentNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishContentNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishContentNodeResponseObject); ok {
+		if err := validResponse.VisitPublishContentNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCourses operation middleware
+func (sh *strictHandler) ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams) {
+	var request ListCoursesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCourses(ctx, request.(ListCoursesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCourses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCoursesResponseObject); ok {
+		if err := validResponse.VisitListCoursesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCourse operation middleware
+func (sh *strictHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
+	var request CreateCourseRequestObject
+
+	var body CreateCourseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCourse(ctx, request.(CreateCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCourseResponseObject); ok {
+		if err := validResponse.VisitCreateCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCourse operation middleware
+func (sh *strictHandler) GetCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request GetCourseRequestObject
+
+	request.CourseId = courseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCourse(ctx, request.(GetCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCourseResponseObject); ok {
+		if err := validResponse.VisitGetCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReplaceCourse operation middleware
+func (sh *strictHandler) ReplaceCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request ReplaceCourseRequestObject
+
+	request.CourseId = courseId
+
+	var body ReplaceCourseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReplaceCourse(ctx, request.(ReplaceCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReplaceCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReplaceCourseResponseObject); ok {
+		if err := validResponse.VisitReplaceCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublishCourse operation middleware
+func (sh *strictHandler) PublishCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request PublishCourseRequestObject
+
+	request.CourseId = courseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishCourse(ctx, request.(PublishCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishCourseResponseObject); ok {
+		if err := validResponse.VisitPublishCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPublishedCourse operation middleware
+func (sh *strictHandler) GetPublishedCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request GetPublishedCourseRequestObject
+
+	request.CourseId = courseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPublishedCourse(ctx, request.(GetPublishedCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPublishedCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPublishedCourseResponseObject); ok {
+		if err := validResponse.VisitGetPublishedCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RetireCourse operation middleware
+func (sh *strictHandler) RetireCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request RetireCourseRequestObject
+
+	request.CourseId = courseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RetireCourse(ctx, request.(RetireCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RetireCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RetireCourseResponseObject); ok {
+		if err := validResponse.VisitRetireCourseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -7228,6 +9063,118 @@ func (sh *strictHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListMyCourseEnrollments operation middleware
+func (sh *strictHandler) ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request) {
+	var request ListMyCourseEnrollmentsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyCourseEnrollments(ctx, request.(ListMyCourseEnrollmentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyCourseEnrollments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyCourseEnrollmentsResponseObject); ok {
+		if err := validResponse.VisitListMyCourseEnrollmentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCourseEnrollment operation middleware
+func (sh *strictHandler) CreateCourseEnrollment(w http.ResponseWriter, r *http.Request) {
+	var request CreateCourseEnrollmentRequestObject
+
+	var body CreateCourseEnrollmentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCourseEnrollment(ctx, request.(CreateCourseEnrollmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCourseEnrollment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCourseEnrollmentResponseObject); ok {
+		if err := validResponse.VisitCreateCourseEnrollmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AbandonCourseEnrollment operation middleware
+func (sh *strictHandler) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Request, courseEnrollmentId openapi_types.UUID) {
+	var request AbandonCourseEnrollmentRequestObject
+
+	request.CourseEnrollmentId = courseEnrollmentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AbandonCourseEnrollment(ctx, request.(AbandonCourseEnrollmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AbandonCourseEnrollment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AbandonCourseEnrollmentResponseObject); ok {
+		if err := validResponse.VisitAbandonCourseEnrollmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetCurrentPath operation middleware
+func (sh *strictHandler) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
+	var request SetCurrentPathRequestObject
+
+	var body SetCurrentPathJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetCurrentPath(ctx, request.(SetCurrentPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetCurrentPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetCurrentPathResponseObject); ok {
+		if err := validResponse.VisitSetCurrentPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetMyPath operation middleware
 func (sh *strictHandler) GetMyPath(w http.ResponseWriter, r *http.Request) {
 	var request GetMyPathRequestObject
@@ -7245,6 +9192,32 @@ func (sh *strictHandler) GetMyPath(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMyPathResponseObject); ok {
 		if err := validResponse.VisitGetMyPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveStandaloneStudentPath operation middleware
+func (sh *strictHandler) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	var request ArchiveStandaloneStudentPathRequestObject
+
+	request.StudentPathId = studentPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveStandaloneStudentPath(ctx, request.(ArchiveStandaloneStudentPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveStandaloneStudentPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveStandaloneStudentPathResponseObject); ok {
+		if err := validResponse.VisitArchiveStandaloneStudentPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

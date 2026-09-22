@@ -14,6 +14,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
@@ -27,10 +28,12 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 )
 
@@ -102,6 +105,16 @@ func init() {
 	contentnodeskillDescLinkedAt := contentnodeskillFields[2].Descriptor()
 	// contentnodeskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	contentnodeskill.DefaultLinkedAt = contentnodeskillDescLinkedAt.Default.(func() time.Time)
+	contentnodeversionFields := schema.ContentNodeVersion{}.Fields()
+	_ = contentnodeversionFields
+	// contentnodeversionDescPublishedAt is the schema descriptor for published_at field.
+	contentnodeversionDescPublishedAt := contentnodeversionFields[8].Descriptor()
+	// contentnodeversion.DefaultPublishedAt holds the default value on creation for the published_at field.
+	contentnodeversion.DefaultPublishedAt = contentnodeversionDescPublishedAt.Default.(func() time.Time)
+	// contentnodeversionDescID is the schema descriptor for id field.
+	contentnodeversionDescID := contentnodeversionFields[0].Descriptor()
+	// contentnodeversion.DefaultID holds the default value on creation for the id field.
+	contentnodeversion.DefaultID = contentnodeversionDescID.Default.(func() uuid.UUID)
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
 	// diagramDescCreatedAt is the schema descriptor for created_at field.
@@ -196,16 +209,6 @@ func init() {
 	learningpathitemDescID := learningpathitemFields[0].Descriptor()
 	// learningpathitem.DefaultID holds the default value on creation for the id field.
 	learningpathitem.DefaultID = learningpathitemDescID.Default.(func() uuid.UUID)
-	pathassignmentFields := schema.PathAssignment{}.Fields()
-	_ = pathassignmentFields
-	// pathassignmentDescAssignedAt is the schema descriptor for assigned_at field.
-	pathassignmentDescAssignedAt := pathassignmentFields[4].Descriptor()
-	// pathassignment.DefaultAssignedAt holds the default value on creation for the assigned_at field.
-	pathassignment.DefaultAssignedAt = pathassignmentDescAssignedAt.Default.(func() time.Time)
-	// pathassignmentDescID is the schema descriptor for id field.
-	pathassignmentDescID := pathassignmentFields[0].Descriptor()
-	// pathassignment.DefaultID holds the default value on creation for the id field.
-	pathassignment.DefaultID = pathassignmentDescID.Default.(func() uuid.UUID)
 	positionFields := schema.Position{}.Fields()
 	_ = positionFields
 	// positionDescID is the schema descriptor for id field.
@@ -218,6 +221,28 @@ func init() {
 	skillDescID := skillFields[0].Descriptor()
 	// skill.DefaultID holds the default value on creation for the id field.
 	skill.DefaultID = skillDescID.Default.(func() uuid.UUID)
+	studentlearningstateFields := schema.StudentLearningState{}.Fields()
+	_ = studentlearningstateFields
+	// studentlearningstateDescID is the schema descriptor for id field.
+	studentlearningstateDescID := studentlearningstateFields[0].Descriptor()
+	// studentlearningstate.DefaultID holds the default value on creation for the id field.
+	studentlearningstate.DefaultID = studentlearningstateDescID.Default.(func() uuid.UUID)
+	studentpathFields := schema.StudentPath{}.Fields()
+	_ = studentpathFields
+	// studentpathDescAssignedAt is the schema descriptor for assigned_at field.
+	studentpathDescAssignedAt := studentpathFields[5].Descriptor()
+	// studentpath.DefaultAssignedAt holds the default value on creation for the assigned_at field.
+	studentpath.DefaultAssignedAt = studentpathDescAssignedAt.Default.(func() time.Time)
+	// studentpathDescID is the schema descriptor for id field.
+	studentpathDescID := studentpathFields[0].Descriptor()
+	// studentpath.DefaultID holds the default value on creation for the id field.
+	studentpath.DefaultID = studentpathDescID.Default.(func() uuid.UUID)
+	studentpathitemFields := schema.StudentPathItem{}.Fields()
+	_ = studentpathitemFields
+	// studentpathitemDescID is the schema descriptor for id field.
+	studentpathitemDescID := studentpathitemFields[0].Descriptor()
+	// studentpathitem.DefaultID holds the default value on creation for the id field.
+	studentpathitem.DefaultID = studentpathitemDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescRegisteredAt is the schema descriptor for registered_at field.

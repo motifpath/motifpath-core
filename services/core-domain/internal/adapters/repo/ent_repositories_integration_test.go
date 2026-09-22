@@ -750,34 +750,106 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	assert.Equal(t, pathB, byID[pathB.ID])
 }
 
-func TestEntPathAssignmentRepository_ReplaceActive(t *testing.T) {
+func TestEntStudentPathRepository(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
 	nodeRepo := NewEntContentNodeRepository(client)
 	pathRepo := NewEntLearningPathRepository(client)
-	repo := NewEntPathAssignmentRepository(client)
+	versionRepo := NewEntContentNodeVersionRepository(client)
+	repo := NewEntStudentPathRepository(client)
 
 	node := seedContentNode(t, ctx, nodeRepo)
+	template := seedLearningPath(t, ctx, pathRepo, node)
+	studentID := uuid.NewString()
+	assignedBy := uuid.NewString()
+
+	version := domain.ContentNodeVersion{
+		ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1,
+		Title: node.Title, ContentType: node.ContentType, PublishedBy: assignedBy, PublishedAt: fixedAt,
+	}
+	require.NoError(t, versionRepo.Create(ctx, version))
+
+	sp := domain.StudentPath{
+		ID: uuid.NewString(), StudentID: studentID, SourceTemplateID: template.ID,
+		Title: template.Title, AssignedBy: assignedBy, AssignedAt: fixedAt,
+		Items: []domain.StudentPathItemRecord{
+			{Position: 1, ContentNodeID: node.ID, ContentNodeVersionID: version.ID},
+		},
+	}
+	require.NoError(t, repo.Create(ctx, sp))
+
+	fetched, err := repo.GetByID(ctx, sp.ID)
+	require.NoError(t, err)
+	assert.Equal(t, sp, fetched)
+
+	active, err := repo.ListActiveStandaloneByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	require.Len(t, active, 1)
+	assert.Equal(t, sp.ID, active[0].ID)
+
+	require.NoError(t, repo.Archive(ctx, sp.ID, fixedAt.Add(time.Hour)))
+	fetched, err = repo.GetByID(ctx, sp.ID)
+	require.NoError(t, err)
+	require.NotNil(t, fetched.ArchivedAt)
+
+	active, err = repo.ListActiveStandaloneByStudentID(ctx, studentID)
+	require.NoError(t, err)
+	assert.Empty(t, active)
+}
+
+func TestEntContentNodeVersionRepository_GetLatestByContentNodeID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntContentNodeVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	publishedBy := uuid.NewString()
+
+	_, err := repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	v1 := domain.ContentNodeVersion{ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1, Title: node.Title, ContentType: node.ContentType, PublishedBy: publishedBy, PublishedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	latest, err := repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, latest.VersionNumber)
+
+	v2 := domain.ContentNodeVersion{ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 2, Title: "Revised", ContentType: node.ContentType, PublishedBy: publishedBy, PublishedAt: fixedAt.Add(time.Hour)}
+	require.NoError(t, repo.Create(ctx, v2))
+
+	latest, err = repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, latest.VersionNumber)
+	assert.Equal(t, "Revised", latest.Title)
+}
+
+func TestEntStudentLearningStateRepository(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntStudentLearningStateRepository(client)
 	studentID := uuid.NewString()
 
-	path1 := seedLearningPath(t, ctx, pathRepo, node)
-	first := domain.PathAssignment{ID: uuid.NewString(), StudentID: studentID, LearningPathID: path1.ID, AssignedBy: uuid.NewString(), AssignedAt: fixedAt}
-	require.NoError(t, repo.ReplaceActive(ctx, first))
+	_, err := repo.GetByStudentID(ctx, studentID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 
-	active, err := repo.GetActiveByStudentID(ctx, studentID)
+	pathID := uuid.NewString()
+	state := domain.StudentLearningState{StudentID: studentID}.WithCurrentStandalonePath(pathID)
+	require.NoError(t, repo.Upsert(ctx, state))
+
+	fetched, err := repo.GetByStudentID(ctx, studentID)
 	require.NoError(t, err)
-	assert.Equal(t, first, active)
+	assert.Equal(t, pathID, *fetched.CurrentStandalonePathID)
+	assert.Nil(t, fetched.CurrentCourseEnrollmentID)
 
-	// Replacing an active assignment resets progress: the new assignment
-	// gets a fresh id and the old one is gone entirely, not merely updated.
-	path2 := seedLearningPath(t, ctx, pathRepo, node)
-	second := domain.PathAssignment{ID: uuid.NewString(), StudentID: studentID, LearningPathID: path2.ID, AssignedBy: uuid.NewString(), AssignedAt: fixedAt}
-	require.NoError(t, repo.ReplaceActive(ctx, second))
+	enrollmentID := uuid.NewString()
+	require.NoError(t, repo.Upsert(ctx, fetched.WithCurrentCourseEnrollment(enrollmentID)))
 
-	active, err = repo.GetActiveByStudentID(ctx, studentID)
+	fetched, err = repo.GetByStudentID(ctx, studentID)
 	require.NoError(t, err)
-	assert.Equal(t, second, active)
-	assert.NotEqual(t, first.ID, active.ID)
+	assert.Equal(t, enrollmentID, *fetched.CurrentCourseEnrollmentID)
+	assert.Nil(t, fetched.CurrentStandalonePathID)
 }
 
 func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepository) domain.ContentNode {

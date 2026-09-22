@@ -8,30 +8,30 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
 )
 
-// PathAssignmentDelete is the builder for deleting a PathAssignment entity.
-type PathAssignmentDelete struct {
+// StudentPathItemDelete is the builder for deleting a StudentPathItem entity.
+type StudentPathItemDelete struct {
 	config
 	hooks    []Hook
-	mutation *PathAssignmentMutation
+	mutation *StudentPathItemMutation
 }
 
-// Where appends a list predicates to the PathAssignmentDelete builder.
-func (_d *PathAssignmentDelete) Where(ps ...predicate.PathAssignment) *PathAssignmentDelete {
+// Where appends a list predicates to the StudentPathItemDelete builder.
+func (_d *StudentPathItemDelete) Where(ps ...predicate.StudentPathItem) *StudentPathItemDelete {
 	_d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (_d *PathAssignmentDelete) Exec(ctx context.Context) (int, error) {
+func (_d *StudentPathItemDelete) Exec(ctx context.Context) (int, error) {
 	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *PathAssignmentDelete) ExecX(ctx context.Context) int {
+func (_d *StudentPathItemDelete) ExecX(ctx context.Context) int {
 	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
@@ -39,8 +39,8 @@ func (_d *PathAssignmentDelete) ExecX(ctx context.Context) int {
 	return n
 }
 
-func (_d *PathAssignmentDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(pathassignment.Table, sqlgraph.NewFieldSpec(pathassignment.FieldID, field.TypeUUID))
+func (_d *StudentPathItemDelete) sqlExec(ctx context.Context) (int, error) {
+	_spec := sqlgraph.NewDeleteSpec(studentpathitem.Table, sqlgraph.NewFieldSpec(studentpathitem.FieldID, field.TypeUUID))
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -56,32 +56,32 @@ func (_d *PathAssignmentDelete) sqlExec(ctx context.Context) (int, error) {
 	return affected, err
 }
 
-// PathAssignmentDeleteOne is the builder for deleting a single PathAssignment entity.
-type PathAssignmentDeleteOne struct {
-	_d *PathAssignmentDelete
+// StudentPathItemDeleteOne is the builder for deleting a single StudentPathItem entity.
+type StudentPathItemDeleteOne struct {
+	_d *StudentPathItemDelete
 }
 
-// Where appends a list predicates to the PathAssignmentDelete builder.
-func (_d *PathAssignmentDeleteOne) Where(ps ...predicate.PathAssignment) *PathAssignmentDeleteOne {
+// Where appends a list predicates to the StudentPathItemDelete builder.
+func (_d *StudentPathItemDeleteOne) Where(ps ...predicate.StudentPathItem) *StudentPathItemDeleteOne {
 	_d._d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query.
-func (_d *PathAssignmentDeleteOne) Exec(ctx context.Context) error {
+func (_d *StudentPathItemDeleteOne) Exec(ctx context.Context) error {
 	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
 	case n == 0:
-		return &NotFoundError{pathassignment.Label}
+		return &NotFoundError{studentpathitem.Label}
 	default:
 		return nil
 	}
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *PathAssignmentDeleteOne) ExecX(ctx context.Context) {
+func (_d *StudentPathItemDeleteOne) ExecX(ctx context.Context) {
 	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}

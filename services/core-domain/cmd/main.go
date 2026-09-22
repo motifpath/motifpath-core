@@ -241,7 +241,9 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
-	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
+	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
+	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
+	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
@@ -253,18 +255,18 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	now := func() time.Time { return time.Now().UTC() }
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, mathrand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
+	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, newID)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, assignmentService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
 		instrumentService, diagramService, learningGraphPinger, completionReader), nil
 }
 

@@ -83,7 +83,9 @@ func run() error {
 	nodeRepo := repo.NewEntContentNodeRepository(entClient)
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
-	assignmentRepo := repo.NewEntPathAssignmentRepository(entClient)
+	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
+	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
+	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
@@ -92,9 +94,9 @@ func run() error {
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	assignmentService := application.NewPathAssignmentService(userRepo, pathRepo, assignmentRepo, nodeRepo, exerciseRepo, nil, newID, now)
+	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)
@@ -109,7 +111,7 @@ func run() error {
 	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
 
 	classifier := &classificationSeeder{skills: skillService, concepts: conceptService, teacher: teacher}
-	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, assignmentService, classifier, mongoClient.Database(mongoDatabase))
+	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, studentPathService, classifier, mongoClient.Database(mongoDatabase))
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func seedPathAndProgress(
 	teacher, student domain.User,
 	contentService *application.ContentService,
 	pathService *application.LearningPathService,
-	assignmentService *application.PathAssignmentService,
+	studentPathService *application.StudentPathService,
 	classifier *classificationSeeder,
 	mongoDB *mongo.Database,
 ) ([]string, error) {
@@ -229,7 +231,13 @@ func seedPathAndProgress(
 	}
 	log.Printf("created learning path %s with %d items", path.ID, len(path.Items))
 
-	if _, err := assignmentService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
+	for _, item := range path.Items {
+		if _, err := contentService.PublishContentNode(ctx, teacher, item.ContentNodeID); err != nil {
+			return nil, fmt.Errorf("publish content node %s: %w", item.ContentNodeID, err)
+		}
+	}
+
+	if _, err := studentPathService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
 		return nil, fmt.Errorf("assign learning path: %w", err)
 	}
 	log.Printf("assigned path %s to student %s", path.ID, student.ID)

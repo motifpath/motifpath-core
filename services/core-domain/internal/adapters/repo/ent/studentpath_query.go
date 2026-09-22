@@ -12,68 +12,68 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/pathassignment"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 )
 
-// PathAssignmentQuery is the builder for querying PathAssignment entities.
-type PathAssignmentQuery struct {
+// StudentPathQuery is the builder for querying StudentPath entities.
+type StudentPathQuery struct {
 	config
 	ctx        *QueryContext
-	order      []pathassignment.OrderOption
+	order      []studentpath.OrderOption
 	inters     []Interceptor
-	predicates []predicate.PathAssignment
+	predicates []predicate.StudentPath
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the PathAssignmentQuery builder.
-func (_q *PathAssignmentQuery) Where(ps ...predicate.PathAssignment) *PathAssignmentQuery {
+// Where adds a new predicate for the StudentPathQuery builder.
+func (_q *StudentPathQuery) Where(ps ...predicate.StudentPath) *StudentPathQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *PathAssignmentQuery) Limit(limit int) *PathAssignmentQuery {
+func (_q *StudentPathQuery) Limit(limit int) *StudentPathQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *PathAssignmentQuery) Offset(offset int) *PathAssignmentQuery {
+func (_q *StudentPathQuery) Offset(offset int) *StudentPathQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *PathAssignmentQuery) Unique(unique bool) *PathAssignmentQuery {
+func (_q *StudentPathQuery) Unique(unique bool) *StudentPathQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *PathAssignmentQuery) Order(o ...pathassignment.OrderOption) *PathAssignmentQuery {
+func (_q *StudentPathQuery) Order(o ...studentpath.OrderOption) *StudentPathQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// First returns the first PathAssignment entity from the query.
-// Returns a *NotFoundError when no PathAssignment was found.
-func (_q *PathAssignmentQuery) First(ctx context.Context) (*PathAssignment, error) {
+// First returns the first StudentPath entity from the query.
+// Returns a *NotFoundError when no StudentPath was found.
+func (_q *StudentPathQuery) First(ctx context.Context) (*StudentPath, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{pathassignment.Label}
+		return nil, &NotFoundError{studentpath.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *PathAssignmentQuery) FirstX(ctx context.Context) *PathAssignment {
+func (_q *StudentPathQuery) FirstX(ctx context.Context) *StudentPath {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -81,22 +81,22 @@ func (_q *PathAssignmentQuery) FirstX(ctx context.Context) *PathAssignment {
 	return node
 }
 
-// FirstID returns the first PathAssignment ID from the query.
-// Returns a *NotFoundError when no PathAssignment ID was found.
-func (_q *PathAssignmentQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first StudentPath ID from the query.
+// Returns a *NotFoundError when no StudentPath ID was found.
+func (_q *StudentPathQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{pathassignment.Label}
+		err = &NotFoundError{studentpath.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *PathAssignmentQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *StudentPathQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -104,10 +104,10 @@ func (_q *PathAssignmentQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single PathAssignment entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one PathAssignment entity is found.
-// Returns a *NotFoundError when no PathAssignment entities are found.
-func (_q *PathAssignmentQuery) Only(ctx context.Context) (*PathAssignment, error) {
+// Only returns a single StudentPath entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one StudentPath entity is found.
+// Returns a *NotFoundError when no StudentPath entities are found.
+func (_q *StudentPathQuery) Only(ctx context.Context) (*StudentPath, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -116,14 +116,14 @@ func (_q *PathAssignmentQuery) Only(ctx context.Context) (*PathAssignment, error
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{pathassignment.Label}
+		return nil, &NotFoundError{studentpath.Label}
 	default:
-		return nil, &NotSingularError{pathassignment.Label}
+		return nil, &NotSingularError{studentpath.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *PathAssignmentQuery) OnlyX(ctx context.Context) *PathAssignment {
+func (_q *StudentPathQuery) OnlyX(ctx context.Context) *StudentPath {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -131,10 +131,10 @@ func (_q *PathAssignmentQuery) OnlyX(ctx context.Context) *PathAssignment {
 	return node
 }
 
-// OnlyID is like Only, but returns the only PathAssignment ID in the query.
-// Returns a *NotSingularError when more than one PathAssignment ID is found.
+// OnlyID is like Only, but returns the only StudentPath ID in the query.
+// Returns a *NotSingularError when more than one StudentPath ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *PathAssignmentQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *StudentPathQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -143,15 +143,15 @@ func (_q *PathAssignmentQuery) OnlyID(ctx context.Context) (id uuid.UUID, err er
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{pathassignment.Label}
+		err = &NotFoundError{studentpath.Label}
 	default:
-		err = &NotSingularError{pathassignment.Label}
+		err = &NotSingularError{studentpath.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *PathAssignmentQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *StudentPathQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -159,18 +159,18 @@ func (_q *PathAssignmentQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of PathAssignments.
-func (_q *PathAssignmentQuery) All(ctx context.Context) ([]*PathAssignment, error) {
+// All executes the query and returns a list of StudentPaths.
+func (_q *StudentPathQuery) All(ctx context.Context) ([]*StudentPath, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*PathAssignment, *PathAssignmentQuery]()
-	return withInterceptors[[]*PathAssignment](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*StudentPath, *StudentPathQuery]()
+	return withInterceptors[[]*StudentPath](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *PathAssignmentQuery) AllX(ctx context.Context) []*PathAssignment {
+func (_q *StudentPathQuery) AllX(ctx context.Context) []*StudentPath {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -178,20 +178,20 @@ func (_q *PathAssignmentQuery) AllX(ctx context.Context) []*PathAssignment {
 	return nodes
 }
 
-// IDs executes the query and returns a list of PathAssignment IDs.
-func (_q *PathAssignmentQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of StudentPath IDs.
+func (_q *StudentPathQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(pathassignment.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(studentpath.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *PathAssignmentQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *StudentPathQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -200,16 +200,16 @@ func (_q *PathAssignmentQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *PathAssignmentQuery) Count(ctx context.Context) (int, error) {
+func (_q *StudentPathQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*PathAssignmentQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*StudentPathQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *PathAssignmentQuery) CountX(ctx context.Context) int {
+func (_q *StudentPathQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -218,7 +218,7 @@ func (_q *PathAssignmentQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *PathAssignmentQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *StudentPathQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -231,7 +231,7 @@ func (_q *PathAssignmentQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *PathAssignmentQuery) ExistX(ctx context.Context) bool {
+func (_q *StudentPathQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -239,18 +239,18 @@ func (_q *PathAssignmentQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the PathAssignmentQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the StudentPathQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *PathAssignmentQuery) Clone() *PathAssignmentQuery {
+func (_q *StudentPathQuery) Clone() *StudentPathQuery {
 	if _q == nil {
 		return nil
 	}
-	return &PathAssignmentQuery{
+	return &StudentPathQuery{
 		config:     _q.config,
 		ctx:        _q.ctx.Clone(),
-		order:      append([]pathassignment.OrderOption{}, _q.order...),
+		order:      append([]studentpath.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.PathAssignment{}, _q.predicates...),
+		predicates: append([]predicate.StudentPath{}, _q.predicates...),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -267,15 +267,15 @@ func (_q *PathAssignmentQuery) Clone() *PathAssignmentQuery {
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.PathAssignment.Query().
-//		GroupBy(pathassignment.FieldStudentID).
+//	client.StudentPath.Query().
+//		GroupBy(studentpath.FieldStudentID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *PathAssignmentQuery) GroupBy(field string, fields ...string) *PathAssignmentGroupBy {
+func (_q *StudentPathQuery) GroupBy(field string, fields ...string) *StudentPathGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &PathAssignmentGroupBy{build: _q}
+	grbuild := &StudentPathGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = pathassignment.Label
+	grbuild.label = studentpath.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -289,23 +289,23 @@ func (_q *PathAssignmentQuery) GroupBy(field string, fields ...string) *PathAssi
 //		StudentID uuid.UUID `json:"student_id,omitempty"`
 //	}
 //
-//	client.PathAssignment.Query().
-//		Select(pathassignment.FieldStudentID).
+//	client.StudentPath.Query().
+//		Select(studentpath.FieldStudentID).
 //		Scan(ctx, &v)
-func (_q *PathAssignmentQuery) Select(fields ...string) *PathAssignmentSelect {
+func (_q *StudentPathQuery) Select(fields ...string) *StudentPathSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &PathAssignmentSelect{PathAssignmentQuery: _q}
-	sbuild.label = pathassignment.Label
+	sbuild := &StudentPathSelect{StudentPathQuery: _q}
+	sbuild.label = studentpath.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a PathAssignmentSelect configured with the given aggregations.
-func (_q *PathAssignmentQuery) Aggregate(fns ...AggregateFunc) *PathAssignmentSelect {
+// Aggregate returns a StudentPathSelect configured with the given aggregations.
+func (_q *StudentPathQuery) Aggregate(fns ...AggregateFunc) *StudentPathSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *PathAssignmentQuery) prepareQuery(ctx context.Context) error {
+func (_q *StudentPathQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -317,7 +317,7 @@ func (_q *PathAssignmentQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !pathassignment.ValidColumn(f) {
+		if !studentpath.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -331,16 +331,16 @@ func (_q *PathAssignmentQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *PathAssignmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*PathAssignment, error) {
+func (_q *StudentPathQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*StudentPath, error) {
 	var (
-		nodes = []*PathAssignment{}
+		nodes = []*StudentPath{}
 		_spec = _q.querySpec()
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*PathAssignment).scanValues(nil, columns)
+		return (*StudentPath).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &PathAssignment{config: _q.config}
+		node := &StudentPath{config: _q.config}
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
@@ -356,7 +356,7 @@ func (_q *PathAssignmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) (
 	return nodes, nil
 }
 
-func (_q *PathAssignmentQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *StudentPathQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -365,8 +365,8 @@ func (_q *PathAssignmentQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *PathAssignmentQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(pathassignment.Table, pathassignment.Columns, sqlgraph.NewFieldSpec(pathassignment.FieldID, field.TypeUUID))
+func (_q *StudentPathQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(studentpath.Table, studentpath.Columns, sqlgraph.NewFieldSpec(studentpath.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -375,9 +375,9 @@ func (_q *PathAssignmentQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, pathassignment.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, studentpath.FieldID)
 		for i := range fields {
-			if fields[i] != pathassignment.FieldID {
+			if fields[i] != studentpath.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -405,12 +405,12 @@ func (_q *PathAssignmentQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *PathAssignmentQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *StudentPathQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(pathassignment.Table)
+	t1 := builder.Table(studentpath.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = pathassignment.Columns
+		columns = studentpath.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -437,28 +437,28 @@ func (_q *PathAssignmentQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// PathAssignmentGroupBy is the group-by builder for PathAssignment entities.
-type PathAssignmentGroupBy struct {
+// StudentPathGroupBy is the group-by builder for StudentPath entities.
+type StudentPathGroupBy struct {
 	selector
-	build *PathAssignmentQuery
+	build *StudentPathQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *PathAssignmentGroupBy) Aggregate(fns ...AggregateFunc) *PathAssignmentGroupBy {
+func (_g *StudentPathGroupBy) Aggregate(fns ...AggregateFunc) *StudentPathGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *PathAssignmentGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *StudentPathGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*PathAssignmentQuery, *PathAssignmentGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*StudentPathQuery, *StudentPathGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *PathAssignmentGroupBy) sqlScan(ctx context.Context, root *PathAssignmentQuery, v any) error {
+func (_g *StudentPathGroupBy) sqlScan(ctx context.Context, root *StudentPathQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -485,28 +485,28 @@ func (_g *PathAssignmentGroupBy) sqlScan(ctx context.Context, root *PathAssignme
 	return sql.ScanSlice(rows, v)
 }
 
-// PathAssignmentSelect is the builder for selecting fields of PathAssignment entities.
-type PathAssignmentSelect struct {
-	*PathAssignmentQuery
+// StudentPathSelect is the builder for selecting fields of StudentPath entities.
+type StudentPathSelect struct {
+	*StudentPathQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *PathAssignmentSelect) Aggregate(fns ...AggregateFunc) *PathAssignmentSelect {
+func (_s *StudentPathSelect) Aggregate(fns ...AggregateFunc) *StudentPathSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *PathAssignmentSelect) Scan(ctx context.Context, v any) error {
+func (_s *StudentPathSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*PathAssignmentQuery, *PathAssignmentSelect](ctx, _s.PathAssignmentQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*StudentPathQuery, *StudentPathSelect](ctx, _s.StudentPathQuery, _s, _s.inters, v)
 }
 
-func (_s *PathAssignmentSelect) sqlScan(ctx context.Context, root *PathAssignmentQuery, v any) error {
+func (_s *StudentPathSelect) sqlScan(ctx context.Context, root *StudentPathQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {
