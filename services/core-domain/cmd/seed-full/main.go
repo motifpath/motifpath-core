@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/url"
 	"os"
 	"time"
 
@@ -258,10 +259,10 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	log.Println("seeded standalone paths: current, and archived-while-course-active")
 
 	if adminIsFresh {
-		if err := seedAdminZeroUser(ctx, svc, admin, courses, templateA.ID, nodes, res.mongoDB); err != nil {
+		if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, res.mongoDB); err != nil {
 			return fmt.Errorf("seed admin zero-user state: %w", err)
 		}
-		log.Printf("seeded a course enrollment and a standalone path (with a completed node) for admin zero-user %s", admin.ID)
+		log.Printf("seeded a course enrollment and a standalone path (with a completed, playable node) for admin zero-user %s", admin.ID)
 	}
 
 	log.Println("done")
@@ -708,34 +709,129 @@ func seedStandalonePaths(ctx context.Context, svc services, students map[string]
 
 // seedAdminZeroUser enrolls the freshly-bootstrapped admin
 // (ADMIN_CLERK_USER_ID) in a course and a standalone path exactly like the
-// synthetic students, each with its first item already completed — so
-// signing in as yourself after a reset shows real, populated state instead
-// of an empty dashboard.
-func seedAdminZeroUser(ctx context.Context, svc services, admin domain.User, courses seededCourses, templateAID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
+// synthetic students — so signing in as yourself after a reset shows real,
+// populated state instead of an empty dashboard.
+//
+// Completion is tracked per (student, content node), not per path — so the
+// course enrollment's checkpoint deliberately gets no completion status of
+// its own here, even though "enrolled in a course" is otherwise all this
+// step needs: video-intermediate is also the standalone path's second item
+// below, and marking it completed in one context would silently mark it
+// completed in the other too, leaving nothing "current" to open there.
+//
+// The standalone path is built from video-beginner and video-intermediate
+// only — never an article — and both get timed cues plus their own
+// practice challenge. templateA/B (used by the synthetic students) always
+// put an article second, which the lesson screen has no view for yet; once
+// that article's predecessor is marked completed it becomes "current" and
+// opening it fails with "this lesson isn't available yet". Marking one item
+// of a two-video path completed never has that problem, and the node that
+// ends up completed, and the one that ends up current, both have something
+// to watch and practice instead of an empty lesson screen.
+func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
+	teacher, classifier := deps.teacher, deps.classifier
+
 	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, admin, courses.single.ID); err != nil {
 		return fmt.Errorf("enroll admin in single-checkpoint course: %w", err)
 	}
-	// the single-checkpoint course's checkpoint is templateB, whose first
-	// item is video-intermediate.
-	if err := seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
-		nodes["video-intermediate"].ID: "completed",
-	}); err != nil {
-		return err
+
+	if err := seedVideoBeginnerChallenge(ctx, teacher, svc.challenge, svc.exercise, classifier, nodes["video-beginner"]); err != nil {
+		return fmt.Errorf("seed video-beginner's own practice challenge: %w", err)
+	}
+	if err := seedTimedCues(ctx, svc.content, teacher, nodes["video-beginner"].ID, "Open position C major scale"); err != nil {
+		return fmt.Errorf("seed timed cues for video-beginner: %w", err)
+	}
+	if err := seedTimedCues(ctx, svc.content, teacher, nodes["video-intermediate"].ID, "Call-and-response phrasing"); err != nil {
+		return fmt.Errorf("seed timed cues for video-intermediate: %w", err)
 	}
 
-	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
-	templateA, err := svc.path.GetLearningPath(ctx, teacher, templateAID)
+	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, "Admin Zero-User Path", []application.PathItemInput{
+		{ContentNodeID: nodes["video-beginner"].ID},
+		{ContentNodeID: nodes["video-intermediate"].ID},
+	})
 	if err != nil {
-		return fmt.Errorf("resolve template A for admin's standalone path: %w", err)
+		return fmt.Errorf("create admin's standalone path: %w", err)
 	}
-	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, templateA.ID); err != nil {
+	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
 		return fmt.Errorf("assign standalone path to admin: %w", err)
 	}
-	// admin's standalone path is templateA, whose first item is
-	// video-beginner.
 	return seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
 		nodes["video-beginner"].ID: "completed",
 	})
+}
+
+// seedVideoBeginnerChallenge gives node its own practice challenge with two
+// text_response exercises — mirroring the richer challenge
+// seedExercisesAllTypes already gives video-intermediate, so whichever of
+// the two ends up "current" for the admin zero-user always has exercises to
+// practice, not just a video.
+func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode) error {
+	// video-beginner was seeded with skill "Scales" in seedContentNodes, so
+	// the challenge's subject reuses that same id rather than an unrelated
+	// skill.
+	subjectSkillID, err := classifier.skillID(ctx, "Scales")
+	if err != nil {
+		return err
+	}
+	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, node.ID, &subjectSkillID, nil, 70, nil, false, false)
+	if err != nil {
+		return fmt.Errorf("create challenge: %w", err)
+	}
+
+	conceptID, err := classifier.conceptID(ctx, "Major scale fingerings")
+	if err != nil {
+		return err
+	}
+	label := func(s string) *string { return &s }
+	specs := []struct {
+		title   string
+		options []domain.Option
+	}{
+		{
+			title: "Which note is the root of a C major scale in open position?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("C")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("G")},
+			},
+		},
+		{
+			title: "How many notes does a major scale have before it repeats an octave higher?",
+			options: []domain.Option{
+				{ID: uuid.NewString(), IsCorrect: true, Label: label("Seven")},
+				{ID: uuid.NewString(), IsCorrect: false, Label: label("Five")},
+			},
+		},
+	}
+	for _, s := range specs {
+		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
+			[]string{subjectSkillID}, []string{conceptID}, nil, nil, s.options, nil, nil, []string{"en"})
+		if err != nil {
+			return fmt.Errorf("create exercise %q: %w", s.title, err)
+		}
+		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
+			return fmt.Errorf("link exercise %q to challenge: %w", s.title, err)
+		}
+	}
+	return nil
+}
+
+// seedTimedCues attaches two short image cues to a video content node, so
+// its lesson screen has something in the timed-content rail instead of an
+// empty one.
+func seedTimedCues(ctx context.Context, contentSvc *application.ContentService, teacher domain.User, nodeID, caption string) error {
+	cues := []struct{ start, end int }{
+		{start: 2, end: 6},
+		{start: 7, end: 10},
+	}
+	for i, cue := range cues {
+		text := fmt.Sprintf("%s — cue %d", caption, i+1)
+		mediaURL := "https://placehold.co/640x360/png?text=" + url.QueryEscape(text)
+		start, end := cue.start, cue.end
+		if _, err := contentSvc.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeImage, &mediaURL, nil, &start, &end, nil, nil, &text); err != nil {
+			return fmt.Errorf("create cue %q: %w", text, err)
+		}
+	}
+	return nil
 }
 
 func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID string, statuses map[string]string) error {
