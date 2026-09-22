@@ -434,6 +434,53 @@ func TestCourseService_PublishCourse(t *testing.T) {
 	})
 }
 
+func TestCourseService_RetireCourse(t *testing.T) {
+	t.Run("an admin retires a published course", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		published := fingerstyleCourseDraft()
+		published.Status = domain.CourseStatusPublished
+		courses.put(published)
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		retired, err := svc.RetireCourse(context.Background(), adminCaller(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusRetired, retired.Status)
+
+		got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusRetired, got.Status)
+	})
+
+	t.Run("a teacher, including the creator, cannot retire a course", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		_, err := svc.RetireCourse(context.Background(), teacherCaller(), "course-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a student cannot retire a course", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		_, err := svc.RetireCourse(context.Background(), studentCaller(), "course-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("retiring a course that does not exist returns not found", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.RetireCourse(context.Background(), adminCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
 func TestCourseService_GetPublishedCourse(t *testing.T) {
 	t.Run("renders the latest published version as an outline, resolving items live", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()

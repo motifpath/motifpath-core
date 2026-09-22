@@ -868,15 +868,6 @@ func (h *Handler) PublishContentNode(ctx context.Context, request generated.Publ
 	return generated.PublishContentNode201JSONResponse(toContentNodeVersion(version)), nil
 }
 
-// The following handlers cover the course catalog / self-enrollment /
-// current-path-switch HTTP surface (Course, CourseVersion, CourseEnrollment)
-// defined in the OpenAPI spec. Publishing, self-enrollment, and the
-// current-path switch are not implemented yet — each of those still
-// returns an error, surfaced as a 500, until that work lands. Implementing
-// generated.StrictServerInterface requires every operation to have a
-// method, even one not yet backed by real behavior.
-var errNotYetImplemented = errors.New("this operation is defined in the API contract but not yet implemented")
-
 func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -1054,8 +1045,31 @@ func (h *Handler) GetPublishedCourse(ctx context.Context, request generated.GetP
 	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view)), nil
 }
 
-func (h *Handler) RetireCourse(context.Context, generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.RetireCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.RetireCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.RetireCourse403JSONResponse(forbiddenError("only admins may retire a course")), nil
+		case errKindNotFound:
+			return generated.RetireCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.RetireCourse200JSONResponse(toCourse(course, latest)), nil
 }
 
 func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {

@@ -160,6 +160,27 @@ func (s *CourseService) PublishCourse(ctx context.Context, caller domain.User, i
 	return version, nil
 }
 
+// RetireCourse removes course from the catalog for new enrollment only. This
+// is not a delete: it does not cascade, and every CourseEnrollment already
+// created against the course, and the StudentPaths under it, continue to
+// resolve normally. Admin-only.
+func (s *CourseService) RetireCourse(ctx context.Context, caller domain.User, id string) (domain.Course, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.Course{}, domain.ErrForbidden
+	}
+
+	course, err := s.courses.GetByID(ctx, id)
+	if err != nil {
+		return domain.Course{}, err
+	}
+
+	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusRetired); err != nil {
+		return domain.Course{}, err
+	}
+	course.Status = domain.CourseStatusRetired
+	return course, nil
+}
+
 // LatestVersion returns the latest published CourseVersion for the course
 // with the given id. Returns domain.ErrNotFound if the course has never
 // been published. Exposed so the HTTP layer can compute
