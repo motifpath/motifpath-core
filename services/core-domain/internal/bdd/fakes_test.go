@@ -954,6 +954,33 @@ func (f *fakeCourseEnrollmentRepo) Abandon(_ context.Context, id string) error {
 	return nil
 }
 
+func (f *fakeCourseEnrollmentRepo) AdvanceCheckpoint(_ context.Context, id, studentPathID string, position int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ActiveCheckpointStudentPathID = &studentPathID
+	e.ActiveCheckpointPosition = &position
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepo) Complete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusCompleted
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
 type fakeCompletionReader struct {
 	mu       sync.Mutex
 	statuses map[string]map[string]domain.CompletionStatus

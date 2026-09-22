@@ -869,6 +869,33 @@ func (f *fakeCourseEnrollmentRepository) Abandon(_ context.Context, id string) e
 	return nil
 }
 
+func (f *fakeCourseEnrollmentRepository) AdvanceCheckpoint(_ context.Context, id, studentPathID string, position int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.ActiveCheckpointStudentPathID = &studentPathID
+	e.ActiveCheckpointPosition = &position
+	f.byID[id] = e
+	return nil
+}
+
+func (f *fakeCourseEnrollmentRepository) Complete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	e.Status = domain.CourseEnrollmentStatusCompleted
+	e.ActiveCheckpointStudentPathID = nil
+	e.ActiveCheckpointPosition = nil
+	f.byID[id] = e
+	return nil
+}
+
 func (f *fakeCourseEnrollmentRepository) put(e domain.CourseEnrollment) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

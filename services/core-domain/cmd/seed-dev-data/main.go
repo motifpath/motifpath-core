@@ -87,6 +87,7 @@ func run() error {
 	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
 	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
 	courseEnrollmentRepo := repo.NewEntCourseEnrollmentRepository(entClient)
+	courseVersionRepo := repo.NewEntCourseVersionRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
@@ -97,7 +98,7 @@ func run() error {
 
 	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, newID, now)
-	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, nodeRepo, exerciseRepo, nil, newID, now)
+	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)

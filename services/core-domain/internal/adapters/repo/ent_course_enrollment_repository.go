@@ -157,6 +157,51 @@ func (r *EntCourseEnrollmentRepository) Abandon(ctx context.Context, id string) 
 	return nil
 }
 
+func (r *EntCourseEnrollmentRepository) AdvanceCheckpoint(ctx context.Context, id, studentPathID string, position int) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	parsedStudentPathID, err := uuid.Parse(studentPathID)
+	if err != nil {
+		return err
+	}
+
+	n, err := r.client.CourseEnrollment.Update().
+		Where(courseenrollment.ID(parsed)).
+		SetActiveCheckpointStudentPathID(parsedStudentPathID).
+		SetActiveCheckpointPosition(position).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+func (r *EntCourseEnrollmentRepository) Complete(ctx context.Context, id string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	n, err := r.client.CourseEnrollment.Update().
+		Where(courseenrollment.ID(parsed)).
+		SetStatus(courseenrollment.StatusCompleted).
+		ClearActiveCheckpointStudentPathID().
+		ClearActiveCheckpointPosition().
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func toDomainCourseEnrollment(row *ent.CourseEnrollment) domain.CourseEnrollment {
 	var activeCheckpointStudentPathID *string
 	if row.ActiveCheckpointStudentPathID != nil {

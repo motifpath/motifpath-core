@@ -26,6 +26,7 @@ type CourseEnrollmentService struct {
 	enrollments    ports.CourseEnrollmentRepository
 	studentPathSvc *StudentPathService
 	state          ports.StudentLearningStateRepository
+	completion     ports.CompletionStateReader
 	newID          func() string
 	now            func() time.Time
 }
@@ -38,6 +39,7 @@ func NewCourseEnrollmentService(
 	enrollments ports.CourseEnrollmentRepository,
 	studentPathSvc *StudentPathService,
 	state ports.StudentLearningStateRepository,
+	completion ports.CompletionStateReader,
 	newID func() string,
 	now func() time.Time,
 ) *CourseEnrollmentService {
@@ -49,6 +51,7 @@ func NewCourseEnrollmentService(
 		enrollments:    enrollments,
 		studentPathSvc: studentPathSvc,
 		state:          state,
+		completion:     completion,
 		newID:          newID,
 		now:            now,
 	}
@@ -164,11 +167,39 @@ func (s *CourseEnrollmentService) setCurrentIfNothingSet(ctx context.Context, st
 // ListMyCourseEnrollments returns every CourseEnrollment caller has ever
 // held — active, completed, and abandoned. Only students hold course
 // enrollments.
+//
+// Before returning, every active enrollment is run through
+// checkAndAdvanceCheckpoint: a checkpoint the student has just finished
+// every item of is advanced, and a just-finished last checkpoint completes
+// the enrollment right here, synchronously, so its status in this response
+// already reads "completed" — this list is what the congrats-page scenarios
+// read to find another active enrollment to resume, or to show the
+// just-completed course's final state, and neither should have to wait for
+// a separate detection step.
 func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, caller domain.User) ([]domain.CourseEnrollment, error) {
 	if caller.Role != domain.RoleStudent {
 		return nil, domain.ErrForbidden
 	}
-	return s.enrollments.ListByStudentID(ctx, caller.ID)
+
+	list, err := s.enrollments.ListByStudentID(ctx, caller.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, e := range list {
+		if !e.IsActive() {
+			continue
+		}
+		updated, _, _, err := checkAndAdvanceCheckpoint(
+			ctx, s.completion, s.studentPaths, s.courseVersions, s.paths, s.enrollments, s.state, s.studentPathSvc, s.now, e,
+		)
+		if err != nil {
+			return nil, err
+		}
+		list[i] = updated
+	}
+
+	return list, nil
 }
 
 // AbandonCourseEnrollment sets the CourseEnrollment with the given id to

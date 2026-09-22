@@ -13,17 +13,18 @@ import (
 // template's items into a new StudentPath, and composes a student's
 // current StudentPath with their per-node completion state for GetMyPath.
 type StudentPathService struct {
-	users        ports.UserRepository
-	paths        ports.LearningPathRepository
-	studentPaths ports.StudentPathRepository
-	versions     ports.ContentNodeVersionRepository
-	state        ports.StudentLearningStateRepository
-	enrollments  ports.CourseEnrollmentRepository
-	contentNodes ports.ContentNodeRepository
-	exercises    ports.ExerciseRepository
-	completion   ports.CompletionStateReader
-	newID        func() string
-	now          func() time.Time
+	users          ports.UserRepository
+	paths          ports.LearningPathRepository
+	studentPaths   ports.StudentPathRepository
+	versions       ports.ContentNodeVersionRepository
+	state          ports.StudentLearningStateRepository
+	enrollments    ports.CourseEnrollmentRepository
+	courseVersions ports.CourseVersionRepository
+	contentNodes   ports.ContentNodeRepository
+	exercises      ports.ExerciseRepository
+	completion     ports.CompletionStateReader
+	newID          func() string
+	now            func() time.Time
 }
 
 func NewStudentPathService(
@@ -33,6 +34,7 @@ func NewStudentPathService(
 	versions ports.ContentNodeVersionRepository,
 	state ports.StudentLearningStateRepository,
 	enrollments ports.CourseEnrollmentRepository,
+	courseVersions ports.CourseVersionRepository,
 	contentNodes ports.ContentNodeRepository,
 	exercises ports.ExerciseRepository,
 	completion ports.CompletionStateReader,
@@ -40,17 +42,18 @@ func NewStudentPathService(
 	now func() time.Time,
 ) *StudentPathService {
 	return &StudentPathService{
-		users:        users,
-		paths:        paths,
-		studentPaths: studentPaths,
-		versions:     versions,
-		state:        state,
-		enrollments:  enrollments,
-		contentNodes: contentNodes,
-		exercises:    exercises,
-		completion:   completion,
-		newID:        newID,
-		now:          now,
+		users:          users,
+		paths:          paths,
+		studentPaths:   studentPaths,
+		versions:       versions,
+		state:          state,
+		enrollments:    enrollments,
+		courseVersions: courseVersions,
+		contentNodes:   contentNodes,
+		exercises:      exercises,
+		completion:     completion,
+		newID:          newID,
+		now:            now,
 	}
 }
 
@@ -211,6 +214,14 @@ func (s *StudentPathService) CopyTemplateForCheckpoint(ctx context.Context, stud
 // if their current course enrollment has no active checkpoint (completed or
 // abandoned — GetMyPath/SetCurrentPath have nothing resolvable to show in
 // that case).
+//
+// When the pointer is a course enrollment, this is also where checkpoint
+// completion is discovered: checkAndAdvanceCheckpoint runs against the
+// enrollment before its StudentPath is resolved, so a just-finished
+// checkpoint's items are never shown stale, and a just-finished course
+// (nothing left to advance to) is reported the same way as any other caller
+// with no current path — domain.ErrNotFound, since the pointer that would
+// have resolved anything has just been cleared.
 func (s *StudentPathService) resolveCurrentStudentPath(ctx context.Context, caller domain.User, state domain.StudentLearningState) (domain.StudentPath, *string, *int, error) {
 	switch {
 	case state.CurrentStandalonePathID != nil:
@@ -225,8 +236,19 @@ func (s *StudentPathService) resolveCurrentStudentPath(ctx context.Context, call
 		if enrollment.ActiveCheckpointStudentPathID == nil {
 			return domain.StudentPath{}, nil, nil, domain.ErrNotFound
 		}
-		sp, err := s.studentPaths.GetByID(ctx, *enrollment.ActiveCheckpointStudentPathID)
-		return sp, &enrollment.ID, enrollment.ActiveCheckpointPosition, err
+
+		updated, _, courseCompleted, err := checkAndAdvanceCheckpoint(
+			ctx, s.completion, s.studentPaths, s.courseVersions, s.paths, s.enrollments, s.state, s, s.now, enrollment,
+		)
+		if err != nil {
+			return domain.StudentPath{}, nil, nil, err
+		}
+		if courseCompleted {
+			return domain.StudentPath{}, nil, nil, domain.ErrNotFound
+		}
+
+		sp, err := s.studentPaths.GetByID(ctx, *updated.ActiveCheckpointStudentPathID)
+		return sp, &updated.ID, updated.ActiveCheckpointPosition, err
 
 	default:
 		return domain.StudentPath{}, nil, nil, domain.ErrNotFound

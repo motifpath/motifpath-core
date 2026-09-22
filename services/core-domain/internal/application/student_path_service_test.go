@@ -41,7 +41,7 @@ func newStudentPathServiceWithContent(
 	if len(enrollments) > 0 {
 		e = enrollments[0]
 	}
-	return application.NewStudentPathService(users, paths, studentPaths, versions, state, e, contentNodes, exercises, completion, idSequence(), func() time.Time { return fixedAssignedAt })
+	return application.NewStudentPathService(users, paths, studentPaths, versions, state, e, newFakeCourseVersionRepository(), contentNodes, exercises, completion, idSequence(), func() time.Time { return fixedAssignedAt })
 }
 
 // publishedVersions returns a fakeContentNodeVersionRepository pre-seeded

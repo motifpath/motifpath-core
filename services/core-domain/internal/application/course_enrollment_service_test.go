@@ -26,16 +26,26 @@ type courseEnrollmentFixtures struct {
 	studentPaths   *fakeStudentPathRepository
 	enrollments    *fakeCourseEnrollmentRepository
 	state          *fakeStudentLearningStateRepository
+	// completion is optional — nil defaults to a fresh, empty
+	// fakeCompletionStateReader. Tests that need to simulate item
+	// completion (checkpoint advance / course completion) set it
+	// explicitly so both CourseEnrollmentService and its internal
+	// StudentPathService see the same completion data.
+	completion *fakeCompletionStateReader
 }
 
 func newCourseEnrollmentService(f courseEnrollmentFixtures) *application.CourseEnrollmentService {
 	users := newFakeUserRepository()
+	completion := f.completion
+	if completion == nil {
+		completion = newFakeCompletionStateReader()
+	}
 	studentPathSvc := application.NewStudentPathService(
-		users, f.paths, f.studentPaths, publishedVersions("node-01", "node-02", "node-03"), f.state, f.enrollments,
-		newFakeContentNodeRepository(), newFakeExerciseRepository(), newFakeCompletionStateReader(),
+		users, f.paths, f.studentPaths, publishedVersions("node-01", "node-02", "node-03"), f.state, f.enrollments, f.courseVersions,
+		newFakeContentNodeRepository(), newFakeExerciseRepository(), completion,
 		idSequence(), func() time.Time { return fixedEnrolledAt },
 	)
-	return application.NewCourseEnrollmentService(f.courses, f.courseVersions, f.paths, f.studentPaths, f.enrollments, studentPathSvc, f.state, idSequence(), func() time.Time { return fixedEnrolledAt })
+	return application.NewCourseEnrollmentService(f.courses, f.courseVersions, f.paths, f.studentPaths, f.enrollments, studentPathSvc, f.state, completion, idSequence(), func() time.Time { return fixedEnrolledAt })
 }
 
 // publishedCourseWithCheckpoint seeds a published Course plus one

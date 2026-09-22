@@ -37,4 +37,18 @@ type CourseEnrollmentRepository interface {
 	// clearing its active checkpoint pointer and position. Returns
 	// domain.ErrNotFound if no CourseEnrollment exists with that id.
 	Abandon(ctx context.Context, id string) error
+
+	// AdvanceCheckpoint moves the CourseEnrollment with the given id to a
+	// new active checkpoint, once the previous one's StudentPath has been
+	// fully completed: studentPathID is the StudentPath just copied for the
+	// new checkpoint, position its 1-based position within the course.
+	// Returns domain.ErrNotFound if no CourseEnrollment exists with that
+	// id.
+	AdvanceCheckpoint(ctx context.Context, id, studentPathID string, position int) error
+
+	// Complete sets the CourseEnrollment with the given id to completed,
+	// clearing its active checkpoint pointer and position — every
+	// checkpoint has now been finished. Returns domain.ErrNotFound if no
+	// CourseEnrollment exists with that id.
+	Complete(ctx context.Context, id string) error
 }
