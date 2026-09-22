@@ -28,6 +28,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -327,9 +328,9 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 }
 
 func findFirstStudent(ctx context.Context, client *ent.Client) (domain.User, error) {
-	row, err := client.User.Query().First(ctx)
+	row, err := client.User.Query().Where(user.RoleEQ(user.Role(domain.RoleStudent))).First(ctx)
 	if err != nil {
-		return domain.User{}, fmt.Errorf("find a registered user (sign in once through the SPA first): %w", err)
+		return domain.User{}, fmt.Errorf("find a registered student (sign in once through the SPA as a student first): %w", err)
 	}
 	return domain.User{
 		ID:           row.ID.String(),
