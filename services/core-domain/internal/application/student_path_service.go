@@ -359,20 +359,9 @@ func (s *StudentPathService) ArchiveStandaloneStudentPath(ctx context.Context, c
 		return domain.StudentPath{}, domain.ErrNotFound
 	}
 
-	state, err := s.state.GetByStudentID(ctx, caller.ID)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+	state, isCurrent, err := checkCanLeaveCurrent(ctx, s.state, s.studentPaths, s.enrollments, caller.ID, sp.ID, "")
+	if err != nil {
 		return domain.StudentPath{}, err
-	}
-	isCurrent := state.CurrentStandalonePathID != nil && *state.CurrentStandalonePathID == sp.ID
-
-	if isCurrent {
-		hasAlternative, err := hasEligibleAlternative(ctx, s.studentPaths, s.enrollments, caller.ID, sp.ID, "")
-		if err != nil {
-			return domain.StudentPath{}, err
-		}
-		if hasAlternative {
-			return domain.StudentPath{}, domain.ErrConflict
-		}
 	}
 
 	archivedAt := s.now()

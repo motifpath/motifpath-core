@@ -225,7 +225,7 @@ func (s *CourseEnrollmentService) AbandonCourseEnrollment(ctx context.Context, c
 		return domain.CourseEnrollment{}, domain.ErrNotFound
 	}
 
-	state, isCurrent, err := s.checkCanLeaveCurrent(ctx, caller.ID, "", enrollment.ID)
+	state, isCurrent, err := checkCanLeaveCurrent(ctx, s.state, s.studentPaths, s.enrollments, caller.ID, "", enrollment.ID)
 	if err != nil {
 		return domain.CourseEnrollment{}, err
 	}
@@ -244,32 +244,4 @@ func (s *CourseEnrollmentService) AbandonCourseEnrollment(ctx context.Context, c
 	}
 
 	return enrollment, nil
-}
-
-// checkCanLeaveCurrent loads studentID's StudentLearningState and reports
-// whether the standalone path (excludeStandalonePathID) or course
-// enrollment (excludeCourseEnrollmentID) being left — pass "" for whichever
-// doesn't apply — is currently set. Returns domain.ErrConflict if it is
-// current and another eligible course enrollment or standalone path
-// exists, per the shared "switch before leaving your current thing unless
-// it's the only thing you have" rule AbandonCourseEnrollment and
-// ArchiveStandaloneStudentPath both enforce.
-func (s *CourseEnrollmentService) checkCanLeaveCurrent(ctx context.Context, studentID, excludeStandalonePathID, excludeCourseEnrollmentID string) (domain.StudentLearningState, bool, error) {
-	state, err := s.state.GetByStudentID(ctx, studentID)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return domain.StudentLearningState{}, false, err
-	}
-	isCurrent := state.CurrentCourseEnrollmentID != nil && *state.CurrentCourseEnrollmentID == excludeCourseEnrollmentID
-	if !isCurrent {
-		return state, false, nil
-	}
-
-	hasAlternative, err := hasEligibleAlternative(ctx, s.studentPaths, s.enrollments, studentID, excludeStandalonePathID, excludeCourseEnrollmentID)
-	if err != nil {
-		return domain.StudentLearningState{}, false, err
-	}
-	if hasAlternative {
-		return domain.StudentLearningState{}, false, domain.ErrConflict
-	}
-	return state, true, nil
 }
