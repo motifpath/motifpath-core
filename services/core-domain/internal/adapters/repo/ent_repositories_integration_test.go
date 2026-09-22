@@ -825,6 +825,88 @@ func TestEntContentNodeVersionRepository_GetLatestByContentNodeID(t *testing.T) 
 	assert.Equal(t, "Revised", latest.Title)
 }
 
+func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	courseRepo := NewEntCourseRepository(client)
+	repo := NewEntCourseVersionRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, courseRepo.Create(ctx, course))
+
+	_, err := repo.GetLatestByCourseID(ctx, course.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	v1 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 1,
+		TitleSnapshot: course.Title, SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt,
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v1))
+
+	latest, err := repo.GetLatestByCourseID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, latest.VersionNumber)
+	assert.Equal(t, "Fingerstyle Journey", latest.TitleSnapshot)
+	require.Len(t, latest.Checkpoints, 1)
+	assert.Equal(t, path.ID, latest.Checkpoints[0].LearningPathID)
+	assert.True(t, latest.AvailableForNewEnrollments)
+
+	v2 := domain.CourseVersion{
+		ID: uuid.NewString(), CourseID: course.ID, VersionNumber: 2,
+		TitleSnapshot: "Revised Journey", SummarySnapshot: course.Summary, LevelSnapshot: course.Level,
+		Checkpoints:                []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+		PublishedAt:                fixedAt.Add(time.Hour),
+		AvailableForNewEnrollments: true,
+	}
+	require.NoError(t, repo.Create(ctx, v2))
+
+	latest, err = repo.GetLatestByCourseID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, latest.VersionNumber)
+	assert.Equal(t, "Revised Journey", latest.TitleSnapshot)
+}
+
+func TestEntCourseRepository_UpdateStatus(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	repo := NewEntCourseRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	path := seedLearningPath(t, ctx, pathRepo, node)
+
+	course := domain.Course{
+		ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedAt,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: path.ID, EffectiveTitle: path.Title}},
+	}
+	require.NoError(t, repo.Create(ctx, course))
+
+	require.NoError(t, repo.UpdateStatus(ctx, course.ID, domain.CourseStatusPublished))
+
+	got, err := repo.GetByID(ctx, course.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.CourseStatusPublished, got.Status)
+
+	err = repo.UpdateStatus(ctx, uuid.NewString(), domain.CourseStatusPublished)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
 func TestEntStudentLearningStateRepository(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()

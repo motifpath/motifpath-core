@@ -17,6 +17,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
@@ -133,6 +135,26 @@ func init() {
 	coursecheckpointDescID := coursecheckpointFields[0].Descriptor()
 	// coursecheckpoint.DefaultID holds the default value on creation for the id field.
 	coursecheckpoint.DefaultID = coursecheckpointDescID.Default.(func() uuid.UUID)
+	courseversionFields := schema.CourseVersion{}.Fields()
+	_ = courseversionFields
+	// courseversionDescAvailableForNewEnrollments is the schema descriptor for available_for_new_enrollments field.
+	courseversionDescAvailableForNewEnrollments := courseversionFields[6].Descriptor()
+	// courseversion.DefaultAvailableForNewEnrollments holds the default value on creation for the available_for_new_enrollments field.
+	courseversion.DefaultAvailableForNewEnrollments = courseversionDescAvailableForNewEnrollments.Default.(bool)
+	// courseversionDescPublishedAt is the schema descriptor for published_at field.
+	courseversionDescPublishedAt := courseversionFields[7].Descriptor()
+	// courseversion.DefaultPublishedAt holds the default value on creation for the published_at field.
+	courseversion.DefaultPublishedAt = courseversionDescPublishedAt.Default.(func() time.Time)
+	// courseversionDescID is the schema descriptor for id field.
+	courseversionDescID := courseversionFields[0].Descriptor()
+	// courseversion.DefaultID holds the default value on creation for the id field.
+	courseversion.DefaultID = courseversionDescID.Default.(func() uuid.UUID)
+	courseversioncheckpointFields := schema.CourseVersionCheckpoint{}.Fields()
+	_ = courseversioncheckpointFields
+	// courseversioncheckpointDescID is the schema descriptor for id field.
+	courseversioncheckpointDescID := courseversioncheckpointFields[0].Descriptor()
+	// courseversioncheckpoint.DefaultID holds the default value on creation for the id field.
+	courseversioncheckpoint.DefaultID = courseversioncheckpointDescID.Default.(func() uuid.UUID)
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
 	// diagramDescCreatedAt is the schema descriptor for created_at field.

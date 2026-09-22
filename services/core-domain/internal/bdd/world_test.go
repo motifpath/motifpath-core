@@ -29,24 +29,25 @@ func noShuffle(int, func(i, j int)) {}
 // by InitializeScenario for every scenario godog runs, giving each scenario
 // full isolation without an explicit teardown step.
 type world struct {
-	users         *fakeUserRepo
-	nodes         *fakeContentNodeRepo
-	challenges    *fakeChallengeRepo
-	exercises     *fakeExerciseRepo
-	expanded      *fakeExpandedContentRepo
-	paths         *fakeLearningPathRepo
-	studentPaths  *fakeStudentPathRepo
-	courses       *fakeCourseRepo
-	versions      *fakeContentNodeVersionRepo
-	learningState *fakeStudentLearningStateRepo
-	completion    *fakeCompletionReader
-	skills        *fakeSkillRepo
-	concepts      *fakeConceptRepo
-	instruments   *fakeInstrumentRepo
-	diagrams      *fakeDiagramRepo
-	pgPinger      *fakePinger
-	mongoPinger   *fakePinger
-	handler       *appHTTP.Handler
+	users          *fakeUserRepo
+	nodes          *fakeContentNodeRepo
+	challenges     *fakeChallengeRepo
+	exercises      *fakeExerciseRepo
+	expanded       *fakeExpandedContentRepo
+	paths          *fakeLearningPathRepo
+	studentPaths   *fakeStudentPathRepo
+	courses        *fakeCourseRepo
+	courseVersions *fakeCourseVersionRepo
+	versions       *fakeContentNodeVersionRepo
+	learningState  *fakeStudentLearningStateRepo
+	completion     *fakeCompletionReader
+	skills         *fakeSkillRepo
+	concepts       *fakeConceptRepo
+	instruments    *fakeInstrumentRepo
+	diagrams       *fakeDiagramRepo
+	pgPinger       *fakePinger
+	mongoPinger    *fakePinger
+	handler        *appHTTP.Handler
 
 	// health probe responses from the most recent "probe is checked" step
 	livenessResp  generated.LivenessCheckResponseObject
@@ -121,24 +122,25 @@ func newWorld() *world {
 	skills := newFakeSkillRepo()
 	concepts := newFakeConceptRepo()
 	w := &world{
-		users:         newFakeUserRepo(),
-		nodes:         newFakeContentNodeRepo(skills, concepts),
-		challenges:    newFakeChallengeRepo(),
-		exercises:     newFakeExerciseRepo(skills, concepts),
-		expanded:      newFakeExpandedContentRepo(),
-		paths:         newFakeLearningPathRepo(),
-		studentPaths:  newFakeStudentPathRepo(),
-		courses:       newFakeCourseRepo(),
-		versions:      newFakeContentNodeVersionRepo(),
-		learningState: newFakeStudentLearningStateRepo(),
-		completion:    newFakeCompletionReader(),
-		skills:        skills,
-		concepts:      concepts,
-		instruments:   newFakeInstrumentRepo(),
-		diagrams:      newFakeDiagramRepo(skills, concepts),
-		pgPinger:      &fakePinger{},
-		mongoPinger:   &fakePinger{},
-		userMotifID:   map[string]uuid.UUID{},
+		users:          newFakeUserRepo(),
+		nodes:          newFakeContentNodeRepo(skills, concepts),
+		challenges:     newFakeChallengeRepo(),
+		exercises:      newFakeExerciseRepo(skills, concepts),
+		expanded:       newFakeExpandedContentRepo(),
+		paths:          newFakeLearningPathRepo(),
+		studentPaths:   newFakeStudentPathRepo(),
+		courses:        newFakeCourseRepo(),
+		courseVersions: newFakeCourseVersionRepo(),
+		versions:       newFakeContentNodeVersionRepo(),
+		learningState:  newFakeStudentLearningStateRepo(),
+		completion:     newFakeCompletionReader(),
+		skills:         skills,
+		concepts:       concepts,
+		instruments:    newFakeInstrumentRepo(),
+		diagrams:       newFakeDiagramRepo(skills, concepts),
+		pgPinger:       &fakePinger{},
+		mongoPinger:    &fakePinger{},
+		userMotifID:    map[string]uuid.UUID{},
 
 		skillIDByName:   map[string]uuid.UUID{},
 		conceptIDByName: map[string]uuid.UUID{},
@@ -156,7 +158,7 @@ func newWorld() *world {
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.nodes, w.exercises, w.completion, newID, now)
-	course := application.NewCourseService(w.paths, w.courses, newID, now)
+	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, newID)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newID, now)

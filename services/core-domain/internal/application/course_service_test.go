@@ -13,8 +13,12 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepository) *application.CourseService {
-	return application.NewCourseService(paths, courses, idSequence(), func() time.Time { return fixedCreatedAt })
+func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepository, versions ...*fakeCourseVersionRepository) *application.CourseService {
+	v := newFakeCourseVersionRepository()
+	if len(versions) > 0 {
+		v = versions[0]
+	}
+	return application.NewCourseService(paths, courses, v, idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // checkpointInputs builds an unlabelled CheckpointInput slice from learning
@@ -321,6 +325,182 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 
 		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "missing", "Title", "Summary",
 			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func fingerstyleCourseDraft() domain.Course {
+	return domain.Course{
+		ID: "course-1", CreatedBy: "teacher-1", Title: "Fingerstyle Journey",
+		Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner,
+		Status: domain.CourseStatusDraft, CreatedAt: fixedCreatedAt,
+		Checkpoints: []domain.CourseCheckpoint{
+			{Position: 1, LearningPathID: "path-01", EffectiveTitle: "Open Chords"},
+			{Position: 2, LearningPathID: "path-02", EffectiveTitle: "Strumming Patterns"},
+		},
+	}
+}
+
+func TestCourseService_PublishCourse(t *testing.T) {
+	t.Run("an admin publishes a course draft, producing version 1 and moving status to published", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		version, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "course-1", version.CourseID)
+		assert.Equal(t, 1, version.VersionNumber)
+		assert.Equal(t, "Fingerstyle Journey", version.TitleSnapshot)
+		assert.Equal(t, "From first chords to a repertoire.", version.SummarySnapshot)
+		assert.Equal(t, domain.DifficultyLevelBeginner, version.LevelSnapshot)
+		require.Len(t, version.Checkpoints, 2)
+		assert.Equal(t, "path-01", version.Checkpoints[0].LearningPathID)
+		assert.True(t, version.AvailableForNewEnrollments)
+
+		got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, got.Status)
+	})
+
+	t.Run("publishing again produces version 2 and status stays published", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		versions := newFakeCourseVersionRepository()
+		svc := newCourseService(newFakeLearningPathRepository(), courses, versions)
+
+		_, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+
+		second, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, 2, second.VersionNumber)
+
+		got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, got.Status)
+	})
+
+	t.Run("a subsequent draft edit does not alter the already-published version", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords"})
+		paths.put(domain.LearningPath{ID: "path-02", Title: "Strumming Patterns"})
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		versions := newFakeCourseVersionRepository()
+		svc := newCourseService(paths, courses, versions)
+
+		published, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+
+		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Renamed", "New summary",
+			domain.DifficultyLevelAdvanced, checkpointInputs("path-01"))
+		require.NoError(t, err)
+
+		latest, err := versions.GetLatestByCourseID(context.Background(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, published, latest)
+		assert.Equal(t, "Fingerstyle Journey", latest.TitleSnapshot)
+	})
+
+	t.Run("a teacher, including the creator, cannot publish a course", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		_, err := svc.PublishCourse(context.Background(), teacherCaller(), "course-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a student cannot publish a course", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		_, err := svc.PublishCourse(context.Background(), studentCaller(), "course-1")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("publishing a course that does not exist returns not found", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.PublishCourse(context.Background(), adminCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestCourseService_GetPublishedCourse(t *testing.T) {
+	t.Run("renders the latest published version as an outline, resolving items live", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		section := "Open position"
+		paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords", Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: "node-1", Title: "E minor", ContentType: domain.ContentTypeVideo, SectionLabel: &section},
+		}})
+		paths.put(domain.LearningPath{ID: "path-02", Title: "Strumming Patterns"})
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(paths, courses)
+
+		_, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+
+		detail, err := svc.GetPublishedCourse(context.Background(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "Fingerstyle Journey", detail.Title)
+		assert.Equal(t, "From first chords to a repertoire.", detail.Summary)
+		assert.Equal(t, domain.DifficultyLevelBeginner, detail.Level)
+		assert.Equal(t, domain.CourseStatusPublished, detail.Status)
+		require.Len(t, detail.Checkpoints, 2)
+		assert.Equal(t, 1, detail.Checkpoints[0].Position)
+		assert.Equal(t, "Open Chords", detail.Checkpoints[0].Title)
+		require.Len(t, detail.Checkpoints[0].Items, 1)
+		assert.Equal(t, "E minor", detail.Checkpoints[0].Items[0].Title)
+		require.NotNil(t, detail.Checkpoints[0].Items[0].SectionLabel)
+		assert.Equal(t, "Open position", *detail.Checkpoints[0].Items[0].SectionLabel)
+	})
+
+	t.Run("a checkpoint's title reflects the pinned snapshot, not a later title override", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords"})
+		paths.put(domain.LearningPath{ID: "path-02", Title: "Strumming Patterns"})
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(paths, courses)
+
+		_, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+
+		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Fingerstyle Journey",
+			"From first chords to a repertoire.", domain.DifficultyLevelBeginner,
+			[]application.CheckpointInput{{LearningPathID: "path-01", Title: strPtr("Renamed after publish")}, {LearningPathID: "path-02"}})
+		require.NoError(t, err)
+
+		detail, err := svc.GetPublishedCourse(context.Background(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "Open Chords", detail.Checkpoints[0].Title)
+	})
+
+	t.Run("a course that has never been published returns not found", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(fingerstyleCourseDraft())
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		_, err := svc.GetPublishedCourse(context.Background(), "course-1")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a course that does not exist returns not found", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.GetPublishedCourse(context.Background(), "missing")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})

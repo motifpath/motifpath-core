@@ -303,6 +303,51 @@ var (
 			},
 		},
 	}
+	// CourseVersionsColumns holds the columns for the "course_versions" table.
+	CourseVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "course_id", Type: field.TypeUUID},
+		{Name: "version_number", Type: field.TypeInt},
+		{Name: "title_snapshot", Type: field.TypeString},
+		{Name: "summary_snapshot", Type: field.TypeString},
+		{Name: "level_snapshot", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "available_for_new_enrollments", Type: field.TypeBool, Default: true},
+		{Name: "published_at", Type: field.TypeTime},
+	}
+	// CourseVersionsTable holds the schema information for the "course_versions" table.
+	CourseVersionsTable = &schema.Table{
+		Name:       "course_versions",
+		Columns:    CourseVersionsColumns,
+		PrimaryKey: []*schema.Column{CourseVersionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "courseversion_course_id_version_number",
+				Unique:  true,
+				Columns: []*schema.Column{CourseVersionsColumns[1], CourseVersionsColumns[2]},
+			},
+		},
+	}
+	// CourseVersionCheckpointsColumns holds the columns for the "course_version_checkpoints" table.
+	CourseVersionCheckpointsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "course_version_id", Type: field.TypeUUID},
+		{Name: "learning_path_id", Type: field.TypeUUID},
+		{Name: "position", Type: field.TypeInt},
+		{Name: "effective_title", Type: field.TypeString},
+	}
+	// CourseVersionCheckpointsTable holds the schema information for the "course_version_checkpoints" table.
+	CourseVersionCheckpointsTable = &schema.Table{
+		Name:       "course_version_checkpoints",
+		Columns:    CourseVersionCheckpointsColumns,
+		PrimaryKey: []*schema.Column{CourseVersionCheckpointsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "courseversioncheckpoint_course_version_id_position",
+				Unique:  true,
+				Columns: []*schema.Column{CourseVersionCheckpointsColumns[1], CourseVersionCheckpointsColumns[3]},
+			},
+		},
+	}
 	// DiagramsColumns holds the columns for the "diagrams" table.
 	DiagramsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -777,6 +822,8 @@ var (
 		ContentNodeVersionsTable,
 		CoursesTable,
 		CourseCheckpointsTable,
+		CourseVersionsTable,
+		CourseVersionCheckpointsTable,
 		DiagramsTable,
 		DiagramConceptsTable,
 		DiagramSkillsTable,

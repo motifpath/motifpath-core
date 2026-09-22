@@ -24,4 +24,8 @@ type CourseRepository interface {
 	// course.Checkpoints inserted in their place, in one transaction.
 	// Returns domain.ErrNotFound if no course exists with the given id.
 	Replace(ctx context.Context, course domain.Course) error
+
+	// UpdateStatus sets the status of the course with the given id.
+	// Returns domain.ErrNotFound if no course exists with that id.
+	UpdateStatus(ctx context.Context, id string, status domain.CourseStatus) error
 }

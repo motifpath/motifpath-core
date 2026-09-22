@@ -563,52 +563,110 @@ func toCourseCheckpoints(checkpoints []domain.CourseCheckpoint) []generated.Cour
 
 // toCourse renders c as its live, currently-being-authored draft — the
 // teacher/admin-only representation returned by CreateCourse/GetCourse/
-// ReplaceCourse. No CourseVersion exists yet in this slice of the feature,
-// so a course can never have been published: latest_published_version is
-// always nil and has_unpublished_changes is always true, matching the
-// OpenAPI contract's "or nothing has been published yet" case.
-func toCourse(c domain.Course) generated.Course {
-	return generated.Course{
-		CourseId:               mustUUID(c.ID),
-		Title:                  c.Title,
-		Summary:                c.Summary,
-		Level:                  generated.CourseLevel(c.Level),
-		Status:                 generated.CourseStatus(c.Status),
-		CreatedBy:              mustUUID(c.CreatedBy),
-		CreatedAt:              c.CreatedAt,
-		LatestPublishedVersion: nil,
-		HasUnpublishedChanges:  true,
-		Checkpoints:            toCourseCheckpoints(c.Checkpoints),
+// ReplaceCourse. latest is c's latest published CourseVersion, or nil if
+// the course has never been published; latest_published_version and
+// has_unpublished_changes are both derived from it via
+// domain.HasUnpublishedChanges, matching the OpenAPI contract's "or
+// nothing has been published yet" case.
+func toCourse(c domain.Course, latest *domain.CourseVersion) generated.Course {
+	result := generated.Course{
+		CourseId:              mustUUID(c.ID),
+		Title:                 c.Title,
+		Summary:               c.Summary,
+		Level:                 generated.CourseLevel(c.Level),
+		Status:                generated.CourseStatus(c.Status),
+		CreatedBy:             mustUUID(c.CreatedBy),
+		CreatedAt:             c.CreatedAt,
+		HasUnpublishedChanges: domain.HasUnpublishedChanges(c, latest),
+		Checkpoints:           toCourseCheckpoints(c.Checkpoints),
 	}
+	if latest != nil {
+		versionNumber := latest.VersionNumber
+		result.LatestPublishedVersion = &versionNumber
+	}
+	return result
 }
 
 // toCourseCatalogEntry renders c as a lightweight catalog entry for the
 // given caller — never a checkpoint's learning_path_id or other live-draft
 // authoring detail, matching the OpenAPI CourseCatalogEntry contract.
 // has_unpublished_changes is included only for teachers/admins; a student
-// never receives it. No CourseVersion exists yet in this slice of the
-// feature, so published_at is always nil and, for staff,
-// has_unpublished_changes is always true.
-func toCourseCatalogEntry(c domain.Course, caller domain.User) generated.CourseCatalogEntry {
+// never receives it. latest is c's latest published CourseVersion, or nil
+// if the course has never been published; published_at and
+// has_unpublished_changes are both derived from it.
+func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
-		CourseId:    mustUUID(c.ID),
-		Title:       c.Title,
-		Summary:     c.Summary,
-		Level:       generated.CourseCatalogEntryLevel(c.Level),
-		Status:      generated.CourseCatalogEntryStatus(c.Status),
-		PublishedAt: nil,
+		CourseId: mustUUID(c.ID),
+		Title:    c.Title,
+		Summary:  c.Summary,
+		Level:    generated.CourseCatalogEntryLevel(c.Level),
+		Status:   generated.CourseCatalogEntryStatus(c.Status),
+	}
+	if latest != nil {
+		publishedAt := latest.PublishedAt
+		entry.PublishedAt = &publishedAt
 	}
 	if isStaff(caller.Role) {
-		hasUnpublishedChanges := true
+		hasUnpublishedChanges := domain.HasUnpublishedChanges(c, latest)
 		entry.HasUnpublishedChanges = &hasUnpublishedChanges
 	}
 	return entry
 }
 
-func toCourseCatalogEntries(courses []domain.Course, caller domain.User) []generated.CourseCatalogEntry {
+// courseVersionLookup returns c's latest published CourseVersion, or nil if
+// the course has never been published (domain.ErrNotFound). Any other
+// error is returned unchanged as the second value.
+type courseVersionLookup func(courseID string) (*domain.CourseVersion, error)
+
+func toCourseCatalogEntries(courses []domain.Course, caller domain.User, latest courseVersionLookup) ([]generated.CourseCatalogEntry, error) {
 	result := make([]generated.CourseCatalogEntry, len(courses))
 	for i, c := range courses {
-		result[i] = toCourseCatalogEntry(c, caller)
+		version, err := latest(c.ID)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = toCourseCatalogEntry(c, caller, version)
 	}
-	return result
+	return result, nil
+}
+
+func toGeneratedCourseVersion(v domain.CourseVersion) generated.CourseVersion {
+	return generated.CourseVersion{
+		CourseId:                   mustUUID(v.CourseID),
+		VersionNumber:              v.VersionNumber,
+		TitleSnapshot:              v.TitleSnapshot,
+		SummarySnapshot:            v.SummarySnapshot,
+		LevelSnapshot:              generated.CourseVersionLevelSnapshot(v.LevelSnapshot),
+		PublishedAt:                v.PublishedAt,
+		AvailableForNewEnrollments: v.AvailableForNewEnrollments,
+	}
+}
+
+func toCourseOutlineItem(item application.CourseOutlineItem) generated.CourseOutlineItem {
+	return generated.CourseOutlineItem{Title: item.Title, SectionLabel: item.SectionLabel}
+}
+
+func toCourseOutlineCheckpoint(cp application.CourseOutlineCheckpoint) generated.CourseOutlineCheckpoint {
+	items := make([]generated.CourseOutlineItem, len(cp.Items))
+	for i, item := range cp.Items {
+		items[i] = toCourseOutlineItem(item)
+	}
+	return generated.CourseOutlineCheckpoint{Position: cp.Position, Title: cp.Title, Items: items}
+}
+
+func toCourseDetail(courseID string, view application.PublishedCourseView) generated.CourseDetail {
+	checkpoints := make([]generated.CourseOutlineCheckpoint, len(view.Checkpoints))
+	for i, cp := range view.Checkpoints {
+		checkpoints[i] = toCourseOutlineCheckpoint(cp)
+	}
+	publishedAt := view.PublishedAt
+	return generated.CourseDetail{
+		CourseId:    mustUUID(courseID),
+		Title:       view.Title,
+		Summary:     view.Summary,
+		Level:       generated.CourseDetailLevel(view.Level),
+		Status:      generated.CourseDetailStatus(view.Status),
+		PublishedAt: &publishedAt,
+		Checkpoints: checkpoints,
+	}
 }

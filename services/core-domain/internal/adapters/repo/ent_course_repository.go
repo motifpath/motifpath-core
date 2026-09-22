@@ -190,6 +190,25 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 	return tx.Commit()
 }
 
+// UpdateStatus sets the status of the course with the given id.
+func (r *EntCourseRepository) UpdateStatus(ctx context.Context, id string, status domain.CourseStatus) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+
+	_, err = r.client.Course.UpdateOneID(parsed).
+		SetStatus(course.Status(status)).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // createCheckpoints bulk-inserts checkpoints under courseID within tx,
 // shared by Create and Replace.
 func createCheckpoints(ctx context.Context, tx *ent.Tx, courseID uuid.UUID, checkpoints []domain.CourseCheckpoint) error {

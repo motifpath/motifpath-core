@@ -23,6 +23,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
@@ -54,36 +56,38 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeChallenge            = "Challenge"
-	TypeChallengeExercise    = "ChallengeExercise"
-	TypeConcept              = "Concept"
-	TypeContentNode          = "ContentNode"
-	TypeContentNodeConcept   = "ContentNodeConcept"
-	TypeContentNodeExercise  = "ContentNodeExercise"
-	TypeContentNodeLanguage  = "ContentNodeLanguage"
-	TypeContentNodeSkill     = "ContentNodeSkill"
-	TypeContentNodeVersion   = "ContentNodeVersion"
-	TypeCourse               = "Course"
-	TypeCourseCheckpoint     = "CourseCheckpoint"
-	TypeDiagram              = "Diagram"
-	TypeDiagramConcept       = "DiagramConcept"
-	TypeDiagramSkill         = "DiagramSkill"
-	TypeExercise             = "Exercise"
-	TypeExerciseConcept      = "ExerciseConcept"
-	TypeExerciseLanguage     = "ExerciseLanguage"
-	TypeExerciseOption       = "ExerciseOption"
-	TypeExerciseSkill        = "ExerciseSkill"
-	TypeExpandedContent      = "ExpandedContent"
-	TypeInstrument           = "Instrument"
-	TypeLanguage             = "Language"
-	TypeLearningPath         = "LearningPath"
-	TypeLearningPathItem     = "LearningPathItem"
-	TypePosition             = "Position"
-	TypeSkill                = "Skill"
-	TypeStudentLearningState = "StudentLearningState"
-	TypeStudentPath          = "StudentPath"
-	TypeStudentPathItem      = "StudentPathItem"
-	TypeUser                 = "User"
+	TypeChallenge               = "Challenge"
+	TypeChallengeExercise       = "ChallengeExercise"
+	TypeConcept                 = "Concept"
+	TypeContentNode             = "ContentNode"
+	TypeContentNodeConcept      = "ContentNodeConcept"
+	TypeContentNodeExercise     = "ContentNodeExercise"
+	TypeContentNodeLanguage     = "ContentNodeLanguage"
+	TypeContentNodeSkill        = "ContentNodeSkill"
+	TypeContentNodeVersion      = "ContentNodeVersion"
+	TypeCourse                  = "Course"
+	TypeCourseCheckpoint        = "CourseCheckpoint"
+	TypeCourseVersion           = "CourseVersion"
+	TypeCourseVersionCheckpoint = "CourseVersionCheckpoint"
+	TypeDiagram                 = "Diagram"
+	TypeDiagramConcept          = "DiagramConcept"
+	TypeDiagramSkill            = "DiagramSkill"
+	TypeExercise                = "Exercise"
+	TypeExerciseConcept         = "ExerciseConcept"
+	TypeExerciseLanguage        = "ExerciseLanguage"
+	TypeExerciseOption          = "ExerciseOption"
+	TypeExerciseSkill           = "ExerciseSkill"
+	TypeExpandedContent         = "ExpandedContent"
+	TypeInstrument              = "Instrument"
+	TypeLanguage                = "Language"
+	TypeLearningPath            = "LearningPath"
+	TypeLearningPathItem        = "LearningPathItem"
+	TypePosition                = "Position"
+	TypeSkill                   = "Skill"
+	TypeStudentLearningState    = "StudentLearningState"
+	TypeStudentPath             = "StudentPath"
+	TypeStudentPathItem         = "StudentPathItem"
+	TypeUser                    = "User"
 )
 
 // ChallengeMutation represents an operation that mutates the Challenge nodes in the graph.
@@ -8181,6 +8185,1228 @@ func (m *CourseCheckpointMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *CourseCheckpointMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown CourseCheckpoint edge %s", name)
+}
+
+// CourseVersionMutation represents an operation that mutates the CourseVersion nodes in the graph.
+type CourseVersionMutation struct {
+	config
+	op                            Op
+	typ                           string
+	id                            *uuid.UUID
+	course_id                     *uuid.UUID
+	version_number                *int
+	addversion_number             *int
+	title_snapshot                *string
+	summary_snapshot              *string
+	level_snapshot                *courseversion.LevelSnapshot
+	available_for_new_enrollments *bool
+	published_at                  *time.Time
+	clearedFields                 map[string]struct{}
+	done                          bool
+	oldValue                      func(context.Context) (*CourseVersion, error)
+	predicates                    []predicate.CourseVersion
+}
+
+var _ ent.Mutation = (*CourseVersionMutation)(nil)
+
+// courseversionOption allows management of the mutation configuration using functional options.
+type courseversionOption func(*CourseVersionMutation)
+
+// newCourseVersionMutation creates new mutation for the CourseVersion entity.
+func newCourseVersionMutation(c config, op Op, opts ...courseversionOption) *CourseVersionMutation {
+	m := &CourseVersionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCourseVersion,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCourseVersionID sets the ID field of the mutation.
+func withCourseVersionID(id uuid.UUID) courseversionOption {
+	return func(m *CourseVersionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CourseVersion
+		)
+		m.oldValue = func(ctx context.Context) (*CourseVersion, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CourseVersion.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCourseVersion sets the old CourseVersion of the mutation.
+func withCourseVersion(node *CourseVersion) courseversionOption {
+	return func(m *CourseVersionMutation) {
+		m.oldValue = func(context.Context) (*CourseVersion, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CourseVersionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CourseVersionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of CourseVersion entities.
+func (m *CourseVersionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CourseVersionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CourseVersionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CourseVersion.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *CourseVersionMutation) SetCourseID(u uuid.UUID) {
+	m.course_id = &u
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *CourseVersionMutation) CourseID() (r uuid.UUID, exists bool) {
+	v := m.course_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldCourseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *CourseVersionMutation) ResetCourseID() {
+	m.course_id = nil
+}
+
+// SetVersionNumber sets the "version_number" field.
+func (m *CourseVersionMutation) SetVersionNumber(i int) {
+	m.version_number = &i
+	m.addversion_number = nil
+}
+
+// VersionNumber returns the value of the "version_number" field in the mutation.
+func (m *CourseVersionMutation) VersionNumber() (r int, exists bool) {
+	v := m.version_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersionNumber returns the old "version_number" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldVersionNumber(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersionNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersionNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersionNumber: %w", err)
+	}
+	return oldValue.VersionNumber, nil
+}
+
+// AddVersionNumber adds i to the "version_number" field.
+func (m *CourseVersionMutation) AddVersionNumber(i int) {
+	if m.addversion_number != nil {
+		*m.addversion_number += i
+	} else {
+		m.addversion_number = &i
+	}
+}
+
+// AddedVersionNumber returns the value that was added to the "version_number" field in this mutation.
+func (m *CourseVersionMutation) AddedVersionNumber() (r int, exists bool) {
+	v := m.addversion_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersionNumber resets all changes to the "version_number" field.
+func (m *CourseVersionMutation) ResetVersionNumber() {
+	m.version_number = nil
+	m.addversion_number = nil
+}
+
+// SetTitleSnapshot sets the "title_snapshot" field.
+func (m *CourseVersionMutation) SetTitleSnapshot(s string) {
+	m.title_snapshot = &s
+}
+
+// TitleSnapshot returns the value of the "title_snapshot" field in the mutation.
+func (m *CourseVersionMutation) TitleSnapshot() (r string, exists bool) {
+	v := m.title_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitleSnapshot returns the old "title_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldTitleSnapshot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitleSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitleSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitleSnapshot: %w", err)
+	}
+	return oldValue.TitleSnapshot, nil
+}
+
+// ResetTitleSnapshot resets all changes to the "title_snapshot" field.
+func (m *CourseVersionMutation) ResetTitleSnapshot() {
+	m.title_snapshot = nil
+}
+
+// SetSummarySnapshot sets the "summary_snapshot" field.
+func (m *CourseVersionMutation) SetSummarySnapshot(s string) {
+	m.summary_snapshot = &s
+}
+
+// SummarySnapshot returns the value of the "summary_snapshot" field in the mutation.
+func (m *CourseVersionMutation) SummarySnapshot() (r string, exists bool) {
+	v := m.summary_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSummarySnapshot returns the old "summary_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldSummarySnapshot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSummarySnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSummarySnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSummarySnapshot: %w", err)
+	}
+	return oldValue.SummarySnapshot, nil
+}
+
+// ResetSummarySnapshot resets all changes to the "summary_snapshot" field.
+func (m *CourseVersionMutation) ResetSummarySnapshot() {
+	m.summary_snapshot = nil
+}
+
+// SetLevelSnapshot sets the "level_snapshot" field.
+func (m *CourseVersionMutation) SetLevelSnapshot(cs courseversion.LevelSnapshot) {
+	m.level_snapshot = &cs
+}
+
+// LevelSnapshot returns the value of the "level_snapshot" field in the mutation.
+func (m *CourseVersionMutation) LevelSnapshot() (r courseversion.LevelSnapshot, exists bool) {
+	v := m.level_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevelSnapshot returns the old "level_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldLevelSnapshot(ctx context.Context) (v courseversion.LevelSnapshot, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevelSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevelSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevelSnapshot: %w", err)
+	}
+	return oldValue.LevelSnapshot, nil
+}
+
+// ResetLevelSnapshot resets all changes to the "level_snapshot" field.
+func (m *CourseVersionMutation) ResetLevelSnapshot() {
+	m.level_snapshot = nil
+}
+
+// SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
+func (m *CourseVersionMutation) SetAvailableForNewEnrollments(b bool) {
+	m.available_for_new_enrollments = &b
+}
+
+// AvailableForNewEnrollments returns the value of the "available_for_new_enrollments" field in the mutation.
+func (m *CourseVersionMutation) AvailableForNewEnrollments() (r bool, exists bool) {
+	v := m.available_for_new_enrollments
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAvailableForNewEnrollments returns the old "available_for_new_enrollments" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldAvailableForNewEnrollments(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAvailableForNewEnrollments is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAvailableForNewEnrollments requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAvailableForNewEnrollments: %w", err)
+	}
+	return oldValue.AvailableForNewEnrollments, nil
+}
+
+// ResetAvailableForNewEnrollments resets all changes to the "available_for_new_enrollments" field.
+func (m *CourseVersionMutation) ResetAvailableForNewEnrollments() {
+	m.available_for_new_enrollments = nil
+}
+
+// SetPublishedAt sets the "published_at" field.
+func (m *CourseVersionMutation) SetPublishedAt(t time.Time) {
+	m.published_at = &t
+}
+
+// PublishedAt returns the value of the "published_at" field in the mutation.
+func (m *CourseVersionMutation) PublishedAt() (r time.Time, exists bool) {
+	v := m.published_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedAt returns the old "published_at" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldPublishedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedAt: %w", err)
+	}
+	return oldValue.PublishedAt, nil
+}
+
+// ResetPublishedAt resets all changes to the "published_at" field.
+func (m *CourseVersionMutation) ResetPublishedAt() {
+	m.published_at = nil
+}
+
+// Where appends a list predicates to the CourseVersionMutation builder.
+func (m *CourseVersionMutation) Where(ps ...predicate.CourseVersion) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CourseVersionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CourseVersionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CourseVersion, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CourseVersionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CourseVersionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CourseVersion).
+func (m *CourseVersionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CourseVersionMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.course_id != nil {
+		fields = append(fields, courseversion.FieldCourseID)
+	}
+	if m.version_number != nil {
+		fields = append(fields, courseversion.FieldVersionNumber)
+	}
+	if m.title_snapshot != nil {
+		fields = append(fields, courseversion.FieldTitleSnapshot)
+	}
+	if m.summary_snapshot != nil {
+		fields = append(fields, courseversion.FieldSummarySnapshot)
+	}
+	if m.level_snapshot != nil {
+		fields = append(fields, courseversion.FieldLevelSnapshot)
+	}
+	if m.available_for_new_enrollments != nil {
+		fields = append(fields, courseversion.FieldAvailableForNewEnrollments)
+	}
+	if m.published_at != nil {
+		fields = append(fields, courseversion.FieldPublishedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CourseVersionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case courseversion.FieldCourseID:
+		return m.CourseID()
+	case courseversion.FieldVersionNumber:
+		return m.VersionNumber()
+	case courseversion.FieldTitleSnapshot:
+		return m.TitleSnapshot()
+	case courseversion.FieldSummarySnapshot:
+		return m.SummarySnapshot()
+	case courseversion.FieldLevelSnapshot:
+		return m.LevelSnapshot()
+	case courseversion.FieldAvailableForNewEnrollments:
+		return m.AvailableForNewEnrollments()
+	case courseversion.FieldPublishedAt:
+		return m.PublishedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CourseVersionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case courseversion.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case courseversion.FieldVersionNumber:
+		return m.OldVersionNumber(ctx)
+	case courseversion.FieldTitleSnapshot:
+		return m.OldTitleSnapshot(ctx)
+	case courseversion.FieldSummarySnapshot:
+		return m.OldSummarySnapshot(ctx)
+	case courseversion.FieldLevelSnapshot:
+		return m.OldLevelSnapshot(ctx)
+	case courseversion.FieldAvailableForNewEnrollments:
+		return m.OldAvailableForNewEnrollments(ctx)
+	case courseversion.FieldPublishedAt:
+		return m.OldPublishedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown CourseVersion field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseVersionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case courseversion.FieldCourseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case courseversion.FieldVersionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersionNumber(v)
+		return nil
+	case courseversion.FieldTitleSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitleSnapshot(v)
+		return nil
+	case courseversion.FieldSummarySnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSummarySnapshot(v)
+		return nil
+	case courseversion.FieldLevelSnapshot:
+		v, ok := value.(courseversion.LevelSnapshot)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevelSnapshot(v)
+		return nil
+	case courseversion.FieldAvailableForNewEnrollments:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAvailableForNewEnrollments(v)
+		return nil
+	case courseversion.FieldPublishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersion field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CourseVersionMutation) AddedFields() []string {
+	var fields []string
+	if m.addversion_number != nil {
+		fields = append(fields, courseversion.FieldVersionNumber)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CourseVersionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case courseversion.FieldVersionNumber:
+		return m.AddedVersionNumber()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseVersionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case courseversion.FieldVersionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersionNumber(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersion numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CourseVersionMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CourseVersionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CourseVersionMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown CourseVersion nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CourseVersionMutation) ResetField(name string) error {
+	switch name {
+	case courseversion.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case courseversion.FieldVersionNumber:
+		m.ResetVersionNumber()
+		return nil
+	case courseversion.FieldTitleSnapshot:
+		m.ResetTitleSnapshot()
+		return nil
+	case courseversion.FieldSummarySnapshot:
+		m.ResetSummarySnapshot()
+		return nil
+	case courseversion.FieldLevelSnapshot:
+		m.ResetLevelSnapshot()
+		return nil
+	case courseversion.FieldAvailableForNewEnrollments:
+		m.ResetAvailableForNewEnrollments()
+		return nil
+	case courseversion.FieldPublishedAt:
+		m.ResetPublishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersion field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CourseVersionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CourseVersionMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CourseVersionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CourseVersionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CourseVersionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CourseVersionMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CourseVersionMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown CourseVersion unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CourseVersionMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown CourseVersion edge %s", name)
+}
+
+// CourseVersionCheckpointMutation represents an operation that mutates the CourseVersionCheckpoint nodes in the graph.
+type CourseVersionCheckpointMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	course_version_id *uuid.UUID
+	learning_path_id  *uuid.UUID
+	position          *int
+	addposition       *int
+	effective_title   *string
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*CourseVersionCheckpoint, error)
+	predicates        []predicate.CourseVersionCheckpoint
+}
+
+var _ ent.Mutation = (*CourseVersionCheckpointMutation)(nil)
+
+// courseversioncheckpointOption allows management of the mutation configuration using functional options.
+type courseversioncheckpointOption func(*CourseVersionCheckpointMutation)
+
+// newCourseVersionCheckpointMutation creates new mutation for the CourseVersionCheckpoint entity.
+func newCourseVersionCheckpointMutation(c config, op Op, opts ...courseversioncheckpointOption) *CourseVersionCheckpointMutation {
+	m := &CourseVersionCheckpointMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCourseVersionCheckpoint,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCourseVersionCheckpointID sets the ID field of the mutation.
+func withCourseVersionCheckpointID(id uuid.UUID) courseversioncheckpointOption {
+	return func(m *CourseVersionCheckpointMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CourseVersionCheckpoint
+		)
+		m.oldValue = func(ctx context.Context) (*CourseVersionCheckpoint, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CourseVersionCheckpoint.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCourseVersionCheckpoint sets the old CourseVersionCheckpoint of the mutation.
+func withCourseVersionCheckpoint(node *CourseVersionCheckpoint) courseversioncheckpointOption {
+	return func(m *CourseVersionCheckpointMutation) {
+		m.oldValue = func(context.Context) (*CourseVersionCheckpoint, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CourseVersionCheckpointMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CourseVersionCheckpointMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of CourseVersionCheckpoint entities.
+func (m *CourseVersionCheckpointMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CourseVersionCheckpointMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CourseVersionCheckpointMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CourseVersionCheckpoint.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCourseVersionID sets the "course_version_id" field.
+func (m *CourseVersionCheckpointMutation) SetCourseVersionID(u uuid.UUID) {
+	m.course_version_id = &u
+}
+
+// CourseVersionID returns the value of the "course_version_id" field in the mutation.
+func (m *CourseVersionCheckpointMutation) CourseVersionID() (r uuid.UUID, exists bool) {
+	v := m.course_version_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseVersionID returns the old "course_version_id" field's value of the CourseVersionCheckpoint entity.
+// If the CourseVersionCheckpoint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionCheckpointMutation) OldCourseVersionID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseVersionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseVersionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseVersionID: %w", err)
+	}
+	return oldValue.CourseVersionID, nil
+}
+
+// ResetCourseVersionID resets all changes to the "course_version_id" field.
+func (m *CourseVersionCheckpointMutation) ResetCourseVersionID() {
+	m.course_version_id = nil
+}
+
+// SetLearningPathID sets the "learning_path_id" field.
+func (m *CourseVersionCheckpointMutation) SetLearningPathID(u uuid.UUID) {
+	m.learning_path_id = &u
+}
+
+// LearningPathID returns the value of the "learning_path_id" field in the mutation.
+func (m *CourseVersionCheckpointMutation) LearningPathID() (r uuid.UUID, exists bool) {
+	v := m.learning_path_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLearningPathID returns the old "learning_path_id" field's value of the CourseVersionCheckpoint entity.
+// If the CourseVersionCheckpoint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionCheckpointMutation) OldLearningPathID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLearningPathID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLearningPathID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLearningPathID: %w", err)
+	}
+	return oldValue.LearningPathID, nil
+}
+
+// ResetLearningPathID resets all changes to the "learning_path_id" field.
+func (m *CourseVersionCheckpointMutation) ResetLearningPathID() {
+	m.learning_path_id = nil
+}
+
+// SetPosition sets the "position" field.
+func (m *CourseVersionCheckpointMutation) SetPosition(i int) {
+	m.position = &i
+	m.addposition = nil
+}
+
+// Position returns the value of the "position" field in the mutation.
+func (m *CourseVersionCheckpointMutation) Position() (r int, exists bool) {
+	v := m.position
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPosition returns the old "position" field's value of the CourseVersionCheckpoint entity.
+// If the CourseVersionCheckpoint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionCheckpointMutation) OldPosition(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPosition is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPosition requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPosition: %w", err)
+	}
+	return oldValue.Position, nil
+}
+
+// AddPosition adds i to the "position" field.
+func (m *CourseVersionCheckpointMutation) AddPosition(i int) {
+	if m.addposition != nil {
+		*m.addposition += i
+	} else {
+		m.addposition = &i
+	}
+}
+
+// AddedPosition returns the value that was added to the "position" field in this mutation.
+func (m *CourseVersionCheckpointMutation) AddedPosition() (r int, exists bool) {
+	v := m.addposition
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPosition resets all changes to the "position" field.
+func (m *CourseVersionCheckpointMutation) ResetPosition() {
+	m.position = nil
+	m.addposition = nil
+}
+
+// SetEffectiveTitle sets the "effective_title" field.
+func (m *CourseVersionCheckpointMutation) SetEffectiveTitle(s string) {
+	m.effective_title = &s
+}
+
+// EffectiveTitle returns the value of the "effective_title" field in the mutation.
+func (m *CourseVersionCheckpointMutation) EffectiveTitle() (r string, exists bool) {
+	v := m.effective_title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveTitle returns the old "effective_title" field's value of the CourseVersionCheckpoint entity.
+// If the CourseVersionCheckpoint object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionCheckpointMutation) OldEffectiveTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveTitle: %w", err)
+	}
+	return oldValue.EffectiveTitle, nil
+}
+
+// ResetEffectiveTitle resets all changes to the "effective_title" field.
+func (m *CourseVersionCheckpointMutation) ResetEffectiveTitle() {
+	m.effective_title = nil
+}
+
+// Where appends a list predicates to the CourseVersionCheckpointMutation builder.
+func (m *CourseVersionCheckpointMutation) Where(ps ...predicate.CourseVersionCheckpoint) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CourseVersionCheckpointMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CourseVersionCheckpointMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CourseVersionCheckpoint, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CourseVersionCheckpointMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CourseVersionCheckpointMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CourseVersionCheckpoint).
+func (m *CourseVersionCheckpointMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CourseVersionCheckpointMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.course_version_id != nil {
+		fields = append(fields, courseversioncheckpoint.FieldCourseVersionID)
+	}
+	if m.learning_path_id != nil {
+		fields = append(fields, courseversioncheckpoint.FieldLearningPathID)
+	}
+	if m.position != nil {
+		fields = append(fields, courseversioncheckpoint.FieldPosition)
+	}
+	if m.effective_title != nil {
+		fields = append(fields, courseversioncheckpoint.FieldEffectiveTitle)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CourseVersionCheckpointMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case courseversioncheckpoint.FieldCourseVersionID:
+		return m.CourseVersionID()
+	case courseversioncheckpoint.FieldLearningPathID:
+		return m.LearningPathID()
+	case courseversioncheckpoint.FieldPosition:
+		return m.Position()
+	case courseversioncheckpoint.FieldEffectiveTitle:
+		return m.EffectiveTitle()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CourseVersionCheckpointMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case courseversioncheckpoint.FieldCourseVersionID:
+		return m.OldCourseVersionID(ctx)
+	case courseversioncheckpoint.FieldLearningPathID:
+		return m.OldLearningPathID(ctx)
+	case courseversioncheckpoint.FieldPosition:
+		return m.OldPosition(ctx)
+	case courseversioncheckpoint.FieldEffectiveTitle:
+		return m.OldEffectiveTitle(ctx)
+	}
+	return nil, fmt.Errorf("unknown CourseVersionCheckpoint field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseVersionCheckpointMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case courseversioncheckpoint.FieldCourseVersionID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseVersionID(v)
+		return nil
+	case courseversioncheckpoint.FieldLearningPathID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLearningPathID(v)
+		return nil
+	case courseversioncheckpoint.FieldPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPosition(v)
+		return nil
+	case courseversioncheckpoint.FieldEffectiveTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveTitle(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersionCheckpoint field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CourseVersionCheckpointMutation) AddedFields() []string {
+	var fields []string
+	if m.addposition != nil {
+		fields = append(fields, courseversioncheckpoint.FieldPosition)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CourseVersionCheckpointMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case courseversioncheckpoint.FieldPosition:
+		return m.AddedPosition()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseVersionCheckpointMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case courseversioncheckpoint.FieldPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPosition(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersionCheckpoint numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CourseVersionCheckpointMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CourseVersionCheckpointMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CourseVersionCheckpointMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown CourseVersionCheckpoint nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CourseVersionCheckpointMutation) ResetField(name string) error {
+	switch name {
+	case courseversioncheckpoint.FieldCourseVersionID:
+		m.ResetCourseVersionID()
+		return nil
+	case courseversioncheckpoint.FieldLearningPathID:
+		m.ResetLearningPathID()
+		return nil
+	case courseversioncheckpoint.FieldPosition:
+		m.ResetPosition()
+		return nil
+	case courseversioncheckpoint.FieldEffectiveTitle:
+		m.ResetEffectiveTitle()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseVersionCheckpoint field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CourseVersionCheckpointMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CourseVersionCheckpointMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CourseVersionCheckpointMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CourseVersionCheckpointMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CourseVersionCheckpointMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CourseVersionCheckpointMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CourseVersionCheckpointMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown CourseVersionCheckpoint unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CourseVersionCheckpointMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown CourseVersionCheckpoint edge %s", name)
 }
 
 // DiagramMutation represents an operation that mutates the Diagram nodes in the graph.

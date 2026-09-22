@@ -727,6 +727,50 @@ func (f *fakeCourseRepo) put(c domain.Course) {
 	f.byID[c.ID] = c
 }
 
+func (f *fakeCourseRepo) UpdateStatus(_ context.Context, id string, status domain.CourseStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.Status = status
+	f.byID[id] = c
+	return nil
+}
+
+type fakeCourseVersionRepo struct {
+	mu       sync.Mutex
+	byCourse map[string][]domain.CourseVersion
+}
+
+func newFakeCourseVersionRepo() *fakeCourseVersionRepo {
+	return &fakeCourseVersionRepo{byCourse: map[string][]domain.CourseVersion{}}
+}
+
+func (f *fakeCourseVersionRepo) Create(_ context.Context, v domain.CourseVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byCourse[v.CourseID] = append(f.byCourse[v.CourseID], v)
+	return nil
+}
+
+func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID string) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
 type fakeStudentPathRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.StudentPath

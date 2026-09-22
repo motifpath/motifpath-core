@@ -14,14 +14,15 @@ import (
 // live, currently-being-authored draft; snapshotting a draft into an
 // immutable published CourseVersion is a separate, later capability.
 type CourseService struct {
-	paths   ports.LearningPathRepository
-	courses ports.CourseRepository
-	newID   func() string
-	now     func() time.Time
+	paths    ports.LearningPathRepository
+	courses  ports.CourseRepository
+	versions ports.CourseVersionRepository
+	newID    func() string
+	now      func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, newID: newID, now: now}
+func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{paths: paths, courses: courses, versions: versions, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -117,6 +118,126 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 		return domain.Course{}, err
 	}
 	return replaced, nil
+}
+
+// PublishCourse snapshots course's current title, summary, level, and
+// checkpoint identities into a new immutable CourseVersion — the course's
+// next version_number, one greater than whatever was last published (or 1
+// if this is the first publish). The course's status becomes published if
+// this is its first publication; it stays published on every later
+// publish. Every already-enrolled student is unaffected — enrollment
+// pinning is a separate, later capability. Publishing is admin-only: it
+// exposes the draft to students for the first time, so even the creating
+// teacher gets forbidden.
+func (s *CourseService) PublishCourse(ctx context.Context, caller domain.User, id string) (domain.CourseVersion, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.CourseVersion{}, domain.ErrForbidden
+	}
+
+	course, err := s.courses.GetByID(ctx, id)
+	if err != nil {
+		return domain.CourseVersion{}, err
+	}
+
+	nextVersionNumber := 1
+	if latest, err := s.versions.GetLatestByCourseID(ctx, id); err == nil {
+		nextVersionNumber = latest.VersionNumber + 1
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return domain.CourseVersion{}, err
+	}
+
+	version := domain.NewCourseVersionSnapshot(s.newID(), course, nextVersionNumber, s.now())
+	if err := s.versions.Create(ctx, version); err != nil {
+		return domain.CourseVersion{}, err
+	}
+
+	if course.Status == domain.CourseStatusDraft {
+		if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished); err != nil {
+			return domain.CourseVersion{}, err
+		}
+	}
+
+	return version, nil
+}
+
+// LatestVersion returns the latest published CourseVersion for the course
+// with the given id. Returns domain.ErrNotFound if the course has never
+// been published. Exposed so the HTTP layer can compute
+// has_unpublished_changes and latest_published_version without duplicating
+// the version lookup.
+func (s *CourseService) LatestVersion(ctx context.Context, id string) (domain.CourseVersion, error) {
+	return s.versions.GetLatestByCourseID(ctx, id)
+}
+
+// CourseOutlineItem is one content node's title within a published
+// checkpoint's outline — resolved live from its LearningPath template
+// rather than from any snapshot, the same "resolve live from current
+// state" pattern StudentPathItem already uses for its title/content_type.
+type CourseOutlineItem struct {
+	Title        string
+	SectionLabel *string
+}
+
+// CourseOutlineCheckpoint is a published checkpoint as shown to a
+// prospective or enrolled student: the title pinned at publish time, plus
+// its items resolved live.
+type CourseOutlineCheckpoint struct {
+	Position int
+	Title    string
+	Items    []CourseOutlineItem
+}
+
+// PublishedCourseView is a course's latest published version, rendered as
+// an outline — the composed result GetPublishedCourse returns.
+type PublishedCourseView struct {
+	Title       string
+	Summary     string
+	Level       domain.DifficultyLevel
+	Status      domain.CourseStatus
+	PublishedAt time.Time
+	Checkpoints []CourseOutlineCheckpoint
+}
+
+// GetPublishedCourse returns course's latest published version rendered as
+// an outline: each checkpoint's title, pinned at the moment it was
+// published, and its ordered item titles resolved live from the
+// checkpoint's LearningPath template — never lesson content or authoring
+// detail such as a checkpoint's learning_path_id. Accessible by any
+// authenticated role. Returns domain.ErrNotFound if no course exists with
+// the given id, or if it has never been published — "the published
+// version" genuinely does not exist yet, regardless of caller role.
+func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (PublishedCourseView, error) {
+	course, err := s.courses.GetByID(ctx, id)
+	if err != nil {
+		return PublishedCourseView{}, err
+	}
+
+	latest, err := s.versions.GetLatestByCourseID(ctx, id)
+	if err != nil {
+		return PublishedCourseView{}, err
+	}
+
+	checkpoints := make([]CourseOutlineCheckpoint, len(latest.Checkpoints))
+	for i, cp := range latest.Checkpoints {
+		path, err := s.paths.GetByID(ctx, cp.LearningPathID)
+		if err != nil {
+			return PublishedCourseView{}, err
+		}
+		items := make([]CourseOutlineItem, len(path.Items))
+		for j, item := range path.Items {
+			items[j] = CourseOutlineItem{Title: item.Title, SectionLabel: item.SectionLabel}
+		}
+		checkpoints[i] = CourseOutlineCheckpoint{Position: cp.Position, Title: cp.EffectiveTitle, Items: items}
+	}
+
+	return PublishedCourseView{
+		Title:       latest.TitleSnapshot,
+		Summary:     latest.SummarySnapshot,
+		Level:       latest.LevelSnapshot,
+		Status:      course.Status,
+		PublishedAt: latest.PublishedAt,
+		Checkpoints: checkpoints,
+	}, nil
 }
 
 // resolveCheckpoints turns checkpoints into the resolved

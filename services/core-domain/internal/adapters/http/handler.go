@@ -868,7 +868,29 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 		return nil, err
 	}
 
-	return generated.ListCourses200JSONResponse(toCourseCatalogEntries(courses, caller)), nil
+	entries, err := toCourseCatalogEntries(courses, caller, func(courseID string) (*domain.CourseVersion, error) {
+		return h.latestCourseVersion(ctx, courseID)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListCourses200JSONResponse(entries), nil
+}
+
+// latestCourseVersion returns course's latest published CourseVersion, or
+// nil if it has never been published — the courseVersionLookup shape
+// toCourseCatalogEntries and the toCourse/toCourseCatalogEntry mappers
+// need to compute has_unpublished_changes and latest_published_version.
+func (h *Handler) latestCourseVersion(ctx context.Context, courseID string) (*domain.CourseVersion, error) {
+	version, err := h.course.LatestVersion(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
 }
 
 func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCourseRequestObject) (generated.CreateCourseResponseObject, error) {
@@ -899,7 +921,7 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		}
 	}
 
-	return generated.CreateCourse201JSONResponse(toCourse(course)), nil
+	return generated.CreateCourse201JSONResponse(toCourse(course, nil)), nil
 }
 
 func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
@@ -921,7 +943,12 @@ func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequ
 		}
 	}
 
-	return generated.GetCourse200JSONResponse(toCourse(course)), nil
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.GetCourse200JSONResponse(toCourse(course, latest)), nil
 }
 
 func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
@@ -954,15 +981,51 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		}
 	}
 
-	return generated.ReplaceCourse200JSONResponse(toCourse(course)), nil
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ReplaceCourse200JSONResponse(toCourse(course, latest)), nil
 }
 
-func (h *Handler) PublishCourse(context.Context, generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) PublishCourse(ctx context.Context, request generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	version, err := h.course.PublishCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.PublishCourse403JSONResponse(forbiddenError("only admins may publish a course")), nil
+		case errKindNotFound:
+			return generated.PublishCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.PublishCourse201JSONResponse(toGeneratedCourseVersion(version)), nil
 }
 
-func (h *Handler) GetPublishedCourse(context.Context, generated.GetPublishedCourseRequestObject) (generated.GetPublishedCourseResponseObject, error) {
-	return nil, errNotYetImplemented
+func (h *Handler) GetPublishedCourse(ctx context.Context, request generated.GetPublishedCourseRequestObject) (generated.GetPublishedCourseResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.GetPublishedCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	courseID := request.CourseId.String()
+	view, err := h.course.GetPublishedCourse(ctx, courseID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return generated.GetPublishedCourse404JSONResponse(notFoundError("no course exists with the given id, or it has never been published")), nil
+		}
+		return nil, err
+	}
+
+	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view)), nil
 }
 
 func (h *Handler) RetireCourse(context.Context, generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {

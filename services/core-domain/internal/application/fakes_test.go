@@ -683,6 +683,56 @@ func (f *fakeCourseRepository) put(course domain.Course) {
 	f.byID[course.ID] = course
 }
 
+func (f *fakeCourseRepository) UpdateStatus(_ context.Context, id string, status domain.CourseStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	course, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	course.Status = status
+	f.byID[id] = course
+	return nil
+}
+
+// fakeCourseVersionRepository is a minimal in-memory
+// ports.CourseVersionRepository.
+type fakeCourseVersionRepository struct {
+	mu        sync.Mutex
+	byCourse  map[string][]domain.CourseVersion
+	createErr error
+}
+
+func newFakeCourseVersionRepository() *fakeCourseVersionRepository {
+	return &fakeCourseVersionRepository{byCourse: map[string][]domain.CourseVersion{}}
+}
+
+func (f *fakeCourseVersionRepository) Create(_ context.Context, version domain.CourseVersion) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.createErr != nil {
+		return f.createErr
+	}
+	f.byCourse[version.CourseID] = append(f.byCourse[version.CourseID], version)
+	return nil
+}
+
+func (f *fakeCourseVersionRepository) GetLatestByCourseID(_ context.Context, courseID string) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, domain.ErrNotFound
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, nil
+}
+
 // fakeStudentPathRepository is a minimal in-memory ports.StudentPathRepository.
 type fakeStudentPathRepository struct {
 	mu        sync.Mutex

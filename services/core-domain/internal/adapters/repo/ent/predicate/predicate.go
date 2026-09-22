@@ -39,6 +39,12 @@ type Course func(*sql.Selector)
 // CourseCheckpoint is the predicate function for coursecheckpoint builders.
 type CourseCheckpoint func(*sql.Selector)
 
+// CourseVersion is the predicate function for courseversion builders.
+type CourseVersion func(*sql.Selector)
+
+// CourseVersionCheckpoint is the predicate function for courseversioncheckpoint builders.
+type CourseVersionCheckpoint func(*sql.Selector)
+
 // Diagram is the predicate function for diagram builders.
 type Diagram func(*sql.Selector)
 
