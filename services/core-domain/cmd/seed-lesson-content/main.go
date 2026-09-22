@@ -39,7 +39,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -207,6 +207,9 @@ func run(completed int, current string) error {
 	if err := enrichSteps(ctx, contentService, admin, defaults, path.Items); err != nil {
 		return err
 	}
+	if err := ensureExerciseLanguages(ctx, conns.sqlDB, defaults, path.Items); err != nil {
+		return fmt.Errorf("ensure exercise languages: %w", err)
+	}
 
 	if completed >= 0 {
 		db := conns.mongo.Database(getenvDefault("MONGO_DATABASE", "motifpath_events"))
@@ -291,6 +294,96 @@ func (d classificationDefaults) ensureLanguage(ctx context.Context, nodeID strin
 	}
 	log.Printf("node %s: linked language %q", nodeID, defaultLanguageCode)
 	return nil
+}
+
+// ensureExerciseLanguage links langID to the exercise. Unlike ensureLanguage
+// it does not check first — callers already know the exercise has none
+// (exercisesMissingLanguage only returns those) — and it takes the language
+// id rather than resolving it itself, so tagging many exercises resolves the
+// language row once, not once per exercise.
+func (d classificationDefaults) ensureExerciseLanguage(ctx context.Context, exerciseID string, langID uuid.UUID) error {
+	id, err := uuid.Parse(exerciseID)
+	if err != nil {
+		return fmt.Errorf("parse exercise id %q: %w", exerciseID, err)
+	}
+	if _, err := d.client.Exercise.UpdateOneID(id).AddLanguageIDs(langID).Save(ctx); err != nil {
+		return fmt.Errorf("link language %q to exercise %s: %w", defaultLanguageCode, exerciseID, err)
+	}
+	log.Printf("exercise %s: linked language %q", exerciseID, defaultLanguageCode)
+	return nil
+}
+
+// ensureExerciseLanguages tags every exercise reachable from the path — linked
+// directly to a node as a path exercise, or through one of a node's
+// challenges — that has no language. The path-progress lock checks a linked
+// exercise's language as well as the node's own, so an untagged exercise can
+// silently lock a step whose video is perfectly playable and correctly
+// tagged itself.
+func ensureExerciseLanguages(ctx context.Context, sqlDB *sql.DB, defaults classificationDefaults, items []domain.LearningPathItem) error {
+	nodeIDs := make([]string, len(items))
+	for i, item := range items {
+		nodeIDs[i] = item.ContentNodeID
+	}
+	ids, err := exercisesMissingLanguage(ctx, sqlDB, nodeIDs)
+	if err != nil {
+		return fmt.Errorf("find exercises with no language: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	lang, err := defaults.client.Language.Query().Where(language.Code(defaultLanguageCode)).Only(ctx)
+	if err != nil {
+		return fmt.Errorf("find language %q: %w", defaultLanguageCode, err)
+	}
+	for _, id := range ids {
+		if err := defaults.ensureExerciseLanguage(ctx, id, lang.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// exercisesMissingLanguage returns the ids of exercises that have no language
+// row and are reachable from nodeIDs either as a path exercise
+// (content_node_exercises) or as one of a node's challenge's exercises
+// (challenges + challenge_exercises). Plain SQL, not the ent client: this is
+// a read across three junction tables for a local dev tool, not a query the
+// application layer needs to expose.
+func exercisesMissingLanguage(ctx context.Context, sqlDB *sql.DB, nodeIDs []string) ([]string, error) {
+	const query = `
+		SELECT DISTINCT e.id::text
+		FROM exercises e
+		JOIN content_node_exercises x ON x.exercise_id = e.id
+		WHERE x.content_node_id = ANY($1)
+		  AND NOT EXISTS (SELECT 1 FROM exercise_languages el WHERE el.exercise_id = e.id)
+		UNION
+		SELECT DISTINCT e.id::text
+		FROM exercises e
+		JOIN challenge_exercises ce ON ce.exercise_id = e.id
+		JOIN challenges c ON c.id = ce.challenge_id
+		WHERE c.content_node_id = ANY($1)
+		  AND NOT EXISTS (SELECT 1 FROM exercise_languages el WHERE el.exercise_id = e.id)
+	`
+	rows, err := sqlDB.QueryContext(ctx, query, pq.Array(nodeIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			log.Printf("failed to close rows: %v", closeErr)
+		}
+	}()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func loadDefaults(ctx context.Context, client *ent.Client, skills *application.SkillService, concepts *application.ConceptService) (classificationDefaults, error) {
