@@ -45,6 +45,20 @@ func (_c *PositionCreate) SetNoteName(v string) *PositionCreate {
 	return _c
 }
 
+// SetShape sets the "shape" field.
+func (_c *PositionCreate) SetShape(v position.Shape) *PositionCreate {
+	_c.mutation.SetShape(v)
+	return _c
+}
+
+// SetNillableShape sets the "shape" field if the given value is not nil.
+func (_c *PositionCreate) SetNillableShape(v *position.Shape) *PositionCreate {
+	if v != nil {
+		_c.SetShape(*v)
+	}
+	return _c
+}
+
 // SetSequenceIndex sets the "sequence_index" field.
 func (_c *PositionCreate) SetSequenceIndex(v int) *PositionCreate {
 	_c.mutation.SetSequenceIndex(v)
@@ -155,6 +169,10 @@ func (_c *PositionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *PositionCreate) defaults() {
+	if _, ok := _c.mutation.Shape(); !ok {
+		v := position.DefaultShape
+		_c.mutation.SetShape(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := position.DefaultID()
 		_c.mutation.SetID(v)
@@ -174,6 +192,14 @@ func (_c *PositionCreate) check() error {
 	}
 	if _, ok := _c.mutation.NoteName(); !ok {
 		return &ValidationError{Name: "note_name", err: errors.New(`ent: missing required field "Position.note_name"`)}
+	}
+	if _, ok := _c.mutation.Shape(); !ok {
+		return &ValidationError{Name: "shape", err: errors.New(`ent: missing required field "Position.shape"`)}
+	}
+	if v, ok := _c.mutation.Shape(); ok {
+		if err := position.ShapeValidator(v); err != nil {
+			return &ValidationError{Name: "shape", err: fmt.Errorf(`ent: validator failed for field "Position.shape": %w`, err)}
+		}
 	}
 	if len(_c.mutation.DiagramIDs()) == 0 {
 		return &ValidationError{Name: "diagram", err: errors.New(`ent: missing required edge "Position.diagram"`)}
@@ -224,6 +250,10 @@ func (_c *PositionCreate) createSpec() (*Position, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.NoteName(); ok {
 		_spec.SetField(position.FieldNoteName, field.TypeString, value)
 		_node.NoteName = value
+	}
+	if value, ok := _c.mutation.Shape(); ok {
+		_spec.SetField(position.FieldShape, field.TypeEnum, value)
+		_node.Shape = value
 	}
 	if value, ok := _c.mutation.SequenceIndex(); ok {
 		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)

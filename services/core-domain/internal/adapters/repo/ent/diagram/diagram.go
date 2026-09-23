@@ -3,6 +3,7 @@
 package diagram
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -19,6 +20,10 @@ const (
 	FieldInstrumentID = "instrument_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldRootNote holds the string denoting the root_note field in the database.
+	FieldRootNote = "root_note"
+	// FieldLabelDisplay holds the string denoting the label_display field in the database.
+	FieldLabelDisplay = "label_display"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInstrument holds the string denoting the instrument edge name in mutations.
@@ -80,6 +85,8 @@ var Columns = []string{
 	FieldID,
 	FieldInstrumentID,
 	FieldName,
+	FieldRootNote,
+	FieldLabelDisplay,
 	FieldCreatedAt,
 }
 
@@ -109,6 +116,33 @@ var (
 	DefaultID func() uuid.UUID
 )
 
+// LabelDisplay defines the type for the "label_display" enum field.
+type LabelDisplay string
+
+// LabelDisplayInterval is the default value of the LabelDisplay enum.
+const DefaultLabelDisplay = LabelDisplayInterval
+
+// LabelDisplay values.
+const (
+	LabelDisplayInterval LabelDisplay = "interval"
+	LabelDisplayNote     LabelDisplay = "note"
+	LabelDisplayHidden   LabelDisplay = "hidden"
+)
+
+func (ld LabelDisplay) String() string {
+	return string(ld)
+}
+
+// LabelDisplayValidator is a validator for the "label_display" field enum values. It is called by the builders before save.
+func LabelDisplayValidator(ld LabelDisplay) error {
+	switch ld {
+	case LabelDisplayInterval, LabelDisplayNote, LabelDisplayHidden:
+		return nil
+	default:
+		return fmt.Errorf("diagram: invalid enum value for label_display field: %q", ld)
+	}
+}
+
 // OrderOption defines the ordering options for the Diagram queries.
 type OrderOption func(*sql.Selector)
 
@@ -125,6 +159,16 @@ func ByInstrumentID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByRootNote orders the results by the root_note field.
+func ByRootNote(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRootNote, opts...).ToFunc()
+}
+
+// ByLabelDisplay orders the results by the label_display field.
+func ByLabelDisplay(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLabelDisplay, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

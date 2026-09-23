@@ -284,6 +284,26 @@ func NoteNameContainsFold(v string) predicate.Position {
 	return predicate.Position(sql.FieldContainsFold(FieldNoteName, v))
 }
 
+// ShapeEQ applies the EQ predicate on the "shape" field.
+func ShapeEQ(v Shape) predicate.Position {
+	return predicate.Position(sql.FieldEQ(FieldShape, v))
+}
+
+// ShapeNEQ applies the NEQ predicate on the "shape" field.
+func ShapeNEQ(v Shape) predicate.Position {
+	return predicate.Position(sql.FieldNEQ(FieldShape, v))
+}
+
+// ShapeIn applies the In predicate on the "shape" field.
+func ShapeIn(vs ...Shape) predicate.Position {
+	return predicate.Position(sql.FieldIn(FieldShape, vs...))
+}
+
+// ShapeNotIn applies the NotIn predicate on the "shape" field.
+func ShapeNotIn(vs ...Shape) predicate.Position {
+	return predicate.Position(sql.FieldNotIn(FieldShape, vs...))
+}
+
 // SequenceIndexEQ applies the EQ predicate on the "sequence_index" field.
 func SequenceIndexEQ(v int) predicate.Position {
 	return predicate.Position(sql.FieldEQ(FieldSequenceIndex, v))

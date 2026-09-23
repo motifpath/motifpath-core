@@ -66,6 +66,11 @@ func Name(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldName, v))
 }
 
+// RootNote applies equality check predicate on the "root_note" field. It's identical to RootNoteEQ.
+func RootNote(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldRootNote, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldCreatedAt, v))
@@ -154,6 +159,101 @@ func NameEqualFold(v string) predicate.Diagram {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldContainsFold(FieldName, v))
+}
+
+// RootNoteEQ applies the EQ predicate on the "root_note" field.
+func RootNoteEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldRootNote, v))
+}
+
+// RootNoteNEQ applies the NEQ predicate on the "root_note" field.
+func RootNoteNEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldRootNote, v))
+}
+
+// RootNoteIn applies the In predicate on the "root_note" field.
+func RootNoteIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldRootNote, vs...))
+}
+
+// RootNoteNotIn applies the NotIn predicate on the "root_note" field.
+func RootNoteNotIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldRootNote, vs...))
+}
+
+// RootNoteGT applies the GT predicate on the "root_note" field.
+func RootNoteGT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldRootNote, v))
+}
+
+// RootNoteGTE applies the GTE predicate on the "root_note" field.
+func RootNoteGTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldRootNote, v))
+}
+
+// RootNoteLT applies the LT predicate on the "root_note" field.
+func RootNoteLT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldRootNote, v))
+}
+
+// RootNoteLTE applies the LTE predicate on the "root_note" field.
+func RootNoteLTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldRootNote, v))
+}
+
+// RootNoteContains applies the Contains predicate on the "root_note" field.
+func RootNoteContains(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContains(FieldRootNote, v))
+}
+
+// RootNoteHasPrefix applies the HasPrefix predicate on the "root_note" field.
+func RootNoteHasPrefix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasPrefix(FieldRootNote, v))
+}
+
+// RootNoteHasSuffix applies the HasSuffix predicate on the "root_note" field.
+func RootNoteHasSuffix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasSuffix(FieldRootNote, v))
+}
+
+// RootNoteIsNil applies the IsNil predicate on the "root_note" field.
+func RootNoteIsNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldIsNull(FieldRootNote))
+}
+
+// RootNoteNotNil applies the NotNil predicate on the "root_note" field.
+func RootNoteNotNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotNull(FieldRootNote))
+}
+
+// RootNoteEqualFold applies the EqualFold predicate on the "root_note" field.
+func RootNoteEqualFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEqualFold(FieldRootNote, v))
+}
+
+// RootNoteContainsFold applies the ContainsFold predicate on the "root_note" field.
+func RootNoteContainsFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContainsFold(FieldRootNote, v))
+}
+
+// LabelDisplayEQ applies the EQ predicate on the "label_display" field.
+func LabelDisplayEQ(v LabelDisplay) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldLabelDisplay, v))
+}
+
+// LabelDisplayNEQ applies the NEQ predicate on the "label_display" field.
+func LabelDisplayNEQ(v LabelDisplay) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldLabelDisplay, v))
+}
+
+// LabelDisplayIn applies the In predicate on the "label_display" field.
+func LabelDisplayIn(vs ...LabelDisplay) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldLabelDisplay, vs...))
+}
+
+// LabelDisplayNotIn applies the NotIn predicate on the "label_display" field.
+func LabelDisplayNotIn(vs ...LabelDisplay) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldLabelDisplay, vs...))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

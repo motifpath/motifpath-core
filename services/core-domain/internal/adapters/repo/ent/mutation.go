@@ -10239,6 +10239,8 @@ type DiagramMutation struct {
 	typ                     string
 	id                      *uuid.UUID
 	name                    *string
+	root_note               *string
+	label_display           *diagram.LabelDisplay
 	created_at              *time.Time
 	clearedFields           map[string]struct{}
 	instrument              *uuid.UUID
@@ -10437,6 +10439,91 @@ func (m *DiagramMutation) OldName(ctx context.Context) (v string, err error) {
 // ResetName resets all changes to the "name" field.
 func (m *DiagramMutation) ResetName() {
 	m.name = nil
+}
+
+// SetRootNote sets the "root_note" field.
+func (m *DiagramMutation) SetRootNote(s string) {
+	m.root_note = &s
+}
+
+// RootNote returns the value of the "root_note" field in the mutation.
+func (m *DiagramMutation) RootNote() (r string, exists bool) {
+	v := m.root_note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRootNote returns the old "root_note" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldRootNote(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRootNote is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRootNote requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRootNote: %w", err)
+	}
+	return oldValue.RootNote, nil
+}
+
+// ClearRootNote clears the value of the "root_note" field.
+func (m *DiagramMutation) ClearRootNote() {
+	m.root_note = nil
+	m.clearedFields[diagram.FieldRootNote] = struct{}{}
+}
+
+// RootNoteCleared returns if the "root_note" field was cleared in this mutation.
+func (m *DiagramMutation) RootNoteCleared() bool {
+	_, ok := m.clearedFields[diagram.FieldRootNote]
+	return ok
+}
+
+// ResetRootNote resets all changes to the "root_note" field.
+func (m *DiagramMutation) ResetRootNote() {
+	m.root_note = nil
+	delete(m.clearedFields, diagram.FieldRootNote)
+}
+
+// SetLabelDisplay sets the "label_display" field.
+func (m *DiagramMutation) SetLabelDisplay(dd diagram.LabelDisplay) {
+	m.label_display = &dd
+}
+
+// LabelDisplay returns the value of the "label_display" field in the mutation.
+func (m *DiagramMutation) LabelDisplay() (r diagram.LabelDisplay, exists bool) {
+	v := m.label_display
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLabelDisplay returns the old "label_display" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldLabelDisplay(ctx context.Context) (v diagram.LabelDisplay, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLabelDisplay is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLabelDisplay requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLabelDisplay: %w", err)
+	}
+	return oldValue.LabelDisplay, nil
+}
+
+// ResetLabelDisplay resets all changes to the "label_display" field.
+func (m *DiagramMutation) ResetLabelDisplay() {
+	m.label_display = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -10806,12 +10893,18 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 5)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
 	if m.name != nil {
 		fields = append(fields, diagram.FieldName)
+	}
+	if m.root_note != nil {
+		fields = append(fields, diagram.FieldRootNote)
+	}
+	if m.label_display != nil {
+		fields = append(fields, diagram.FieldLabelDisplay)
 	}
 	if m.created_at != nil {
 		fields = append(fields, diagram.FieldCreatedAt)
@@ -10828,6 +10921,10 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.InstrumentID()
 	case diagram.FieldName:
 		return m.Name()
+	case diagram.FieldRootNote:
+		return m.RootNote()
+	case diagram.FieldLabelDisplay:
+		return m.LabelDisplay()
 	case diagram.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -10843,6 +10940,10 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldInstrumentID(ctx)
 	case diagram.FieldName:
 		return m.OldName(ctx)
+	case diagram.FieldRootNote:
+		return m.OldRootNote(ctx)
+	case diagram.FieldLabelDisplay:
+		return m.OldLabelDisplay(ctx)
 	case diagram.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -10867,6 +10968,20 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case diagram.FieldRootNote:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRootNote(v)
+		return nil
+	case diagram.FieldLabelDisplay:
+		v, ok := value.(diagram.LabelDisplay)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLabelDisplay(v)
 		return nil
 	case diagram.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -10904,7 +11019,11 @@ func (m *DiagramMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *DiagramMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(diagram.FieldRootNote) {
+		fields = append(fields, diagram.FieldRootNote)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -10917,6 +11036,11 @@ func (m *DiagramMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *DiagramMutation) ClearField(name string) error {
+	switch name {
+	case diagram.FieldRootNote:
+		m.ClearRootNote()
+		return nil
+	}
 	return fmt.Errorf("unknown Diagram nullable field %s", name)
 }
 
@@ -10929,6 +11053,12 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldName:
 		m.ResetName()
+		return nil
+	case diagram.FieldRootNote:
+		m.ResetRootNote()
+		return nil
+	case diagram.FieldLabelDisplay:
+		m.ResetLabelDisplay()
 		return nil
 	case diagram.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -20890,6 +21020,7 @@ type PositionMutation struct {
 	addordinal        *int
 	interval          *string
 	note_name         *string
+	shape             *position.Shape
 	sequence_index    *int
 	addsequence_index *int
 	string_number     *int
@@ -21171,6 +21302,42 @@ func (m *PositionMutation) OldNoteName(ctx context.Context) (v string, err error
 // ResetNoteName resets all changes to the "note_name" field.
 func (m *PositionMutation) ResetNoteName() {
 	m.note_name = nil
+}
+
+// SetShape sets the "shape" field.
+func (m *PositionMutation) SetShape(po position.Shape) {
+	m.shape = &po
+}
+
+// Shape returns the value of the "shape" field in the mutation.
+func (m *PositionMutation) Shape() (r position.Shape, exists bool) {
+	v := m.shape
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShape returns the old "shape" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldShape(ctx context.Context) (v position.Shape, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShape is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShape requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShape: %w", err)
+	}
+	return oldValue.Shape, nil
+}
+
+// ResetShape resets all changes to the "shape" field.
+func (m *PositionMutation) ResetShape() {
+	m.shape = nil
 }
 
 // SetSequenceIndex sets the "sequence_index" field.
@@ -21493,7 +21660,7 @@ func (m *PositionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PositionMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.diagram != nil {
 		fields = append(fields, position.FieldDiagramID)
 	}
@@ -21505,6 +21672,9 @@ func (m *PositionMutation) Fields() []string {
 	}
 	if m.note_name != nil {
 		fields = append(fields, position.FieldNoteName)
+	}
+	if m.shape != nil {
+		fields = append(fields, position.FieldShape)
 	}
 	if m.sequence_index != nil {
 		fields = append(fields, position.FieldSequenceIndex)
@@ -21534,6 +21704,8 @@ func (m *PositionMutation) Field(name string) (ent.Value, bool) {
 		return m.Interval()
 	case position.FieldNoteName:
 		return m.NoteName()
+	case position.FieldShape:
+		return m.Shape()
 	case position.FieldSequenceIndex:
 		return m.SequenceIndex()
 	case position.FieldStringNumber:
@@ -21559,6 +21731,8 @@ func (m *PositionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldInterval(ctx)
 	case position.FieldNoteName:
 		return m.OldNoteName(ctx)
+	case position.FieldShape:
+		return m.OldShape(ctx)
 	case position.FieldSequenceIndex:
 		return m.OldSequenceIndex(ctx)
 	case position.FieldStringNumber:
@@ -21603,6 +21777,13 @@ func (m *PositionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNoteName(v)
+		return nil
+	case position.FieldShape:
+		v, ok := value.(position.Shape)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShape(v)
 		return nil
 	case position.FieldSequenceIndex:
 		v, ok := value.(int)
@@ -21770,6 +21951,9 @@ func (m *PositionMutation) ResetField(name string) error {
 		return nil
 	case position.FieldNoteName:
 		m.ResetNoteName()
+		return nil
+	case position.FieldShape:
+		m.ResetShape()
 		return nil
 	case position.FieldSequenceIndex:
 		m.ResetSequenceIndex()

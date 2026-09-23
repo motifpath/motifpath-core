@@ -3,6 +3,8 @@
 package position
 
 import (
+	"fmt"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
@@ -21,6 +23,8 @@ const (
 	FieldInterval = "interval"
 	// FieldNoteName holds the string denoting the note_name field in the database.
 	FieldNoteName = "note_name"
+	// FieldShape holds the string denoting the shape field in the database.
+	FieldShape = "shape"
 	// FieldSequenceIndex holds the string denoting the sequence_index field in the database.
 	FieldSequenceIndex = "sequence_index"
 	// FieldStringNumber holds the string denoting the string_number field in the database.
@@ -49,6 +53,7 @@ var Columns = []string{
 	FieldOrdinal,
 	FieldInterval,
 	FieldNoteName,
+	FieldShape,
 	FieldSequenceIndex,
 	FieldStringNumber,
 	FieldFret,
@@ -69,6 +74,33 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// Shape defines the type for the "shape" enum field.
+type Shape string
+
+// ShapeDot is the default value of the Shape enum.
+const DefaultShape = ShapeDot
+
+// Shape values.
+const (
+	ShapeDot    Shape = "dot"
+	ShapeSquare Shape = "square"
+	ShapeStar   Shape = "star"
+)
+
+func (s Shape) String() string {
+	return string(s)
+}
+
+// ShapeValidator is a validator for the "shape" field enum values. It is called by the builders before save.
+func ShapeValidator(s Shape) error {
+	switch s {
+	case ShapeDot, ShapeSquare, ShapeStar:
+		return nil
+	default:
+		return fmt.Errorf("position: invalid enum value for shape field: %q", s)
+	}
+}
 
 // OrderOption defines the ordering options for the Position queries.
 type OrderOption func(*sql.Selector)
@@ -96,6 +128,11 @@ func ByInterval(opts ...sql.OrderTermOption) OrderOption {
 // ByNoteName orders the results by the note_name field.
 func ByNoteName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNoteName, opts...).ToFunc()
+}
+
+// ByShape orders the results by the shape field.
+func ByShape(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShape, opts...).ToFunc()
 }
 
 // BySequenceIndex orders the results by the sequence_index field.
