@@ -1,7 +1,7 @@
 SERVICES := services/core-domain services/event-ingestion services/aggregation-worker
 SPECS_DIR := ../motifpath-specs
 
-.PHONY: generate migrate\:diff test test\:bdd test\:int lint dev
+.PHONY: generate migrate\:diff test test\:bdd test\:int lint dev db\:reset
 
 generate:
 	@mkdir -p .bundled
@@ -43,3 +43,9 @@ dev:
 	docker compose up -d
 	@echo "Waiting for services to be healthy..."
 	@docker compose ps
+
+# Wipes the local dev Postgres, re-migrates from scratch, and repopulates
+# with cmd/seed-full's full combination matrix. Hard-refuses to run against
+# anything but localhost — see scripts/db-reset.sh. NEVER run in production.
+db\:reset:
+	./scripts/db-reset.sh

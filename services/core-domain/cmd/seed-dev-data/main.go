@@ -28,6 +28,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -205,7 +206,9 @@ func seedPathAndProgress(
 		{"12-bar blues solo, backing track", "Improvisation", "Full-length solo", domain.DifficultyLevelAdvanced, "Improvisation"},
 	}
 
-	seedVideoURL := "https://cdn.motifpath.io/videos/seed-placeholder.mp4"
+	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
+	// resolve to anything, so a node seeded with it can never actually play.
+	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
 
 	var items []application.PathItemInput
 	var nodeIDs []string
@@ -327,9 +330,9 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 }
 
 func findFirstStudent(ctx context.Context, client *ent.Client) (domain.User, error) {
-	row, err := client.User.Query().First(ctx)
+	row, err := client.User.Query().Where(user.RoleEQ(user.Role(domain.RoleStudent))).First(ctx)
 	if err != nil {
-		return domain.User{}, fmt.Errorf("find a registered user (sign in once through the SPA first): %w", err)
+		return domain.User{}, fmt.Errorf("find a registered student (sign in once through the SPA as a student first): %w", err)
 	}
 	return domain.User{
 		ID:           row.ID.String(),

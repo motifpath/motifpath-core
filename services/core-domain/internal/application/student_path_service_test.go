@@ -189,6 +189,19 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
+	t.Run("assigning a path to a user with role admin succeeds — admins may dogfood as students", func(t *testing.T) {
+		users := newFakeUserRepository()
+		users.put(domain.User{ID: "admin-1", Role: domain.RoleAdmin})
+		paths := newFakeLearningPathRepository()
+		paths.put(threeItemTemplate())
+		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+
+		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, "admin-1", sp.StudentID)
+	})
+
 	t.Run("a student cannot assign a learning path", func(t *testing.T) {
 		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
@@ -461,6 +474,20 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, got.CurrentCourseEnrollmentID)
 		assert.Equal(t, "enrollment-1", *got.CurrentCourseEnrollmentID)
+	})
+
+	t.Run("an admin acting as their own student identity switches current to a standalone path", func(t *testing.T) {
+		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository()
+		users.put(domain.User{ID: "admin-1", Role: domain.RoleAdmin})
+		paths.put(threeItemTemplate())
+		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
+		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
+		require.NoError(t, err)
+
+		view, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "admin-1", Role: domain.RoleAdmin}, application.SetCurrentPathInput{StudentPathID: &sp.ID})
+
+		require.NoError(t, err)
+		assert.Equal(t, sp.ID, view.StudentPathID)
 	})
 
 	t.Run("rejects a request with neither id given", func(t *testing.T) {

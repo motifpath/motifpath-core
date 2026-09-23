@@ -72,6 +72,22 @@ NEVER access the database directly from the domain layer.
 - `make test:int`      → run integration tests via testcontainers
 - `make lint`          → run golangci-lint
 - `make dev`           → start local dependencies via docker-compose (Redpanda, Postgres, MongoDB)
+- `make db:reset`      → wipe the local dev Postgres, re-migrate from scratch, and repopulate via
+  `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
+  and archived, every `ExerciseType`). Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
+  resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
+  against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
+  `pg_dump -t users --data-only --inserts` — since reset wipes them; restore by re-inserting with
+  `locale_id` resolved by language `code` (fresh rows get new random UUIDs). Pass
+  `ADMIN_CLERK_USER_ID=<your clerk user id>` to also bootstrap your own real identity as admin —
+  self-registration can never create an admin role (`domain.NewUser` refuses it), so this goes
+  through the user repository directly, the same way a hand-run SQL insert would.
+- `go run ./cmd/seed-dev-data` → seeds one realistic path for whichever student already exists
+  (sign in once through the SPA first). Lighter than `db:reset` + `seed-full`; doesn't touch
+  courses.
+- `go run ./cmd/seed-full`     → the comprehensive seeder `db:reset` runs; safe to run standalone
+  against an already-fresh database, but not idempotent against one with prior seed data (root
+  skill/concept names collide on a second run, by design — see its doc comment).
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`
