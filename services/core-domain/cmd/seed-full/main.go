@@ -165,6 +165,7 @@ func wireServices(res resources) (services, seedDeps) {
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -180,13 +181,13 @@ func wireServices(res resources) (services, seedDeps) {
 
 	svc := services{
 		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
-		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, newID, now),
+		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, newID, now),
 		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now),
 		studentPath: studentPathService,
 		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
-		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, newID, now, rand.Shuffle),
+		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle),
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
 	}
@@ -528,7 +529,7 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
-			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, s.options, nil, nil, []string{"en"})
+			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"})
 		if err != nil {
 			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
 		}
@@ -819,7 +820,7 @@ func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challe
 	}
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
-			[]string{subjectSkillID}, []string{conceptID}, nil, nil, s.options, nil, nil, []string{"en"})
+			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"})
 		if err != nil {
 			return fmt.Errorf("create exercise %q: %w", s.title, err)
 		}
@@ -842,7 +843,7 @@ func seedTimedCues(ctx context.Context, contentSvc *application.ContentService, 
 		text := fmt.Sprintf("%s — cue %d", caption, i+1)
 		mediaURL := "https://placehold.co/640x360/png?text=" + url.QueryEscape(text)
 		start, end := cue.start, cue.end
-		if _, err := contentSvc.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeImage, &mediaURL, nil, &start, &end, nil, nil, &text); err != nil {
+		if _, err := contentSvc.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeImage, &mediaURL, nil, nil, nil, &start, &end, nil, nil, &text); err != nil {
 			return fmt.Errorf("create cue %q: %w", text, err)
 		}
 	}
