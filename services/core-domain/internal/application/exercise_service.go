@@ -120,27 +120,14 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 		return nil, domain.NewValidationError("options", "must be omitted when diagram_ref or diagram_stack_ref is given")
 	}
 
-	refs := []domain.DiagramRef{}
-	if diagramRef != nil {
-		refs = append(refs, *diagramRef)
-	}
-	if diagramStackRef != nil {
-		refs = append(refs, diagramStackRef.Stack...)
+	resolved, err := resolveDiagramRefs(ctx, s.diagrams, diagramRef, diagramStackRef)
+	if err != nil {
+		return nil, err
 	}
 
 	derived := []domain.Option{}
-	var instrumentID string
-	for i, ref := range refs {
-		diagram, err := s.diagrams.GetByID(ctx, ref.DiagramID)
-		if err != nil {
-			return nil, err
-		}
-		if i == 0 {
-			instrumentID = diagram.InstrumentID
-		} else if diagram.InstrumentID != instrumentID {
-			return nil, domain.NewValidationError("diagram_stack_ref", "every diagram in a stack must share the same instrument")
-		}
-		derived = append(derived, s.optionsFromDiagram(diagram, ref)...)
+	for _, r := range resolved {
+		derived = append(derived, s.optionsFromDiagram(r.diagram, r.ref)...)
 	}
 	return derived, nil
 }

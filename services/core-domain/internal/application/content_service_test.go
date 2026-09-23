@@ -685,6 +685,41 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		assertHasField(t, valErr, "diagram_stack_ref")
 	})
 
+	t.Run("a diagram_ref pointing at a non-existent diagram is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository())
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil,
+			&domain.DiagramRef{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}}, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("a diagram_stack_ref entry pointing at a non-existent diagram is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil,
+			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}},
+				{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}},
+			}},
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_stack_ref")
+	})
+
 	t.Run("creating a diagram item without a diagram reference is rejected", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-1"))

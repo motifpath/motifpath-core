@@ -488,7 +488,28 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			&domain.DiagramRef{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}}, nil,
 			nil, nil, nil, []string{"en"})
 
-		require.ErrorIs(t, err, domain.ErrNotFound)
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("a diagram_stack_ref entry pointing at a non-existent diagram is rejected", func(t *testing.T) {
+		diagrams := newFakeDiagramRepository()
+		seedDiagram(t, diagrams, "diagram-1", "guitar", []domain.Position{rootPos})
+		svc := newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams)
+
+		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
+			"Name the root", domain.NewPlainTextPrompt("Which position is the root?"),
+			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
+			nil, &domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
+				{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
+			}},
+			nil, nil, nil, []string{"en"})
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_stack_ref")
 	})
 
 	t.Run("supplying options alongside a diagram_ref is rejected", func(t *testing.T) {
