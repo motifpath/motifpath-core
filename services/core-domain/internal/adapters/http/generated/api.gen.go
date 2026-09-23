@@ -130,6 +130,13 @@ const (
 	CreateCourseRequestLevelIntermediate      CreateCourseRequestLevel = "intermediate"
 )
 
+// Defines values for CreateDiagramRequestLabelDisplay.
+const (
+	CreateDiagramRequestLabelDisplayHidden   CreateDiagramRequestLabelDisplay = "hidden"
+	CreateDiagramRequestLabelDisplayInterval CreateDiagramRequestLabelDisplay = "interval"
+	CreateDiagramRequestLabelDisplayNote     CreateDiagramRequestLabelDisplay = "note"
+)
+
 // Defines values for CreateExerciseRequestExerciseType.
 const (
 	CreateExerciseRequestExerciseTypeAudioRecognition CreateExerciseRequestExerciseType = "audio_recognition"
@@ -163,6 +170,20 @@ const (
 const (
 	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
 	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
+)
+
+// Defines values for DiagramLabelDisplay.
+const (
+	DiagramLabelDisplayHidden   DiagramLabelDisplay = "hidden"
+	DiagramLabelDisplayInterval DiagramLabelDisplay = "interval"
+	DiagramLabelDisplayNote     DiagramLabelDisplay = "note"
+)
+
+// Defines values for DiagramPositionShape.
+const (
+	Dot    DiagramPositionShape = "dot"
+	Square DiagramPositionShape = "square"
+	Star   DiagramPositionShape = "star"
 )
 
 // Defines values for DiagramRefPlaybackDirection.
@@ -278,6 +299,13 @@ const (
 	StudentPathItemStatusInProgress StudentPathItemStatus = "in_progress"
 	StudentPathItemStatusLocked     StudentPathItemStatus = "locked"
 	StudentPathItemStatusNotStarted StudentPathItemStatus = "not_started"
+)
+
+// Defines values for UpdateDiagramRequestLabelDisplay.
+const (
+	Hidden   UpdateDiagramRequestLabelDisplay = "hidden"
+	Interval UpdateDiagramRequestLabelDisplay = "interval"
+	Note     UpdateDiagramRequestLabelDisplay = "note"
 )
 
 // Defines values for UpdateExpandedContentRequestContentType.
@@ -918,6 +946,11 @@ type CreateDiagramRequest struct {
 	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
+	// LabelDisplay Which of a position's interval or note_name its marker shows by
+	// default when reopened for authoring; hidden shows neither.
+	// Omitted defaults to interval.
+	LabelDisplay *CreateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
+
 	// Name Human-readable name for this diagram.
 	Name string `json:"name"`
 
@@ -925,7 +958,16 @@ type CreateDiagramRequest struct {
 	// matching the referenced instrument's family. position_id may be
 	// supplied by the client or left for the server to assign.
 	Positions []DiagramPosition `json:"positions"`
+
+	// RootNote The root note this diagram is authored against (e.g. "A"). Null
+	// (or omitted) leaves it unrecorded.
+	RootNote *string `json:"root_note"`
 }
+
+// CreateDiagramRequestLabelDisplay Which of a position's interval or note_name its marker shows by
+// default when reopened for authoring; hidden shows neither.
+// Omitted defaults to interval.
+type CreateDiagramRequestLabelDisplay string
 
 // CreateExerciseRequest Payload for creating a standalone, reusable exercise.
 type CreateExerciseRequest struct {
@@ -1197,6 +1239,13 @@ type Diagram struct {
 	// InstrumentId The instrument this diagram is authored against.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
+	// LabelDisplay Which of a position's interval or note_name its marker shows by
+	// default when this diagram is opened for authoring; hidden shows
+	// neither. An authoring-time display preference, independent of a
+	// diagram_ref's own layers.intervals visibility toggle for one
+	// particular embedding.
+	LabelDisplay DiagramLabelDisplay `json:"label_display"`
+
 	// Name Human-readable name (e.g. "Minor Pentatonic — Position 1").
 	Name string `json:"name"`
 
@@ -1204,7 +1253,20 @@ type Diagram struct {
 	// same coordinate shape, decided by this diagram's instrument's
 	// family.
 	Positions []DiagramPosition `json:"positions"`
+
+	// RootNote The root note this diagram was authored against (e.g. "A"),
+	// relative to which every position's interval and note_name are
+	// computed. Null for a diagram with no recorded root (e.g. created
+	// before this field existed).
+	RootNote *string `json:"root_note"`
 }
+
+// DiagramLabelDisplay Which of a position's interval or note_name its marker shows by
+// default when this diagram is opened for authoring; hidden shows
+// neither. An authoring-time display preference, independent of a
+// diagram_ref's own layers.intervals visibility toggle for one
+// particular embedding.
+type DiagramLabelDisplay string
 
 // DiagramClassification A Diagram's classification as returned by the API — skills/concepts
 // embedded in full (id, name, parent_id), the same convention
@@ -1243,11 +1305,11 @@ type DiagramPosition struct {
 	// Diagram's instrument family is fretted; absent when keyboard.
 	Fret *int `json:"fret,omitempty"`
 
-	// Interval The interval this position represents, relative to the
-	// Diagram's own (unstated) root — e.g. "R", "b3", "4", "5", "b7",
-	// "2", "3", "6", "7". Not globally standardized beyond being
-	// consistent within one Diagram; MotifPath does not validate
-	// interval names against a fixed enum.
+	// Interval The interval this position represents, relative to the parent
+	// Diagram's own root (see Diagram.root_note) — e.g. "R", "b3",
+	// "4", "5", "b7", "2", "3", "6", "7". Not globally standardized
+	// beyond being consistent within one Diagram; MotifPath does not
+	// validate interval names against a fixed enum.
 	Interval string `json:"interval"`
 
 	// Key Note name of the key, relative to the Diagram's own root (e.g.
@@ -1258,7 +1320,7 @@ type DiagramPosition struct {
 	// NoteName The concrete note name this position sounds at the Diagram's own
 	// root (e.g. "A", "C"). A diagram_ref's root_override recomputes
 	// the note actually shown; note_name here is always relative to
-	// this Diagram's own authored root.
+	// this Diagram's own authored root (see Diagram.root_note).
 	NoteName string `json:"note_name"`
 
 	// PositionId Stable identifier for this position, addressable independently
@@ -1274,11 +1336,31 @@ type DiagramPosition struct {
 	// playback config.
 	SequenceIndex *int `json:"sequence_index"`
 
+	// Shape Which marker shape this position renders as (standard fretboard-
+	// diagram terminology — a round marker is a "dot", not a
+	// "circle", which this spec already uses for Option's rectangle/
+	// circle region shape and isn't reused here to keep every
+	// generated enum constant name unambiguous). Lets an author
+	// visually distinguish a subset of positions (e.g. every root, or
+	// one particular degree) without relying on color alone. Defaults
+	// to dot when omitted.
+	Shape *DiagramPositionShape `json:"shape,omitempty"`
+
 	// String Which string this position is on (1 = highest-pitched string).
 	// Present only when the parent Diagram's instrument family is
 	// fretted; absent when keyboard.
 	String *int `json:"string,omitempty"`
 }
+
+// DiagramPositionShape Which marker shape this position renders as (standard fretboard-
+// diagram terminology — a round marker is a "dot", not a
+// "circle", which this spec already uses for Option's rectangle/
+// circle region shape and isn't reused here to keep every
+// generated enum constant name unambiguous). Lets an author
+// visually distinguish a subset of positions (e.g. every root, or
+// one particular degree) without relying on color alone. Defaults
+// to dot when omitted.
+type DiagramPositionShape string
 
 // DiagramRef A usage of one Diagram — its render config, never a stored variant
 // of the diagram itself. The same Diagram can be pointed at by any
@@ -2133,10 +2215,10 @@ type UpdateContentNodeRequest struct {
 	Title string `json:"title"`
 }
 
-// UpdateDiagramRequest Payload for replacing an existing diagram's name, positions, or
-// classification. instrument_id is not present here — it cannot be
-// changed after creation, since every position's coordinate shape
-// depends on it.
+// UpdateDiagramRequest Payload for replacing an existing diagram's name, positions,
+// classification, root_note, or label_display. instrument_id is not
+// present here — it cannot be changed after creation, since every
+// position's coordinate shape depends on it.
 type UpdateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
 	// exact Skill/Concept tree ContentNode and Exercise use (see
@@ -2145,6 +2227,12 @@ type UpdateDiagramRequest struct {
 	// piece of content.
 	Classification *DiagramClassificationInput `json:"classification,omitempty"`
 
+	// LabelDisplay Which of a position's interval or note_name its marker shows by
+	// default when reopened for authoring, replacing the current
+	// value; hidden shows neither. Omitted leaves the current value
+	// unchanged.
+	LabelDisplay *UpdateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
+
 	// Name Human-readable name for this diagram, replacing the current value.
 	Name *string `json:"name,omitempty"`
 
@@ -2152,7 +2240,19 @@ type UpdateDiagramRequest struct {
 	// caller that only wants to change one position must resend the
 	// full set.
 	Positions *[]DiagramPosition `json:"positions,omitempty"`
+
+	// RootNote The root note this diagram is authored against (e.g. "A"),
+	// replacing the current value. Omitted leaves the current value
+	// unchanged; there is currently no way to clear an already-set
+	// root note back to unrecorded via this request.
+	RootNote *string `json:"root_note,omitempty"`
 }
+
+// UpdateDiagramRequestLabelDisplay Which of a position's interval or note_name its marker shows by
+// default when reopened for authoring, replacing the current
+// value; hidden shows neither. Omitted leaves the current value
+// unchanged.
+type UpdateDiagramRequestLabelDisplay string
 
 // UpdateExerciseRequest Payload for replacing an existing exercise's authored content.
 // exercise_type is not present here — it cannot be changed after
