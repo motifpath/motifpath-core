@@ -5,11 +5,28 @@ import (
 	"time"
 )
 
+// PositionShape decides which marker shape a Position renders as. A round
+// "dot" (the default) fits typical use; square/star let an author visually
+// distinguish a subset of positions (e.g. every root) without relying on
+// color alone.
+type PositionShape string
+
+const (
+	PositionShapeDot    PositionShape = "dot"
+	PositionShapeSquare PositionShape = "square"
+	PositionShapeStar   PositionShape = "star"
+)
+
+// Valid reports whether s is a shape this service knows how to draw.
+func (s PositionShape) Valid() bool {
+	return s == PositionShapeDot || s == PositionShapeSquare || s == PositionShapeStar
+}
+
 // Position is one marked location in a Diagram: a note at a physical spot on
-// the diagram's instrument. Interval, NoteName and SequenceIndex apply to
-// every instrument family. String and Fret (fretted) and Key (keyboard) are
-// mutually exclusive: which group is populated follows the parent Diagram's
-// Instrument.Family, and a Diagram never mixes the two.
+// the diagram's instrument. Interval, NoteName, SequenceIndex and Shape
+// apply to every instrument family. String and Fret (fretted) and Key
+// (keyboard) are mutually exclusive: which group is populated follows the
+// parent Diagram's Instrument.Family, and a Diagram never mixes the two.
 type Position struct {
 	ID       string
 	Interval string
@@ -20,6 +37,27 @@ type Position struct {
 	String        *int
 	Fret          *int
 	Key           *string
+	// Shape is normalized to PositionShapeDot by NewDiagram when left as
+	// the zero value, so a caller that doesn't care about it may omit it.
+	Shape PositionShape
+}
+
+// LabelDisplay decides which of a Position's Interval or NoteName its
+// marker shows by default when the Diagram is reopened for authoring;
+// hidden shows neither. An authoring-time display preference, independent
+// of a DiagramRef's own layer visibility toggle for one particular
+// embedding.
+type LabelDisplay string
+
+const (
+	LabelDisplayInterval LabelDisplay = "interval"
+	LabelDisplayNote     LabelDisplay = "note"
+	LabelDisplayHidden   LabelDisplay = "hidden"
+)
+
+// Valid reports whether d is a label display mode this service knows.
+func (d LabelDisplay) Valid() bool {
+	return d == LabelDisplayInterval || d == LabelDisplayNote || d == LabelDisplayHidden
 }
 
 // Diagram is a prebuilt, reusable set of positions for a scale, chord or
@@ -34,6 +72,13 @@ type Diagram struct {
 	ID           string
 	InstrumentID string
 	Name         string
+	// RootNote is the note this Diagram's positions are authored relative
+	// to (e.g. "A"); nil means none is recorded.
+	RootNote *string
+	// LabelDisplay is normalized to LabelDisplayInterval by NewDiagram when
+	// left as the zero value, so a caller that doesn't care about it may
+	// omit it.
+	LabelDisplay LabelDisplay
 	Positions    []Position
 	Skills       []Skill
 	Concepts     []Concept
@@ -62,12 +107,22 @@ func (d Diagram) ConceptIDs() []string {
 // stopping at the first violated invariant. Every position must use the
 // coordinate shape of instrument's family — a rule no database constraint
 // expresses — and, for a fretted instrument, sit on a string it has.
-// Whether skillIDs/conceptIDs reference existing rows needs a repository
-// round trip, so that stays an application-layer concern.
-func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, now time.Time) (Diagram, error) {
+// labelDisplay and each position's Shape default (LabelDisplayInterval,
+// PositionShapeDot) when left as their zero value — a caller that doesn't
+// care about either may omit it. Whether skillIDs/conceptIDs reference
+// existing rows needs a repository round trip, so that stays an
+// application-layer concern.
+func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, rootNote *string, labelDisplay LabelDisplay, now time.Time) (Diagram, error) {
 	if name == "" {
 		return Diagram{}, NewValidationError("name", "must not be empty")
 	}
+	if labelDisplay == "" {
+		labelDisplay = LabelDisplayInterval
+	}
+	if !labelDisplay.Valid() {
+		return Diagram{}, NewValidationError("label_display", "must be one of: interval, note, hidden")
+	}
+	positions = normalizePositionShapes(positions)
 	if err := validatePositions(instrument, positions); err != nil {
 		return Diagram{}, err
 	}
@@ -91,11 +146,27 @@ func NewDiagram(id string, instrument Instrument, name string, positions []Posit
 		ID:           id,
 		InstrumentID: instrument.ID,
 		Name:         name,
+		RootNote:     rootNote,
+		LabelDisplay: labelDisplay,
 		Positions:    positions,
 		Skills:       skills,
 		Concepts:     concepts,
 		CreatedAt:    now,
 	}, nil
+}
+
+// normalizePositionShapes returns a copy of positions with PositionShapeDot
+// filled in for every position left at the zero value, leaving the caller's
+// slice untouched.
+func normalizePositionShapes(positions []Position) []Position {
+	out := make([]Position, len(positions))
+	copy(out, positions)
+	for i := range out {
+		if out[i].Shape == "" {
+			out[i].Shape = PositionShapeDot
+		}
+	}
+	return out
 }
 
 func validatePositions(instrument Instrument, positions []Position) error {
@@ -126,6 +197,9 @@ func positionProblem(instrument Instrument, p Position) string {
 	}
 	if p.SequenceIndex != nil && *p.SequenceIndex < 0 {
 		return "has a negative sequence_index"
+	}
+	if !p.Shape.Valid() {
+		return "has an unrecognised shape"
 	}
 
 	switch instrument.Family {

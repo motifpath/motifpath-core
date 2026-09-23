@@ -614,10 +614,12 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 	positions := make([]generated.DiagramPosition, len(d.Positions))
 	for i, p := range d.Positions {
 		id := mustUUID(p.ID)
+		shape := generated.DiagramPositionShape(p.Shape)
 		positions[i] = generated.DiagramPosition{
 			PositionId:    &id,
 			Interval:      p.Interval,
 			NoteName:      p.NoteName,
+			Shape:         &shape,
 			SequenceIndex: p.SequenceIndex,
 			String:        p.String,
 			Fret:          p.Fret,
@@ -628,6 +630,8 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 		DiagramId:    mustUUID(d.ID),
 		InstrumentId: mustUUID(d.InstrumentID),
 		Name:         d.Name,
+		RootNote:     d.RootNote,
+		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
 		Positions:    positions,
 		Classification: generated.DiagramClassification{
 			Skills:   toGeneratedSkills(d.Skills),
@@ -656,11 +660,24 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 			Fret:          p.Fret,
 			Key:           p.Key,
 		}
+		if p.Shape != nil {
+			result[i].Shape = domain.PositionShape(*p.Shape)
+		}
 		if p.PositionId != nil {
 			result[i].ID = p.PositionId.String()
 		}
 	}
 	return result
+}
+
+// toDomainLabelDisplay converts an optional generated label_display enum
+// pointer to its domain form, defaulting to the zero value (which
+// domain.NewDiagram itself normalizes to LabelDisplayInterval) when absent.
+func toDomainLabelDisplay[T ~string](labelDisplay *T) domain.LabelDisplay {
+	if labelDisplay == nil {
+		return ""
+	}
+	return domain.LabelDisplay(*labelDisplay)
 }
 
 // isStaff reports whether role is teacher or admin — the HTTP layer's own
