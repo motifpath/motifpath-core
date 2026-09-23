@@ -219,7 +219,8 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded %d content nodes (video + article) across every difficulty level", len(nodes))
 
-	if err := seedExercisesAllTypes(ctx, teacher, svc.challenge, svc.exercise, classifier, nodes); err != nil {
+	videoIntermediateChallenge, err := seedExercisesAllTypes(ctx, teacher, svc.challenge, svc.exercise, classifier, nodes)
+	if err != nil {
 		return fmt.Errorf("seed exercises: %w", err)
 	}
 	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
@@ -259,7 +260,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	log.Println("seeded standalone paths: current, and archived-while-course-active")
 
 	if adminIsFresh {
-		if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, res.mongoDB); err != nil {
+		if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, videoIntermediateChallenge.ID, res.mongoDB); err != nil {
 			return fmt.Errorf("seed admin zero-user state: %w", err)
 		}
 		log.Printf("seeded a course enrollment and a standalone path (with a completed, playable node) for admin zero-user %s", admin.ID)
@@ -447,27 +448,27 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 // image_recognition, per-option image/audio for image_choice/
 // audio_selection, a text label otherwise), and links each into a shared
 // practice challenge on the video-intermediate node.
-func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, nodes map[string]domain.ContentNode) error {
+func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, nodes map[string]domain.ContentNode) (domain.Challenge, error) {
 	// subject_skill_id must be one of the parent content node's own linked
 	// skills — video-intermediate was seeded with "Improvisation" in
 	// seedContentNodes, so the challenge's subject reuses that same id
 	// rather than an unrelated skill.
 	subjectSkillID, err := classifier.skillID(ctx, "Improvisation")
 	if err != nil {
-		return err
+		return domain.Challenge{}, err
 	}
 	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, nodes["video-intermediate"].ID, &subjectSkillID, nil, 70, nil, false, false)
 	if err != nil {
-		return fmt.Errorf("create shared practice challenge: %w", err)
+		return domain.Challenge{}, fmt.Errorf("create shared practice challenge: %w", err)
 	}
 
 	skillID, err := classifier.skillID(ctx, "Ear training")
 	if err != nil {
-		return err
+		return domain.Challenge{}, err
 	}
 	conceptID, err := classifier.conceptID(ctx, "Interval recognition")
 	if err != nil {
-		return err
+		return domain.Challenge{}, err
 	}
 	label := func(s string) *string { return &s }
 	// Real, publicly reachable sample media — see seedContentNodes' video URL
@@ -524,13 +525,13 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
 			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, s.options, nil, nil, []string{"en"})
 		if err != nil {
-			return fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
+			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
 		}
 		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
-			return fmt.Errorf("link %s exercise to challenge: %w", s.exerciseType, err)
+			return domain.Challenge{}, fmt.Errorf("link %s exercise to challenge: %w", s.exerciseType, err)
 		}
 	}
-	return nil
+	return challenge, nil
 }
 
 // seededCourses is the four courses seedCourses creates, one per
@@ -728,7 +729,13 @@ func seedStandalonePaths(ctx context.Context, svc services, students map[string]
 // of a two-video path completed never has that problem, and the node that
 // ends up completed, and the one that ends up current, both have something
 // to watch and practice instead of an empty lesson screen.
-func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
+//
+// Every exercise seeded anywhere (video-intermediate's own 5 plus
+// video-beginner's 2) also gets linked into video-intermediate's challenge,
+// on top of whatever challenge it was originally created for — so the admin
+// zero-user's current lesson always has the full practice pool available,
+// not just the handful seeded specifically for it.
+func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
 	teacher, classifier := deps.teacher, deps.classifier
 
 	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, admin, courses.single.ID); err != nil {
@@ -743,6 +750,9 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 	}
 	if err := seedTimedCues(ctx, svc.content, teacher, nodes["video-intermediate"].ID, "Call-and-response phrasing"); err != nil {
 		return fmt.Errorf("seed timed cues for video-intermediate: %w", err)
+	}
+	if err := linkAllExercisesToChallenge(ctx, teacher, svc.exercise, videoIntermediateChallengeID); err != nil {
+		return fmt.Errorf("link every exercise to video-intermediate's challenge: %w", err)
 	}
 
 	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, "Admin Zero-User Path", []application.PathItemInput{
@@ -829,6 +839,33 @@ func seedTimedCues(ctx context.Context, contentSvc *application.ContentService, 
 		start, end := cue.start, cue.end
 		if _, err := contentSvc.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeImage, &mediaURL, nil, &start, &end, nil, nil, &text); err != nil {
 			return fmt.Errorf("create cue %q: %w", text, err)
+		}
+	}
+	return nil
+}
+
+// linkAllExercisesToChallenge links every exercise in the reusable pool to
+// challengeID, skipping any already linked to it (LinkExerciseToChallenge
+// refuses a duplicate link with domain.ErrAlreadyExists) — an exercise
+// keeps every challenge it was already linked to; this only adds one more.
+func linkAllExercisesToChallenge(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, challengeID string) error {
+	exercises, err := exerciseSvc.ListExercises(ctx, teacher, "", "")
+	if err != nil {
+		return fmt.Errorf("list exercises: %w", err)
+	}
+	for _, exercise := range exercises {
+		alreadyLinked := false
+		for _, id := range exercise.ChallengeIDs {
+			if id == challengeID {
+				alreadyLinked = true
+				break
+			}
+		}
+		if alreadyLinked {
+			continue
+		}
+		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
+			return fmt.Errorf("link exercise %s: %w", exercise.ID, err)
 		}
 	}
 	return nil
