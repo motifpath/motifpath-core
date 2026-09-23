@@ -23,6 +23,10 @@ type Diagram struct {
 	InstrumentID uuid.UUID `json:"instrument_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// RootNote holds the value of the "root_note" field.
+	RootNote *string `json:"root_note,omitempty"`
+	// LabelDisplay holds the value of the "label_display" field.
+	LabelDisplay diagram.LabelDisplay `json:"label_display,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -111,7 +115,7 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case diagram.FieldName:
+		case diagram.FieldName, diagram.FieldRootNote, diagram.FieldLabelDisplay:
 			values[i] = new(sql.NullString)
 		case diagram.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -149,6 +153,19 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
+			}
+		case diagram.FieldRootNote:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field root_note", values[i])
+			} else if value.Valid {
+				_m.RootNote = new(string)
+				*_m.RootNote = value.String
+			}
+		case diagram.FieldLabelDisplay:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field label_display", values[i])
+			} else if value.Valid {
+				_m.LabelDisplay = diagram.LabelDisplay(value.String)
 			}
 		case diagram.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -227,6 +244,14 @@ func (_m *Diagram) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	if v := _m.RootNote; v != nil {
+		builder.WriteString("root_note=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("label_display=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LabelDisplay))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

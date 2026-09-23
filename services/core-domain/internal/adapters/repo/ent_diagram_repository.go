@@ -49,6 +49,8 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetID(id).
 		SetInstrumentID(instrumentID).
 		SetName(d.Name).
+		SetNillableRootNote(d.RootNote).
+		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
 		SetCreatedAt(d.CreatedAt).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
@@ -140,6 +142,8 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	}
 	if _, err := tx.Diagram.UpdateOneID(id).
 		SetName(d.Name).
+		SetNillableRootNote(d.RootNote).
+		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
@@ -178,6 +182,7 @@ func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, posit
 			SetOrdinal(i).
 			SetInterval(p.Interval).
 			SetNoteName(p.NoteName).
+			SetShape(position.Shape(p.Shape)).
 			SetNillableSequenceIndex(p.SequenceIndex).
 			SetNillableStringNumber(p.String).
 			SetNillableFret(p.Fret).
@@ -200,6 +205,7 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 			ID:            p.ID.String(),
 			Interval:      p.Interval,
 			NoteName:      p.NoteName,
+			Shape:         domain.PositionShape(p.Shape),
 			SequenceIndex: p.SequenceIndex,
 			String:        p.StringNumber,
 			Fret:          p.Fret,
@@ -210,6 +216,8 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		ID:           row.ID.String(),
 		InstrumentID: row.InstrumentID.String(),
 		Name:         row.Name,
+		RootNote:     row.RootNote,
+		LabelDisplay: domain.LabelDisplay(row.LabelDisplay),
 		Positions:    positions,
 		Skills:       domainSkillsFromEdges(row.Edges.Skills),
 		Concepts:     domainConceptsFromEdges(row.Edges.Concepts),

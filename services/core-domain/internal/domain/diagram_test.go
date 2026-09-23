@@ -13,11 +13,11 @@ import (
 func strPtr(s string) *string { return &s }
 
 func fretted(id, interval, note string, str, fret int) domain.Position {
-	return domain.Position{ID: id, Interval: interval, NoteName: note, String: intPtr(str), Fret: intPtr(fret)}
+	return domain.Position{ID: id, Interval: interval, NoteName: note, String: intPtr(str), Fret: intPtr(fret), Shape: domain.PositionShapeDot}
 }
 
 func keyboard(id, interval, note, key string) domain.Position {
-	return domain.Position{ID: id, Interval: interval, NoteName: note, Key: strPtr(key)}
+	return domain.Position{ID: id, Interval: interval, NoteName: note, Key: strPtr(key), Shape: domain.PositionShapeDot}
 }
 
 func mustInstrument(t *testing.T, family domain.InstrumentFamily) domain.Instrument {
@@ -91,7 +91,7 @@ func TestNewDiagram_PositionFamilyInvariant(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			instrument := mustInstrument(t, tt.family)
 
-			got, err := domain.NewDiagram("diagram-1", instrument, "Minor Pentatonic", tt.positions, []string{"skill-1"}, []string{"concept-1"}, now)
+			got, err := domain.NewDiagram("diagram-1", instrument, "Minor Pentatonic", tt.positions, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, now)
 
 			if tt.wantField == "" {
 				require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestNewDiagram_RequiredFields(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := domain.NewDiagram("diagram-1", instrument, tt.diagName, positions, tt.skillIDs, tt.conceptIDs, now)
+			_, err := domain.NewDiagram("diagram-1", instrument, tt.diagName, positions, tt.skillIDs, tt.conceptIDs, nil, domain.LabelDisplayInterval, now)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)
@@ -137,10 +137,80 @@ func TestNewDiagram_RequiredFields(t *testing.T) {
 	}
 
 	t.Run("classification carries the given ids", func(t *testing.T) {
-		got, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s1", "s2"}, []string{"c1"}, now)
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s1", "s2"}, []string{"c1"}, nil, domain.LabelDisplayInterval, now)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"s1", "s2"}, got.SkillIDs())
 		assert.Equal(t, []string{"c1"}, got.ConceptIDs())
+	})
+}
+
+func TestNewDiagram_RootNoteAndLabelDisplay(t *testing.T) {
+	instrument := mustInstrument(t, domain.InstrumentFamilyFretted)
+	positions := []domain.Position{fretted("p1", "R", "A", 6, 5)}
+	now := time.Date(2026, 9, 21, 12, 0, 0, 0, time.UTC)
+
+	t.Run("root note is carried through as given", func(t *testing.T) {
+		root := "A"
+
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s"}, []string{"c"}, &root, domain.LabelDisplayNote, now)
+
+		require.NoError(t, err)
+		require.NotNil(t, got.RootNote)
+		assert.Equal(t, "A", *got.RootNote)
+		assert.Equal(t, domain.LabelDisplayNote, got.LabelDisplay)
+	})
+
+	t.Run("a nil root note stays nil", func(t *testing.T) {
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s"}, []string{"c"}, nil, domain.LabelDisplayInterval, now)
+
+		require.NoError(t, err)
+		assert.Nil(t, got.RootNote)
+	})
+
+	t.Run("an empty label_display defaults to interval", func(t *testing.T) {
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s"}, []string{"c"}, nil, "", now)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.LabelDisplayInterval, got.LabelDisplay)
+	})
+
+	t.Run("an unrecognised label_display is rejected", func(t *testing.T) {
+		_, err := domain.NewDiagram("diagram-1", instrument, "D", positions, []string{"s"}, []string{"c"}, nil, domain.LabelDisplay("loud"), now)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "label_display", valErr.Fields[0].Field)
+	})
+
+	t.Run("an empty position shape defaults to dot", func(t *testing.T) {
+		unshaped := []domain.Position{{ID: "p1", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}}
+
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", unshaped, []string{"s"}, []string{"c"}, nil, domain.LabelDisplayInterval, now)
+
+		require.NoError(t, err)
+		require.Len(t, got.Positions, 1)
+		assert.Equal(t, domain.PositionShapeDot, got.Positions[0].Shape)
+		// The caller's own slice is untouched by normalization.
+		assert.Equal(t, domain.PositionShape(""), unshaped[0].Shape)
+	})
+
+	t.Run("a position with an explicit non-default shape keeps it", func(t *testing.T) {
+		starred := []domain.Position{{ID: "p1", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5), Shape: domain.PositionShapeStar}}
+
+		got, err := domain.NewDiagram("diagram-1", instrument, "D", starred, []string{"s"}, []string{"c"}, nil, domain.LabelDisplayInterval, now)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.PositionShapeStar, got.Positions[0].Shape)
+	})
+
+	t.Run("an unrecognised position shape is rejected", func(t *testing.T) {
+		bad := []domain.Position{{ID: "p1", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5), Shape: domain.PositionShape("triangle")}}
+
+		_, err := domain.NewDiagram("diagram-1", instrument, "D", bad, []string{"s"}, []string{"c"}, nil, domain.LabelDisplayInterval, now)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "positions", valErr.Fields[0].Field)
 	})
 }

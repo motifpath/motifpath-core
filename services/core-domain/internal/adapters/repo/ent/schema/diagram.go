@@ -30,6 +30,14 @@ func (Diagram) Fields() []ent.Field {
 
 		field.String("name"),
 
+		field.String("root_note").
+			Optional().
+			Nillable(),
+
+		field.Enum("label_display").
+			Values("interval", "note", "hidden").
+			Default("interval"),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

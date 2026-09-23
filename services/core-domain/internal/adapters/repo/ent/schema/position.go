@@ -33,6 +33,10 @@ func (Position) Fields() []ent.Field {
 
 		field.String("note_name"),
 
+		field.Enum("shape").
+			Values("dot", "square", "star").
+			Default("dot"),
+
 		field.Int("sequence_index").
 			Optional().
 			Nillable(),

@@ -69,11 +69,11 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 	// Deliberately not in id order: the repository must return positions in
 	// the order the author listed them, not in primary-key order.
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Minor Pentatonic — Position 1",
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Minor Pentatonic — Position 1", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
-			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(0)},
-			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", String: intPtr(6), Fret: intPtr(8)},
-			{ID: "88888888-0000-4000-8000-000000000003", Interval: "4", NoteName: "D", String: intPtr(5), Fret: intPtr(5), SequenceIndex: intPtr(1)},
+			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(0)},
+			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
+			{ID: "88888888-0000-4000-8000-000000000003", Interval: "4", NoteName: "D", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(5), SequenceIndex: intPtr(1)},
 		},
 		Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 	}
@@ -99,10 +99,10 @@ func TestEntDiagramRepository_KeyboardPositionsRoundTrip(t *testing.T) {
 
 	a3, c4 := "A3", "C4"
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "Minor Pentatonic — Piano",
+		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "Minor Pentatonic — Piano", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
-			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Key: &a3},
-			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Key: &c4},
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &a3},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, Key: &c4},
 		},
 		Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 	}
@@ -132,13 +132,13 @@ func TestEntDiagramRepository_List(t *testing.T) {
 	key := "A3"
 
 	onGuitar := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "G",
-		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}},
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "G", LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptA}, CreatedAt: fixedAt,
 	}
 	onPiano := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "P",
-		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Key: &key}},
+		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "P", LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &key}},
 		Skills:    []domain.Skill{skillB}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
 	require.NoError(t, diagrams.Create(ctx, onGuitar))
@@ -178,10 +178,10 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 
 	original := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Original",
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Original", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
-			{ID: uuid.NewString(), Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)},
-			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", String: intPtr(6), Fret: intPtr(8)},
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
 		},
 		Skills: []domain.Skill{skillA}, Concepts: []domain.Concept{conceptA}, CreatedAt: fixedAt,
 	}
@@ -191,7 +191,7 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 		updated := original
 		updated.Name = "Renamed"
 		updated.Positions = []domain.Position{
-			{ID: uuid.NewString(), Interval: "5", NoteName: "E", String: intPtr(5), Fret: intPtr(7)},
+			{ID: uuid.NewString(), Interval: "5", NoteName: "E", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)},
 		}
 		updated.Skills, updated.Concepts = []domain.Skill{skillB}, []domain.Concept{conceptB}
 
@@ -231,8 +231,8 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 
 	newDiagram := func(positionID string) domain.Diagram {
 		return domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "D",
-			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}},
+			ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "D", LabelDisplay: domain.LabelDisplayInterval,
+			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 			Skills:    []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 		}
 	}
@@ -263,7 +263,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 		require.NoError(t, diagrams.Create(ctx, other))
 		update := other
 		update.Name = "Renamed"
-		update.Positions = []domain.Position{{ID: sharedID, Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}}
+		update.Positions = []domain.Position{{ID: sharedID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}}
 
 		err := diagrams.Update(ctx, update)
 

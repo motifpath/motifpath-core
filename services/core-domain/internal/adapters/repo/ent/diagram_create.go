@@ -39,6 +39,34 @@ func (_c *DiagramCreate) SetName(v string) *DiagramCreate {
 	return _c
 }
 
+// SetRootNote sets the "root_note" field.
+func (_c *DiagramCreate) SetRootNote(v string) *DiagramCreate {
+	_c.mutation.SetRootNote(v)
+	return _c
+}
+
+// SetNillableRootNote sets the "root_note" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableRootNote(v *string) *DiagramCreate {
+	if v != nil {
+		_c.SetRootNote(*v)
+	}
+	return _c
+}
+
+// SetLabelDisplay sets the "label_display" field.
+func (_c *DiagramCreate) SetLabelDisplay(v diagram.LabelDisplay) *DiagramCreate {
+	_c.mutation.SetLabelDisplay(v)
+	return _c
+}
+
+// SetNillableLabelDisplay sets the "label_display" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableLabelDisplay(v *diagram.LabelDisplay) *DiagramCreate {
+	if v != nil {
+		_c.SetLabelDisplay(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *DiagramCreate) SetCreatedAt(v time.Time) *DiagramCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -182,6 +210,10 @@ func (_c *DiagramCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *DiagramCreate) defaults() {
+	if _, ok := _c.mutation.LabelDisplay(); !ok {
+		v := diagram.DefaultLabelDisplay
+		_c.mutation.SetLabelDisplay(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := diagram.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -199,6 +231,14 @@ func (_c *DiagramCreate) check() error {
 	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Diagram.name"`)}
+	}
+	if _, ok := _c.mutation.LabelDisplay(); !ok {
+		return &ValidationError{Name: "label_display", err: errors.New(`ent: missing required field "Diagram.label_display"`)}
+	}
+	if v, ok := _c.mutation.LabelDisplay(); ok {
+		if err := diagram.LabelDisplayValidator(v); err != nil {
+			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Diagram.created_at"`)}
@@ -244,6 +284,14 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(diagram.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := _c.mutation.RootNote(); ok {
+		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)
+		_node.RootNote = &value
+	}
+	if value, ok := _c.mutation.LabelDisplay(); ok {
+		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
+		_node.LabelDisplay = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(diagram.FieldCreatedAt, field.TypeTime, value)

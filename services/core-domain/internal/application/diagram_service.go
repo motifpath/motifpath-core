@@ -27,18 +27,24 @@ func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.Instr
 // DiagramUpdate carries the fields UpdateDiagram may replace. A nil field
 // leaves the current value untouched. Classification is replaced as a unit:
 // supplying either SkillIDs or ConceptIDs replaces both, so a caller
-// changing one must resend the other.
+// changing one must resend the other. There is no way to clear an
+// already-set RootNote back to nil through an update — only to replace it
+// with another value or leave it as-is.
 type DiagramUpdate struct {
-	Name       *string
-	Positions  []domain.Position
-	SkillIDs   []string
-	ConceptIDs []string
+	Name         *string
+	Positions    []domain.Position
+	SkillIDs     []string
+	ConceptIDs   []string
+	RootNote     *string
+	LabelDisplay *domain.LabelDisplay
 }
 
 // CreateDiagram creates a diagram against an existing instrument. Only
 // teachers and admins may create one. Positions without an id are assigned
-// one; a client-supplied id is kept.
-func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID, name string, positions []domain.Position, skillIDs, conceptIDs []string) (domain.Diagram, error) {
+// one; a client-supplied id is kept. rootNote may be nil (unrecorded);
+// labelDisplay defaults to domain.LabelDisplayInterval when left as the
+// zero value.
+func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID, name string, positions []domain.Position, skillIDs, conceptIDs []string, rootNote *string, labelDisplay domain.LabelDisplay) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
 	}
@@ -51,7 +57,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	diagram, err := domain.NewDiagram(s.newID(), instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, s.now())
+	diagram, err := domain.NewDiagram(s.newID(), instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, rootNote, labelDisplay, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -109,8 +115,16 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if classificationChanged {
 		skillIDs, conceptIDs = update.SkillIDs, update.ConceptIDs
 	}
+	rootNote := current.RootNote
+	if update.RootNote != nil {
+		rootNote = update.RootNote
+	}
+	labelDisplay := current.LabelDisplay
+	if update.LabelDisplay != nil {
+		labelDisplay = *update.LabelDisplay
+	}
 
-	updated, err := domain.NewDiagram(current.ID, instrument, name, positions, skillIDs, conceptIDs, current.CreatedAt)
+	updated, err := domain.NewDiagram(current.ID, instrument, name, positions, skillIDs, conceptIDs, rootNote, labelDisplay, current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
 	}

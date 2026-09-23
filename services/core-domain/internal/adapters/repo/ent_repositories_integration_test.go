@@ -54,9 +54,10 @@ func seedDiagram(t *testing.T, ctx context.Context, client *ent.Client, instrume
 
 	diagram := domain.Diagram{
 		ID: uuid.NewString(), InstrumentID: instrument.ID, Name: "minor-pentatonic-" + uuid.NewString(),
+		LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
-			{ID: uuid.NewString(), Interval: "R", NoteName: "A", String: intPtrRepo(6), Fret: intPtrRepo(5)},
-			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", String: intPtrRepo(6), Fret: intPtrRepo(8)},
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtrRepo(6), Fret: intPtrRepo(5)},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtrRepo(6), Fret: intPtrRepo(8)},
 		},
 	}
 	require.NoError(t, NewEntDiagramRepository(client).Create(ctx, diagram))

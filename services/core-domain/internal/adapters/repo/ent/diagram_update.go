@@ -47,6 +47,40 @@ func (_u *DiagramUpdate) SetNillableName(v *string) *DiagramUpdate {
 	return _u
 }
 
+// SetRootNote sets the "root_note" field.
+func (_u *DiagramUpdate) SetRootNote(v string) *DiagramUpdate {
+	_u.mutation.SetRootNote(v)
+	return _u
+}
+
+// SetNillableRootNote sets the "root_note" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableRootNote(v *string) *DiagramUpdate {
+	if v != nil {
+		_u.SetRootNote(*v)
+	}
+	return _u
+}
+
+// ClearRootNote clears the value of the "root_note" field.
+func (_u *DiagramUpdate) ClearRootNote() *DiagramUpdate {
+	_u.mutation.ClearRootNote()
+	return _u
+}
+
+// SetLabelDisplay sets the "label_display" field.
+func (_u *DiagramUpdate) SetLabelDisplay(v diagram.LabelDisplay) *DiagramUpdate {
+	_u.mutation.SetLabelDisplay(v)
+	return _u
+}
+
+// SetNillableLabelDisplay sets the "label_display" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableLabelDisplay(v *diagram.LabelDisplay) *DiagramUpdate {
+	if v != nil {
+		_u.SetLabelDisplay(*v)
+	}
+	return _u
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdate) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddPositionIDs(ids...)
@@ -261,6 +295,11 @@ func (_u *DiagramUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DiagramUpdate) check() error {
+	if v, ok := _u.mutation.LabelDisplay(); ok {
+		if err := diagram.LabelDisplayValidator(v); err != nil {
+			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
+		}
+	}
 	if _u.mutation.InstrumentCleared() && len(_u.mutation.InstrumentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Diagram.instrument"`)
 	}
@@ -281,6 +320,15 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(diagram.FieldName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RootNote(); ok {
+		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)
+	}
+	if _u.mutation.RootNoteCleared() {
+		_spec.ClearField(diagram.FieldRootNote, field.TypeString)
+	}
+	if value, ok := _u.mutation.LabelDisplay(); ok {
+		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -565,6 +613,40 @@ func (_u *DiagramUpdateOne) SetNillableName(v *string) *DiagramUpdateOne {
 	return _u
 }
 
+// SetRootNote sets the "root_note" field.
+func (_u *DiagramUpdateOne) SetRootNote(v string) *DiagramUpdateOne {
+	_u.mutation.SetRootNote(v)
+	return _u
+}
+
+// SetNillableRootNote sets the "root_note" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableRootNote(v *string) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetRootNote(*v)
+	}
+	return _u
+}
+
+// ClearRootNote clears the value of the "root_note" field.
+func (_u *DiagramUpdateOne) ClearRootNote() *DiagramUpdateOne {
+	_u.mutation.ClearRootNote()
+	return _u
+}
+
+// SetLabelDisplay sets the "label_display" field.
+func (_u *DiagramUpdateOne) SetLabelDisplay(v diagram.LabelDisplay) *DiagramUpdateOne {
+	_u.mutation.SetLabelDisplay(v)
+	return _u
+}
+
+// SetNillableLabelDisplay sets the "label_display" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableLabelDisplay(v *diagram.LabelDisplay) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetLabelDisplay(*v)
+	}
+	return _u
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdateOne) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddPositionIDs(ids...)
@@ -792,6 +874,11 @@ func (_u *DiagramUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DiagramUpdateOne) check() error {
+	if v, ok := _u.mutation.LabelDisplay(); ok {
+		if err := diagram.LabelDisplayValidator(v); err != nil {
+			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
+		}
+	}
 	if _u.mutation.InstrumentCleared() && len(_u.mutation.InstrumentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Diagram.instrument"`)
 	}
@@ -829,6 +916,15 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(diagram.FieldName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RootNote(); ok {
+		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)
+	}
+	if _u.mutation.RootNoteCleared() {
+		_spec.ClearField(diagram.FieldRootNote, field.TypeString)
+	}
+	if value, ok := _u.mutation.LabelDisplay(); ok {
+		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

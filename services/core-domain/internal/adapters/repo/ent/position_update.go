@@ -92,6 +92,20 @@ func (_u *PositionUpdate) SetNillableNoteName(v *string) *PositionUpdate {
 	return _u
 }
 
+// SetShape sets the "shape" field.
+func (_u *PositionUpdate) SetShape(v position.Shape) *PositionUpdate {
+	_u.mutation.SetShape(v)
+	return _u
+}
+
+// SetNillableShape sets the "shape" field if the given value is not nil.
+func (_u *PositionUpdate) SetNillableShape(v *position.Shape) *PositionUpdate {
+	if v != nil {
+		_u.SetShape(*v)
+	}
+	return _u
+}
+
 // SetSequenceIndex sets the "sequence_index" field.
 func (_u *PositionUpdate) SetSequenceIndex(v int) *PositionUpdate {
 	_u.mutation.ResetSequenceIndex()
@@ -238,6 +252,11 @@ func (_u *PositionUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PositionUpdate) check() error {
+	if v, ok := _u.mutation.Shape(); ok {
+		if err := position.ShapeValidator(v); err != nil {
+			return &ValidationError{Name: "shape", err: fmt.Errorf(`ent: validator failed for field "Position.shape": %w`, err)}
+		}
+	}
 	if _u.mutation.DiagramCleared() && len(_u.mutation.DiagramIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Position.diagram"`)
 	}
@@ -267,6 +286,9 @@ func (_u *PositionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.NoteName(); ok {
 		_spec.SetField(position.FieldNoteName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Shape(); ok {
+		_spec.SetField(position.FieldShape, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SequenceIndex(); ok {
 		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
@@ -409,6 +431,20 @@ func (_u *PositionUpdateOne) SetNoteName(v string) *PositionUpdateOne {
 func (_u *PositionUpdateOne) SetNillableNoteName(v *string) *PositionUpdateOne {
 	if v != nil {
 		_u.SetNoteName(*v)
+	}
+	return _u
+}
+
+// SetShape sets the "shape" field.
+func (_u *PositionUpdateOne) SetShape(v position.Shape) *PositionUpdateOne {
+	_u.mutation.SetShape(v)
+	return _u
+}
+
+// SetNillableShape sets the "shape" field if the given value is not nil.
+func (_u *PositionUpdateOne) SetNillableShape(v *position.Shape) *PositionUpdateOne {
+	if v != nil {
+		_u.SetShape(*v)
 	}
 	return _u
 }
@@ -572,6 +608,11 @@ func (_u *PositionUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PositionUpdateOne) check() error {
+	if v, ok := _u.mutation.Shape(); ok {
+		if err := position.ShapeValidator(v); err != nil {
+			return &ValidationError{Name: "shape", err: fmt.Errorf(`ent: validator failed for field "Position.shape": %w`, err)}
+		}
+	}
 	if _u.mutation.DiagramCleared() && len(_u.mutation.DiagramIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Position.diagram"`)
 	}
@@ -618,6 +659,9 @@ func (_u *PositionUpdateOne) sqlSave(ctx context.Context) (_node *Position, err 
 	}
 	if value, ok := _u.mutation.NoteName(); ok {
 		_spec.SetField(position.FieldNoteName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Shape(); ok {
+		_spec.SetField(position.FieldShape, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SequenceIndex(); ok {
 		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
