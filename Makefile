@@ -1,7 +1,7 @@
 SERVICES := services/core-domain services/event-ingestion services/aggregation-worker
 SPECS_DIR := ../motifpath-specs
 
-.PHONY: generate migrate\:diff test test\:bdd test\:int lint dev db\:reset
+.PHONY: generate generate\:ent migrate\:diff test test\:bdd test\:int lint dev db\:reset db\:full-reset
 
 generate:
 	@mkdir -p .bundled
@@ -23,6 +23,12 @@ generate:
 migrate\:diff:
 	@if [ -z "$(name)" ]; then echo "Usage: make migrate:diff name=<description>"; exit 1; fi
 	cd services/core-domain && go run ./cmd/entmigrate $(name)
+
+# Regenerates the ent ORM client (internal/adapters/repo/ent/*) from the
+# schema files under ent/schema/ — a separate step from `generate` above,
+# since that one only covers the OpenAPI-derived HTTP layer.
+generate\:ent:
+	cd services/core-domain && go generate ./...
 
 test:
 	go test ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
@@ -49,3 +55,19 @@ dev:
 # anything but localhost — see scripts/db-reset.sh. NEVER run in production.
 db\:reset:
 	./scripts/db-reset.sh
+
+# One-shot catch-up after editing the OpenAPI spec and/or an ent schema file
+# (internal/adapters/repo/ent/schema/*): regenerates the HTTP layer and the
+# ent client, verifies the result still builds and passes, generates the
+# matching Atlas migration, then wipes and reseeds the local dev database
+# with it applied. Each step aborts the chain on failure, same as running
+# them by hand in order. Requires Docker running and a migration name:
+#   make db:full-reset name=<description>
+db\:full-reset:
+	@if [ -z "$(name)" ]; then echo "Usage: make db:full-reset name=<description>"; exit 1; fi
+	docker compose up -d
+	$(MAKE) generate
+	$(MAKE) generate:ent
+	cd services/core-domain && go build ./... && go test ./...
+	$(MAKE) migrate:diff name=$(name)
+	$(MAKE) db:reset
