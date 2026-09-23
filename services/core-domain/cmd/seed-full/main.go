@@ -500,9 +500,14 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		},
 		{
 			title: "Tap the root note on the fretboard", exerciseType: domain.ExerciseTypeImageRecognition, imageURL: &imageURL,
+			// Four regions, one per image quadrant, each 18% of the image's
+			// width/height — big, easy-to-hit tap targets rather than the
+			// tiny 6% markers a real diagram's precise hotspots would use.
 			options: []domain.Option{
-				{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.42, Y: 0.55, Width: 0.06, Height: 0.06, Shape: domain.OptionRegionShapeCircle}},
-				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.60, Y: 0.30, Width: 0.06, Height: 0.06, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.10, Y: 0.15, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.62, Y: 0.15, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.10, Y: 0.60, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
+				{ID: uuid.NewString(), IsCorrect: false, Region: &domain.OptionRegion{X: 0.62, Y: 0.60, Width: 0.18, Height: 0.18, Shape: domain.OptionRegionShapeCircle}},
 			},
 		},
 		{
