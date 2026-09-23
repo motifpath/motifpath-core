@@ -24,7 +24,11 @@ func newContentServiceWithClassification(nodes *fakeContentNodeRepository, expan
 }
 
 func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, skills, concepts, versions, idSequence(), func() time.Time { return fixedCreatedAt })
+	return newContentServiceWithDiagrams(nodes, expanded, skills, concepts, versions, newFakeDiagramRepository())
+}
+
+func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
+	return application.NewContentService(nodes, expanded, skills, concepts, versions, diagrams, idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // seededSkillRepository/seededConceptRepository return fakes pre-populated
@@ -502,7 +506,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			intPtr(150), intPtr(165), nil, nil, nil)
 
 		require.NoError(t, err)
@@ -515,7 +519,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			nil, nil, intPtr(3), intPtr(8000), nil)
 
 		require.NoError(t, err)
@@ -528,7 +532,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			nil, nil, intPtr(3), intPtr(5000), nil)
 
 		var valErr *domain.ValidationError
@@ -542,7 +546,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			intPtr(150), intPtr(150), nil, nil, nil)
 
 		var valErr *domain.ValidationError
@@ -556,7 +560,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			intPtr(90), intPtr(100), nil, nil, nil)
 
 		var valErr *domain.ValidationError
@@ -570,7 +574,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			nil, nil, intPtr(0), intPtr(5000), nil)
 
 		var valErr *domain.ValidationError
@@ -584,7 +588,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			nil, nil, intPtr(3), nil, nil)
 
 		var valErr *domain.ValidationError
@@ -598,7 +602,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), studentCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			intPtr(150), intPtr(165), nil, nil, nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
@@ -608,10 +612,143 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "missing",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil,
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
 			intPtr(150), intPtr(165), nil, nil, nil)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func seedContentDiagram(t *testing.T, diagrams *fakeDiagramRepository, id, instrumentID string) domain.Diagram {
+	t.Helper()
+	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Name: id, Positions: []domain.Position{{ID: "pos-1", Interval: "R", NoteName: "A"}}}
+	require.NoError(t, diagrams.Create(context.Background(), diagram))
+	return diagram
+}
+
+func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
+	t.Run("a teacher adds a diagram to a video lesson at a specific timestamp", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil,
+			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}}, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.ExpandedContentTypeDiagram, item.ContentType)
+	})
+
+	t.Run("a teacher adds a stack of two diagrams to an article at a specific paragraph", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(articleNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		seedContentDiagram(t, diagrams, "diagram-2", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil,
+			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}},
+				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}},
+			}},
+			nil, nil, intPtr(3), intPtr(8000), nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, item.DiagramStackRef)
+		assert.Len(t, item.DiagramStackRef.Stack, 2)
+	})
+
+	t.Run("adding a diagram stack from two different instruments is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		seedContentDiagram(t, diagrams, "diagram-2", "piano")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil,
+			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}},
+				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}},
+			}},
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_stack_ref")
+	})
+
+	t.Run("a diagram_ref pointing at a non-existent diagram is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository())
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil,
+			&domain.DiagramRef{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}}, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("a diagram_stack_ref entry pointing at a non-existent diagram is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil,
+			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}},
+				{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}},
+			}},
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_stack_ref")
+	})
+
+	t.Run("creating a diagram item without a diagram reference is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("creating a diagram item that also carries a media URL is rejected", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, strPtr("https://cdn.example.com/img.png"), nil,
+			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}}, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "media_url")
 	})
 }
 
@@ -634,7 +771,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		rich := richTextContent("thumb behind the neck")
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeRichText, nil, &rich, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeRichText, nil, &rich, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.ExpandedContentTypeRichText, item.ContentType)
@@ -649,7 +786,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		rich := richTextContent("standard tuning, low to high")
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeRichText, nil, &rich, nil, nil, intPtr(2), intPtr(6000), nil)
+			domain.ExpandedContentTypeRichText, nil, &rich, nil, nil, nil, nil, intPtr(2), intPtr(6000), nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.ExpandedContentTypeRichText, item.ContentType)
@@ -668,7 +805,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		}
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeRichText, nil, &rich, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeRichText, nil, &rich, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, item.RichContent)
@@ -682,7 +819,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeRichText, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeRichText, nil, nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -696,7 +833,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		rich := richTextContent("x")
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), &rich, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), &rich, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -710,7 +847,7 @@ func TestContentService_CreateExpandedContent_RichText(t *testing.T) {
 		rich := richTextContent("x")
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeRichText, strPtr("https://cdn.example.com/img.png"), &rich, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeRichText, strPtr("https://cdn.example.com/img.png"), &rich, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -724,12 +861,12 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		caption := "Updated timing"
 		updated, err := svc.UpdateExpandedContent(context.Background(), teacherCaller(), created.ID,
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(160), intPtr(180), nil, nil, &caption)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(160), intPtr(180), nil, nil, &caption)
 
 		require.NoError(t, err)
 		require.NotNil(t, updated.TriggerAtSeconds)
@@ -745,11 +882,11 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(articleNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(1), intPtr(5000), nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, nil, nil, intPtr(1), intPtr(5000), nil)
 		require.NoError(t, err)
 
 		updated, err := svc.UpdateExpandedContent(context.Background(), teacherCaller(), created.ID,
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(2), intPtr(6000), nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, nil, nil, intPtr(2), intPtr(6000), nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, updated.TriggerAtParagraph)
@@ -763,11 +900,11 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = svc.UpdateExpandedContent(context.Background(), teacherCaller(), created.ID,
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(150), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(150), nil, nil, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -779,11 +916,11 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = svc.UpdateExpandedContent(context.Background(), teacherCaller(), created.ID,
-			domain.ExpandedContentTypeImage, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, nil, nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -795,11 +932,11 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = svc.UpdateExpandedContent(context.Background(), studentCaller(), created.ID,
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -809,11 +946,11 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1")) // owned by teacher-1
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = svc.UpdateExpandedContent(context.Background(), otherTeacherCaller(), created.ID,
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -822,7 +959,7 @@ func TestContentService_UpdateExpandedContent(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
 		_, err := svc.UpdateExpandedContent(context.Background(), teacherCaller(), "missing",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -834,7 +971,7 @@ func TestContentService_DeleteExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		err = svc.DeleteExpandedContent(context.Background(), teacherCaller(), created.ID)
@@ -849,7 +986,7 @@ func TestContentService_DeleteExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		err = svc.DeleteExpandedContent(context.Background(), studentCaller(), created.ID)
@@ -862,7 +999,7 @@ func TestContentService_DeleteExpandedContent(t *testing.T) {
 		nodes.put(videoNode("node-1")) // owned by teacher-1
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil, intPtr(150), intPtr(165), nil, nil, nil)
 		require.NoError(t, err)
 
 		err = svc.DeleteExpandedContent(context.Background(), otherTeacherCaller(), created.ID)
@@ -887,10 +1024,10 @@ func TestContentService_ListExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, expanded)
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/a.png"), nil, intPtr(90), intPtr(100), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/a.png"), nil, nil, nil, intPtr(90), intPtr(100), nil, nil, nil)
 		require.NoError(t, err)
 		_, err = svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/b.png"), nil, intPtr(150), intPtr(160), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/b.png"), nil, nil, nil, intPtr(150), intPtr(160), nil, nil, nil)
 		require.NoError(t, err)
 
 		items, err := svc.ListExpandedContent(context.Background(), "node-1")
@@ -916,7 +1053,7 @@ func TestContentService_GetExpandedContent(t *testing.T) {
 		svc := newContentService(nodes, expanded)
 
 		created, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
-			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/a.png"), nil, intPtr(90), intPtr(100), nil, nil, nil)
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/a.png"), nil, nil, nil, intPtr(90), intPtr(100), nil, nil, nil)
 		require.NoError(t, err)
 
 		got, err := svc.GetExpandedContent(context.Background(), created.ID)

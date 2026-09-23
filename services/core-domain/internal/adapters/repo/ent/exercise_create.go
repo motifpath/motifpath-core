@@ -106,6 +106,34 @@ func (_c *ExerciseCreate) SetNillableRemediationTargets(v *string) *ExerciseCrea
 	return _c
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_c *ExerciseCreate) SetDiagramRef(v string) *ExerciseCreate {
+	_c.mutation.SetDiagramRef(v)
+	return _c
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableDiagramRef(v *string) *ExerciseCreate {
+	if v != nil {
+		_c.SetDiagramRef(*v)
+	}
+	return _c
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_c *ExerciseCreate) SetDiagramStackRef(v string) *ExerciseCreate {
+	_c.mutation.SetDiagramStackRef(v)
+	return _c
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableDiagramStackRef(v *string) *ExerciseCreate {
+	if v != nil {
+		_c.SetDiagramStackRef(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ExerciseCreate) SetCreatedAt(v time.Time) *ExerciseCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -425,6 +453,14 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RemediationTargets(); ok {
 		_spec.SetField(exercise.FieldRemediationTargets, field.TypeString, value)
 		_node.RemediationTargets = &value
+	}
+	if value, ok := _c.mutation.DiagramRef(); ok {
+		_spec.SetField(exercise.FieldDiagramRef, field.TypeString, value)
+		_node.DiagramRef = &value
+	}
+	if value, ok := _c.mutation.DiagramStackRef(); ok {
+		_spec.SetField(exercise.FieldDiagramStackRef, field.TypeString, value)
+		_node.DiagramStackRef = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)

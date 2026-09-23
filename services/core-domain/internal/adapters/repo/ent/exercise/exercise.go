@@ -30,6 +30,10 @@ const (
 	FieldEstimatedDurationSeconds = "estimated_duration_seconds"
 	// FieldRemediationTargets holds the string denoting the remediation_targets field in the database.
 	FieldRemediationTargets = "remediation_targets"
+	// FieldDiagramRef holds the string denoting the diagram_ref field in the database.
+	FieldDiagramRef = "diagram_ref"
+	// FieldDiagramStackRef holds the string denoting the diagram_stack_ref field in the database.
+	FieldDiagramStackRef = "diagram_stack_ref"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeChallenges holds the string denoting the challenges edge name in mutations.
@@ -135,6 +139,8 @@ var Columns = []string{
 	FieldAudioURL,
 	FieldEstimatedDurationSeconds,
 	FieldRemediationTargets,
+	FieldDiagramRef,
+	FieldDiagramStackRef,
 	FieldCreatedAt,
 }
 
@@ -240,6 +246,16 @@ func ByEstimatedDurationSeconds(opts ...sql.OrderTermOption) OrderOption {
 // ByRemediationTargets orders the results by the remediation_targets field.
 func ByRemediationTargets(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemediationTargets, opts...).ToFunc()
+}
+
+// ByDiagramRef orders the results by the diagram_ref field.
+func ByDiagramRef(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramRef, opts...).ToFunc()
+}
+
+// ByDiagramStackRef orders the results by the diagram_stack_ref field.
+func ByDiagramStackRef(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiagramStackRef, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

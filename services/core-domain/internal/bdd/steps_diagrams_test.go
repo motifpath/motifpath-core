@@ -15,6 +15,7 @@ import (
 
 func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)"$`, w.aDiagramExistsOn)
+	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)" with positions:$`, w.aDiagramExistsOnWithPositions)
 
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithFrettedPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with keyboard positions:$`, w.createsDiagramWithKeyboardPositions)
@@ -31,12 +32,38 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" retrieves a diagram with an ID that does not exist$`, w.retrievesMissingDiagram)
 }
 
+// ensureInstrumentSeeded returns the instrument named instrumentName,
+// seeding it first if a preceding step (e.g. diagrams.feature's own
+// Background) has not already — "piano" as keyboard, everything else as
+// fretted, matching this codebase's own instrument-naming convention. This
+// lets a scenario outside diagrams.feature that only cares about a diagram
+// existing, not the instrument-management story, skip declaring the
+// instrument fixture itself.
+func (w *world) ensureInstrumentSeeded(instrumentName string) (domain.Instrument, error) {
+	instrument, err := w.instruments.GetByID(w.ctx(), instrumentID(instrumentName).String())
+	if err == nil {
+		return instrument, nil
+	}
+	if instrumentName == "piano" {
+		if seedErr := w.aKeyboardInstrumentExists(instrumentName); seedErr != nil {
+			return domain.Instrument{}, seedErr
+		}
+	} else if seedErr := w.aFrettedInstrumentExists(instrumentName); seedErr != nil {
+		return domain.Instrument{}, seedErr
+	}
+	instrument, err = w.instruments.GetByID(w.ctx(), instrumentID(instrumentName).String())
+	if err != nil {
+		return domain.Instrument{}, fmt.Errorf("seeding instrument %q: %w", instrumentName, err)
+	}
+	return instrument, nil
+}
+
 // aDiagramExistsOn seeds a one-position diagram directly, shaped to match
 // whichever family the named instrument has.
 func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
-	instrument, err := w.instruments.GetByID(w.ctx(), instrumentID(instrumentName).String())
+	instrument, err := w.ensureInstrumentSeeded(instrumentName)
 	if err != nil {
-		return fmt.Errorf("no instrument %q seeded: %w", instrumentName, err)
+		return err
 	}
 	position := domain.Position{ID: deterministicUUID("position", slug).String(), Interval: "R", NoteName: "A"}
 	if instrument.Family == domain.InstrumentFamilyFretted {
@@ -48,6 +75,56 @@ func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
 	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, []domain.Position{position},
+		[]string{skillID.String()}, []string{conceptID.String()}, fixedNow)
+	if err != nil {
+		return fmt.Errorf("seeding diagram %q: %w", slug, err)
+	}
+	w.diagrams.put(diagram)
+	return nil
+}
+
+// aDiagramExistsOnWithPositions is aDiagramExistsOn's table-driven
+// counterpart, for scenarios that need more than one position — a diagram-
+// driven exercise's derived options depend on there being several to
+// derive from.
+func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table *godog.Table) error {
+	instrument, err := w.ensureInstrumentSeeded(instrumentName)
+	if err != nil {
+		return err
+	}
+	positions := make([]domain.Position, 0, len(table.Rows)-1)
+	for row := 1; row < len(table.Rows); row++ {
+		interval, err := cell(table, row, "interval")
+		if err != nil {
+			return err
+		}
+		note, err := cell(table, row, "note_name")
+		if err != nil {
+			return err
+		}
+		stringCell, err := cell(table, row, "string")
+		if err != nil {
+			return err
+		}
+		fretCell, err := cell(table, row, "fret")
+		if err != nil {
+			return err
+		}
+		str, err := strconv.Atoi(stringCell)
+		if err != nil {
+			return fmt.Errorf("string %q is not a number: %w", stringCell, err)
+		}
+		fret, err := strconv.Atoi(fretCell)
+		if err != nil {
+			return fmt.Errorf("fret %q is not a number: %w", fretCell, err)
+		}
+		positions = append(positions, domain.Position{
+			ID: deterministicUUID("position", fmt.Sprintf("%s-%d", slug, row)).String(),
+			Interval: interval, NoteName: note, String: &str, Fret: &fret,
+		})
+	}
+	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, positions,
 		[]string{skillID.String()}, []string{conceptID.String()}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)

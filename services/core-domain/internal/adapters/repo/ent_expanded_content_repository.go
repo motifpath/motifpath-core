@@ -34,6 +34,14 @@ func (r *EntExpandedContentRepository) Create(ctx context.Context, item domain.E
 	if err != nil {
 		return err
 	}
+	diagramRefJSON, err := marshalDiagramRef(item.DiagramRef)
+	if err != nil {
+		return err
+	}
+	diagramStackRefJSON, err := marshalDiagramStackRef(item.DiagramStackRef)
+	if err != nil {
+		return err
+	}
 
 	builder := r.client.ExpandedContent.Create().
 		SetID(id).
@@ -41,6 +49,8 @@ func (r *EntExpandedContentRepository) Create(ctx context.Context, item domain.E
 		SetContentType(expandedcontent.ContentType(item.ContentType)).
 		SetNillableMediaURL(item.MediaURL).
 		SetNillableRichContent(richContentJSON).
+		SetNillableDiagramRef(diagramRefJSON).
+		SetNillableDiagramStackRef(diagramStackRefJSON).
 		SetNillableTriggerAtSeconds(item.TriggerAtSeconds).
 		SetNillableHideAtSeconds(item.HideAtSeconds).
 		SetNillableTriggerAtParagraph(item.TriggerAtParagraph).
@@ -102,6 +112,14 @@ func (r *EntExpandedContentRepository) Update(ctx context.Context, item domain.E
 	if err != nil {
 		return err
 	}
+	diagramRefJSON, err := marshalDiagramRef(item.DiagramRef)
+	if err != nil {
+		return err
+	}
+	diagramStackRefJSON, err := marshalDiagramStackRef(item.DiagramStackRef)
+	if err != nil {
+		return err
+	}
 
 	builder := r.client.ExpandedContent.UpdateOneID(id).
 		SetContentType(expandedcontent.ContentType(item.ContentType)).
@@ -111,31 +129,8 @@ func (r *EntExpandedContentRepository) Update(ctx context.Context, item domain.E
 		SetNillableDurationMs(item.DurationMS).
 		SetNillableCaption(item.Caption)
 
-	if item.MediaURL != nil {
-		builder = builder.SetMediaURL(*item.MediaURL)
-	} else {
-		builder = builder.ClearMediaURL()
-	}
-	if richContentJSON != nil {
-		builder = builder.SetRichContent(*richContentJSON)
-	} else {
-		builder = builder.ClearRichContent()
-	}
-	if item.TriggerAtSeconds == nil {
-		builder = builder.ClearTriggerAtSeconds()
-	}
-	if item.HideAtSeconds == nil {
-		builder = builder.ClearHideAtSeconds()
-	}
-	if item.TriggerAtParagraph == nil {
-		builder = builder.ClearTriggerAtParagraph()
-	}
-	if item.DurationMS == nil {
-		builder = builder.ClearDurationMs()
-	}
-	if item.Caption == nil {
-		builder = builder.ClearCaption()
-	}
+	applyExpandedContentUpdateContent(builder, item.MediaURL, richContentJSON, diagramRefJSON, diagramStackRefJSON)
+	applyExpandedContentUpdateClears(builder, item)
 
 	_, err = builder.Save(ctx)
 	if err != nil {
@@ -145,6 +140,55 @@ func (r *EntExpandedContentRepository) Update(ctx context.Context, item domain.E
 		return err
 	}
 	return nil
+}
+
+// applyExpandedContentUpdateContent sets or clears the four content columns
+// (media_url plus the three JSON-text columns), each following the same
+// nil-means-cleared convention — split out of Update so its own branching
+// doesn't add to that function's complexity.
+func applyExpandedContentUpdateContent(builder *ent.ExpandedContentUpdateOne, mediaURL, richContentJSON, diagramRefJSON, diagramStackRefJSON *string) {
+	if mediaURL != nil {
+		builder.SetMediaURL(*mediaURL)
+	} else {
+		builder.ClearMediaURL()
+	}
+	if richContentJSON != nil {
+		builder.SetRichContent(*richContentJSON)
+	} else {
+		builder.ClearRichContent()
+	}
+	if diagramRefJSON != nil {
+		builder.SetDiagramRef(*diagramRefJSON)
+	} else {
+		builder.ClearDiagramRef()
+	}
+	if diagramStackRefJSON != nil {
+		builder.SetDiagramStackRef(*diagramStackRefJSON)
+	} else {
+		builder.ClearDiagramStackRef()
+	}
+}
+
+// applyExpandedContentUpdateClears clears whichever of the trigger/hide/
+// duration/caption columns item leaves nil — SetNillableX above is a no-op
+// on nil rather than a clear, so each still-nil field needs its own
+// explicit Clear call to actually remove a previously set value.
+func applyExpandedContentUpdateClears(builder *ent.ExpandedContentUpdateOne, item domain.ExpandedContent) {
+	if item.TriggerAtSeconds == nil {
+		builder.ClearTriggerAtSeconds()
+	}
+	if item.HideAtSeconds == nil {
+		builder.ClearHideAtSeconds()
+	}
+	if item.TriggerAtParagraph == nil {
+		builder.ClearTriggerAtParagraph()
+	}
+	if item.DurationMS == nil {
+		builder.ClearDurationMs()
+	}
+	if item.Caption == nil {
+		builder.ClearCaption()
+	}
 }
 
 func (r *EntExpandedContentRepository) Delete(ctx context.Context, id string) error {
@@ -169,6 +213,8 @@ func toDomainExpandedContent(row *ent.ExpandedContent) domain.ExpandedContent {
 		ContentType:        domain.ExpandedContentType(row.ContentType),
 		MediaURL:           row.MediaURL,
 		RichContent:        unmarshalRichContent(row.RichContent),
+		DiagramRef:         unmarshalDiagramRef(row.DiagramRef),
+		DiagramStackRef:    unmarshalDiagramStackRef(row.DiagramStackRef),
 		TriggerAtSeconds:   row.TriggerAtSeconds,
 		HideAtSeconds:      row.HideAtSeconds,
 		TriggerAtParagraph: row.TriggerAtParagraph,

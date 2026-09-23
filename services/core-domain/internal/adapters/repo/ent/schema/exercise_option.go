@@ -55,6 +55,24 @@ func (ExerciseOption) Fields() []ent.Field {
 			Values("rectangle", "circle").
 			Optional().
 			Nillable(),
+
+		// diagram_ref stores marshaled domain.DiagramRef JSON as text, the
+		// same pattern Exercise.diagram_ref uses — present only for an
+		// image_choice option whose thumbnail is a diagram rather than
+		// image_url.
+		field.Text("diagram_ref").
+			Optional().
+			Nillable(),
+
+		// diagram_id/diagram_position_id are server-derived and read-only:
+		// present only on an option that came from an image_recognition
+		// exercise's diagram_ref/diagram_stack_ref stimulus.
+		field.UUID("diagram_id", uuid.UUID{}).
+			Optional().
+			Nillable(),
+		field.UUID("diagram_position_id", uuid.UUID{}).
+			Optional().
+			Nillable(),
 	}
 }
 

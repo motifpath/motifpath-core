@@ -154,6 +154,46 @@ func (_u *ExerciseUpdate) ClearRemediationTargets() *ExerciseUpdate {
 	return _u
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExerciseUpdate) SetDiagramRef(v string) *ExerciseUpdate {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExerciseUpdate) SetNillableDiagramRef(v *string) *ExerciseUpdate {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExerciseUpdate) ClearDiagramRef() *ExerciseUpdate {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_u *ExerciseUpdate) SetDiagramStackRef(v string) *ExerciseUpdate {
+	_u.mutation.SetDiagramStackRef(v)
+	return _u
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_u *ExerciseUpdate) SetNillableDiagramStackRef(v *string) *ExerciseUpdate {
+	if v != nil {
+		_u.SetDiagramStackRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (_u *ExerciseUpdate) ClearDiagramStackRef() *ExerciseUpdate {
+	_u.mutation.ClearDiagramStackRef()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdate) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdate {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -623,6 +663,18 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RemediationTargetsCleared() {
 		_spec.ClearField(exercise.FieldRemediationTargets, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(exercise.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(exercise.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramStackRef(); ok {
+		_spec.SetField(exercise.FieldDiagramStackRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramStackRefCleared() {
+		_spec.ClearField(exercise.FieldDiagramStackRef, field.TypeString)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1314,6 +1366,46 @@ func (_u *ExerciseUpdateOne) ClearRemediationTargets() *ExerciseUpdateOne {
 	return _u
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExerciseUpdateOne) SetDiagramRef(v string) *ExerciseUpdateOne {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExerciseUpdateOne) SetNillableDiagramRef(v *string) *ExerciseUpdateOne {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExerciseUpdateOne) ClearDiagramRef() *ExerciseUpdateOne {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_u *ExerciseUpdateOne) SetDiagramStackRef(v string) *ExerciseUpdateOne {
+	_u.mutation.SetDiagramStackRef(v)
+	return _u
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_u *ExerciseUpdateOne) SetNillableDiagramStackRef(v *string) *ExerciseUpdateOne {
+	if v != nil {
+		_u.SetDiagramStackRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (_u *ExerciseUpdateOne) ClearDiagramStackRef() *ExerciseUpdateOne {
+	_u.mutation.ClearDiagramStackRef()
+	return _u
+}
+
 // AddChallengeIDs adds the "challenges" edge to the Challenge entity by IDs.
 func (_u *ExerciseUpdateOne) AddChallengeIDs(ids ...uuid.UUID) *ExerciseUpdateOne {
 	_u.mutation.AddChallengeIDs(ids...)
@@ -1813,6 +1905,18 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	}
 	if _u.mutation.RemediationTargetsCleared() {
 		_spec.ClearField(exercise.FieldRemediationTargets, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(exercise.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(exercise.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramStackRef(); ok {
+		_spec.SetField(exercise.FieldDiagramStackRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramStackRefCleared() {
+		_spec.ClearField(exercise.FieldDiagramStackRef, field.TypeString)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{

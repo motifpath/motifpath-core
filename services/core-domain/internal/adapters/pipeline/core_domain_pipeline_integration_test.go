@@ -75,9 +75,10 @@ func setupPipeline(t *testing.T) *pipeline {
 	completion := repo.NewMongoCompletionStateReader(mongoDB)
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
+	diagramRepo := repo.NewEntDiagramRepository(entClient)
 
 	return &pipeline{
-		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, newID, now),
+		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
 		path:        application.NewLearningPathService(nodes, paths, courseVersions, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),

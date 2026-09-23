@@ -12225,6 +12225,8 @@ type ExerciseMutation struct {
 	estimated_duration_seconds    *int
 	addestimated_duration_seconds *int
 	remediation_targets           *string
+	diagram_ref                   *string
+	diagram_stack_ref             *string
 	created_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	challenges                    map[uuid.UUID]struct{}
@@ -12692,6 +12694,104 @@ func (m *ExerciseMutation) RemediationTargetsCleared() bool {
 func (m *ExerciseMutation) ResetRemediationTargets() {
 	m.remediation_targets = nil
 	delete(m.clearedFields, exercise.FieldRemediationTargets)
+}
+
+// SetDiagramRef sets the "diagram_ref" field.
+func (m *ExerciseMutation) SetDiagramRef(s string) {
+	m.diagram_ref = &s
+}
+
+// DiagramRef returns the value of the "diagram_ref" field in the mutation.
+func (m *ExerciseMutation) DiagramRef() (r string, exists bool) {
+	v := m.diagram_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramRef returns the old "diagram_ref" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldDiagramRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramRef: %w", err)
+	}
+	return oldValue.DiagramRef, nil
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (m *ExerciseMutation) ClearDiagramRef() {
+	m.diagram_ref = nil
+	m.clearedFields[exercise.FieldDiagramRef] = struct{}{}
+}
+
+// DiagramRefCleared returns if the "diagram_ref" field was cleared in this mutation.
+func (m *ExerciseMutation) DiagramRefCleared() bool {
+	_, ok := m.clearedFields[exercise.FieldDiagramRef]
+	return ok
+}
+
+// ResetDiagramRef resets all changes to the "diagram_ref" field.
+func (m *ExerciseMutation) ResetDiagramRef() {
+	m.diagram_ref = nil
+	delete(m.clearedFields, exercise.FieldDiagramRef)
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (m *ExerciseMutation) SetDiagramStackRef(s string) {
+	m.diagram_stack_ref = &s
+}
+
+// DiagramStackRef returns the value of the "diagram_stack_ref" field in the mutation.
+func (m *ExerciseMutation) DiagramStackRef() (r string, exists bool) {
+	v := m.diagram_stack_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramStackRef returns the old "diagram_stack_ref" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldDiagramStackRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramStackRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramStackRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramStackRef: %w", err)
+	}
+	return oldValue.DiagramStackRef, nil
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (m *ExerciseMutation) ClearDiagramStackRef() {
+	m.diagram_stack_ref = nil
+	m.clearedFields[exercise.FieldDiagramStackRef] = struct{}{}
+}
+
+// DiagramStackRefCleared returns if the "diagram_stack_ref" field was cleared in this mutation.
+func (m *ExerciseMutation) DiagramStackRefCleared() bool {
+	_, ok := m.clearedFields[exercise.FieldDiagramStackRef]
+	return ok
+}
+
+// ResetDiagramStackRef resets all changes to the "diagram_stack_ref" field.
+func (m *ExerciseMutation) ResetDiagramStackRef() {
+	m.diagram_stack_ref = nil
+	delete(m.clearedFields, exercise.FieldDiagramStackRef)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -13358,7 +13458,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 10)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -13379,6 +13479,12 @@ func (m *ExerciseMutation) Fields() []string {
 	}
 	if m.remediation_targets != nil {
 		fields = append(fields, exercise.FieldRemediationTargets)
+	}
+	if m.diagram_ref != nil {
+		fields = append(fields, exercise.FieldDiagramRef)
+	}
+	if m.diagram_stack_ref != nil {
+		fields = append(fields, exercise.FieldDiagramStackRef)
 	}
 	if m.created_at != nil {
 		fields = append(fields, exercise.FieldCreatedAt)
@@ -13405,6 +13511,10 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.EstimatedDurationSeconds()
 	case exercise.FieldRemediationTargets:
 		return m.RemediationTargets()
+	case exercise.FieldDiagramRef:
+		return m.DiagramRef()
+	case exercise.FieldDiagramStackRef:
+		return m.DiagramStackRef()
 	case exercise.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -13430,6 +13540,10 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldEstimatedDurationSeconds(ctx)
 	case exercise.FieldRemediationTargets:
 		return m.OldRemediationTargets(ctx)
+	case exercise.FieldDiagramRef:
+		return m.OldDiagramRef(ctx)
+	case exercise.FieldDiagramStackRef:
+		return m.OldDiagramStackRef(ctx)
 	case exercise.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -13489,6 +13603,20 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRemediationTargets(v)
+		return nil
+	case exercise.FieldDiagramRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramRef(v)
+		return nil
+	case exercise.FieldDiagramStackRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramStackRef(v)
 		return nil
 	case exercise.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -13554,6 +13682,12 @@ func (m *ExerciseMutation) ClearedFields() []string {
 	if m.FieldCleared(exercise.FieldRemediationTargets) {
 		fields = append(fields, exercise.FieldRemediationTargets)
 	}
+	if m.FieldCleared(exercise.FieldDiagramRef) {
+		fields = append(fields, exercise.FieldDiagramRef)
+	}
+	if m.FieldCleared(exercise.FieldDiagramStackRef) {
+		fields = append(fields, exercise.FieldDiagramStackRef)
+	}
 	return fields
 }
 
@@ -13579,6 +13713,12 @@ func (m *ExerciseMutation) ClearField(name string) error {
 		return nil
 	case exercise.FieldRemediationTargets:
 		m.ClearRemediationTargets()
+		return nil
+	case exercise.FieldDiagramRef:
+		m.ClearDiagramRef()
+		return nil
+	case exercise.FieldDiagramStackRef:
+		m.ClearDiagramStackRef()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise nullable field %s", name)
@@ -13608,6 +13748,12 @@ func (m *ExerciseMutation) ResetField(name string) error {
 		return nil
 	case exercise.FieldRemediationTargets:
 		m.ResetRemediationTargets()
+		return nil
+	case exercise.FieldDiagramRef:
+		m.ResetDiagramRef()
+		return nil
+	case exercise.FieldDiagramStackRef:
+		m.ResetDiagramStackRef()
 		return nil
 	case exercise.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -15031,28 +15177,31 @@ func (m *ExerciseLanguageMutation) ResetEdge(name string) error {
 // ExerciseOptionMutation represents an operation that mutates the ExerciseOption nodes in the graph.
 type ExerciseOptionMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	is_correct       *bool
-	label            *string
-	image_url        *string
-	audio_url        *string
-	region_x         *float64
-	addregion_x      *float64
-	region_y         *float64
-	addregion_y      *float64
-	region_width     *float64
-	addregion_width  *float64
-	region_height    *float64
-	addregion_height *float64
-	region_shape     *exerciseoption.RegionShape
-	clearedFields    map[string]struct{}
-	exercise         *uuid.UUID
-	clearedexercise  bool
-	done             bool
-	oldValue         func(context.Context) (*ExerciseOption, error)
-	predicates       []predicate.ExerciseOption
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	is_correct          *bool
+	label               *string
+	image_url           *string
+	audio_url           *string
+	region_x            *float64
+	addregion_x         *float64
+	region_y            *float64
+	addregion_y         *float64
+	region_width        *float64
+	addregion_width     *float64
+	region_height       *float64
+	addregion_height    *float64
+	region_shape        *exerciseoption.RegionShape
+	diagram_ref         *string
+	diagram_id          *uuid.UUID
+	diagram_position_id *uuid.UUID
+	clearedFields       map[string]struct{}
+	exercise            *uuid.UUID
+	clearedexercise     bool
+	done                bool
+	oldValue            func(context.Context) (*ExerciseOption, error)
+	predicates          []predicate.ExerciseOption
 }
 
 var _ ent.Mutation = (*ExerciseOptionMutation)(nil)
@@ -15707,6 +15856,153 @@ func (m *ExerciseOptionMutation) ResetRegionShape() {
 	delete(m.clearedFields, exerciseoption.FieldRegionShape)
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (m *ExerciseOptionMutation) SetDiagramRef(s string) {
+	m.diagram_ref = &s
+}
+
+// DiagramRef returns the value of the "diagram_ref" field in the mutation.
+func (m *ExerciseOptionMutation) DiagramRef() (r string, exists bool) {
+	v := m.diagram_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramRef returns the old "diagram_ref" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldDiagramRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramRef: %w", err)
+	}
+	return oldValue.DiagramRef, nil
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (m *ExerciseOptionMutation) ClearDiagramRef() {
+	m.diagram_ref = nil
+	m.clearedFields[exerciseoption.FieldDiagramRef] = struct{}{}
+}
+
+// DiagramRefCleared returns if the "diagram_ref" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) DiagramRefCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldDiagramRef]
+	return ok
+}
+
+// ResetDiagramRef resets all changes to the "diagram_ref" field.
+func (m *ExerciseOptionMutation) ResetDiagramRef() {
+	m.diagram_ref = nil
+	delete(m.clearedFields, exerciseoption.FieldDiagramRef)
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *ExerciseOptionMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram_id = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *ExerciseOptionMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldDiagramID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ClearDiagramID clears the value of the "diagram_id" field.
+func (m *ExerciseOptionMutation) ClearDiagramID() {
+	m.diagram_id = nil
+	m.clearedFields[exerciseoption.FieldDiagramID] = struct{}{}
+}
+
+// DiagramIDCleared returns if the "diagram_id" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) DiagramIDCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldDiagramID]
+	return ok
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *ExerciseOptionMutation) ResetDiagramID() {
+	m.diagram_id = nil
+	delete(m.clearedFields, exerciseoption.FieldDiagramID)
+}
+
+// SetDiagramPositionID sets the "diagram_position_id" field.
+func (m *ExerciseOptionMutation) SetDiagramPositionID(u uuid.UUID) {
+	m.diagram_position_id = &u
+}
+
+// DiagramPositionID returns the value of the "diagram_position_id" field in the mutation.
+func (m *ExerciseOptionMutation) DiagramPositionID() (r uuid.UUID, exists bool) {
+	v := m.diagram_position_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramPositionID returns the old "diagram_position_id" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldDiagramPositionID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramPositionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramPositionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramPositionID: %w", err)
+	}
+	return oldValue.DiagramPositionID, nil
+}
+
+// ClearDiagramPositionID clears the value of the "diagram_position_id" field.
+func (m *ExerciseOptionMutation) ClearDiagramPositionID() {
+	m.diagram_position_id = nil
+	m.clearedFields[exerciseoption.FieldDiagramPositionID] = struct{}{}
+}
+
+// DiagramPositionIDCleared returns if the "diagram_position_id" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) DiagramPositionIDCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldDiagramPositionID]
+	return ok
+}
+
+// ResetDiagramPositionID resets all changes to the "diagram_position_id" field.
+func (m *ExerciseOptionMutation) ResetDiagramPositionID() {
+	m.diagram_position_id = nil
+	delete(m.clearedFields, exerciseoption.FieldDiagramPositionID)
+}
+
 // ClearExercise clears the "exercise" edge to the Exercise entity.
 func (m *ExerciseOptionMutation) ClearExercise() {
 	m.clearedexercise = true
@@ -15768,7 +16064,7 @@ func (m *ExerciseOptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseOptionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 13)
 	if m.exercise != nil {
 		fields = append(fields, exerciseoption.FieldExerciseID)
 	}
@@ -15799,6 +16095,15 @@ func (m *ExerciseOptionMutation) Fields() []string {
 	if m.region_shape != nil {
 		fields = append(fields, exerciseoption.FieldRegionShape)
 	}
+	if m.diagram_ref != nil {
+		fields = append(fields, exerciseoption.FieldDiagramRef)
+	}
+	if m.diagram_id != nil {
+		fields = append(fields, exerciseoption.FieldDiagramID)
+	}
+	if m.diagram_position_id != nil {
+		fields = append(fields, exerciseoption.FieldDiagramPositionID)
+	}
 	return fields
 }
 
@@ -15827,6 +16132,12 @@ func (m *ExerciseOptionMutation) Field(name string) (ent.Value, bool) {
 		return m.RegionHeight()
 	case exerciseoption.FieldRegionShape:
 		return m.RegionShape()
+	case exerciseoption.FieldDiagramRef:
+		return m.DiagramRef()
+	case exerciseoption.FieldDiagramID:
+		return m.DiagramID()
+	case exerciseoption.FieldDiagramPositionID:
+		return m.DiagramPositionID()
 	}
 	return nil, false
 }
@@ -15856,6 +16167,12 @@ func (m *ExerciseOptionMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldRegionHeight(ctx)
 	case exerciseoption.FieldRegionShape:
 		return m.OldRegionShape(ctx)
+	case exerciseoption.FieldDiagramRef:
+		return m.OldDiagramRef(ctx)
+	case exerciseoption.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case exerciseoption.FieldDiagramPositionID:
+		return m.OldDiagramPositionID(ctx)
 	}
 	return nil, fmt.Errorf("unknown ExerciseOption field %s", name)
 }
@@ -15934,6 +16251,27 @@ func (m *ExerciseOptionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRegionShape(v)
+		return nil
+	case exerciseoption.FieldDiagramRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramRef(v)
+		return nil
+	case exerciseoption.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case exerciseoption.FieldDiagramPositionID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramPositionID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption field %s", name)
@@ -16040,6 +16378,15 @@ func (m *ExerciseOptionMutation) ClearedFields() []string {
 	if m.FieldCleared(exerciseoption.FieldRegionShape) {
 		fields = append(fields, exerciseoption.FieldRegionShape)
 	}
+	if m.FieldCleared(exerciseoption.FieldDiagramRef) {
+		fields = append(fields, exerciseoption.FieldDiagramRef)
+	}
+	if m.FieldCleared(exerciseoption.FieldDiagramID) {
+		fields = append(fields, exerciseoption.FieldDiagramID)
+	}
+	if m.FieldCleared(exerciseoption.FieldDiagramPositionID) {
+		fields = append(fields, exerciseoption.FieldDiagramPositionID)
+	}
 	return fields
 }
 
@@ -16078,6 +16425,15 @@ func (m *ExerciseOptionMutation) ClearField(name string) error {
 	case exerciseoption.FieldRegionShape:
 		m.ClearRegionShape()
 		return nil
+	case exerciseoption.FieldDiagramRef:
+		m.ClearDiagramRef()
+		return nil
+	case exerciseoption.FieldDiagramID:
+		m.ClearDiagramID()
+		return nil
+	case exerciseoption.FieldDiagramPositionID:
+		m.ClearDiagramPositionID()
+		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption nullable field %s", name)
 }
@@ -16115,6 +16471,15 @@ func (m *ExerciseOptionMutation) ResetField(name string) error {
 		return nil
 	case exerciseoption.FieldRegionShape:
 		m.ResetRegionShape()
+		return nil
+	case exerciseoption.FieldDiagramRef:
+		m.ResetDiagramRef()
+		return nil
+	case exerciseoption.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case exerciseoption.FieldDiagramPositionID:
+		m.ResetDiagramPositionID()
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption field %s", name)
@@ -16738,6 +17103,8 @@ type ExpandedContentMutation struct {
 	content_type            *expandedcontent.ContentType
 	media_url               *string
 	rich_content            *string
+	diagram_ref             *string
+	diagram_stack_ref       *string
 	trigger_at_seconds      *int
 	addtrigger_at_seconds   *int
 	hide_at_seconds         *int
@@ -17026,6 +17393,104 @@ func (m *ExpandedContentMutation) RichContentCleared() bool {
 func (m *ExpandedContentMutation) ResetRichContent() {
 	m.rich_content = nil
 	delete(m.clearedFields, expandedcontent.FieldRichContent)
+}
+
+// SetDiagramRef sets the "diagram_ref" field.
+func (m *ExpandedContentMutation) SetDiagramRef(s string) {
+	m.diagram_ref = &s
+}
+
+// DiagramRef returns the value of the "diagram_ref" field in the mutation.
+func (m *ExpandedContentMutation) DiagramRef() (r string, exists bool) {
+	v := m.diagram_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramRef returns the old "diagram_ref" field's value of the ExpandedContent entity.
+// If the ExpandedContent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExpandedContentMutation) OldDiagramRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramRef: %w", err)
+	}
+	return oldValue.DiagramRef, nil
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (m *ExpandedContentMutation) ClearDiagramRef() {
+	m.diagram_ref = nil
+	m.clearedFields[expandedcontent.FieldDiagramRef] = struct{}{}
+}
+
+// DiagramRefCleared returns if the "diagram_ref" field was cleared in this mutation.
+func (m *ExpandedContentMutation) DiagramRefCleared() bool {
+	_, ok := m.clearedFields[expandedcontent.FieldDiagramRef]
+	return ok
+}
+
+// ResetDiagramRef resets all changes to the "diagram_ref" field.
+func (m *ExpandedContentMutation) ResetDiagramRef() {
+	m.diagram_ref = nil
+	delete(m.clearedFields, expandedcontent.FieldDiagramRef)
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (m *ExpandedContentMutation) SetDiagramStackRef(s string) {
+	m.diagram_stack_ref = &s
+}
+
+// DiagramStackRef returns the value of the "diagram_stack_ref" field in the mutation.
+func (m *ExpandedContentMutation) DiagramStackRef() (r string, exists bool) {
+	v := m.diagram_stack_ref
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramStackRef returns the old "diagram_stack_ref" field's value of the ExpandedContent entity.
+// If the ExpandedContent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExpandedContentMutation) OldDiagramStackRef(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramStackRef is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramStackRef requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramStackRef: %w", err)
+	}
+	return oldValue.DiagramStackRef, nil
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (m *ExpandedContentMutation) ClearDiagramStackRef() {
+	m.diagram_stack_ref = nil
+	m.clearedFields[expandedcontent.FieldDiagramStackRef] = struct{}{}
+}
+
+// DiagramStackRefCleared returns if the "diagram_stack_ref" field was cleared in this mutation.
+func (m *ExpandedContentMutation) DiagramStackRefCleared() bool {
+	_, ok := m.clearedFields[expandedcontent.FieldDiagramStackRef]
+	return ok
+}
+
+// ResetDiagramStackRef resets all changes to the "diagram_stack_ref" field.
+func (m *ExpandedContentMutation) ResetDiagramStackRef() {
+	m.diagram_stack_ref = nil
+	delete(m.clearedFields, expandedcontent.FieldDiagramStackRef)
 }
 
 // SetTriggerAtSeconds sets the "trigger_at_seconds" field.
@@ -17427,7 +17892,7 @@ func (m *ExpandedContentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExpandedContentMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.content_node_id != nil {
 		fields = append(fields, expandedcontent.FieldContentNodeID)
 	}
@@ -17439,6 +17904,12 @@ func (m *ExpandedContentMutation) Fields() []string {
 	}
 	if m.rich_content != nil {
 		fields = append(fields, expandedcontent.FieldRichContent)
+	}
+	if m.diagram_ref != nil {
+		fields = append(fields, expandedcontent.FieldDiagramRef)
+	}
+	if m.diagram_stack_ref != nil {
+		fields = append(fields, expandedcontent.FieldDiagramStackRef)
 	}
 	if m.trigger_at_seconds != nil {
 		fields = append(fields, expandedcontent.FieldTriggerAtSeconds)
@@ -17474,6 +17945,10 @@ func (m *ExpandedContentMutation) Field(name string) (ent.Value, bool) {
 		return m.MediaURL()
 	case expandedcontent.FieldRichContent:
 		return m.RichContent()
+	case expandedcontent.FieldDiagramRef:
+		return m.DiagramRef()
+	case expandedcontent.FieldDiagramStackRef:
+		return m.DiagramStackRef()
 	case expandedcontent.FieldTriggerAtSeconds:
 		return m.TriggerAtSeconds()
 	case expandedcontent.FieldHideAtSeconds:
@@ -17503,6 +17978,10 @@ func (m *ExpandedContentMutation) OldField(ctx context.Context, name string) (en
 		return m.OldMediaURL(ctx)
 	case expandedcontent.FieldRichContent:
 		return m.OldRichContent(ctx)
+	case expandedcontent.FieldDiagramRef:
+		return m.OldDiagramRef(ctx)
+	case expandedcontent.FieldDiagramStackRef:
+		return m.OldDiagramStackRef(ctx)
 	case expandedcontent.FieldTriggerAtSeconds:
 		return m.OldTriggerAtSeconds(ctx)
 	case expandedcontent.FieldHideAtSeconds:
@@ -17551,6 +18030,20 @@ func (m *ExpandedContentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRichContent(v)
+		return nil
+	case expandedcontent.FieldDiagramRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramRef(v)
+		return nil
+	case expandedcontent.FieldDiagramStackRef:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramStackRef(v)
 		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		v, ok := value.(int)
@@ -17681,6 +18174,12 @@ func (m *ExpandedContentMutation) ClearedFields() []string {
 	if m.FieldCleared(expandedcontent.FieldRichContent) {
 		fields = append(fields, expandedcontent.FieldRichContent)
 	}
+	if m.FieldCleared(expandedcontent.FieldDiagramRef) {
+		fields = append(fields, expandedcontent.FieldDiagramRef)
+	}
+	if m.FieldCleared(expandedcontent.FieldDiagramStackRef) {
+		fields = append(fields, expandedcontent.FieldDiagramStackRef)
+	}
 	if m.FieldCleared(expandedcontent.FieldTriggerAtSeconds) {
 		fields = append(fields, expandedcontent.FieldTriggerAtSeconds)
 	}
@@ -17716,6 +18215,12 @@ func (m *ExpandedContentMutation) ClearField(name string) error {
 	case expandedcontent.FieldRichContent:
 		m.ClearRichContent()
 		return nil
+	case expandedcontent.FieldDiagramRef:
+		m.ClearDiagramRef()
+		return nil
+	case expandedcontent.FieldDiagramStackRef:
+		m.ClearDiagramStackRef()
+		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		m.ClearTriggerAtSeconds()
 		return nil
@@ -17750,6 +18255,12 @@ func (m *ExpandedContentMutation) ResetField(name string) error {
 		return nil
 	case expandedcontent.FieldRichContent:
 		m.ResetRichContent()
+		return nil
+	case expandedcontent.FieldDiagramRef:
+		m.ResetDiagramRef()
+		return nil
+	case expandedcontent.FieldDiagramStackRef:
+		m.ResetDiagramStackRef()
 		return nil
 	case expandedcontent.FieldTriggerAtSeconds:
 		m.ResetTriggerAtSeconds()

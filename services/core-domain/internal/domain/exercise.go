@@ -63,6 +63,12 @@ const (
 	// shared type permits them for the surfaces that do.
 	PromptNodeTypeAudio PromptNodeType = "audio"
 	PromptNodeTypeVideo PromptNodeType = "video"
+	// PromptNodeTypeDiagram embeds a prebuilt diagram inline, via its
+	// PromptNodeAttrs.DiagramRef or DiagramStackRef. Available to every
+	// surface that produces a PromptDocument, including an exercise's own
+	// prompt — a diagram is not a content type of its own, it is a resource
+	// embedded into content that already has a format.
+	PromptNodeTypeDiagram PromptNodeType = "diagram"
 )
 
 // PromptNodeAttrs holds the type-specific attributes a PromptNode may
@@ -77,6 +83,10 @@ type PromptNodeAttrs struct {
 	Rowspan         *int    `json:"rowspan,omitempty"`
 	BackgroundColor *string `json:"backgroundColor,omitempty"`
 	BorderColor     *string `json:"borderColor,omitempty"`
+	// DiagramRef and DiagramStackRef carry a diagram PromptNode's embedded
+	// diagram — exactly one is set, never both.
+	DiagramRef      *DiagramRef      `json:"diagramRef,omitempty"`
+	DiagramStackRef *DiagramStackRef `json:"diagramStackRef,omitempty"`
 }
 
 // PromptNode is a single node in a PromptDocument's tree. Container node
@@ -148,6 +158,17 @@ type Option struct {
 	ImageURL  *string
 	AudioURL  *string
 	Region    *OptionRegion
+	// DiagramRef renders this option's own thumbnail from a prebuilt
+	// diagram, replacing ImageURL — only meaningful for image_choice
+	// options.
+	DiagramRef *DiagramRef
+	// DiagramID and DiagramPositionID are server-derived and read-only:
+	// present only on an option that came from an image_recognition
+	// exercise's DiagramRef/DiagramStackRef stimulus, identifying which
+	// Diagram and Position this option represents. Never set by request
+	// construction — the application layer derives them.
+	DiagramID         *string
+	DiagramPositionID *string
 }
 
 // RemediationTarget is one piece of content recommended to a student who
@@ -175,10 +196,16 @@ type Exercise struct {
 	// Skills/Concepts carry only ID until this Exercise is read back from
 	// the repository with its Skill/Concept rows joined in — the same
 	// construct-then-refetch convention Languages already follows.
-	Skills                   []Skill
-	Concepts                 []Concept
-	ImageURL                 *string
-	AudioURL                 *string
+	Skills   []Skill
+	Concepts []Concept
+	ImageURL *string
+	AudioURL *string
+	// DiagramRef and DiagramStackRef, when set, replace ImageURL as an
+	// image_recognition exercise's stimulus — the diagram's own positions
+	// (after layers.subset filtering) become this exercise's options
+	// automatically. Meaningless for any other ExerciseType.
+	DiagramRef               *DiagramRef
+	DiagramStackRef          *DiagramStackRef
 	Options                  []Option
 	EstimatedDurationSeconds *int
 	// RemediationTargets is the ordered content recommended to a student who
@@ -209,9 +236,9 @@ type Exercise struct {
 // whether each remediationTargets[i].ContentNodeID refers to a content node
 // that actually exists, which requires a repository round-trip this
 // constructor can't perform.
-func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
+func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string, createdAt time.Time) (Exercise, error) {
 	errs := validateExerciseType(exerciseType)
-	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)...)
+	errs = append(errs, validateExerciseContent(title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets)...)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
@@ -226,6 +253,8 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		Concepts:                 conceptsFromIDs(conceptIDs),
 		ImageURL:                 imageURL,
 		AudioURL:                 audioURL,
+		DiagramRef:               diagramRef,
+		DiagramStackRef:          diagramStackRef,
 		Options:                  options,
 		EstimatedDurationSeconds: estimatedDurationSeconds,
 		RemediationTargets:       remediationTargets,
@@ -243,8 +272,8 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 // change after creation since it determines the option shape (region vs.
 // text vs. image), and links are managed exclusively through the exercise's
 // Link/Unlink operations, not through an update.
-func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
-	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets)
+func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget, languageCodes []string) (Exercise, error) {
+	errs := validateExerciseContent(title, prompt, e.ExerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	if len(errs) > 0 {
 		return Exercise{}, &ValidationError{Fields: errs}
@@ -257,6 +286,8 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptI
 	updated.Concepts = conceptsFromIDs(conceptIDs)
 	updated.ImageURL = imageURL
 	updated.AudioURL = audioURL
+	updated.DiagramRef = diagramRef
+	updated.DiagramStackRef = diagramStackRef
 	updated.Options = options
 	updated.EstimatedDurationSeconds = estimatedDurationSeconds
 	updated.RemediationTargets = remediationTargets
@@ -267,7 +298,7 @@ func (e Exercise) Update(title string, prompt PromptDocument, skillIDs, conceptI
 // validateExerciseContent checks the fields shared by creation and update —
 // everything except exercise_type itself, which only creation sets and only
 // creation validates.
-func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
+func validateExerciseContent(title string, prompt PromptDocument, exerciseType ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option, estimatedDurationSeconds *int, remediationTargets []RemediationTarget) []FieldError {
 	var errs []FieldError
 
 	if title == "" {
@@ -280,8 +311,8 @@ func validateExerciseContent(title string, prompt PromptDocument, exerciseType E
 	if len(conceptIDs) == 0 {
 		errs = append(errs, FieldError{Field: "concept_ids", Reason: "must not be empty"})
 	}
-	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL)...)
-	errs = append(errs, validateOptions(exerciseType, options)...)
+	errs = append(errs, validateStimulusMedia(exerciseType, imageURL, audioURL, diagramRef, diagramStackRef)...)
+	errs = append(errs, validateOptions(exerciseType, diagramRef, diagramStackRef, options)...)
 	if estimatedDurationSeconds != nil && *estimatedDurationSeconds < 1 {
 		errs = append(errs, FieldError{Field: "estimated_duration_seconds", Reason: "must be at least 1 when present"})
 	}
@@ -346,6 +377,10 @@ func promptNodeError(node PromptNode, allowMediaNodes bool) string {
 		if !allowMediaNodes {
 			return "contains an unsupported node type \"" + string(node.Type) + "\""
 		}
+	case PromptNodeTypeDiagram:
+		if reason := diagramPromptNodeError(node.Attrs); reason != "" {
+			return reason
+		}
 	default:
 		return "contains an unsupported node type \"" + string(node.Type) + "\""
 	}
@@ -358,6 +393,27 @@ func promptNodeError(node PromptNode, allowMediaNodes bool) string {
 	for _, mark := range node.Marks {
 		if reason := promptMarkError(mark); reason != "" {
 			return reason
+		}
+	}
+	return ""
+}
+
+// diagramPromptNodeError reports the reason a diagram PromptNode's attrs are
+// invalid, or "" if they're valid: exactly one of DiagramRef/DiagramStackRef
+// must be set, and it must itself be structurally valid.
+func diagramPromptNodeError(attrs *PromptNodeAttrs) string {
+	hasRef := attrs != nil && attrs.DiagramRef != nil
+	hasStack := attrs != nil && attrs.DiagramStackRef != nil
+	switch {
+	case hasRef == hasStack:
+		return "a diagram node must carry exactly one of diagram_ref or diagram_stack_ref"
+	case hasRef:
+		if err := ValidateDiagramRef(*attrs.DiagramRef); err != nil {
+			return "diagram_ref: " + err.Error()
+		}
+	case hasStack:
+		if err := ValidateDiagramStackRef(*attrs.DiagramStackRef); err != nil {
+			return "diagram_stack_ref: " + err.Error()
 		}
 	}
 	return ""
@@ -382,26 +438,78 @@ func validateExerciseType(exerciseType ExerciseType) []FieldError {
 	}
 }
 
-// validateStimulusMedia checks the exercise-level media required by
-// exerciseType — image_recognition needs a stimulus image, audio_recognition
-// needs a stimulus audio clip. Other types carry no exercise-level media.
-func validateStimulusMedia(exerciseType ExerciseType, imageURL, audioURL *string) []FieldError {
+// validateStimulusMedia checks the exercise-level stimulus required by
+// exerciseType. image_recognition needs exactly one of image_url,
+// diagram_ref, or diagram_stack_ref; a diagram stimulus must carry
+// correct_intervals (or, for a stack, each entry must) since that is what
+// makes its positions gradable, and must itself be structurally valid.
+// audio_recognition needs a stimulus audio clip. Other types carry no
+// exercise-level stimulus.
+func validateStimulusMedia(exerciseType ExerciseType, imageURL, audioURL *string, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef) []FieldError {
 	var errs []FieldError
-	if exerciseType == ExerciseTypeImageRecognition && (imageURL == nil || *imageURL == "") {
-		errs = append(errs, FieldError{Field: "image_url", Reason: "required when exercise_type is image_recognition"})
+
+	if exerciseType == ExerciseTypeImageRecognition {
+		hasImage := imageURL != nil && *imageURL != ""
+		hasRef := diagramRef != nil
+		hasStack := diagramStackRef != nil
+		switch {
+		case countTrue(hasImage, hasRef, hasStack) == 0:
+			errs = append(errs, FieldError{Field: "image_url", Reason: "one of image_url, diagram_ref, or diagram_stack_ref is required when exercise_type is image_recognition"})
+		case countTrue(hasImage, hasRef, hasStack) > 1:
+			errs = append(errs, FieldError{Field: "image_url", Reason: "at most one of image_url, diagram_ref, or diagram_stack_ref may be set"})
+		case hasRef:
+			errs = append(errs, validateDiagramStimulusRef(*diagramRef)...)
+		case hasStack:
+			if err := ValidateDiagramStackRef(*diagramStackRef); err != nil {
+				errs = append(errs, FieldError{Field: "diagram_stack_ref", Reason: err.Error()})
+			}
+			for _, ref := range diagramStackRef.Stack {
+				errs = append(errs, validateDiagramStimulusRef(ref)...)
+			}
+		}
+	} else if diagramRef != nil || diagramStackRef != nil {
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "only meaningful when exercise_type is image_recognition"})
 	}
+
 	if exerciseType == ExerciseTypeAudioRecognition && (audioURL == nil || *audioURL == "") {
 		errs = append(errs, FieldError{Field: "audio_url", Reason: "required when exercise_type is audio_recognition"})
 	}
 	return errs
 }
 
+// validateDiagramStimulusRef checks that ref is structurally valid and
+// carries correct_intervals — required only when a DiagramRef is an
+// Exercise's image_recognition stimulus, unlike its other usages.
+func validateDiagramStimulusRef(ref DiagramRef) []FieldError {
+	var errs []FieldError
+	if err := ValidateDiagramRef(ref); err != nil {
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: err.Error()})
+	}
+	if ref.CorrectIntervals == nil {
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_intervals is required when used as an image_recognition stimulus"})
+	}
+	return errs
+}
+
+// countTrue returns how many of bs are true.
+func countTrue(bs ...bool) int {
+	n := 0
+	for _, b := range bs {
+		if b {
+			n++
+		}
+	}
+	return n
+}
+
 // validateOptions checks that at least one option exists, at least one is
 // marked correct, and each option's shape matches exerciseType.
-func validateOptions(exerciseType ExerciseType, options []Option) []FieldError {
+func validateOptions(exerciseType ExerciseType, diagramRef *DiagramRef, diagramStackRef *DiagramStackRef, options []Option) []FieldError {
 	if len(options) == 0 {
 		return []FieldError{{Field: "options", Reason: "must contain at least one option"}}
 	}
+
+	diagramDriven := exerciseType == ExerciseTypeImageRecognition && (diagramRef != nil || diagramStackRef != nil)
 
 	var errs []FieldError
 	hasCorrect := false
@@ -409,7 +517,7 @@ func validateOptions(exerciseType ExerciseType, options []Option) []FieldError {
 		if opt.IsCorrect {
 			hasCorrect = true
 		}
-		if reason := optionShapeError(exerciseType, opt); reason != "" {
+		if reason := optionShapeError(exerciseType, diagramDriven, opt); reason != "" {
 			errs = append(errs, FieldError{Field: "options", Reason: reason})
 		}
 	}
@@ -421,19 +529,17 @@ func validateOptions(exerciseType ExerciseType, options []Option) []FieldError {
 
 // optionShapeError reports the reason opt's shape is invalid for
 // exerciseType, or "" if it's valid. image_recognition options select a
-// region on the exercise's image; image_choice options each carry their own
-// image; audio_selection options each carry their own audio clip;
+// region on the exercise's image, or — when diagramDriven — are entirely
+// server-derived (diagram_id/diagram_position_id) from the exercise's
+// diagram stimulus; image_choice options each carry their own image or
+// diagram_ref; audio_selection options each carry their own audio clip;
 // text_response and audio_recognition options carry a text label.
-func optionShapeError(exerciseType ExerciseType, opt Option) string {
+func optionShapeError(exerciseType ExerciseType, diagramDriven bool, opt Option) string {
 	switch exerciseType {
 	case ExerciseTypeImageRecognition:
-		if opt.Region == nil {
-			return "image_recognition options must carry a region"
-		}
+		return imageRecognitionOptionShapeError(diagramDriven, opt)
 	case ExerciseTypeImageChoice:
-		if opt.ImageURL == nil || *opt.ImageURL == "" {
-			return "image_choice options must carry an image_url"
-		}
+		return imageChoiceOptionShapeError(opt)
 	case ExerciseTypeAudioSelection:
 		if opt.AudioURL == nil || *opt.AudioURL == "" {
 			return "audio_selection options must carry an audio_url"
@@ -441,6 +547,42 @@ func optionShapeError(exerciseType ExerciseType, opt Option) string {
 	case ExerciseTypeTextResponse, ExerciseTypeAudioRecognition:
 		if opt.Label == nil || *opt.Label == "" {
 			return "text_response and audio_recognition options must carry a label"
+		}
+	}
+	return ""
+}
+
+// imageRecognitionOptionShapeError reports the reason an image_recognition
+// option's shape is invalid, or "" if it's valid: a region on the
+// exercise's image, or — when diagramDriven — server-derived diagram_id/
+// diagram_position_id from the exercise's diagram stimulus.
+func imageRecognitionOptionShapeError(diagramDriven bool, opt Option) string {
+	if diagramDriven {
+		if opt.DiagramID == nil || *opt.DiagramID == "" || opt.DiagramPositionID == nil || *opt.DiagramPositionID == "" {
+			return "diagram-driven image_recognition options must carry diagram_id and diagram_position_id"
+		}
+		return ""
+	}
+	if opt.Region == nil {
+		return "image_recognition options must carry a region"
+	}
+	return ""
+}
+
+// imageChoiceOptionShapeError reports the reason an image_choice option's
+// shape is invalid, or "" if it's valid: exactly one of an image_url or a
+// structurally valid diagram_ref.
+func imageChoiceOptionShapeError(opt Option) string {
+	hasImage := opt.ImageURL != nil && *opt.ImageURL != ""
+	hasDiagram := opt.DiagramRef != nil
+	switch {
+	case !hasImage && !hasDiagram:
+		return "image_choice options must carry an image_url or a diagram_ref"
+	case hasImage && hasDiagram:
+		return "image_choice options must not carry both an image_url and a diagram_ref"
+	case hasDiagram:
+		if err := ValidateDiagramRef(*opt.DiagramRef); err != nil {
+			return "diagram_ref: " + err.Error()
 		}
 	}
 	return ""

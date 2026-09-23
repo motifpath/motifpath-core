@@ -17,6 +17,7 @@ type ExerciseService struct {
 	nodes      ports.ContentNodeRepository
 	skills     ports.SkillRepository
 	concepts   ports.ConceptRepository
+	diagrams   ports.DiagramRepository
 	newID      func() string
 	now        func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
@@ -31,16 +32,17 @@ func NewExerciseService(
 	nodes ports.ContentNodeRepository,
 	skills ports.SkillRepository,
 	concepts ports.ConceptRepository,
+	diagrams ports.DiagramRepository,
 	newID func() string,
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, newID: newID, now: now, shuffle: shuffle}
 }
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -49,7 +51,12 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages, s.now())
+	options, err := s.resolveDiagramOptions(ctx, exerciseType, diagramRef, diagramStackRef, options)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+
+	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets, languages, s.now())
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -97,6 +104,73 @@ func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targ
 	return nil
 }
 
+// resolveDiagramOptions builds an image_recognition exercise's options from
+// its diagram stimulus, replacing whatever options the caller supplied —
+// the domain constructor/Update rejects a non-empty caller-supplied options
+// list alongside a diagram stimulus, so this only ever overwrites an empty
+// slice with the diagram-derived one. Returns options unchanged when
+// neither diagramRef nor diagramStackRef is given. A stack's entries must
+// all reference diagrams on the same instrument; that requires a repository
+// round trip, so is checked here rather than in the domain layer.
+func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option) ([]domain.Option, error) {
+	if exerciseType != domain.ExerciseTypeImageRecognition || (diagramRef == nil && diagramStackRef == nil) {
+		return options, nil
+	}
+	if len(options) > 0 {
+		return nil, domain.NewValidationError("options", "must be omitted when diagram_ref or diagram_stack_ref is given")
+	}
+
+	resolved, err := resolveDiagramRefs(ctx, s.diagrams, diagramRef, diagramStackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	derived := []domain.Option{}
+	for _, r := range resolved {
+		derived = append(derived, s.optionsFromDiagram(r.diagram, r.ref)...)
+	}
+	return derived, nil
+}
+
+// optionsFromDiagram derives one Option per position of diagram that
+// survives ref.Layers.Subset filtering, marked correct when its interval is
+// among ref.CorrectIntervals.
+func (s *ExerciseService) optionsFromDiagram(diagram domain.Diagram, ref domain.DiagramRef) []domain.Option {
+	var subset map[string]struct{}
+	if ref.Layers.Subset != nil {
+		subset = make(map[string]struct{}, len(*ref.Layers.Subset))
+		for _, interval := range *ref.Layers.Subset {
+			subset[interval] = struct{}{}
+		}
+	}
+	var correct map[string]struct{}
+	if ref.CorrectIntervals != nil {
+		correct = make(map[string]struct{}, len(*ref.CorrectIntervals))
+		for _, interval := range *ref.CorrectIntervals {
+			correct[interval] = struct{}{}
+		}
+	}
+
+	diagramID := diagram.ID
+	options := []domain.Option{}
+	for _, pos := range diagram.Positions {
+		if subset != nil {
+			if _, visible := subset[pos.Interval]; !visible {
+				continue
+			}
+		}
+		_, isCorrect := correct[pos.Interval]
+		positionID := pos.ID
+		options = append(options, domain.Option{
+			ID:                s.newID(),
+			IsCorrect:         isCorrect,
+			DiagramID:         &diagramID,
+			DiagramPositionID: &positionID,
+		})
+	}
+	return options
+}
+
 // GetExercise returns the exercise with the given id. Any authenticated user
 // may retrieve an exercise.
 func (s *ExerciseService) GetExercise(ctx context.Context, id string) (domain.Exercise, error) {
@@ -121,7 +195,7 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 // challenge/content-node links are untouched. Only teachers and admins may
 // update an exercise. Returns domain.ErrNotFound if no exercise exists with
 // the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -135,7 +209,12 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	updated, err := existing.Update(title, prompt, skillIDs, conceptIDs, imageURL, audioURL, options, estimatedDurationSeconds, remediationTargets, languages)
+	options, err = s.resolveDiagramOptions(ctx, existing.ExerciseType, diagramRef, diagramStackRef, options)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+
+	updated, err := existing.Update(title, prompt, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets, languages)
 	if err != nil {
 		return domain.Exercise{}, err
 	}

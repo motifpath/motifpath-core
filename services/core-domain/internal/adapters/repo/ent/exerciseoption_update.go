@@ -245,6 +245,66 @@ func (_u *ExerciseOptionUpdate) ClearRegionShape() *ExerciseOptionUpdate {
 	return _u
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExerciseOptionUpdate) SetDiagramRef(v string) *ExerciseOptionUpdate {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableDiagramRef(v *string) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExerciseOptionUpdate) ClearDiagramRef() *ExerciseOptionUpdate {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (_u *ExerciseOptionUpdate) SetDiagramID(v uuid.UUID) *ExerciseOptionUpdate {
+	_u.mutation.SetDiagramID(v)
+	return _u
+}
+
+// SetNillableDiagramID sets the "diagram_id" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableDiagramID(v *uuid.UUID) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetDiagramID(*v)
+	}
+	return _u
+}
+
+// ClearDiagramID clears the value of the "diagram_id" field.
+func (_u *ExerciseOptionUpdate) ClearDiagramID() *ExerciseOptionUpdate {
+	_u.mutation.ClearDiagramID()
+	return _u
+}
+
+// SetDiagramPositionID sets the "diagram_position_id" field.
+func (_u *ExerciseOptionUpdate) SetDiagramPositionID(v uuid.UUID) *ExerciseOptionUpdate {
+	_u.mutation.SetDiagramPositionID(v)
+	return _u
+}
+
+// SetNillableDiagramPositionID sets the "diagram_position_id" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableDiagramPositionID(v *uuid.UUID) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetDiagramPositionID(*v)
+	}
+	return _u
+}
+
+// ClearDiagramPositionID clears the value of the "diagram_position_id" field.
+func (_u *ExerciseOptionUpdate) ClearDiagramPositionID() *ExerciseOptionUpdate {
+	_u.mutation.ClearDiagramPositionID()
+	return _u
+}
+
 // SetExercise sets the "exercise" edge to the Exercise entity.
 func (_u *ExerciseOptionUpdate) SetExercise(v *Exercise) *ExerciseOptionUpdate {
 	return _u.SetExerciseID(v.ID)
@@ -375,6 +435,24 @@ func (_u *ExerciseOptionUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if _u.mutation.RegionShapeCleared() {
 		_spec.ClearField(exerciseoption.FieldRegionShape, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramID, field.TypeUUID, value)
+	}
+	if _u.mutation.DiagramIDCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.DiagramPositionID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramPositionID, field.TypeUUID, value)
+	}
+	if _u.mutation.DiagramPositionIDCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramPositionID, field.TypeUUID)
 	}
 	if _u.mutation.ExerciseCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -641,6 +719,66 @@ func (_u *ExerciseOptionUpdateOne) ClearRegionShape() *ExerciseOptionUpdateOne {
 	return _u
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExerciseOptionUpdateOne) SetDiagramRef(v string) *ExerciseOptionUpdateOne {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableDiagramRef(v *string) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExerciseOptionUpdateOne) ClearDiagramRef() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (_u *ExerciseOptionUpdateOne) SetDiagramID(v uuid.UUID) *ExerciseOptionUpdateOne {
+	_u.mutation.SetDiagramID(v)
+	return _u
+}
+
+// SetNillableDiagramID sets the "diagram_id" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableDiagramID(v *uuid.UUID) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetDiagramID(*v)
+	}
+	return _u
+}
+
+// ClearDiagramID clears the value of the "diagram_id" field.
+func (_u *ExerciseOptionUpdateOne) ClearDiagramID() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearDiagramID()
+	return _u
+}
+
+// SetDiagramPositionID sets the "diagram_position_id" field.
+func (_u *ExerciseOptionUpdateOne) SetDiagramPositionID(v uuid.UUID) *ExerciseOptionUpdateOne {
+	_u.mutation.SetDiagramPositionID(v)
+	return _u
+}
+
+// SetNillableDiagramPositionID sets the "diagram_position_id" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableDiagramPositionID(v *uuid.UUID) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetDiagramPositionID(*v)
+	}
+	return _u
+}
+
+// ClearDiagramPositionID clears the value of the "diagram_position_id" field.
+func (_u *ExerciseOptionUpdateOne) ClearDiagramPositionID() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearDiagramPositionID()
+	return _u
+}
+
 // SetExercise sets the "exercise" edge to the Exercise entity.
 func (_u *ExerciseOptionUpdateOne) SetExercise(v *Exercise) *ExerciseOptionUpdateOne {
 	return _u.SetExerciseID(v.ID)
@@ -801,6 +939,24 @@ func (_u *ExerciseOptionUpdateOne) sqlSave(ctx context.Context) (_node *Exercise
 	}
 	if _u.mutation.RegionShapeCleared() {
 		_spec.ClearField(exerciseoption.FieldRegionShape, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramID, field.TypeUUID, value)
+	}
+	if _u.mutation.DiagramIDCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.DiagramPositionID(); ok {
+		_spec.SetField(exerciseoption.FieldDiagramPositionID, field.TypeUUID, value)
+	}
+	if _u.mutation.DiagramPositionIDCleared() {
+		_spec.ClearField(exerciseoption.FieldDiagramPositionID, field.TypeUUID)
 	}
 	if _u.mutation.ExerciseCleared() {
 		edge := &sqlgraph.EdgeSpec{

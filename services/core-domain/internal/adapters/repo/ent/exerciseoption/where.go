@@ -94,6 +94,21 @@ func RegionHeight(v float64) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldRegionHeight, v))
 }
 
+// DiagramRef applies equality check predicate on the "diagram_ref" field. It's identical to DiagramRefEQ.
+func DiagramRef(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramRef, v))
+}
+
+// DiagramID applies equality check predicate on the "diagram_id" field. It's identical to DiagramIDEQ.
+func DiagramID(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramID, v))
+}
+
+// DiagramPositionID applies equality check predicate on the "diagram_position_id" field. It's identical to DiagramPositionIDEQ.
+func DiagramPositionID(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramPositionID, v))
+}
+
 // ExerciseIDEQ applies the EQ predicate on the "exercise_id" field.
 func ExerciseIDEQ(v uuid.UUID) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldExerciseID, v))
@@ -577,6 +592,181 @@ func RegionShapeIsNil() predicate.ExerciseOption {
 // RegionShapeNotNil applies the NotNil predicate on the "region_shape" field.
 func RegionShapeNotNil() predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldNotNull(FieldRegionShape))
+}
+
+// DiagramRefEQ applies the EQ predicate on the "diagram_ref" field.
+func DiagramRefEQ(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramRef, v))
+}
+
+// DiagramRefNEQ applies the NEQ predicate on the "diagram_ref" field.
+func DiagramRefNEQ(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldDiagramRef, v))
+}
+
+// DiagramRefIn applies the In predicate on the "diagram_ref" field.
+func DiagramRefIn(vs ...string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldDiagramRef, vs...))
+}
+
+// DiagramRefNotIn applies the NotIn predicate on the "diagram_ref" field.
+func DiagramRefNotIn(vs ...string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldDiagramRef, vs...))
+}
+
+// DiagramRefGT applies the GT predicate on the "diagram_ref" field.
+func DiagramRefGT(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldDiagramRef, v))
+}
+
+// DiagramRefGTE applies the GTE predicate on the "diagram_ref" field.
+func DiagramRefGTE(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldDiagramRef, v))
+}
+
+// DiagramRefLT applies the LT predicate on the "diagram_ref" field.
+func DiagramRefLT(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldDiagramRef, v))
+}
+
+// DiagramRefLTE applies the LTE predicate on the "diagram_ref" field.
+func DiagramRefLTE(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldDiagramRef, v))
+}
+
+// DiagramRefContains applies the Contains predicate on the "diagram_ref" field.
+func DiagramRefContains(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldContains(FieldDiagramRef, v))
+}
+
+// DiagramRefHasPrefix applies the HasPrefix predicate on the "diagram_ref" field.
+func DiagramRefHasPrefix(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldHasPrefix(FieldDiagramRef, v))
+}
+
+// DiagramRefHasSuffix applies the HasSuffix predicate on the "diagram_ref" field.
+func DiagramRefHasSuffix(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldHasSuffix(FieldDiagramRef, v))
+}
+
+// DiagramRefIsNil applies the IsNil predicate on the "diagram_ref" field.
+func DiagramRefIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldDiagramRef))
+}
+
+// DiagramRefNotNil applies the NotNil predicate on the "diagram_ref" field.
+func DiagramRefNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldDiagramRef))
+}
+
+// DiagramRefEqualFold applies the EqualFold predicate on the "diagram_ref" field.
+func DiagramRefEqualFold(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEqualFold(FieldDiagramRef, v))
+}
+
+// DiagramRefContainsFold applies the ContainsFold predicate on the "diagram_ref" field.
+func DiagramRefContainsFold(v string) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldContainsFold(FieldDiagramRef, v))
+}
+
+// DiagramIDEQ applies the EQ predicate on the "diagram_id" field.
+func DiagramIDEQ(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramID, v))
+}
+
+// DiagramIDNEQ applies the NEQ predicate on the "diagram_id" field.
+func DiagramIDNEQ(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldDiagramID, v))
+}
+
+// DiagramIDIn applies the In predicate on the "diagram_id" field.
+func DiagramIDIn(vs ...uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldDiagramID, vs...))
+}
+
+// DiagramIDNotIn applies the NotIn predicate on the "diagram_id" field.
+func DiagramIDNotIn(vs ...uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldDiagramID, vs...))
+}
+
+// DiagramIDGT applies the GT predicate on the "diagram_id" field.
+func DiagramIDGT(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldDiagramID, v))
+}
+
+// DiagramIDGTE applies the GTE predicate on the "diagram_id" field.
+func DiagramIDGTE(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldDiagramID, v))
+}
+
+// DiagramIDLT applies the LT predicate on the "diagram_id" field.
+func DiagramIDLT(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldDiagramID, v))
+}
+
+// DiagramIDLTE applies the LTE predicate on the "diagram_id" field.
+func DiagramIDLTE(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldDiagramID, v))
+}
+
+// DiagramIDIsNil applies the IsNil predicate on the "diagram_id" field.
+func DiagramIDIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldDiagramID))
+}
+
+// DiagramIDNotNil applies the NotNil predicate on the "diagram_id" field.
+func DiagramIDNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldDiagramID))
+}
+
+// DiagramPositionIDEQ applies the EQ predicate on the "diagram_position_id" field.
+func DiagramPositionIDEQ(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDNEQ applies the NEQ predicate on the "diagram_position_id" field.
+func DiagramPositionIDNEQ(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDIn applies the In predicate on the "diagram_position_id" field.
+func DiagramPositionIDIn(vs ...uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldDiagramPositionID, vs...))
+}
+
+// DiagramPositionIDNotIn applies the NotIn predicate on the "diagram_position_id" field.
+func DiagramPositionIDNotIn(vs ...uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldDiagramPositionID, vs...))
+}
+
+// DiagramPositionIDGT applies the GT predicate on the "diagram_position_id" field.
+func DiagramPositionIDGT(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDGTE applies the GTE predicate on the "diagram_position_id" field.
+func DiagramPositionIDGTE(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDLT applies the LT predicate on the "diagram_position_id" field.
+func DiagramPositionIDLT(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDLTE applies the LTE predicate on the "diagram_position_id" field.
+func DiagramPositionIDLTE(v uuid.UUID) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldDiagramPositionID, v))
+}
+
+// DiagramPositionIDIsNil applies the IsNil predicate on the "diagram_position_id" field.
+func DiagramPositionIDIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldDiagramPositionID))
+}
+
+// DiagramPositionIDNotNil applies the NotNil predicate on the "diagram_position_id" field.
+func DiagramPositionIDNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldDiagramPositionID))
 }
 
 // HasExercise applies the HasEdge predicate on the "exercise" edge.

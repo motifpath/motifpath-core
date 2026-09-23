@@ -81,6 +81,46 @@ func (_u *ExpandedContentUpdate) ClearRichContent() *ExpandedContentUpdate {
 	return _u
 }
 
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExpandedContentUpdate) SetDiagramRef(v string) *ExpandedContentUpdate {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExpandedContentUpdate) SetNillableDiagramRef(v *string) *ExpandedContentUpdate {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExpandedContentUpdate) ClearDiagramRef() *ExpandedContentUpdate {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_u *ExpandedContentUpdate) SetDiagramStackRef(v string) *ExpandedContentUpdate {
+	_u.mutation.SetDiagramStackRef(v)
+	return _u
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_u *ExpandedContentUpdate) SetNillableDiagramStackRef(v *string) *ExpandedContentUpdate {
+	if v != nil {
+		_u.SetDiagramStackRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (_u *ExpandedContentUpdate) ClearDiagramStackRef() *ExpandedContentUpdate {
+	_u.mutation.ClearDiagramStackRef()
+	return _u
+}
+
 // SetTriggerAtSeconds sets the "trigger_at_seconds" field.
 func (_u *ExpandedContentUpdate) SetTriggerAtSeconds(v int) *ExpandedContentUpdate {
 	_u.mutation.ResetTriggerAtSeconds()
@@ -278,6 +318,18 @@ func (_u *ExpandedContentUpdate) sqlSave(ctx context.Context) (_node int, err er
 	if _u.mutation.RichContentCleared() {
 		_spec.ClearField(expandedcontent.FieldRichContent, field.TypeString)
 	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(expandedcontent.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramStackRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramStackRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramStackRefCleared() {
+		_spec.ClearField(expandedcontent.FieldDiagramStackRef, field.TypeString)
+	}
 	if value, ok := _u.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)
 	}
@@ -391,6 +443,46 @@ func (_u *ExpandedContentUpdateOne) SetNillableRichContent(v *string) *ExpandedC
 // ClearRichContent clears the value of the "rich_content" field.
 func (_u *ExpandedContentUpdateOne) ClearRichContent() *ExpandedContentUpdateOne {
 	_u.mutation.ClearRichContent()
+	return _u
+}
+
+// SetDiagramRef sets the "diagram_ref" field.
+func (_u *ExpandedContentUpdateOne) SetDiagramRef(v string) *ExpandedContentUpdateOne {
+	_u.mutation.SetDiagramRef(v)
+	return _u
+}
+
+// SetNillableDiagramRef sets the "diagram_ref" field if the given value is not nil.
+func (_u *ExpandedContentUpdateOne) SetNillableDiagramRef(v *string) *ExpandedContentUpdateOne {
+	if v != nil {
+		_u.SetDiagramRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramRef clears the value of the "diagram_ref" field.
+func (_u *ExpandedContentUpdateOne) ClearDiagramRef() *ExpandedContentUpdateOne {
+	_u.mutation.ClearDiagramRef()
+	return _u
+}
+
+// SetDiagramStackRef sets the "diagram_stack_ref" field.
+func (_u *ExpandedContentUpdateOne) SetDiagramStackRef(v string) *ExpandedContentUpdateOne {
+	_u.mutation.SetDiagramStackRef(v)
+	return _u
+}
+
+// SetNillableDiagramStackRef sets the "diagram_stack_ref" field if the given value is not nil.
+func (_u *ExpandedContentUpdateOne) SetNillableDiagramStackRef(v *string) *ExpandedContentUpdateOne {
+	if v != nil {
+		_u.SetDiagramStackRef(*v)
+	}
+	return _u
+}
+
+// ClearDiagramStackRef clears the value of the "diagram_stack_ref" field.
+func (_u *ExpandedContentUpdateOne) ClearDiagramStackRef() *ExpandedContentUpdateOne {
+	_u.mutation.ClearDiagramStackRef()
 	return _u
 }
 
@@ -620,6 +712,18 @@ func (_u *ExpandedContentUpdateOne) sqlSave(ctx context.Context) (_node *Expande
 	}
 	if _u.mutation.RichContentCleared() {
 		_spec.ClearField(expandedcontent.FieldRichContent, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramRefCleared() {
+		_spec.ClearField(expandedcontent.FieldDiagramRef, field.TypeString)
+	}
+	if value, ok := _u.mutation.DiagramStackRef(); ok {
+		_spec.SetField(expandedcontent.FieldDiagramStackRef, field.TypeString, value)
+	}
+	if _u.mutation.DiagramStackRefCleared() {
+		_spec.ClearField(expandedcontent.FieldDiagramStackRef, field.TypeString)
 	}
 	if value, ok := _u.mutation.TriggerAtSeconds(); ok {
 		_spec.SetField(expandedcontent.FieldTriggerAtSeconds, field.TypeInt, value)

@@ -26,6 +26,10 @@ type ExpandedContent struct {
 	MediaURL *string `json:"media_url,omitempty"`
 	// RichContent holds the value of the "rich_content" field.
 	RichContent *string `json:"rich_content,omitempty"`
+	// DiagramRef holds the value of the "diagram_ref" field.
+	DiagramRef *string `json:"diagram_ref,omitempty"`
+	// DiagramStackRef holds the value of the "diagram_stack_ref" field.
+	DiagramStackRef *string `json:"diagram_stack_ref,omitempty"`
 	// TriggerAtSeconds holds the value of the "trigger_at_seconds" field.
 	TriggerAtSeconds *int `json:"trigger_at_seconds,omitempty"`
 	// HideAtSeconds holds the value of the "hide_at_seconds" field.
@@ -48,7 +52,7 @@ func (*ExpandedContent) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case expandedcontent.FieldTriggerAtSeconds, expandedcontent.FieldHideAtSeconds, expandedcontent.FieldTriggerAtParagraph, expandedcontent.FieldDurationMs:
 			values[i] = new(sql.NullInt64)
-		case expandedcontent.FieldContentType, expandedcontent.FieldMediaURL, expandedcontent.FieldRichContent, expandedcontent.FieldCaption:
+		case expandedcontent.FieldContentType, expandedcontent.FieldMediaURL, expandedcontent.FieldRichContent, expandedcontent.FieldDiagramRef, expandedcontent.FieldDiagramStackRef, expandedcontent.FieldCaption:
 			values[i] = new(sql.NullString)
 		case expandedcontent.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -100,6 +104,20 @@ func (_m *ExpandedContent) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RichContent = new(string)
 				*_m.RichContent = value.String
+			}
+		case expandedcontent.FieldDiagramRef:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_ref", values[i])
+			} else if value.Valid {
+				_m.DiagramRef = new(string)
+				*_m.DiagramRef = value.String
+			}
+		case expandedcontent.FieldDiagramStackRef:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field diagram_stack_ref", values[i])
+			} else if value.Valid {
+				_m.DiagramStackRef = new(string)
+				*_m.DiagramStackRef = value.String
 			}
 		case expandedcontent.FieldTriggerAtSeconds:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -191,6 +209,16 @@ func (_m *ExpandedContent) String() string {
 	builder.WriteString(", ")
 	if v := _m.RichContent; v != nil {
 		builder.WriteString("rich_content=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramRef; v != nil {
+		builder.WriteString("diagram_ref=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DiagramStackRef; v != nil {
+		builder.WriteString("diagram_stack_ref=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

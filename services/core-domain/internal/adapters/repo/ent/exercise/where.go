@@ -86,6 +86,16 @@ func RemediationTargets(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldRemediationTargets, v))
 }
 
+// DiagramRef applies equality check predicate on the "diagram_ref" field. It's identical to DiagramRefEQ.
+func DiagramRef(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldDiagramRef, v))
+}
+
+// DiagramStackRef applies equality check predicate on the "diagram_stack_ref" field. It's identical to DiagramStackRefEQ.
+func DiagramStackRef(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldDiagramStackRef, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Exercise {
 	return predicate.Exercise(sql.FieldEQ(FieldCreatedAt, v))
@@ -514,6 +524,156 @@ func RemediationTargetsEqualFold(v string) predicate.Exercise {
 // RemediationTargetsContainsFold applies the ContainsFold predicate on the "remediation_targets" field.
 func RemediationTargetsContainsFold(v string) predicate.Exercise {
 	return predicate.Exercise(sql.FieldContainsFold(FieldRemediationTargets, v))
+}
+
+// DiagramRefEQ applies the EQ predicate on the "diagram_ref" field.
+func DiagramRefEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldDiagramRef, v))
+}
+
+// DiagramRefNEQ applies the NEQ predicate on the "diagram_ref" field.
+func DiagramRefNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldDiagramRef, v))
+}
+
+// DiagramRefIn applies the In predicate on the "diagram_ref" field.
+func DiagramRefIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldDiagramRef, vs...))
+}
+
+// DiagramRefNotIn applies the NotIn predicate on the "diagram_ref" field.
+func DiagramRefNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldDiagramRef, vs...))
+}
+
+// DiagramRefGT applies the GT predicate on the "diagram_ref" field.
+func DiagramRefGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldDiagramRef, v))
+}
+
+// DiagramRefGTE applies the GTE predicate on the "diagram_ref" field.
+func DiagramRefGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldDiagramRef, v))
+}
+
+// DiagramRefLT applies the LT predicate on the "diagram_ref" field.
+func DiagramRefLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldDiagramRef, v))
+}
+
+// DiagramRefLTE applies the LTE predicate on the "diagram_ref" field.
+func DiagramRefLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldDiagramRef, v))
+}
+
+// DiagramRefContains applies the Contains predicate on the "diagram_ref" field.
+func DiagramRefContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldDiagramRef, v))
+}
+
+// DiagramRefHasPrefix applies the HasPrefix predicate on the "diagram_ref" field.
+func DiagramRefHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldDiagramRef, v))
+}
+
+// DiagramRefHasSuffix applies the HasSuffix predicate on the "diagram_ref" field.
+func DiagramRefHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldDiagramRef, v))
+}
+
+// DiagramRefIsNil applies the IsNil predicate on the "diagram_ref" field.
+func DiagramRefIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldDiagramRef))
+}
+
+// DiagramRefNotNil applies the NotNil predicate on the "diagram_ref" field.
+func DiagramRefNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldDiagramRef))
+}
+
+// DiagramRefEqualFold applies the EqualFold predicate on the "diagram_ref" field.
+func DiagramRefEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldDiagramRef, v))
+}
+
+// DiagramRefContainsFold applies the ContainsFold predicate on the "diagram_ref" field.
+func DiagramRefContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldDiagramRef, v))
+}
+
+// DiagramStackRefEQ applies the EQ predicate on the "diagram_stack_ref" field.
+func DiagramStackRefEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEQ(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefNEQ applies the NEQ predicate on the "diagram_stack_ref" field.
+func DiagramStackRefNEQ(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNEQ(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefIn applies the In predicate on the "diagram_stack_ref" field.
+func DiagramStackRefIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldIn(FieldDiagramStackRef, vs...))
+}
+
+// DiagramStackRefNotIn applies the NotIn predicate on the "diagram_stack_ref" field.
+func DiagramStackRefNotIn(vs ...string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotIn(FieldDiagramStackRef, vs...))
+}
+
+// DiagramStackRefGT applies the GT predicate on the "diagram_stack_ref" field.
+func DiagramStackRefGT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGT(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefGTE applies the GTE predicate on the "diagram_stack_ref" field.
+func DiagramStackRefGTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldGTE(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefLT applies the LT predicate on the "diagram_stack_ref" field.
+func DiagramStackRefLT(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLT(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefLTE applies the LTE predicate on the "diagram_stack_ref" field.
+func DiagramStackRefLTE(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldLTE(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefContains applies the Contains predicate on the "diagram_stack_ref" field.
+func DiagramStackRefContains(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContains(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefHasPrefix applies the HasPrefix predicate on the "diagram_stack_ref" field.
+func DiagramStackRefHasPrefix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasPrefix(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefHasSuffix applies the HasSuffix predicate on the "diagram_stack_ref" field.
+func DiagramStackRefHasSuffix(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldHasSuffix(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefIsNil applies the IsNil predicate on the "diagram_stack_ref" field.
+func DiagramStackRefIsNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldIsNull(FieldDiagramStackRef))
+}
+
+// DiagramStackRefNotNil applies the NotNil predicate on the "diagram_stack_ref" field.
+func DiagramStackRefNotNil() predicate.Exercise {
+	return predicate.Exercise(sql.FieldNotNull(FieldDiagramStackRef))
+}
+
+// DiagramStackRefEqualFold applies the EqualFold predicate on the "diagram_stack_ref" field.
+func DiagramStackRefEqualFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldEqualFold(FieldDiagramStackRef, v))
+}
+
+// DiagramStackRefContainsFold applies the ContainsFold predicate on the "diagram_stack_ref" field.
+func DiagramStackRefContainsFold(v string) predicate.Exercise {
+	return predicate.Exercise(sql.FieldContainsFold(FieldDiagramStackRef, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
