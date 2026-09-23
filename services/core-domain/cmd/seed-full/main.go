@@ -69,6 +69,8 @@ type services struct {
 	exercise    *application.ExerciseService
 	skill       *application.SkillService
 	concept     *application.ConceptService
+	instrument  *application.InstrumentService
+	diagram     *application.DiagramService
 }
 
 func run() error {
@@ -166,6 +168,7 @@ func wireServices(res resources) (services, seedDeps) {
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -190,6 +193,8 @@ func wireServices(res resources) (services, seedDeps) {
 		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle),
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
+		instrument:  application.NewInstrumentService(instrumentRepo, newID),
+		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now),
 	}
 
 	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
@@ -225,6 +230,12 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 		return fmt.Errorf("seed exercises: %w", err)
 	}
 	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
+
+	diagram, err := seedInstrumentAndDiagram(ctx, teacher, svc.instrument, svc.diagram, classifier)
+	if err != nil {
+		return fmt.Errorf("seed instrument and diagram: %w", err)
+	}
+	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Name)
 
 	templateA, err := svc.path.CreateLearningPath(ctx, teacher, "Open Position Foundations", []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
@@ -442,6 +453,50 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 		result[s.key] = node
 	}
 	return result, nil
+}
+
+// seedInstrumentAndDiagram creates one fretted Instrument ("Guitar", standard
+// tuning) and one Diagram against it (an open-position A minor pentatonic
+// shape) — without this, the diagram authoring UI's instrument picker has
+// nothing to list, since no other seed step creates an Instrument row.
+func seedInstrumentAndDiagram(ctx context.Context, teacher domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (domain.Diagram, error) {
+	stringCount := 6
+	instrument, err := instrumentSvc.CreateInstrument(ctx, teacher, "Guitar", domain.InstrumentFamilyFretted,
+		&stringCount, []string{"E", "A", "D", "G", "B", "E"}, nil)
+	if err != nil {
+		return domain.Diagram{}, fmt.Errorf("create instrument: %w", err)
+	}
+
+	skillID, err := classifier.skillID(ctx, "Scales")
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	conceptID, err := classifier.conceptID(ctx, "Pentatonic scale shapes")
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+
+	type positionSpec struct {
+		interval, noteName string
+		string, fret       int
+	}
+	specs := []positionSpec{
+		{"R", "A", 6, 5}, {"b3", "C", 6, 8}, {"4", "D", 6, 10},
+		{"5", "E", 5, 7}, {"b7", "G", 5, 10}, {"R", "A", 4, 7},
+		{"b3", "C", 4, 10}, {"4", "D", 3, 7}, {"5", "E", 3, 9},
+		{"b7", "G", 2, 8}, {"R", "A", 2, 10}, {"b3", "C", 1, 8},
+	}
+	positions := make([]domain.Position, len(specs))
+	for i, spec := range specs {
+		str, fret := spec.string, spec.fret
+		positions[i] = domain.Position{Interval: spec.interval, NoteName: spec.noteName, String: &str, Fret: &fret}
+	}
+
+	diagram, err := diagramSvc.CreateDiagram(ctx, teacher, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID})
+	if err != nil {
+		return domain.Diagram{}, fmt.Errorf("create diagram: %w", err)
+	}
+	return diagram, nil
 }
 
 // seedExercisesAllTypes creates one exercise of every domain.ExerciseType,
