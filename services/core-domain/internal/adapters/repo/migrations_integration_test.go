@@ -47,6 +47,42 @@ func TestMigrationsApplyCleanly(t *testing.T) {
 	assertColumnExists(t, ctx, db, "learning_path_items", "section_label")
 	assertColumnExists(t, ctx, db, "diagrams", "kind")
 	assertColumnExists(t, ctx, db, "diagrams", "created_by")
+	assertColumnExists(t, ctx, db, "users", "display_name")
+}
+
+// TestUserDisplayNameMigration covers the backfill of users that predate
+// display names: they get a placeholder, which their real name replaces on
+// their next authenticated request, and the column ends up NOT NULL with
+// no default, so a new user can only be created with a name.
+func TestUserDisplayNameMigration(t *testing.T) {
+	ctx := context.Background()
+	files := migrationFiles(t)
+	displayName := -1
+	for i, f := range files {
+		if strings.HasSuffix(f, "_pb66_user_display_name.up.sql") {
+			displayName = i
+		}
+	}
+	require.NotEqual(t, -1, displayName, "expected a *_pb66_user_display_name.up.sql migration")
+
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range files[:displayName] {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	mustExec(t, ctx, db, `INSERT INTO users (id, clerk_user_id, role, registered_at, locale_id)
+		SELECT 'bbbbbbbb-0000-0000-0000-000000000001', 'clerk-existing', 'teacher', now(), id FROM languages WHERE code = 'en'`)
+
+	_, err := execMigrationFile(ctx, db, files[displayName])
+	require.NoError(t, err)
+
+	var name string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT display_name FROM users WHERE clerk_user_id = 'clerk-existing'`).Scan(&name))
+	assert.Equal(t, "MotifPath user", name)
+
+	_, err = db.ExecContext(ctx, `INSERT INTO users (id, clerk_user_id, role, registered_at, locale_id)
+		SELECT 'bbbbbbbb-0000-0000-0000-000000000002', 'clerk-new', 'student', now(), id FROM languages WHERE code = 'en'`)
+	require.Error(t, err, "a user without a display name must be refused once the placeholder default is dropped")
 }
 
 // TestDiagramOwnershipMigration covers the one migration that backfills

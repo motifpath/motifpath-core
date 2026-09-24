@@ -1,4 +1,4 @@
-h1:9Kbbmw2GoOliCFs5fj7u6RdyeBS/lxhXjOOrcB/EAo0=
+h1:heNL3D9DMO/JPM7i2eTBxGUS2TLCzX1TixavR/Els7w=
 20260922172448_initial_schema_student_path_and_content_versioning.up.sql h1:DTJlaJskch0SS4KJeracxn45WipONPrVf42g0LWYRJI=
 20260922180356_add_course_and_course_checkpoint.up.sql h1:KIefEsgObvQNHWLZ5FNgMrgjJIAPUbXoCmAeIdn5DFk=
 20260922181952_add_course_version.up.sql h1:H62FZAUVd4Q1DBgXnoTJapnk7zMUIgCOQcZzlKNd1qA=
@@ -9,3 +9,4 @@ h1:9Kbbmw2GoOliCFs5fj7u6RdyeBS/lxhXjOOrcB/EAo0=
 20260924000931_pb57_diagram_colors.up.sql h1:UpL4X3zNXD0rPJrMgggcrD784MLiev4K4xAEICYAUTo=
 20260924021902_content_node_version_classification_languages_snapshot.up.sql h1:WccQOlLkzLfvQGXZgKOZlhuTA+nNj+aBbxDSuBD/jZg=
 20260924143855_pb57_diagram_ownership.up.sql h1:9gJk5VQZL787k5Y/ls7i8FJnIOs4ZhJdf6P+gY02AVw=
+20260924184650_pb66_user_display_name.up.sql h1:qZobFKQS9fFClSDJ3HSPztkqUArTlyaznLHSwrHuB7E=

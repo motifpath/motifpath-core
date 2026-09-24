@@ -25392,6 +25392,7 @@ type UserMutation struct {
 	id            *uuid.UUID
 	clerk_user_id *string
 	role          *user.Role
+	display_name  *string
 	registered_at *time.Time
 	clearedFields map[string]struct{}
 	locale        *uuid.UUID
@@ -25577,6 +25578,42 @@ func (m *UserMutation) ResetRole() {
 	m.role = nil
 }
 
+// SetDisplayName sets the "display_name" field.
+func (m *UserMutation) SetDisplayName(s string) {
+	m.display_name = &s
+}
+
+// DisplayName returns the value of the "display_name" field in the mutation.
+func (m *UserMutation) DisplayName() (r string, exists bool) {
+	v := m.display_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisplayName returns the old "display_name" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldDisplayName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisplayName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisplayName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisplayName: %w", err)
+	}
+	return oldValue.DisplayName, nil
+}
+
+// ResetDisplayName resets all changes to the "display_name" field.
+func (m *UserMutation) ResetDisplayName() {
+	m.display_name = nil
+}
+
 // SetLocaleID sets the "locale_id" field.
 func (m *UserMutation) SetLocaleID(u uuid.UUID) {
 	m.locale = &u
@@ -25710,12 +25747,15 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.clerk_user_id != nil {
 		fields = append(fields, user.FieldClerkUserID)
 	}
 	if m.role != nil {
 		fields = append(fields, user.FieldRole)
+	}
+	if m.display_name != nil {
+		fields = append(fields, user.FieldDisplayName)
 	}
 	if m.locale != nil {
 		fields = append(fields, user.FieldLocaleID)
@@ -25735,6 +25775,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.ClerkUserID()
 	case user.FieldRole:
 		return m.Role()
+	case user.FieldDisplayName:
+		return m.DisplayName()
 	case user.FieldLocaleID:
 		return m.LocaleID()
 	case user.FieldRegisteredAt:
@@ -25752,6 +25794,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldClerkUserID(ctx)
 	case user.FieldRole:
 		return m.OldRole(ctx)
+	case user.FieldDisplayName:
+		return m.OldDisplayName(ctx)
 	case user.FieldLocaleID:
 		return m.OldLocaleID(ctx)
 	case user.FieldRegisteredAt:
@@ -25778,6 +25822,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRole(v)
+		return nil
+	case user.FieldDisplayName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisplayName(v)
 		return nil
 	case user.FieldLocaleID:
 		v, ok := value.(uuid.UUID)
@@ -25847,6 +25898,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldRole:
 		m.ResetRole()
+		return nil
+	case user.FieldDisplayName:
+		m.ResetDisplayName()
 		return nil
 	case user.FieldLocaleID:
 		m.ResetLocaleID()

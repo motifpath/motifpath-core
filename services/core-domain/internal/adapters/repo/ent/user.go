@@ -23,6 +23,8 @@ type User struct {
 	ClerkUserID string `json:"clerk_user_id,omitempty"`
 	// Role holds the value of the "role" field.
 	Role user.Role `json:"role,omitempty"`
+	// DisplayName holds the value of the "display_name" field.
+	DisplayName string `json:"display_name,omitempty"`
 	// LocaleID holds the value of the "locale_id" field.
 	LocaleID uuid.UUID `json:"locale_id,omitempty"`
 	// RegisteredAt holds the value of the "registered_at" field.
@@ -58,7 +60,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldClerkUserID, user.FieldRole:
+		case user.FieldClerkUserID, user.FieldRole, user.FieldDisplayName:
 			values[i] = new(sql.NullString)
 		case user.FieldRegisteredAt:
 			values[i] = new(sql.NullTime)
@@ -96,6 +98,12 @@ func (_m *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field role", values[i])
 			} else if value.Valid {
 				_m.Role = user.Role(value.String)
+			}
+		case user.FieldDisplayName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field display_name", values[i])
+			} else if value.Valid {
+				_m.DisplayName = value.String
 			}
 		case user.FieldLocaleID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -155,6 +163,9 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("role=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Role))
+	builder.WriteString(", ")
+	builder.WriteString("display_name=")
+	builder.WriteString(_m.DisplayName)
 	builder.WriteString(", ")
 	builder.WriteString("locale_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LocaleID))
