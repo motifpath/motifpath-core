@@ -24,6 +24,8 @@ const (
 	FieldRootNote = "root_note"
 	// FieldLabelDisplay holds the string denoting the label_display field in the database.
 	FieldLabelDisplay = "label_display"
+	// FieldColor holds the string denoting the color field in the database.
+	FieldColor = "color"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInstrument holds the string denoting the instrument edge name in mutations.
@@ -87,6 +89,7 @@ var Columns = []string{
 	FieldName,
 	FieldRootNote,
 	FieldLabelDisplay,
+	FieldColor,
 	FieldCreatedAt,
 }
 
@@ -169,6 +172,11 @@ func ByRootNote(opts ...sql.OrderTermOption) OrderOption {
 // ByLabelDisplay orders the results by the label_display field.
 func ByLabelDisplay(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLabelDisplay, opts...).ToFunc()
+}
+
+// ByColor orders the results by the color field.
+func ByColor(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldColor, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

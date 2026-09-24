@@ -1,4 +1,4 @@
-h1:ignOJo/OLUFXcohjECWmp+9m/ErdwzgV8cfK4Yi1Lio=
+h1:uiEPwLKuGCCm1F5J+BlR3StDjDF8QoRBoQ9CgVR0eVk=
 20260922172448_initial_schema_student_path_and_content_versioning.up.sql h1:DTJlaJskch0SS4KJeracxn45WipONPrVf42g0LWYRJI=
 20260922180356_add_course_and_course_checkpoint.up.sql h1:KIefEsgObvQNHWLZ5FNgMrgjJIAPUbXoCmAeIdn5DFk=
 20260922181952_add_course_version.up.sql h1:H62FZAUVd4Q1DBgXnoTJapnk7zMUIgCOQcZzlKNd1qA=
@@ -6,3 +6,4 @@ h1:ignOJo/OLUFXcohjECWmp+9m/ErdwzgV8cfK4Yi1Lio=
 20260922190000_seed_system_languages.up.sql h1:2vhYTwNQbcNHO7II7RdhUyzLB9GWOAYxmj4kzmhNpEw=
 20260922231838_pb57_content_diagram_linkage.up.sql h1:BJUHWjdjsfhm0a3loPSGMLs3EA8FDRhw8sskt7nPgeQ=
 20260923175432_diagram_root_note_label_display_shape.up.sql h1:IPs/4Um4KsdulblWO0pUL71Wg32A+ONQhDz9PdcF1OE=
+20260924000931_pb57_diagram_colors.up.sql h1:UpL4X3zNXD0rPJrMgggcrD784MLiev4K4xAEICYAUTo=

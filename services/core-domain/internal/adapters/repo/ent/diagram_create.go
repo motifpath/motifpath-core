@@ -67,6 +67,20 @@ func (_c *DiagramCreate) SetNillableLabelDisplay(v *diagram.LabelDisplay) *Diagr
 	return _c
 }
 
+// SetColor sets the "color" field.
+func (_c *DiagramCreate) SetColor(v string) *DiagramCreate {
+	_c.mutation.SetColor(v)
+	return _c
+}
+
+// SetNillableColor sets the "color" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableColor(v *string) *DiagramCreate {
+	if v != nil {
+		_c.SetColor(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *DiagramCreate) SetCreatedAt(v time.Time) *DiagramCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -292,6 +306,10 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LabelDisplay(); ok {
 		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
 		_node.LabelDisplay = value
+	}
+	if value, ok := _c.mutation.Color(); ok {
+		_spec.SetField(diagram.FieldColor, field.TypeString, value)
+		_node.Color = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(diagram.FieldCreatedAt, field.TypeTime, value)

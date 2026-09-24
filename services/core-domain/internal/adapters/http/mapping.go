@@ -620,6 +620,7 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 			Interval:      p.Interval,
 			NoteName:      p.NoteName,
 			Shape:         &shape,
+			Color:         p.Color,
 			SequenceIndex: p.SequenceIndex,
 			String:        p.String,
 			Fret:          p.Fret,
@@ -632,6 +633,7 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 		Name:         d.Name,
 		RootNote:     d.RootNote,
 		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
+		Color:        d.Color,
 		Positions:    positions,
 		Classification: generated.DiagramClassification{
 			Skills:   toGeneratedSkills(d.Skills),
@@ -659,6 +661,7 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 			String:        p.String,
 			Fret:          p.Fret,
 			Key:           p.Key,
+			Color:         p.Color,
 		}
 		if p.Shape != nil {
 			result[i].Shape = domain.PositionShape(*p.Shape)

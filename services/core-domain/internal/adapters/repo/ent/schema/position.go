@@ -37,6 +37,12 @@ func (Position) Fields() []ent.Field {
 			Values("dot", "square", "star").
 			Default("dot"),
 
+		// color overrides the parent Diagram's general color for this marker
+		// only, as #RRGGBB; NULL = use the general color.
+		field.String("color").
+			Optional().
+			Nillable(),
+
 		field.Int("sequence_index").
 			Optional().
 			Nillable(),

@@ -490,14 +490,17 @@ func seedInstrumentAndDiagram(ctx context.Context, teacher domain.User, instrume
 	for i, spec := range specs {
 		str, fret := spec.string, spec.fret
 		shape := domain.PositionShapeDot
+		var color *string
 		if spec.interval == "R" {
 			shape = domain.PositionShapeStar
+			roots := "#EF4444"
+			color = &roots
 		}
-		positions[i] = domain.Position{Interval: spec.interval, NoteName: spec.noteName, Shape: shape, String: &str, Fret: &fret}
+		positions[i] = domain.Position{Interval: spec.interval, NoteName: spec.noteName, Shape: shape, String: &str, Fret: &fret, Color: color}
 	}
 
-	root := "A"
-	diagram, err := diagramSvc.CreateDiagram(ctx, teacher, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID}, &root, domain.LabelDisplayInterval)
+	root, general := "A", "#3B82F6"
+	diagram, err := diagramSvc.CreateDiagram(ctx, teacher, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID}, &root, domain.LabelDisplayInterval, &general)
 	if err != nil {
 		return domain.Diagram{}, fmt.Errorf("create diagram: %w", err)
 	}

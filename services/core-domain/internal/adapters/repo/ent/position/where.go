@@ -74,6 +74,11 @@ func NoteName(v string) predicate.Position {
 	return predicate.Position(sql.FieldEQ(FieldNoteName, v))
 }
 
+// Color applies equality check predicate on the "color" field. It's identical to ColorEQ.
+func Color(v string) predicate.Position {
+	return predicate.Position(sql.FieldEQ(FieldColor, v))
+}
+
 // SequenceIndex applies equality check predicate on the "sequence_index" field. It's identical to SequenceIndexEQ.
 func SequenceIndex(v int) predicate.Position {
 	return predicate.Position(sql.FieldEQ(FieldSequenceIndex, v))
@@ -302,6 +307,81 @@ func ShapeIn(vs ...Shape) predicate.Position {
 // ShapeNotIn applies the NotIn predicate on the "shape" field.
 func ShapeNotIn(vs ...Shape) predicate.Position {
 	return predicate.Position(sql.FieldNotIn(FieldShape, vs...))
+}
+
+// ColorEQ applies the EQ predicate on the "color" field.
+func ColorEQ(v string) predicate.Position {
+	return predicate.Position(sql.FieldEQ(FieldColor, v))
+}
+
+// ColorNEQ applies the NEQ predicate on the "color" field.
+func ColorNEQ(v string) predicate.Position {
+	return predicate.Position(sql.FieldNEQ(FieldColor, v))
+}
+
+// ColorIn applies the In predicate on the "color" field.
+func ColorIn(vs ...string) predicate.Position {
+	return predicate.Position(sql.FieldIn(FieldColor, vs...))
+}
+
+// ColorNotIn applies the NotIn predicate on the "color" field.
+func ColorNotIn(vs ...string) predicate.Position {
+	return predicate.Position(sql.FieldNotIn(FieldColor, vs...))
+}
+
+// ColorGT applies the GT predicate on the "color" field.
+func ColorGT(v string) predicate.Position {
+	return predicate.Position(sql.FieldGT(FieldColor, v))
+}
+
+// ColorGTE applies the GTE predicate on the "color" field.
+func ColorGTE(v string) predicate.Position {
+	return predicate.Position(sql.FieldGTE(FieldColor, v))
+}
+
+// ColorLT applies the LT predicate on the "color" field.
+func ColorLT(v string) predicate.Position {
+	return predicate.Position(sql.FieldLT(FieldColor, v))
+}
+
+// ColorLTE applies the LTE predicate on the "color" field.
+func ColorLTE(v string) predicate.Position {
+	return predicate.Position(sql.FieldLTE(FieldColor, v))
+}
+
+// ColorContains applies the Contains predicate on the "color" field.
+func ColorContains(v string) predicate.Position {
+	return predicate.Position(sql.FieldContains(FieldColor, v))
+}
+
+// ColorHasPrefix applies the HasPrefix predicate on the "color" field.
+func ColorHasPrefix(v string) predicate.Position {
+	return predicate.Position(sql.FieldHasPrefix(FieldColor, v))
+}
+
+// ColorHasSuffix applies the HasSuffix predicate on the "color" field.
+func ColorHasSuffix(v string) predicate.Position {
+	return predicate.Position(sql.FieldHasSuffix(FieldColor, v))
+}
+
+// ColorIsNil applies the IsNil predicate on the "color" field.
+func ColorIsNil() predicate.Position {
+	return predicate.Position(sql.FieldIsNull(FieldColor))
+}
+
+// ColorNotNil applies the NotNil predicate on the "color" field.
+func ColorNotNil() predicate.Position {
+	return predicate.Position(sql.FieldNotNull(FieldColor))
+}
+
+// ColorEqualFold applies the EqualFold predicate on the "color" field.
+func ColorEqualFold(v string) predicate.Position {
+	return predicate.Position(sql.FieldEqualFold(FieldColor, v))
+}
+
+// ColorContainsFold applies the ContainsFold predicate on the "color" field.
+func ColorContainsFold(v string) predicate.Position {
+	return predicate.Position(sql.FieldContainsFold(FieldColor, v))
 }
 
 // SequenceIndexEQ applies the EQ predicate on the "sequence_index" field.

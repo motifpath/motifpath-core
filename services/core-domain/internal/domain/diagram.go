@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -40,6 +41,9 @@ type Position struct {
 	// Shape is normalized to PositionShapeDot by NewDiagram when left as
 	// the zero value, so a caller that doesn't care about it may omit it.
 	Shape PositionShape
+	// Color overrides the parent Diagram's general Color for this marker
+	// only, as #RRGGBB; nil means the position uses the general color.
+	Color *string
 }
 
 // LabelDisplay decides which of a Position's Interval or NoteName its
@@ -79,11 +83,19 @@ type Diagram struct {
 	// left as the zero value, so a caller that doesn't care about it may
 	// omit it.
 	LabelDisplay LabelDisplay
-	Positions    []Position
-	Skills       []Skill
-	Concepts     []Concept
-	CreatedAt    time.Time
+	// Color is the general marker color as #RRGGBB, used by every position
+	// without a Color of its own; nil means none is recorded.
+	Color     *string
+	Positions []Position
+	Skills    []Skill
+	Concepts  []Concept
+	CreatedAt time.Time
 }
+
+// hexColorPattern matches the #RRGGBB form the API accepts for colors.
+var hexColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+
+func validHexColor(c string) bool { return hexColorPattern.MatchString(c) }
 
 // SkillIDs returns the ids of d.Skills, in order.
 func (d Diagram) SkillIDs() []string {
@@ -103,16 +115,33 @@ func (d Diagram) ConceptIDs() []string {
 	return ids
 }
 
+// DiagramOptions carries NewDiagram's optional settings, named so two
+// optional strings (RootNote, Color) can never be swapped by position.
+// The zero value means: no recorded root note, LabelDisplayInterval, no
+// general color.
+type DiagramOptions struct {
+	// RootNote is the note the positions are authored relative to; nil
+	// means none is recorded.
+	RootNote *string
+	// LabelDisplay defaults to LabelDisplayInterval when left as the zero
+	// value.
+	LabelDisplay LabelDisplay
+	// Color is the general marker color as #RRGGBB; nil means none is
+	// recorded.
+	Color *string
+}
+
 // NewDiagram validates and constructs a Diagram against instrument,
 // stopping at the first violated invariant. Every position must use the
 // coordinate shape of instrument's family — a rule no database constraint
 // expresses — and, for a fretted instrument, sit on a string it has.
 // labelDisplay and each position's Shape default (LabelDisplayInterval,
 // PositionShapeDot) when left as their zero value — a caller that doesn't
-// care about either may omit it. Whether skillIDs/conceptIDs reference
+// care about either may omit it. color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs reference
 // existing rows needs a repository round trip, so that stays an
 // application-layer concern.
-func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, rootNote *string, labelDisplay LabelDisplay, now time.Time) (Diagram, error) {
+func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
+	rootNote, labelDisplay, color := opts.RootNote, opts.LabelDisplay, opts.Color
 	if name == "" {
 		return Diagram{}, NewValidationError("name", "must not be empty")
 	}
@@ -121,6 +150,9 @@ func NewDiagram(id string, instrument Instrument, name string, positions []Posit
 	}
 	if !labelDisplay.Valid() {
 		return Diagram{}, NewValidationError("label_display", "must be one of: interval, note, hidden")
+	}
+	if color != nil && !validHexColor(*color) {
+		return Diagram{}, NewValidationError("color", "must be a #RRGGBB hex color")
 	}
 	positions = normalizePositionShapes(positions)
 	if err := validatePositions(instrument, positions); err != nil {
@@ -148,6 +180,7 @@ func NewDiagram(id string, instrument Instrument, name string, positions []Posit
 		Name:         name,
 		RootNote:     rootNote,
 		LabelDisplay: labelDisplay,
+		Color:        color,
 		Positions:    positions,
 		Skills:       skills,
 		Concepts:     concepts,
@@ -200,6 +233,9 @@ func positionProblem(instrument Instrument, p Position) string {
 	}
 	if !p.Shape.Valid() {
 		return "has an unrecognised shape"
+	}
+	if p.Color != nil && !validHexColor(*p.Color) {
+		return "has a malformed color (want #RRGGBB)"
 	}
 
 	switch instrument.Family {
