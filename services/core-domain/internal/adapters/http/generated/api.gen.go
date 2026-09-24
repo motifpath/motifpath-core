@@ -558,8 +558,13 @@ type ContentNode struct {
 	// document's block-level content nested beneath it.
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
-	// TeacherId The user_id of the teacher who created this content node.
-	TeacherId openapi_types.UUID `json:"teacher_id"`
+	// Teacher A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	Teacher UserRef `json:"teacher"`
 
 	// Title Human-readable title of the content node.
 	Title string `json:"title"`
@@ -629,8 +634,13 @@ type Course struct {
 	// CreatedAt Timestamp at which the course was created.
 	CreatedAt time.Time `json:"created_at"`
 
-	// CreatedBy The user_id of the teacher or admin who created this course.
-	CreatedBy openapi_types.UUID `json:"created_by"`
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
 
 	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet).
 	HasUnpublishedChanges bool `json:"has_unpublished_changes"`
@@ -665,8 +675,13 @@ type CourseCatalogEntry struct {
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
 
-	// CreatedBy The user_id of the teacher or admin who created this course.
-	CreatedBy openapi_types.UUID `json:"created_by"`
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
 
 	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field.
 	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
@@ -769,8 +784,13 @@ type CourseEnrollment struct {
 	// Status active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
 	Status CourseEnrollmentStatus `json:"status"`
 
-	// StudentId The user_id of the enrolled student.
-	StudentId openapi_types.UUID `json:"student_id"`
+	// Student A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	Student UserRef `json:"student"`
 }
 
 // CourseEnrollmentStatus active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
@@ -1289,9 +1309,13 @@ type Diagram struct {
 	// CreatedAt Timestamp at which the diagram was created.
 	CreatedAt time.Time `json:"created_at"`
 
-	// CreatedBy The user_id of the teacher or admin who created this diagram.
-	// Fixed at creation.
-	CreatedBy openapi_types.UUID `json:"created_by"`
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
 
 	// DiagramId Stable identifier for this diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
@@ -1783,8 +1807,13 @@ type LearningPath struct {
 	// LearningPathId Stable identifier for this learning path.
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 
-	// TeacherId The user_id of the teacher or admin who created this path.
-	TeacherId openapi_types.UUID `json:"teacher_id"`
+	// Teacher A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	Teacher UserRef `json:"teacher"`
 
 	// Title Human-readable name for this learning path.
 	Title string `json:"title"`
@@ -2226,8 +2255,13 @@ type StudentPath struct {
 	// AssignedAt Timestamp at which this StudentPath was created.
 	AssignedAt time.Time `json:"assigned_at"`
 
-	// AssignedBy The user_id of the teacher or admin who assigned this path.
-	AssignedBy openapi_types.UUID `json:"assigned_by"`
+	// AssignedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	AssignedBy UserRef `json:"assigned_by"`
 
 	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with source_course_enrollment_id.
 	CourseCheckpointPosition *int `json:"course_checkpoint_position"`
@@ -2238,8 +2272,13 @@ type StudentPath struct {
 	// SourceTemplateId The learning path this StudentPath was copied from.
 	SourceTemplateId openapi_types.UUID `json:"source_template_id"`
 
-	// StudentId The user_id of the student who owns this path.
-	StudentId openapi_types.UUID `json:"student_id"`
+	// Student A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	Student UserRef `json:"student"`
 
 	// StudentPathId Stable identifier for this StudentPath.
 	StudentPathId openapi_types.UUID `json:"student_path_id"`
@@ -2589,6 +2628,11 @@ type UpdateMyLocaleRequest struct {
 // value that other services (e.g. Event Ingestion Service) use to identify
 // this user in payloads and JWT claim validation.
 type UserProfile struct {
+	// DisplayName The user's full name, taken from the "name" claim of the Clerk
+	// session token and refreshed whenever that claim changes. This is
+	// what other users see wherever this user is referenced (UserRef).
+	DisplayName string `json:"display_name"`
+
 	// Locale A language MotifPath content or a user's locale preference can be
 	// tagged with. Includes the literal code "any", which marks content as
 	// language-agnostic (e.g. an image with no spoken or written words)
@@ -2612,6 +2656,21 @@ type UserProfile struct {
 // role is provisioned directly in the database and is never returned from
 // a self-registration flow.
 type UserProfileRole string
+
+// UserRef A reference to another MotifPath user, as it appears in any response
+// that points at a user (ADR-035). display_name is read from the
+// user's record when the response is built, never copied onto the
+// referencing entity, so a rename shows everywhere at once. A UserRef
+// appears only in responses the caller is already authorized to
+// receive.
+type UserRef struct {
+	// DisplayName The user's full name, as held by Clerk. User-supplied text: render
+	// it escaped and never use it as an identifier.
+	DisplayName string `json:"display_name"`
+
+	// UserId Stable MotifPath identifier of the referenced user.
+	UserId openapi_types.UUID `json:"user_id"`
+}
 
 // ValidationError Returned when the request body fails schema validation.
 type ValidationError struct {
