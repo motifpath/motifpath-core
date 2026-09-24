@@ -48,6 +48,18 @@ func (ContentNodeVersion) Fields() []ent.Field {
 			Nillable().
 			Immutable(),
 
+		// classification_snapshot and languages_snapshot hold JSON text. Both
+		// are nil on versions published before they were persisted.
+		field.Text("classification_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
+		field.Text("languages_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
 		field.UUID("published_by", uuid.UUID{}).
 			Immutable(),
 

@@ -80,6 +80,16 @@ func RichContent(v string) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldEQ(FieldRichContent, v))
 }
 
+// ClassificationSnapshot applies equality check predicate on the "classification_snapshot" field. It's identical to ClassificationSnapshotEQ.
+func ClassificationSnapshot(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldClassificationSnapshot, v))
+}
+
+// LanguagesSnapshot applies equality check predicate on the "languages_snapshot" field. It's identical to LanguagesSnapshotEQ.
+func LanguagesSnapshot(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldLanguagesSnapshot, v))
+}
+
 // PublishedBy applies equality check predicate on the "published_by" field. It's identical to PublishedByEQ.
 func PublishedBy(v uuid.UUID) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldEQ(FieldPublishedBy, v))
@@ -403,6 +413,156 @@ func RichContentEqualFold(v string) predicate.ContentNodeVersion {
 // RichContentContainsFold applies the ContainsFold predicate on the "rich_content" field.
 func RichContentContainsFold(v string) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldContainsFold(FieldRichContent, v))
+}
+
+// ClassificationSnapshotEQ applies the EQ predicate on the "classification_snapshot" field.
+func ClassificationSnapshotEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotNEQ applies the NEQ predicate on the "classification_snapshot" field.
+func ClassificationSnapshotNEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNEQ(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotIn applies the In predicate on the "classification_snapshot" field.
+func ClassificationSnapshotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIn(FieldClassificationSnapshot, vs...))
+}
+
+// ClassificationSnapshotNotIn applies the NotIn predicate on the "classification_snapshot" field.
+func ClassificationSnapshotNotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotIn(FieldClassificationSnapshot, vs...))
+}
+
+// ClassificationSnapshotGT applies the GT predicate on the "classification_snapshot" field.
+func ClassificationSnapshotGT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGT(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotGTE applies the GTE predicate on the "classification_snapshot" field.
+func ClassificationSnapshotGTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGTE(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotLT applies the LT predicate on the "classification_snapshot" field.
+func ClassificationSnapshotLT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLT(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotLTE applies the LTE predicate on the "classification_snapshot" field.
+func ClassificationSnapshotLTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLTE(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotContains applies the Contains predicate on the "classification_snapshot" field.
+func ClassificationSnapshotContains(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContains(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotHasPrefix applies the HasPrefix predicate on the "classification_snapshot" field.
+func ClassificationSnapshotHasPrefix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasPrefix(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotHasSuffix applies the HasSuffix predicate on the "classification_snapshot" field.
+func ClassificationSnapshotHasSuffix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasSuffix(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotIsNil applies the IsNil predicate on the "classification_snapshot" field.
+func ClassificationSnapshotIsNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIsNull(FieldClassificationSnapshot))
+}
+
+// ClassificationSnapshotNotNil applies the NotNil predicate on the "classification_snapshot" field.
+func ClassificationSnapshotNotNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotNull(FieldClassificationSnapshot))
+}
+
+// ClassificationSnapshotEqualFold applies the EqualFold predicate on the "classification_snapshot" field.
+func ClassificationSnapshotEqualFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEqualFold(FieldClassificationSnapshot, v))
+}
+
+// ClassificationSnapshotContainsFold applies the ContainsFold predicate on the "classification_snapshot" field.
+func ClassificationSnapshotContainsFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContainsFold(FieldClassificationSnapshot, v))
+}
+
+// LanguagesSnapshotEQ applies the EQ predicate on the "languages_snapshot" field.
+func LanguagesSnapshotEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotNEQ applies the NEQ predicate on the "languages_snapshot" field.
+func LanguagesSnapshotNEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNEQ(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotIn applies the In predicate on the "languages_snapshot" field.
+func LanguagesSnapshotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIn(FieldLanguagesSnapshot, vs...))
+}
+
+// LanguagesSnapshotNotIn applies the NotIn predicate on the "languages_snapshot" field.
+func LanguagesSnapshotNotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotIn(FieldLanguagesSnapshot, vs...))
+}
+
+// LanguagesSnapshotGT applies the GT predicate on the "languages_snapshot" field.
+func LanguagesSnapshotGT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGT(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotGTE applies the GTE predicate on the "languages_snapshot" field.
+func LanguagesSnapshotGTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGTE(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotLT applies the LT predicate on the "languages_snapshot" field.
+func LanguagesSnapshotLT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLT(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotLTE applies the LTE predicate on the "languages_snapshot" field.
+func LanguagesSnapshotLTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLTE(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotContains applies the Contains predicate on the "languages_snapshot" field.
+func LanguagesSnapshotContains(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContains(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotHasPrefix applies the HasPrefix predicate on the "languages_snapshot" field.
+func LanguagesSnapshotHasPrefix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasPrefix(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotHasSuffix applies the HasSuffix predicate on the "languages_snapshot" field.
+func LanguagesSnapshotHasSuffix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasSuffix(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotIsNil applies the IsNil predicate on the "languages_snapshot" field.
+func LanguagesSnapshotIsNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIsNull(FieldLanguagesSnapshot))
+}
+
+// LanguagesSnapshotNotNil applies the NotNil predicate on the "languages_snapshot" field.
+func LanguagesSnapshotNotNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotNull(FieldLanguagesSnapshot))
+}
+
+// LanguagesSnapshotEqualFold applies the EqualFold predicate on the "languages_snapshot" field.
+func LanguagesSnapshotEqualFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEqualFold(FieldLanguagesSnapshot, v))
+}
+
+// LanguagesSnapshotContainsFold applies the ContainsFold predicate on the "languages_snapshot" field.
+func LanguagesSnapshotContainsFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContainsFold(FieldLanguagesSnapshot, v))
 }
 
 // PublishedByEQ applies the EQ predicate on the "published_by" field.
