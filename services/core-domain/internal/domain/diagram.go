@@ -115,6 +115,22 @@ func (d Diagram) ConceptIDs() []string {
 	return ids
 }
 
+// DiagramOptions carries NewDiagram's optional settings, named so two
+// optional strings (RootNote, Color) can never be swapped by position.
+// The zero value means: no recorded root note, LabelDisplayInterval, no
+// general color.
+type DiagramOptions struct {
+	// RootNote is the note the positions are authored relative to; nil
+	// means none is recorded.
+	RootNote *string
+	// LabelDisplay defaults to LabelDisplayInterval when left as the zero
+	// value.
+	LabelDisplay LabelDisplay
+	// Color is the general marker color as #RRGGBB; nil means none is
+	// recorded.
+	Color *string
+}
+
 // NewDiagram validates and constructs a Diagram against instrument,
 // stopping at the first violated invariant. Every position must use the
 // coordinate shape of instrument's family — a rule no database constraint
@@ -124,7 +140,8 @@ func (d Diagram) ConceptIDs() []string {
 // care about either may omit it. color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs reference
 // existing rows needs a repository round trip, so that stays an
 // application-layer concern.
-func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, rootNote *string, labelDisplay LabelDisplay, color *string, now time.Time) (Diagram, error) {
+func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
+	rootNote, labelDisplay, color := opts.RootNote, opts.LabelDisplay, opts.Color
 	if name == "" {
 		return Diagram{}, NewValidationError("name", "must not be empty")
 	}

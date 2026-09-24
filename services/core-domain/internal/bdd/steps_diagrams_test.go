@@ -86,8 +86,7 @@ func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
 		position.Key = &key
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, []domain.Position{position},
-		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, nil, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -136,8 +135,7 @@ func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table
 		})
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, positions,
-		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, nil, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, positions, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}

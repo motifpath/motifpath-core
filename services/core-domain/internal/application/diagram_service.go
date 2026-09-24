@@ -60,7 +60,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	diagram, err := domain.NewDiagram(s.newID(), instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, rootNote, labelDisplay, color, s.now())
+	diagram, err := domain.NewDiagram(s.newID(), instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, domain.DiagramOptions{RootNote: rootNote, LabelDisplay: labelDisplay, Color: color}, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -132,7 +132,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		color = update.Color
 	}
 
-	updated, err := domain.NewDiagram(current.ID, instrument, name, positions, skillIDs, conceptIDs, rootNote, labelDisplay, color, current.CreatedAt)
+	updated, err := domain.NewDiagram(current.ID, instrument, name, positions, skillIDs, conceptIDs, domain.DiagramOptions{RootNote: rootNote, LabelDisplay: labelDisplay, Color: color}, current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
 	}
