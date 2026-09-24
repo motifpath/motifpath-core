@@ -281,7 +281,7 @@ func TestIdentityService_ResolveCaller_RefreshesDisplayName(t *testing.T) {
 }
 
 func TestIdentityService_DisplayNames(t *testing.T) {
-	setup := func(t *testing.T) (*application.IdentityService, domain.User, domain.User) {
+	setup := func(t *testing.T) (*application.IdentityService, *fakeUserRepository, domain.User, domain.User) {
 		t.Helper()
 		users := newFakeUserRepository()
 		svc := newIdentityService(users)
@@ -289,7 +289,7 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 		require.NoError(t, err)
 		bob, err := svc.RegisterUser(context.Background(), "clerk-bob", domain.RoleTeacher, "", "Bob Ferreira")
 		require.NoError(t, err)
-		return svc, alice, bob
+		return svc, users, alice, bob
 	}
 
 	tests := []struct {
@@ -297,6 +297,9 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 		ids     func(alice, bob domain.User) []string
 		want    func(alice, bob domain.User) map[string]string
 		wantErr error
+		// wantLookups, when set, is the exact list of id batches the
+		// repository must have been asked for.
+		wantLookups func(alice, bob domain.User) [][]string
 	}{
 		{
 			name: "returns each user's current name by id",
@@ -307,13 +310,17 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 		},
 		{
 			name: "repeated ids are looked up once",
-			ids:  func(alice, bob domain.User) []string { return []string{bob.ID, bob.ID, bob.ID} },
-			want: func(alice, bob domain.User) map[string]string { return map[string]string{bob.ID: "Bob Ferreira"} },
+			ids:  func(alice, bob domain.User) []string { return []string{bob.ID, alice.ID, bob.ID, bob.ID} },
+			want: func(alice, bob domain.User) map[string]string {
+				return map[string]string{alice.ID: "Alice Martins", bob.ID: "Bob Ferreira"}
+			},
+			wantLookups: func(alice, bob domain.User) [][]string { return [][]string{{bob.ID, alice.ID}} },
 		},
 		{
-			name: "no ids returns an empty map",
-			ids:  func(alice, bob domain.User) []string { return nil },
-			want: func(alice, bob domain.User) map[string]string { return map[string]string{} },
+			name:        "no ids asks the repository for nothing",
+			ids:         func(alice, bob domain.User) []string { return nil },
+			want:        func(alice, bob domain.User) map[string]string { return map[string]string{} },
+			wantLookups: func(alice, bob domain.User) [][]string { return nil },
 		},
 		{
 			name:    "an id with no user is an error, not a blank name",
@@ -323,7 +330,7 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, alice, bob := setup(t)
+			svc, users, alice, bob := setup(t)
 
 			names, err := svc.DisplayNames(context.Background(), tt.ids(alice, bob))
 
@@ -333,6 +340,9 @@ func TestIdentityService_DisplayNames(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.want(alice, bob), names)
+			if tt.wantLookups != nil {
+				assert.Equal(t, tt.wantLookups(alice, bob), users.displayNameLookups)
+			}
 		})
 	}
 }

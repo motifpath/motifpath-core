@@ -78,7 +78,11 @@ NEVER access the database directly from the domain layer.
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
   `pg_dump -t users --data-only --inserts` — since reset wipes them; restore by re-inserting with
-  `locale_id` resolved by language `code` (fresh rows get new random UUIDs). Pass
+  `locale_id` resolved by language `code` (fresh rows get new random UUIDs). `display_name` is
+  required: a dump taken before that column existed has `INSERT`s without it, which are refused —
+  add a `display_name` to each restored row (any non-blank value; the user's real name replaces it
+  on their next sign-in), or skip restoring your own admin and let `ADMIN_CLERK_USER_ID` recreate it
+  with its real Clerk name. Pass
   `ADMIN_CLERK_USER_ID=<your clerk user id>` to also bootstrap your own real identity as admin —
   self-registration can never create an admin role (`domain.NewUser` refuses it), so this goes
   through the user repository directly, the same way a hand-run SQL insert would.
