@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -48,5 +49,23 @@ func ClerkAuthMiddleware(next http.Handler) http.Handler {
 // must add: "name" is the user's full name. A token without it decodes to
 // an empty Name, which registration rejects and caller resolution ignores.
 type sessionCustomClaims struct {
-	Name string `json:"name"`
+	Name string
+}
+
+// UnmarshalJSON keeps "name" only when it is a JSON string. The SDK decodes
+// custom claims while verifying the token, so a decode error here would
+// reject the whole token: a misconfigured template that emits some other
+// type must cost the user their name, never their sign-in.
+func (c *sessionCustomClaims) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Name json.RawMessage `json:"name"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	var name string
+	if err := json.Unmarshal(raw.Name, &name); err == nil {
+		c.Name = name
+	}
+	return nil
 }
