@@ -8,6 +8,7 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -112,13 +113,25 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 // List returns every learning path with its items, batching the item and
 // content-node lookups into one query each across all paths — instead of
 // GetByID's per-path 1 (items) + 1 (nodes) round trips repeated per path.
-func (r *EntLearningPathRepository) List(ctx context.Context) ([]domain.LearningPath, error) {
-	pathRows, err := r.client.LearningPath.Query().All(ctx)
+func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
+	query := r.client.LearningPath.Query()
+	if filter.Query != "" {
+		query = query.Where(learningpath.TitleContainsFold(filter.Query))
+	}
+	total, err := query.Clone().Count(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.LearningPath]{}, err
+	}
+	pathRows, err := query.
+		Order(learningpath.ByTitle(), learningpath.ByID()).
+		Limit(page.Limit).
+		Offset(page.Offset).
+		All(ctx)
+	if err != nil {
+		return domain.Page[domain.LearningPath]{}, err
 	}
 	if len(pathRows) == 0 {
-		return []domain.LearningPath{}, nil
+		return domain.Page[domain.LearningPath]{Items: []domain.LearningPath{}, Total: total}, nil
 	}
 
 	pathIDs := make([]uuid.UUID, len(pathRows))
@@ -130,12 +143,12 @@ func (r *EntLearningPathRepository) List(ctx context.Context) ([]domain.Learning
 		Order(learningpathitem.ByPosition()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.LearningPath]{}, err
 	}
 
 	nodesByID, err := r.contentNodesForItems(ctx, itemRows)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.LearningPath]{}, err
 	}
 
 	// itemRows is sorted by position across all paths; bucketing by
@@ -150,7 +163,7 @@ func (r *EntLearningPathRepository) List(ctx context.Context) ([]domain.Learning
 	for i, pathRow := range pathRows {
 		items, err := buildLearningPathItems(itemsByPathID[pathRow.ID], nodesByID)
 		if err != nil {
-			return nil, err
+			return domain.Page[domain.LearningPath]{}, err
 		}
 		result[i] = domain.LearningPath{
 			ID:        pathRow.ID.String(),
@@ -160,7 +173,7 @@ func (r *EntLearningPathRepository) List(ctx context.Context) ([]domain.Learning
 			CreatedAt: pathRow.CreatedAt,
 		}
 	}
-	return result, nil
+	return domain.Page[domain.LearningPath]{Items: result, Total: total}, nil
 }
 
 // contentNodesForItems batch-fetches the content nodes referenced by

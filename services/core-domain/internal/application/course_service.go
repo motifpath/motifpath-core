@@ -68,16 +68,26 @@ func (s *CourseService) GetCourse(ctx context.Context, caller domain.User, id st
 	return s.courses.GetByID(ctx, id)
 }
 
-// ListCourses returns the course catalog. Teachers and admins see courses
-// of every status, optionally narrowed by the given status filter; a
+// ListCourses returns one page of the course catalog matching filter. A
 // student's results are always implicitly published, regardless of any
-// status given — the same rule GET /courses documents.
-func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, status *domain.CourseStatus) ([]domain.Course, error) {
-	if caller.Role == domain.RoleStudent {
+// status given, and every filter is evaluated against each course's latest
+// published version. A teacher sees courses of every status but only their
+// own — naming another creator is forbidden — evaluated against the live
+// draft. An admin may see every creator's courses, or narrow to one.
+func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	switch caller.Role {
+	case domain.RoleStudent:
 		published := domain.CourseStatusPublished
-		status = &published
+		filter.Status = &published
+		filter.PublishedView = true
+	case domain.RoleTeacher:
+		if filter.CreatedBy != "" && filter.CreatedBy != caller.ID {
+			return domain.Page[domain.Course]{}, domain.ErrForbidden
+		}
+		filter.CreatedBy = caller.ID
+	case domain.RoleAdmin:
 	}
-	return s.courses.List(ctx, status)
+	return s.courses.List(ctx, filter, page)
 }
 
 // ReplaceCourse replaces the given course's title, summary, level, and

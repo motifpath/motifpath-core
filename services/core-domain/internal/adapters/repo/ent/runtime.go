@@ -113,7 +113,7 @@ func init() {
 	contentnodeversionFields := schema.ContentNodeVersion{}.Fields()
 	_ = contentnodeversionFields
 	// contentnodeversionDescPublishedAt is the schema descriptor for published_at field.
-	contentnodeversionDescPublishedAt := contentnodeversionFields[8].Descriptor()
+	contentnodeversionDescPublishedAt := contentnodeversionFields[10].Descriptor()
 	// contentnodeversion.DefaultPublishedAt holds the default value on creation for the published_at field.
 	contentnodeversion.DefaultPublishedAt = contentnodeversionDescPublishedAt.Default.(func() time.Time)
 	// contentnodeversionDescID is the schema descriptor for id field.

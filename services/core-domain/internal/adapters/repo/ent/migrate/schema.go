@@ -250,6 +250,8 @@ var (
 		{Name: "content_type", Type: field.TypeEnum, Enums: []string{"video", "article"}},
 		{Name: "media_url", Type: field.TypeString, Nullable: true},
 		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "classification_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "languages_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "published_by", Type: field.TypeUUID},
 		{Name: "published_at", Type: field.TypeTime},
 	}

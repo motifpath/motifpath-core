@@ -889,10 +889,11 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	// A fresh database with no paths yet returns a non-nil empty slice, not
 	// nil — callers (ultimately the HTTP JSON response) must see `[]`, not
 	// `null`.
-	empty, err := repo.List(ctx)
+	empty, err := repo.List(ctx, domain.LearningPathFilter{}, domain.PageRequest{Limit: 20})
 	require.NoError(t, err)
-	assert.NotNil(t, empty)
-	assert.Empty(t, empty)
+	assert.NotNil(t, empty.Items)
+	assert.Empty(t, empty.Items)
+	assert.Zero(t, empty.Total)
 
 	node1 := seedContentNode(t, ctx, nodeRepo)
 	node2 := seedContentNode(t, ctx, nodeRepo)
@@ -916,12 +917,13 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	}
 	require.NoError(t, repo.Create(ctx, pathB))
 
-	list, err := repo.List(ctx)
+	list, err := repo.List(ctx, domain.LearningPathFilter{}, domain.PageRequest{Limit: 20})
 	require.NoError(t, err)
-	require.Len(t, list, 2)
+	require.Len(t, list.Items, 2)
+	assert.Equal(t, 2, list.Total)
 
 	byID := map[string]domain.LearningPath{}
-	for _, p := range list {
+	for _, p := range list.Items {
 		byID[p.ID] = p
 	}
 	require.Contains(t, byID, pathA.ID)
@@ -1328,4 +1330,116 @@ func seedLearningPath(t *testing.T, ctx context.Context, repo *EntLearningPathRe
 	}
 	require.NoError(t, repo.Create(ctx, path))
 	return path
+}
+
+func TestEntContentNodeVersionRepository_ListByContentNodeID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntContentNodeVersionRepository(client)
+	node := seedContentNode(t, ctx, nodeRepo)
+	otherNode := seedContentNode(t, ctx, nodeRepo)
+
+	empty, err := repo.ListByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.NotNil(t, empty)
+	assert.Empty(t, empty)
+
+	for i, target := range []string{node.ID, node.ID, otherNode.ID} {
+		number := i + 1
+		if target == otherNode.ID {
+			number = 1
+		}
+		require.NoError(t, repo.Create(ctx, domain.ContentNodeVersion{
+			ID: uuid.NewString(), ContentNodeID: target, VersionNumber: number, Title: node.Title,
+			ContentType: node.ContentType, MediaURL: strPtr("https://cdn.example.com/v.mp4"),
+			PublishedBy: uuid.NewString(), PublishedAt: fixedAt.Add(time.Duration(i) * time.Hour),
+		}))
+	}
+
+	got, err := repo.ListByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, 2, got[0].VersionNumber)
+	assert.Equal(t, 1, got[1].VersionNumber)
+	assert.Equal(t, node.ID, got[0].ContentNodeID)
+}
+
+func TestEntContentNodeVersionRepository_PersistsClassificationAndLanguagesSnapshots(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntContentNodeVersionRepository(client)
+	node := seedContentNode(t, ctx, nodeRepo)
+	parent := strPtr(uuid.NewString())
+	classification := domain.Classification{
+		Skills:          []domain.Skill{{ID: uuid.NewString(), Name: "Fingerpicking", ParentID: parent}},
+		Concepts:        []domain.Concept{{ID: uuid.NewString(), Name: "Syncopation"}},
+		DifficultyLevel: domain.DifficultyLevelIntermediate,
+		ReviewState:     domain.ReviewStateConfirmed,
+	}
+	languages := []domain.Language{{Code: "en", Name: "English"}, {Code: "pt-BR", Name: "Português"}}
+	require.NoError(t, repo.Create(ctx, domain.ContentNodeVersion{
+		ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1, Title: node.Title,
+		ContentType: node.ContentType, Classification: classification, Languages: languages,
+		PublishedBy: uuid.NewString(), PublishedAt: fixedAt,
+	}))
+
+	listed, err := repo.ListByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, classification, listed[0].Classification)
+	assert.Equal(t, languages, listed[0].Languages)
+
+	latest, err := repo.GetLatestByContentNodeID(ctx, node.ID)
+	require.NoError(t, err)
+	assert.Equal(t, classification, latest.Classification)
+	assert.Equal(t, languages, latest.Languages)
+}
+
+func TestEntStudentPathRepository_ListStandaloneByStudentID(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	pathRepo := NewEntLearningPathRepository(client)
+	versionRepo := NewEntContentNodeVersionRepository(client)
+	repo := NewEntStudentPathRepository(client)
+
+	node := seedContentNode(t, ctx, nodeRepo)
+	template := seedLearningPath(t, ctx, pathRepo, node)
+	assignedBy, alice, bruno := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	version := domain.ContentNodeVersion{
+		ID: uuid.NewString(), ContentNodeID: node.ID, VersionNumber: 1,
+		Title: node.Title, ContentType: node.ContentType, PublishedBy: assignedBy, PublishedAt: fixedAt,
+	}
+	require.NoError(t, versionRepo.Create(ctx, version))
+
+	newPath := func(studentID string, assignedAt time.Time, archivedAt *time.Time, enrollmentID *string) domain.StudentPath {
+		sp := domain.StudentPath{
+			ID: uuid.NewString(), StudentID: studentID, SourceTemplateID: template.ID, Title: template.Title,
+			AssignedBy: assignedBy, AssignedAt: assignedAt, ArchivedAt: archivedAt, SourceCourseEnrollmentID: enrollmentID,
+			Items: []domain.StudentPathItemRecord{{Position: 1, ContentNodeID: node.ID, ContentNodeVersionID: version.ID}},
+		}
+		require.NoError(t, repo.Create(ctx, sp))
+		return sp
+	}
+
+	empty, err := repo.ListStandaloneByStudentID(ctx, alice)
+	require.NoError(t, err)
+	assert.NotNil(t, empty)
+	assert.Empty(t, empty)
+
+	archivedAt := fixedAt.Add(24 * time.Hour)
+	older := newPath(alice, fixedAt, &archivedAt, nil)
+	newer := newPath(alice, fixedAt.Add(48*time.Hour), nil, nil)
+	enrollmentID := uuid.NewString()
+	newPath(alice, fixedAt.Add(72*time.Hour), nil, &enrollmentID)
+	newPath(bruno, fixedAt.Add(96*time.Hour), nil, nil)
+
+	got, err := repo.ListStandaloneByStudentID(ctx, alice)
+
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, newer, got[0])
+	assert.Equal(t, older, got[1])
 }

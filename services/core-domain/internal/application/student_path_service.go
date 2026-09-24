@@ -351,6 +351,17 @@ func (s *StudentPathService) composeView(ctx context.Context, caller domain.User
 	}, nil
 }
 
+// ListMyStandalonePaths returns the caller's standalone StudentPaths — those
+// not belonging to a course enrollment — active and archived alike, newest
+// assigned first. Only a student, or an admin using their own identity, holds
+// student paths.
+func (s *StudentPathService) ListMyStandalonePaths(ctx context.Context, caller domain.User) ([]domain.StudentPath, error) {
+	if !canActAsStudent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	return s.studentPaths.ListStandaloneByStudentID(ctx, caller.ID)
+}
+
 // ArchiveStandaloneStudentPath archives the standalone StudentPath with the
 // given id, owned by caller. Refused with domain.ErrNotFound if no such
 // non-archived, non-course StudentPath exists for caller. If it is caller's

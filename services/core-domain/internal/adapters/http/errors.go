@@ -63,3 +63,21 @@ func classify(err error) (errKind, *domain.ValidationError) {
 		return errKindOther, nil
 	}
 }
+
+// listValidationFailure turns a NewPageRequest failure into the operation's
+// own 400 response via wrap; any other error propagates as a 500.
+func listValidationFailure[R any](err error, wrap func(generated.ValidationError) R) (R, error) {
+	var zero R
+	if kind, valErr := classify(err); kind == errKindValidation {
+		return wrap(validationErrorResponse(valErr)), nil
+	}
+	return zero, err
+}
+
+// searchQuery returns the free-text search param's value, or "" when absent.
+func searchQuery(q *generated.SearchText) string {
+	if q == nil {
+		return ""
+	}
+	return *q
+}

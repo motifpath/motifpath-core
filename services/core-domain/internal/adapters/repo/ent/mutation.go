@@ -6251,22 +6251,24 @@ func (m *ContentNodeSkillMutation) ResetEdge(name string) error {
 // ContentNodeVersionMutation represents an operation that mutates the ContentNodeVersion nodes in the graph.
 type ContentNodeVersionMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	content_node_id   *uuid.UUID
-	version_number    *int
-	addversion_number *int
-	title             *string
-	content_type      *contentnodeversion.ContentType
-	media_url         *string
-	rich_content      *string
-	published_by      *uuid.UUID
-	published_at      *time.Time
-	clearedFields     map[string]struct{}
-	done              bool
-	oldValue          func(context.Context) (*ContentNodeVersion, error)
-	predicates        []predicate.ContentNodeVersion
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	content_node_id         *uuid.UUID
+	version_number          *int
+	addversion_number       *int
+	title                   *string
+	content_type            *contentnodeversion.ContentType
+	media_url               *string
+	rich_content            *string
+	classification_snapshot *string
+	languages_snapshot      *string
+	published_by            *uuid.UUID
+	published_at            *time.Time
+	clearedFields           map[string]struct{}
+	done                    bool
+	oldValue                func(context.Context) (*ContentNodeVersion, error)
+	predicates              []predicate.ContentNodeVersion
 }
 
 var _ ent.Mutation = (*ContentNodeVersionMutation)(nil)
@@ -6635,6 +6637,104 @@ func (m *ContentNodeVersionMutation) ResetRichContent() {
 	delete(m.clearedFields, contentnodeversion.FieldRichContent)
 }
 
+// SetClassificationSnapshot sets the "classification_snapshot" field.
+func (m *ContentNodeVersionMutation) SetClassificationSnapshot(s string) {
+	m.classification_snapshot = &s
+}
+
+// ClassificationSnapshot returns the value of the "classification_snapshot" field in the mutation.
+func (m *ContentNodeVersionMutation) ClassificationSnapshot() (r string, exists bool) {
+	v := m.classification_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClassificationSnapshot returns the old "classification_snapshot" field's value of the ContentNodeVersion entity.
+// If the ContentNodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeVersionMutation) OldClassificationSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClassificationSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClassificationSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClassificationSnapshot: %w", err)
+	}
+	return oldValue.ClassificationSnapshot, nil
+}
+
+// ClearClassificationSnapshot clears the value of the "classification_snapshot" field.
+func (m *ContentNodeVersionMutation) ClearClassificationSnapshot() {
+	m.classification_snapshot = nil
+	m.clearedFields[contentnodeversion.FieldClassificationSnapshot] = struct{}{}
+}
+
+// ClassificationSnapshotCleared returns if the "classification_snapshot" field was cleared in this mutation.
+func (m *ContentNodeVersionMutation) ClassificationSnapshotCleared() bool {
+	_, ok := m.clearedFields[contentnodeversion.FieldClassificationSnapshot]
+	return ok
+}
+
+// ResetClassificationSnapshot resets all changes to the "classification_snapshot" field.
+func (m *ContentNodeVersionMutation) ResetClassificationSnapshot() {
+	m.classification_snapshot = nil
+	delete(m.clearedFields, contentnodeversion.FieldClassificationSnapshot)
+}
+
+// SetLanguagesSnapshot sets the "languages_snapshot" field.
+func (m *ContentNodeVersionMutation) SetLanguagesSnapshot(s string) {
+	m.languages_snapshot = &s
+}
+
+// LanguagesSnapshot returns the value of the "languages_snapshot" field in the mutation.
+func (m *ContentNodeVersionMutation) LanguagesSnapshot() (r string, exists bool) {
+	v := m.languages_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguagesSnapshot returns the old "languages_snapshot" field's value of the ContentNodeVersion entity.
+// If the ContentNodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeVersionMutation) OldLanguagesSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguagesSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguagesSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguagesSnapshot: %w", err)
+	}
+	return oldValue.LanguagesSnapshot, nil
+}
+
+// ClearLanguagesSnapshot clears the value of the "languages_snapshot" field.
+func (m *ContentNodeVersionMutation) ClearLanguagesSnapshot() {
+	m.languages_snapshot = nil
+	m.clearedFields[contentnodeversion.FieldLanguagesSnapshot] = struct{}{}
+}
+
+// LanguagesSnapshotCleared returns if the "languages_snapshot" field was cleared in this mutation.
+func (m *ContentNodeVersionMutation) LanguagesSnapshotCleared() bool {
+	_, ok := m.clearedFields[contentnodeversion.FieldLanguagesSnapshot]
+	return ok
+}
+
+// ResetLanguagesSnapshot resets all changes to the "languages_snapshot" field.
+func (m *ContentNodeVersionMutation) ResetLanguagesSnapshot() {
+	m.languages_snapshot = nil
+	delete(m.clearedFields, contentnodeversion.FieldLanguagesSnapshot)
+}
+
 // SetPublishedBy sets the "published_by" field.
 func (m *ContentNodeVersionMutation) SetPublishedBy(u uuid.UUID) {
 	m.published_by = &u
@@ -6741,7 +6841,7 @@ func (m *ContentNodeVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeVersionMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 10)
 	if m.content_node_id != nil {
 		fields = append(fields, contentnodeversion.FieldContentNodeID)
 	}
@@ -6759,6 +6859,12 @@ func (m *ContentNodeVersionMutation) Fields() []string {
 	}
 	if m.rich_content != nil {
 		fields = append(fields, contentnodeversion.FieldRichContent)
+	}
+	if m.classification_snapshot != nil {
+		fields = append(fields, contentnodeversion.FieldClassificationSnapshot)
+	}
+	if m.languages_snapshot != nil {
+		fields = append(fields, contentnodeversion.FieldLanguagesSnapshot)
 	}
 	if m.published_by != nil {
 		fields = append(fields, contentnodeversion.FieldPublishedBy)
@@ -6786,6 +6892,10 @@ func (m *ContentNodeVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.MediaURL()
 	case contentnodeversion.FieldRichContent:
 		return m.RichContent()
+	case contentnodeversion.FieldClassificationSnapshot:
+		return m.ClassificationSnapshot()
+	case contentnodeversion.FieldLanguagesSnapshot:
+		return m.LanguagesSnapshot()
 	case contentnodeversion.FieldPublishedBy:
 		return m.PublishedBy()
 	case contentnodeversion.FieldPublishedAt:
@@ -6811,6 +6921,10 @@ func (m *ContentNodeVersionMutation) OldField(ctx context.Context, name string) 
 		return m.OldMediaURL(ctx)
 	case contentnodeversion.FieldRichContent:
 		return m.OldRichContent(ctx)
+	case contentnodeversion.FieldClassificationSnapshot:
+		return m.OldClassificationSnapshot(ctx)
+	case contentnodeversion.FieldLanguagesSnapshot:
+		return m.OldLanguagesSnapshot(ctx)
 	case contentnodeversion.FieldPublishedBy:
 		return m.OldPublishedBy(ctx)
 	case contentnodeversion.FieldPublishedAt:
@@ -6865,6 +6979,20 @@ func (m *ContentNodeVersionMutation) SetField(name string, value ent.Value) erro
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRichContent(v)
+		return nil
+	case contentnodeversion.FieldClassificationSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClassificationSnapshot(v)
+		return nil
+	case contentnodeversion.FieldLanguagesSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguagesSnapshot(v)
 		return nil
 	case contentnodeversion.FieldPublishedBy:
 		v, ok := value.(uuid.UUID)
@@ -6931,6 +7059,12 @@ func (m *ContentNodeVersionMutation) ClearedFields() []string {
 	if m.FieldCleared(contentnodeversion.FieldRichContent) {
 		fields = append(fields, contentnodeversion.FieldRichContent)
 	}
+	if m.FieldCleared(contentnodeversion.FieldClassificationSnapshot) {
+		fields = append(fields, contentnodeversion.FieldClassificationSnapshot)
+	}
+	if m.FieldCleared(contentnodeversion.FieldLanguagesSnapshot) {
+		fields = append(fields, contentnodeversion.FieldLanguagesSnapshot)
+	}
 	return fields
 }
 
@@ -6950,6 +7084,12 @@ func (m *ContentNodeVersionMutation) ClearField(name string) error {
 		return nil
 	case contentnodeversion.FieldRichContent:
 		m.ClearRichContent()
+		return nil
+	case contentnodeversion.FieldClassificationSnapshot:
+		m.ClearClassificationSnapshot()
+		return nil
+	case contentnodeversion.FieldLanguagesSnapshot:
+		m.ClearLanguagesSnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNodeVersion nullable field %s", name)
@@ -6976,6 +7116,12 @@ func (m *ContentNodeVersionMutation) ResetField(name string) error {
 		return nil
 	case contentnodeversion.FieldRichContent:
 		m.ResetRichContent()
+		return nil
+	case contentnodeversion.FieldClassificationSnapshot:
+		m.ResetClassificationSnapshot()
+		return nil
+	case contentnodeversion.FieldLanguagesSnapshot:
+		m.ResetLanguagesSnapshot()
 		return nil
 	case contentnodeversion.FieldPublishedBy:
 		m.ResetPublishedBy()

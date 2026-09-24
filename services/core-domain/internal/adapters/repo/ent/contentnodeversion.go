@@ -30,6 +30,10 @@ type ContentNodeVersion struct {
 	MediaURL *string `json:"media_url,omitempty"`
 	// RichContent holds the value of the "rich_content" field.
 	RichContent *string `json:"rich_content,omitempty"`
+	// ClassificationSnapshot holds the value of the "classification_snapshot" field.
+	ClassificationSnapshot *string `json:"classification_snapshot,omitempty"`
+	// LanguagesSnapshot holds the value of the "languages_snapshot" field.
+	LanguagesSnapshot *string `json:"languages_snapshot,omitempty"`
 	// PublishedBy holds the value of the "published_by" field.
 	PublishedBy uuid.UUID `json:"published_by,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -44,7 +48,7 @@ func (*ContentNodeVersion) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case contentnodeversion.FieldVersionNumber:
 			values[i] = new(sql.NullInt64)
-		case contentnodeversion.FieldTitle, contentnodeversion.FieldContentType, contentnodeversion.FieldMediaURL, contentnodeversion.FieldRichContent:
+		case contentnodeversion.FieldTitle, contentnodeversion.FieldContentType, contentnodeversion.FieldMediaURL, contentnodeversion.FieldRichContent, contentnodeversion.FieldClassificationSnapshot, contentnodeversion.FieldLanguagesSnapshot:
 			values[i] = new(sql.NullString)
 		case contentnodeversion.FieldPublishedAt:
 			values[i] = new(sql.NullTime)
@@ -108,6 +112,20 @@ func (_m *ContentNodeVersion) assignValues(columns []string, values []any) error
 			} else if value.Valid {
 				_m.RichContent = new(string)
 				*_m.RichContent = value.String
+			}
+		case contentnodeversion.FieldClassificationSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field classification_snapshot", values[i])
+			} else if value.Valid {
+				_m.ClassificationSnapshot = new(string)
+				*_m.ClassificationSnapshot = value.String
+			}
+		case contentnodeversion.FieldLanguagesSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field languages_snapshot", values[i])
+			} else if value.Valid {
+				_m.LanguagesSnapshot = new(string)
+				*_m.LanguagesSnapshot = value.String
 			}
 		case contentnodeversion.FieldPublishedBy:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -176,6 +194,16 @@ func (_m *ContentNodeVersion) String() string {
 	builder.WriteString(", ")
 	if v := _m.RichContent; v != nil {
 		builder.WriteString("rich_content=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ClassificationSnapshot; v != nil {
+		builder.WriteString("classification_snapshot=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LanguagesSnapshot; v != nil {
+		builder.WriteString("languages_snapshot=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

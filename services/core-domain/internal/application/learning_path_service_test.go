@@ -213,16 +213,19 @@ func TestLearningPathService_GetLearningPath(t *testing.T) {
 }
 
 func TestLearningPathService_ListLearningPaths(t *testing.T) {
+	firstPage := domain.PageRequest{Limit: 20, Offset: 0}
+
 	t.Run("a teacher lists all learning paths", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
 		paths.put(domain.LearningPath{ID: "path-1", Title: "Week 1"})
 		paths.put(domain.LearningPath{ID: "path-2", Title: "Week 2"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		got, err := svc.ListLearningPaths(context.Background(), teacherCaller())
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 2)
+		assert.Len(t, got.Items, 2)
+		assert.Equal(t, 2, got.Total)
 	})
 
 	t.Run("an admin lists all learning paths", func(t *testing.T) {
@@ -230,25 +233,55 @@ func TestLearningPathService_ListLearningPaths(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-1"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		got, err := svc.ListLearningPaths(context.Background(), adminCaller())
+		got, err := svc.ListLearningPaths(context.Background(), adminCaller(), domain.LearningPathFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 1)
+		assert.Len(t, got.Items, 1)
 	})
 
-	t.Run("listing when none exist returns an empty list", func(t *testing.T) {
-		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
+	t.Run("searches by title text", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "path-1", Title: "Open Chords Path"})
+		paths.put(domain.LearningPath{ID: "path-2", Title: "Strumming Path"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		got, err := svc.ListLearningPaths(context.Background(), teacherCaller())
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{Query: "chords"}, firstPage)
 
 		require.NoError(t, err)
-		assert.Empty(t, got)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "path-1", got.Items[0].ID)
+		assert.Equal(t, 1, got.Total)
+	})
+
+	t.Run("returns the requested page and the filtered total", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		for _, id := range []string{"path-1", "path-2", "path-3"} {
+			paths.put(domain.LearningPath{ID: id, Title: id})
+		}
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{}, domain.PageRequest{Limit: 2, Offset: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, got.Total)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "path-3", got.Items[0].ID)
+	})
+
+	t.Run("listing when none exist returns an empty page", func(t *testing.T) {
+		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
+
+		got, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{}, firstPage)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Items)
+		assert.Zero(t, got.Total)
 	})
 
 	t.Run("a student cannot list learning paths", func(t *testing.T) {
 		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
 
-		_, err := svc.ListLearningPaths(context.Background(), studentCaller())
+		_, err := svc.ListLearningPaths(context.Background(), studentCaller(), domain.LearningPathFilter{}, firstPage)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})

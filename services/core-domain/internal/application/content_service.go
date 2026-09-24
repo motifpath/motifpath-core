@@ -60,6 +60,42 @@ func (s *ContentService) PublishContentNode(ctx context.Context, caller domain.U
 	return version, nil
 }
 
+// ListContentNodeVersions returns every published version of the content
+// node identified by id, newest first, or an empty list if it has never been
+// published. A version published before classification and language
+// snapshots were stored carries the node's current ones instead. Only the
+// creating teacher or an admin may view a node's history — the same rule
+// as publishing it. Returns domain.ErrNotFound if no
+// content node exists with the given id.
+func (s *ContentService) ListContentNodeVersions(ctx context.Context, caller domain.User, id string) ([]domain.ContentNodeVersion, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+
+	node, err := s.nodes.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireOwner(caller, node.TeacherID); err != nil {
+		return nil, err
+	}
+
+	versions, err := s.versions.ListByContentNodeID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for i := range versions {
+		if versions[i].Classification.DifficultyLevel != "" {
+			continue
+		}
+		// Published before classification and language snapshots were
+		// stored, so the node's current values are the best record left.
+		versions[i].Classification = node.Classification
+		versions[i].Languages = node.Languages
+	}
+	return versions, nil
+}
+
 // CreateContentNode creates a content node owned by caller. Only teachers
 // and admins may create content nodes.
 func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.User, title string, contentType domain.ContentType, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string, mediaURL *string, richContent *domain.PromptDocument) (domain.ContentNode, error) {
@@ -89,16 +125,15 @@ func (s *ContentService) GetContentNode(ctx context.Context, id string) (domain.
 	return s.nodes.GetByID(ctx, id)
 }
 
-// ListContentNodes returns content nodes from the library, optionally
-// narrowed by contentType, skillID, conceptID, and/or difficulty (any may be
-// "" for "no filter"). Only teachers and admins may list content nodes — the
+// ListContentNodes returns one page of the content nodes from the library
+// matching filter (a zero-valued field means "no filter"). Only teachers and admins may list content nodes — the
 // library is an authoring surface, unlike GetContentNode which any
 // authenticated user may call for a specific known id.
-func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.User, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.User, filter domain.ContentNodeFilter, page domain.PageRequest) (domain.Page[domain.ContentNode], error) {
 	if !canManageContent(caller.Role) {
-		return nil, domain.ErrForbidden
+		return domain.Page[domain.ContentNode]{}, domain.ErrForbidden
 	}
-	return s.nodes.List(ctx, contentType, skillID, conceptID, difficulty)
+	return s.nodes.List(ctx, filter, page)
 }
 
 // UpdateContentNode replaces the given content node's title and

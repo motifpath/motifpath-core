@@ -74,6 +74,12 @@ func (_u *ContentNodeVersionUpdate) sqlSave(ctx context.Context) (_node int, err
 	if _u.mutation.RichContentCleared() {
 		_spec.ClearField(contentnodeversion.FieldRichContent, field.TypeString)
 	}
+	if _u.mutation.ClassificationSnapshotCleared() {
+		_spec.ClearField(contentnodeversion.FieldClassificationSnapshot, field.TypeString)
+	}
+	if _u.mutation.LanguagesSnapshotCleared() {
+		_spec.ClearField(contentnodeversion.FieldLanguagesSnapshot, field.TypeString)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{contentnodeversion.Label}
@@ -170,6 +176,12 @@ func (_u *ContentNodeVersionUpdateOne) sqlSave(ctx context.Context) (_node *Cont
 	}
 	if _u.mutation.RichContentCleared() {
 		_spec.ClearField(contentnodeversion.FieldRichContent, field.TypeString)
+	}
+	if _u.mutation.ClassificationSnapshotCleared() {
+		_spec.ClearField(contentnodeversion.FieldClassificationSnapshot, field.TypeString)
+	}
+	if _u.mutation.LanguagesSnapshotCleared() {
+		_spec.ClearField(contentnodeversion.FieldLanguagesSnapshot, field.TypeString)
 	}
 	_node = &ContentNodeVersion{config: _u.config}
 	_spec.Assign = _node.assignValues

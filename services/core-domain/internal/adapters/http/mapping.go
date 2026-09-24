@@ -744,15 +744,24 @@ func toCourse(c domain.Course, latest *domain.CourseVersion) generated.Course {
 // has_unpublished_changes are both derived from it.
 func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
-		CourseId: mustUUID(c.ID),
-		Title:    c.Title,
-		Summary:  c.Summary,
-		Level:    generated.CourseCatalogEntryLevel(c.Level),
-		Status:   generated.CourseCatalogEntryStatus(c.Status),
+		CourseId:  mustUUID(c.ID),
+		Title:     c.Title,
+		Summary:   c.Summary,
+		Level:     generated.CourseCatalogEntryLevel(c.Level),
+		CreatedBy: mustUUID(c.CreatedBy),
+		Status:    generated.CourseCatalogEntryStatus(c.Status),
 	}
 	if latest != nil {
 		publishedAt := latest.PublishedAt
 		entry.PublishedAt = &publishedAt
+		// A student only ever sees what the latest published version says,
+		// never the live draft's unpublished edits — the same text, level
+		// and ordering their search and filters are evaluated against.
+		if !isStaff(caller.Role) {
+			entry.Title = latest.TitleSnapshot
+			entry.Summary = latest.SummarySnapshot
+			entry.Level = generated.CourseCatalogEntryLevel(latest.LevelSnapshot)
+		}
 	}
 	if isStaff(caller.Role) {
 		hasUnpublishedChanges := domain.HasUnpublishedChanges(c, latest)
@@ -817,4 +826,38 @@ func toCourseDetail(courseID string, view application.PublishedCourseView) gener
 		PublishedAt: &publishedAt,
 		Checkpoints: checkpoints,
 	}
+}
+
+// courseListFilter translates GET /courses' query parameters into the
+// domain filter. Role-dependent scoping is the application layer's job, not
+// this mapping's.
+func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilter {
+	filter := domain.CourseListFilter{Query: searchQuery(params.Q)}
+	if params.Status != nil {
+		status := domain.CourseStatus(*params.Status)
+		filter.Status = &status
+	}
+	if params.CreatedBy != nil {
+		filter.CreatedBy = params.CreatedBy.String()
+	}
+	if params.Levels != nil {
+		for _, l := range *params.Levels {
+			filter.Levels = append(filter.Levels, domain.DifficultyLevel(l))
+		}
+	}
+	if params.SkillIds != nil {
+		filter.SkillIDs = uuidStrings(*params.SkillIds)
+	}
+	if params.ConceptIds != nil {
+		filter.ConceptIDs = uuidStrings(*params.ConceptIds)
+	}
+	return filter
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }

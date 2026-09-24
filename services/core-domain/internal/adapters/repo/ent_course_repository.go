@@ -95,21 +95,31 @@ func (r *EntCourseRepository) GetByID(ctx context.Context, id string) (domain.Co
 	return toDomainCourse(courseRow, checkpoints), nil
 }
 
-// List returns every course, optionally restricted to a single status,
-// batching the checkpoint and learning-path lookups into one query each
-// across all courses — the same batching EntLearningPathRepository.List
-// uses for its items and content nodes.
-func (r *EntCourseRepository) List(ctx context.Context, status *domain.CourseStatus) ([]domain.Course, error) {
-	query := r.client.Course.Query()
-	if status != nil {
-		query = query.Where(course.StatusEQ(course.Status(*status)))
-	}
-	courseRows, err := query.All(ctx)
+// List returns one page of the courses matching filter (see
+// courseListPredicates), batching the checkpoint and learning-path lookups
+// into one query each across the page's courses — the same batching
+// EntLearningPathRepository.List uses for its items and content nodes.
+func (r *EntCourseRepository) List(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	predicates, err := courseListPredicates(filter)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Course]{}, err
+	}
+	query := r.client.Course.Query().Where(predicates...)
+
+	total, err := query.Clone().Count(ctx)
+	if err != nil {
+		return domain.Page[domain.Course]{}, err
+	}
+	courseRows, err := query.
+		Order(courseListOrder(filter)...).
+		Limit(page.Limit).
+		Offset(page.Offset).
+		All(ctx)
+	if err != nil {
+		return domain.Page[domain.Course]{}, err
 	}
 	if len(courseRows) == 0 {
-		return []domain.Course{}, nil
+		return domain.Page[domain.Course]{Items: []domain.Course{}, Total: total}, nil
 	}
 
 	courseIDs := make([]uuid.UUID, len(courseRows))
@@ -121,12 +131,12 @@ func (r *EntCourseRepository) List(ctx context.Context, status *domain.CourseSta
 		Order(coursecheckpoint.ByPosition()).
 		All(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Course]{}, err
 	}
 
 	pathsByID, err := r.learningPathsForCheckpoints(ctx, checkpointRows)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Course]{}, err
 	}
 
 	// checkpointRows is sorted by position across all courses; bucketing by
@@ -137,15 +147,15 @@ func (r *EntCourseRepository) List(ctx context.Context, status *domain.CourseSta
 		checkpointsByCourseID[cp.CourseID] = append(checkpointsByCourseID[cp.CourseID], cp)
 	}
 
-	result := make([]domain.Course, len(courseRows))
+	items := make([]domain.Course, len(courseRows))
 	for i, c := range courseRows {
 		checkpoints, err := buildCourseCheckpoints(checkpointsByCourseID[c.ID], pathsByID)
 		if err != nil {
-			return nil, err
+			return domain.Page[domain.Course]{}, err
 		}
-		result[i] = toDomainCourse(c, checkpoints)
+		items[i] = toDomainCourse(c, checkpoints)
 	}
-	return result, nil
+	return domain.Page[domain.Course]{Items: items, Total: total}, nil
 }
 
 // Replace deletes course's current checkpoints and inserts

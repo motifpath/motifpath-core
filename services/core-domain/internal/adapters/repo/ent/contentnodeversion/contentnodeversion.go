@@ -27,6 +27,10 @@ const (
 	FieldMediaURL = "media_url"
 	// FieldRichContent holds the string denoting the rich_content field in the database.
 	FieldRichContent = "rich_content"
+	// FieldClassificationSnapshot holds the string denoting the classification_snapshot field in the database.
+	FieldClassificationSnapshot = "classification_snapshot"
+	// FieldLanguagesSnapshot holds the string denoting the languages_snapshot field in the database.
+	FieldLanguagesSnapshot = "languages_snapshot"
 	// FieldPublishedBy holds the string denoting the published_by field in the database.
 	FieldPublishedBy = "published_by"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
@@ -44,6 +48,8 @@ var Columns = []string{
 	FieldContentType,
 	FieldMediaURL,
 	FieldRichContent,
+	FieldClassificationSnapshot,
+	FieldLanguagesSnapshot,
 	FieldPublishedBy,
 	FieldPublishedAt,
 }
@@ -124,6 +130,16 @@ func ByMediaURL(opts ...sql.OrderTermOption) OrderOption {
 // ByRichContent orders the results by the rich_content field.
 func ByRichContent(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRichContent, opts...).ToFunc()
+}
+
+// ByClassificationSnapshot orders the results by the classification_snapshot field.
+func ByClassificationSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldClassificationSnapshot, opts...).ToFunc()
+}
+
+// ByLanguagesSnapshot orders the results by the languages_snapshot field.
+func ByLanguagesSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLanguagesSnapshot, opts...).ToFunc()
 }
 
 // ByPublishedBy orders the results by the published_by field.

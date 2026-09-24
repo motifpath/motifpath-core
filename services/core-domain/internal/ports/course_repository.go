@@ -15,9 +15,10 @@ type CourseRepository interface {
 	// GetByID returns domain.ErrNotFound if no course exists with the given id.
 	GetByID(ctx context.Context, id string) (domain.Course, error)
 
-	// List returns every course in the catalog, optionally restricted to a
-	// single status. A nil status returns every course regardless of status.
-	List(ctx context.Context, status *domain.CourseStatus) ([]domain.Course, error)
+	// List returns one page of the courses matching filter, ordered by title
+	// then id (the published version's title when filter.PublishedView is
+	// set), with the count of all matches across pages.
+	List(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error)
 
 	// Replace replaces course's title, summary, level, and checkpoints
 	// wholesale — its current checkpoints are deleted and

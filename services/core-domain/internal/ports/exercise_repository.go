@@ -61,10 +61,9 @@ type ExerciseRepository interface {
 	// concern.
 	ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error)
 
-	// List returns exercises from the whole pool, optionally narrowed by
-	// skillID and/or exerciseType — an empty string on either means no
-	// filter on that dimension. Order is stable but otherwise unspecified.
-	List(ctx context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error)
+	// List returns one page of the exercises in the whole pool matching
+	// filter, ordered by id, with the count of all matches across pages.
+	List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error)
 
 	// Update replaces exercise's title, prompt, skill/concept links,
 	// image_url, audio_url, options, and estimated_duration_seconds. exercise.ID

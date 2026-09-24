@@ -73,6 +73,34 @@ func (_c *ContentNodeVersionCreate) SetNillableRichContent(v *string) *ContentNo
 	return _c
 }
 
+// SetClassificationSnapshot sets the "classification_snapshot" field.
+func (_c *ContentNodeVersionCreate) SetClassificationSnapshot(v string) *ContentNodeVersionCreate {
+	_c.mutation.SetClassificationSnapshot(v)
+	return _c
+}
+
+// SetNillableClassificationSnapshot sets the "classification_snapshot" field if the given value is not nil.
+func (_c *ContentNodeVersionCreate) SetNillableClassificationSnapshot(v *string) *ContentNodeVersionCreate {
+	if v != nil {
+		_c.SetClassificationSnapshot(*v)
+	}
+	return _c
+}
+
+// SetLanguagesSnapshot sets the "languages_snapshot" field.
+func (_c *ContentNodeVersionCreate) SetLanguagesSnapshot(v string) *ContentNodeVersionCreate {
+	_c.mutation.SetLanguagesSnapshot(v)
+	return _c
+}
+
+// SetNillableLanguagesSnapshot sets the "languages_snapshot" field if the given value is not nil.
+func (_c *ContentNodeVersionCreate) SetNillableLanguagesSnapshot(v *string) *ContentNodeVersionCreate {
+	if v != nil {
+		_c.SetLanguagesSnapshot(*v)
+	}
+	return _c
+}
+
 // SetPublishedBy sets the "published_by" field.
 func (_c *ContentNodeVersionCreate) SetPublishedBy(v uuid.UUID) *ContentNodeVersionCreate {
 	_c.mutation.SetPublishedBy(v)
@@ -235,6 +263,14 @@ func (_c *ContentNodeVersionCreate) createSpec() (*ContentNodeVersion, *sqlgraph
 	if value, ok := _c.mutation.RichContent(); ok {
 		_spec.SetField(contentnodeversion.FieldRichContent, field.TypeString, value)
 		_node.RichContent = &value
+	}
+	if value, ok := _c.mutation.ClassificationSnapshot(); ok {
+		_spec.SetField(contentnodeversion.FieldClassificationSnapshot, field.TypeString, value)
+		_node.ClassificationSnapshot = &value
+	}
+	if value, ok := _c.mutation.LanguagesSnapshot(); ok {
+		_spec.SetField(contentnodeversion.FieldLanguagesSnapshot, field.TypeString, value)
+		_node.LanguagesSnapshot = &value
 	}
 	if value, ok := _c.mutation.PublishedBy(); ok {
 		_spec.SetField(contentnodeversion.FieldPublishedBy, field.TypeUUID, value)
