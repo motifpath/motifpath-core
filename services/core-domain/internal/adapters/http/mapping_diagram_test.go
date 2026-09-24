@@ -20,6 +20,8 @@ func TestDiagramColorMapping(t *testing.T) {
 		ID:           uuid.NewString(),
 		InstrumentID: uuid.NewString(),
 		Name:         "Colored",
+		Kind:         domain.DiagramKindCustom,
+		CreatedBy:    uuid.NewString(),
 		LabelDisplay: domain.LabelDisplayInterval,
 		Color:        strPtr("#3B82F6"),
 		Positions: []domain.Position{
@@ -63,5 +65,45 @@ func TestDiagramColorMapping(t *testing.T) {
 		require.NotNil(t, got[0].Color)
 		assert.Equal(t, "#EF4444", *got[0].Color)
 		assert.Nil(t, got[1].Color)
+	})
+}
+
+func TestDiagramOwnershipMapping(t *testing.T) {
+	owner := uuid.New()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Name: "Owned",
+		Kind: domain.DiagramKindBasic, CreatedBy: owner.String(), LabelDisplay: domain.LabelDisplayInterval,
+		CreatedAt: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC),
+	}
+
+	t.Run("a diagram's kind and creator reach the response", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram)
+
+		assert.Equal(t, generated.DiagramKindBasic, got.Kind)
+		assert.Equal(t, owner, got.CreatedBy)
+	})
+
+	t.Run("an omitted create kind maps to the zero value, left for the domain to default", func(t *testing.T) {
+		assert.Equal(t, domain.DiagramKind(""), toDomainDiagramKind(nil))
+		basic := generated.CreateDiagramRequestKindBasic
+		assert.Equal(t, domain.DiagramKindBasic, toDomainDiagramKind(&basic))
+	})
+
+	t.Run("list parameters map onto the diagram filter", func(t *testing.T) {
+		instrument, skill, concept, creator := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+		kind := generated.Custom
+
+		got := diagramListFilter(generated.ListDiagramsParams{
+			InstrumentId: &instrument, SkillId: &skill, ConceptId: &concept, CreatedBy: &creator, Kind: &kind,
+		})
+
+		assert.Equal(t, domain.DiagramListFilter{
+			InstrumentID: instrument.String(), SkillID: skill.String(), ConceptID: concept.String(),
+			CreatedBy: creator.String(), Kind: domain.DiagramKindCustom,
+		}, got)
+	})
+
+	t.Run("absent list parameters leave the filter empty", func(t *testing.T) {
+		assert.Equal(t, domain.DiagramListFilter{}, diagramListFilter(generated.ListDiagramsParams{}))
 	})
 }

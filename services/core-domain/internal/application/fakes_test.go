@@ -1394,24 +1394,22 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	return diagram, nil
 }
 
-func (f *fakeDiagramRepository) List(_ context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
+func (f *fakeDiagramRepository) List(_ context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := []domain.Diagram{}
+	matched := []domain.Diagram{}
 	for _, diagram := range f.byID {
-		if instrumentID != "" && diagram.InstrumentID != instrumentID {
-			continue
+		if filter.Matches(diagram) {
+			matched = append(matched, diagram)
 		}
-		if skillID != "" && !containsID(diagram.SkillIDs(), skillID) {
-			continue
-		}
-		if conceptID != "" && !containsID(diagram.ConceptIDs(), conceptID) {
-			continue
-		}
-		result = append(result, diagram)
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
-	return result, nil
+	sort.Slice(matched, func(i, j int) bool {
+		if matched[i].Name != matched[j].Name {
+			return matched[i].Name < matched[j].Name
+		}
+		return matched[i].ID < matched[j].ID
+	})
+	return paginate(matched, page), nil
 }
 
 func (f *fakeDiagramRepository) Update(_ context.Context, diagram domain.Diagram) error {

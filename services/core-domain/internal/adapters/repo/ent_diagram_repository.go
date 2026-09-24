@@ -9,6 +9,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -32,6 +33,10 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 	if err != nil {
 		return err
 	}
+	createdBy, err := uuid.Parse(d.CreatedBy)
+	if err != nil {
+		return err
+	}
 	skillIDs, err := parseUUIDs(d.SkillIDs())
 	if err != nil {
 		return err
@@ -49,6 +54,8 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetID(id).
 		SetInstrumentID(instrumentID).
 		SetName(d.Name).
+		SetKind(diagram.Kind(d.Kind)).
+		SetCreatedBy(createdBy).
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
@@ -79,39 +86,62 @@ func (r *EntDiagramRepository) GetByID(ctx context.Context, id string) (domain.D
 	return toDomainDiagram(row), nil
 }
 
-func (r *EntDiagramRepository) List(ctx context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
-	query := withDiagramEdges(r.client.Diagram.Query()).Order(ent.Asc(diagram.FieldID))
-	if instrumentID != "" {
-		parsed, err := uuid.Parse(instrumentID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where(diagram.InstrumentID(parsed))
-	}
-	if skillID != "" {
-		parsed, err := uuid.Parse(skillID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where(diagram.HasSkillsWith(skill.ID(parsed)))
-	}
-	if conceptID != "" {
-		parsed, err := uuid.Parse(conceptID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where(diagram.HasConceptsWith(concept.ID(parsed)))
-	}
-
-	rows, err := query.All(ctx)
+func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
+	predicates, err := diagramListPredicates(filter)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Diagram]{}, err
 	}
-	result := make([]domain.Diagram, len(rows))
+	query := r.client.Diagram.Query().Where(predicates...)
+
+	total, err := query.Clone().Count(ctx)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
+	rows, err := withDiagramEdges(query).
+		Order(ent.Asc(diagram.FieldName), ent.Asc(diagram.FieldID)).
+		Limit(page.Limit).
+		Offset(page.Offset).
+		All(ctx)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
+	items := make([]domain.Diagram, len(rows))
 	for i, row := range rows {
-		result[i] = toDomainDiagram(row)
+		items[i] = toDomainDiagram(row)
 	}
-	return result, nil
+	return domain.Page[domain.Diagram]{Items: items, Total: total}, nil
+}
+
+// diagramListPredicates translates filter into ent predicates, one per set
+// field; domain.DiagramListFilter.Matches states the same rules in memory.
+func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram, error) {
+	var predicates []predicate.Diagram
+	if filter.Kind != "" {
+		predicates = append(predicates, diagram.KindEQ(diagram.Kind(filter.Kind)))
+	}
+	byID := []struct {
+		value string
+		match func(uuid.UUID) predicate.Diagram
+	}{
+		{filter.VisibleTo, func(viewer uuid.UUID) predicate.Diagram {
+			return diagram.Or(diagram.KindEQ(diagram.KindBasic), diagram.CreatedBy(viewer))
+		}},
+		{filter.CreatedBy, diagram.CreatedBy},
+		{filter.InstrumentID, diagram.InstrumentID},
+		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(skill.ID(id)) }},
+		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(concept.ID(id)) }},
+	}
+	for _, f := range byID {
+		if f.value == "" {
+			continue
+		}
+		id, err := uuid.Parse(f.value)
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, f.match(id))
+	}
+	return predicates, nil
 }
 
 func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) error {
@@ -220,6 +250,8 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		ID:           row.ID.String(),
 		InstrumentID: row.InstrumentID.String(),
 		Name:         row.Name,
+		Kind:         domain.DiagramKind(row.Kind),
+		CreatedBy:    row.CreatedBy.String(),
 		RootNote:     row.RootNote,
 		LabelDisplay: domain.LabelDisplay(row.LabelDisplay),
 		Color:        row.Color,

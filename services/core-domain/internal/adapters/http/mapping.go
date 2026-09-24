@@ -610,6 +610,30 @@ func toGeneratedInstruments(instruments []domain.Instrument) []generated.Instrum
 	return result
 }
 
+// toDomainDiagramKind maps an optional create-request kind onto the domain;
+// nil maps to the zero value, which domain.NewDiagram defaults to custom.
+func toDomainDiagramKind(kind *generated.CreateDiagramRequestKind) domain.DiagramKind {
+	if kind == nil {
+		return ""
+	}
+	return domain.DiagramKind(*kind)
+}
+
+// diagramListFilter maps GET /diagrams' query parameters onto the domain
+// filter. Role scoping (VisibleTo) is the application layer's to set.
+func diagramListFilter(params generated.ListDiagramsParams) domain.DiagramListFilter {
+	filter := domain.DiagramListFilter{
+		InstrumentID: uuidPtrToString(params.InstrumentId),
+		SkillID:      uuidPtrToString(params.SkillId),
+		ConceptID:    uuidPtrToString(params.ConceptId),
+		CreatedBy:    uuidPtrToString(params.CreatedBy),
+	}
+	if params.Kind != nil {
+		filter.Kind = domain.DiagramKind(*params.Kind)
+	}
+	return filter
+}
+
 func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 	positions := make([]generated.DiagramPosition, len(d.Positions))
 	for i, p := range d.Positions {
@@ -631,6 +655,8 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 		DiagramId:    mustUUID(d.ID),
 		InstrumentId: mustUUID(d.InstrumentID),
 		Name:         d.Name,
+		Kind:         generated.DiagramKind(d.Kind),
+		CreatedBy:    mustUUID(d.CreatedBy),
 		RootNote:     d.RootNote,
 		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
 		Color:        d.Color,

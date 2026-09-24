@@ -69,7 +69,7 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 	// Deliberately not in id order: the repository must return positions in
 	// the order the author listed them, not in primary-key order.
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Minor Pentatonic — Position 1", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Minor Pentatonic — Position 1", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(0)},
 			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -99,7 +99,7 @@ func TestEntDiagramRepository_KeyboardPositionsRoundTrip(t *testing.T) {
 
 	a3, c4 := "A3", "C4"
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "Minor Pentatonic — Piano", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Minor Pentatonic — Piano", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &a3},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, Key: &c4},
@@ -130,39 +130,70 @@ func TestEntDiagramRepository_List(t *testing.T) {
 	conceptA := seedConcept(t, ctx, client, "a-"+uuid.NewString())
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 	key := "A3"
+	admin, me, them := uuid.NewString(), uuid.NewString(), uuid.NewString()
 
-	onGuitar := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "G", LabelDisplay: domain.LabelDisplayInterval,
+	// Names are deliberately out of creation order, so the name ordering is
+	// observable.
+	basic := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindBasic, CreatedBy: admin, Name: "C Basic", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptA}, CreatedAt: fixedAt,
 	}
-	onPiano := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Name: "P", LabelDisplay: domain.LabelDisplayInterval,
+	mine := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: me, Name: "A Mine", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &key}},
 		Skills:    []domain.Skill{skillB}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
-	require.NoError(t, diagrams.Create(ctx, onGuitar))
-	require.NoError(t, diagrams.Create(ctx, onPiano))
+	theirs := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: them, Name: "B Theirs", LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)}},
+		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
+	}
+	for _, d := range []domain.Diagram{basic, mine, theirs} {
+		require.NoError(t, diagrams.Create(ctx, d))
+	}
+	all := domain.PageRequest{Limit: domain.MaxPageLimit}
 
 	tests := []struct {
-		name                            string
-		instrumentID, skillID, conceptID string
-		want                            []domain.Diagram
+		name   string
+		filter domain.DiagramListFilter
+		want   []domain.Diagram
 	}{
-		{name: "no filter", want: []domain.Diagram{onGuitar, onPiano}},
-		{name: "by instrument", instrumentID: guitar.ID, want: []domain.Diagram{onGuitar}},
-		{name: "by skill", skillID: skillB.ID, want: []domain.Diagram{onPiano}},
-		{name: "by concept", conceptID: conceptA.ID, want: []domain.Diagram{onGuitar}},
-		{name: "filters combine with AND", instrumentID: guitar.ID, skillID: skillB.ID, want: []domain.Diagram{}},
+		{name: "no filter, ordered by name", want: []domain.Diagram{mine, theirs, basic}},
+		{name: "by instrument", filter: domain.DiagramListFilter{InstrumentID: guitar.ID}, want: []domain.Diagram{theirs, basic}},
+		{name: "by skill", filter: domain.DiagramListFilter{SkillID: skillB.ID}, want: []domain.Diagram{mine}},
+		{name: "by concept", filter: domain.DiagramListFilter{ConceptID: conceptA.ID}, want: []domain.Diagram{basic}},
+		{name: "by kind", filter: domain.DiagramListFilter{Kind: domain.DiagramKindCustom}, want: []domain.Diagram{mine, theirs}},
+		{name: "by creator", filter: domain.DiagramListFilter{CreatedBy: them}, want: []domain.Diagram{theirs}},
+		{name: "visible to one user: basic plus their own custom", filter: domain.DiagramListFilter{VisibleTo: me}, want: []domain.Diagram{mine, basic}},
+		{name: "visibility combines with kind", filter: domain.DiagramListFilter{VisibleTo: me, Kind: domain.DiagramKindCustom}, want: []domain.Diagram{mine}},
+		{name: "filters combine with AND", filter: domain.DiagramListFilter{InstrumentID: guitar.ID, SkillID: skillB.ID}, want: []domain.Diagram{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := diagrams.List(ctx, tt.instrumentID, tt.skillID, tt.conceptID)
+			got, err := diagrams.List(ctx, tt.filter, all)
 
 			require.NoError(t, err)
-			assert.ElementsMatch(t, tt.want, got)
+			assert.Equal(t, tt.want, got.Items)
+			assert.Equal(t, len(tt.want), got.Total)
 		})
 	}
+
+	t.Run("a page is a window of the name order, with the full total", func(t *testing.T) {
+		got, err := diagrams.List(ctx, domain.DiagramListFilter{}, domain.PageRequest{Limit: 1, Offset: 1})
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Diagram{theirs}, got.Items)
+		assert.Equal(t, 3, got.Total)
+	})
+
+	t.Run("an offset past the end is an empty page, not an error", func(t *testing.T) {
+		got, err := diagrams.List(ctx, domain.DiagramListFilter{}, domain.PageRequest{Limit: 10, Offset: 10})
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Items)
+		assert.Equal(t, 3, got.Total)
+	})
 }
 
 func TestEntDiagramRepository_Update(t *testing.T) {
@@ -178,7 +209,7 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 
 	original := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Original", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Original", LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -231,7 +262,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 
 	newDiagram := func(positionID string) domain.Diagram {
 		return domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "D", LabelDisplay: domain.LabelDisplayInterval,
+			ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "D", LabelDisplay: domain.LabelDisplayInterval,
 			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 			Skills:    []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 		}
@@ -297,7 +328,7 @@ func TestEntDiagramRepository_ColorsRoundTrip(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Colored", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Colored", LabelDisplay: domain.LabelDisplayInterval,
 		Color: strPtr("#3B82F6"),
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), Color: strPtr("#EF4444")},
