@@ -90,6 +90,11 @@ type world struct {
 	// echoes it back unchanged.
 	lastPromptSent generated.PromptDocument
 
+	// copySource holds the diagram a "saves a copy" step read before
+	// creating its copy, so later steps can check the copy against it and
+	// that the source itself did not change.
+	copySource generated.Diagram
+
 	// multiResp is lastResp's repeated-call counterpart, for a "does X
 	// twice" or "does X and Y" step (repeated list calls, two generated
 	// practice sessions) — same `any` exception as lastResp, same reason.

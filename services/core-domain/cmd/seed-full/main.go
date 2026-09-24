@@ -231,7 +231,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
 
-	diagram, err := seedInstrumentAndDiagram(ctx, teacher, svc.instrument, svc.diagram, classifier)
+	diagram, err := seedInstrumentAndDiagram(ctx, teacher, templateCurator(admin), svc.instrument, svc.diagram, classifier)
 	if err != nil {
 		return fmt.Errorf("seed instrument and diagram: %w", err)
 	}
@@ -455,11 +455,25 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 	return result, nil
 }
 
+// templateCurator returns the admin that owns seeded basic diagrams: the
+// bootstrapped admin when there is one (the zero user, which is also who
+// the ownership migration assigns pre-existing diagrams to), otherwise an
+// unpersisted synthetic admin identity, as seedCourses uses — a diagram's
+// creator is a plain id with no foreign key, and a basic diagram is
+// editable by every admin whoever created it.
+func templateCurator(admin domain.User) domain.User {
+	if admin.ID != "" {
+		return admin
+	}
+	return domain.User{ID: uuid.NewString(), Role: domain.RoleAdmin}
+}
+
 // seedInstrumentAndDiagram creates one fretted Instrument ("Guitar", standard
-// tuning) and one Diagram against it (an open-position A minor pentatonic
-// shape) — without this, the diagram authoring UI's instrument picker has
-// nothing to list, since no other seed step creates an Instrument row.
-func seedInstrumentAndDiagram(ctx context.Context, teacher domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (domain.Diagram, error) {
+// tuning) and one basic Diagram against it (an open-position A minor
+// pentatonic shape), owned by curator — without this, the diagram authoring
+// UI's instrument picker has nothing to list, since no other seed step
+// creates an Instrument row.
+func seedInstrumentAndDiagram(ctx context.Context, teacher, curator domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (domain.Diagram, error) {
 	stringCount := 6
 	instrument, err := instrumentSvc.CreateInstrument(ctx, teacher, "Guitar", domain.InstrumentFamilyFretted,
 		&stringCount, []string{"E", "A", "D", "G", "B", "E"}, nil)
@@ -500,7 +514,8 @@ func seedInstrumentAndDiagram(ctx context.Context, teacher domain.User, instrume
 	}
 
 	root, general := "A", "#3B82F6"
-	diagram, err := diagramSvc.CreateDiagram(ctx, teacher, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID}, &root, domain.LabelDisplayInterval, &general)
+	diagram, err := diagramSvc.CreateDiagram(ctx, curator, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID},
+		domain.DiagramOptions{RootNote: &root, LabelDisplay: domain.LabelDisplayInterval, Color: &general, Kind: domain.DiagramKindBasic})
 	if err != nil {
 		return domain.Diagram{}, fmt.Errorf("create diagram: %w", err)
 	}

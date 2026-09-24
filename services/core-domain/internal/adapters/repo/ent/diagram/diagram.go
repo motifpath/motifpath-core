@@ -20,6 +20,10 @@ const (
 	FieldInstrumentID = "instrument_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldKind holds the string denoting the kind field in the database.
+	FieldKind = "kind"
+	// FieldCreatedBy holds the string denoting the created_by field in the database.
+	FieldCreatedBy = "created_by"
 	// FieldRootNote holds the string denoting the root_note field in the database.
 	FieldRootNote = "root_note"
 	// FieldLabelDisplay holds the string denoting the label_display field in the database.
@@ -87,6 +91,8 @@ var Columns = []string{
 	FieldID,
 	FieldInstrumentID,
 	FieldName,
+	FieldKind,
+	FieldCreatedBy,
 	FieldRootNote,
 	FieldLabelDisplay,
 	FieldColor,
@@ -118,6 +124,29 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// Kind defines the type for the "kind" enum field.
+type Kind string
+
+// Kind values.
+const (
+	KindBasic  Kind = "basic"
+	KindCustom Kind = "custom"
+)
+
+func (k Kind) String() string {
+	return string(k)
+}
+
+// KindValidator is a validator for the "kind" field enum values. It is called by the builders before save.
+func KindValidator(k Kind) error {
+	switch k {
+	case KindBasic, KindCustom:
+		return nil
+	default:
+		return fmt.Errorf("diagram: invalid enum value for kind field: %q", k)
+	}
+}
 
 // LabelDisplay defines the type for the "label_display" enum field.
 type LabelDisplay string
@@ -162,6 +191,16 @@ func ByInstrumentID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByKind orders the results by the kind field.
+func ByKind(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKind, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
 }
 
 // ByRootNote orders the results by the root_note field.

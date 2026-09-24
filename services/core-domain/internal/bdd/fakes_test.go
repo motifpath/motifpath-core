@@ -1517,24 +1517,22 @@ func (f *fakeDiagramRepo) GetByID(_ context.Context, id string) (domain.Diagram,
 	return f.resolveClassification(d), nil
 }
 
-func (f *fakeDiagramRepo) List(_ context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
+func (f *fakeDiagramRepo) List(_ context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := []domain.Diagram{}
+	matched := []domain.Diagram{}
 	for _, d := range f.byID {
-		if instrumentID != "" && d.InstrumentID != instrumentID {
-			continue
+		if filter.Matches(d) {
+			matched = append(matched, f.resolveClassification(d))
 		}
-		if skillID != "" && !containsID(d.SkillIDs(), skillID) {
-			continue
-		}
-		if conceptID != "" && !containsID(d.ConceptIDs(), conceptID) {
-			continue
-		}
-		result = append(result, f.resolveClassification(d))
 	}
-	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
-	return result, nil
+	sort.Slice(matched, func(a, b int) bool {
+		if matched[a].Name != matched[b].Name {
+			return matched[a].Name < matched[b].Name
+		}
+		return matched[a].ID < matched[b].ID
+	})
+	return paginate(matched, page), nil
 }
 
 func (f *fakeDiagramRepo) Update(_ context.Context, d domain.Diagram) error {

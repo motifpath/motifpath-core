@@ -4,6 +4,7 @@ package bdd
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/cucumber/godog"
@@ -15,11 +16,19 @@ import (
 
 func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)"$`, w.aDiagramExistsOn)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)"$`, w.aDiagramExistsOn)
+	sc.Step(`^a custom diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)"$`, w.aCustomDiagramExistsOn)
+	sc.Step(`^(\d+) basic diagrams exist on instrument "([^"]+)"$`, w.bulkBasicDiagrams)
 	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)" with positions:$`, w.aDiagramExistsOnWithPositions)
 
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithFrettedPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with keyboard positions:$`, w.createsDiagramWithKeyboardPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with root note "([^"]+)", label display "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithRootAndLabelDisplay)
+	sc.Step(`^"([^"]+)" creates a basic diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsBasicDiagramWithFrettedPositions)
+	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with kind "([^"]*)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithKind)
+	sc.Step(`^"([^"]+)" attempts to create a basic diagram$`, w.attemptsCreateBasicDiagram)
+	sc.Step(`^"([^"]+)" saves a copy of diagram "([^"]+)" named "([^"]+)"$`, w.savesCopyOfDiagram)
+	sc.Step(`^"([^"]+)" saves a copy of diagram "([^"]+)" as a basic diagram named "([^"]+)"$`, w.savesCopyOfDiagramAsBasic)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with color "([^"]*)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithColor)
 	sc.Step(`^"([^"]+)" updates diagram "([^"]+)" setting color "([^"]+)" and position (\d+) color "([^"]+)"$`, w.updatesDiagramColors)
 	sc.Step(`^"([^"]+)" submits a create diagram request on instrument "([^"]+)" with the skill_ids field omitted$`, w.submitsDiagramWithoutSkills)
@@ -38,9 +47,19 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the diagram has no general color$`, w.diagramHasNoColor)
 	sc.Step(`^position (\d+) has color "([^"]+)"$`, w.positionHasColor)
 	sc.Step(`^position (\d+) has no color of its own$`, w.positionHasNoColor)
+	sc.Step(`^the (?:new )?diagram's kind is "([^"]+)"$`, w.diagramKindIs)
+	sc.Step(`^the (?:new )?diagram records "([^"]+)" as the creator$`, w.diagramRecordsCreator)
+	sc.Step(`^a new diagram is created with the same positions as "([^"]+)"$`, w.newDiagramCopiesPositionsOf)
+	sc.Step(`^diagram "([^"]+)" is unchanged$`, w.diagramIsUnchanged)
+	sc.Step(`^the response is diagram "([^"]+)"$`, w.responseIsDiagram)
+	sc.Step(`^the response includes "([^"]+)", "([^"]+)" and "([^"]+)"$`, w.responseIncludesThree)
 
 	sc.Step(`^"([^"]+)" lists diagrams filtered by instrument "([^"]+)"$`, w.listsDiagramsByInstrument)
 	sc.Step(`^"([^"]+)" lists all diagrams$`, w.listsAllDiagrams)
+	sc.Step(`^"([^"]+)" lists diagrams of kind "([^"]+)"$`, w.listsDiagramsOfKind)
+	sc.Step(`^"([^"]+)" lists diagrams filtered by creator "([^"]+)"$`, w.listsDiagramsByCreator)
+	sc.Step(`^"([^"]+)" lists diagrams with (.+)$`, w.listsDiagramsPaged)
+	sc.Step(`^"([^"]+)" retrieves diagram "([^"]+)"$`, w.retrievesDiagram)
 	sc.Step(`^"([^"]+)" retrieves a diagram with an ID that does not exist$`, w.retrievesMissingDiagram)
 }
 
@@ -70,9 +89,41 @@ func (w *world) ensureInstrumentSeeded(instrumentName string) (domain.Instrument
 	return instrument, nil
 }
 
-// aDiagramExistsOn seeds a one-position diagram directly, shaped to match
-// whichever family the named instrument has.
+// curatorID is the owner of every basic diagram a step seeds: the admin
+// named "admin", registered on first use.
+func (w *world) curatorID() string {
+	return w.ensureRegistered("admin", domain.RoleAdmin).String()
+}
+
+// aDiagramExistsOn seeds a one-position basic diagram directly, owned by
+// the curator admin and shaped to match whichever family the named
+// instrument has. A diagram whose kind a scenario doesn't state is basic:
+// that's what every teacher can find and use.
 func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
+	return w.seedOnePositionDiagram(slug, slug, instrumentName, domain.DiagramKindBasic, w.curatorID())
+}
+
+// aCustomDiagramExistsOn seeds a one-position custom diagram owned by the
+// teacher named creator.
+func (w *world) aCustomDiagramExistsOn(slug, instrumentName, creator string) error {
+	owner := w.ensureRegistered(creator, domain.RoleTeacher).String()
+	return w.seedOnePositionDiagram(slug, slug, instrumentName, domain.DiagramKindCustom, owner)
+}
+
+// bulkBasicDiagrams seeds count basic diagrams with zero-padded names, so
+// name order and seeding order agree.
+func (w *world) bulkBasicDiagrams(count int, instrumentName string) error {
+	curator := w.curatorID()
+	for i := 1; i <= count; i++ {
+		name := padded("bulk-diagram-", i, 3)
+		if err := w.seedOnePositionDiagram(name, name, instrumentName, domain.DiagramKindBasic, curator); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *world) seedOnePositionDiagram(slug, name, instrumentName string, kind domain.DiagramKind, owner string) error {
 	instrument, err := w.ensureInstrumentSeeded(instrumentName)
 	if err != nil {
 		return err
@@ -86,7 +137,7 @@ func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
 		position.Key = &key
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval}, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), owner, instrument, name, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: kind}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -135,7 +186,7 @@ func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table
 		})
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, positions, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval}, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), w.curatorID(), instrument, slug, positions, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: domain.DiagramKindBasic}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -576,6 +627,235 @@ func (w *world) listsAllDiagrams(string) error {
 
 func (w *world) retrievesMissingDiagram(string) error {
 	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID("does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// frettedPositionsFromTable reads interval/note_name/string/fret rows.
+func frettedPositionsFromTable(table *godog.Table) ([]generated.DiagramPosition, error) {
+	positions := make([]generated.DiagramPosition, 0, len(table.Rows)-1)
+	for row := 1; row < len(table.Rows); row++ {
+		interval, err := cell(table, row, "interval")
+		if err != nil {
+			return nil, err
+		}
+		note, err := cell(table, row, "note_name")
+		if err != nil {
+			return nil, err
+		}
+		str, fret, err := frettedCoordinates(table, row)
+		if err != nil {
+			return nil, err
+		}
+		positions = append(positions, generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret})
+	}
+	return positions, nil
+}
+
+func (w *world) createsBasicDiagramWithFrettedPositions(_, name, instrument, skills, concepts string, table *godog.Table) error {
+	return w.createsDiagramWithKind("", name, instrument, string(generated.CreateDiagramRequestKindBasic), skills, concepts, table)
+}
+
+func (w *world) createsDiagramWithKind(_, name, instrument, kind, skills, concepts string, table *godog.Table) error {
+	positions, err := frettedPositionsFromTable(table)
+	if err != nil {
+		return err
+	}
+	k := generated.CreateDiagramRequestKind(kind)
+	return w.createDiagram(generated.CreateDiagramRequest{
+		InstrumentId: instrumentID(instrument), Name: name, Positions: positions, Kind: &k,
+		Classification: w.diagramClassification(skills, concepts),
+	})
+}
+
+func (w *world) attemptsCreateBasicDiagram(string) error {
+	basic := generated.CreateDiagramRequestKindBasic
+	return w.createDiagram(generated.CreateDiagramRequest{
+		InstrumentId: instrumentID("guitar"), Name: "Attempted template", Positions: onePositionOnGuitar(), Kind: &basic,
+		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
+	})
+}
+
+func (w *world) savesCopyOfDiagram(_, slug, name string) error {
+	return w.saveCopy(slug, name, nil)
+}
+
+func (w *world) savesCopyOfDiagramAsBasic(_, slug, name string) error {
+	basic := generated.CreateDiagramRequestKindBasic
+	return w.saveCopy(slug, name, &basic)
+}
+
+// saveCopy does what the diagram editor's "Save as" does: it reads the
+// source diagram as the caller, then creates a new one from what it read —
+// every authored field carried over, position ids left for the server to
+// assign. The source as read is kept so later steps can compare against it.
+func (w *world) saveCopy(slug, name string, kind *generated.CreateDiagramRequestKind) error {
+	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID(slug)})
+	if err != nil {
+		return err
+	}
+	source, ok := resp.(generated.GetDiagram200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected to read diagram %q, got %#v", slug, resp)
+	}
+	w.copySource = generated.Diagram(source)
+
+	positions := make([]generated.DiagramPosition, len(source.Positions))
+	for i, p := range source.Positions {
+		p.PositionId = nil
+		positions[i] = p
+	}
+	skills := make([]uuid.UUID, len(source.Classification.Skills))
+	for i, sk := range source.Classification.Skills {
+		skills[i] = sk.SkillId
+	}
+	concepts := make([]uuid.UUID, len(source.Classification.Concepts))
+	for i, c := range source.Classification.Concepts {
+		concepts[i] = c.ConceptId
+	}
+	labelDisplay := generated.CreateDiagramRequestLabelDisplay(source.LabelDisplay)
+	return w.createDiagram(generated.CreateDiagramRequest{
+		InstrumentId: source.InstrumentId, Name: name, Kind: kind, Positions: positions,
+		RootNote: source.RootNote, LabelDisplay: &labelDisplay, Color: source.Color,
+		Classification: generated.DiagramClassificationInput{SkillIds: skills, ConceptIds: concepts},
+	})
+}
+
+func (w *world) diagramKindIs(want string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if string(diagram.Kind) != want {
+		return fmt.Errorf("expected kind %q, got %q", want, diagram.Kind)
+	}
+	return nil
+}
+
+func (w *world) diagramRecordsCreator(name string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	want, ok := w.userMotifID[name]
+	if !ok {
+		return fmt.Errorf("no user %q has been registered in this scenario", name)
+	}
+	if diagram.CreatedBy != want {
+		return fmt.Errorf("expected created_by %s (%s), got %s", want, name, diagram.CreatedBy)
+	}
+	return nil
+}
+
+// authoredPosition is a position's authored content, without its id.
+type authoredPosition struct {
+	interval, note, shape, color, key string
+	str, fret                         int
+}
+
+func authoredPositions(positions []generated.DiagramPosition) []authoredPosition {
+	out := make([]authoredPosition, len(positions))
+	for i, p := range positions {
+		a := authoredPosition{interval: p.Interval, note: p.NoteName}
+		if p.Shape != nil {
+			a.shape = string(*p.Shape)
+		}
+		if p.Color != nil {
+			a.color = *p.Color
+		}
+		if p.Key != nil {
+			a.key = *p.Key
+		}
+		if p.String != nil {
+			a.str = *p.String
+		}
+		if p.Fret != nil {
+			a.fret = *p.Fret
+		}
+		out[i] = a
+	}
+	return out
+}
+
+func (w *world) newDiagramCopiesPositionsOf(slug string) error {
+	created, ok := w.lastResp.(generated.CreateDiagram201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a new diagram, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if created.DiagramId == diagramID(slug) {
+		return fmt.Errorf("expected a new diagram, got %q itself", slug)
+	}
+	want, got := authoredPositions(w.copySource.Positions), authoredPositions(created.Positions)
+	if !reflect.DeepEqual(want, got) {
+		return fmt.Errorf("expected positions %+v, got %+v", want, got)
+	}
+	return nil
+}
+
+func (w *world) diagramIsUnchanged(slug string) error {
+	stored, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID(slug)})
+	if err != nil {
+		return err
+	}
+	current, ok := stored.(generated.GetDiagram200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected to read diagram %q, got %#v", slug, stored)
+	}
+	if !reflect.DeepEqual(w.copySource, generated.Diagram(current)) {
+		return fmt.Errorf("expected diagram %q unchanged:\nbefore %+v\nafter  %+v", slug, w.copySource, current)
+	}
+	return nil
+}
+
+func (w *world) responseIsDiagram(slug string) error {
+	resp, ok := w.lastResp.(generated.GetDiagram200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a diagram, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.DiagramId != diagramID(slug) {
+		return fmt.Errorf("expected diagram %s, got %s", diagramID(slug), resp.DiagramId)
+	}
+	return nil
+}
+
+func (w *world) responseIncludesThree(a, b, c string) error {
+	for _, slug := range []string{a, b, c} {
+		if err := w.responseIncludes(slug); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *world) listDiagrams(params generated.ListDiagramsParams) error {
+	resp, err := w.handler.ListDiagrams(w.ctx(), generated.ListDiagramsRequestObject{Params: params})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) listsDiagramsOfKind(_, kind string) error {
+	k := generated.ListDiagramsParamsKind(kind)
+	return w.listDiagrams(generated.ListDiagramsParams{Kind: &k})
+}
+
+// listsDiagramsByCreator resolves creator by name, registering them as a
+// teacher if no earlier step has, so that filtering by someone with no
+// diagrams is still a filter by a real user id.
+func (w *world) listsDiagramsByCreator(_, creator string) error {
+	id := w.ensureRegistered(creator, domain.RoleTeacher)
+	return w.listDiagrams(generated.ListDiagramsParams{CreatedBy: &id})
+}
+
+func (w *world) listsDiagramsPaged(_, tail string) error {
+	limit, offset, err := pageParams(tail)
+	if err != nil {
+		return err
+	}
+	return w.listDiagrams(generated.ListDiagramsParams{Limit: limit, Offset: offset})
+}
+
+func (w *world) retrievesDiagram(_, slug string) error {
+	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID(slug)})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }

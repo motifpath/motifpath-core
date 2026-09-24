@@ -5,6 +5,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,7 +28,91 @@ import (
 // a single-connection test.
 func TestMigrationsApplyCleanly(t *testing.T) {
 	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
 
+	files := migrationFiles(t)
+	applied := 0
+	for _, file := range files {
+		n, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+		applied += n
+	}
+
+	// Atlas writes a `-- description` line above every statement, and those
+	// comments share a `;`-delimited chunk with the statement they describe.
+	// Guard against a splitter regression that silently skips every
+	// statement and leaves this test passing against an empty database.
+	require.NotZero(t, applied, "expected at least one migration statement to be executed")
+	assertColumnExists(t, ctx, db, "learning_path_items", "position")
+	assertColumnExists(t, ctx, db, "learning_path_items", "section_label")
+	assertColumnExists(t, ctx, db, "diagrams", "kind")
+	assertColumnExists(t, ctx, db, "diagrams", "created_by")
+}
+
+// TestDiagramOwnershipMigration covers the one migration that backfills
+// data rather than only reshaping it: diagrams that predate ownership become
+// basic templates owned by the zero user — the earliest-registered admin —
+// and the migration refuses to invent an owner when no admin exists.
+func TestDiagramOwnershipMigration(t *testing.T) {
+	ctx := context.Background()
+	files := migrationFiles(t)
+	ownership := -1
+	for i, f := range files {
+		if strings.HasSuffix(f, "_pb57_diagram_ownership.up.sql") {
+			ownership = i
+		}
+	}
+	require.NotEqual(t, -1, ownership, "expected a *_pb57_diagram_ownership.up.sql migration")
+
+	// prepare applies every migration before the ownership one, then seeds
+	// one instrument and one diagram that predate it.
+	prepare := func(t *testing.T) *sql.DB {
+		t.Helper()
+		db := startMigrationPostgres(t, ctx)
+		for _, file := range files[:ownership] {
+			_, err := execMigrationFile(ctx, db, file)
+			require.NoError(t, err)
+		}
+		mustExec(t, ctx, db, `INSERT INTO instruments (id, name, family, string_count) VALUES ('11111111-1111-1111-1111-111111111111', 'Guitar', 'fretted', 6)`)
+		mustExec(t, ctx, db, `INSERT INTO diagrams (id, name, created_at, instrument_id) VALUES ('22222222-2222-2222-2222-222222222222', 'Legacy', now(), '11111111-1111-1111-1111-111111111111')`)
+		return db
+	}
+	insertUser := func(t *testing.T, db *sql.DB, id, role, registeredAt string) {
+		t.Helper()
+		mustExec(t, ctx, db, `INSERT INTO users (id, clerk_user_id, role, registered_at, locale_id)
+			SELECT '`+id+`', 'clerk-`+id+`', '`+role+`', '`+registeredAt+`', id FROM languages WHERE code = 'en'`)
+	}
+
+	t.Run("existing diagrams become basic, owned by the earliest-registered admin", func(t *testing.T) {
+		db := prepare(t)
+		insertUser(t, db, "aaaaaaaa-0000-0000-0000-000000000001", "teacher", "2026-01-01T00:00:00Z")
+		insertUser(t, db, "aaaaaaaa-0000-0000-0000-000000000002", "admin", "2026-02-01T00:00:00Z")
+		insertUser(t, db, "aaaaaaaa-0000-0000-0000-000000000003", "admin", "2026-03-01T00:00:00Z")
+
+		_, err := execMigrationFile(ctx, db, files[ownership])
+		require.NoError(t, err)
+
+		var kind, createdBy string
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT kind, created_by FROM diagrams`).Scan(&kind, &createdBy))
+		assert.Equal(t, "basic", kind)
+		assert.Equal(t, "aaaaaaaa-0000-0000-0000-000000000002", createdBy)
+	})
+
+	t.Run("diagrams without any admin to own them fail the migration", func(t *testing.T) {
+		db := prepare(t)
+		insertUser(t, db, "aaaaaaaa-0000-0000-0000-000000000001", "teacher", "2026-01-01T00:00:00Z")
+
+		_, err := execMigrationFile(ctx, db, files[ownership])
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no admin user exists")
+	})
+}
+
+// startMigrationPostgres starts an empty Postgres container and returns a
+// connection to it that is known to accept statements.
+func startMigrationPostgres(t *testing.T, ctx context.Context) *sql.DB {
+	t.Helper()
 	container, err := tcpostgres.Run(ctx, "postgres:16-alpine",
 		tcpostgres.WithDatabase("core_domain_migrate_test"),
 		tcpostgres.WithUsername("test"),
@@ -47,11 +132,6 @@ func TestMigrationsApplyCleanly(t *testing.T) {
 		assert.NoError(t, db.Close())
 	})
 
-	files, err := filepath.Glob("ent/migrate/migrations/*.up.sql")
-	require.NoError(t, err)
-	require.NotEmpty(t, files, "expected at least one migration file")
-	sort.Strings(files)
-
 	// Same race setupPostgres documents: the postgres module reports ready
 	// on a log line that can precede Postgres actually accepting
 	// connections, and sql.Open is lazy, so the first Exec eats the reset.
@@ -64,29 +144,45 @@ func TestMigrationsApplyCleanly(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	require.NoError(t, err)
+	return db
+}
 
-	applied := 0
-	for _, file := range files {
-		sqlBytes, err := os.ReadFile(file) //nolint:gosec // fixed test-local migration directory, not user input
-		require.NoError(t, err)
-		for _, stmt := range strings.Split(string(sqlBytes), ";") {
-			stmt = stripSQLComments(stmt)
-			if stmt == "" {
-				continue
-			}
-			_, err := db.ExecContext(ctx, stmt)
-			require.NoErrorf(t, err, "migration %s failed on statement: %s", file, stmt)
-			applied++
-		}
+// migrationFiles returns every versioned migration file, in the filename
+// (timestamp) order they are applied in.
+func migrationFiles(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob("ent/migrate/migrations/*.up.sql")
+	require.NoError(t, err)
+	require.NotEmpty(t, files, "expected at least one migration file")
+	sort.Strings(files)
+	return files
+}
+
+// execMigrationFile executes file's statements one at a time and returns
+// how many ran, stopping at the first that fails.
+func execMigrationFile(ctx context.Context, db *sql.DB, file string) (int, error) {
+	sqlBytes, err := os.ReadFile(file) //nolint:gosec // fixed test-local migration directory, not user input
+	if err != nil {
+		return 0, err
 	}
+	applied := 0
+	for _, stmt := range strings.Split(string(sqlBytes), ";") {
+		stmt = stripSQLComments(stmt)
+		if stmt == "" {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return applied, fmt.Errorf("migration %s failed on statement %q: %w", file, stmt, err)
+		}
+		applied++
+	}
+	return applied, nil
+}
 
-	// Atlas writes a `-- description` line above every statement, and those
-	// comments share a `;`-delimited chunk with the statement they describe.
-	// Guard against a splitter regression that silently skips every
-	// statement and leaves this test passing against an empty database.
-	require.NotZero(t, applied, "expected at least one migration statement to be executed")
-	assertColumnExists(t, ctx, db, "learning_path_items", "position")
-	assertColumnExists(t, ctx, db, "learning_path_items", "section_label")
+func mustExec(t *testing.T, ctx context.Context, db *sql.DB, stmt string) {
+	t.Helper()
+	_, err := db.ExecContext(ctx, stmt)
+	require.NoError(t, err)
 }
 
 // stripSQLComments removes whole-line `--` comments from one `;`-delimited

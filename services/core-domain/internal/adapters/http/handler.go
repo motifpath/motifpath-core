@@ -1507,17 +1507,34 @@ func (h *Handler) CreateInstrument(ctx context.Context, request generated.Create
 }
 
 func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagramsRequestObject) (generated.ListDiagramsResponseObject, error) {
-	if _, ok := h.resolveCaller(ctx); !ok {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
 		return generated.ListDiagrams401JSONResponse(unauthorizedError()), nil
 	}
 
-	diagrams, err := h.diagram.ListDiagrams(ctx,
-		uuidPtrToString(request.Params.InstrumentId), uuidPtrToString(request.Params.SkillId), uuidPtrToString(request.Params.ConceptId))
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
 	if err != nil {
-		return nil, err
+		return listValidationFailure[generated.ListDiagramsResponseObject](err, func(e generated.ValidationError) generated.ListDiagramsResponseObject {
+			return generated.ListDiagrams400JSONResponse(e)
+		})
 	}
 
-	return generated.ListDiagrams200JSONResponse(toGeneratedDiagrams(diagrams)), nil
+	result, err := h.diagram.ListDiagrams(ctx, caller, diagramListFilter(request.Params), page)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ListDiagrams400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ListDiagrams403JSONResponse(forbiddenError("students may not list diagrams, and a teacher may only filter by their own created_by")), nil
+		case errKindNotFound, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.ListDiagrams200JSONResponse{
+		Items: toGeneratedDiagrams(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
 }
 
 func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDiagramRequestObject) (generated.CreateDiagramResponseObject, error) {
@@ -1529,14 +1546,14 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 	body := request.Body
 	diagram, err := h.diagram.CreateDiagram(ctx, caller, body.InstrumentId.String(), body.Name, toDomainPositions(body.Positions),
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		body.RootNote, toDomainLabelDisplay(body.LabelDisplay), body.Color)
+		domain.DiagramOptions{RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind)})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
 		case errKindValidation:
 			return generated.CreateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindForbidden:
-			return generated.CreateDiagram403JSONResponse(forbiddenError("only teachers and admins may create a diagram")), nil
+			return generated.CreateDiagram403JSONResponse(forbiddenError("only teachers and admins may create a diagram, and only admins may create a basic one")), nil
 		case errKindNotFound, errKindOther:
 			return nil, err
 		}
@@ -1588,7 +1605,7 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 		case errKindValidation:
 			return generated.UpdateDiagram400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindForbidden:
-			return generated.UpdateDiagram403JSONResponse(forbiddenError("only teachers and admins may update a diagram")), nil
+			return generated.UpdateDiagram403JSONResponse(forbiddenError("only admins may update a basic diagram, and only its creator or an admin may update a custom one")), nil
 		case errKindNotFound:
 			return generated.UpdateDiagram404JSONResponse(notFoundError("no diagram exists with the given diagram_id")), nil
 		case errKindOther:

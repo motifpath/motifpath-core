@@ -26,7 +26,7 @@ import (
 // are supersets of theirs, and godog runs the first definition that matches.
 func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	// ── Pagination assertions ────────────────────────────────────────────
-	sc.Step(`^the response contains (\d+) items?( ordered by title)?$`, w.responseContainsItems)
+	sc.Step(`^the response contains (\d+) items?( ordered by (?:title|name))?$`, w.responseContainsItems)
 	sc.Step(`^the response reports a total of (\d+), a limit of (\d+), and an offset of (\d+)$`, w.responseReportsPage)
 	sc.Step(`^the response reports a total of (\d+)$`, w.responseReportsTotal)
 	sc.Step(`^the response does not include "([^"]+)" or "([^"]+)"$`, w.responseDoesNotIncludeEither)
@@ -161,6 +161,12 @@ func (w *world) currentPage() (pageView, error) {
 		return pageView{titles, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
 	case generated.ListExercises200JSONResponse:
 		return pageView{nil, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
+	case generated.ListDiagrams200JSONResponse:
+		names := make([]string, len(resp.Items))
+		for i, d := range resp.Items {
+			names[i] = d.Name
+		}
+		return pageView{names, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
 	default:
 		return pageView{}, fmt.Errorf("expected a paginated list response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
@@ -175,7 +181,7 @@ func (w *world) responseContainsItems(count int, ordered string) error {
 		return fmt.Errorf("expected %d items, got %d", count, page.itemCount)
 	}
 	if ordered != "" && !sort.StringsAreSorted(page.titles) {
-		return fmt.Errorf("expected items ordered by title, got %v", page.titles)
+		return fmt.Errorf("expected items%s, got %v", ordered, page.titles)
 	}
 	return nil
 }

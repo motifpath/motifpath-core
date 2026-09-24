@@ -66,6 +66,11 @@ func Name(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldName, v))
 }
 
+// CreatedBy applies equality check predicate on the "created_by" field. It's identical to CreatedByEQ.
+func CreatedBy(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldCreatedBy, v))
+}
+
 // RootNote applies equality check predicate on the "root_note" field. It's identical to RootNoteEQ.
 func RootNote(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldRootNote, v))
@@ -164,6 +169,66 @@ func NameEqualFold(v string) predicate.Diagram {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldContainsFold(FieldName, v))
+}
+
+// KindEQ applies the EQ predicate on the "kind" field.
+func KindEQ(v Kind) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldKind, v))
+}
+
+// KindNEQ applies the NEQ predicate on the "kind" field.
+func KindNEQ(v Kind) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldKind, v))
+}
+
+// KindIn applies the In predicate on the "kind" field.
+func KindIn(vs ...Kind) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldKind, vs...))
+}
+
+// KindNotIn applies the NotIn predicate on the "kind" field.
+func KindNotIn(vs ...Kind) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldKind, vs...))
+}
+
+// CreatedByEQ applies the EQ predicate on the "created_by" field.
+func CreatedByEQ(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldCreatedBy, v))
+}
+
+// CreatedByNEQ applies the NEQ predicate on the "created_by" field.
+func CreatedByNEQ(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldCreatedBy, v))
+}
+
+// CreatedByIn applies the In predicate on the "created_by" field.
+func CreatedByIn(vs ...uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldCreatedBy, vs...))
+}
+
+// CreatedByNotIn applies the NotIn predicate on the "created_by" field.
+func CreatedByNotIn(vs ...uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldCreatedBy, vs...))
+}
+
+// CreatedByGT applies the GT predicate on the "created_by" field.
+func CreatedByGT(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldCreatedBy, v))
+}
+
+// CreatedByGTE applies the GTE predicate on the "created_by" field.
+func CreatedByGTE(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldCreatedBy, v))
+}
+
+// CreatedByLT applies the LT predicate on the "created_by" field.
+func CreatedByLT(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldCreatedBy, v))
+}
+
+// CreatedByLTE applies the LTE predicate on the "created_by" field.
+func CreatedByLTE(v uuid.UUID) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldCreatedBy, v))
 }
 
 // RootNoteEQ applies the EQ predicate on the "root_note" field.

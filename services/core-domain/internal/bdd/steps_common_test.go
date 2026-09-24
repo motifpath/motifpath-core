@@ -82,7 +82,7 @@ func (w *world) responseIncludes(slug string) error {
 		return fmt.Errorf("expected learning paths to include %s, got %+v", want, resp)
 	case generated.ListDiagrams200JSONResponse:
 		want := diagramID(slug)
-		for _, d := range resp {
+		for _, d := range resp.Items {
 			if d.DiagramId == want {
 				return nil
 			}
@@ -135,7 +135,7 @@ func (w *world) responseDoesNotInclude(slug string) error {
 		return nil
 	case generated.ListDiagrams200JSONResponse:
 		want := diagramID(slug)
-		for _, d := range resp {
+		for _, d := range resp.Items {
 			if d.DiagramId == want {
 				return fmt.Errorf("expected diagrams not to include %s, got %+v", want, resp)
 			}
@@ -208,8 +208,8 @@ func (w *world) responseIsEmptyList() error {
 			return fmt.Errorf("expected an empty list, got %d instruments", len(resp))
 		}
 	case generated.ListDiagrams200JSONResponse:
-		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d diagrams", len(resp))
+		if len(resp.Items) != 0 {
+			return fmt.Errorf("expected an empty list, got %d diagrams", len(resp.Items))
 		}
 	case generated.ListCourses200JSONResponse:
 		if len(resp.Items) != 0 {
@@ -269,6 +269,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ListContentNodeVersions403JSONResponse,
 		generated.ListMyStandalonePaths403JSONResponse,
 		generated.ListCourses403JSONResponse,
+		generated.ListDiagrams403JSONResponse,
 		generated.UpdateContentNode403JSONResponse,
 		generated.UpdateChallenge403JSONResponse,
 		generated.UpdateExpandedContent403JSONResponse,
@@ -499,6 +500,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.ListLearningPaths400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCourses400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListDiagrams400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateCourse400JSONResponse:
 		return resp.Errors, nil

@@ -42,13 +42,16 @@ type DiagramUpdate struct {
 	Color        *string
 }
 
-// CreateDiagram creates a diagram against an existing instrument. Only
-// teachers and admins may create one. Positions without an id are assigned
-// one; a client-supplied id is kept. rootNote may be nil (unrecorded);
-// labelDisplay defaults to domain.LabelDisplayInterval when left as the
-// zero value; color (optional #RRGGBB) is the general marker color.
-func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID, name string, positions []domain.Position, skillIDs, conceptIDs []string, rootNote *string, labelDisplay domain.LabelDisplay, color *string) (domain.Diagram, error) {
+// CreateDiagram creates a diagram against an existing instrument, owned by
+// caller. Only teachers and admins may create one, and only an admin may
+// create a basic one; opts.Kind defaults to custom. Positions without an id
+// are assigned one; a client-supplied id is kept. See domain.DiagramOptions
+// for the other optional settings.
+func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID, name string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
+		return domain.Diagram{}, domain.ErrForbidden
+	}
+	if opts.Kind == domain.DiagramKindBasic && caller.Role != domain.RoleAdmin {
 		return domain.Diagram{}, domain.ErrForbidden
 	}
 
@@ -60,7 +63,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	diagram, err := domain.NewDiagram(s.newID(), instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, domain.DiagramOptions{RootNote: rootNote, LabelDisplay: labelDisplay, Color: color}, s.now())
+	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -75,22 +78,45 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 }
 
 // GetDiagram returns the diagram with the given id, or domain.ErrNotFound.
-// Any authenticated user may call it for a specific known id.
+// Any authenticated user may call it for a specific known id, whatever the
+// diagram's kind or creator: students render the diagrams embedded in their
+// content. ListDiagrams' role scoping governs discovery only.
 func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diagram, error) {
 	return s.diagrams.GetByID(ctx, id)
 }
 
-// ListDiagrams returns diagrams matching the given filters; an empty filter
-// value means "no filter" on that dimension. Any authenticated user may list
-// them.
-func (s *DiagramService) ListDiagrams(ctx context.Context, instrumentID, skillID, conceptID string) ([]domain.Diagram, error) {
-	return s.diagrams.List(ctx, instrumentID, skillID, conceptID)
+// ListDiagrams returns one page of the diagrams matching filter that caller
+// may discover. Students may not list diagrams at all. A teacher sees every
+// basic diagram plus their own custom ones, and may pass only their own id
+// as filter.CreatedBy. An admin sees every diagram. filter.VisibleTo is set
+// here from caller's role; any value the caller supplied is overwritten.
+func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
+	if filter.Kind != "" && !filter.Kind.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
+	}
+	filter.VisibleTo = ""
+	switch caller.Role {
+	case domain.RoleTeacher:
+		if filter.CreatedBy != "" && filter.CreatedBy != caller.ID {
+			return domain.Page[domain.Diagram]{}, domain.ErrForbidden
+		}
+		filter.VisibleTo = caller.ID
+	case domain.RoleAdmin:
+	case domain.RoleStudent:
+		// Students never browse the library; they read embedded diagrams
+		// by id. Any role this switch doesn't know is refused the same way.
+		fallthrough
+	default:
+		return domain.Page[domain.Diagram]{}, domain.ErrForbidden
+	}
+	return s.diagrams.List(ctx, filter, page)
 }
 
-// UpdateDiagram applies update to an existing diagram. Only teachers and
-// admins may update one. The result is re-validated as a whole, so replaced
-// positions are checked against the diagram's own instrument; the instrument
-// itself can't change.
+// UpdateDiagram applies update to an existing diagram. Only an admin may
+// update a basic diagram; a custom one may be updated by its creator or an
+// admin. Kind and CreatedBy are never changed. The result is re-validated
+// as a whole, so replaced positions are checked against the diagram's own
+// instrument; the instrument itself can't change.
 func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, id string, update DiagramUpdate) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
@@ -98,6 +124,9 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 
 	current, err := s.diagrams.GetByID(ctx, id)
 	if err != nil {
+		return domain.Diagram{}, err
+	}
+	if err := requireDiagramEditor(caller, current); err != nil {
 		return domain.Diagram{}, err
 	}
 	instrument, err := s.instruments.GetByID(ctx, current.InstrumentID)
@@ -118,21 +147,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if classificationChanged {
 		skillIDs, conceptIDs = update.SkillIDs, update.ConceptIDs
 	}
-	rootNote := current.RootNote
-	if update.RootNote != nil {
-		rootNote = update.RootNote
-	}
-	labelDisplay := current.LabelDisplay
-	if update.LabelDisplay != nil {
-		labelDisplay = *update.LabelDisplay
-	}
-
-	color := current.Color
-	if update.Color != nil {
-		color = update.Color
-	}
-
-	updated, err := domain.NewDiagram(current.ID, instrument, name, positions, skillIDs, conceptIDs, domain.DiagramOptions{RootNote: rootNote, LabelDisplay: labelDisplay, Color: color}, current.CreatedAt)
+	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, name, positions, skillIDs, conceptIDs, updatedDiagramOptions(current, update), current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -146,6 +161,32 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 	return updated, nil
+}
+
+// updatedDiagramOptions returns current's options with update's non-nil
+// root note, label display and color applied. Kind always stays current's.
+func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.DiagramOptions {
+	opts := domain.DiagramOptions{RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind}
+	if update.RootNote != nil {
+		opts.RootNote = update.RootNote
+	}
+	if update.LabelDisplay != nil {
+		opts.LabelDisplay = *update.LabelDisplay
+	}
+	if update.Color != nil {
+		opts.Color = update.Color
+	}
+	return opts
+}
+
+// requireDiagramEditor returns domain.ErrForbidden unless caller may update
+// diagram: an admin may update any diagram, a teacher only their own custom
+// ones — never a basic one, whoever created it.
+func requireDiagramEditor(caller domain.User, diagram domain.Diagram) error {
+	if diagram.Kind == domain.DiagramKindBasic && caller.Role != domain.RoleAdmin {
+		return domain.ErrForbidden
+	}
+	return requireOwner(caller, diagram.CreatedBy)
 }
 
 // withPositionIDs returns a copy of positions with an id assigned to every

@@ -10385,6 +10385,8 @@ type DiagramMutation struct {
 	typ                     string
 	id                      *uuid.UUID
 	name                    *string
+	kind                    *diagram.Kind
+	created_by              *uuid.UUID
 	root_note               *string
 	label_display           *diagram.LabelDisplay
 	color                   *string
@@ -10586,6 +10588,78 @@ func (m *DiagramMutation) OldName(ctx context.Context) (v string, err error) {
 // ResetName resets all changes to the "name" field.
 func (m *DiagramMutation) ResetName() {
 	m.name = nil
+}
+
+// SetKind sets the "kind" field.
+func (m *DiagramMutation) SetKind(d diagram.Kind) {
+	m.kind = &d
+}
+
+// Kind returns the value of the "kind" field in the mutation.
+func (m *DiagramMutation) Kind() (r diagram.Kind, exists bool) {
+	v := m.kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKind returns the old "kind" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldKind(ctx context.Context) (v diagram.Kind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+	}
+	return oldValue.Kind, nil
+}
+
+// ResetKind resets all changes to the "kind" field.
+func (m *DiagramMutation) ResetKind() {
+	m.kind = nil
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (m *DiagramMutation) SetCreatedBy(u uuid.UUID) {
+	m.created_by = &u
+}
+
+// CreatedBy returns the value of the "created_by" field in the mutation.
+func (m *DiagramMutation) CreatedBy() (r uuid.UUID, exists bool) {
+	v := m.created_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedBy returns the old "created_by" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldCreatedBy(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedBy: %w", err)
+	}
+	return oldValue.CreatedBy, nil
+}
+
+// ResetCreatedBy resets all changes to the "created_by" field.
+func (m *DiagramMutation) ResetCreatedBy() {
+	m.created_by = nil
 }
 
 // SetRootNote sets the "root_note" field.
@@ -11089,12 +11163,18 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
 	if m.name != nil {
 		fields = append(fields, diagram.FieldName)
+	}
+	if m.kind != nil {
+		fields = append(fields, diagram.FieldKind)
+	}
+	if m.created_by != nil {
+		fields = append(fields, diagram.FieldCreatedBy)
 	}
 	if m.root_note != nil {
 		fields = append(fields, diagram.FieldRootNote)
@@ -11120,6 +11200,10 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.InstrumentID()
 	case diagram.FieldName:
 		return m.Name()
+	case diagram.FieldKind:
+		return m.Kind()
+	case diagram.FieldCreatedBy:
+		return m.CreatedBy()
 	case diagram.FieldRootNote:
 		return m.RootNote()
 	case diagram.FieldLabelDisplay:
@@ -11141,6 +11225,10 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldInstrumentID(ctx)
 	case diagram.FieldName:
 		return m.OldName(ctx)
+	case diagram.FieldKind:
+		return m.OldKind(ctx)
+	case diagram.FieldCreatedBy:
+		return m.OldCreatedBy(ctx)
 	case diagram.FieldRootNote:
 		return m.OldRootNote(ctx)
 	case diagram.FieldLabelDisplay:
@@ -11171,6 +11259,20 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case diagram.FieldKind:
+		v, ok := value.(diagram.Kind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKind(v)
+		return nil
+	case diagram.FieldCreatedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedBy(v)
 		return nil
 	case diagram.FieldRootNote:
 		v, ok := value.(string)
@@ -11269,6 +11371,12 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldName:
 		m.ResetName()
+		return nil
+	case diagram.FieldKind:
+		m.ResetKind()
+		return nil
+	case diagram.FieldCreatedBy:
+		m.ResetCreatedBy()
 		return nil
 	case diagram.FieldRootNote:
 		m.ResetRootNote()

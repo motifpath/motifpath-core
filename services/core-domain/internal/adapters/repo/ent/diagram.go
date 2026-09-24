@@ -23,6 +23,10 @@ type Diagram struct {
 	InstrumentID uuid.UUID `json:"instrument_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// Kind holds the value of the "kind" field.
+	Kind diagram.Kind `json:"kind,omitempty"`
+	// CreatedBy holds the value of the "created_by" field.
+	CreatedBy uuid.UUID `json:"created_by,omitempty"`
 	// RootNote holds the value of the "root_note" field.
 	RootNote *string `json:"root_note,omitempty"`
 	// LabelDisplay holds the value of the "label_display" field.
@@ -117,11 +121,11 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case diagram.FieldName, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor:
+		case diagram.FieldName, diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor:
 			values[i] = new(sql.NullString)
 		case diagram.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case diagram.FieldID, diagram.FieldInstrumentID:
+		case diagram.FieldID, diagram.FieldInstrumentID, diagram.FieldCreatedBy:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -155,6 +159,18 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
+			}
+		case diagram.FieldKind:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field kind", values[i])
+			} else if value.Valid {
+				_m.Kind = diagram.Kind(value.String)
+			}
+		case diagram.FieldCreatedBy:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by", values[i])
+			} else if value != nil {
+				_m.CreatedBy = *value
 			}
 		case diagram.FieldRootNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -253,6 +269,12 @@ func (_m *Diagram) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	builder.WriteString("kind=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Kind))
+	builder.WriteString(", ")
+	builder.WriteString("created_by=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CreatedBy))
 	builder.WriteString(", ")
 	if v := _m.RootNote; v != nil {
 		builder.WriteString("root_note=")
