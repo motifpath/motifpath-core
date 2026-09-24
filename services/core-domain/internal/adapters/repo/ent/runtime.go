@@ -169,7 +169,7 @@ func init() {
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
 	// diagramDescCreatedAt is the schema descriptor for created_at field.
-	diagramDescCreatedAt := diagramFields[6].Descriptor()
+	diagramDescCreatedAt := diagramFields[8].Descriptor()
 	// diagram.DefaultCreatedAt holds the default value on creation for the created_at field.
 	diagram.DefaultCreatedAt = diagramDescCreatedAt.Default.(func() time.Time)
 	// diagramDescID is the schema descriptor for id field.

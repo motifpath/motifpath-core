@@ -30,6 +30,15 @@ func (Diagram) Fields() []ent.Field {
 
 		field.String("name"),
 
+		// kind and created_by are fixed at creation: basic diagrams are
+		// admin-curated templates, custom ones belong to created_by.
+		field.Enum("kind").
+			Values("basic", "custom").
+			Immutable(),
+
+		field.UUID("created_by", uuid.UUID{}).
+			Immutable(),
+
 		field.String("root_note").
 			Optional().
 			Nillable(),

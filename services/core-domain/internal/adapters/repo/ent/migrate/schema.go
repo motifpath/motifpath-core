@@ -372,6 +372,8 @@ var (
 	DiagramsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "name", Type: field.TypeString},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"basic", "custom"}},
+		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "root_note", Type: field.TypeString, Nullable: true},
 		{Name: "label_display", Type: field.TypeEnum, Enums: []string{"interval", "note", "hidden"}, Default: "interval"},
 		{Name: "color", Type: field.TypeString, Nullable: true},
@@ -386,7 +388,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[6]},
+				Columns:    []*schema.Column{DiagramsColumns[8]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

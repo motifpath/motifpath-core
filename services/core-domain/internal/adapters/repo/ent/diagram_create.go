@@ -39,6 +39,18 @@ func (_c *DiagramCreate) SetName(v string) *DiagramCreate {
 	return _c
 }
 
+// SetKind sets the "kind" field.
+func (_c *DiagramCreate) SetKind(v diagram.Kind) *DiagramCreate {
+	_c.mutation.SetKind(v)
+	return _c
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (_c *DiagramCreate) SetCreatedBy(v uuid.UUID) *DiagramCreate {
+	_c.mutation.SetCreatedBy(v)
+	return _c
+}
+
 // SetRootNote sets the "root_note" field.
 func (_c *DiagramCreate) SetRootNote(v string) *DiagramCreate {
 	_c.mutation.SetRootNote(v)
@@ -246,6 +258,17 @@ func (_c *DiagramCreate) check() error {
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Diagram.name"`)}
 	}
+	if _, ok := _c.mutation.Kind(); !ok {
+		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "Diagram.kind"`)}
+	}
+	if v, ok := _c.mutation.Kind(); ok {
+		if err := diagram.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "Diagram.kind": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CreatedBy(); !ok {
+		return &ValidationError{Name: "created_by", err: errors.New(`ent: missing required field "Diagram.created_by"`)}
+	}
 	if _, ok := _c.mutation.LabelDisplay(); !ok {
 		return &ValidationError{Name: "label_display", err: errors.New(`ent: missing required field "Diagram.label_display"`)}
 	}
@@ -298,6 +321,14 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(diagram.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := _c.mutation.Kind(); ok {
+		_spec.SetField(diagram.FieldKind, field.TypeEnum, value)
+		_node.Kind = value
+	}
+	if value, ok := _c.mutation.CreatedBy(); ok {
+		_spec.SetField(diagram.FieldCreatedBy, field.TypeUUID, value)
+		_node.CreatedBy = value
 	}
 	if value, ok := _c.mutation.RootNote(); ok {
 		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)
