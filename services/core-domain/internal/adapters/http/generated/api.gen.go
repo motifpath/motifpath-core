@@ -130,6 +130,12 @@ const (
 	CreateCourseRequestLevelIntermediate      CreateCourseRequestLevel = "intermediate"
 )
 
+// Defines values for CreateDiagramRequestKind.
+const (
+	CreateDiagramRequestKindBasic  CreateDiagramRequestKind = "basic"
+	CreateDiagramRequestKindCustom CreateDiagramRequestKind = "custom"
+)
+
 // Defines values for CreateDiagramRequestLabelDisplay.
 const (
 	CreateDiagramRequestLabelDisplayHidden   CreateDiagramRequestLabelDisplay = "hidden"
@@ -170,6 +176,12 @@ const (
 const (
 	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
 	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
+)
+
+// Defines values for DiagramKind.
+const (
+	DiagramKindBasic  DiagramKind = "basic"
+	DiagramKindCustom DiagramKind = "custom"
 )
 
 // Defines values for DiagramLabelDisplay.
@@ -352,6 +364,12 @@ const (
 	ListCoursesParamsStatusDraft     ListCoursesParamsStatus = "draft"
 	ListCoursesParamsStatusPublished ListCoursesParamsStatus = "published"
 	ListCoursesParamsStatusRetired   ListCoursesParamsStatus = "retired"
+)
+
+// Defines values for ListDiagramsParamsKind.
+const (
+	Basic  ListDiagramsParamsKind = "basic"
+	Custom ListDiagramsParamsKind = "custom"
 )
 
 // Defines values for ListExercisesParamsExerciseType.
@@ -962,6 +980,13 @@ type CreateDiagramRequest struct {
 	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
+	// Kind Whether the new diagram is a curated basic template or the
+	// caller's own custom diagram. Omitted defaults to custom. Only an
+	// admin may create a basic diagram. The caller is always recorded
+	// as the creator; there is no way to create a diagram on another
+	// user's behalf.
+	Kind *CreateDiagramRequestKind `json:"kind,omitempty"`
+
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
 	// default when reopened for authoring; hidden shows neither.
 	// Omitted defaults to interval.
@@ -979,6 +1004,13 @@ type CreateDiagramRequest struct {
 	// (or omitted) leaves it unrecorded.
 	RootNote *string `json:"root_note"`
 }
+
+// CreateDiagramRequestKind Whether the new diagram is a curated basic template or the
+// caller's own custom diagram. Omitted defaults to custom. Only an
+// admin may create a basic diagram. The caller is always recorded
+// as the creator; there is no way to create a diagram on another
+// user's behalf.
+type CreateDiagramRequestKind string
 
 // CreateDiagramRequestLabelDisplay Which of a position's interval or note_name its marker shows by
 // default when reopened for authoring; hidden shows neither.
@@ -1257,11 +1289,22 @@ type Diagram struct {
 	// CreatedAt Timestamp at which the diagram was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// CreatedBy The user_id of the teacher or admin who created this diagram.
+	// Fixed at creation.
+	CreatedBy openapi_types.UUID `json:"created_by"`
+
 	// DiagramId Stable identifier for this diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 
 	// InstrumentId The instrument this diagram is authored against.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// Kind basic diagrams are curated templates: every teacher can find and
+	// use them, and only an admin may create or update one. custom
+	// diagrams belong to their creator: only the creator and admins can
+	// find them in the diagram list, and only the creator or an admin
+	// may update one. Fixed at creation.
+	Kind DiagramKind `json:"kind"`
 
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
 	// default when this diagram is opened for authoring; hidden shows
@@ -1279,11 +1322,20 @@ type Diagram struct {
 	Positions []DiagramPosition `json:"positions"`
 
 	// RootNote The root note this diagram was authored against (e.g. "A"),
-	// relative to which every position's interval and note_name are
-	// computed. Null for a diagram with no recorded root (e.g. created
-	// before this field existed).
+	// relative to which its positions' interval and note_name are
+	// computed — except in a diagram saved by combining several
+	// overlaid diagrams into one, where each position stays relative
+	// to the root of the diagram it came from. Null for a diagram with
+	// no recorded root (e.g. created before this field existed).
 	RootNote *string `json:"root_note"`
 }
+
+// DiagramKind basic diagrams are curated templates: every teacher can find and
+// use them, and only an admin may create or update one. custom
+// diagrams belong to their creator: only the creator and admins can
+// find them in the diagram list, and only the creator or an admin
+// may update one. Fixed at creation.
+type DiagramKind string
 
 // DiagramLabelDisplay Which of a position's interval or note_name its marker shows by
 // default when this diagram is opened for authoring; hidden shows
@@ -1338,11 +1390,15 @@ type DiagramPosition struct {
 	// Diagram's instrument family is fretted; absent when keyboard.
 	Fret *int `json:"fret,omitempty"`
 
-	// Interval The interval this position represents, relative to the parent
-	// Diagram's own root (see Diagram.root_note) — e.g. "R", "b3",
-	// "4", "5", "b7", "2", "3", "6", "7". Not globally standardized
-	// beyond being consistent within one Diagram; MotifPath does not
-	// validate interval names against a fixed enum.
+	// Interval The interval this position represents — e.g. "R", "b3", "4",
+	// "5", "b7", "2", "3", "6", "7" — relative to the root it was
+	// authored against. That is normally the parent Diagram's own root
+	// (see Diagram.root_note). In a diagram saved by combining several
+	// overlaid diagrams into one, each position keeps the interval it
+	// had in the diagram it came from, relative to that diagram's
+	// root. Not globally standardized beyond being consistent within
+	// one authored diagram; MotifPath does not validate interval names
+	// against a fixed enum.
 	Interval string `json:"interval"`
 
 	// Key Note name of the key, relative to the Diagram's own root (e.g.
@@ -1350,10 +1406,12 @@ type DiagramPosition struct {
 	// is keyboard; absent when fretted.
 	Key *string `json:"key,omitempty"`
 
-	// NoteName The concrete note name this position sounds at the Diagram's own
-	// root (e.g. "A", "C"). A diagram_ref's root_override recomputes
-	// the note actually shown; note_name here is always relative to
-	// this Diagram's own authored root (see Diagram.root_note).
+	// NoteName The concrete note name this position sounds at the root it was
+	// authored against (e.g. "A", "C") — the parent Diagram's own root
+	// (see Diagram.root_note), or, in a diagram saved by combining
+	// several overlaid diagrams into one, the root of the diagram the
+	// position came from. A diagram_ref's root_override recomputes the
+	// note actually shown.
 	NoteName string `json:"note_name"`
 
 	// PositionId Stable identifier for this position, addressable independently
@@ -1893,6 +1951,21 @@ type PagedCourseCatalog struct {
 	Total int `json:"total"`
 }
 
+// PagedDiagrams defines model for PagedDiagrams.
+type PagedDiagrams struct {
+	// Items The diagrams on this page, ordered by name, then id.
+	Items []Diagram `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
 // PagedExercises defines model for PagedExercises.
 type PagedExercises struct {
 	Items []Exercise `json:"items"`
@@ -2321,7 +2394,9 @@ type UpdateContentNodeRequest struct {
 // UpdateDiagramRequest Payload for replacing an existing diagram's name, positions,
 // classification, root_note, label_display, or color. instrument_id is not
 // present here — it cannot be changed after creation, since every
-// position's coordinate shape depends on it.
+// position's coordinate shape depends on it. Nor are kind and
+// created_by, which are fixed at creation; a copy saved under a
+// different kind or creator is a new diagram.
 type UpdateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
 	// exact Skill/Concept tree ContentNode and Exercise use (see
@@ -2630,6 +2705,20 @@ type ListCoursesParamsStatus string
 
 // ListDiagramsParams defines parameters for ListDiagrams.
 type ListDiagramsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Kind Restricts the results to diagrams of this kind. For a teacher,
+	// custom means only their own custom diagrams.
+	Kind *ListDiagramsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
+
+	// CreatedBy Restricts the results to diagrams created by this user. A
+	// teacher may pass only their own user_id.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
 	// InstrumentId When given, only diagrams authored against this instrument are returned.
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 
@@ -2639,6 +2728,9 @@ type ListDiagramsParams struct {
 	// ConceptId When given, only diagrams with this exact concept id among their linked concepts are returned.
 	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
 }
+
+// ListDiagramsParamsKind defines parameters for ListDiagrams.
+type ListDiagramsParamsKind string
 
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
@@ -4275,6 +4367,38 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListDiagramsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "kind", r.URL.Query(), &params.Kind)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		return
+	}
 
 	// ------------- Optional query parameter "instrument_id" -------------
 
@@ -6709,11 +6833,20 @@ type ListDiagramsResponseObject interface {
 	VisitListDiagramsResponse(w http.ResponseWriter) error
 }
 
-type ListDiagrams200JSONResponse []Diagram
+type ListDiagrams200JSONResponse PagedDiagrams
 
 func (response ListDiagrams200JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagrams400JSONResponse ValidationError
+
+func (response ListDiagrams400JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -6723,6 +6856,15 @@ type ListDiagrams401JSONResponse UnauthorizedError
 func (response ListDiagrams401JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagrams403JSONResponse ForbiddenError
+
+func (response ListDiagrams403JSONResponse) VisitListDiagramsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
