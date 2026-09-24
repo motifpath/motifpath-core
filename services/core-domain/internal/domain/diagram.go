@@ -64,6 +64,22 @@ func (d LabelDisplay) Valid() bool {
 	return d == LabelDisplayInterval || d == LabelDisplayNote || d == LabelDisplayHidden
 }
 
+// DiagramKind decides who may find and change a Diagram. basic diagrams
+// are curated templates every teacher can use, and only an admin may create
+// or update one; custom diagrams belong to their creator, who (with admins)
+// alone can find them in the library and update them.
+type DiagramKind string
+
+const (
+	DiagramKindBasic  DiagramKind = "basic"
+	DiagramKindCustom DiagramKind = "custom"
+)
+
+// Valid reports whether k is a diagram kind this service knows.
+func (k DiagramKind) Valid() bool {
+	return k == DiagramKindBasic || k == DiagramKindCustom
+}
+
 // Diagram is a prebuilt, reusable set of positions for a scale, chord or
 // similar pattern on one instrument. It stores structured positions only,
 // never a rendered image: how it looks and plays back is decided by
@@ -76,6 +92,10 @@ type Diagram struct {
 	ID           string
 	InstrumentID string
 	Name         string
+	// Kind and CreatedBy are fixed at creation: an update never changes
+	// them, and a copy under another kind or owner is a new Diagram.
+	Kind      DiagramKind
+	CreatedBy string
 	// RootNote is the note this Diagram's positions are authored relative
 	// to (e.g. "A"); nil means none is recorded.
 	RootNote *string
@@ -118,7 +138,7 @@ func (d Diagram) ConceptIDs() []string {
 // DiagramOptions carries NewDiagram's optional settings, named so two
 // optional strings (RootNote, Color) can never be swapped by position.
 // The zero value means: no recorded root note, LabelDisplayInterval, no
-// general color.
+// general color, DiagramKindCustom.
 type DiagramOptions struct {
 	// RootNote is the note the positions are authored relative to; nil
 	// means none is recorded.
@@ -129,10 +149,12 @@ type DiagramOptions struct {
 	// Color is the general marker color as #RRGGBB; nil means none is
 	// recorded.
 	Color *string
+	// Kind defaults to DiagramKindCustom when left as the zero value.
+	Kind DiagramKind
 }
 
-// NewDiagram validates and constructs a Diagram against instrument,
-// stopping at the first violated invariant. Every position must use the
+// NewDiagram validates and constructs a Diagram against instrument, owned
+// by createdBy, stopping at the first violated invariant. Every position must use the
 // coordinate shape of instrument's family — a rule no database constraint
 // expresses — and, for a fretted instrument, sit on a string it has.
 // labelDisplay and each position's Shape default (LabelDisplayInterval,
@@ -140,8 +162,17 @@ type DiagramOptions struct {
 // care about either may omit it. color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs reference
 // existing rows needs a repository round trip, so that stays an
 // application-layer concern.
-func NewDiagram(id string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
-	rootNote, labelDisplay, color := opts.RootNote, opts.LabelDisplay, opts.Color
+func NewDiagram(id, createdBy string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
+	rootNote, labelDisplay, color, kind := opts.RootNote, opts.LabelDisplay, opts.Color, opts.Kind
+	if createdBy == "" {
+		return Diagram{}, NewValidationError("created_by", "must not be empty")
+	}
+	if kind == "" {
+		kind = DiagramKindCustom
+	}
+	if !kind.Valid() {
+		return Diagram{}, NewValidationError("kind", "must be one of: basic, custom")
+	}
 	if name == "" {
 		return Diagram{}, NewValidationError("name", "must not be empty")
 	}
@@ -178,6 +209,8 @@ func NewDiagram(id string, instrument Instrument, name string, positions []Posit
 		ID:           id,
 		InstrumentID: instrument.ID,
 		Name:         name,
+		Kind:         kind,
+		CreatedBy:    createdBy,
 		RootNote:     rootNote,
 		LabelDisplay: labelDisplay,
 		Color:        color,

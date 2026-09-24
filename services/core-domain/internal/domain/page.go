@@ -1,5 +1,7 @@
 package domain
 
+import "slices"
+
 const (
 	// DefaultPageLimit is the page size applied when a list request gives none.
 	DefaultPageLimit = 20
@@ -88,4 +90,44 @@ type CourseListFilter struct {
 	SkillIDs      []string
 	ConceptIDs    []string
 	PublishedView bool
+}
+
+// DiagramListFilter narrows a diagram library listing. A zero-valued field
+// means "no filter" on that dimension, and every set field must match.
+// SkillID/ConceptID match a diagram whose linked ids contain that exact id —
+// not its ancestors or descendants.
+//
+// VisibleTo, when set, is the role scoping a teacher's listing gets: only
+// basic diagrams, plus custom diagrams created by that user id, match.
+type DiagramListFilter struct {
+	InstrumentID string
+	SkillID      string
+	ConceptID    string
+	Kind         DiagramKind
+	CreatedBy    string
+	VisibleTo    string
+}
+
+// Matches reports whether d satisfies every set field of f — the
+// in-memory statement of the predicate a repository applies in its query.
+func (f DiagramListFilter) Matches(d Diagram) bool {
+	if f.VisibleTo != "" && d.Kind != DiagramKindBasic && d.CreatedBy != f.VisibleTo {
+		return false
+	}
+	if f.Kind != "" && d.Kind != f.Kind {
+		return false
+	}
+	if f.CreatedBy != "" && d.CreatedBy != f.CreatedBy {
+		return false
+	}
+	if f.InstrumentID != "" && d.InstrumentID != f.InstrumentID {
+		return false
+	}
+	if f.SkillID != "" && !slices.Contains(d.SkillIDs(), f.SkillID) {
+		return false
+	}
+	if f.ConceptID != "" && !slices.Contains(d.ConceptIDs(), f.ConceptID) {
+		return false
+	}
+	return true
 }
