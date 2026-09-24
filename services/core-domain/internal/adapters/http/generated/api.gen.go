@@ -943,6 +943,10 @@ type CreateDiagramRequest struct {
 	// piece of content.
 	Classification DiagramClassificationInput `json:"classification"`
 
+	// Color The diagram's general marker color as #RRGGBB. Null (or omitted)
+	// leaves it unrecorded.
+	Color *string `json:"color"`
+
 	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
@@ -1230,6 +1234,14 @@ type Diagram struct {
 	// Classification uses for ContentNode.
 	Classification DiagramClassification `json:"classification"`
 
+	// Color The diagram's general marker color, as a #RRGGBB hex string,
+	// applied to every position that has no color of its own (see
+	// DiagramPosition.color). Null means no general color is recorded
+	// and motifpath-web's default colors apply. An authoring-time
+	// choice, independent of — and overridden by — a diagram_ref's
+	// styling for one particular embedding.
+	Color *string `json:"color"`
+
 	// CreatedAt Timestamp at which the diagram was created.
 	CreatedAt time.Time `json:"created_at"`
 
@@ -1301,6 +1313,15 @@ type DiagramClassificationInput struct {
 // are mutually exclusive, mirroring how Option's per-type fields
 // (region, image_url, audio_url) already work in this spec.
 type DiagramPosition struct {
+	// Color A custom marker color for this one position, as a #RRGGBB hex
+	// string — overrides the parent Diagram's general color for this
+	// marker only. Null (or omitted) means the position uses the
+	// Diagram's general color, or motifpath-web's default when that is
+	// also unset. Independent of shape and of a diagram_ref's own
+	// styling, which still takes precedence for one particular
+	// embedding.
+	Color *string `json:"color"`
+
 	// Fret Which fret this position is on. Present only when the parent
 	// Diagram's instrument family is fretted; absent when keyboard.
 	Fret *int `json:"fret,omitempty"`
@@ -2216,7 +2237,7 @@ type UpdateContentNodeRequest struct {
 }
 
 // UpdateDiagramRequest Payload for replacing an existing diagram's name, positions,
-// classification, root_note, or label_display. instrument_id is not
+// classification, root_note, label_display, or color. instrument_id is not
 // present here — it cannot be changed after creation, since every
 // position's coordinate shape depends on it.
 type UpdateDiagramRequest struct {
@@ -2226,6 +2247,14 @@ type UpdateDiagramRequest struct {
 	// difficulty_level; a diagram is a reusable shape, not a leveled
 	// piece of content.
 	Classification *DiagramClassificationInput `json:"classification,omitempty"`
+
+	// Color The diagram's general marker color as #RRGGBB, replacing the
+	// current value. Omitted leaves the current value unchanged; like
+	// root_note, there is currently no way to clear an already-set
+	// general color back to unrecorded via this request. Per-position
+	// colors are replaced together with positions and can be cleared
+	// by omitting them.
+	Color *string `json:"color,omitempty"`
 
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
 	// default when reopened for authoring, replacing the current
