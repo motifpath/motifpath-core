@@ -918,26 +918,32 @@ func seedTimedCues(ctx context.Context, contentSvc *application.ContentService, 
 // refuses a duplicate link with domain.ErrAlreadyExists) — an exercise
 // keeps every challenge it was already linked to; this only adds one more.
 func linkAllExercisesToChallenge(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, challengeID string) error {
-	exercises, err := exerciseSvc.ListExercises(ctx, teacher, "", "")
-	if err != nil {
-		return fmt.Errorf("list exercises: %w", err)
-	}
-	for _, exercise := range exercises {
-		alreadyLinked := false
-		for _, id := range exercise.ChallengeIDs {
-			if id == challengeID {
-				alreadyLinked = true
-				break
+	for offset := 0; ; offset += domain.MaxPageLimit {
+		page, err := exerciseSvc.ListExercises(ctx, teacher, domain.ExerciseFilter{}, domain.PageRequest{Limit: domain.MaxPageLimit, Offset: offset})
+		if err != nil {
+			return fmt.Errorf("list exercises: %w", err)
+		}
+		for _, exercise := range page.Items {
+			if containsString(exercise.ChallengeIDs, challengeID) {
+				continue
+			}
+			if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
+				return fmt.Errorf("link exercise %s: %w", exercise.ID, err)
 			}
 		}
-		if alreadyLinked {
-			continue
-		}
-		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
-			return fmt.Errorf("link exercise %s: %w", exercise.ID, err)
+		if offset+domain.MaxPageLimit >= page.Total {
+			return nil
 		}
 	}
-	return nil
+}
+
+func containsString(values []string, target string) bool {
+	for _, v := range values {
+		if v == target {
+			return true
+		}
+	}
+	return false
 }
 
 func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID string, statuses map[string]string) error {

@@ -23,6 +23,11 @@ type StudentPathRepository interface {
 	// archived or abandoned.
 	ListActiveStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error)
 
+	// ListStandaloneByStudentID returns every non-course StudentPath owned by
+	// studentID, active and archived alike, newest assigned first — or an
+	// empty slice if there are none.
+	ListStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error)
+
 	// Archive sets archivedAt on the StudentPath with the given id.
 	// Returns domain.ErrNotFound if no StudentPath exists with that id.
 	Archive(ctx context.Context, id string, archivedAt time.Time) error

@@ -416,31 +416,38 @@ func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID strin
 
 // List returns exercises from the whole pool, optionally narrowed by
 // skillID and/or exerciseType, both filtered in the query itself.
-func (r *EntExerciseRepository) List(ctx context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
-	query := r.client.Exercise.Query().
+func (r *EntExerciseRepository) List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
+	query := r.client.Exercise.Query()
+	if filter.ExerciseType != "" {
+		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(filter.ExerciseType)))
+	}
+	if filter.SkillID != "" {
+		parsed, err := uuid.Parse(filter.SkillID)
+		if err != nil {
+			return domain.Page[domain.Exercise]{}, err
+		}
+		query = query.Where(exercise.HasSkillsWith(skill.ID(parsed)))
+	}
+
+	total, err := query.Clone().Count(ctx)
+	if err != nil {
+		return domain.Page[domain.Exercise]{}, err
+	}
+	rows, err := query.
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
 		WithSkills().
 		WithConcepts().
-		Order(exercise.ByCreatedAt())
-	if exerciseType != "" {
-		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(exerciseType)))
-	}
-	if skillID != "" {
-		parsed, err := uuid.Parse(skillID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where(exercise.HasSkillsWith(skill.ID(parsed)))
-	}
-
-	rows, err := query.All(ctx)
+		Order(exercise.ByID()).
+		Limit(page.Limit).
+		Offset(page.Offset).
+		All(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.Exercise]{}, err
 	}
-	return toDomainExercises(rows), nil
+	return domain.Page[domain.Exercise]{Items: toDomainExercises(rows), Total: total}, nil
 }
 
 // Update replaces ex's mutable fields (title, prompt, skill_tags, image_url,

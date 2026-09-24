@@ -63,14 +63,15 @@ func (s *LearningPathService) GetLearningPath(ctx context.Context, caller domain
 	return s.paths.GetByID(ctx, id)
 }
 
-// ListLearningPaths returns every learning path in the library. Teachers and
+// ListLearningPaths returns one page of the learning paths in the library
+// matching filter. Teachers and
 // admins may list learning paths; students may not browse paths directly —
 // their view is through PathAssignmentService.GetMyPath.
-func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller domain.User) ([]domain.LearningPath, error) {
+func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller domain.User, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
 	if !canManageContent(caller.Role) {
-		return nil, domain.ErrForbidden
+		return domain.Page[domain.LearningPath]{}, domain.ErrForbidden
 	}
-	return s.paths.List(ctx)
+	return s.paths.List(ctx, filter, page)
 }
 
 // ReplaceLearningPath replaces the given path's title and items wholesale —

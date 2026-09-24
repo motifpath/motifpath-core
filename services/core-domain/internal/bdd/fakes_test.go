@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -177,26 +178,58 @@ func (f *fakeContentNodeRepo) put(n domain.ContentNode) {
 	f.byID[n.ID] = n
 }
 
-func (f *fakeContentNodeRepo) List(_ context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
+func (f *fakeContentNodeRepo) List(_ context.Context, filter domain.ContentNodeFilter, page domain.PageRequest) (domain.Page[domain.ContentNode], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.ContentNode
 	for _, n := range f.byID {
-		if contentType != "" && n.ContentType != contentType {
+		if filter.ContentType != "" && n.ContentType != filter.ContentType {
 			continue
 		}
-		if skillID != "" && !containsID(n.Classification.SkillIDs(), skillID) {
+		if filter.SkillID != "" && !containsID(n.Classification.SkillIDs(), filter.SkillID) {
 			continue
 		}
-		if conceptID != "" && !containsID(n.Classification.ConceptIDs(), conceptID) {
+		if filter.ConceptID != "" && !containsID(n.Classification.ConceptIDs(), filter.ConceptID) {
 			continue
 		}
-		if difficulty != "" && n.Classification.DifficultyLevel != difficulty {
+		if filter.Difficulty != "" && n.Classification.DifficultyLevel != filter.Difficulty {
+			continue
+		}
+		if !containsFold(n.Title, filter.Query) {
 			continue
 		}
 		result = append(result, n)
 	}
-	return result, nil
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Title != result[j].Title {
+			return result[i].Title < result[j].Title
+		}
+		return result[i].ID < result[j].ID
+	})
+	return paginate(result, page), nil
+}
+
+// containsFold reports whether s contains substr, ignoring case; an empty
+// substr always matches.
+func containsFold(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// paginate windows items (already filtered and ordered) per page and
+// reports the size of the whole set as Total.
+func paginate[T any](items []T, page domain.PageRequest) domain.Page[T] {
+	total := len(items)
+	start := page.Offset
+	if start > total {
+		start = total
+	}
+	end := start + page.Limit
+	if end > total {
+		end = total
+	}
+	window := make([]T, end-start)
+	copy(window, items[start:end])
+	return domain.Page[T]{Items: window, Total: total}
 }
 
 func containsID(ids []string, id string) bool {
@@ -464,20 +497,21 @@ func (f *fakeExerciseRepo) ListBySkillID(_ context.Context, skillID string) ([]d
 	return result, nil
 }
 
-func (f *fakeExerciseRepo) List(_ context.Context, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var result []domain.Exercise
 	for _, e := range f.byID {
-		if exerciseType != "" && e.ExerciseType != exerciseType {
+		if filter.ExerciseType != "" && e.ExerciseType != filter.ExerciseType {
 			continue
 		}
-		if skillID != "" && !containsID(exerciseSkillIDs(e), skillID) {
+		if filter.SkillID != "" && !containsID(exerciseSkillIDs(e), filter.SkillID) {
 			continue
 		}
 		result = append(result, e)
 	}
-	return result, nil
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return paginate(result, page), nil
 }
 
 func exerciseSkillIDs(e domain.Exercise) []string {
@@ -652,14 +686,23 @@ func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
 	f.byID[p.ID] = p
 }
 
-func (f *fakeLearningPathRepo) List(_ context.Context) ([]domain.LearningPath, error) {
+func (f *fakeLearningPathRepo) List(_ context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	result := make([]domain.LearningPath, 0, len(f.byID))
 	for _, p := range f.byID {
+		if !containsFold(p.Title, filter.Query) {
+			continue
+		}
 		result = append(result, p)
 	}
-	return result, nil
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Title != result[j].Title {
+			return result[i].Title < result[j].Title
+		}
+		return result[i].ID < result[j].ID
+	})
+	return paginate(result, page), nil
 }
 
 func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath) error {
@@ -685,10 +728,17 @@ func (f *fakeLearningPathRepo) Delete(_ context.Context, id string) error {
 type fakeCourseRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.Course
+
+	// paths, nodes and versions let List resolve the transitive
+	// checkpoint -> learning path -> content node classification join and
+	// the latest published version, as the real repository does in SQL.
+	paths    *fakeLearningPathRepo
+	nodes    *fakeContentNodeRepo
+	versions *fakeCourseVersionRepo
 }
 
-func newFakeCourseRepo() *fakeCourseRepo {
-	return &fakeCourseRepo{byID: map[string]domain.Course{}}
+func newFakeCourseRepo(paths *fakeLearningPathRepo, nodes *fakeContentNodeRepo, versions *fakeCourseVersionRepo) *fakeCourseRepo {
+	return &fakeCourseRepo{byID: map[string]domain.Course{}, paths: paths, nodes: nodes, versions: versions}
 }
 
 func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
@@ -708,17 +758,115 @@ func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, e
 	return c, nil
 }
 
-func (f *fakeCourseRepo) List(_ context.Context, status *domain.CourseStatus) ([]domain.Course, error) {
+func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := make([]domain.Course, 0, len(f.byID))
+
+	type candidate struct {
+		course domain.Course
+		title  string
+	}
+	var matches []candidate
 	for _, c := range f.byID {
-		if status != nil && c.Status != *status {
+		view := courseView{title: c.Title, summary: c.Summary, level: c.Level}
+		checkpointPaths := make([]string, len(c.Checkpoints))
+		for i, cp := range c.Checkpoints {
+			checkpointPaths[i] = cp.LearningPathID
+		}
+		if filter.PublishedView {
+			latest, ok := f.versions.latest(c.ID)
+			if !ok {
+				continue
+			}
+			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot}
+			checkpointPaths = checkpointPaths[:0]
+			for _, cp := range latest.Checkpoints {
+				checkpointPaths = append(checkpointPaths, cp.LearningPathID)
+			}
+		}
+
+		if filter.Status != nil && c.Status != *filter.Status {
 			continue
 		}
-		result = append(result, c)
+		if filter.CreatedBy != "" && c.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		if len(filter.Levels) > 0 && !containsLevel(filter.Levels, view.level) {
+			continue
+		}
+		if !containsFold(view.title, filter.Query) && !containsFold(view.summary, filter.Query) {
+			continue
+		}
+		if !f.classified(checkpointPaths, filter.SkillIDs, filter.ConceptIDs) {
+			continue
+		}
+		matches = append(matches, candidate{course: c, title: view.title})
 	}
-	return result, nil
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].title != matches[j].title {
+			return matches[i].title < matches[j].title
+		}
+		return matches[i].course.ID < matches[j].course.ID
+	})
+	courses := make([]domain.Course, len(matches))
+	for i, m := range matches {
+		courses[i] = m.course
+	}
+	return paginate(courses, page), nil
+}
+
+// courseView is the text and level a course's filters and ordering read —
+// the live draft's, or the latest published version's snapshot.
+type courseView struct {
+	title, summary string
+	level          domain.DifficultyLevel
+}
+
+func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {
+	for _, l := range levels {
+		if l == level {
+			return true
+		}
+	}
+	return false
+}
+
+// classified reports whether some content node in one of pathIDs' learning
+// paths is linked to any of skillIDs and — when both are given — any of
+// conceptIDs. True when neither is given.
+func (f *fakeCourseRepo) classified(pathIDs, skillIDs, conceptIDs []string) bool {
+	if len(skillIDs) == 0 && len(conceptIDs) == 0 {
+		return true
+	}
+	for _, pathID := range pathIDs {
+		path, ok := f.paths.byID[pathID]
+		if !ok {
+			continue
+		}
+		for _, item := range path.Items {
+			node, ok := f.nodes.byID[item.ContentNodeID]
+			if !ok {
+				continue
+			}
+			if len(skillIDs) > 0 && !overlaps(node.Classification.SkillIDs(), skillIDs) {
+				continue
+			}
+			if len(conceptIDs) > 0 && !overlaps(node.Classification.ConceptIDs(), conceptIDs) {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func overlaps(have, want []string) bool {
+	for _, id := range want {
+		if containsID(have, id) {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
@@ -763,6 +911,24 @@ func (f *fakeCourseVersionRepo) Create(_ context.Context, v domain.CourseVersion
 	defer f.mu.Unlock()
 	f.byCourse[v.CourseID] = append(f.byCourse[v.CourseID], v)
 	return nil
+}
+
+// latest returns courseID's highest-numbered version, and false if it has
+// never been published.
+func (f *fakeCourseVersionRepo) latest(courseID string) (domain.CourseVersion, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	versions := f.byCourse[courseID]
+	if len(versions) == 0 {
+		return domain.CourseVersion{}, false
+	}
+	latest := versions[0]
+	for _, v := range versions[1:] {
+		if v.VersionNumber > latest.VersionNumber {
+			latest = v
+		}
+	}
+	return latest, true
 }
 
 func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID string) (domain.CourseVersion, error) {
@@ -854,6 +1020,19 @@ func (f *fakeStudentPathRepo) ListActiveStandaloneByStudentID(_ context.Context,
 	return result, nil
 }
 
+func (f *fakeStudentPathRepo) ListStandaloneByStudentID(_ context.Context, studentID string) ([]domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.StudentPath{}
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.SourceCourseEnrollmentID == nil {
+			result = append(result, p)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].AssignedAt.After(result[j].AssignedAt) })
+	return result, nil
+}
+
 func (f *fakeStudentPathRepo) Archive(_ context.Context, id string, archivedAt time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -880,6 +1059,14 @@ func (f *fakeContentNodeVersionRepo) Create(_ context.Context, v domain.ContentN
 	defer f.mu.Unlock()
 	f.byNode[v.ContentNodeID] = append(f.byNode[v.ContentNodeID], v)
 	return nil
+}
+
+func (f *fakeContentNodeVersionRepo) ListByContentNodeID(_ context.Context, contentNodeID string) ([]domain.ContentNodeVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := append([]domain.ContentNodeVersion{}, f.byNode[contentNodeID]...)
+	sort.Slice(result, func(i, j int) bool { return result[i].VersionNumber > result[j].VersionNumber })
+	return result, nil
 }
 
 func (f *fakeContentNodeVersionRepo) GetLatestByContentNodeID(_ context.Context, contentNodeID string) (domain.ContentNodeVersion, error) {

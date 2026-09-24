@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
@@ -135,13 +136,32 @@ func (r *EntStudentPathRepository) ListActiveStandaloneByStudentID(ctx context.C
 		return nil, domain.ErrNotFound
 	}
 
-	rows, err := r.client.StudentPath.Query().
+	return r.listWithItems(ctx, r.client.StudentPath.Query().
 		Where(
 			studentpath.StudentID(parsed),
 			studentpath.ArchivedAtIsNil(),
 			studentpath.SourceCourseEnrollmentIDIsNil(),
+		))
+}
+
+func (r *EntStudentPathRepository) ListStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error) {
+	parsed, err := uuid.Parse(studentID)
+	if err != nil {
+		return []domain.StudentPath{}, nil
+	}
+
+	return r.listWithItems(ctx, r.client.StudentPath.Query().
+		Where(
+			studentpath.StudentID(parsed),
+			studentpath.SourceCourseEnrollmentIDIsNil(),
 		).
-		All(ctx)
+		Order(studentpath.ByAssignedAt(sql.OrderDesc()), studentpath.ByID()))
+}
+
+// listWithItems runs query and attaches each resulting StudentPath's items
+// in position order.
+func (r *EntStudentPathRepository) listWithItems(ctx context.Context, query *ent.StudentPathQuery) ([]domain.StudentPath, error) {
+	rows, err := query.All(ctx)
 	if err != nil {
 		return nil, err
 	}

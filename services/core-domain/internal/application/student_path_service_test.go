@@ -531,3 +531,59 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
+
+func TestStudentPathService_ListMyStandalonePaths(t *testing.T) {
+	newService := func(studentPaths *fakeStudentPathRepository) *application.StudentPathService {
+		return newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), studentPaths,
+			newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+	}
+	alice := domain.User{ID: "alice", Role: domain.RoleStudent}
+	archivedAt := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
+	enrollmentID := "enrollment-1"
+
+	t.Run("lists the student's standalone paths, active and archived, newest first", func(t *testing.T) {
+		studentPaths := newFakeStudentPathRepository()
+		require.NoError(t, studentPaths.Create(context.Background(), domain.StudentPath{ID: "older", StudentID: "alice", AssignedAt: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), ArchivedAt: &archivedAt}))
+		require.NoError(t, studentPaths.Create(context.Background(), domain.StudentPath{ID: "newer", StudentID: "alice", AssignedAt: time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)}))
+
+		got, err := newService(studentPaths).ListMyStandalonePaths(context.Background(), alice)
+
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "newer", got[0].ID)
+		assert.Equal(t, "older", got[1].ID)
+	})
+
+	t.Run("excludes course checkpoints and other students' paths", func(t *testing.T) {
+		studentPaths := newFakeStudentPathRepository()
+		require.NoError(t, studentPaths.Create(context.Background(), domain.StudentPath{ID: "mine", StudentID: "alice"}))
+		require.NoError(t, studentPaths.Create(context.Background(), domain.StudentPath{ID: "checkpoint", StudentID: "alice", SourceCourseEnrollmentID: &enrollmentID}))
+		require.NoError(t, studentPaths.Create(context.Background(), domain.StudentPath{ID: "theirs", StudentID: "bruno"}))
+
+		got, err := newService(studentPaths).ListMyStandalonePaths(context.Background(), alice)
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "mine", got[0].ID)
+	})
+
+	t.Run("a student with none gets an empty, non-nil list", func(t *testing.T) {
+		got, err := newService(newFakeStudentPathRepository()).ListMyStandalonePaths(context.Background(), alice)
+
+		require.NoError(t, err)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
+	t.Run("an admin may list their own", func(t *testing.T) {
+		_, err := newService(newFakeStudentPathRepository()).ListMyStandalonePaths(context.Background(), adminCaller())
+
+		require.NoError(t, err)
+	})
+
+	t.Run("a teacher is forbidden", func(t *testing.T) {
+		_, err := newService(newFakeStudentPathRepository()).ListMyStandalonePaths(context.Background(), teacherCaller())
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}

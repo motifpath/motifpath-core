@@ -674,16 +674,19 @@ func TestExerciseService_GetExercise(t *testing.T) {
 }
 
 func TestExerciseService_ListExercises(t *testing.T) {
+	firstPage := domain.PageRequest{Limit: 20, Offset: 0}
+
 	t.Run("a teacher lists all exercises in the reusable pool", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "triad-exercise-01", ExerciseType: domain.ExerciseTypeImageRecognition})
 		exercises.put(domain.Exercise{ID: "picking-drill-01", ExerciseType: domain.ExerciseTypeTextResponse})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", "")
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"triad-exercise-01", "picking-drill-01"}, idsOf(got))
+		assert.ElementsMatch(t, []string{"triad-exercise-01", "picking-drill-01"}, idsOf(got.Items))
+		assert.Equal(t, 2, got.Total)
 	})
 
 	t.Run("an admin lists all exercises in the reusable pool", func(t *testing.T) {
@@ -691,10 +694,10 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "triad-exercise-01"})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), adminCaller(), "", "")
+		got, err := svc.ListExercises(context.Background(), adminCaller(), domain.ExerciseFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 1)
+		assert.Len(t, got.Items, 1)
 	})
 
 	t.Run("a teacher filters the exercise list by skill", func(t *testing.T) {
@@ -703,10 +706,10 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "picking-drill-01", Skills: []domain.Skill{{ID: "skill-2"}}})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), teacherCaller(), "skill-2", "")
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{SkillID: "skill-2"}, firstPage)
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"picking-drill-01"}, idsOf(got))
+		assert.Equal(t, []string{"picking-drill-01"}, idsOf(got.Items))
 	})
 
 	t.Run("a teacher filters the exercise list by exercise type", func(t *testing.T) {
@@ -715,25 +718,40 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "chord-name-01", ExerciseType: domain.ExerciseTypeTextResponse})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", domain.ExerciseTypeTextResponse)
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{ExerciseType: domain.ExerciseTypeTextResponse}, firstPage)
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"chord-name-01"}, idsOf(got))
+		assert.Equal(t, []string{"chord-name-01"}, idsOf(got.Items))
 	})
 
-	t.Run("listing exercises when none exist returns an empty list", func(t *testing.T) {
-		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+	t.Run("returns the requested page and the filtered total", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		for _, id := range []string{"ex-1", "ex-2", "ex-3", "ex-4", "ex-5"} {
+			exercises.put(domain.Exercise{ID: id})
+		}
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), teacherCaller(), "", "")
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{}, domain.PageRequest{Limit: 2, Offset: 4})
 
 		require.NoError(t, err)
-		assert.Empty(t, got)
+		assert.Equal(t, 5, got.Total)
+		assert.Equal(t, []string{"ex-5"}, idsOf(got.Items))
+	})
+
+	t.Run("listing exercises when none exist returns an empty page", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{}, firstPage)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Items)
+		assert.Zero(t, got.Total)
 	})
 
 	t.Run("a student cannot list all exercises", func(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
-		_, err := svc.ListExercises(context.Background(), studentCaller(), "", "")
+		_, err := svc.ListExercises(context.Background(), studentCaller(), domain.ExerciseFilter{}, firstPage)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})

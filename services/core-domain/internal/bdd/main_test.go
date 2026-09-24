@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/cucumber/godog"
@@ -11,7 +12,16 @@ import (
 // featuresPath is relative to this package's directory, which is where `go
 // test` sets the working directory — not the repo root the Makefile runs
 // from.
-const featuresBase = "../../../../../motifpath-specs/features"
+//
+// MOTIFPATH_SPECS_DIR overrides the default location of the motifpath-specs
+// checkout — needed when running from a git worktree, where the sibling
+// checkout is not at that relative path.
+var featuresBase = func() string {
+	if dir := os.Getenv("MOTIFPATH_SPECS_DIR"); dir != "" {
+		return dir + "/features"
+	}
+	return "../../../../../motifpath-specs/features"
+}()
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -75,4 +85,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerStudentPathViewSteps(sc, w)
 	registerContentNodeVersioningSteps(sc, w)
 	registerHealthSteps(sc, w)
+	registerListingSteps(sc, w)
 }

@@ -185,16 +185,19 @@ type world struct {
 func newWorld() *world {
 	skills := newFakeSkillRepo()
 	concepts := newFakeConceptRepo()
+	nodes := newFakeContentNodeRepo(skills, concepts)
+	paths := newFakeLearningPathRepo()
+	courseVersions := newFakeCourseVersionRepo()
 	w := &world{
 		users:             newFakeUserRepo(),
-		nodes:             newFakeContentNodeRepo(skills, concepts),
+		nodes:             nodes,
 		challenges:        newFakeChallengeRepo(),
 		exercises:         newFakeExerciseRepo(skills, concepts),
 		expanded:          newFakeExpandedContentRepo(),
-		paths:             newFakeLearningPathRepo(),
+		paths:             paths,
+		courses:           newFakeCourseRepo(paths, nodes, courseVersions),
 		studentPaths:      newFakeStudentPathRepo(),
-		courses:           newFakeCourseRepo(),
-		courseVersions:    newFakeCourseVersionRepo(),
+		courseVersions:    courseVersions,
 		courseEnrollments: newFakeCourseEnrollmentRepo(),
 		versions:          newFakeContentNodeVersionRepo(),
 		learningState:     newFakeStudentLearningStateRepo(),

@@ -101,38 +101,50 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 	return result, nil
 }
 
-func (r *EntContentNodeRepository) List(ctx context.Context, contentType domain.ContentType, skillID, conceptID string, difficulty domain.DifficultyLevel) ([]domain.ContentNode, error) {
-	query := r.client.ContentNode.Query().WithLanguages().WithSkills().WithConcepts()
-	if contentType != "" {
-		query = query.Where(contentnode.ContentTypeEQ(contentnode.ContentType(contentType)))
+func (r *EntContentNodeRepository) List(ctx context.Context, filter domain.ContentNodeFilter, page domain.PageRequest) (domain.Page[domain.ContentNode], error) {
+	query := r.client.ContentNode.Query()
+	if filter.ContentType != "" {
+		query = query.Where(contentnode.ContentTypeEQ(contentnode.ContentType(filter.ContentType)))
 	}
-	if skillID != "" {
-		parsed, err := uuid.Parse(skillID)
+	if filter.SkillID != "" {
+		parsed, err := uuid.Parse(filter.SkillID)
 		if err != nil {
-			return nil, err
+			return domain.Page[domain.ContentNode]{}, err
 		}
 		query = query.Where(contentnode.HasSkillsWith(skill.ID(parsed)))
 	}
-	if conceptID != "" {
-		parsed, err := uuid.Parse(conceptID)
+	if filter.ConceptID != "" {
+		parsed, err := uuid.Parse(filter.ConceptID)
 		if err != nil {
-			return nil, err
+			return domain.Page[domain.ContentNode]{}, err
 		}
 		query = query.Where(contentnode.HasConceptsWith(concept.ID(parsed)))
 	}
-	if difficulty != "" {
-		query = query.Where(contentnode.DifficultyLevelEQ(contentnode.DifficultyLevel(difficulty)))
+	if filter.Difficulty != "" {
+		query = query.Where(contentnode.DifficultyLevelEQ(contentnode.DifficultyLevel(filter.Difficulty)))
+	}
+	if filter.Query != "" {
+		query = query.Where(contentnode.TitleContainsFold(filter.Query))
 	}
 
-	rows, err := query.All(ctx)
+	total, err := query.Clone().Count(ctx)
 	if err != nil {
-		return nil, err
+		return domain.Page[domain.ContentNode]{}, err
 	}
-	result := make([]domain.ContentNode, 0, len(rows))
+	rows, err := query.
+		WithLanguages().WithSkills().WithConcepts().
+		Order(contentnode.ByTitle(), contentnode.ByID()).
+		Limit(page.Limit).
+		Offset(page.Offset).
+		All(ctx)
+	if err != nil {
+		return domain.Page[domain.ContentNode]{}, err
+	}
+	items := make([]domain.ContentNode, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, toDomainContentNode(row))
+		items = append(items, toDomainContentNode(row))
 	}
-	return result, nil
+	return domain.Page[domain.ContentNode]{Items: items, Total: total}, nil
 }
 
 func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.ContentNode) error {

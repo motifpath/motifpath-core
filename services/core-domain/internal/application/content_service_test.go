@@ -277,16 +277,19 @@ func TestContentService_GetContentNode(t *testing.T) {
 }
 
 func TestContentService_ListContentNodes(t *testing.T) {
+	firstPage := domain.PageRequest{Limit: 20, Offset: 0}
+
 	t.Run("a teacher lists all content nodes", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-1"))
 		nodes.put(articleNode("node-2"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "", "", "")
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 2)
+		assert.Len(t, got.Items, 2)
+		assert.Equal(t, 2, got.Total)
 	})
 
 	t.Run("an admin lists all content nodes", func(t *testing.T) {
@@ -294,10 +297,10 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), adminCaller(), "", "", "", "")
+		got, err := svc.ListContentNodes(context.Background(), adminCaller(), domain.ContentNodeFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 1)
+		assert.Len(t, got.Items, 1)
 	})
 
 	t.Run("filters by content type", func(t *testing.T) {
@@ -306,11 +309,11 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(articleNode("node-2"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentTypeArticle, "", "", "")
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{ContentType: domain.ContentTypeArticle}, firstPage)
 
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "node-2", got[0].ID)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "node-2", got.Items[0].ID)
 	})
 
 	t.Run("filters by skill", func(t *testing.T) {
@@ -319,11 +322,11 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "skill-2", "", "")
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{SkillID: "skill-2"}, firstPage)
 
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "node-2", got[0].ID)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "node-2", got.Items[0].ID)
 	})
 
 	t.Run("filters by concept", func(t *testing.T) {
@@ -332,26 +335,54 @@ func TestContentService_ListContentNodes(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Concepts: []domain.Concept{{ID: "concept-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "", "concept-2", "")
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{ConceptID: "concept-2"}, firstPage)
 
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "node-2", got[0].ID)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "node-2", got.Items[0].ID)
 	})
 
-	t.Run("listing when none exist returns an empty list", func(t *testing.T) {
-		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+	t.Run("searches by title text", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-1", Title: "Open Chords"})
+		nodes.put(domain.ContentNode{ID: "node-2", Title: "Scales"})
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
-		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), "", "", "", "")
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{Query: "chords"}, firstPage)
 
 		require.NoError(t, err)
-		assert.Empty(t, got)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "node-1", got.Items[0].ID)
+	})
+
+	t.Run("returns the requested page and the filtered total", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		for _, id := range []string{"node-1", "node-2", "node-3", "node-4", "node-5"} {
+			nodes.put(domain.ContentNode{ID: id, Title: id})
+		}
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{}, domain.PageRequest{Limit: 2, Offset: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, 5, got.Total)
+		assert.Equal(t, []string{"node-3", "node-4"}, []string{got.Items[0].ID, got.Items[1].ID})
+	})
+
+	t.Run("listing when none exist returns an empty page", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{}, firstPage)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Items)
+		assert.Zero(t, got.Total)
 	})
 
 	t.Run("a student cannot list content nodes", func(t *testing.T) {
 		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
 
-		_, err := svc.ListContentNodes(context.Background(), studentCaller(), "", "", "", "")
+		_, err := svc.ListContentNodes(context.Background(), studentCaller(), domain.ContentNodeFilter{}, firstPage)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -1156,4 +1187,80 @@ func assertHasField(t *testing.T, valErr *domain.ValidationError, field string) 
 		}
 	}
 	t.Fatalf("expected field %q among validation errors, got %+v", field, valErr.Fields)
+}
+
+func TestContentService_ListContentNodeVersions(t *testing.T) {
+	publishTwice := func(t *testing.T, svc *application.ContentService) {
+		t.Helper()
+		_, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
+		require.NoError(t, err)
+		_, err = svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
+		require.NoError(t, err)
+	}
+
+	t.Run("the creating teacher lists versions newest first", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+		publishTwice(t, svc)
+
+		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
+
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, 2, got[0].VersionNumber)
+		assert.Equal(t, 1, got[1].VersionNumber)
+	})
+
+	t.Run("an admin lists a node's versions", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+		publishTwice(t, svc)
+
+		got, err := svc.ListContentNodeVersions(context.Background(), adminCaller(), "node-01")
+
+		require.NoError(t, err)
+		assert.Len(t, got, 2)
+	})
+
+	t.Run("a never-published node has an empty history", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
+
+		require.NoError(t, err)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a teacher who did not create the node is forbidden", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.ListContentNodeVersions(context.Background(), otherTeacherCaller(), "node-01")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a student is forbidden", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-01"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		_, err := svc.ListContentNodeVersions(context.Background(), studentCaller(), "node-01")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a node that does not exist is not found", func(t *testing.T) {
+		svc := newContentService(newFakeContentNodeRepository(), newFakeExpandedContentRepository())
+
+		_, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
 }

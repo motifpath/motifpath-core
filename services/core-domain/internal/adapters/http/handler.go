@@ -243,7 +243,21 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 		difficulty = domain.DifficultyLevel(*request.Params.DifficultyLevel)
 	}
 
-	nodes, err := h.content.ListContentNodes(ctx, caller, contentType, skillID, conceptID, difficulty)
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListContentNodesResponseObject](err, func(e generated.ValidationError) generated.ListContentNodesResponseObject {
+			return generated.ListContentNodes400JSONResponse(e)
+		})
+	}
+	filter := domain.ContentNodeFilter{
+		ContentType: contentType,
+		SkillID:     skillID,
+		ConceptID:   conceptID,
+		Difficulty:  difficulty,
+		Query:       searchQuery(request.Params.Q),
+	}
+
+	result, err := h.content.ListContentNodes(ctx, caller, filter, page)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListContentNodes403JSONResponse(forbiddenError("only teachers and admins may list content nodes")), nil
@@ -251,7 +265,9 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 		return nil, err
 	}
 
-	return generated.ListContentNodes200JSONResponse(toContentNodes(nodes)), nil
+	return generated.ListContentNodes200JSONResponse{
+		Items: toContentNodes(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
 }
 
 func (h *Handler) UpdateContentNode(ctx context.Context, request generated.UpdateContentNodeRequestObject) (generated.UpdateContentNodeResponseObject, error) {
@@ -428,7 +444,14 @@ func (h *Handler) ListExercises(ctx context.Context, request generated.ListExerc
 		exerciseType = domain.ExerciseType(*request.Params.ExerciseType)
 	}
 
-	exercises, err := h.exercise.ListExercises(ctx, caller, skillID, exerciseType)
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListExercisesResponseObject](err, func(e generated.ValidationError) generated.ListExercisesResponseObject {
+			return generated.ListExercises400JSONResponse(e)
+		})
+	}
+
+	result, err := h.exercise.ListExercises(ctx, caller, domain.ExerciseFilter{SkillID: skillID, ExerciseType: exerciseType}, page)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
@@ -436,7 +459,9 @@ func (h *Handler) ListExercises(ctx context.Context, request generated.ListExerc
 		return nil, err
 	}
 
-	return generated.ListExercises200JSONResponse(toExercises(exercises)), nil
+	return generated.ListExercises200JSONResponse{
+		Items: toExercises(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
 }
 
 func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateExerciseRequestObject) (generated.UpdateExerciseResponseObject, error) {
@@ -719,7 +744,14 @@ func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListL
 		return generated.ListLearningPaths401JSONResponse(unauthorizedError()), nil
 	}
 
-	paths, err := h.path.ListLearningPaths(ctx, caller)
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListLearningPathsResponseObject](err, func(e generated.ValidationError) generated.ListLearningPathsResponseObject {
+			return generated.ListLearningPaths400JSONResponse(e)
+		})
+	}
+
+	result, err := h.path.ListLearningPaths(ctx, caller, domain.LearningPathFilter{Query: searchQuery(request.Params.Q)}, page)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
@@ -727,7 +759,9 @@ func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListL
 		return nil, err
 	}
 
-	return generated.ListLearningPaths200JSONResponse(toLearningPaths(paths)), nil
+	return generated.ListLearningPaths200JSONResponse{
+		Items: toLearningPaths(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
 }
 
 func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.ReplaceLearningPathRequestObject) (generated.ReplaceLearningPathResponseObject, error) {
@@ -872,25 +906,76 @@ func (h *Handler) PublishContentNode(ctx context.Context, request generated.Publ
 	return generated.PublishContentNode201JSONResponse(toContentNodeVersion(version)), nil
 }
 
+func (h *Handler) ListContentNodeVersions(ctx context.Context, request generated.ListContentNodeVersionsRequestObject) (generated.ListContentNodeVersionsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListContentNodeVersions401JSONResponse(unauthorizedError()), nil
+	}
+
+	versions, err := h.content.ListContentNodeVersions(ctx, caller, request.ContentNodeId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ListContentNodeVersions403JSONResponse(forbiddenError("only the creating teacher or an admin may view this content node's version history")), nil
+		case errKindNotFound:
+			return generated.ListContentNodeVersions404JSONResponse(notFoundError("no content node exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	items := make([]generated.ContentNodeVersion, len(versions))
+	for i, v := range versions {
+		items[i] = toContentNodeVersion(v)
+	}
+	return generated.ListContentNodeVersions200JSONResponse(items), nil
+}
+
+func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyStandalonePathsRequestObject) (generated.ListMyStandalonePathsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListMyStandalonePaths401JSONResponse(unauthorizedError()), nil
+	}
+
+	paths, err := h.studentPath.ListMyStandalonePaths(ctx, caller)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListMyStandalonePaths403JSONResponse(forbiddenError("only students hold student paths")), nil
+		}
+		return nil, err
+	}
+
+	items := make([]generated.StudentPath, len(paths))
+	for i, sp := range paths {
+		items[i] = toStudentPath(sp)
+	}
+	return generated.ListMyStandalonePaths200JSONResponse(items), nil
+}
+
 func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
 		return generated.ListCourses401JSONResponse(unauthorizedError()), nil
 	}
 
-	var status *domain.CourseStatus
-	if request.Params.Status != nil {
-		s := domain.CourseStatus(*request.Params.Status)
-		status = &s
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListCoursesResponseObject](err, func(e generated.ValidationError) generated.ListCoursesResponseObject {
+			return generated.ListCourses400JSONResponse(e)
+		})
 	}
 
-	courses, err := h.course.ListCourses(ctx, caller, status)
+	result, err := h.course.ListCourses(ctx, caller, courseListFilter(request.Params), page)
 	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListCourses403JSONResponse(forbiddenError("a teacher may only list courses they created")), nil
+		}
 		return nil, err
 	}
 
-	courseIDs := make([]string, len(courses))
-	for i, c := range courses {
+	courseIDs := make([]string, len(result.Items))
+	for i, c := range result.Items {
 		courseIDs[i] = c.ID
 	}
 	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
@@ -898,7 +983,7 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 		return nil, err
 	}
 
-	entries, err := toCourseCatalogEntries(courses, caller, func(courseID string) (*domain.CourseVersion, error) {
+	entries, err := toCourseCatalogEntries(result.Items, caller, func(courseID string) (*domain.CourseVersion, error) {
 		if v, ok := latestByCourse[courseID]; ok {
 			return &v, nil
 		}
@@ -908,7 +993,9 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 		return nil, err
 	}
 
-	return generated.ListCourses200JSONResponse(entries), nil
+	return generated.ListCourses200JSONResponse{
+		Items: entries, Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
 }
 
 // latestCourseVersion returns course's latest published CourseVersion, or

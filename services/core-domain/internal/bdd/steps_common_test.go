@@ -58,7 +58,7 @@ func (w *world) responseIncludes(slug string) error {
 		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
 	case generated.ListExercises200JSONResponse:
 		want := exerciseID(slug)
-		for _, e := range resp {
+		for _, e := range resp.Items {
 			if e.ExerciseId == want {
 				return nil
 			}
@@ -66,7 +66,7 @@ func (w *world) responseIncludes(slug string) error {
 		return fmt.Errorf("expected exercises to include %s, got %+v", want, resp)
 	case generated.ListContentNodes200JSONResponse:
 		want := nodeID(slug)
-		for _, n := range resp {
+		for _, n := range resp.Items {
 			if n.ContentNodeId == want {
 				return nil
 			}
@@ -74,7 +74,7 @@ func (w *world) responseIncludes(slug string) error {
 		return fmt.Errorf("expected content nodes to include %s, got %+v", want, resp)
 	case generated.ListLearningPaths200JSONResponse:
 		want := pathID(slug)
-		for _, p := range resp {
+		for _, p := range resp.Items {
 			if p.LearningPathId == want {
 				return nil
 			}
@@ -88,13 +88,21 @@ func (w *world) responseIncludes(slug string) error {
 			}
 		}
 		return fmt.Errorf("expected diagrams to include %s, got %+v", want, resp)
-	case generated.ListCourses200JSONResponse:
-		for _, c := range resp {
-			if c.Title == slug {
+	case generated.ListMyStandalonePaths200JSONResponse:
+		want := pathID(slug)
+		for _, sp := range resp {
+			if sp.SourceTemplateId == want {
 				return nil
 			}
 		}
-		return fmt.Errorf("expected courses to include %q, got %+v", slug, resp)
+		return fmt.Errorf("expected student paths to include %q, got %+v", slug, resp)
+	case generated.ListCourses200JSONResponse:
+		for _, c := range resp.Items {
+			if w.courseMatchesSlug(c, slug) {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected courses to include %q, got %+v", slug, resp.Items)
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
 	}
@@ -111,7 +119,7 @@ func (w *world) responseDoesNotInclude(slug string) error {
 	switch resp := w.lastResp.(type) {
 	case generated.ListExercises200JSONResponse:
 		want := exerciseID(slug)
-		for _, e := range resp {
+		for _, e := range resp.Items {
 			if e.ExerciseId == want {
 				return fmt.Errorf("expected exercises not to include %s, got %+v", want, resp)
 			}
@@ -119,7 +127,7 @@ func (w *world) responseDoesNotInclude(slug string) error {
 		return nil
 	case generated.ListContentNodes200JSONResponse:
 		want := nodeID(slug)
-		for _, n := range resp {
+		for _, n := range resp.Items {
 			if n.ContentNodeId == want {
 				return fmt.Errorf("expected content nodes not to include %s, got %+v", want, resp)
 			}
@@ -133,10 +141,26 @@ func (w *world) responseDoesNotInclude(slug string) error {
 			}
 		}
 		return nil
+	case generated.ListLearningPaths200JSONResponse:
+		want := pathID(slug)
+		for _, p := range resp.Items {
+			if p.LearningPathId == want {
+				return fmt.Errorf("expected learning paths not to include %q, got %+v", slug, resp.Items)
+			}
+		}
+		return nil
+	case generated.ListMyStandalonePaths200JSONResponse:
+		want := pathID(slug)
+		for _, sp := range resp {
+			if sp.SourceTemplateId == want {
+				return fmt.Errorf("expected student paths not to include %q, got %+v", slug, resp)
+			}
+		}
+		return nil
 	case generated.ListCourses200JSONResponse:
-		for _, c := range resp {
-			if c.Title == slug {
-				return fmt.Errorf("expected courses not to include %q, got %+v", slug, resp)
+		for _, c := range resp.Items {
+			if w.courseMatchesSlug(c, slug) {
+				return fmt.Errorf("expected courses not to include %q, got %+v", slug, resp.Items)
 			}
 		}
 		return nil
@@ -160,16 +184,16 @@ func (w *world) responseIsEmptyList() error {
 			return fmt.Errorf("expected an empty list, got %d path exercises", len(resp))
 		}
 	case generated.ListExercises200JSONResponse:
-		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d exercises", len(resp))
+		if len(resp.Items) != 0 {
+			return fmt.Errorf("expected an empty list, got %d exercises", len(resp.Items))
 		}
 	case generated.ListContentNodes200JSONResponse:
-		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d content nodes", len(resp))
+		if len(resp.Items) != 0 {
+			return fmt.Errorf("expected an empty list, got %d content nodes", len(resp.Items))
 		}
 	case generated.ListLearningPaths200JSONResponse:
-		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d learning paths", len(resp))
+		if len(resp.Items) != 0 {
+			return fmt.Errorf("expected an empty list, got %d learning paths", len(resp.Items))
 		}
 	case generated.ListSkills200JSONResponse:
 		if len(resp) != 0 {
@@ -186,6 +210,18 @@ func (w *world) responseIsEmptyList() error {
 	case generated.ListDiagrams200JSONResponse:
 		if len(resp) != 0 {
 			return fmt.Errorf("expected an empty list, got %d diagrams", len(resp))
+		}
+	case generated.ListCourses200JSONResponse:
+		if len(resp.Items) != 0 {
+			return fmt.Errorf("expected an empty list, got %d courses", len(resp.Items))
+		}
+	case generated.ListMyStandalonePaths200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d student paths", len(resp))
+		}
+	case generated.ListContentNodeVersions200JSONResponse:
+		if len(resp) != 0 {
+			return fmt.Errorf("expected an empty list, got %d versions", len(resp))
 		}
 	default:
 		return fmt.Errorf("expected a list response, got %#v", w.lastResp)
@@ -230,6 +266,9 @@ func (w *world) requestRefusedForbidden() error {
 		generated.GetLearningPath403JSONResponse,
 		generated.AssignLearningPath403JSONResponse,
 		generated.ListContentNodes403JSONResponse,
+		generated.ListContentNodeVersions403JSONResponse,
+		generated.ListMyStandalonePaths403JSONResponse,
+		generated.ListCourses403JSONResponse,
 		generated.UpdateContentNode403JSONResponse,
 		generated.UpdateChallenge403JSONResponse,
 		generated.UpdateExpandedContent403JSONResponse,
@@ -262,6 +301,7 @@ func (w *world) requestRefusedForbidden() error {
 func (w *world) requestRefusedNotFound() error {
 	switch w.lastResp.(type) {
 	case generated.GetContentNode404JSONResponse,
+		generated.ListContentNodeVersions404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
 		generated.GetChallenge404JSONResponse,
 		generated.ListContentNodeChallenges404JSONResponse,
@@ -324,6 +364,8 @@ func (w *world) requestRefusedConflict() error {
 func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
+		generated.ListContentNodeVersions401JSONResponse,
+		generated.ListMyStandalonePaths401JSONResponse,
 		generated.GetMyProfile401JSONResponse,
 		generated.CreateContentNode401JSONResponse,
 		generated.GetContentNode401JSONResponse,
@@ -449,6 +491,14 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateDiagram400JSONResponse:
 		return resp.Errors, nil
 	case generated.UpdateDiagram400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListContentNodes400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListExercises400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListLearningPaths400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListCourses400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateCourse400JSONResponse:
 		return resp.Errors, nil

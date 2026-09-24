@@ -157,30 +157,81 @@ func TestCourseService_GetCourse(t *testing.T) {
 }
 
 func TestCourseService_ListCourses(t *testing.T) {
-	t.Run("a teacher lists every course regardless of status", func(t *testing.T) {
+	firstPage := domain.PageRequest{Limit: 20, Offset: 0}
+
+	t.Run("a teacher lists every course of their own regardless of status", func(t *testing.T) {
 		courses := newFakeCourseRepository()
-		courses.put(domain.Course{ID: "course-1", Status: domain.CourseStatusDraft})
-		courses.put(domain.Course{ID: "course-2", Status: domain.CourseStatusRetired})
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusDraft})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-1", Status: domain.CourseStatusRetired})
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
-		got, err := svc.ListCourses(context.Background(), teacherCaller(), nil)
+		got, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{}, firstPage)
 
 		require.NoError(t, err)
-		assert.Len(t, got, 2)
+		assert.Len(t, got.Items, 2)
+		assert.Equal(t, 2, got.Total)
+	})
+
+	t.Run("a teacher never sees another teacher's courses", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusDraft})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-2", Status: domain.CourseStatusDraft})
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		got, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{}, firstPage)
+
+		require.NoError(t, err)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-1", got.Items[0].ID)
+	})
+
+	t.Run("a teacher may name themselves as the creator", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusDraft})
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		got, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{CreatedBy: "teacher-1"}, firstPage)
+
+		require.NoError(t, err)
+		assert.Len(t, got.Items, 1)
+	})
+
+	t.Run("a teacher naming another creator is forbidden", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{CreatedBy: "teacher-2"}, firstPage)
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("an admin lists every creator's courses, or narrows to one", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusDraft})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-2", Status: domain.CourseStatusDraft})
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		all, err := svc.ListCourses(context.Background(), adminCaller(), domain.CourseListFilter{}, firstPage)
+		require.NoError(t, err)
+		narrowed, err := svc.ListCourses(context.Background(), adminCaller(), domain.CourseListFilter{CreatedBy: "teacher-2"}, firstPage)
+		require.NoError(t, err)
+
+		assert.Len(t, all.Items, 2)
+		require.Len(t, narrowed.Items, 1)
+		assert.Equal(t, "course-2", narrowed.Items[0].ID)
 	})
 
 	t.Run("a teacher narrows the list with a status filter", func(t *testing.T) {
 		courses := newFakeCourseRepository()
-		courses.put(domain.Course{ID: "course-1", Status: domain.CourseStatusDraft})
-		courses.put(domain.Course{ID: "course-2", Status: domain.CourseStatusRetired})
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusDraft})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-1", Status: domain.CourseStatusRetired})
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
 		draft := domain.CourseStatusDraft
-		got, err := svc.ListCourses(context.Background(), teacherCaller(), &draft)
+		got, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{Status: &draft}, firstPage)
 
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "course-1", got[0].ID)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-1", got.Items[0].ID)
 	})
 
 	t.Run("a student's results are always published regardless of the status filter given", func(t *testing.T) {
@@ -190,20 +241,78 @@ func TestCourseService_ListCourses(t *testing.T) {
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
 		retired := domain.CourseStatusRetired
-		got, err := svc.ListCourses(context.Background(), studentCaller(), &retired)
+		got, err := svc.ListCourses(context.Background(), studentCaller(), domain.CourseListFilter{Status: &retired}, firstPage)
 
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "course-2", got[0].ID)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-2", got.Items[0].ID)
 	})
 
-	t.Run("listing when none exist returns an empty list", func(t *testing.T) {
-		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+	t.Run("a student's filters are evaluated against the published version, a teacher's against the live draft", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
-		got, err := svc.ListCourses(context.Background(), teacherCaller(), nil)
+		_, err := svc.ListCourses(context.Background(), studentCaller(), domain.CourseListFilter{}, firstPage)
+		require.NoError(t, err)
+		assert.True(t, courses.lastFilter.PublishedView)
+
+		_, err = svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{}, firstPage)
+		require.NoError(t, err)
+		assert.False(t, courses.lastFilter.PublishedView)
+	})
+
+	t.Run("a student may filter by creator", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusPublished})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-2", Status: domain.CourseStatusPublished})
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		got, err := svc.ListCourses(context.Background(), studentCaller(), domain.CourseListFilter{CreatedBy: "teacher-2"}, firstPage)
 
 		require.NoError(t, err)
-		assert.Empty(t, got)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-2", got.Items[0].ID)
+	})
+
+	t.Run("search text and levels narrow the results together", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", Title: "Fingerstyle Journey", Level: domain.DifficultyLevelBeginner, Status: domain.CourseStatusPublished})
+		courses.put(domain.Course{ID: "course-2", Title: "Fingerstyle Mastery", Level: domain.DifficultyLevelExpert, Status: domain.CourseStatusPublished})
+		courses.put(domain.Course{ID: "course-3", Title: "Strumming", Level: domain.DifficultyLevelBeginner, Status: domain.CourseStatusPublished})
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		got, err := svc.ListCourses(context.Background(), studentCaller(),
+			domain.CourseListFilter{Query: "fingerstyle", Levels: []domain.DifficultyLevel{domain.DifficultyLevelBeginner}}, firstPage)
+
+		require.NoError(t, err)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-1", got.Items[0].ID)
+		assert.Equal(t, 1, got.Total)
+	})
+
+	t.Run("returns the requested page and the filtered total", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		for _, id := range []string{"course-1", "course-2", "course-3"} {
+			courses.put(domain.Course{ID: id, Title: id, Status: domain.CourseStatusPublished})
+		}
+		svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+		got, err := svc.ListCourses(context.Background(), studentCaller(), domain.CourseListFilter{}, domain.PageRequest{Limit: 2, Offset: 2})
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, got.Total)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, "course-3", got.Items[0].ID)
+	})
+
+	t.Run("listing when none exist returns an empty page", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		got, err := svc.ListCourses(context.Background(), teacherCaller(), domain.CourseListFilter{}, firstPage)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Items)
+		assert.Zero(t, got.Total)
 	})
 }
 

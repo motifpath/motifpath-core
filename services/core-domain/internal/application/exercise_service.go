@@ -182,11 +182,11 @@ func (s *ExerciseService) GetExercise(ctx context.Context, id string) (domain.Ex
 // filter"). Only teachers and admins may list exercises — the pool is an
 // authoring surface, unlike GetExercise which any authenticated user may
 // call for a specific known id.
-func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, skillID string, exerciseType domain.ExerciseType) ([]domain.Exercise, error) {
+func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
 	if !canManageContent(caller.Role) {
-		return nil, domain.ErrForbidden
+		return domain.Page[domain.Exercise]{}, domain.ErrForbidden
 	}
-	return s.exercises.List(ctx, skillID, exerciseType)
+	return s.exercises.List(ctx, filter, page)
 }
 
 // UpdateExercise replaces the given exercise's title, prompt, skill/concept
