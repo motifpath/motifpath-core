@@ -331,11 +331,20 @@ const (
 
 // Defines values for ListContentNodesParamsDifficultyLevel.
 const (
-	Advanced          ListContentNodesParamsDifficultyLevel = "advanced"
-	Beginner          ListContentNodesParamsDifficultyLevel = "beginner"
-	EarlyIntermediate ListContentNodesParamsDifficultyLevel = "early_intermediate"
-	Expert            ListContentNodesParamsDifficultyLevel = "expert"
-	Intermediate      ListContentNodesParamsDifficultyLevel = "intermediate"
+	ListContentNodesParamsDifficultyLevelAdvanced          ListContentNodesParamsDifficultyLevel = "advanced"
+	ListContentNodesParamsDifficultyLevelBeginner          ListContentNodesParamsDifficultyLevel = "beginner"
+	ListContentNodesParamsDifficultyLevelEarlyIntermediate ListContentNodesParamsDifficultyLevel = "early_intermediate"
+	ListContentNodesParamsDifficultyLevelExpert            ListContentNodesParamsDifficultyLevel = "expert"
+	ListContentNodesParamsDifficultyLevelIntermediate      ListContentNodesParamsDifficultyLevel = "intermediate"
+)
+
+// Defines values for ListCoursesParamsLevels.
+const (
+	ListCoursesParamsLevelsAdvanced          ListCoursesParamsLevels = "advanced"
+	ListCoursesParamsLevelsBeginner          ListCoursesParamsLevels = "beginner"
+	ListCoursesParamsLevelsEarlyIntermediate ListCoursesParamsLevels = "early_intermediate"
+	ListCoursesParamsLevelsExpert            ListCoursesParamsLevels = "expert"
+	ListCoursesParamsLevelsIntermediate      ListCoursesParamsLevels = "intermediate"
 )
 
 // Defines values for ListCoursesParamsStatus.
@@ -637,6 +646,9 @@ type CourseStatus string
 type CourseCatalogEntry struct {
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CreatedBy The user_id of the teacher or admin who created this course.
+	CreatedBy openapi_types.UUID `json:"created_by"`
 
 	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field.
 	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
@@ -1839,6 +1851,76 @@ type OptionRegion struct {
 // OptionRegionShape The rendered shape of the region.
 type OptionRegionShape string
 
+// PageMeta Pagination metadata shared by every paginated list response
+// (ADR-031). total counts every item matching the request's
+// filters, not just this page.
+type PageMeta struct {
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PagedContentNodes defines model for PagedContentNodes.
+type PagedContentNodes struct {
+	Items []ContentNode `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PagedCourseCatalog defines model for PagedCourseCatalog.
+type PagedCourseCatalog struct {
+	Items []CourseCatalogEntry `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PagedExercises defines model for PagedExercises.
+type PagedExercises struct {
+	Items []Exercise `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PagedLearningPaths defines model for PagedLearningPaths.
+type PagedLearningPaths struct {
+	Items []LearningPath `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
 // PracticeSession A generated, skill-targeted set of exercises for self-directed
 // practice, returned by GET /practice-sessions. Not a stored resource —
 // exists only in the response that generated it.
@@ -2471,8 +2553,26 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
+// Limit defines model for Limit.
+type Limit = int
+
+// Offset defines model for Offset.
+type Offset = int
+
+// SearchText defines model for SearchText.
+type SearchText = string
+
 // ListContentNodesParams defines parameters for ListContentNodes.
 type ListContentNodesParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
 	// ContentType When given, only content nodes of this type are returned.
 	ContentType *ListContentNodesParamsContentType `form:"content_type,omitempty" json:"content_type,omitempty"`
 
@@ -2494,12 +2594,36 @@ type ListContentNodesParamsDifficultyLevel string
 
 // ListCoursesParams defines parameters for ListCourses.
 type ListCoursesParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Levels Restricts the results to courses at any of these levels.
+	Levels *[]ListCoursesParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
+
+	// CreatedBy Restricts the results to courses created by this user.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// SkillIds Restricts the results to courses classified with at least one of these skills.
+	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
+	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+
 	// Status Restricts the results to courses in this status. Only
 	// teachers and admins may use this parameter; a student's
 	// results are always implicitly published regardless of this
 	// parameter.
 	Status *ListCoursesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
 }
+
+// ListCoursesParamsLevels defines parameters for ListCourses.
+type ListCoursesParamsLevels string
 
 // ListCoursesParamsStatus defines parameters for ListCourses.
 type ListCoursesParamsStatus string
@@ -2518,6 +2642,12 @@ type ListDiagramsParams struct {
 
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
 	// SkillId When given, only exercises linked to this exact skill id are
 	// returned.
 	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
@@ -2528,6 +2658,18 @@ type ListExercisesParams struct {
 
 // ListExercisesParamsExerciseType defines parameters for ListExercises.
 type ListExercisesParamsExerciseType string
+
+// ListLearningPathsParams defines parameters for ListLearningPaths.
+type ListLearningPathsParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
@@ -2667,6 +2809,9 @@ type ServerInterface interface {
 	// Publish a content node's current draft
 	// (POST /content-nodes/{content_node_id}/publish)
 	PublishContentNode(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
+	// List a content node's published version history
+	// (GET /content-nodes/{content_node_id}/versions)
+	ListContentNodeVersions(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
 	// List courses
 	// (GET /courses)
 	ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams)
@@ -2732,7 +2877,7 @@ type ServerInterface interface {
 	CreateInstrument(w http.ResponseWriter, r *http.Request)
 	// List learning paths for authoring
 	// (GET /learning-paths)
-	ListLearningPaths(w http.ResponseWriter, r *http.Request)
+	ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams)
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(w http.ResponseWriter, r *http.Request)
@@ -2778,6 +2923,9 @@ type ServerInterface interface {
 	// Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
+	// List the authenticated student's standalone paths
+	// (GET /students/me/student-paths)
+	ListMyStandalonePaths(w http.ResponseWriter, r *http.Request)
 	// Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID)
@@ -2910,6 +3058,12 @@ func (_ Unimplemented) PublishContentNode(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List a content node's published version history
+// (GET /content-nodes/{content_node_id}/versions)
+func (_ Unimplemented) ListContentNodeVersions(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // List courses
 // (GET /courses)
 func (_ Unimplemented) ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams) {
@@ -3038,7 +3192,7 @@ func (_ Unimplemented) CreateInstrument(w http.ResponseWriter, r *http.Request) 
 
 // List learning paths for authoring
 // (GET /learning-paths)
-func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3129,6 +3283,12 @@ func (_ Unimplemented) GetMyPath(w http.ResponseWriter, r *http.Request) {
 // Archive a standalone student path
 // (POST /students/me/paths/{student_path_id}/archive)
 func (_ Unimplemented) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the authenticated student's standalone paths
+// (GET /students/me/student-paths)
+func (_ Unimplemented) ListMyStandalonePaths(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3391,6 +3551,30 @@ func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *ht
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListContentNodesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
 
 	// ------------- Optional query parameter "content_type" -------------
 
@@ -3783,6 +3967,37 @@ func (siw *ServerInterfaceWrapper) PublishContentNode(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// ListContentNodeVersions operation middleware
+func (siw *ServerInterfaceWrapper) ListContentNodeVersions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "content_node_id" -------------
+	var contentNodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "content_node_id", chi.URLParam(r, "content_node_id"), &contentNodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "content_node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListContentNodeVersions(w, r, contentNodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListCourses operation middleware
 func (siw *ServerInterfaceWrapper) ListCourses(w http.ResponseWriter, r *http.Request) {
 
@@ -3796,6 +4011,62 @@ func (siw *ServerInterfaceWrapper) ListCourses(w http.ResponseWriter, r *http.Re
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListCoursesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "levels" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "levels", r.URL.Query(), &params.Levels)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "levels", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		return
+	}
 
 	// ------------- Optional query parameter "status" -------------
 
@@ -4136,6 +4407,22 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListExercisesParams
 
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
 	// ------------- Optional query parameter "skill_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "skill_id", r.URL.Query(), &params.SkillId)
@@ -4395,14 +4682,43 @@ func (siw *ServerInterfaceWrapper) CreateInstrument(w http.ResponseWriter, r *ht
 // ListLearningPaths operation middleware
 func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLearningPathsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListLearningPaths(w, r)
+		siw.Handler.ListLearningPaths(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4789,6 +5105,26 @@ func (siw *ServerInterfaceWrapper) ArchiveStandaloneStudentPath(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
+// ListMyStandalonePaths operation middleware
+func (siw *ServerInterfaceWrapper) ListMyStandalonePaths(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMyStandalonePaths(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AssignLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) AssignLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -5051,6 +5387,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/content-nodes/{content_node_id}/publish", wrapper.PublishContentNode)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/content-nodes/{content_node_id}/versions", wrapper.ListContentNodeVersions)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/courses", wrapper.ListCourses)
 	})
 	r.Group(func(r chi.Router) {
@@ -5160,6 +5499,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/paths/{student_path_id}/archive", wrapper.ArchiveStandaloneStudentPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/student-paths", wrapper.ListMyStandalonePaths)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/{student_id}/student-paths", wrapper.AssignLearningPath)
@@ -5476,11 +5818,20 @@ type ListContentNodesResponseObject interface {
 	VisitListContentNodesResponse(w http.ResponseWriter) error
 }
 
-type ListContentNodes200JSONResponse []ContentNode
+type ListContentNodes200JSONResponse PagedContentNodes
 
 func (response ListContentNodes200JSONResponse) VisitListContentNodesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodes400JSONResponse ValidationError
+
+func (response ListContentNodes400JSONResponse) VisitListContentNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -5997,6 +6348,50 @@ func (response PublishContentNode404JSONResponse) VisitPublishContentNodeRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListContentNodeVersionsRequestObject struct {
+	ContentNodeId openapi_types.UUID `json:"content_node_id"`
+}
+
+type ListContentNodeVersionsResponseObject interface {
+	VisitListContentNodeVersionsResponse(w http.ResponseWriter) error
+}
+
+type ListContentNodeVersions200JSONResponse []ContentNodeVersion
+
+func (response ListContentNodeVersions200JSONResponse) VisitListContentNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodeVersions401JSONResponse UnauthorizedError
+
+func (response ListContentNodeVersions401JSONResponse) VisitListContentNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodeVersions403JSONResponse ForbiddenError
+
+func (response ListContentNodeVersions403JSONResponse) VisitListContentNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListContentNodeVersions404JSONResponse NotFoundError
+
+func (response ListContentNodeVersions404JSONResponse) VisitListContentNodeVersionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListCoursesRequestObject struct {
 	Params ListCoursesParams
 }
@@ -6005,11 +6400,20 @@ type ListCoursesResponseObject interface {
 	VisitListCoursesResponse(w http.ResponseWriter) error
 }
 
-type ListCourses200JSONResponse []CourseCatalogEntry
+type ListCourses200JSONResponse PagedCourseCatalog
 
 func (response ListCourses200JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourses400JSONResponse ValidationError
+
+func (response ListCourses400JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -6019,6 +6423,15 @@ type ListCourses401JSONResponse UnauthorizedError
 func (response ListCourses401JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourses403JSONResponse ForbiddenError
+
+func (response ListCourses403JSONResponse) VisitListCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -6455,11 +6868,20 @@ type ListExercisesResponseObject interface {
 	VisitListExercisesResponse(w http.ResponseWriter) error
 }
 
-type ListExercises200JSONResponse []Exercise
+type ListExercises200JSONResponse PagedExercises
 
 func (response ListExercises200JSONResponse) VisitListExercisesResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExercises400JSONResponse ValidationError
+
+func (response ListExercises400JSONResponse) VisitListExercisesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -6833,17 +7255,27 @@ func (response CreateInstrument403JSONResponse) VisitCreateInstrumentResponse(w 
 }
 
 type ListLearningPathsRequestObject struct {
+	Params ListLearningPathsParams
 }
 
 type ListLearningPathsResponseObject interface {
 	VisitListLearningPathsResponse(w http.ResponseWriter) error
 }
 
-type ListLearningPaths200JSONResponse []LearningPath
+type ListLearningPaths200JSONResponse PagedLearningPaths
 
 func (response ListLearningPaths200JSONResponse) VisitListLearningPathsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPaths400JSONResponse ValidationError
+
+func (response ListLearningPaths400JSONResponse) VisitListLearningPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -7531,6 +7963,40 @@ func (response ArchiveStandaloneStudentPath409JSONResponse) VisitArchiveStandalo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListMyStandalonePathsRequestObject struct {
+}
+
+type ListMyStandalonePathsResponseObject interface {
+	VisitListMyStandalonePathsResponse(w http.ResponseWriter) error
+}
+
+type ListMyStandalonePaths200JSONResponse []StudentPath
+
+func (response ListMyStandalonePaths200JSONResponse) VisitListMyStandalonePathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListMyStandalonePaths401JSONResponse UnauthorizedError
+
+func (response ListMyStandalonePaths401JSONResponse) VisitListMyStandalonePathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListMyStandalonePaths403JSONResponse ForbiddenError
+
+func (response ListMyStandalonePaths403JSONResponse) VisitListMyStandalonePathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type AssignLearningPathRequestObject struct {
 	StudentId openapi_types.UUID `json:"student_id"`
 	Body      *AssignLearningPathJSONRequestBody
@@ -7766,6 +8232,9 @@ type StrictServerInterface interface {
 	// Publish a content node's current draft
 	// (POST /content-nodes/{content_node_id}/publish)
 	PublishContentNode(ctx context.Context, request PublishContentNodeRequestObject) (PublishContentNodeResponseObject, error)
+	// List a content node's published version history
+	// (GET /content-nodes/{content_node_id}/versions)
+	ListContentNodeVersions(ctx context.Context, request ListContentNodeVersionsRequestObject) (ListContentNodeVersionsResponseObject, error)
 	// List courses
 	// (GET /courses)
 	ListCourses(ctx context.Context, request ListCoursesRequestObject) (ListCoursesResponseObject, error)
@@ -7877,6 +8346,9 @@ type StrictServerInterface interface {
 	// Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(ctx context.Context, request ArchiveStandaloneStudentPathRequestObject) (ArchiveStandaloneStudentPathResponseObject, error)
+	// List the authenticated student's standalone paths
+	// (GET /students/me/student-paths)
+	ListMyStandalonePaths(ctx context.Context, request ListMyStandalonePathsRequestObject) (ListMyStandalonePathsResponseObject, error)
 	// Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(ctx context.Context, request AssignLearningPathRequestObject) (AssignLearningPathResponseObject, error)
@@ -8447,6 +8919,32 @@ func (sh *strictHandler) PublishContentNode(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PublishContentNodeResponseObject); ok {
 		if err := validResponse.VisitPublishContentNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListContentNodeVersions operation middleware
+func (sh *strictHandler) ListContentNodeVersions(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID) {
+	var request ListContentNodeVersionsRequestObject
+
+	request.ContentNodeId = contentNodeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListContentNodeVersions(ctx, request.(ListContentNodeVersionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListContentNodeVersions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListContentNodeVersionsResponseObject); ok {
+		if err := validResponse.VisitListContentNodeVersionsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -9045,8 +9543,10 @@ func (sh *strictHandler) CreateInstrument(w http.ResponseWriter, r *http.Request
 }
 
 // ListLearningPaths operation middleware
-func (sh *strictHandler) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams) {
 	var request ListLearningPathsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListLearningPaths(ctx, request.(ListLearningPathsRequestObject))
@@ -9475,6 +9975,30 @@ func (sh *strictHandler) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ArchiveStandaloneStudentPathResponseObject); ok {
 		if err := validResponse.VisitArchiveStandaloneStudentPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMyStandalonePaths operation middleware
+func (sh *strictHandler) ListMyStandalonePaths(w http.ResponseWriter, r *http.Request) {
+	var request ListMyStandalonePathsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMyStandalonePaths(ctx, request.(ListMyStandalonePathsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMyStandalonePaths")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMyStandalonePathsResponseObject); ok {
+		if err := validResponse.VisitListMyStandalonePathsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
