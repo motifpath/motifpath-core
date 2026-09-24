@@ -38,6 +38,11 @@ func (Diagram) Fields() []ent.Field {
 			Values("interval", "note", "hidden").
 			Default("interval"),
 
+		// color is the general marker color as #RRGGBB; NULL = unrecorded.
+		field.String("color").
+			Optional().
+			Nillable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

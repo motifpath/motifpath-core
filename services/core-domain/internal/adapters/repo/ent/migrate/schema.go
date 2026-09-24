@@ -372,6 +372,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "root_note", Type: field.TypeString, Nullable: true},
 		{Name: "label_display", Type: field.TypeEnum, Enums: []string{"interval", "note", "hidden"}, Default: "interval"},
+		{Name: "color", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "instrument_id", Type: field.TypeUUID},
 	}
@@ -383,7 +384,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[5]},
+				Columns:    []*schema.Column{DiagramsColumns[6]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -715,6 +716,7 @@ var (
 		{Name: "interval", Type: field.TypeString},
 		{Name: "note_name", Type: field.TypeString},
 		{Name: "shape", Type: field.TypeEnum, Enums: []string{"dot", "square", "star"}, Default: "dot"},
+		{Name: "color", Type: field.TypeString, Nullable: true},
 		{Name: "sequence_index", Type: field.TypeInt, Nullable: true},
 		{Name: "string_number", Type: field.TypeInt, Nullable: true},
 		{Name: "fret", Type: field.TypeInt, Nullable: true},
@@ -729,7 +731,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "positions_diagrams_positions",
-				Columns:    []*schema.Column{PositionsColumns[9]},
+				Columns:    []*schema.Column{PositionsColumns[10]},
 				RefColumns: []*schema.Column{DiagramsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -738,7 +740,7 @@ var (
 			{
 				Name:    "position_diagram_id_ordinal",
 				Unique:  true,
-				Columns: []*schema.Column{PositionsColumns[9], PositionsColumns[1]},
+				Columns: []*schema.Column{PositionsColumns[10], PositionsColumns[1]},
 			},
 		},
 	}

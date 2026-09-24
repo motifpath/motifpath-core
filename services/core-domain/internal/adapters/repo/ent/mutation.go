@@ -10241,6 +10241,7 @@ type DiagramMutation struct {
 	name                    *string
 	root_note               *string
 	label_display           *diagram.LabelDisplay
+	color                   *string
 	created_at              *time.Time
 	clearedFields           map[string]struct{}
 	instrument              *uuid.UUID
@@ -10524,6 +10525,55 @@ func (m *DiagramMutation) OldLabelDisplay(ctx context.Context) (v diagram.LabelD
 // ResetLabelDisplay resets all changes to the "label_display" field.
 func (m *DiagramMutation) ResetLabelDisplay() {
 	m.label_display = nil
+}
+
+// SetColor sets the "color" field.
+func (m *DiagramMutation) SetColor(s string) {
+	m.color = &s
+}
+
+// Color returns the value of the "color" field in the mutation.
+func (m *DiagramMutation) Color() (r string, exists bool) {
+	v := m.color
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldColor returns the old "color" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldColor(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldColor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldColor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldColor: %w", err)
+	}
+	return oldValue.Color, nil
+}
+
+// ClearColor clears the value of the "color" field.
+func (m *DiagramMutation) ClearColor() {
+	m.color = nil
+	m.clearedFields[diagram.FieldColor] = struct{}{}
+}
+
+// ColorCleared returns if the "color" field was cleared in this mutation.
+func (m *DiagramMutation) ColorCleared() bool {
+	_, ok := m.clearedFields[diagram.FieldColor]
+	return ok
+}
+
+// ResetColor resets all changes to the "color" field.
+func (m *DiagramMutation) ResetColor() {
+	m.color = nil
+	delete(m.clearedFields, diagram.FieldColor)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -10893,7 +10943,7 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
@@ -10905,6 +10955,9 @@ func (m *DiagramMutation) Fields() []string {
 	}
 	if m.label_display != nil {
 		fields = append(fields, diagram.FieldLabelDisplay)
+	}
+	if m.color != nil {
+		fields = append(fields, diagram.FieldColor)
 	}
 	if m.created_at != nil {
 		fields = append(fields, diagram.FieldCreatedAt)
@@ -10925,6 +10978,8 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.RootNote()
 	case diagram.FieldLabelDisplay:
 		return m.LabelDisplay()
+	case diagram.FieldColor:
+		return m.Color()
 	case diagram.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -10944,6 +10999,8 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldRootNote(ctx)
 	case diagram.FieldLabelDisplay:
 		return m.OldLabelDisplay(ctx)
+	case diagram.FieldColor:
+		return m.OldColor(ctx)
 	case diagram.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -10982,6 +11039,13 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLabelDisplay(v)
+		return nil
+	case diagram.FieldColor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetColor(v)
 		return nil
 	case diagram.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -11023,6 +11087,9 @@ func (m *DiagramMutation) ClearedFields() []string {
 	if m.FieldCleared(diagram.FieldRootNote) {
 		fields = append(fields, diagram.FieldRootNote)
 	}
+	if m.FieldCleared(diagram.FieldColor) {
+		fields = append(fields, diagram.FieldColor)
+	}
 	return fields
 }
 
@@ -11039,6 +11106,9 @@ func (m *DiagramMutation) ClearField(name string) error {
 	switch name {
 	case diagram.FieldRootNote:
 		m.ClearRootNote()
+		return nil
+	case diagram.FieldColor:
+		m.ClearColor()
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram nullable field %s", name)
@@ -11059,6 +11129,9 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldLabelDisplay:
 		m.ResetLabelDisplay()
+		return nil
+	case diagram.FieldColor:
+		m.ResetColor()
 		return nil
 	case diagram.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -21021,6 +21094,7 @@ type PositionMutation struct {
 	interval          *string
 	note_name         *string
 	shape             *position.Shape
+	color             *string
 	sequence_index    *int
 	addsequence_index *int
 	string_number     *int
@@ -21338,6 +21412,55 @@ func (m *PositionMutation) OldShape(ctx context.Context) (v position.Shape, err 
 // ResetShape resets all changes to the "shape" field.
 func (m *PositionMutation) ResetShape() {
 	m.shape = nil
+}
+
+// SetColor sets the "color" field.
+func (m *PositionMutation) SetColor(s string) {
+	m.color = &s
+}
+
+// Color returns the value of the "color" field in the mutation.
+func (m *PositionMutation) Color() (r string, exists bool) {
+	v := m.color
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldColor returns the old "color" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldColor(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldColor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldColor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldColor: %w", err)
+	}
+	return oldValue.Color, nil
+}
+
+// ClearColor clears the value of the "color" field.
+func (m *PositionMutation) ClearColor() {
+	m.color = nil
+	m.clearedFields[position.FieldColor] = struct{}{}
+}
+
+// ColorCleared returns if the "color" field was cleared in this mutation.
+func (m *PositionMutation) ColorCleared() bool {
+	_, ok := m.clearedFields[position.FieldColor]
+	return ok
+}
+
+// ResetColor resets all changes to the "color" field.
+func (m *PositionMutation) ResetColor() {
+	m.color = nil
+	delete(m.clearedFields, position.FieldColor)
 }
 
 // SetSequenceIndex sets the "sequence_index" field.
@@ -21660,7 +21783,7 @@ func (m *PositionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PositionMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.diagram != nil {
 		fields = append(fields, position.FieldDiagramID)
 	}
@@ -21675,6 +21798,9 @@ func (m *PositionMutation) Fields() []string {
 	}
 	if m.shape != nil {
 		fields = append(fields, position.FieldShape)
+	}
+	if m.color != nil {
+		fields = append(fields, position.FieldColor)
 	}
 	if m.sequence_index != nil {
 		fields = append(fields, position.FieldSequenceIndex)
@@ -21706,6 +21832,8 @@ func (m *PositionMutation) Field(name string) (ent.Value, bool) {
 		return m.NoteName()
 	case position.FieldShape:
 		return m.Shape()
+	case position.FieldColor:
+		return m.Color()
 	case position.FieldSequenceIndex:
 		return m.SequenceIndex()
 	case position.FieldStringNumber:
@@ -21733,6 +21861,8 @@ func (m *PositionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldNoteName(ctx)
 	case position.FieldShape:
 		return m.OldShape(ctx)
+	case position.FieldColor:
+		return m.OldColor(ctx)
 	case position.FieldSequenceIndex:
 		return m.OldSequenceIndex(ctx)
 	case position.FieldStringNumber:
@@ -21784,6 +21914,13 @@ func (m *PositionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetShape(v)
+		return nil
+	case position.FieldColor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetColor(v)
 		return nil
 	case position.FieldSequenceIndex:
 		v, ok := value.(int)
@@ -21894,6 +22031,9 @@ func (m *PositionMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *PositionMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(position.FieldColor) {
+		fields = append(fields, position.FieldColor)
+	}
 	if m.FieldCleared(position.FieldSequenceIndex) {
 		fields = append(fields, position.FieldSequenceIndex)
 	}
@@ -21920,6 +22060,9 @@ func (m *PositionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *PositionMutation) ClearField(name string) error {
 	switch name {
+	case position.FieldColor:
+		m.ClearColor()
+		return nil
 	case position.FieldSequenceIndex:
 		m.ClearSequenceIndex()
 		return nil
@@ -21954,6 +22097,9 @@ func (m *PositionMutation) ResetField(name string) error {
 		return nil
 	case position.FieldShape:
 		m.ResetShape()
+		return nil
+	case position.FieldColor:
+		m.ResetColor()
 		return nil
 	case position.FieldSequenceIndex:
 		m.ResetSequenceIndex()

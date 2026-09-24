@@ -71,6 +71,11 @@ func RootNote(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldRootNote, v))
 }
 
+// Color applies equality check predicate on the "color" field. It's identical to ColorEQ.
+func Color(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldColor, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldCreatedAt, v))
@@ -254,6 +259,81 @@ func LabelDisplayIn(vs ...LabelDisplay) predicate.Diagram {
 // LabelDisplayNotIn applies the NotIn predicate on the "label_display" field.
 func LabelDisplayNotIn(vs ...LabelDisplay) predicate.Diagram {
 	return predicate.Diagram(sql.FieldNotIn(FieldLabelDisplay, vs...))
+}
+
+// ColorEQ applies the EQ predicate on the "color" field.
+func ColorEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldColor, v))
+}
+
+// ColorNEQ applies the NEQ predicate on the "color" field.
+func ColorNEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldColor, v))
+}
+
+// ColorIn applies the In predicate on the "color" field.
+func ColorIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldColor, vs...))
+}
+
+// ColorNotIn applies the NotIn predicate on the "color" field.
+func ColorNotIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldColor, vs...))
+}
+
+// ColorGT applies the GT predicate on the "color" field.
+func ColorGT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldColor, v))
+}
+
+// ColorGTE applies the GTE predicate on the "color" field.
+func ColorGTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldColor, v))
+}
+
+// ColorLT applies the LT predicate on the "color" field.
+func ColorLT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldColor, v))
+}
+
+// ColorLTE applies the LTE predicate on the "color" field.
+func ColorLTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldColor, v))
+}
+
+// ColorContains applies the Contains predicate on the "color" field.
+func ColorContains(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContains(FieldColor, v))
+}
+
+// ColorHasPrefix applies the HasPrefix predicate on the "color" field.
+func ColorHasPrefix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasPrefix(FieldColor, v))
+}
+
+// ColorHasSuffix applies the HasSuffix predicate on the "color" field.
+func ColorHasSuffix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasSuffix(FieldColor, v))
+}
+
+// ColorIsNil applies the IsNil predicate on the "color" field.
+func ColorIsNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldIsNull(FieldColor))
+}
+
+// ColorNotNil applies the NotNil predicate on the "color" field.
+func ColorNotNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotNull(FieldColor))
+}
+
+// ColorEqualFold applies the EqualFold predicate on the "color" field.
+func ColorEqualFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEqualFold(FieldColor, v))
+}
+
+// ColorContainsFold applies the ContainsFold predicate on the "color" field.
+func ColorContainsFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContainsFold(FieldColor, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

@@ -106,6 +106,26 @@ func (_u *PositionUpdate) SetNillableShape(v *position.Shape) *PositionUpdate {
 	return _u
 }
 
+// SetColor sets the "color" field.
+func (_u *PositionUpdate) SetColor(v string) *PositionUpdate {
+	_u.mutation.SetColor(v)
+	return _u
+}
+
+// SetNillableColor sets the "color" field if the given value is not nil.
+func (_u *PositionUpdate) SetNillableColor(v *string) *PositionUpdate {
+	if v != nil {
+		_u.SetColor(*v)
+	}
+	return _u
+}
+
+// ClearColor clears the value of the "color" field.
+func (_u *PositionUpdate) ClearColor() *PositionUpdate {
+	_u.mutation.ClearColor()
+	return _u
+}
+
 // SetSequenceIndex sets the "sequence_index" field.
 func (_u *PositionUpdate) SetSequenceIndex(v int) *PositionUpdate {
 	_u.mutation.ResetSequenceIndex()
@@ -290,6 +310,12 @@ func (_u *PositionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Shape(); ok {
 		_spec.SetField(position.FieldShape, field.TypeEnum, value)
 	}
+	if value, ok := _u.mutation.Color(); ok {
+		_spec.SetField(position.FieldColor, field.TypeString, value)
+	}
+	if _u.mutation.ColorCleared() {
+		_spec.ClearField(position.FieldColor, field.TypeString)
+	}
 	if value, ok := _u.mutation.SequenceIndex(); ok {
 		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
 	}
@@ -446,6 +472,26 @@ func (_u *PositionUpdateOne) SetNillableShape(v *position.Shape) *PositionUpdate
 	if v != nil {
 		_u.SetShape(*v)
 	}
+	return _u
+}
+
+// SetColor sets the "color" field.
+func (_u *PositionUpdateOne) SetColor(v string) *PositionUpdateOne {
+	_u.mutation.SetColor(v)
+	return _u
+}
+
+// SetNillableColor sets the "color" field if the given value is not nil.
+func (_u *PositionUpdateOne) SetNillableColor(v *string) *PositionUpdateOne {
+	if v != nil {
+		_u.SetColor(*v)
+	}
+	return _u
+}
+
+// ClearColor clears the value of the "color" field.
+func (_u *PositionUpdateOne) ClearColor() *PositionUpdateOne {
+	_u.mutation.ClearColor()
 	return _u
 }
 
@@ -662,6 +708,12 @@ func (_u *PositionUpdateOne) sqlSave(ctx context.Context) (_node *Position, err 
 	}
 	if value, ok := _u.mutation.Shape(); ok {
 		_spec.SetField(position.FieldShape, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Color(); ok {
+		_spec.SetField(position.FieldColor, field.TypeString, value)
+	}
+	if _u.mutation.ColorCleared() {
+		_spec.ClearField(position.FieldColor, field.TypeString)
 	}
 	if value, ok := _u.mutation.SequenceIndex(); ok {
 		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)

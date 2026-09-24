@@ -81,6 +81,26 @@ func (_u *DiagramUpdate) SetNillableLabelDisplay(v *diagram.LabelDisplay) *Diagr
 	return _u
 }
 
+// SetColor sets the "color" field.
+func (_u *DiagramUpdate) SetColor(v string) *DiagramUpdate {
+	_u.mutation.SetColor(v)
+	return _u
+}
+
+// SetNillableColor sets the "color" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableColor(v *string) *DiagramUpdate {
+	if v != nil {
+		_u.SetColor(*v)
+	}
+	return _u
+}
+
+// ClearColor clears the value of the "color" field.
+func (_u *DiagramUpdate) ClearColor() *DiagramUpdate {
+	_u.mutation.ClearColor()
+	return _u
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdate) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddPositionIDs(ids...)
@@ -329,6 +349,12 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.LabelDisplay(); ok {
 		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Color(); ok {
+		_spec.SetField(diagram.FieldColor, field.TypeString, value)
+	}
+	if _u.mutation.ColorCleared() {
+		_spec.ClearField(diagram.FieldColor, field.TypeString)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -647,6 +673,26 @@ func (_u *DiagramUpdateOne) SetNillableLabelDisplay(v *diagram.LabelDisplay) *Di
 	return _u
 }
 
+// SetColor sets the "color" field.
+func (_u *DiagramUpdateOne) SetColor(v string) *DiagramUpdateOne {
+	_u.mutation.SetColor(v)
+	return _u
+}
+
+// SetNillableColor sets the "color" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableColor(v *string) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetColor(*v)
+	}
+	return _u
+}
+
+// ClearColor clears the value of the "color" field.
+func (_u *DiagramUpdateOne) ClearColor() *DiagramUpdateOne {
+	_u.mutation.ClearColor()
+	return _u
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdateOne) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddPositionIDs(ids...)
@@ -925,6 +971,12 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 	}
 	if value, ok := _u.mutation.LabelDisplay(); ok {
 		_spec.SetField(diagram.FieldLabelDisplay, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Color(); ok {
+		_spec.SetField(diagram.FieldColor, field.TypeString, value)
+	}
+	if _u.mutation.ColorCleared() {
+		_spec.ClearField(diagram.FieldColor, field.TypeString)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
