@@ -12,6 +12,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -112,7 +113,11 @@ func run() error {
 	}
 	log.Printf("seeding a path for existing student %s (clerk_user_id=%s)", student.ID, student.ClerkUserID)
 
-	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
+	identityService := application.NewIdentityService(userRepo, repo.NewEntLanguageRepository(entClient), newID, now)
+	teacher, err := seedTeacher(ctx, identityService)
+	if err != nil {
+		return err
+	}
 
 	classifier := &classificationSeeder{skills: skillService, concepts: conceptService, teacher: teacher}
 	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, studentPathService, classifier, mongoClient.Database(mongoDatabase))
@@ -330,6 +335,29 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	return nil
 }
 
+// seedTeacherClerkUserID is the fake clerk_user_id of the synthetic teacher
+// that authors this script's content and assigns its path — never a real
+// Clerk identity.
+const seedTeacherClerkUserID = "seed_dev_teacher"
+
+// seedTeacher returns the synthetic teacher, registering it with a name on
+// the first run and reusing it on every later one, so what it authors
+// always points at a real, named user.
+func seedTeacher(ctx context.Context, identity *application.IdentityService) (domain.User, error) {
+	teacher, err := identity.ResolveCaller(ctx, seedTeacherClerkUserID, "")
+	if err == nil {
+		return teacher, nil
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, fmt.Errorf("look up seed teacher: %w", err)
+	}
+	teacher, err = identity.RegisterUser(ctx, seedTeacherClerkUserID, domain.RoleTeacher, "en", "Tomás Ribeiro")
+	if err != nil {
+		return domain.User{}, fmt.Errorf("register seed teacher: %w", err)
+	}
+	return teacher, nil
+}
+
 func findFirstStudent(ctx context.Context, client *ent.Client) (domain.User, error) {
 	row, err := client.User.Query().Where(user.RoleEQ(user.Role(domain.RoleStudent))).First(ctx)
 	if err != nil {
@@ -339,6 +367,7 @@ func findFirstStudent(ctx context.Context, client *ent.Client) (domain.User, err
 		ID:           row.ID.String(),
 		ClerkUserID:  row.ClerkUserID,
 		Role:         domain.Role(row.Role),
+		DisplayName:  row.DisplayName,
 		RegisteredAt: row.RegisteredAt,
 	}, nil
 }

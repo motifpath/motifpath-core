@@ -25,10 +25,13 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/clerk/clerk-sdk-go/v2"
+	clerkuser "github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -89,6 +92,10 @@ func run() error {
 		return fmt.Errorf("ensure admin: %w", err)
 	}
 
+	if err := seedStaff(ctx, svc, &deps); err != nil {
+		return fmt.Errorf("seed staff: %w", err)
+	}
+
 	return seedAll(ctx, svc, deps, resources, admin, adminIsFresh)
 }
 
@@ -142,8 +149,14 @@ type seedDeps struct {
 	courseEnrollmentRepo *repo.EntCourseEnrollmentRepository
 	newID                func() string
 	now                  func() time.Time
-	teacher              domain.User
-	classifier           *classificationSeeder
+	// teacher authors every seeded content node, path and course, and
+	// synthAdmin stands in for an admin where one is needed but no real
+	// admin was bootstrapped. Both are saved users with names (see
+	// seedStaff): everything that points at a user must point at a real,
+	// named one.
+	teacher    domain.User
+	synthAdmin domain.User
+	classifier *classificationSeeder
 }
 
 // wireServices builds every repository and application service seeding
@@ -197,15 +210,40 @@ func wireServices(res resources) (services, seedDeps) {
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now),
 	}
 
-	teacher := domain.User{ID: newID(), Role: domain.RoleTeacher}
 	return svc, seedDeps{
 		userRepo:             userRepo,
 		courseEnrollmentRepo: courseEnrollmentRepo,
 		newID:                newID,
 		now:                  now,
-		teacher:              teacher,
-		classifier:           &classificationSeeder{skills: svc.skill, concepts: svc.concept, teacher: teacher},
 	}
+}
+
+// seedStaff saves the synthetic teacher and admin every seeding step acts
+// as — fake clerk_user_id values, never real Clerk identities — and points
+// deps and its classifier at them. The teacher registers like any teacher;
+// the admin goes through userRepo directly because self-registration can
+// never grant admin (see ensureAdmin).
+func seedStaff(ctx context.Context, svc services, deps *seedDeps) error {
+	teacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_tomas", domain.RoleTeacher, "en", "Tomás Ribeiro")
+	if err != nil {
+		return fmt.Errorf("register seed teacher: %w", err)
+	}
+	synthAdmin := domain.User{
+		ID:           deps.newID(),
+		ClerkUserID:  "seed_admin_marina",
+		Role:         domain.RoleAdmin,
+		DisplayName:  "Marina Alves",
+		Locale:       domain.Language{Code: "en"},
+		RegisteredAt: deps.now(),
+	}
+	if err := deps.userRepo.Create(ctx, synthAdmin); err != nil {
+		return fmt.Errorf("create seed admin: %w", err)
+	}
+	deps.teacher = teacher
+	deps.synthAdmin = synthAdmin
+	deps.classifier = &classificationSeeder{skills: svc.skill, concepts: svc.concept, teacher: teacher}
+	log.Printf("seeded synthetic teacher %q and admin %q", teacher.DisplayName, synthAdmin.DisplayName)
+	return nil
 }
 
 // seedAll runs every seeding step in dependency order, logging a one-line
@@ -231,7 +269,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
 
-	diagram, err := seedInstrumentAndDiagram(ctx, teacher, templateCurator(admin), svc.instrument, svc.diagram, classifier)
+	diagram, err := seedInstrumentAndDiagram(ctx, teacher, templateCurator(admin, deps.synthAdmin), svc.instrument, svc.diagram, classifier)
 	if err != nil {
 		return fmt.Errorf("seed instrument and diagram: %w", err)
 	}
@@ -253,20 +291,20 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded 2 learning path templates: %q, %q", templateA.Title, templateB.Title)
 
-	courses, err := seedCourses(ctx, teacher, svc.course, templateA.ID, templateB.ID)
+	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID)
 	if err != nil {
 		return fmt.Errorf("seed courses: %w", err)
 	}
 	log.Printf("seeded courses: draft=%s published(2 checkpoints)=%s single-checkpoint=%s retired=%s",
 		courses.draft.ID, courses.published.ID, courses.single.ID, courses.retired.ID)
 
-	brunoEnrollmentID, err := seedEnrollments(ctx, svc, deps.courseEnrollmentRepo, students, courses, nodes, res.mongoDB)
+	brunoEnrollmentID, err := seedEnrollments(ctx, svc, deps.courseEnrollmentRepo, teacher, students, courses, nodes, res.mongoDB)
 	if err != nil {
 		return fmt.Errorf("seed enrollments: %w", err)
 	}
 	log.Println("seeded enrollments: active@checkpoint1, active@checkpoint2, completed, abandoned")
 
-	if err := seedStandalonePaths(ctx, svc, students, templateA.ID, templateB.ID, brunoEnrollmentID, nodes, res.mongoDB); err != nil {
+	if err := seedStandalonePaths(ctx, svc, teacher, students, templateA.ID, templateB.ID, brunoEnrollmentID, nodes, res.mongoDB); err != nil {
 		return fmt.Errorf("seed standalone paths: %w", err)
 	}
 	log.Println("seeded standalone paths: current, and archived-while-course-active")
@@ -310,6 +348,7 @@ func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRep
 			ID:           row.ID.String(),
 			ClerkUserID:  row.ClerkUserID,
 			Role:         domain.Role(row.Role),
+			DisplayName:  row.DisplayName,
 			RegisteredAt: row.RegisteredAt,
 		}, false, nil
 	}
@@ -320,6 +359,7 @@ func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRep
 		ID:           newID(),
 		ClerkUserID:  clerkUserID,
 		Role:         domain.RoleAdmin,
+		DisplayName:  adminDisplayName(ctx, clerkUserID),
 		Locale:       domain.Language{Code: "en"},
 		RegisteredAt: now(),
 	}
@@ -328,6 +368,41 @@ func ensureAdmin(ctx context.Context, client *ent.Client, userRepo ports.UserRep
 	}
 	log.Printf("created %s as admin", clerkUserID)
 	return admin, true, nil
+}
+
+// placeholderAdminName is the name a bootstrapped admin gets when Clerk
+// can't be asked for the real one. It is temporary either way: the admin's
+// real name replaces it on their first authenticated request.
+const placeholderAdminName = "MotifPath admin"
+
+// adminDisplayName asks the Clerk Backend API for clerkUserID's full name,
+// the same name the session token's "name" claim will carry. Seeding must
+// not fail over a cosmetic value, so when CLERK_SECRET_KEY isn't set or the
+// lookup fails, it logs why and returns placeholderAdminName.
+func adminDisplayName(ctx context.Context, clerkUserID string) string {
+	secretKey := os.Getenv("CLERK_SECRET_KEY")
+	if secretKey == "" {
+		log.Printf("CLERK_SECRET_KEY not set — admin gets the placeholder name %q until their first sign-in", placeholderAdminName)
+		return placeholderAdminName
+	}
+	clerk.SetKey(secretKey)
+	u, err := clerkuser.Get(ctx, clerkUserID)
+	if err != nil {
+		log.Printf("could not read admin %s from Clerk (%v) — using the placeholder name %q until their first sign-in", clerkUserID, err, placeholderAdminName)
+		return placeholderAdminName
+	}
+	var parts []string
+	for _, part := range []*string{u.FirstName, u.LastName} {
+		if part != nil && strings.TrimSpace(*part) != "" {
+			parts = append(parts, strings.TrimSpace(*part))
+		}
+	}
+	name, ok := domain.NormalizeDisplayName(strings.Join(parts, " "))
+	if !ok {
+		log.Printf("admin %s has no name in Clerk — using the placeholder name %q until they add one", clerkUserID, placeholderAdminName)
+		return placeholderAdminName
+	}
+	return name
 }
 
 // classificationSeeder resolves plain skill/concept names to real Skill/
@@ -381,17 +456,18 @@ func (c *classificationSeeder) conceptID(ctx context.Context, name string) (stri
 type seedStudentSpec struct {
 	key         string // stable lookup key into the returned map
 	clerkUserID string
+	displayName string
 }
 
 func seedStudents(ctx context.Context, identity *application.IdentityService) (map[string]domain.User, error) {
 	specs := []seedStudentSpec{
-		{"alice", "seed_student_alice"},
-		{"bruno", "seed_student_bruno"},
-		{"carla", "seed_student_carla"},
+		{"alice", "seed_student_alice", "Alice Martins"},
+		{"bruno", "seed_student_bruno", "Bruno Costa"},
+		{"carla", "seed_student_carla", "Carla Nunes"},
 	}
 	result := make(map[string]domain.User, len(specs))
 	for _, spec := range specs {
-		u, err := identity.RegisterUser(ctx, spec.clerkUserID, domain.RoleStudent, "en")
+		u, err := identity.RegisterUser(ctx, spec.clerkUserID, domain.RoleStudent, "en", spec.displayName)
 		if err != nil {
 			return nil, fmt.Errorf("register student %q: %w", spec.key, err)
 		}
@@ -457,15 +533,14 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 
 // templateCurator returns the admin that owns seeded basic diagrams: the
 // bootstrapped admin when there is one (the zero user, which is also who
-// the ownership migration assigns pre-existing diagrams to), otherwise an
-// unpersisted synthetic admin identity, as seedCourses uses — a diagram's
-// creator is a plain id with no foreign key, and a basic diagram is
-// editable by every admin whoever created it.
-func templateCurator(admin domain.User) domain.User {
+// the ownership migration assigns pre-existing diagrams to), otherwise the
+// synthetic seed admin — a basic diagram is editable by every admin
+// whoever created it.
+func templateCurator(admin, synthAdmin domain.User) domain.User {
 	if admin.ID != "" {
 		return admin
 	}
-	return domain.User{ID: uuid.NewString(), Role: domain.RoleAdmin}
+	return synthAdmin
 }
 
 // seedInstrumentAndDiagram creates one fretted Instrument ("Guitar", standard
@@ -629,8 +704,7 @@ type seededCourses struct {
 	retired   domain.Course
 }
 
-func seedCourses(ctx context.Context, teacher domain.User, courseSvc *application.CourseService, templateAID, templateBID string) (seededCourses, error) {
-	admin := domain.User{ID: uuid.NewString(), Role: domain.RoleAdmin}
+func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *application.CourseService, templateAID, templateBID string) (seededCourses, error) {
 
 	draft, err := courseSvc.CreateCourse(ctx, teacher, "Draft Course — Never Published", "A course still being authored.", domain.DifficultyLevelBeginner,
 		[]application.CheckpointInput{{LearningPathID: templateAID}})
@@ -682,7 +756,7 @@ func seedCourses(ctx context.Context, teacher domain.User, courseSvc *applicatio
 // carla's enrollment is marked completed; alice also picks up a second,
 // abandoned enrollment in the single-checkpoint course, so her own
 // enrollment list alone already shows active + abandoned.
-func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.EntCourseEnrollmentRepository, students map[string]domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) (string, error) {
+func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.EntCourseEnrollmentRepository, teacher domain.User, students map[string]domain.User, courses seededCourses, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) (string, error) {
 	aliceCtx := students["alice"]
 	brunoCtx := students["bruno"]
 	carlaCtx := students["carla"]
@@ -705,7 +779,6 @@ func seedEnrollments(ctx context.Context, svc services, enrollmentRepo *repo.Ent
 	if err != nil {
 		return "", fmt.Errorf("resolve published course's latest version: %w", err)
 	}
-	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
 	template, err := resolveCheckpointTemplate(ctx, svc, teacher, latestPublished, 2)
 	if err != nil {
 		return "", fmt.Errorf("resolve checkpoint 2 template: %w", err)
@@ -756,8 +829,7 @@ func resolveCheckpointTemplate(ctx context.Context, svc services, caller domain.
 // is switched back off current before archiving it, exercising the same
 // "archive a non-current path" path the application layer's conflict guard
 // allows unconditionally.
-func seedStandalonePaths(ctx context.Context, svc services, students map[string]domain.User, templateAID, templateBID, brunoEnrollmentID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
-	teacher := domain.User{ID: uuid.NewString(), Role: domain.RoleTeacher}
+func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User, students map[string]domain.User, templateAID, templateBID, brunoEnrollmentID string, nodes map[string]domain.ContentNode, mongoDB *mongo.Database) error {
 
 	carlaCtx := students["carla"]
 	templateA, err := svc.path.GetLearningPath(ctx, teacher, templateAID)
