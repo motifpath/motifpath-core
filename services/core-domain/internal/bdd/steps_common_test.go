@@ -246,6 +246,7 @@ func (w *world) threeDistinctIdentifiersReturned() error {
 func (w *world) noAuthToken() error {
 	w.hasToken = false
 	w.clerkSub = ""
+	w.persona = ""
 	return nil
 }
 

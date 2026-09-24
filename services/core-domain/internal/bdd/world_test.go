@@ -74,6 +74,12 @@ type world struct {
 
 	hasToken bool
 	clerkSub string // the "sub" claim of whichever identity is currently authenticated
+	persona  string // the Gherkin name of whichever identity is currently authenticated
+
+	// nameClaims holds the "name" claim each persona's session token
+	// carries, set by the "is named" steps. A persona with no entry carries
+	// defaultNameClaim(persona); an entry of "" is a token with no name.
+	nameClaims map[string]string
 
 	// lastResp holds whichever generated ...ResponseObject the most recent
 	// handler call returned — one of dozens of distinct generated types
@@ -218,6 +224,7 @@ func newWorld() *world {
 		skillIDByName:   map[string]uuid.UUID{},
 		conceptIDByName: map[string]uuid.UUID{},
 		courseIDBySlug:  map[string]uuid.UUID{},
+		nameClaims:      map[string]string{},
 
 		courseEnrollmentIDByKey:     map[string]string{},
 		courseEnrollmentIDByStudent: map[string]string{},
@@ -264,11 +271,42 @@ func idSequence() func() string {
 // authenticated Clerk sub if one is set, matching what ClerkAuthMiddleware
 // would attach to a real request.
 func (w *world) ctx() context.Context {
-	ctx := context.Background()
-	if w.hasToken {
-		ctx = appHTTP.WithClerkUserID(ctx, w.clerkSub)
+	if !w.hasToken {
+		return context.Background()
+	}
+	if w.persona != "" && clerkSub(w.persona) == w.clerkSub {
+		return w.identityCtx(w.persona)
+	}
+	return appHTTP.WithClerkUserID(context.Background(), w.clerkSub)
+}
+
+// identityCtx builds the context of a request made with persona's session
+// token: its Clerk sub, plus its "name" claim when it carries one — what
+// ClerkAuthMiddleware would attach to a real request.
+func (w *world) identityCtx(persona string) context.Context {
+	ctx := appHTTP.WithClerkUserID(context.Background(), clerkSub(persona))
+	if name := w.nameClaim(persona); name != "" {
+		ctx = appHTTP.WithNameClaim(ctx, name)
 	}
 	return ctx
+}
+
+// nameClaim returns the "name" claim persona's session token carries.
+func (w *world) nameClaim(persona string) string {
+	if name, ok := w.nameClaims[persona]; ok {
+		return name
+	}
+	return defaultNameClaim(persona)
+}
+
+// defaultNameClaim gives every persona a name without a step having to set
+// one — registration requires it — by capitalizing the Gherkin name
+// ("bob" → "Bob").
+func defaultNameClaim(persona string) string {
+	if persona == "" {
+		return ""
+	}
+	return strings.ToUpper(persona[:1]) + persona[1:]
 }
 
 // deterministicUUID maps a human-readable test identifier (a name, a slug
@@ -391,13 +429,12 @@ func (w *world) ensureRegistered(name string, role domain.Role) uuid.UUID {
 
 	if role == domain.RoleAdmin {
 		id := deterministicUUID("motif-user", name)
-		w.users.put(domain.User{ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, RegisteredAt: fixedNow})
+		w.users.put(domain.User{ID: id.String(), ClerkUserID: clerkSub(name), Role: domain.RoleAdmin, DisplayName: w.nameClaim(name), RegisteredAt: fixedNow})
 		w.userMotifID[name] = id
 		return id
 	}
 
-	ctx := appHTTP.WithClerkUserID(context.Background(), clerkSub(name))
-	resp, err := w.handler.RegisterUser(ctx, generated.RegisterUserRequestObject{
+	resp, err := w.handler.RegisterUser(w.identityCtx(name), generated.RegisterUserRequestObject{
 		Body: &generated.RegisterUserRequest{Role: generated.RegisterUserRequestRole(role)},
 	})
 	if err != nil {
@@ -415,4 +452,5 @@ func (w *world) authenticateAs(name string, role domain.Role) {
 	w.ensureRegistered(name, role)
 	w.hasToken = true
 	w.clerkSub = clerkSub(name)
+	w.persona = name
 }

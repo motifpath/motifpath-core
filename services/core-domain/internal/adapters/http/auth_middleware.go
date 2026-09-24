@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -26,10 +27,26 @@ import (
 // this service (ADR-012 Part 3 flags that as reconciliation debt to pay
 // down once this service exists).
 func ClerkAuthMiddleware(next http.Handler) http.Handler {
-	return clerkhttp.WithHeaderAuthorization()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return clerkhttp.WithHeaderAuthorization(
+		// The SDK fixes this constructor's return type as any; it decodes
+		// the verified token payload into whatever struct is returned.
+		clerkhttp.CustomClaimsConstructor(func(context.Context) any { return &sessionCustomClaims{} }),
+	)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if claims, ok := clerk.SessionClaimsFromContext(r.Context()); ok {
-			r = r.WithContext(WithClerkUserID(r.Context(), claims.Subject))
+			ctx := WithClerkUserID(r.Context(), claims.Subject)
+			if custom, ok := claims.Custom.(*sessionCustomClaims); ok {
+				ctx = WithNameClaim(ctx, custom.Name)
+			}
+			r = r.WithContext(ctx)
 		}
 		next.ServeHTTP(w, r)
 	}))
+}
+
+// sessionCustomClaims holds the custom claims this service reads from the
+// Clerk session token, which the Clerk instance's session-token template
+// must add: "name" is the user's full name. A token without it decodes to
+// an empty Name, which registration rejects and caller resolution ignores.
+type sessionCustomClaims struct {
+	Name string `json:"name"`
 }

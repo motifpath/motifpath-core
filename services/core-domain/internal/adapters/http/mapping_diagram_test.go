@@ -32,7 +32,7 @@ func TestDiagramColorMapping(t *testing.T) {
 	}
 
 	t.Run("a diagram's general and per-position colors reach the response", func(t *testing.T) {
-		got := toGeneratedDiagram(diagram)
+		got := toGeneratedDiagram(diagram, userNames{})
 
 		require.NotNil(t, got.Color)
 		assert.Equal(t, "#3B82F6", *got.Color)
@@ -45,11 +45,11 @@ func TestDiagramColorMapping(t *testing.T) {
 		plain := diagram
 		plain.Color = nil
 
-		assert.Nil(t, toGeneratedDiagram(plain).Color)
+		assert.Nil(t, toGeneratedDiagram(plain, userNames{}).Color)
 	})
 
 	t.Run("the list mapping carries colors too", func(t *testing.T) {
-		got := toGeneratedDiagrams([]domain.Diagram{diagram})
+		got := toGeneratedDiagrams([]domain.Diagram{diagram}, userNames{})
 
 		require.Len(t, got, 1)
 		require.NotNil(t, got[0].Color)
@@ -77,10 +77,10 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 	}
 
 	t.Run("a diagram's kind and creator reach the response", func(t *testing.T) {
-		got := toGeneratedDiagram(diagram)
+		got := toGeneratedDiagram(diagram, userNames{owner.String(): "Ana Souza"})
 
 		assert.Equal(t, generated.DiagramKindBasic, got.Kind)
-		assert.Equal(t, owner, got.CreatedBy)
+		assert.Equal(t, generated.UserRef{UserId: owner, DisplayName: "Ana Souza"}, got.CreatedBy)
 	})
 
 	t.Run("an omitted create kind maps to the zero value, left for the domain to default", func(t *testing.T) {

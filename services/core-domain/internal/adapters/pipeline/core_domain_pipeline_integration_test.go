@@ -212,6 +212,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 func seedStudentInto(t *testing.T, ctx context.Context, p *pipeline, student domain.User) {
 	t.Helper()
 	student.ClerkUserID = "clerk-" + student.ID
+	student.DisplayName = "Pipeline Student"
 	student.RegisteredAt = time.Now().UTC()
 	require.NoError(t, p.users.Create(ctx, student))
 }

@@ -491,8 +491,8 @@ func (w *world) learningPathRecordsOwner(name string) error {
 	if !ok {
 		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
 	}
-	if resp.TeacherId != w.userMotifID[name] {
-		return fmt.Errorf("expected teacher_id %s for %q, got %s", w.userMotifID[name], name, resp.TeacherId)
+	if resp.Teacher.UserId != w.userMotifID[name] {
+		return fmt.Errorf("expected teacher_id %s for %q, got %s", w.userMotifID[name], name, resp.Teacher.UserId)
 	}
 	return nil
 }
@@ -502,7 +502,7 @@ func (w *world) learningPathResponseComplete() error {
 	if !ok {
 		return fmt.Errorf("expected a 200 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if resp.Title == "" || resp.TeacherId.String() == "" || len(resp.Items) == 0 {
+	if resp.Title == "" || resp.Teacher.UserId.String() == "" || len(resp.Items) == 0 {
 		return fmt.Errorf("expected a fully populated learning path, got %+v", resp)
 	}
 	return nil

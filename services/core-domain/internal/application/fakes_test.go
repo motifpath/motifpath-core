@@ -18,6 +18,10 @@ type fakeUserRepository struct {
 	byID      map[string]domain.User
 	createErr error
 	getErr    error
+
+	// displayNameWrites counts UpdateDisplayName calls, so a test can tell
+	// a real refresh from a no-op.
+	displayNameWrites int
 }
 
 func newFakeUserRepository() *fakeUserRepository {
@@ -82,6 +86,32 @@ func (f *fakeUserRepository) UpdateLocale(_ context.Context, id, locale string) 
 	f.byID[id] = user
 	f.byClerkID[user.ClerkUserID] = user
 	return nil
+}
+
+func (f *fakeUserRepository) UpdateDisplayName(_ context.Context, id, displayName string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	f.displayNameWrites++
+	user.DisplayName = displayName
+	f.byID[id] = user
+	f.byClerkID[user.ClerkUserID] = user
+	return nil
+}
+
+func (f *fakeUserRepository) GetDisplayNames(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	names := make(map[string]string, len(ids))
+	for _, id := range ids {
+		if user, ok := f.byID[id]; ok {
+			names[id] = user.DisplayName
+		}
+	}
+	return names, nil
 }
 
 // fakeLanguageRepository is a minimal in-memory ports.LanguageRepository,

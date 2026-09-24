@@ -41,6 +41,7 @@ func (w *world) hasLocale(name, locale string) error {
 func (w *world) updatesLocale(name, locale string) error {
 	w.hasToken = true
 	w.clerkSub = clerkSub(name)
+	w.persona = name
 	resp, err := w.handler.UpdateMyLocale(w.ctx(), generated.UpdateMyLocaleRequestObject{
 		Body: &generated.UpdateMyLocaleRequest{Locale: locale},
 	})
