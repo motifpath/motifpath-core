@@ -62,8 +62,10 @@ func (s *ContentService) PublishContentNode(ctx context.Context, caller domain.U
 
 // ListContentNodeVersions returns every published version of the content
 // node identified by id, newest first, or an empty list if it has never been
-// published. Only the creating teacher or an admin may view a node's
-// history — the same rule as publishing it. Returns domain.ErrNotFound if no
+// published. A version published before classification and language
+// snapshots were stored carries the node's current ones instead. Only the
+// creating teacher or an admin may view a node's history — the same rule
+// as publishing it. Returns domain.ErrNotFound if no
 // content node exists with the given id.
 func (s *ContentService) ListContentNodeVersions(ctx context.Context, caller domain.User, id string) ([]domain.ContentNodeVersion, error) {
 	if !canManageContent(caller.Role) {
@@ -77,7 +79,21 @@ func (s *ContentService) ListContentNodeVersions(ctx context.Context, caller dom
 	if err := requireOwner(caller, node.TeacherID); err != nil {
 		return nil, err
 	}
-	return s.versions.ListByContentNodeID(ctx, id)
+
+	versions, err := s.versions.ListByContentNodeID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for i := range versions {
+		if versions[i].Classification.DifficultyLevel != "" {
+			continue
+		}
+		// Published before classification and language snapshots were
+		// stored, so the node's current values are the best record left.
+		versions[i].Classification = node.Classification
+		versions[i].Languages = node.Languages
+	}
+	return versions, nil
 }
 
 // CreateContentNode creates a content node owned by caller. Only teachers

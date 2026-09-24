@@ -1224,6 +1224,49 @@ func TestContentService_ListContentNodeVersions(t *testing.T) {
 		assert.Len(t, got, 2)
 	})
 
+	t.Run("a version published before snapshots were stored falls back to the node's current classification and languages", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		node := videoNode("node-01")
+		node.Classification = domain.Classification{
+			Skills:          []domain.Skill{{ID: "skill-1", Name: "Fingerpicking"}},
+			DifficultyLevel: domain.DifficultyLevelIntermediate,
+			ReviewState:     domain.ReviewStateConfirmed,
+		}
+		node.Languages = []domain.Language{{Code: "en", Name: "English"}}
+		nodes.put(node)
+		versions := newFakeContentNodeVersionRepository()
+		require.NoError(t, versions.Create(context.Background(), domain.ContentNodeVersion{
+			ID: "legacy", ContentNodeID: "node-01", VersionNumber: 1, Title: "Old title", ContentType: domain.ContentTypeVideo,
+		}))
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+
+		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
+
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "Old title", got[0].Title)
+		assert.Equal(t, node.Classification, got[0].Classification)
+		assert.Equal(t, node.Languages, got[0].Languages)
+	})
+
+	t.Run("a version with its own snapshot keeps it", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		node := videoNode("node-01")
+		node.Classification = domain.Classification{DifficultyLevel: domain.DifficultyLevelExpert, ReviewState: domain.ReviewStateConfirmed}
+		nodes.put(node)
+		versions := newFakeContentNodeVersionRepository()
+		snapshot := domain.Classification{DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending}
+		require.NoError(t, versions.Create(context.Background(), domain.ContentNodeVersion{
+			ID: "v1", ContentNodeID: "node-01", VersionNumber: 1, Classification: snapshot,
+		}))
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+
+		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
+
+		require.NoError(t, err)
+		assert.Equal(t, snapshot, got[0].Classification)
+	})
+
 	t.Run("a never-published node has an empty history", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-01"))
