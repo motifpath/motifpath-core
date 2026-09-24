@@ -20,6 +20,8 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithFrettedPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with keyboard positions:$`, w.createsDiagramWithKeyboardPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with root note "([^"]+)", label display "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithRootAndLabelDisplay)
+	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with color "([^"]*)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithColor)
+	sc.Step(`^"([^"]+)" updates diagram "([^"]+)" setting color "([^"]+)" and position (\d+) color "([^"]+)"$`, w.updatesDiagramColors)
 	sc.Step(`^"([^"]+)" submits a create diagram request on instrument "([^"]+)" with the skill_ids field omitted$`, w.submitsDiagramWithoutSkills)
 	sc.Step(`^"([^"]+)" submits a create diagram request with an instrument id that does not exist$`, w.submitsDiagramOnMissingInstrument)
 	sc.Step(`^"([^"]+)" attempts to create a diagram$`, w.attemptsCreateDiagram)
@@ -32,6 +34,10 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the diagram has no recorded root note$`, w.diagramHasNoRootNote)
 	sc.Step(`^the diagram's label display is "([^"]+)"$`, w.diagramLabelDisplayIs)
 	sc.Step(`^position (\d+) has shape "([^"]+)"$`, w.positionHasShape)
+	sc.Step(`^the diagram's color is "([^"]+)"$`, w.diagramColorIs)
+	sc.Step(`^the diagram has no general color$`, w.diagramHasNoColor)
+	sc.Step(`^position (\d+) has color "([^"]+)"$`, w.positionHasColor)
+	sc.Step(`^position (\d+) has no color of its own$`, w.positionHasNoColor)
 
 	sc.Step(`^"([^"]+)" lists diagrams filtered by instrument "([^"]+)"$`, w.listsDiagramsByInstrument)
 	sc.Step(`^"([^"]+)" lists all diagrams$`, w.listsAllDiagrams)
@@ -81,7 +87,7 @@ func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
 	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, []domain.Position{position},
-		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, fixedNow)
+		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, nil, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -131,7 +137,7 @@ func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
 	diagram, err := domain.NewDiagram(diagramID(slug).String(), instrument, slug, positions,
-		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, fixedNow)
+		[]string{skillID.String()}, []string{conceptID.String()}, nil, domain.LabelDisplayInterval, nil, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -186,12 +192,91 @@ func (w *world) createsDiagramWithFrettedPositions(_, name, instrument, skills, 
 		if err != nil {
 			return fmt.Errorf("fret %q is not a number: %w", fretCell, err)
 		}
-		positions = append(positions, generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret})
+		position := generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret}
+		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
+			position.Color = &colorCell
+		}
+		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
 		InstrumentId: instrumentID(instrument), Name: name, Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	})
+}
+
+// createsDiagramWithColor is createsDiagramWithFrettedPositions plus a
+// general marker color; per-position colors come from the table's optional
+// color column, which the plain step honors too.
+func (w *world) createsDiagramWithColor(_, name, instrument, color, skills, concepts string, table *godog.Table) error {
+	positions := make([]generated.DiagramPosition, 0, len(table.Rows)-1)
+	for row := 1; row < len(table.Rows); row++ {
+		interval, err := cell(table, row, "interval")
+		if err != nil {
+			return err
+		}
+		note, err := cell(table, row, "note_name")
+		if err != nil {
+			return err
+		}
+		str, fret, err := frettedCoordinates(table, row)
+		if err != nil {
+			return err
+		}
+		position := generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret}
+		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
+			position.Color = &colorCell
+		}
+		positions = append(positions, position)
+	}
+	return w.createDiagram(generated.CreateDiagramRequest{
+		InstrumentId: instrumentID(instrument), Name: name, Positions: positions, Color: &color,
+		Classification: w.diagramClassification(skills, concepts),
+	})
+}
+
+func frettedCoordinates(table *godog.Table, row int) (str, fret int, err error) {
+	stringCell, err := cell(table, row, "string")
+	if err != nil {
+		return 0, 0, err
+	}
+	fretCell, err := cell(table, row, "fret")
+	if err != nil {
+		return 0, 0, err
+	}
+	if str, err = strconv.Atoi(stringCell); err != nil {
+		return 0, 0, fmt.Errorf("string %q is not a number: %w", stringCell, err)
+	}
+	if fret, err = strconv.Atoi(fretCell); err != nil {
+		return 0, 0, fmt.Errorf("fret %q is not a number: %w", fretCell, err)
+	}
+	return str, fret, nil
+}
+
+// updatesDiagramColors sets the general color and one position's color,
+// resending the diagram's current positions since an update replaces the
+// whole set.
+func (w *world) updatesDiagramColors(_, slug, color, index, positionColor string) error {
+	i, err := strconv.Atoi(index)
+	if err != nil {
+		return fmt.Errorf("position index %q is not a number: %w", index, err)
+	}
+	current, err := w.diagrams.GetByID(w.ctx(), diagramID(slug).String())
+	if err != nil {
+		return fmt.Errorf("loading diagram %q: %w", slug, err)
+	}
+	if i < 1 || i > len(current.Positions) {
+		return fmt.Errorf("no position %d (diagram has %d)", i, len(current.Positions))
+	}
+	positions := make([]generated.DiagramPosition, len(current.Positions))
+	for j, p := range current.Positions {
+		id := uuid.MustParse(p.ID)
+		positions[j] = generated.DiagramPosition{PositionId: &id, Interval: p.Interval, NoteName: p.NoteName, String: p.String, Fret: p.Fret, Key: p.Key}
+	}
+	positions[i-1].Color = &positionColor
+	body := generated.UpdateDiagramRequest{Color: &color, Positions: &positions}
+	resp, err := w.handler.UpdateDiagram(w.ctx(), generated.UpdateDiagramRequestObject{DiagramId: diagramID(slug), Body: &body})
+	w.lastResp, w.lastErr = resp, err
+	return err
 }
 
 // optionalCell is cell's counterpart for a column a table may or may not
@@ -306,6 +391,65 @@ func (w *world) diagramLabelDisplayIs(want string) error {
 	}
 	if string(diagram.LabelDisplay) != want {
 		return fmt.Errorf("expected label_display %q, got %q", want, diagram.LabelDisplay)
+	}
+	return nil
+}
+
+func (w *world) diagramColorIs(want string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if diagram.Color == nil || *diagram.Color != want {
+		return fmt.Errorf("expected color %q, got %v", want, diagram.Color)
+	}
+	return nil
+}
+
+func (w *world) diagramHasNoColor() error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if diagram.Color != nil {
+		return fmt.Errorf("expected no general color, got %q", *diagram.Color)
+	}
+	return nil
+}
+
+func (w *world) positionAt(index string) (generated.DiagramPosition, error) {
+	i, err := strconv.Atoi(index)
+	if err != nil {
+		return generated.DiagramPosition{}, fmt.Errorf("position index %q is not a number: %w", index, err)
+	}
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return generated.DiagramPosition{}, err
+	}
+	if i < 1 || i > len(diagram.Positions) {
+		return generated.DiagramPosition{}, fmt.Errorf("no position %d (diagram has %d)", i, len(diagram.Positions))
+	}
+	return diagram.Positions[i-1], nil
+}
+
+func (w *world) positionHasColor(index, want string) error {
+	p, err := w.positionAt(index)
+	if err != nil {
+		return err
+	}
+	if p.Color == nil || *p.Color != want {
+		return fmt.Errorf("expected position %s to have color %q, got %v", index, want, p.Color)
+	}
+	return nil
+}
+
+func (w *world) positionHasNoColor(index string) error {
+	p, err := w.positionAt(index)
+	if err != nil {
+		return err
+	}
+	if p.Color != nil {
+		return fmt.Errorf("expected position %s to have no color, got %q", index, *p.Color)
 	}
 	return nil
 }

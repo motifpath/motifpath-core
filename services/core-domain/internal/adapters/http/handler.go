@@ -1442,7 +1442,7 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 	body := request.Body
 	diagram, err := h.diagram.CreateDiagram(ctx, caller, body.InstrumentId.String(), body.Name, toDomainPositions(body.Positions),
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		body.RootNote, toDomainLabelDisplay(body.LabelDisplay))
+		body.RootNote, toDomainLabelDisplay(body.LabelDisplay), body.Color)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1481,7 +1481,7 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 	}
 
 	body := request.Body
-	update := application.DiagramUpdate{Name: body.Name, RootNote: body.RootNote}
+	update := application.DiagramUpdate{Name: body.Name, RootNote: body.RootNote, Color: body.Color}
 	if body.Positions != nil {
 		update.Positions = toDomainPositions(*body.Positions)
 	}

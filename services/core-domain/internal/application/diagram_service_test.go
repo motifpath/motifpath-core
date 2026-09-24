@@ -38,7 +38,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 	t.Run("a teacher creates a diagram, positions get server-assigned ids", func(t *testing.T) {
 		f := newDiagramFixture()
 
-		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Minor Pentatonic", []domain.Position{frettedPos(6, 5), frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval)
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Minor Pentatonic", []domain.Position{frettedPos(6, 5), frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, nil)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, got.ID)
@@ -55,7 +55,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		pos := frettedPos(6, 5)
 		pos.ID = "client-id"
 
-		got, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", "D", []domain.Position{pos}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval)
+		got, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", "D", []domain.Position{pos}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "client-id", got.Positions[0].ID)
@@ -64,7 +64,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 	t.Run("a student cannot create a diagram", func(t *testing.T) {
 		f := newDiagramFixture()
 
-		_, err := f.svc.CreateDiagram(ctx, studentCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval)
+		_, err := f.svc.CreateDiagram(ctx, studentCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, nil)
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -73,12 +73,39 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		f := newDiagramFixture()
 		root := "A"
 
-		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, &root, domain.LabelDisplayNote)
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, &root, domain.LabelDisplayNote, nil)
 
 		require.NoError(t, err)
 		require.NotNil(t, got.RootNote)
 		assert.Equal(t, "A", *got.RootNote)
 		assert.Equal(t, domain.LabelDisplayNote, got.LabelDisplay)
+	})
+
+	t.Run("general and per-position colors are carried onto the created diagram", func(t *testing.T) {
+		f := newDiagramFixture()
+		general, override := "#3B82F6", "#EF4444"
+		colored := frettedPos(6, 5)
+		colored.Color = &override
+
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{colored, frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, &general)
+
+		require.NoError(t, err)
+		require.NotNil(t, got.Color)
+		assert.Equal(t, "#3B82F6", *got.Color)
+		require.NotNil(t, got.Positions[0].Color)
+		assert.Equal(t, "#EF4444", *got.Positions[0].Color)
+		assert.Nil(t, got.Positions[1].Color)
+	})
+
+	t.Run("a malformed general color is rejected as color", func(t *testing.T) {
+		f := newDiagramFixture()
+		bad := "blue"
+
+		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, &bad)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "color", valErr.Fields[0].Field)
 	})
 
 	tests := []struct {
@@ -99,7 +126,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		t.Run("rejected: "+tt.name, func(t *testing.T) {
 			f := newDiagramFixture()
 
-			_, err := f.svc.CreateDiagram(ctx, teacherCaller(), tt.instrument, "D", tt.positions, tt.skillIDs, tt.conceptIDs, nil, domain.LabelDisplayInterval)
+			_, err := f.svc.CreateDiagram(ctx, teacherCaller(), tt.instrument, "D", tt.positions, tt.skillIDs, tt.conceptIDs, nil, domain.LabelDisplayInterval, nil)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)
@@ -124,10 +151,10 @@ func TestDiagramService_GetAndList(t *testing.T) {
 
 	t.Run("list filters by instrument, skill and concept", func(t *testing.T) {
 		f := newDiagramFixture()
-		onGuitar, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "G", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval)
+		onGuitar, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "G", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, nil)
 		require.NoError(t, err)
 		key := "A3"
-		onPiano, err := f.svc.CreateDiagram(ctx, teacherCaller(), "piano", "P", []domain.Position{{Interval: "R", NoteName: "A", Key: &key}}, []string{"skill-2"}, []string{"concept-2"}, nil, domain.LabelDisplayInterval)
+		onPiano, err := f.svc.CreateDiagram(ctx, teacherCaller(), "piano", "P", []domain.Position{{Interval: "R", NoteName: "A", Key: &key}}, []string{"skill-2"}, []string{"concept-2"}, nil, domain.LabelDisplayInterval, nil)
 		require.NoError(t, err)
 
 		byInstrument, err := f.svc.ListDiagrams(ctx, "guitar", "", "")
@@ -160,7 +187,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 
 	seed := func(t *testing.T, f diagramFixture) domain.Diagram {
 		t.Helper()
-		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Original", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval)
+		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Original", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, nil, domain.LabelDisplayInterval, nil)
 		require.NoError(t, err)
 		return d
 	}
@@ -265,5 +292,30 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		require.NotNil(t, again.RootNote)
 		assert.Equal(t, "A", *again.RootNote)
 		assert.Equal(t, domain.LabelDisplayNote, again.LabelDisplay)
+	})
+
+	t.Run("replaces the general color and per-position colors, leaving the general color as-is when omitted", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := seed(t, f)
+		general, override := "#22C55E", "#F59E0B"
+		positions := []domain.Position{d.Positions[0]}
+		positions[0].Color = &override
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Color: &general, Positions: positions})
+		require.NoError(t, err)
+		require.NotNil(t, got.Color)
+		assert.Equal(t, "#22C55E", *got.Color)
+		require.NotNil(t, got.Positions[0].Color)
+		assert.Equal(t, "#F59E0B", *got.Positions[0].Color)
+
+		name := "Renamed"
+		again, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Name: &name})
+		require.NoError(t, err)
+		require.NotNil(t, again.Color)
+		assert.Equal(t, "#22C55E", *again.Color)
+
+		cleared, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Positions: []domain.Position{d.Positions[0]}})
+		require.NoError(t, err)
+		assert.Nil(t, cleared.Positions[0].Color)
 	})
 }

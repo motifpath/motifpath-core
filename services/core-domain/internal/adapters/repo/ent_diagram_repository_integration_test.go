@@ -284,3 +284,45 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 		assert.Equal(t, update, got)
 	})
 }
+
+func TestEntDiagramRepository_ColorsRoundTrip(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	instruments, diagrams := NewEntInstrumentRepository(client), NewEntDiagramRepository(client)
+
+	guitar := frettedInstrument()
+	require.NoError(t, instruments.Create(ctx, guitar))
+	skill := seedSkill(t, ctx, client, "s-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "c-"+uuid.NewString())
+	strPtr := func(s string) *string { return &s }
+
+	d := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Name: "Colored", LabelDisplay: domain.LabelDisplayInterval,
+		Color: strPtr("#3B82F6"),
+		Positions: []domain.Position{
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), Color: strPtr("#EF4444")},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
+		},
+		Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
+	}
+	require.NoError(t, diagrams.Create(ctx, d))
+
+	got, err := diagrams.GetByID(ctx, d.ID)
+	require.NoError(t, err)
+	assert.Equal(t, d, got)
+
+	t.Run("update replaces the general color and clears a per-position color", func(t *testing.T) {
+		updated := d
+		updated.Color = strPtr("#22C55E")
+		updated.Positions = []domain.Position{
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
+		}
+
+		require.NoError(t, diagrams.Update(ctx, updated))
+
+		again, err := diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Equal(t, updated, again)
+		assert.Nil(t, again.Positions[0].Color)
+	})
+}
