@@ -103,7 +103,9 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 		filter.VisibleTo = caller.ID
 	case domain.RoleAdmin:
 	case domain.RoleStudent:
-		return domain.Page[domain.Diagram]{}, domain.ErrForbidden
+		// Students never browse the library; they read embedded diagrams
+		// by id. Any role this switch doesn't know is refused the same way.
+		fallthrough
 	default:
 		return domain.Page[domain.Diagram]{}, domain.ErrForbidden
 	}
@@ -112,9 +114,9 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 
 // UpdateDiagram applies update to an existing diagram. Only an admin may
 // update a basic diagram; a custom one may be updated by its creator or an
-// admin. Kind and CreatedBy are never changed. The result is re-validated as a whole, so replaced
-// positions are checked against the diagram's own instrument; the instrument
-// itself can't change.
+// admin. Kind and CreatedBy are never changed. The result is re-validated
+// as a whole, so replaced positions are checked against the diagram's own
+// instrument; the instrument itself can't change.
 func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, id string, update DiagramUpdate) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden

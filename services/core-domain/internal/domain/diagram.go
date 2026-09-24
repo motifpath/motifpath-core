@@ -154,13 +154,14 @@ type DiagramOptions struct {
 }
 
 // NewDiagram validates and constructs a Diagram against instrument, owned
-// by createdBy, stopping at the first violated invariant. Every position must use the
-// coordinate shape of instrument's family — a rule no database constraint
-// expresses — and, for a fretted instrument, sit on a string it has.
-// labelDisplay and each position's Shape default (LabelDisplayInterval,
-// PositionShapeDot) when left as their zero value — a caller that doesn't
-// care about either may omit it. color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs reference
-// existing rows needs a repository round trip, so that stays an
+// by createdBy, stopping at the first violated invariant. Every position
+// must use the coordinate shape of instrument's family — a rule no database
+// constraint expresses — and, for a fretted instrument, sit on a string it
+// has. opts.LabelDisplay, opts.Kind and each position's Shape default
+// (LabelDisplayInterval, DiagramKindCustom, PositionShapeDot) when left as
+// their zero value — a caller that doesn't care about one may omit it.
+// opts.Color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs
+// reference existing rows needs a repository round trip, so that stays an
 // application-layer concern.
 func NewDiagram(id, createdBy string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
 	rootNote, labelDisplay, color, kind := opts.RootNote, opts.LabelDisplay, opts.Color, opts.Kind
