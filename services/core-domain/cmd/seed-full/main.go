@@ -519,7 +519,7 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 			doc := domain.NewPlainTextPrompt("Seed placeholder body for " + s.title + ".")
 			richContent = &doc
 		}
-		node, err := content.CreateContentNode(ctx, teacher, s.title, s.contentType, []string{skillID}, []string{conceptID}, s.difficulty, []string{"en"}, mediaURL, richContent)
+		node, err := content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: s.title, ContentType: s.contentType, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: s.difficulty, Languages: []string{"en"}, MediaURL: mediaURL, RichContent: richContent})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", s.title, err)
 		}

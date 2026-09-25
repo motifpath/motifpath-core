@@ -109,7 +109,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}}
 
 	skillID, conceptID := seedClassification(t, ctx, p, teacher, "triads")
-	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Intro to Triads", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 
 	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, &skillID, nil, 70, nil, false, false)
@@ -157,7 +157,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	seedStudentInto(t, ctx, p, student)
 
 	skillID1, conceptID1 := seedClassification(t, ctx, p, teacher, "n1")
-	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, []string{skillID1}, []string{conceptID1}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node1, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Node 1", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID1}, ConceptIDs: []string{conceptID1}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node1.ID)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 
 	skillID2, conceptID2 := seedClassification(t, ctx, p, teacher, "n2")
-	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, []string{skillID2}, []string{conceptID2}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node2, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Node 2", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID2}, ConceptIDs: []string{conceptID2}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node2.ID)
 	require.NoError(t, err)

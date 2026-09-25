@@ -100,6 +100,18 @@ type ContentNode struct {
 	CreatedAt time.Time
 }
 
+// ContentNodeFields are the parts of a content node its author writes, as
+// given to NewContentNode and ContentNode.Update.
+type ContentNodeFields struct {
+	Title         string
+	SkillIDs      []string
+	ConceptIDs    []string
+	Difficulty    DifficultyLevel
+	LanguageCodes []string
+	MediaURL      *string
+	RichContent   *PromptDocument
+}
+
 // NewContentNode validates and constructs a ContentNode. ReviewState is
 // always forced to pending, regardless of any caller-supplied value — only
 // an admin confirms a classification, never the teacher who created it.
@@ -109,7 +121,9 @@ type ContentNode struct {
 // Whether each id actually references an existing Skill/Concept is an
 // application-layer concern, requiring a repository round trip this
 // constructor can't perform.
-func NewContentNode(id, teacherID, title string, contentType ContentType, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument, createdAt time.Time) (ContentNode, error) {
+func NewContentNode(id, teacherID string, contentType ContentType, fields ContentNodeFields, createdAt time.Time) (ContentNode, error) {
+	title, skillIDs, conceptIDs, difficulty := fields.Title, fields.SkillIDs, fields.ConceptIDs, fields.Difficulty
+	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 
@@ -148,7 +162,9 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 // determines which ExpandedContent trigger fields are valid for items
 // already attached to this node, and an edit does not reset or require
 // re-confirming an admin's prior review.
-func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument) (ContentNode, error) {
+func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
+	title, skillIDs, conceptIDs, difficulty := fields.Title, fields.SkillIDs, fields.ConceptIDs, fields.Difficulty
+	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
 	errs = append(errs, validateContentNodeBody(n.ContentType, mediaURL, richContent)...)

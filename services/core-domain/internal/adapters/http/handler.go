@@ -184,11 +184,7 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 	}
 
 	body := request.Body
-	node, err := h.content.CreateContentNode(ctx, caller, body.Title,
-		domain.ContentType(body.ContentType),
-		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DifficultyLevel(body.Classification.DifficultyLevel),
-		body.LanguageCodes, body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
+	node, err := h.content.CreateContentNode(ctx, caller, application.ContentNodeInput{Title: body.Title, ContentType: domain.ContentType(body.ContentType), SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent)})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -289,10 +285,7 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 	}
 
 	body := request.Body
-	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
-		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes,
-		body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent)})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

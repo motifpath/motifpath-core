@@ -227,7 +227,7 @@ func seedPathAndProgress(
 		if err != nil {
 			return nil, err
 		}
-		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, spec.difficulty, []string{"en"}, &seedVideoURL, nil)
+		node, err := contentService.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: spec.title, ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: spec.difficulty, Languages: []string{"en"}, MediaURL: &seedVideoURL, RichContent: nil})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
