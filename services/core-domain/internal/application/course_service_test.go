@@ -18,7 +18,7 @@ func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepo
 	if len(versions) > 0 {
 		v = versions[0]
 	}
-	return application.NewCourseService(paths, courses, v, idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // checkpointInputs builds an unlabelled CheckpointInput slice from learning
@@ -151,6 +151,123 @@ func TestCourseService_GetCourse(t *testing.T) {
 		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
 
 		_, err := svc.GetCourse(context.Background(), teacherCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestCourseService_ListCourseCreators(t *testing.T) {
+	published, draft, retired := domain.CourseStatusPublished, domain.CourseStatusDraft, domain.CourseStatusRetired
+	// Created out of name order, so a result in name order proves sorting.
+	seeded := []domain.Course{
+		{ID: "course-1", CreatedBy: "teacher-1", Status: published},
+		{ID: "course-2", CreatedBy: "teacher-1", Status: published},
+		{ID: "course-3", CreatedBy: "teacher-2", Status: draft},
+		{ID: "course-4", CreatedBy: "teacher-3", Status: retired},
+		{ID: "course-5", CreatedBy: "admin-1", Status: published},
+		{ID: "course-6", CreatedBy: "teacher-4", Status: published},
+	}
+	names := map[string]string{
+		"teacher-1": "Carol Dias",
+		"teacher-2": "Bob Martins",
+		"teacher-3": "Dave Rocha",
+		"admin-1":   "álvaro Souza",
+		"teacher-4": "José Almeida",
+	}
+	creator := func(id string) application.CourseCreator {
+		return application.CourseCreator{UserID: id, DisplayName: names[id]}
+	}
+
+	tests := []struct {
+		name   string
+		caller domain.User
+		query  string
+		want   []application.CourseCreator
+	}{
+		{
+			name:   "a student gets each creator of a published course once, in name order ignoring case and accents",
+			caller: studentCaller(),
+			want:   []application.CourseCreator{creator("admin-1"), creator("teacher-1"), creator("teacher-4")},
+		},
+		{
+			name:   "a teacher gets only themselves, whatever their courses' status",
+			caller: otherTeacherCaller(),
+			want:   []application.CourseCreator{creator("teacher-2")},
+		},
+		{
+			name:   "a teacher with no course gets no creators",
+			caller: domain.User{ID: "teacher-9", Role: domain.RoleTeacher},
+			want:   []application.CourseCreator{},
+		},
+		{
+			name:   "an admin gets the creator of every course, whatever its status, in name order",
+			caller: adminCaller(),
+			want: []application.CourseCreator{
+				creator("admin-1"), creator("teacher-2"), creator("teacher-1"), creator("teacher-3"), creator("teacher-4"),
+			},
+		},
+		{
+			name:   "a name query keeps the creators whose name contains it",
+			caller: studentCaller(), query: "dias",
+			want: []application.CourseCreator{creator("teacher-1")},
+		},
+		{
+			name:   "a name query ignores case and accents",
+			caller: studentCaller(), query: "JOSE",
+			want: []application.CourseCreator{creator("teacher-4")},
+		},
+		{
+			name:   "a name query only narrows the creators the caller could already see",
+			caller: studentCaller(), query: "dave",
+			want: []application.CourseCreator{},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			courses := newFakeCourseRepository()
+			for _, c := range seeded {
+				courses.put(c)
+			}
+			users := newFakeUserRepository()
+			for id, name := range names {
+				users.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
+			}
+			svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users,
+				idSequence(), func() time.Time { return fixedCreatedAt })
+
+			got, err := svc.ListCourseCreators(context.Background(), tc.caller, tc.query)
+
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
+	t.Run("equal names are ordered by user id", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-b", Status: published})
+		courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-a", Status: published})
+		users := newFakeUserRepository()
+		users.put(domain.User{ID: "teacher-a", ClerkUserID: "clerk-a", DisplayName: "Ana Lima"})
+		users.put(domain.User{ID: "teacher-b", ClerkUserID: "clerk-b", DisplayName: "Ana Lima"})
+		svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users,
+			idSequence(), func() time.Time { return fixedCreatedAt })
+
+		got, err := svc.ListCourseCreators(context.Background(), studentCaller(), "")
+
+		require.NoError(t, err)
+		assert.Equal(t, []application.CourseCreator{
+			{UserID: "teacher-a", DisplayName: "Ana Lima"}, {UserID: "teacher-b", DisplayName: "Ana Lima"},
+		}, got)
+	})
+
+	t.Run("a creator with no user record is an error, never a nameless entry", func(t *testing.T) {
+		courses := newFakeCourseRepository()
+		courses.put(domain.Course{ID: "course-1", CreatedBy: "ghost", Status: published})
+		svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), newFakeUserRepository(),
+			idSequence(), func() time.Time { return fixedCreatedAt })
+
+		_, err := svc.ListCourseCreators(context.Background(), studentCaller(), "")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})

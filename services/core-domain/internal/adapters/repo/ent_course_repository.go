@@ -158,6 +158,30 @@ func (r *EntCourseRepository) List(ctx context.Context, filter domain.CourseList
 	return domain.Page[domain.Course]{Items: items, Total: total}, nil
 }
 
+// ListCreatorIDs returns the distinct created_by of every course matching
+// filter, using the same predicates as List.
+func (r *EntCourseRepository) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
+	predicates, err := courseListPredicates(filter)
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		CreatedBy uuid.UUID `json:"created_by"`
+	}
+	if err := r.client.Course.Query().
+		Where(predicates...).
+		Unique(true).
+		Select(course.FieldCreatedBy).
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.CreatedBy.String()
+	}
+	return ids, nil
+}
+
 // Replace deletes course's current checkpoints and inserts
 // course.Checkpoints in their place, in one transaction, then updates the
 // course's own title/summary/level. Checkpoints are immutable once created

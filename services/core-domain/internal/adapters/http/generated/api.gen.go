@@ -1009,9 +1009,11 @@ type CreateCourseRequest struct {
 type CreateCourseRequestLevel string
 
 // CreateDiagramRequest Payload for creating a new diagram. Every position's string/fret vs.
-// key must match the referenced instrument's family — the API rejects
-// a request that mixes shapes or supplies the wrong shape for the
-// instrument.
+// key, and every region's coordinates, must match the referenced
+// instrument's family — the API rejects a request that mixes shapes or
+// supplies the wrong shape for the instrument. Every per-language text
+// (positions' custom_label and note, regions' description) must be
+// keyed by exactly the languages of names.
 type CreateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
 	// exact Skill/Concept tree ContentNode and Exercise use (see
@@ -1049,6 +1051,11 @@ type CreateDiagramRequest struct {
 	// matching the referenced instrument's family. position_id may be
 	// supplied by the client or left for the server to assign.
 	Positions []DiagramPosition `json:"positions"`
+
+	// Regions The diagram's highlighted regions, in drawing order, in the
+	// coordinate shape matching the instrument's family. Omitted means
+	// none. region_id may be supplied or left for the server to assign.
+	Regions *[]DiagramRegion `json:"regions,omitempty"`
 
 	// RootNote The root note this diagram is authored against (e.g. "A"). Null
 	// (or omitted) leaves it unrecorded.
@@ -1385,6 +1392,10 @@ type Diagram struct {
 	// family.
 	Positions []DiagramPosition `json:"positions"`
 
+	// Regions The diagram's highlighted regions, in drawing order (later ones
+	// on top); empty when there are none.
+	Regions []DiagramRegion `json:"regions"`
+
 	// RootNote The root note this diagram was authored against (e.g. "A"),
 	// relative to which its positions' interval and note_name are
 	// computed — except in a diagram saved by combining several
@@ -1450,6 +1461,10 @@ type DiagramPosition struct {
 	// embedding.
 	Color *string `json:"color"`
 
+	// CustomLabel A marker label in one or more languages, keyed by Language.code
+	// (never "any"); each value fits inside a marker.
+	CustomLabel *LocalizedMarkerLabel `json:"custom_label,omitempty"`
+
 	// Fret Which fret this position is on. Present only when the parent
 	// Diagram's instrument family is fretted; absent when keyboard.
 	Fret *int `json:"fret,omitempty"`
@@ -1470,6 +1485,10 @@ type DiagramPosition struct {
 	// "C4"). Present only when the parent Diagram's instrument family
 	// is keyboard; absent when fretted.
 	Key *string `json:"key,omitempty"`
+
+	// Note A short note in one or more languages, keyed by Language.code
+	// (never "any").
+	Note *LocalizedNote `json:"note,omitempty"`
 
 	// NoteName The concrete note name this position sounds at the root it was
 	// authored against (e.g. "A", "C") — the parent Diagram's own root
@@ -1589,6 +1608,51 @@ type DiagramRef struct {
 
 // DiagramRefPlaybackDirection Order to step through sequence_index values in.
 type DiagramRefPlaybackDirection string
+
+// DiagramRegion A highlighted area of a Diagram, drawn as a translucent band behind
+// the markers with its description shown alongside. Coordinates are
+// physical and follow the parent Diagram's instrument family, like
+// positions: fret_start/fret_end (and optionally string_start/
+// string_end) for fretted instruments, key_start/key_end for keyboard
+// ones — never both. Regions may overlap.
+type DiagramRegion struct {
+	// Color The band's tint as #RRGGBB. Null (or omitted) means the default
+	// tint.
+	Color *string `json:"color"`
+
+	// Description A caption in one or more languages, keyed by Language.code (never
+	// "any").
+	Description LocalizedCaption `json:"description"`
+
+	// FretEnd Last fret of the band, inclusive; not below fret_start.
+	FretEnd *int `json:"fret_end,omitempty"`
+
+	// FretStart First fret of the band, inclusive. Required, with fret_end, when
+	// the instrument family is fretted; absent when keyboard.
+	FretStart *int `json:"fret_start,omitempty"`
+
+	// KeyEnd Last key of the band (e.g. "B4"), inclusive; not below key_start.
+	KeyEnd *string `json:"key_end,omitempty"`
+
+	// KeyStart First key of the band (e.g. "C4"), inclusive. Required, with
+	// key_end, when the instrument family is keyboard; absent when
+	// fretted.
+	KeyStart *string `json:"key_start,omitempty"`
+
+	// RegionId Stable identifier for this region. Always present in a response;
+	// optional in a create/update request — omitted values are
+	// assigned by the server.
+	RegionId *openapi_types.UUID `json:"region_id,omitempty"`
+
+	// StringEnd Last string of the band, inclusive; not below string_start and
+	// not beyond the instrument's string count.
+	StringEnd *int `json:"string_end,omitempty"`
+
+	// StringStart First string of the band, inclusive (1 = highest-pitched).
+	// Optional, and only with string_end, for fretted instruments;
+	// both omitted means the band covers every string.
+	StringStart *int `json:"string_start,omitempty"`
+}
 
 // DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
 // overlaid on its relative major, at the same fretboard position.
@@ -1899,11 +1963,23 @@ type LearningPathItem struct {
 // LearningPathItemContentType Media format of the content node, denormalised for display.
 type LearningPathItemContentType string
 
+// LocalizedCaption A caption in one or more languages, keyed by Language.code (never
+// "any").
+type LocalizedCaption map[string]string
+
+// LocalizedMarkerLabel A marker label in one or more languages, keyed by Language.code
+// (never "any"); each value fits inside a marker.
+type LocalizedMarkerLabel map[string]string
+
 // LocalizedNames Text in one or more languages, keyed by Language.code — for example
 // {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
 // always words in some language. Clients display the name for the
 // viewer's locale, falling back to "en", then to any name present.
 type LocalizedNames map[string]string
+
+// LocalizedNote A short note in one or more languages, keyed by Language.code
+// (never "any").
+type LocalizedNote map[string]string
 
 // MediaUploadUrl A presigned upload URL and the object's eventual read URL. The caller
 // performs an HTTP PUT of the file's raw bytes to upload_url, then stores
@@ -2496,7 +2572,10 @@ type UpdateContentNodeRequest struct {
 }
 
 // UpdateDiagramRequest Payload for replacing an existing diagram's names, positions,
-// classification, root_note, label_display, or color. instrument_id is not
+// regions, classification, root_note, label_display, or color. Every
+// per-language text on the diagram — names, positions' custom_label
+// and note, regions' description — must cover exactly the same
+// languages once the update is applied. instrument_id is not
 // present here — it cannot be changed after creation, since every
 // position's coordinate shape depends on it. Nor are kind and
 // created_by, which are fixed at creation; a copy saved under a
@@ -2533,6 +2612,11 @@ type UpdateDiagramRequest struct {
 	// caller that only wants to change one position must resend the
 	// full set.
 	Positions *[]DiagramPosition `json:"positions,omitempty"`
+
+	// Regions The diagram's full region list, replacing the current set; an
+	// empty list removes every region. Omitted leaves the regions
+	// unchanged.
+	Regions *[]DiagramRegion `json:"regions,omitempty"`
 
 	// RootNote The root note this diagram is authored against (e.g. "A"),
 	// replacing the current value. Omitted leaves the current value
@@ -2839,6 +2923,12 @@ type ListCoursesParamsLevels string
 // ListCoursesParamsStatus defines parameters for ListCourses.
 type ListCoursesParamsStatus string
 
+// ListCourseCreatorsParams defines parameters for ListCourseCreators.
+type ListCourseCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // ListDiagramsParams defines parameters for ListDiagrams.
 type ListDiagramsParams struct {
 	// Limit Maximum number of items to return in this page (ADR-031).
@@ -3054,6 +3144,9 @@ type ServerInterface interface {
 	// Create a course
 	// (POST /courses)
 	CreateCourse(w http.ResponseWriter, r *http.Request)
+	// List the creators of the courses visible to the caller
+	// (GET /courses/creators)
+	ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams)
 	// Get a course's live, current state by ID
 	// (GET /courses/{course_id})
 	GetCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
@@ -3312,6 +3405,12 @@ func (_ Unimplemented) ListCourses(w http.ResponseWriter, r *http.Request, param
 // Create a course
 // (POST /courses)
 func (_ Unimplemented) CreateCourse(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the courses visible to the caller
+// (GET /courses/creators)
+func (_ Unimplemented) ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4343,6 +4442,39 @@ func (siw *ServerInterfaceWrapper) CreateCourse(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateCourse(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCourseCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListCourseCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCourseCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCourseCreators(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5712,6 +5844,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/courses", wrapper.CreateCourse)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/courses/creators", wrapper.ListCourseCreators)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/courses/{course_id}", wrapper.GetCourse)
 	})
 	r.Group(func(r chi.Router) {
@@ -6795,6 +6930,32 @@ type CreateCourse403JSONResponse ForbiddenError
 func (response CreateCourse403JSONResponse) VisitCreateCourseResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourseCreatorsRequestObject struct {
+	Params ListCourseCreatorsParams
+}
+
+type ListCourseCreatorsResponseObject interface {
+	VisitListCourseCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListCourseCreators200JSONResponse []UserRef
+
+func (response ListCourseCreators200JSONResponse) VisitListCourseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourseCreators401JSONResponse UnauthorizedError
+
+func (response ListCourseCreators401JSONResponse) VisitListCourseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8632,6 +8793,9 @@ type StrictServerInterface interface {
 	// Create a course
 	// (POST /courses)
 	CreateCourse(ctx context.Context, request CreateCourseRequestObject) (CreateCourseResponseObject, error)
+	// List the creators of the courses visible to the caller
+	// (GET /courses/creators)
+	ListCourseCreators(ctx context.Context, request ListCourseCreatorsRequestObject) (ListCourseCreatorsResponseObject, error)
 	// Get a course's live, current state by ID
 	// (GET /courses/{course_id})
 	GetCourse(ctx context.Context, request GetCourseRequestObject) (GetCourseResponseObject, error)
@@ -9396,6 +9560,32 @@ func (sh *strictHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateCourseResponseObject); ok {
 		if err := validResponse.VisitCreateCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCourseCreators operation middleware
+func (sh *strictHandler) ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams) {
+	var request ListCourseCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCourseCreators(ctx, request.(ListCourseCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCourseCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCourseCreatorsResponseObject); ok {
+		if err := validResponse.VisitListCourseCreatorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

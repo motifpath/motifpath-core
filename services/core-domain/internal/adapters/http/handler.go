@@ -1046,6 +1046,25 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 	}, nil
 }
 
+// ListCourseCreators returns the creators of the courses visible to the
+// caller, optionally narrowed by name, in name order.
+func (h *Handler) ListCourseCreators(ctx context.Context, request generated.ListCourseCreatorsRequestObject) (generated.ListCourseCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListCourseCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.course.ListCourseCreators(ctx, caller, searchQuery(request.Params.Q))
+	if err != nil {
+		return nil, err
+	}
+	refs := make(generated.ListCourseCreators200JSONResponse, len(creators))
+	for i, c := range creators {
+		refs[i] = generated.UserRef{UserId: mustUUID(c.UserID), DisplayName: c.DisplayName}
+	}
+	return refs, nil
+}
+
 // latestCourseVersion returns course's latest published CourseVersion, or
 // nil if it has never been published — the courseVersionLookup shape
 // toCourseCatalogEntries and the toCourse/toCourseCatalogEntry mappers
