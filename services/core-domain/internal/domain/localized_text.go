@@ -39,8 +39,19 @@ func NewLocalizedTextFrom(field string, text map[string]string, maxLength int, a
 }
 
 func newLocalizedText(field string, text map[string]string, maxLength int, languages []string, requireAll bool) (LocalizedText, error) {
+	result, problem := localizedTextProblem(text, maxLength, languages, requireAll)
+	if problem != "" {
+		return nil, NewValidationError(field, problem)
+	}
+	return result, nil
+}
+
+// localizedTextProblem returns text trimmed, or why it breaks
+// newLocalizedText's rules — for a caller that reports the problem against
+// a field of its own.
+func localizedTextProblem(text map[string]string, maxLength int, languages []string, requireAll bool) (LocalizedText, string) {
 	if len(text) == 0 {
-		return nil, NewValidationError(field, "must contain text in at least one language")
+		return nil, "must contain text in at least one language"
 	}
 	result := make(LocalizedText, len(text))
 	// Walked in sorted order, so identical input always reports the same
@@ -48,18 +59,18 @@ func newLocalizedText(field string, text map[string]string, maxLength int, langu
 	for _, code := range LocalizedText(text).Languages() {
 		trimmed, problem := localizedValue(code, text[code], maxLength, languages)
 		if problem != "" {
-			return nil, NewValidationError(field, problem)
+			return nil, problem
 		}
 		result[code] = trimmed
 	}
 	if requireAll {
 		for _, code := range languages {
 			if _, ok := result[code]; !ok {
-				return nil, NewValidationError(field, fmt.Sprintf("is missing text in %q", code))
+				return nil, fmt.Sprintf("is missing text in %q", code)
 			}
 		}
 	}
-	return result, nil
+	return result, ""
 }
 
 // localizedValue returns value trimmed, or why it can't be the text in
