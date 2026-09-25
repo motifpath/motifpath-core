@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"time"
 )
 
@@ -91,7 +92,9 @@ func (k DiagramKind) Valid() bool {
 type Diagram struct {
 	ID           string
 	InstrumentID string
-	Name         string
+	// Names is the diagram's name per language: every offered language for
+	// a basic diagram, at least one for a custom one.
+	Names LocalizedText
 	// Kind and CreatedBy are fixed at creation: an update never changes
 	// them, and a copy under another kind or owner is a new Diagram.
 	Kind      DiagramKind
@@ -111,6 +114,19 @@ type Diagram struct {
 	Concepts  []Concept
 	CreatedAt time.Time
 }
+
+// IntervalCodes is every interval a Position may carry: canonical codes
+// (R is the root), not display text — clients show each in the viewer's
+// language. Enharmonic codes stay distinct (#4 vs b5) because the author's
+// spelling carries musical meaning.
+var IntervalCodes = []string{
+	"R", "b2", "2", "#2", "b3", "3", "4", "#4", "b5", "5", "#5", "b6", "6",
+	"bb7", "b7", "7", "b9", "9", "#9", "11", "#11", "b13", "13",
+}
+
+// noteNamePattern matches a letter note name in every locale: A-G with up to
+// two sharps or flats.
+var noteNamePattern = regexp.MustCompile(`^[A-G](bb|b|##|#)?$`)
 
 // hexColorPattern matches the #RRGGBB form the API accepts for colors.
 var hexColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
@@ -153,8 +169,23 @@ type DiagramOptions struct {
 	Kind DiagramKind
 }
 
+// MaxDiagramNameLength is the longest a diagram's name may be, in
+// characters, in any one language.
+const MaxDiagramNameLength = 200
+
+// diagramNames validates names against languages, the languages MotifPath
+// offers: a basic diagram is shared with every teacher, so it needs a name in
+// every one of them; a custom diagram needs at least one.
+func diagramNames(names map[string]string, languages []string, kind DiagramKind) (LocalizedText, error) {
+	if kind == DiagramKindBasic {
+		return NewLocalizedText("names", names, MaxDiagramNameLength, languages)
+	}
+	return NewLocalizedTextFrom("names", names, MaxDiagramNameLength, languages)
+}
+
 // NewDiagram validates and constructs a Diagram against instrument, owned
-// by createdBy, stopping at the first violated invariant. Every position
+// by createdBy, stopping at the first violated invariant. languages are the
+// languages MotifPath offers, which names are checked against. Every position
 // must use the coordinate shape of instrument's family — a rule no database
 // constraint expresses — and, for a fretted instrument, sit on a string it
 // has. opts.LabelDisplay, opts.Kind and each position's Shape default
@@ -163,7 +194,7 @@ type DiagramOptions struct {
 // opts.Color, when set, must be #RRGGBB. Whether skillIDs/conceptIDs
 // reference existing rows needs a repository round trip, so that stays an
 // application-layer concern.
-func NewDiagram(id, createdBy string, instrument Instrument, name string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
+func NewDiagram(id, createdBy string, instrument Instrument, names map[string]string, languages []string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
 	rootNote, labelDisplay, color, kind := opts.RootNote, opts.LabelDisplay, opts.Color, opts.Kind
 	if createdBy == "" {
 		return Diagram{}, NewValidationError("created_by", "must not be empty")
@@ -174,8 +205,9 @@ func NewDiagram(id, createdBy string, instrument Instrument, name string, positi
 	if !kind.Valid() {
 		return Diagram{}, NewValidationError("kind", "must be one of: basic, custom")
 	}
-	if name == "" {
-		return Diagram{}, NewValidationError("name", "must not be empty")
+	localizedNames, err := diagramNames(names, languages, kind)
+	if err != nil {
+		return Diagram{}, err
 	}
 	if labelDisplay == "" {
 		labelDisplay = LabelDisplayInterval
@@ -209,7 +241,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, name string, positi
 	return Diagram{
 		ID:           id,
 		InstrumentID: instrument.ID,
-		Name:         name,
+		Names:        localizedNames,
 		Kind:         kind,
 		CreatedBy:    createdBy,
 		RootNote:     rootNote,
@@ -259,8 +291,14 @@ func positionProblem(instrument Instrument, p Position) string {
 	if p.Interval == "" {
 		return "has no interval"
 	}
+	if !slices.Contains(IntervalCodes, p.Interval) {
+		return fmt.Sprintf("has interval %q, which is not one of the canonical interval codes", p.Interval)
+	}
 	if p.NoteName == "" {
 		return "has no note_name"
+	}
+	if !noteNamePattern.MatchString(p.NoteName) {
+		return fmt.Sprintf("has note_name %q, which is not a letter name (A-G with up to two sharps or flats)", p.NoteName)
 	}
 	if p.SequenceIndex != nil && *p.SequenceIndex < 0 {
 		return "has a negative sequence_index"
