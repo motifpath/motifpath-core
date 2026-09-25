@@ -2923,6 +2923,12 @@ type ListCoursesParamsLevels string
 // ListCoursesParamsStatus defines parameters for ListCourses.
 type ListCoursesParamsStatus string
 
+// ListCourseCreatorsParams defines parameters for ListCourseCreators.
+type ListCourseCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // ListDiagramsParams defines parameters for ListDiagrams.
 type ListDiagramsParams struct {
 	// Limit Maximum number of items to return in this page (ADR-031).
@@ -3140,7 +3146,7 @@ type ServerInterface interface {
 	CreateCourse(w http.ResponseWriter, r *http.Request)
 	// List the creators of the courses visible to the caller
 	// (GET /courses/creators)
-	ListCourseCreators(w http.ResponseWriter, r *http.Request)
+	ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams)
 	// Get a course's live, current state by ID
 	// (GET /courses/{course_id})
 	GetCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
@@ -3404,7 +3410,7 @@ func (_ Unimplemented) CreateCourse(w http.ResponseWriter, r *http.Request) {
 
 // List the creators of the courses visible to the caller
 // (GET /courses/creators)
-func (_ Unimplemented) ListCourseCreators(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4448,14 +4454,27 @@ func (siw *ServerInterfaceWrapper) CreateCourse(w http.ResponseWriter, r *http.R
 // ListCourseCreators operation middleware
 func (siw *ServerInterfaceWrapper) ListCourseCreators(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCourseCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListCourseCreators(w, r)
+		siw.Handler.ListCourseCreators(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6916,6 +6935,7 @@ func (response CreateCourse403JSONResponse) VisitCreateCourseResponse(w http.Res
 }
 
 type ListCourseCreatorsRequestObject struct {
+	Params ListCourseCreatorsParams
 }
 
 type ListCourseCreatorsResponseObject interface {
@@ -9548,8 +9568,10 @@ func (sh *strictHandler) CreateCourse(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListCourseCreators operation middleware
-func (sh *strictHandler) ListCourseCreators(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams) {
 	var request ListCourseCreatorsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListCourseCreators(ctx, request.(ListCourseCreatorsRequestObject))
