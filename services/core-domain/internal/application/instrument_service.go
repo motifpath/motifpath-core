@@ -8,26 +8,31 @@ import (
 )
 
 // InstrumentService manages Instrument — what a Diagram is authored against.
-// There is deliberately no update/delete method, matching the OpenAPI
-// surface: changing an instrument's family or shape once diagrams exist
-// against it is an open question.
+// Only an instrument's names can change after creation: changing its family
+// or shape once diagrams exist against it is an open question.
 type InstrumentService struct {
 	instruments ports.InstrumentRepository
+	languages   ports.LanguageRepository
 	newID       func() string
 }
 
-func NewInstrumentService(instruments ports.InstrumentRepository, newID func() string) *InstrumentService {
-	return &InstrumentService{instruments: instruments, newID: newID}
+func NewInstrumentService(instruments ports.InstrumentRepository, languages ports.LanguageRepository, newID func() string) *InstrumentService {
+	return &InstrumentService{instruments: instruments, languages: languages, newID: newID}
 }
 
 // CreateInstrument creates a new instrument. Only teachers and admins may
-// create one — instruments are an authoring surface.
-func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.User, name string, family domain.InstrumentFamily, stringCount *int, tuning []string, keyRange *domain.KeyRange) (domain.Instrument, error) {
+// create one — instruments are an authoring surface. names must cover every
+// language MotifPath offers, since every user sees the instrument.
+func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.User, names map[string]string, family domain.InstrumentFamily, stringCount *int, tuning []string, keyRange *domain.KeyRange) (domain.Instrument, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Instrument{}, domain.ErrForbidden
 	}
+	offered, err := s.offeredLanguages(ctx)
+	if err != nil {
+		return domain.Instrument{}, err
+	}
 
-	instrument, err := domain.NewInstrument(s.newID(), name, family, stringCount, tuning, keyRange)
+	instrument, err := domain.NewInstrument(s.newID(), names, offered, family, stringCount, tuning, keyRange)
 	if err != nil {
 		return domain.Instrument{}, err
 	}
@@ -37,8 +42,51 @@ func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.
 	return instrument, nil
 }
 
+// UpdateInstrumentNames replaces an instrument's names — the only part of an
+// instrument that can change. Only admins may, since instruments are shared
+// by every user; the new names must cover every language MotifPath offers.
+func (s *InstrumentService) UpdateInstrumentNames(ctx context.Context, caller domain.User, id string, names map[string]string) (domain.Instrument, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.Instrument{}, domain.ErrForbidden
+	}
+	current, err := s.instruments.GetByID(ctx, id)
+	if err != nil {
+		return domain.Instrument{}, err
+	}
+	offered, err := s.offeredLanguages(ctx)
+	if err != nil {
+		return domain.Instrument{}, err
+	}
+
+	updated, err := domain.NewInstrument(current.ID, names, offered, current.Family, current.StringCount, current.Tuning, current.KeyRange)
+	if err != nil {
+		return domain.Instrument{}, err
+	}
+	if err := s.instruments.UpdateNames(ctx, updated.ID, updated.Names); err != nil {
+		return domain.Instrument{}, err
+	}
+	return updated, nil
+}
+
 // ListInstruments returns every known instrument. Any authenticated user may
 // list them.
 func (s *InstrumentService) ListInstruments(ctx context.Context) ([]domain.Instrument, error) {
 	return s.instruments.List(ctx)
+}
+
+// offeredLanguages returns the code of every language MotifPath offers —
+// every Language row except the language-agnostic LanguageCodeAny marker,
+// which is never a language text can be written in.
+func (s *InstrumentService) offeredLanguages(ctx context.Context) ([]string, error) {
+	languages, err := s.languages.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	codes := make([]string, 0, len(languages))
+	for _, lang := range languages {
+		if lang.Code != domain.LanguageCodeAny {
+			codes = append(codes, lang.Code)
+		}
+	}
+	return codes, nil
 }

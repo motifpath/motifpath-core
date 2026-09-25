@@ -206,7 +206,7 @@ func wireServices(res resources) (services, seedDeps) {
 		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle),
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
-		instrument:  application.NewInstrumentService(instrumentRepo, newID),
+		instrument:  application.NewInstrumentService(instrumentRepo, languageRepo, newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now),
 	}
 
@@ -543,14 +543,14 @@ func templateCurator(admin, synthAdmin domain.User) domain.User {
 	return synthAdmin
 }
 
-// seedInstrumentAndDiagram creates one fretted Instrument ("Guitar", standard
-// tuning) and one basic Diagram against it (an open-position A minor
+// seedInstrumentAndDiagram creates one fretted Instrument ("Guitar" /
+// "Violão", standard tuning) and one basic Diagram against it (an open-position A minor
 // pentatonic shape), owned by curator — without this, the diagram authoring
 // UI's instrument picker has nothing to list, since no other seed step
 // creates an Instrument row.
 func seedInstrumentAndDiagram(ctx context.Context, teacher, curator domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (domain.Diagram, error) {
 	stringCount := 6
-	instrument, err := instrumentSvc.CreateInstrument(ctx, teacher, "Guitar", domain.InstrumentFamilyFretted,
+	instrument, err := instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
 		&stringCount, []string{"E", "A", "D", "G", "B", "E"}, nil)
 	if err != nil {
 		return domain.Diagram{}, fmt.Errorf("create instrument: %w", err)

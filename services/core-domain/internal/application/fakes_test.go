@@ -134,6 +134,17 @@ func newFakeLanguageRepository() *fakeLanguageRepository {
 	}}
 }
 
+func (f *fakeLanguageRepository) List(_ context.Context) ([]domain.Language, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Language, 0, len(f.byCode))
+	for _, lang := range f.byCode {
+		result = append(result, lang)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Code < result[j].Code })
+	return result, nil
+}
+
 func (f *fakeLanguageRepository) GetByCode(_ context.Context, code string) (domain.Language, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1393,6 +1404,18 @@ func (f *fakeInstrumentRepository) List(_ context.Context) ([]domain.Instrument,
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
+}
+
+func (f *fakeInstrumentRepository) UpdateNames(_ context.Context, id string, names domain.LocalizedText) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	instrument, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	instrument.Names = names
+	f.byID[id] = instrument
+	return nil
 }
 
 func (f *fakeInstrumentRepository) put(instrument domain.Instrument) {

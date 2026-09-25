@@ -586,7 +586,8 @@ func toDomainDiagramStackRefPtr(stack *generated.DiagramStackRef) *domain.Diagra
 func toGeneratedInstrument(i domain.Instrument) generated.Instrument {
 	instrument := generated.Instrument{
 		InstrumentId: mustUUID(i.ID),
-		Name:         i.Name,
+		Names:        generated.LocalizedNames(i.Names),
+		Languages:    i.Names.Languages(),
 		Family:       generated.InstrumentFamily(i.Family),
 		StringCount:  i.StringCount,
 	}
