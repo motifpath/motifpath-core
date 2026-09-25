@@ -144,7 +144,7 @@ func TestCourseEnrollmentService_CreateCourseEnrollment(t *testing.T) {
 		assert.Equal(t, "existing-path", *got.CurrentStandalonePathID)
 	})
 
-	t.Run("only students may self-enroll", func(t *testing.T) {
+	t.Run("a teacher self-enrolls like any learner", func(t *testing.T) {
 		f := courseEnrollmentFixtures{
 			paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
 			studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
@@ -153,9 +153,10 @@ func TestCourseEnrollmentService_CreateCourseEnrollment(t *testing.T) {
 		publishedCourseWithCheckpoint(f.courses, f.courseVersions, "course-1", "path-1")
 		svc := newCourseEnrollmentService(f)
 
-		_, err := svc.CreateCourseEnrollment(context.Background(), teacherCaller(), "course-1")
+		got, err := svc.CreateCourseEnrollment(context.Background(), teacherCaller(), "course-1")
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		require.NoError(t, err)
+		assert.Equal(t, teacherCaller().ID, got.StudentID)
 	})
 
 	t.Run("a course that does not exist is not found", func(t *testing.T) {
@@ -271,16 +272,17 @@ func TestCourseEnrollmentService_ListMyCourseEnrollments(t *testing.T) {
 		require.Len(t, enrollments, 1)
 	})
 
-	t.Run("only students hold course enrollments", func(t *testing.T) {
+	t.Run("a teacher lists their own enrollments like any learner", func(t *testing.T) {
 		f := courseEnrollmentFixtures{
 			paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
 			studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
 		}
 		svc := newCourseEnrollmentService(f)
 
-		_, err := svc.ListMyCourseEnrollments(context.Background(), teacherCaller())
+		got, err := svc.ListMyCourseEnrollments(context.Background(), teacherCaller())
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		require.NoError(t, err)
+		assert.Empty(t, got)
 	})
 }
 
@@ -324,7 +326,7 @@ func TestCourseEnrollmentService_AbandonCourseEnrollment(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrConflict)
 	})
 
-	t.Run("only students hold course enrollments", func(t *testing.T) {
+	t.Run("a teacher is not refused for their role, only for not holding the enrollment", func(t *testing.T) {
 		f := courseEnrollmentFixtures{
 			paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
 			studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
@@ -333,7 +335,7 @@ func TestCourseEnrollmentService_AbandonCourseEnrollment(t *testing.T) {
 
 		_, err := svc.AbandonCourseEnrollment(context.Background(), teacherCaller(), "enrollment-1")
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
 	t.Run("no active enrollment with the given id belonging to the caller is not found", func(t *testing.T) {

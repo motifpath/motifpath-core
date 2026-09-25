@@ -25,11 +25,8 @@ func TestToCourseCatalogEntry(t *testing.T) {
 		TitleSnapshot: "Published Title", SummarySnapshot: "Published summary.", LevelSnapshot: domain.DifficultyLevelBeginner,
 	}
 	names := userNames{creator: "Ana Souza"}
-	student := domain.User{ID: "student-1", Role: domain.RoleStudent}
-	teacher := domain.User{ID: "teacher-1", Role: domain.RoleTeacher}
-
-	t.Run("a student sees the latest published version's title, summary and level", func(t *testing.T) {
-		entry := toCourseCatalogEntry(live, student, &version, names)
+	t.Run("the learner catalog shows the latest published version's title, summary and level", func(t *testing.T) {
+		entry := toCourseCatalogEntry(live, learnerCatalogView, &version, names)
 
 		assert.Equal(t, "Published Title", entry.Title)
 		assert.Equal(t, "Published summary.", entry.Summary)
@@ -37,8 +34,8 @@ func TestToCourseCatalogEntry(t *testing.T) {
 		assert.Nil(t, entry.HasUnpublishedChanges)
 	})
 
-	t.Run("a teacher sees the live draft and whether it has unpublished changes", func(t *testing.T) {
-		entry := toCourseCatalogEntry(live, teacher, &version, names)
+	t.Run("the authoring list shows the live draft and whether it has unpublished changes", func(t *testing.T) {
+		entry := toCourseCatalogEntry(live, authoringListView, &version, names)
 
 		assert.Equal(t, "Edited Title", entry.Title)
 		assert.EqualValues(t, domain.DifficultyLevelExpert, entry.Level)
@@ -48,12 +45,12 @@ func TestToCourseCatalogEntry(t *testing.T) {
 
 	t.Run("every entry names the course's creator", func(t *testing.T) {
 		want := generated.UserRef{UserId: uuid.MustParse(creator), DisplayName: "Ana Souza"}
-		assert.Equal(t, want, toCourseCatalogEntry(live, student, &version, names).CreatedBy)
-		assert.Equal(t, want, toCourseCatalogEntry(live, teacher, &version, names).CreatedBy)
+		assert.Equal(t, want, toCourseCatalogEntry(live, learnerCatalogView, &version, names).CreatedBy)
+		assert.Equal(t, want, toCourseCatalogEntry(live, authoringListView, &version, names).CreatedBy)
 	})
 
 	t.Run("an unpublished course has no published_at", func(t *testing.T) {
-		entry := toCourseCatalogEntry(live, teacher, nil, names)
+		entry := toCourseCatalogEntry(live, authoringListView, nil, names)
 
 		assert.Nil(t, entry.PublishedAt)
 	})

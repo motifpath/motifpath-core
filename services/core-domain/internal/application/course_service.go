@@ -75,25 +75,35 @@ func (s *CourseService) GetCourse(ctx context.Context, caller domain.User, id st
 	return s.courses.GetByID(ctx, id)
 }
 
-// ListCourses returns one page of the course catalog matching filter. A
-// student's results are always implicitly published, regardless of any
-// status given, and every filter is evaluated against each course's latest
-// published version. A teacher sees courses of every status but only their
-// own — naming another creator is forbidden — evaluated against the live
-// draft. An admin may see every creator's courses, or narrow to one.
+// ListCourses returns one page of the authoring course list matching
+// filter, evaluated against each course's live draft. It is for teachers and
+// admins only — a student is refused, since learners of every role browse
+// ListCatalogCourses instead. A teacher sees courses of every status but
+// only their own — naming another creator is forbidden. An admin may see
+// every creator's courses, or narrow to one.
 func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
-	switch caller.Role {
-	case domain.RoleStudent:
-		published := domain.CourseStatusPublished
-		filter.Status = &published
-		filter.PublishedView = true
-	case domain.RoleTeacher:
+	if !canManageContent(caller.Role) {
+		return domain.Page[domain.Course]{}, domain.ErrForbidden
+	}
+	if caller.Role == domain.RoleTeacher {
 		if filter.CreatedBy != "" && filter.CreatedBy != caller.ID {
 			return domain.Page[domain.Course]{}, domain.ErrForbidden
 		}
 		filter.CreatedBy = caller.ID
-	case domain.RoleAdmin:
 	}
+	filter.PublishedView = false
+	return s.courses.List(ctx, filter, page)
+}
+
+// ListCatalogCourses returns one page of the learner catalog matching
+// filter: published courses only, whoever created them, with every filter
+// evaluated against each course's latest published version. It is the same
+// for every caller whatever their role — anyone can learn — so it takes no
+// caller, and a status in filter never widens it beyond published.
+func (s *CourseService) ListCatalogCourses(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	published := domain.CourseStatusPublished
+	filter.Status = &published
+	filter.PublishedView = true
 	return s.courses.List(ctx, filter, page)
 }
 
@@ -104,23 +114,38 @@ type CourseCreator struct {
 	DisplayName string
 }
 
-// ListCourseCreators returns the distinct creators of the courses the
-// caller would see in ListCourses, so a creator filter can offer every
-// option without paging through the catalog: a student gets the creators of
-// published courses, a teacher at most themselves, an admin the creator of
-// every course. A non-empty nameQuery keeps only the creators whose display
-// name contains it. Matching and ordering both ignore case and accents, the
-// way a person reads a list of names; equal names fall back to user id.
+// ListCourseCreators returns the distinct creators of the courses in the
+// caller's authoring list (ListCourses), so an authoring screen can offer a
+// complete creator filter without paging: a teacher gets at most
+// themselves, an admin the creator of every course. A student is refused;
+// learners use ListCatalogCreators. A non-empty nameQuery keeps only the
+// creators whose display name contains it; see creatorsNamed for matching
+// and ordering.
 func (s *CourseService) ListCourseCreators(ctx context.Context, caller domain.User, nameQuery string) ([]CourseCreator, error) {
-	var filter domain.CourseListFilter
-	switch caller.Role {
-	case domain.RoleStudent:
-		published := domain.CourseStatusPublished
-		filter.Status = &published
-	case domain.RoleTeacher:
-		filter.CreatedBy = caller.ID
-	case domain.RoleAdmin:
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
 	}
+	var filter domain.CourseListFilter
+	if caller.Role == domain.RoleTeacher {
+		filter.CreatedBy = caller.ID
+	}
+	return s.creatorsNamed(ctx, filter, nameQuery)
+}
+
+// ListCatalogCreators returns the distinct creators of published courses,
+// the creator filter's options for the learner catalog. Like
+// ListCatalogCourses it is the same for every caller.
+func (s *CourseService) ListCatalogCreators(ctx context.Context, nameQuery string) ([]CourseCreator, error) {
+	published := domain.CourseStatusPublished
+	return s.creatorsNamed(ctx, domain.CourseListFilter{Status: &published}, nameQuery)
+}
+
+// creatorsNamed returns the distinct creators of the courses matching
+// filter, with their current display names, keeping only those whose name
+// contains nameQuery when it is non-empty. Matching and ordering both ignore
+// case and accents, the way a person reads a list of names; equal names fall
+// back to user id.
+func (s *CourseService) creatorsNamed(ctx context.Context, filter domain.CourseListFilter, nameQuery string) ([]CourseCreator, error) {
 	ids, err := s.courses.ListCreatorIDs(ctx, filter)
 	if err != nil {
 		return nil, err

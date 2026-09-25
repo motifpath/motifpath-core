@@ -62,8 +62,8 @@ func NewCourseEnrollmentService(
 // LearningPath template into a new StudentPath, and sets the new enrollment
 // as caller's current course only if nothing is currently set — a student
 // actively running another course or a standalone path is never silently
-// switched away from it. Only students, and admins acting as their own
-// student identity, may self-enroll. Refused with
+// switched away from it. Any user may self-enroll, whatever their role.
+// Refused with
 // domain.ErrNotFound if courseID does not exist, the course is draft or
 // retired, or its latest published version is not currently available for
 // new enrollments. Refused with domain.ErrConflict if caller already holds
@@ -71,9 +71,6 @@ func NewCourseEnrollmentService(
 // later abandoned or completed does not count, so re-enrolling after
 // leaving a course is allowed.
 func (s *CourseEnrollmentService) CreateCourseEnrollment(ctx context.Context, caller domain.User, courseID string) (domain.CourseEnrollment, error) {
-	if !canActAsStudent(caller.Role) {
-		return domain.CourseEnrollment{}, domain.ErrForbidden
-	}
 
 	latest, err := s.resolveEnrollableVersion(ctx, courseID)
 	if err != nil {
@@ -166,8 +163,8 @@ func (s *CourseEnrollmentService) setCurrentIfNothingSet(ctx context.Context, st
 }
 
 // ListMyCourseEnrollments returns every CourseEnrollment caller has ever
-// held — active, completed, and abandoned. Only students hold course
-// enrollments.
+// held — active, completed, and abandoned. Every user, whatever their role,
+// may hold course enrollments.
 //
 // Before returning, every active enrollment is run through
 // checkAndAdvanceCheckpoint: a checkpoint the student has just finished
@@ -178,9 +175,6 @@ func (s *CourseEnrollmentService) setCurrentIfNothingSet(ctx context.Context, st
 // just-completed course's final state, and neither should have to wait for
 // a separate detection step.
 func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, caller domain.User) ([]domain.CourseEnrollment, error) {
-	if !canActAsStudent(caller.Role) {
-		return nil, domain.ErrForbidden
-	}
 
 	list, err := s.enrollments.ListByStudentID(ctx, caller.ID)
 	if err != nil {
@@ -206,17 +200,14 @@ func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, c
 // AbandonCourseEnrollment sets the CourseEnrollment with the given id to
 // abandoned. All of its checkpoints' StudentPaths are implicitly left
 // behind — per-checkpoint partial archiving does not exist, since
-// checkpoints are sequential and owned by one enrollment. Only students
-// hold course enrollments. Refused with domain.ErrNotFound if no active
+// checkpoints are sequential and owned by one enrollment. Refused with
+// domain.ErrNotFound if no active
 // enrollment with this id belongs to caller. If it is caller's current
 // course or path, refused with domain.ErrConflict when another eligible
 // course enrollment or standalone path exists — the student must switch to
 // it first via SetCurrentPath — and allowed, clearing the current pointer,
 // only when nothing else exists to become current.
 func (s *CourseEnrollmentService) AbandonCourseEnrollment(ctx context.Context, caller domain.User, enrollmentID string) (domain.CourseEnrollment, error) {
-	if !canActAsStudent(caller.Role) {
-		return domain.CourseEnrollment{}, domain.ErrForbidden
-	}
 
 	enrollment, err := s.enrollments.GetByID(ctx, enrollmentID)
 	if err != nil {
