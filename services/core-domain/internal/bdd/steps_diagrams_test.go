@@ -293,6 +293,7 @@ func (w *world) createsDiagramWithFrettedPositions(_, name, instrument, skills, 
 		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
 			position.Color = &colorCell
 		}
+		withEnglishAnnotations(&position, table, row)
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
@@ -323,6 +324,7 @@ func (w *world) createsDiagramWithColor(_, name, instrument, color, skills, conc
 		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
 			position.Color = &colorCell
 		}
+		withEnglishAnnotations(&position, table, row)
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
@@ -695,7 +697,9 @@ func frettedPositionsFromTable(table *godog.Table) ([]generated.DiagramPosition,
 		if err != nil {
 			return nil, err
 		}
-		positions = append(positions, generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret})
+		position := generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret}
+		withEnglishAnnotations(&position, table, row)
+		positions = append(positions, position)
 	}
 	return positions, nil
 }

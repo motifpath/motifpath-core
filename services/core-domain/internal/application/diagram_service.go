@@ -32,12 +32,15 @@ func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.Instr
 // changing one must resend the other. There is no way to clear an
 // already-set RootNote back to nil through an update — only to replace it
 // with another value or leave it as-is; Color behaves the same way.
-// Per-position colors travel with Positions and so can be cleared by
-// resending Positions without them.
+// Per-position colors, custom labels and notes travel with Positions and so
+// can be cleared by resending Positions without them.
 type DiagramUpdate struct {
 	// Names replaces every name when non-nil; nil keeps the current ones.
-	Names        map[string]string
-	Positions    []domain.Position
+	Names     map[string]string
+	Positions []domain.Position
+	// Regions replaces every region when non-nil — an empty, non-nil slice
+	// removes them all; nil keeps the current ones.
+	Regions      []domain.Region
 	SkillIDs     []string
 	ConceptIDs   []string
 	RootNote     *string
@@ -47,9 +50,9 @@ type DiagramUpdate struct {
 
 // CreateDiagram creates a diagram against an existing instrument, owned by
 // caller. Only teachers and admins may create one, and only an admin may
-// create a basic one; opts.Kind defaults to custom. Positions without an id
-// are assigned one; a client-supplied id is kept. See domain.DiagramOptions
-// for the other optional settings.
+// create a basic one; opts.Kind defaults to custom. Positions and regions
+// without an id are assigned one; a client-supplied id is kept. See
+// domain.DiagramOptions for the other optional settings.
 func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
@@ -70,6 +73,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
+	opts.Regions = s.withRegionIDs(opts.Regions)
 	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, names, offered, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
@@ -169,7 +173,11 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
-	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, updatedDiagramOptions(current, update), current.CreatedAt)
+	opts := updatedDiagramOptions(current, update)
+	if update.Regions != nil {
+		opts.Regions = s.withRegionIDs(update.Regions)
+	}
+	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, opts, current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -186,9 +194,10 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 }
 
 // updatedDiagramOptions returns current's options with update's non-nil
-// root note, label display and color applied. Kind always stays current's.
+// root note, label display and color applied. Kind always stays current's;
+// regions are current's too, for the caller to replace.
 func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.DiagramOptions {
-	opts := domain.DiagramOptions{RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind}
+	opts := domain.DiagramOptions{RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind, Regions: current.Regions}
 	if update.RootNote != nil {
 		opts.RootNote = update.RootNote
 	}
@@ -216,6 +225,23 @@ func requireDiagramEditor(caller domain.User, diagram domain.Diagram) error {
 func (s *DiagramService) withPositionIDs(positions []domain.Position) []domain.Position {
 	out := make([]domain.Position, len(positions))
 	copy(out, positions)
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = s.newID()
+		}
+	}
+	return out
+}
+
+// withRegionIDs returns a copy of regions with an id assigned to every
+// region that lacks one, leaving the caller's slice untouched. A nil slice
+// stays nil.
+func (s *DiagramService) withRegionIDs(regions []domain.Region) []domain.Region {
+	if regions == nil {
+		return nil
+	}
+	out := make([]domain.Region, len(regions))
+	copy(out, regions)
 	for i := range out {
 		if out[i].ID == "" {
 			out[i].ID = s.newID()
