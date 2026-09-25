@@ -236,7 +236,7 @@ func seedPathAndProgress(
 		nodeIDs = append(nodeIDs, node.ID)
 	}
 
-	path, err := pathService.CreateLearningPath(ctx, teacher, "Blues Guitar Foundations", items)
+	path, err := pathService.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Blues Guitar Foundations", Items: items})
 	if err != nil {
 		return nil, fmt.Errorf("create learning path: %w", err)
 	}

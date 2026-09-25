@@ -716,7 +716,7 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, request.Body.Title, pathItems)
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -806,7 +806,7 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), request.Body.Title, pathItems)
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

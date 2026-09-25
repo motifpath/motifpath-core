@@ -39,6 +39,13 @@ type LearningPath struct {
 	CreatedAt time.Time
 }
 
+// LearningPathFields are the parts of a learning path its author writes, as
+// given to NewLearningPath to create or replace one.
+type LearningPathFields struct {
+	Title string
+	Items []NewLearningPathItem
+}
+
 // NewLearningPath validates title and items and assigns each item its
 // 1-based position in the order given. Each item's Node must already be the
 // resolved ContentNode — the application layer fetches them to verify
@@ -50,7 +57,8 @@ type LearningPath struct {
 // Section labels are normalised here (see normaliseSectionLabel) so the
 // stored path is the single source of truth about which items belong to the
 // same section — consumers must not have to re-derive that by trimming.
-func NewLearningPath(id, teacherID, title string, pathItems []NewLearningPathItem, createdAt time.Time) (LearningPath, error) {
+func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt time.Time) (LearningPath, error) {
+	title, pathItems := fields.Title, fields.Items
 	var errs []FieldError
 
 	if title == "" {

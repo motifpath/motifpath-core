@@ -29,21 +29,34 @@ type PathItemInput struct {
 	SectionLabel  *string
 }
 
+// LearningPathInput is what a caller writes to create or replace a learning
+// path.
+type LearningPathInput struct {
+	Title string
+	Items []PathItemInput
+}
+
+// fields resolves input into the domain's LearningPathFields, given its items
+// already resolved against their content nodes.
+func (input LearningPathInput) fields(items []domain.NewLearningPathItem) domain.LearningPathFields {
+	return domain.LearningPathFields{Title: input.Title, Items: items}
+}
+
 // CreateLearningPath creates a learning path from the given ordered items.
 // Only teachers and admins may create learning paths. A content_node_id
 // that doesn't exist is a validation failure (400), not a not-found error —
 // the whole request is malformed, not a lookup that simply missed.
-func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller domain.User, title string, pathItems []PathItemInput) (domain.LearningPath, error) {
+func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller domain.User, input LearningPathInput) (domain.LearningPath, error) {
 	if !canManageContent(caller.Role) {
 		return domain.LearningPath{}, domain.ErrForbidden
 	}
 
-	items, err := s.resolvePathItems(ctx, pathItems)
+	items, err := s.resolvePathItems(ctx, input.Items)
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
 
-	path, err := domain.NewLearningPath(s.newID(), caller.ID, title, items, s.now())
+	path, err := domain.NewLearningPath(s.newID(), caller.ID, input.fields(items), s.now())
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
@@ -81,7 +94,7 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 // doesn't exist is a validation failure (400), matching CreateLearningPath.
 // Only the creating teacher or an admin may replace a learning path.
 // Returns domain.ErrNotFound if no path exists with the given id.
-func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller domain.User, id, title string, pathItems []PathItemInput) (domain.LearningPath, error) {
+func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller domain.User, id string, input LearningPathInput) (domain.LearningPath, error) {
 	if !canManageContent(caller.Role) {
 		return domain.LearningPath{}, domain.ErrForbidden
 	}
@@ -94,12 +107,12 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 		return domain.LearningPath{}, err
 	}
 
-	items, err := s.resolvePathItems(ctx, pathItems)
+	items, err := s.resolvePathItems(ctx, input.Items)
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
 
-	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, title, items, existing.CreatedAt)
+	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, input.fields(items), existing.CreatedAt)
 	if err != nil {
 		return domain.LearningPath{}, err
 	}

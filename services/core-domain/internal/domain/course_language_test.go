@@ -28,7 +28,7 @@ func TestNewCourse_Language(t *testing.T) {
 
 	for name, language := range map[string]string{
 		"no language":                         "",
-		`the language-agnostic marker "any"`: domain.LanguageCodeAny,
+		`the language-agnostic marker "any"`:  domain.LanguageCodeAny,
 		"a language MotifPath does not offer": "xx",
 	} {
 		t.Run("rejected: "+name, func(t *testing.T) {

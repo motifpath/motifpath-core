@@ -116,7 +116,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, node.ID, challenge.ContentNodeID)
 
-	learningPath, err := p.path.CreateLearningPath(ctx, teacher, "Week 1", []application.PathItemInput{{ContentNodeID: node.ID}})
+	learningPath, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Week 1", Items: []application.PathItemInput{{ContentNodeID: node.ID}}})
 	require.NoError(t, err)
 
 	// AssignLearningPath needs the student to exist in the same Postgres
@@ -161,7 +161,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node1.ID)
 	require.NoError(t, err)
-	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
+	path1, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Path 1", Items: []application.PathItemInput{{ContentNodeID: node1.ID}}})
 	require.NoError(t, err)
 
 	first, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
@@ -181,7 +181,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node2.ID)
 	require.NoError(t, err)
-	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
+	path2, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Path 2", Items: []application.PathItemInput{{ContentNodeID: node2.ID}}})
 	require.NoError(t, err)
 
 	second, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)

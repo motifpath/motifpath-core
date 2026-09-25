@@ -275,17 +275,17 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Names["en"])
 
-	templateA, err := svc.path.CreateLearningPath(ctx, teacher, "Open Position Foundations", []application.PathItemInput{
+	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Open Position Foundations", Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
 		{ContentNodeID: nodes["article-beginner"].ID},
-	})
+	}})
 	if err != nil {
 		return fmt.Errorf("create template A: %w", err)
 	}
-	templateB, err := svc.path.CreateLearningPath(ctx, teacher, "Improvisation Essentials", []application.PathItemInput{
+	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Improvisation Essentials", Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-intermediate"].ID},
 		{ContentNodeID: nodes["article-advanced"].ID},
-	})
+	}})
 	if err != nil {
 		return fmt.Errorf("create template B: %w", err)
 	}
@@ -908,10 +908,10 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 		return fmt.Errorf("link every exercise to video-intermediate's challenge: %w", err)
 	}
 
-	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, "Admin Zero-User Path", []application.PathItemInput{
+	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Title: "Admin Zero-User Path", Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
 		{ContentNodeID: nodes["video-intermediate"].ID},
-	})
+	}})
 	if err != nil {
 		return fmt.Errorf("create admin's standalone path: %w", err)
 	}
