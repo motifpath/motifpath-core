@@ -130,6 +130,14 @@ func (w *world) seedCourse(courseSlug string, pathSlugs []string, creatorName st
 
 // seedCourseIn is seedCourse for a course written in language.
 func (w *world) seedCourseIn(language, courseSlug string, pathSlugs []string, creatorName string, publish bool) (uuid.UUID, error) {
+	return w.seedCourseWith(courseSlug, pathSlugs, creatorName, publish, func(body *generated.CreateCourseRequest) {
+		body.Language = language
+	})
+}
+
+// seedCourseWith is seedCourse with the create request adjusted before it is
+// sent, for a scenario that needs a particular language or instruments.
+func (w *world) seedCourseWith(courseSlug string, pathSlugs []string, creatorName string, publish bool, adjust func(*generated.CreateCourseRequest)) (uuid.UUID, error) {
 	for _, slug := range pathSlugs {
 		if _, err := w.paths.GetByID(context.Background(), pathID(slug).String()); err != nil {
 			if !errors.Is(err, domain.ErrNotFound) {
@@ -149,15 +157,15 @@ func (w *world) seedCourseIn(language, courseSlug string, pathSlugs []string, cr
 		specs[i] = courseCheckpointSpec{slug: slug}
 	}
 
-	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{
-		Body: &generated.CreateCourseRequest{
-			Language:    language,
-			Title:       courseSlug,
-			Summary:     "Seeded for testing",
-			Level:       generated.CreateCourseRequestLevelBeginner,
-			Checkpoints: toCourseCheckpointBody(specs),
-		},
-	})
+	body := &generated.CreateCourseRequest{
+		Language:    "en",
+		Title:       courseSlug,
+		Summary:     "Seeded for testing",
+		Level:       generated.CreateCourseRequestLevelBeginner,
+		Checkpoints: toCourseCheckpointBody(specs),
+	}
+	adjust(body)
+	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{Body: body})
 	if err != nil {
 		return uuid.UUID{}, err
 	}

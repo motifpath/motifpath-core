@@ -565,6 +565,16 @@ func LanguagesSnapshotContainsFold(v string) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldContainsFold(FieldLanguagesSnapshot, v))
 }
 
+// InstrumentIdsSnapshotIsNil applies the IsNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotIsNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIsNull(FieldInstrumentIdsSnapshot))
+}
+
+// InstrumentIdsSnapshotNotNil applies the NotNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotNotNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotNull(FieldInstrumentIdsSnapshot))
+}
+
 // PublishedByEQ applies the EQ predicate on the "published_by" field.
 func PublishedByEQ(v uuid.UUID) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldEQ(FieldPublishedBy, v))

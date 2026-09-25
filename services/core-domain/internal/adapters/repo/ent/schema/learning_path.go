@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -42,5 +43,12 @@ func (LearningPath) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+	}
+}
+
+func (LearningPath) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("instruments", Instrument.Type).
+			Through("learning_path_instruments", LearningPathInstrument.Type),
 	}
 }

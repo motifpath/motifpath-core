@@ -5,6 +5,7 @@ package bdd
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -226,6 +227,9 @@ func (f *fakeContentNodeRepo) List(_ context.Context, filter domain.ContentNodeF
 			continue
 		}
 		if filter.ConceptID != "" && !containsID(n.Classification.ConceptIDs(), filter.ConceptID) {
+			continue
+		}
+		if !forInstrument(n.InstrumentIDs, filter.InstrumentID) {
 			continue
 		}
 		if filter.Difficulty != "" && n.Classification.DifficultyLevel != filter.Difficulty {
@@ -757,6 +761,9 @@ func (f *fakeLearningPathRepo) matches(p domain.LearningPath, filter domain.Lear
 	if len(filter.Levels) > 0 && (p.Level == nil || !containsLevel(filter.Levels, *p.Level)) {
 		return false
 	}
+	if !forInstrument(p.InstrumentIDs, filter.InstrumentID) {
+		return false
+	}
 	if len(filter.SkillIDs) == 0 && len(filter.ConceptIDs) == 0 {
 		return true
 	}
@@ -839,7 +846,7 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 	}
 	var matches []candidate
 	for _, c := range f.byID {
-		view := courseView{title: c.Title, summary: c.Summary, level: c.Level, language: c.Language}
+		view := courseView{title: c.Title, summary: c.Summary, level: c.Level, language: c.Language, instrumentIDs: c.InstrumentIDs}
 		checkpointPaths := make([]string, len(c.Checkpoints))
 		for i, cp := range c.Checkpoints {
 			checkpointPaths[i] = cp.LearningPathID
@@ -849,7 +856,7 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 			if !ok {
 				continue
 			}
-			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot, language: latest.LanguageSnapshot}
+			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot, language: latest.LanguageSnapshot, instrumentIDs: latest.InstrumentIDsSnapshot}
 			checkpointPaths = checkpointPaths[:0]
 			for _, cp := range latest.Checkpoints {
 				checkpointPaths = append(checkpointPaths, cp.LearningPathID)
@@ -866,6 +873,9 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 			continue
 		}
 		if filter.Language != "" && view.language != filter.Language {
+			continue
+		}
+		if !forInstrument(view.instrumentIDs, filter.InstrumentID) {
 			continue
 		}
 		if !containsFold(view.title, filter.Query) && !containsFold(view.summary, filter.Query) {
@@ -894,6 +904,14 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 type courseView struct {
 	title, summary, language string
 	level                    domain.DifficultyLevel
+	instrumentIDs            []string
+}
+
+// forInstrument states the instrument filter rule in memory: no filter
+// matches everything, and an item with no instruments suits every
+// instrument.
+func forInstrument(instrumentIDs []string, instrumentID string) bool {
+	return instrumentID == "" || len(instrumentIDs) == 0 || slices.Contains(instrumentIDs, instrumentID)
 }
 
 func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {

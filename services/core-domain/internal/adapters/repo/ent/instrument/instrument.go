@@ -29,6 +29,18 @@ const (
 	FieldKeyRangeHighest = "key_range_highest"
 	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
 	EdgeDiagrams = "diagrams"
+	// EdgeCourses holds the string denoting the courses edge name in mutations.
+	EdgeCourses = "courses"
+	// EdgeLearningPaths holds the string denoting the learning_paths edge name in mutations.
+	EdgeLearningPaths = "learning_paths"
+	// EdgeContentNodes holds the string denoting the content_nodes edge name in mutations.
+	EdgeContentNodes = "content_nodes"
+	// EdgeCourseInstruments holds the string denoting the course_instruments edge name in mutations.
+	EdgeCourseInstruments = "course_instruments"
+	// EdgeLearningPathInstruments holds the string denoting the learning_path_instruments edge name in mutations.
+	EdgeLearningPathInstruments = "learning_path_instruments"
+	// EdgeContentNodeInstruments holds the string denoting the content_node_instruments edge name in mutations.
+	EdgeContentNodeInstruments = "content_node_instruments"
 	// Table holds the table name of the instrument in the database.
 	Table = "instruments"
 	// DiagramsTable is the table that holds the diagrams relation/edge.
@@ -38,6 +50,42 @@ const (
 	DiagramsInverseTable = "diagrams"
 	// DiagramsColumn is the table column denoting the diagrams relation/edge.
 	DiagramsColumn = "instrument_id"
+	// CoursesTable is the table that holds the courses relation/edge. The primary key declared below.
+	CoursesTable = "course_instruments"
+	// CoursesInverseTable is the table name for the Course entity.
+	// It exists in this package in order to avoid circular dependency with the "course" package.
+	CoursesInverseTable = "courses"
+	// LearningPathsTable is the table that holds the learning_paths relation/edge. The primary key declared below.
+	LearningPathsTable = "learning_path_instruments"
+	// LearningPathsInverseTable is the table name for the LearningPath entity.
+	// It exists in this package in order to avoid circular dependency with the "learningpath" package.
+	LearningPathsInverseTable = "learning_paths"
+	// ContentNodesTable is the table that holds the content_nodes relation/edge. The primary key declared below.
+	ContentNodesTable = "content_node_instruments"
+	// ContentNodesInverseTable is the table name for the ContentNode entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnode" package.
+	ContentNodesInverseTable = "content_nodes"
+	// CourseInstrumentsTable is the table that holds the course_instruments relation/edge.
+	CourseInstrumentsTable = "course_instruments"
+	// CourseInstrumentsInverseTable is the table name for the CourseInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "courseinstrument" package.
+	CourseInstrumentsInverseTable = "course_instruments"
+	// CourseInstrumentsColumn is the table column denoting the course_instruments relation/edge.
+	CourseInstrumentsColumn = "instrument_id"
+	// LearningPathInstrumentsTable is the table that holds the learning_path_instruments relation/edge.
+	LearningPathInstrumentsTable = "learning_path_instruments"
+	// LearningPathInstrumentsInverseTable is the table name for the LearningPathInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "learningpathinstrument" package.
+	LearningPathInstrumentsInverseTable = "learning_path_instruments"
+	// LearningPathInstrumentsColumn is the table column denoting the learning_path_instruments relation/edge.
+	LearningPathInstrumentsColumn = "instrument_id"
+	// ContentNodeInstrumentsTable is the table that holds the content_node_instruments relation/edge.
+	ContentNodeInstrumentsTable = "content_node_instruments"
+	// ContentNodeInstrumentsInverseTable is the table name for the ContentNodeInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeinstrument" package.
+	ContentNodeInstrumentsInverseTable = "content_node_instruments"
+	// ContentNodeInstrumentsColumn is the table column denoting the content_node_instruments relation/edge.
+	ContentNodeInstrumentsColumn = "instrument_id"
 )
 
 // Columns holds all SQL columns for instrument fields.
@@ -50,6 +98,18 @@ var Columns = []string{
 	FieldKeyRangeLowest,
 	FieldKeyRangeHighest,
 }
+
+var (
+	// CoursesPrimaryKey and CoursesColumn2 are the table columns denoting the
+	// primary key for the courses relation (M2M).
+	CoursesPrimaryKey = []string{"course_id", "instrument_id"}
+	// LearningPathsPrimaryKey and LearningPathsColumn2 are the table columns denoting the
+	// primary key for the learning_paths relation (M2M).
+	LearningPathsPrimaryKey = []string{"learning_path_id", "instrument_id"}
+	// ContentNodesPrimaryKey and ContentNodesColumn2 are the table columns denoting the
+	// primary key for the content_nodes relation (M2M).
+	ContentNodesPrimaryKey = []string{"content_node_id", "instrument_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -130,10 +190,136 @@ func ByDiagrams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDiagramsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByCoursesCount orders the results by courses count.
+func ByCoursesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCoursesStep(), opts...)
+	}
+}
+
+// ByCourses orders the results by courses terms.
+func ByCourses(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCoursesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByLearningPathsCount orders the results by learning_paths count.
+func ByLearningPathsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newLearningPathsStep(), opts...)
+	}
+}
+
+// ByLearningPaths orders the results by learning_paths terms.
+func ByLearningPaths(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLearningPathsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByContentNodesCount orders the results by content_nodes count.
+func ByContentNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodesStep(), opts...)
+	}
+}
+
+// ByContentNodes orders the results by content_nodes terms.
+func ByContentNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByCourseInstrumentsCount orders the results by course_instruments count.
+func ByCourseInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCourseInstrumentsStep(), opts...)
+	}
+}
+
+// ByCourseInstruments orders the results by course_instruments terms.
+func ByCourseInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCourseInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByLearningPathInstrumentsCount orders the results by learning_path_instruments count.
+func ByLearningPathInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newLearningPathInstrumentsStep(), opts...)
+	}
+}
+
+// ByLearningPathInstruments orders the results by learning_path_instruments terms.
+func ByLearningPathInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLearningPathInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByContentNodeInstrumentsCount orders the results by content_node_instruments count.
+func ByContentNodeInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeInstrumentsStep(), opts...)
+	}
+}
+
+// ByContentNodeInstruments orders the results by content_node_instruments terms.
+func ByContentNodeInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDiagramsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DiagramsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, DiagramsTable, DiagramsColumn),
+	)
+}
+func newCoursesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CoursesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, CoursesTable, CoursesPrimaryKey...),
+	)
+}
+func newLearningPathsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LearningPathsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, LearningPathsTable, LearningPathsPrimaryKey...),
+	)
+}
+func newContentNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ContentNodesTable, ContentNodesPrimaryKey...),
+	)
+}
+func newCourseInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CourseInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, CourseInstrumentsTable, CourseInstrumentsColumn),
+	)
+}
+func newLearningPathInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LearningPathInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, LearningPathInstrumentsTable, LearningPathInstrumentsColumn),
+	)
+}
+func newContentNodeInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeInstrumentsTable, ContentNodeInstrumentsColumn),
 	)
 }

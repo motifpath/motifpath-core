@@ -9,7 +9,9 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -36,6 +38,10 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 	if err != nil {
 		return err
 	}
+	instrumentIDs, err := parseUUIDs(path.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -49,6 +55,7 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 		SetNillableLevel(entLevel(path.Level)).
 		SetCreatedAt(path.CreatedAt).
 		SetUpdatedAt(path.UpdatedAt).
+		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -79,7 +86,7 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 		return domain.LearningPath{}, domain.ErrNotFound
 	}
 
-	pathRow, err := r.client.LearningPath.Get(ctx, parsed)
+	pathRow, err := r.client.LearningPath.Query().Where(learningpath.ID(parsed)).WithInstruments().Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.LearningPath{}, domain.ErrNotFound
@@ -106,13 +113,14 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 	}
 
 	return domain.LearningPath{
-		ID:        pathRow.ID.String(),
-		TeacherID: pathRow.TeacherID.String(),
-		Title:     pathRow.Title,
-		Level:     domainLevel(pathRow.Level),
-		Items:     items,
-		CreatedAt: pathRow.CreatedAt,
-		UpdatedAt: pathRow.UpdatedAt,
+		ID:            pathRow.ID.String(),
+		TeacherID:     pathRow.TeacherID.String(),
+		Title:         pathRow.Title,
+		Level:         domainLevel(pathRow.Level),
+		InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
+		Items:         items,
+		CreatedAt:     pathRow.CreatedAt,
+		UpdatedAt:     pathRow.UpdatedAt,
 	}, nil
 }
 
@@ -124,7 +132,7 @@ func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.Lear
 	if err != nil {
 		return domain.Page[domain.LearningPath]{}, err
 	}
-	query := r.client.LearningPath.Query().Where(predicates...)
+	query := r.client.LearningPath.Query().Where(predicates...).WithInstruments()
 	total, err := query.Clone().Count(ctx)
 	if err != nil {
 		return domain.Page[domain.LearningPath]{}, err
@@ -173,13 +181,14 @@ func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.Lear
 			return domain.Page[domain.LearningPath]{}, err
 		}
 		result[i] = domain.LearningPath{
-			ID:        pathRow.ID.String(),
-			TeacherID: pathRow.TeacherID.String(),
-			Title:     pathRow.Title,
-			Level:     domainLevel(pathRow.Level),
-			Items:     items,
-			CreatedAt: pathRow.CreatedAt,
-			UpdatedAt: pathRow.UpdatedAt,
+			ID:            pathRow.ID.String(),
+			TeacherID:     pathRow.TeacherID.String(),
+			Title:         pathRow.Title,
+			Level:         domainLevel(pathRow.Level),
+			InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
+			Items:         items,
+			CreatedAt:     pathRow.CreatedAt,
+			UpdatedAt:     pathRow.UpdatedAt,
 		}
 	}
 	return domain.Page[domain.LearningPath]{Items: result, Total: total}, nil
@@ -232,6 +241,10 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 	if err != nil {
 		return domain.ErrNotFound
 	}
+	instrumentIDs, err := parseUUIDs(path.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -242,6 +255,8 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 		SetTitle(path.Title).
 		SetNillableLevel(entLevel(path.Level)).
 		SetUpdatedAt(path.UpdatedAt).
+		ClearInstruments().
+		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
@@ -296,6 +311,11 @@ func (r *EntLearningPathRepository) Delete(ctx context.Context, id string) error
 
 	if _, err := tx.LearningPathItem.Delete().
 		Where(learningpathitem.LearningPathID(parsed)).
+		Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+	if _, err := tx.LearningPathInstrument.Delete().
+		Where(learningpathinstrument.LearningPathID(parsed)).
 		Exec(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -359,18 +379,48 @@ func learningPathListPredicates(filter domain.LearningPathFilter) ([]predicate.L
 		}
 		predicates = append(predicates, learningpath.LevelIn(levels...))
 	}
+	if filter.InstrumentID != "" {
+		forInstrument, err := pathForInstrument(filter.InstrumentID)
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, forInstrument)
+	}
 	if len(filter.SkillIDs) > 0 || len(filter.ConceptIDs) > 0 {
-		skillIDs, err := parseUUIDs(filter.SkillIDs)
+		classified, err := pathClassifiedWith(filter.SkillIDs, filter.ConceptIDs)
 		if err != nil {
 			return nil, err
 		}
-		conceptIDs, err := parseUUIDs(filter.ConceptIDs)
-		if err != nil {
-			return nil, err
-		}
-		predicates = append(predicates, classifiedItemMatches(skillIDs, conceptIDs))
+		predicates = append(predicates, classified)
 	}
 	return predicates, nil
+}
+
+// pathForInstrument matches a path for instrumentID, or for every
+// instrument (no instruments listed).
+func pathForInstrument(instrumentID string) (predicate.LearningPath, error) {
+	id, err := uuid.Parse(instrumentID)
+	if err != nil {
+		return nil, err
+	}
+	return learningpath.Or(
+		learningpath.HasInstrumentsWith(instrument.ID(id)),
+		learningpath.Not(learningpath.HasInstruments()),
+	), nil
+}
+
+// pathClassifiedWith parses the skill and concept ids and matches paths
+// through classifiedItemMatches.
+func pathClassifiedWith(skills, concepts []string) (predicate.LearningPath, error) {
+	skillIDs, err := parseUUIDs(skills)
+	if err != nil {
+		return nil, err
+	}
+	conceptIDs, err := parseUUIDs(concepts)
+	if err != nil {
+		return nil, err
+	}
+	return classifiedItemMatches(skillIDs, conceptIDs), nil
 }
 
 // classifiedItemMatches matches a path when one of its items' content nodes

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -288,6 +289,52 @@ func CreatedAtLT(v time.Time) predicate.LearningPath {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// HasInstruments applies the HasEdge predicate on the "instruments" edge.
+func HasInstruments() predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInstrumentsWith applies the HasEdge predicate on the "instruments" edge with a given conditions (other predicates).
+func HasInstrumentsWith(preds ...predicate.Instrument) predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := newInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasLearningPathInstruments applies the HasEdge predicate on the "learning_path_instruments" edge.
+func HasLearningPathInstruments() predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, LearningPathInstrumentsTable, LearningPathInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLearningPathInstrumentsWith applies the HasEdge predicate on the "learning_path_instruments" edge with a given conditions (other predicates).
+func HasLearningPathInstrumentsWith(preds ...predicate.LearningPathInstrument) predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := newLearningPathInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

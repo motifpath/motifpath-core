@@ -528,6 +528,29 @@ func HasConceptsWith(preds ...predicate.Concept) predicate.ContentNode {
 	})
 }
 
+// HasInstruments applies the HasEdge predicate on the "instruments" edge.
+func HasInstruments() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInstrumentsWith applies the HasEdge predicate on the "instruments" edge with a given conditions (other predicates).
+func HasInstrumentsWith(preds ...predicate.Instrument) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasContentNodeExercises applies the HasEdge predicate on the "content_node_exercises" edge.
 func HasContentNodeExercises() predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
@@ -612,6 +635,29 @@ func HasContentNodeConcepts() predicate.ContentNode {
 func HasContentNodeConceptsWith(preds ...predicate.ContentNodeConcept) predicate.ContentNode {
 	return predicate.ContentNode(func(s *sql.Selector) {
 		step := newContentNodeConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeInstruments applies the HasEdge predicate on the "content_node_instruments" edge.
+func HasContentNodeInstruments() predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeInstrumentsTable, ContentNodeInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeInstrumentsWith applies the HasEdge predicate on the "content_node_instruments" edge with a given conditions (other predicates).
+func HasContentNodeInstrumentsWith(preds ...predicate.ContentNodeInstrument) predicate.ContentNode {
+	return predicate.ContentNode(func(s *sql.Selector) {
+		step := newContentNodeInstrumentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

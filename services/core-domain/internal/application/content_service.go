@@ -13,18 +13,19 @@ import (
 // creation/retrieval, the expositive media items attached to them, and
 // publishing a content node's draft into an immutable ContentNodeVersion.
 type ContentService struct {
-	nodes    ports.ContentNodeRepository
-	expanded ports.ExpandedContentRepository
-	skills   ports.SkillRepository
-	concepts ports.ConceptRepository
-	versions ports.ContentNodeVersionRepository
-	diagrams ports.DiagramRepository
-	newID    func() string
-	now      func() time.Time
+	nodes       ports.ContentNodeRepository
+	expanded    ports.ExpandedContentRepository
+	skills      ports.SkillRepository
+	concepts    ports.ConceptRepository
+	versions    ports.ContentNodeVersionRepository
+	diagrams    ports.DiagramRepository
+	newID       func() string
+	now         func() time.Time
+	instruments ports.InstrumentRepository
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments}
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -107,12 +108,15 @@ type ContentNodeInput struct {
 	Languages   []string
 	MediaURL    *string
 	RichContent *domain.PromptDocument
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
 }
 
 func (input ContentNodeInput) fields() domain.ContentNodeFields {
 	return domain.ContentNodeFields{
 		Title: input.Title, SkillIDs: input.SkillIDs, ConceptIDs: input.ConceptIDs, Difficulty: input.Difficulty,
-		LanguageCodes: input.Languages, MediaURL: input.MediaURL, RichContent: input.RichContent,
+		LanguageCodes: input.Languages, MediaURL: input.MediaURL, RichContent: input.RichContent, InstrumentIDs: input.InstrumentIDs,
 	}
 }
 
@@ -128,6 +132,9 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := s.nodes.Create(ctx, node); err != nil {
@@ -179,6 +186,9 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 

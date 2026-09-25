@@ -146,6 +146,9 @@ func (w *world) listsPathsFilteredBy(_, clauses string) error {
 		case "concept", "concepts":
 			ids := w.conceptIDsForNames(values)
 			params.ConceptIds = &ids
+		case "instrument":
+			id := instrumentID(values[0])
+			params.InstrumentId = &id
 		default:
 			return fmt.Errorf("unsupported learning path filter %q", m[1])
 		}

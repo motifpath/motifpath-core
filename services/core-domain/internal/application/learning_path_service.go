@@ -16,10 +16,11 @@ type LearningPathService struct {
 	courseVersions ports.CourseVersionRepository
 	newID          func() string
 	now            func() time.Time
+	instruments    ports.InstrumentRepository
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, newID: newID, now: now}
+func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, newID: newID, now: now, instruments: instruments}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -34,13 +35,16 @@ type PathItemInput struct {
 type LearningPathInput struct {
 	Title string
 	Level domain.DifficultyLevel
-	Items []PathItemInput
+	// InstrumentIDs are the instruments the path is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Items         []PathItemInput
 }
 
 // fields resolves input into the domain's LearningPathFields, given its items
 // already resolved against their content nodes.
 func (input LearningPathInput) fields(items []domain.NewLearningPathItem) domain.LearningPathFields {
-	return domain.LearningPathFields{Title: input.Title, Level: input.Level, Items: items}
+	return domain.LearningPathFields{Title: input.Title, Level: input.Level, InstrumentIDs: input.InstrumentIDs, Items: items}
 }
 
 // CreateLearningPath creates a learning path from the given ordered items.
@@ -59,6 +63,9 @@ func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller dom
 
 	path, err := domain.NewLearningPath(s.newID(), caller.ID, input.fields(items), s.now())
 	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.LearningPath{}, err
 	}
 	if err := s.paths.Create(ctx, path); err != nil {
@@ -118,6 +125,9 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 
 	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, input.fields(items), existing.CreatedAt)
 	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.LearningPath{}, err
 	}
 	replaced.UpdatedAt = s.now()

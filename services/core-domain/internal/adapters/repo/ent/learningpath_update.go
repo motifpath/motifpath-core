@@ -11,7 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -76,9 +79,81 @@ func (_u *LearningPathUpdate) SetNillableUpdatedAt(v *time.Time) *LearningPathUp
 	return _u
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *LearningPathUpdate) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdate {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdate) AddInstruments(v ...*Instrument) *LearningPathUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_u *LearningPathUpdate) AddLearningPathInstrumentIDs(ids ...int) *LearningPathUpdate {
+	_u.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdate) AddLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLearningPathInstrumentIDs(ids...)
+}
+
 // Mutation returns the LearningPathMutation object of the builder.
 func (_u *LearningPathUpdate) Mutation() *LearningPathMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdate) ClearInstruments() *LearningPathUpdate {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *LearningPathUpdate) RemoveInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdate {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *LearningPathUpdate) RemoveInstruments(v ...*Instrument) *LearningPathUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearLearningPathInstruments clears all "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdate) ClearLearningPathInstruments() *LearningPathUpdate {
+	_u.mutation.ClearLearningPathInstruments()
+	return _u
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to LearningPathInstrument entities by IDs.
+func (_u *LearningPathUpdate) RemoveLearningPathInstrumentIDs(ids ...int) *LearningPathUpdate {
+	_u.mutation.RemoveLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveLearningPathInstruments removes "learning_path_instruments" edges to LearningPathInstrument entities.
+func (_u *LearningPathUpdate) RemoveLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLearningPathInstrumentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -141,6 +216,108 @@ func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLearningPathInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -210,9 +387,81 @@ func (_u *LearningPathUpdateOne) SetNillableUpdatedAt(v *time.Time) *LearningPat
 	return _u
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *LearningPathUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdateOne {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdateOne) AddInstruments(v ...*Instrument) *LearningPathUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_u *LearningPathUpdateOne) AddLearningPathInstrumentIDs(ids ...int) *LearningPathUpdateOne {
+	_u.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdateOne) AddLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLearningPathInstrumentIDs(ids...)
+}
+
 // Mutation returns the LearningPathMutation object of the builder.
 func (_u *LearningPathUpdateOne) Mutation() *LearningPathMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdateOne) ClearInstruments() *LearningPathUpdateOne {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *LearningPathUpdateOne) RemoveInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdateOne {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *LearningPathUpdateOne) RemoveInstruments(v ...*Instrument) *LearningPathUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearLearningPathInstruments clears all "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdateOne) ClearLearningPathInstruments() *LearningPathUpdateOne {
+	_u.mutation.ClearLearningPathInstruments()
+	return _u
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to LearningPathInstrument entities by IDs.
+func (_u *LearningPathUpdateOne) RemoveLearningPathInstrumentIDs(ids ...int) *LearningPathUpdateOne {
+	_u.mutation.RemoveLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveLearningPathInstruments removes "learning_path_instruments" edges to LearningPathInstrument entities.
+func (_u *LearningPathUpdateOne) RemoveLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLearningPathInstrumentIDs(ids...)
 }
 
 // Where appends a list predicates to the LearningPathUpdate builder.
@@ -305,6 +554,108 @@ func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPa
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLearningPathInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &LearningPath{config: _u.config}
 	_spec.Assign = _node.assignValues

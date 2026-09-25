@@ -24,6 +24,8 @@ type Tx struct {
 	ContentNodeConcept *ContentNodeConceptClient
 	// ContentNodeExercise is the client for interacting with the ContentNodeExercise builders.
 	ContentNodeExercise *ContentNodeExerciseClient
+	// ContentNodeInstrument is the client for interacting with the ContentNodeInstrument builders.
+	ContentNodeInstrument *ContentNodeInstrumentClient
 	// ContentNodeLanguage is the client for interacting with the ContentNodeLanguage builders.
 	ContentNodeLanguage *ContentNodeLanguageClient
 	// ContentNodeSkill is the client for interacting with the ContentNodeSkill builders.
@@ -36,6 +38,8 @@ type Tx struct {
 	CourseCheckpoint *CourseCheckpointClient
 	// CourseEnrollment is the client for interacting with the CourseEnrollment builders.
 	CourseEnrollment *CourseEnrollmentClient
+	// CourseInstrument is the client for interacting with the CourseInstrument builders.
+	CourseInstrument *CourseInstrumentClient
 	// CourseVersion is the client for interacting with the CourseVersion builders.
 	CourseVersion *CourseVersionClient
 	// CourseVersionCheckpoint is the client for interacting with the CourseVersionCheckpoint builders.
@@ -64,6 +68,8 @@ type Tx struct {
 	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
 	LearningPath *LearningPathClient
+	// LearningPathInstrument is the client for interacting with the LearningPathInstrument builders.
+	LearningPathInstrument *LearningPathInstrumentClient
 	// LearningPathItem is the client for interacting with the LearningPathItem builders.
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
@@ -215,12 +221,14 @@ func (tx *Tx) init() {
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
+	tx.ContentNodeInstrument = NewContentNodeInstrumentClient(tx.config)
 	tx.ContentNodeLanguage = NewContentNodeLanguageClient(tx.config)
 	tx.ContentNodeSkill = NewContentNodeSkillClient(tx.config)
 	tx.ContentNodeVersion = NewContentNodeVersionClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.CourseCheckpoint = NewCourseCheckpointClient(tx.config)
 	tx.CourseEnrollment = NewCourseEnrollmentClient(tx.config)
+	tx.CourseInstrument = NewCourseInstrumentClient(tx.config)
 	tx.CourseVersion = NewCourseVersionClient(tx.config)
 	tx.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(tx.config)
 	tx.Diagram = NewDiagramClient(tx.config)
@@ -235,6 +243,7 @@ func (tx *Tx) init() {
 	tx.Instrument = NewInstrumentClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
+	tx.LearningPathInstrument = NewLearningPathInstrumentClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)

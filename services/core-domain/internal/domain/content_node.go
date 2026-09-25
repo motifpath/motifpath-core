@@ -97,7 +97,10 @@ type ContentNode struct {
 	// this ContentNode has been read back from the repository with its
 	// Language rows joined in.
 	Languages []Language
-	CreatedAt time.Time
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	CreatedAt     time.Time
 }
 
 // ContentNodeFields are the parts of a content node its author writes, as
@@ -110,6 +113,9 @@ type ContentNodeFields struct {
 	LanguageCodes []string
 	MediaURL      *string
 	RichContent   *PromptDocument
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
 }
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
@@ -126,6 +132,9 @@ func NewContentNode(id, teacherID string, contentType ContentType, fields Conten
 	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
 
 	switch contentType {
 	case ContentTypeVideo, ContentTypeArticle:
@@ -149,10 +158,11 @@ func NewContentNode(id, teacherID string, contentType ContentType, fields Conten
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
-		MediaURL:    mediaURL,
-		RichContent: richContent,
-		Languages:   languagesFromCodes(languageCodes),
-		CreatedAt:   createdAt,
+		MediaURL:      mediaURL,
+		RichContent:   richContent,
+		Languages:     languagesFromCodes(languageCodes),
+		InstrumentIDs: fields.InstrumentIDs,
+		CreatedAt:     createdAt,
 	}, nil
 }
 
@@ -167,6 +177,9 @@ func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
 	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
 	errs = append(errs, validateContentNodeBody(n.ContentType, mediaURL, richContent)...)
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
@@ -180,6 +193,7 @@ func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
 	updated.MediaURL = mediaURL
 	updated.RichContent = richContent
 	updated.Languages = languagesFromCodes(languageCodes)
+	updated.InstrumentIDs = fields.InstrumentIDs
 	return updated, nil
 }
 

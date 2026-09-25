@@ -55,6 +55,9 @@ type ContentNodeFilter struct {
 	ConceptID   string
 	Difficulty  DifficultyLevel
 	Query       string
+	// InstrumentID keeps nodes for that instrument and nodes for every
+	// instrument (no instruments listed).
+	InstrumentID string
 }
 
 // ExerciseFilter narrows an exercise listing. A zero-valued field means "no
@@ -78,6 +81,9 @@ type LearningPathFilter struct {
 	// any of the concepts.
 	SkillIDs   []string
 	ConceptIDs []string
+	// InstrumentID keeps paths for that instrument and paths for every
+	// instrument (no instruments listed).
+	InstrumentID string
 	// Sort orders the results; the zero value orders by title.
 	Sort LearningPathSort
 }
@@ -118,7 +124,10 @@ type CourseListFilter struct {
 	SkillIDs   []string
 	ConceptIDs []string
 	// Language, when set, keeps only courses written in that language.
-	Language      string
+	Language string
+	// InstrumentID keeps courses for that instrument and courses for every
+	// instrument (no instruments listed).
+	InstrumentID  string
 	PublishedView bool
 }
 

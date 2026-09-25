@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 
@@ -59,6 +59,7 @@ func (r *EntContentNodeVersionRepository) Create(ctx context.Context, version do
 		SetNillableRichContent(richContentJSON).
 		SetClassificationSnapshot(classificationJSON).
 		SetLanguagesSnapshot(languagesJSON).
+		SetInstrumentIdsSnapshot(version.InstrumentIDsSnapshot).
 		SetPublishedBy(publishedBy).
 		SetPublishedAt(version.PublishedAt).
 		Save(ctx)
@@ -118,8 +119,9 @@ func toDomainContentNodeVersion(row *ent.ContentNodeVersion) domain.ContentNodeV
 		PublishedBy:   row.PublishedBy.String(),
 		PublishedAt:   row.PublishedAt,
 
-		Classification: unmarshalVersionClassification(row.ClassificationSnapshot),
-		Languages:      unmarshalVersionLanguages(row.LanguagesSnapshot),
+		Classification:        unmarshalVersionClassification(row.ClassificationSnapshot),
+		Languages:             unmarshalVersionLanguages(row.LanguagesSnapshot),
+		InstrumentIDsSnapshot: row.InstrumentIdsSnapshot,
 	}
 }
 

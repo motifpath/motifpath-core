@@ -2,6 +2,8 @@ package application
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -89,4 +91,18 @@ func offeredLanguages(ctx context.Context, languages ports.LanguageRepository) (
 		}
 	}
 	return codes, nil
+}
+
+// checkInstrumentsExist returns a validation error on "instrument_ids" when
+// any of ids does not reference an existing instrument.
+func checkInstrumentsExist(ctx context.Context, instruments ports.InstrumentRepository, ids []string) error {
+	for _, id := range ids {
+		if _, err := instruments.GetByID(ctx, id); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewValidationError("instrument_ids", fmt.Sprintf("%q does not reference an existing instrument", id))
+			}
+			return err
+		}
+	}
+	return nil
 }

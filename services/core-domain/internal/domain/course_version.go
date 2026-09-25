@@ -29,8 +29,11 @@ type CourseVersion struct {
 	// LanguageSnapshot is the course's Language when this version was
 	// published.
 	LanguageSnapshot string
-	Checkpoints      []CourseVersionCheckpoint
-	PublishedAt      time.Time
+	// InstrumentIDsSnapshot is the course's InstrumentIDs when this version
+	// was published; empty means every instrument.
+	InstrumentIDsSnapshot []string
+	Checkpoints           []CourseVersionCheckpoint
+	PublishedAt           time.Time
 	// AvailableForNewEnrollments is true by default on a freshly published
 	// version. Nothing in this slice of the feature sets it false — a
 	// later course-retirement or superseding-version capability is its
@@ -62,6 +65,7 @@ func NewCourseVersionSnapshot(id string, course Course, versionNumber int, publi
 		TitleSnapshot:              course.Title,
 		SummarySnapshot:            course.Summary,
 		LanguageSnapshot:           course.Language,
+		InstrumentIDsSnapshot:      append([]string(nil), course.InstrumentIDs...),
 		LevelSnapshot:              course.Level,
 		Checkpoints:                checkpoints,
 		PublishedAt:                publishedAt,

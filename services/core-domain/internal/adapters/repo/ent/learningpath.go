@@ -27,8 +27,40 @@ type LearningPath struct {
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the LearningPathQuery when eager-loading is set.
+	Edges        LearningPathEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// LearningPathEdges holds the relations/edges for other nodes in the graph.
+type LearningPathEdges struct {
+	// Instruments holds the value of the instruments edge.
+	Instruments []*Instrument `json:"instruments,omitempty"`
+	// LearningPathInstruments holds the value of the learning_path_instruments edge.
+	LearningPathInstruments []*LearningPathInstrument `json:"learning_path_instruments,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// InstrumentsOrErr returns the Instruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e LearningPathEdges) InstrumentsOrErr() ([]*Instrument, error) {
+	if e.loadedTypes[0] {
+		return e.Instruments, nil
+	}
+	return nil, &NotLoadedError{edge: "instruments"}
+}
+
+// LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e LearningPathEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
+	if e.loadedTypes[1] {
+		return e.LearningPathInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "learning_path_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -105,6 +137,16 @@ func (_m *LearningPath) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *LearningPath) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryInstruments queries the "instruments" edge of the LearningPath entity.
+func (_m *LearningPath) QueryInstruments() *InstrumentQuery {
+	return NewLearningPathClient(_m.config).QueryInstruments(_m)
+}
+
+// QueryLearningPathInstruments queries the "learning_path_instruments" edge of the LearningPath entity.
+func (_m *LearningPath) QueryLearningPathInstruments() *LearningPathInstrumentQuery {
+	return NewLearningPathClient(_m.config).QueryLearningPathInstruments(_m)
 }
 
 // Update returns a builder for updating this LearningPath.

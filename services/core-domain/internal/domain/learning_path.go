@@ -38,9 +38,12 @@ type LearningPath struct {
 	// Level is the level a learner should be at to follow the path. It is
 	// nil only for a path created before levels were recorded, until it is
 	// next saved.
-	Level     *DifficultyLevel
-	Items     []LearningPathItem
-	CreatedAt time.Time
+	Level *DifficultyLevel
+	// InstrumentIDs are the instruments the path is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Items         []LearningPathItem
+	CreatedAt     time.Time
 	// UpdatedAt is when the path was created or last replaced.
 	UpdatedAt time.Time
 }
@@ -50,7 +53,10 @@ type LearningPath struct {
 type LearningPathFields struct {
 	Title string
 	Level DifficultyLevel
-	Items []NewLearningPathItem
+	// InstrumentIDs are the instruments the path is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Items         []NewLearningPathItem
 }
 
 // NewLearningPath validates title and items and assigns each item its
@@ -74,6 +80,9 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 	if !fields.Level.Valid() {
 		errs = append(errs, FieldError{Field: "level", Reason: "must be one of beginner, early_intermediate, intermediate, advanced, expert"})
 	}
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
 	if len(pathItems) == 0 {
 		errs = append(errs, FieldError{Field: "items", Reason: "must contain at least one item"})
 	}
@@ -95,13 +104,14 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 
 	level := fields.Level
 	return LearningPath{
-		ID:        id,
-		TeacherID: teacherID,
-		Title:     title,
-		Level:     &level,
-		Items:     items,
-		CreatedAt: createdAt,
-		UpdatedAt: createdAt,
+		ID:            id,
+		TeacherID:     teacherID,
+		Title:         title,
+		Level:         &level,
+		InstrumentIDs: fields.InstrumentIDs,
+		Items:         items,
+		CreatedAt:     createdAt,
+		UpdatedAt:     createdAt,
 	}, nil
 }
 

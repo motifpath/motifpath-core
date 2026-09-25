@@ -50,21 +50,27 @@ type Course struct {
 	// Language is the Language.Code the course is written in: a course is
 	// not localized, so its title, summary and checkpoint titles all read
 	// in this one language.
-	Language    string
-	Status      CourseStatus
-	CreatedBy   string
-	CreatedAt   time.Time
-	Checkpoints []CourseCheckpoint
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Status        CourseStatus
+	CreatedBy     string
+	CreatedAt     time.Time
+	Checkpoints   []CourseCheckpoint
 }
 
 // CourseFields are the parts of a course its author writes, as given to
 // NewCourse to create or replace a course draft.
 type CourseFields struct {
-	Title       string
-	Summary     string
-	Level       DifficultyLevel
-	Language    string
-	Checkpoints []NewCourseCheckpoint
+	Title    string
+	Summary  string
+	Level    DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Checkpoints   []NewCourseCheckpoint
 }
 
 // NewCourse validates title, summary, level, language, and checkpoints, and assigns
@@ -99,6 +105,10 @@ func NewCourse(id, createdBy string, fields CourseFields, languages []string, cr
 		errs = append(errs, FieldError{Field: "language", Reason: reason})
 	}
 
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
+
 	if len(checkpoints) == 0 {
 		errs = append(errs, FieldError{Field: "checkpoints", Reason: "must contain at least one checkpoint"})
 	}
@@ -122,15 +132,16 @@ func NewCourse(id, createdBy string, fields CourseFields, languages []string, cr
 	}
 
 	return Course{
-		ID:          id,
-		Title:       title,
-		Summary:     summary,
-		Level:       level,
-		Language:    fields.Language,
-		Status:      CourseStatusDraft,
-		CreatedBy:   createdBy,
-		CreatedAt:   createdAt,
-		Checkpoints: built,
+		ID:            id,
+		Title:         title,
+		Summary:       summary,
+		Level:         level,
+		Language:      fields.Language,
+		InstrumentIDs: fields.InstrumentIDs,
+		Status:        CourseStatusDraft,
+		CreatedBy:     createdBy,
+		CreatedAt:     createdAt,
+		Checkpoints:   built,
 	}, nil
 }
 

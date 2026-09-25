@@ -20,17 +20,18 @@ import (
 // live, currently-being-authored draft; snapshotting a draft into an
 // immutable published CourseVersion is a separate, later capability.
 type CourseService struct {
-	paths     ports.LearningPathRepository
-	courses   ports.CourseRepository
-	versions  ports.CourseVersionRepository
-	users     ports.UserRepository
-	languages ports.LanguageRepository
-	newID     func() string
-	now       func() time.Time
+	paths       ports.LearningPathRepository
+	courses     ports.CourseRepository
+	versions    ports.CourseVersionRepository
+	users       ports.UserRepository
+	languages   ports.LanguageRepository
+	instruments ports.InstrumentRepository
+	newID       func() string
+	now         func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, newID: newID, now: now}
+func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -43,17 +44,20 @@ type CheckpointInput struct {
 
 // CourseInput is what a caller writes to create or replace a course draft.
 type CourseInput struct {
-	Title       string
-	Summary     string
-	Level       domain.DifficultyLevel
-	Language    string
-	Checkpoints []CheckpointInput
+	Title    string
+	Summary  string
+	Level    domain.DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	Checkpoints   []CheckpointInput
 }
 
 // fields resolves input into the domain's CourseFields, given its
 // checkpoints already resolved against their learning paths.
 func (input CourseInput) fields(checkpoints []domain.NewCourseCheckpoint) domain.CourseFields {
-	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Language: input.Language, Checkpoints: checkpoints}
+	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Language: input.Language, InstrumentIDs: input.InstrumentIDs, Checkpoints: checkpoints}
 }
 
 // CreateCourse creates a course draft from the given ordered checkpoints.
@@ -76,6 +80,9 @@ func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, in
 
 	course, err := domain.NewCourse(s.newID(), caller.ID, input.fields(resolved), offered, s.now())
 	if err != nil {
+		return domain.Course{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.Course{}, err
 	}
 	if err := s.courses.Create(ctx, course); err != nil {
@@ -239,6 +246,9 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 	if err != nil {
 		return domain.Course{}, err
 	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
+		return domain.Course{}, err
+	}
 	replaced.Status = existing.Status
 
 	if err := s.courses.Replace(ctx, replaced); err != nil {
@@ -372,13 +382,16 @@ type CourseOutlineCheckpoint struct {
 // PublishedCourseView is a course's latest published version, rendered as
 // an outline — the composed result GetPublishedCourse returns.
 type PublishedCourseView struct {
-	Title       string
-	Summary     string
-	Level       domain.DifficultyLevel
-	Language    string
-	Status      domain.CourseStatus
-	PublishedAt time.Time
-	Checkpoints []CourseOutlineCheckpoint
+	Title    string
+	Summary  string
+	Level    domain.DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the published version is for; empty
+	// means every instrument.
+	InstrumentIDs []string
+	Status        domain.CourseStatus
+	PublishedAt   time.Time
+	Checkpoints   []CourseOutlineCheckpoint
 }
 
 // GetPublishedCourse returns course's latest published version rendered as
@@ -414,13 +427,14 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 	}
 
 	return PublishedCourseView{
-		Title:       latest.TitleSnapshot,
-		Summary:     latest.SummarySnapshot,
-		Level:       latest.LevelSnapshot,
-		Language:    latest.LanguageSnapshot,
-		Status:      course.Status,
-		PublishedAt: latest.PublishedAt,
-		Checkpoints: checkpoints,
+		Title:         latest.TitleSnapshot,
+		Summary:       latest.SummarySnapshot,
+		Level:         latest.LevelSnapshot,
+		Language:      latest.LanguageSnapshot,
+		InstrumentIDs: latest.InstrumentIDsSnapshot,
+		Status:        course.Status,
+		PublishedAt:   latest.PublishedAt,
+		Checkpoints:   checkpoints,
 	}, nil
 }
 

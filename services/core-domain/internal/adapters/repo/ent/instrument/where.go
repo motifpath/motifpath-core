@@ -322,6 +322,144 @@ func HasDiagramsWith(preds ...predicate.Diagram) predicate.Instrument {
 	})
 }
 
+// HasCourses applies the HasEdge predicate on the "courses" edge.
+func HasCourses() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, CoursesTable, CoursesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCoursesWith applies the HasEdge predicate on the "courses" edge with a given conditions (other predicates).
+func HasCoursesWith(preds ...predicate.Course) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newCoursesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasLearningPaths applies the HasEdge predicate on the "learning_paths" edge.
+func HasLearningPaths() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, LearningPathsTable, LearningPathsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLearningPathsWith applies the HasEdge predicate on the "learning_paths" edge with a given conditions (other predicates).
+func HasLearningPathsWith(preds ...predicate.LearningPath) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newLearningPathsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodes applies the HasEdge predicate on the "content_nodes" edge.
+func HasContentNodes() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ContentNodesTable, ContentNodesPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodesWith applies the HasEdge predicate on the "content_nodes" edge with a given conditions (other predicates).
+func HasContentNodesWith(preds ...predicate.ContentNode) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newContentNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCourseInstruments applies the HasEdge predicate on the "course_instruments" edge.
+func HasCourseInstruments() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, CourseInstrumentsTable, CourseInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCourseInstrumentsWith applies the HasEdge predicate on the "course_instruments" edge with a given conditions (other predicates).
+func HasCourseInstrumentsWith(preds ...predicate.CourseInstrument) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newCourseInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasLearningPathInstruments applies the HasEdge predicate on the "learning_path_instruments" edge.
+func HasLearningPathInstruments() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, LearningPathInstrumentsTable, LearningPathInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLearningPathInstrumentsWith applies the HasEdge predicate on the "learning_path_instruments" edge with a given conditions (other predicates).
+func HasLearningPathInstrumentsWith(preds ...predicate.LearningPathInstrument) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newLearningPathInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContentNodeInstruments applies the HasEdge predicate on the "content_node_instruments" edge.
+func HasContentNodeInstruments() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeInstrumentsTable, ContentNodeInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentNodeInstrumentsWith applies the HasEdge predicate on the "content_node_instruments" edge with a given conditions (other predicates).
+func HasContentNodeInstrumentsWith(preds ...predicate.ContentNodeInstrument) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newContentNodeInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Instrument) predicate.Instrument {
 	return predicate.Instrument(sql.AndPredicates(predicates...))

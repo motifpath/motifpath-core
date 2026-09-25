@@ -81,6 +81,18 @@ func (f ContentNodeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (en
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeExerciseMutation", m)
 }
 
+// The ContentNodeInstrumentFunc type is an adapter to allow the use of ordinary
+// function as ContentNodeInstrument mutator.
+type ContentNodeInstrumentFunc func(context.Context, *ent.ContentNodeInstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ContentNodeInstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ContentNodeInstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ContentNodeInstrumentMutation", m)
+}
+
 // The ContentNodeLanguageFunc type is an adapter to allow the use of ordinary
 // function as ContentNodeLanguage mutator.
 type ContentNodeLanguageFunc func(context.Context, *ent.ContentNodeLanguageMutation) (ent.Value, error)
@@ -151,6 +163,18 @@ func (f CourseEnrollmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseEnrollmentMutation", m)
+}
+
+// The CourseInstrumentFunc type is an adapter to allow the use of ordinary
+// function as CourseInstrument mutator.
+type CourseInstrumentFunc func(context.Context, *ent.CourseInstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CourseInstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CourseInstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CourseInstrumentMutation", m)
 }
 
 // The CourseVersionFunc type is an adapter to allow the use of ordinary
@@ -319,6 +343,18 @@ func (f LearningPathFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LearningPathMutation", m)
+}
+
+// The LearningPathInstrumentFunc type is an adapter to allow the use of ordinary
+// function as LearningPathInstrument mutator.
+type LearningPathInstrumentFunc func(context.Context, *ent.LearningPathInstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LearningPathInstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.LearningPathInstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LearningPathInstrumentMutation", m)
 }
 
 // The LearningPathItemFunc type is an adapter to allow the use of ordinary

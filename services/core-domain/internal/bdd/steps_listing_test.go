@@ -94,7 +94,7 @@ var (
 	offsetClause   = regexp.MustCompile(`offset (-?\d+)`)
 	textClause     = regexp.MustCompile(`(?:matching )?text "([^"]*)"`)
 	typeClause     = regexp.MustCompile(`of type "([^"]+)"`)
-	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|text) ((?:"[^"]*"(?:, )?)+)`)
+	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|instrument|text) ((?:"[^"]*"(?:, )?)+)`)
 	quotedListItem = regexp.MustCompile(`"([^"]*)"`)
 )
 
@@ -581,6 +581,7 @@ type courseListQuery struct {
 	conceptIDs    *[]uuid.UUID
 	createdBy     *uuid.UUID
 	language      *string
+	instrument    *uuid.UUID
 }
 
 func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
@@ -606,6 +607,9 @@ func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
 		case "language":
 			language := values[0]
 			query.language = &language
+		case "instrument":
+			id := instrumentID(values[0])
+			query.instrument = &id
 		case "text":
 			text := values[0]
 			query.q = &text
@@ -624,7 +628,7 @@ func (w *world) listsCourseCatalogWith(_ string, tail string) error {
 	}
 	params := generated.ListCatalogCoursesParams{
 		Limit: query.limit, Offset: query.offset, Q: query.q,
-		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language, InstrumentId: query.instrument,
 	}
 	if query.levels != nil {
 		levels := make([]generated.ListCatalogCoursesParamsLevels, len(query.levels))
@@ -663,7 +667,7 @@ func (w *world) listsManagedCoursesWith(_ string, tail string) error {
 	}
 	params := generated.ListCoursesParams{
 		Limit: query.limit, Offset: query.offset, Q: query.q,
-		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language, InstrumentId: query.instrument,
 	}
 	if query.levels != nil {
 		levels := make([]generated.ListCoursesParamsLevels, len(query.levels))

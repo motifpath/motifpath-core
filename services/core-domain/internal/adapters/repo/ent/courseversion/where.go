@@ -385,6 +385,16 @@ func LanguageSnapshotContainsFold(v string) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldContainsFold(FieldLanguageSnapshot, v))
 }
 
+// InstrumentIdsSnapshotIsNil applies the IsNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotIsNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIsNull(FieldInstrumentIdsSnapshot))
+}
+
+// InstrumentIdsSnapshotNotNil applies the NotNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotNotNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotNull(FieldInstrumentIdsSnapshot))
+}
+
 // AvailableForNewEnrollmentsEQ applies the EQ predicate on the "available_for_new_enrollments" field.
 func AvailableForNewEnrollmentsEQ(v bool) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldEQ(FieldAvailableForNewEnrollments, v))

@@ -71,5 +71,8 @@ func (ContentNode) Edges() []ent.Edge {
 
 		edge.To("concepts", Concept.Type).
 			Through("content_node_concepts", ContentNodeConcept.Type),
+
+		edge.To("instruments", Instrument.Type).
+			Through("content_node_instruments", ContentNodeInstrument.Type),
 	}
 }

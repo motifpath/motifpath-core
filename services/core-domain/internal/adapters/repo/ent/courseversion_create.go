@@ -65,6 +65,12 @@ func (_c *CourseVersionCreate) SetNillableLanguageSnapshot(v *string) *CourseVer
 	return _c
 }
 
+// SetInstrumentIdsSnapshot sets the "instrument_ids_snapshot" field.
+func (_c *CourseVersionCreate) SetInstrumentIdsSnapshot(v []string) *CourseVersionCreate {
+	_c.mutation.SetInstrumentIdsSnapshot(v)
+	return _c
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (_c *CourseVersionCreate) SetAvailableForNewEnrollments(v bool) *CourseVersionCreate {
 	_c.mutation.SetAvailableForNewEnrollments(v)
@@ -249,6 +255,10 @@ func (_c *CourseVersionCreate) createSpec() (*CourseVersion, *sqlgraph.CreateSpe
 	if value, ok := _c.mutation.LanguageSnapshot(); ok {
 		_spec.SetField(courseversion.FieldLanguageSnapshot, field.TypeString, value)
 		_node.LanguageSnapshot = value
+	}
+	if value, ok := _c.mutation.InstrumentIdsSnapshot(); ok {
+		_spec.SetField(courseversion.FieldInstrumentIdsSnapshot, field.TypeJSON, value)
+		_node.InstrumentIdsSnapshot = value
 	}
 	if value, ok := _c.mutation.AvailableForNewEnrollments(); ok {
 		_spec.SetField(courseversion.FieldAvailableForNewEnrollments, field.TypeBool, value)

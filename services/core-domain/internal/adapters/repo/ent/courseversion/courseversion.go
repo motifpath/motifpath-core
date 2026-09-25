@@ -27,6 +27,8 @@ const (
 	FieldLevelSnapshot = "level_snapshot"
 	// FieldLanguageSnapshot holds the string denoting the language_snapshot field in the database.
 	FieldLanguageSnapshot = "language_snapshot"
+	// FieldInstrumentIdsSnapshot holds the string denoting the instrument_ids_snapshot field in the database.
+	FieldInstrumentIdsSnapshot = "instrument_ids_snapshot"
 	// FieldAvailableForNewEnrollments holds the string denoting the available_for_new_enrollments field in the database.
 	FieldAvailableForNewEnrollments = "available_for_new_enrollments"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
@@ -44,6 +46,7 @@ var Columns = []string{
 	FieldSummarySnapshot,
 	FieldLevelSnapshot,
 	FieldLanguageSnapshot,
+	FieldInstrumentIdsSnapshot,
 	FieldAvailableForNewEnrollments,
 	FieldPublishedAt,
 }

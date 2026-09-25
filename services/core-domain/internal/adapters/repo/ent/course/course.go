@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -29,8 +30,24 @@ const (
 	FieldCreatedBy = "created_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeInstruments holds the string denoting the instruments edge name in mutations.
+	EdgeInstruments = "instruments"
+	// EdgeCourseInstruments holds the string denoting the course_instruments edge name in mutations.
+	EdgeCourseInstruments = "course_instruments"
 	// Table holds the table name of the course in the database.
 	Table = "courses"
+	// InstrumentsTable is the table that holds the instruments relation/edge. The primary key declared below.
+	InstrumentsTable = "course_instruments"
+	// InstrumentsInverseTable is the table name for the Instrument entity.
+	// It exists in this package in order to avoid circular dependency with the "instrument" package.
+	InstrumentsInverseTable = "instruments"
+	// CourseInstrumentsTable is the table that holds the course_instruments relation/edge.
+	CourseInstrumentsTable = "course_instruments"
+	// CourseInstrumentsInverseTable is the table name for the CourseInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "courseinstrument" package.
+	CourseInstrumentsInverseTable = "course_instruments"
+	// CourseInstrumentsColumn is the table column denoting the course_instruments relation/edge.
+	CourseInstrumentsColumn = "course_id"
 )
 
 // Columns holds all SQL columns for course fields.
@@ -44,6 +61,12 @@ var Columns = []string{
 	FieldCreatedBy,
 	FieldCreatedAt,
 }
+
+var (
+	// InstrumentsPrimaryKey and InstrumentsColumn2 are the table columns denoting the
+	// primary key for the instruments relation (M2M).
+	InstrumentsPrimaryKey = []string{"course_id", "instrument_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -158,4 +181,46 @@ func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByInstrumentsCount orders the results by instruments count.
+func ByInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInstrumentsStep(), opts...)
+	}
+}
+
+// ByInstruments orders the results by instruments terms.
+func ByInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByCourseInstrumentsCount orders the results by course_instruments count.
+func ByCourseInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCourseInstrumentsStep(), opts...)
+	}
+}
+
+// ByCourseInstruments orders the results by course_instruments terms.
+func ByCourseInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCourseInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+	)
+}
+func newCourseInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CourseInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, CourseInstrumentsTable, CourseInstrumentsColumn),
+	)
 }

@@ -31,6 +31,8 @@ const (
 	FieldClassificationSnapshot = "classification_snapshot"
 	// FieldLanguagesSnapshot holds the string denoting the languages_snapshot field in the database.
 	FieldLanguagesSnapshot = "languages_snapshot"
+	// FieldInstrumentIdsSnapshot holds the string denoting the instrument_ids_snapshot field in the database.
+	FieldInstrumentIdsSnapshot = "instrument_ids_snapshot"
 	// FieldPublishedBy holds the string denoting the published_by field in the database.
 	FieldPublishedBy = "published_by"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
@@ -50,6 +52,7 @@ var Columns = []string{
 	FieldRichContent,
 	FieldClassificationSnapshot,
 	FieldLanguagesSnapshot,
+	FieldInstrumentIdsSnapshot,
 	FieldPublishedBy,
 	FieldPublishedAt,
 }

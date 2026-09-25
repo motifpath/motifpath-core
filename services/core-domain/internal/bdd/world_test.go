@@ -236,15 +236,15 @@ func newWorld() *world {
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, newID, now, noShuffle)
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.instruments, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
-	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), newID, now)
+	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, newFakeLanguageRepo(), newID)

@@ -40,6 +40,8 @@ const (
 	EdgeSkills = "skills"
 	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
 	EdgeConcepts = "concepts"
+	// EdgeInstruments holds the string denoting the instruments edge name in mutations.
+	EdgeInstruments = "instruments"
 	// EdgeContentNodeExercises holds the string denoting the content_node_exercises edge name in mutations.
 	EdgeContentNodeExercises = "content_node_exercises"
 	// EdgeContentNodeLanguages holds the string denoting the content_node_languages edge name in mutations.
@@ -48,6 +50,8 @@ const (
 	EdgeContentNodeSkills = "content_node_skills"
 	// EdgeContentNodeConcepts holds the string denoting the content_node_concepts edge name in mutations.
 	EdgeContentNodeConcepts = "content_node_concepts"
+	// EdgeContentNodeInstruments holds the string denoting the content_node_instruments edge name in mutations.
+	EdgeContentNodeInstruments = "content_node_instruments"
 	// Table holds the table name of the contentnode in the database.
 	Table = "content_nodes"
 	// PathExercisesTable is the table that holds the path_exercises relation/edge. The primary key declared below.
@@ -70,6 +74,11 @@ const (
 	// ConceptsInverseTable is the table name for the Concept entity.
 	// It exists in this package in order to avoid circular dependency with the "concept" package.
 	ConceptsInverseTable = "concepts"
+	// InstrumentsTable is the table that holds the instruments relation/edge. The primary key declared below.
+	InstrumentsTable = "content_node_instruments"
+	// InstrumentsInverseTable is the table name for the Instrument entity.
+	// It exists in this package in order to avoid circular dependency with the "instrument" package.
+	InstrumentsInverseTable = "instruments"
 	// ContentNodeExercisesTable is the table that holds the content_node_exercises relation/edge.
 	ContentNodeExercisesTable = "content_node_exercises"
 	// ContentNodeExercisesInverseTable is the table name for the ContentNodeExercise entity.
@@ -98,6 +107,13 @@ const (
 	ContentNodeConceptsInverseTable = "content_node_concepts"
 	// ContentNodeConceptsColumn is the table column denoting the content_node_concepts relation/edge.
 	ContentNodeConceptsColumn = "content_node_id"
+	// ContentNodeInstrumentsTable is the table that holds the content_node_instruments relation/edge.
+	ContentNodeInstrumentsTable = "content_node_instruments"
+	// ContentNodeInstrumentsInverseTable is the table name for the ContentNodeInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "contentnodeinstrument" package.
+	ContentNodeInstrumentsInverseTable = "content_node_instruments"
+	// ContentNodeInstrumentsColumn is the table column denoting the content_node_instruments relation/edge.
+	ContentNodeInstrumentsColumn = "content_node_id"
 )
 
 // Columns holds all SQL columns for contentnode fields.
@@ -126,6 +142,9 @@ var (
 	// ConceptsPrimaryKey and ConceptsColumn2 are the table columns denoting the
 	// primary key for the concepts relation (M2M).
 	ConceptsPrimaryKey = []string{"content_node_id", "concept_id"}
+	// InstrumentsPrimaryKey and InstrumentsColumn2 are the table columns denoting the
+	// primary key for the instruments relation (M2M).
+	InstrumentsPrimaryKey = []string{"content_node_id", "instrument_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -325,6 +344,20 @@ func ByConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByInstrumentsCount orders the results by instruments count.
+func ByInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInstrumentsStep(), opts...)
+	}
+}
+
+// ByInstruments orders the results by instruments terms.
+func ByInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByContentNodeExercisesCount orders the results by content_node_exercises count.
 func ByContentNodeExercisesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -380,6 +413,20 @@ func ByContentNodeConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 		sqlgraph.OrderByNeighborTerms(s, newContentNodeConceptsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByContentNodeInstrumentsCount orders the results by content_node_instruments count.
+func ByContentNodeInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newContentNodeInstrumentsStep(), opts...)
+	}
+}
+
+// ByContentNodeInstruments orders the results by content_node_instruments terms.
+func ByContentNodeInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentNodeInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newPathExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -408,6 +455,13 @@ func newConceptsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
 	)
 }
+func newInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+	)
+}
 func newContentNodeExercisesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -434,5 +488,12 @@ func newContentNodeConceptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ContentNodeConceptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeConceptsTable, ContentNodeConceptsColumn),
+	)
+}
+func newContentNodeInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentNodeInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeInstrumentsTable, ContentNodeInstrumentsColumn),
 	)
 }

@@ -50,6 +50,13 @@ func (CourseVersion) Fields() []ent.Field {
 			Default("en").
 			Immutable(),
 
+		// instrument_ids_snapshot is the instruments this version was for
+		// when published; NULL (a version published before instruments were
+		// recorded) or empty means every instrument.
+		field.JSON("instrument_ids_snapshot", []string{}).
+			Optional().
+			Immutable(),
+
 		field.Bool("available_for_new_enrollments").
 			Default(true),
 

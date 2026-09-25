@@ -18,7 +18,7 @@ func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepo
 	if len(versions) > 0 {
 		v = versions[0]
 	}
-	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), newFakeLanguageRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // checkpointInputs builds an unlabelled CheckpointInput slice from learning
@@ -178,7 +178,7 @@ func TestCourseService_ListCourseCreators(t *testing.T) {
 		for id, name := range users {
 			userRepo.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 		}
-		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo, newFakeLanguageRepository(),
+		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo, newFakeLanguageRepository(), seededInstrumentRepository(),
 			idSequence(), func() time.Time { return fixedCreatedAt })
 	}
 
@@ -272,7 +272,7 @@ func TestCourseService_ListCatalogCreators(t *testing.T) {
 	for id, name := range names {
 		users.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 	}
-	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(),
+	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(),
 		idSequence(), func() time.Time { return fixedCreatedAt })
 	creator := func(id string) application.CourseCreator {
 		return application.CourseCreator{UserID: id, DisplayName: names[id]}

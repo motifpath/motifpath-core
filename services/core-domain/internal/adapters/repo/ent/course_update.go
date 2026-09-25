@@ -10,7 +10,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -97,9 +100,81 @@ func (_u *CourseUpdate) SetNillableStatus(v *course.Status) *CourseUpdate {
 	return _u
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *CourseUpdate) AddInstrumentIDs(ids ...uuid.UUID) *CourseUpdate {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *CourseUpdate) AddInstruments(v ...*Instrument) *CourseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (_u *CourseUpdate) AddCourseInstrumentIDs(ids ...int) *CourseUpdate {
+	_u.mutation.AddCourseInstrumentIDs(ids...)
+	return _u
+}
+
+// AddCourseInstruments adds the "course_instruments" edges to the CourseInstrument entity.
+func (_u *CourseUpdate) AddCourseInstruments(v ...*CourseInstrument) *CourseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCourseInstrumentIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (_u *CourseUpdate) Mutation() *CourseMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *CourseUpdate) ClearInstruments() *CourseUpdate {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *CourseUpdate) RemoveInstrumentIDs(ids ...uuid.UUID) *CourseUpdate {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *CourseUpdate) RemoveInstruments(v ...*Instrument) *CourseUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearCourseInstruments clears all "course_instruments" edges to the CourseInstrument entity.
+func (_u *CourseUpdate) ClearCourseInstruments() *CourseUpdate {
+	_u.mutation.ClearCourseInstruments()
+	return _u
+}
+
+// RemoveCourseInstrumentIDs removes the "course_instruments" edge to CourseInstrument entities by IDs.
+func (_u *CourseUpdate) RemoveCourseInstrumentIDs(ids ...int) *CourseUpdate {
+	_u.mutation.RemoveCourseInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveCourseInstruments removes "course_instruments" edges to CourseInstrument entities.
+func (_u *CourseUpdate) RemoveCourseInstruments(v ...*CourseInstrument) *CourseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCourseInstrumentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -170,6 +245,108 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CourseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCourseInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.CourseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CourseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -261,9 +438,81 @@ func (_u *CourseUpdateOne) SetNillableStatus(v *course.Status) *CourseUpdateOne 
 	return _u
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *CourseUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *CourseUpdateOne) AddInstruments(v ...*Instrument) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (_u *CourseUpdateOne) AddCourseInstrumentIDs(ids ...int) *CourseUpdateOne {
+	_u.mutation.AddCourseInstrumentIDs(ids...)
+	return _u
+}
+
+// AddCourseInstruments adds the "course_instruments" edges to the CourseInstrument entity.
+func (_u *CourseUpdateOne) AddCourseInstruments(v ...*CourseInstrument) *CourseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCourseInstrumentIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (_u *CourseUpdateOne) Mutation() *CourseMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *CourseUpdateOne) ClearInstruments() *CourseUpdateOne {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *CourseUpdateOne) RemoveInstrumentIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *CourseUpdateOne) RemoveInstruments(v ...*Instrument) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearCourseInstruments clears all "course_instruments" edges to the CourseInstrument entity.
+func (_u *CourseUpdateOne) ClearCourseInstruments() *CourseUpdateOne {
+	_u.mutation.ClearCourseInstruments()
+	return _u
+}
+
+// RemoveCourseInstrumentIDs removes the "course_instruments" edge to CourseInstrument entities by IDs.
+func (_u *CourseUpdateOne) RemoveCourseInstrumentIDs(ids ...int) *CourseUpdateOne {
+	_u.mutation.RemoveCourseInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveCourseInstruments removes "course_instruments" edges to CourseInstrument entities.
+func (_u *CourseUpdateOne) RemoveCourseInstruments(v ...*CourseInstrument) *CourseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCourseInstrumentIDs(ids...)
 }
 
 // Where appends a list predicates to the CourseUpdate builder.
@@ -364,6 +613,108 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _u.config, mutation: newCourseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CourseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCourseInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.CourseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CourseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Course{config: _u.config}
 	_spec.Assign = _node.assignValues

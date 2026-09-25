@@ -184,7 +184,7 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 	}
 
 	body := request.Body
-	node, err := h.content.CreateContentNode(ctx, caller, application.ContentNodeInput{Title: body.Title, ContentType: domain.ContentType(body.ContentType), SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent)})
+	node, err := h.content.CreateContentNode(ctx, caller, application.ContentNodeInput{Title: body.Title, ContentType: domain.ContentType(body.ContentType), SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds)})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -254,11 +254,12 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 		})
 	}
 	filter := domain.ContentNodeFilter{
-		ContentType: contentType,
-		SkillID:     skillID,
-		ConceptID:   conceptID,
-		Difficulty:  difficulty,
-		Query:       searchQuery(request.Params.Q),
+		ContentType:  contentType,
+		SkillID:      skillID,
+		ConceptID:    conceptID,
+		Difficulty:   difficulty,
+		Query:        searchQuery(request.Params.Q),
+		InstrumentID: uuidPtrToString(request.Params.InstrumentId),
 	}
 
 	result, err := h.content.ListContentNodes(ctx, caller, filter, page)
@@ -285,7 +286,7 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 	}
 
 	body := request.Body
-	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent)})
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds)})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -709,7 +710,7 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), Items: pathItems})
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -803,7 +804,7 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), Items: pathItems})
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1142,7 +1143,7 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		}
 	}
 
-	course, err := h.course.CreateCourse(ctx, caller, application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, Checkpoints: checkpoints})
+	course, err := h.course.CreateCourse(ctx, caller, application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1207,7 +1208,7 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		}
 	}
 
-	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, Checkpoints: checkpoints})
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ type CourseVersion struct {
 	LevelSnapshot courseversion.LevelSnapshot `json:"level_snapshot,omitempty"`
 	// LanguageSnapshot holds the value of the "language_snapshot" field.
 	LanguageSnapshot string `json:"language_snapshot,omitempty"`
+	// InstrumentIdsSnapshot holds the value of the "instrument_ids_snapshot" field.
+	InstrumentIdsSnapshot []string `json:"instrument_ids_snapshot,omitempty"`
 	// AvailableForNewEnrollments holds the value of the "available_for_new_enrollments" field.
 	AvailableForNewEnrollments bool `json:"available_for_new_enrollments,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -42,6 +45,8 @@ func (*CourseVersion) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case courseversion.FieldInstrumentIdsSnapshot:
+			values[i] = new([]byte)
 		case courseversion.FieldAvailableForNewEnrollments:
 			values[i] = new(sql.NullBool)
 		case courseversion.FieldVersionNumber:
@@ -109,6 +114,14 @@ func (_m *CourseVersion) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LanguageSnapshot = value.String
 			}
+		case courseversion.FieldInstrumentIdsSnapshot:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field instrument_ids_snapshot", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.InstrumentIdsSnapshot); err != nil {
+					return fmt.Errorf("unmarshal field instrument_ids_snapshot: %w", err)
+				}
+			}
 		case courseversion.FieldAvailableForNewEnrollments:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field available_for_new_enrollments", values[i])
@@ -174,6 +187,9 @@ func (_m *CourseVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("language_snapshot=")
 	builder.WriteString(_m.LanguageSnapshot)
+	builder.WriteString(", ")
+	builder.WriteString("instrument_ids_snapshot=")
+	builder.WriteString(fmt.Sprintf("%v", _m.InstrumentIdsSnapshot))
 	builder.WriteString(", ")
 	builder.WriteString("available_for_new_enrollments=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AvailableForNewEnrollments))

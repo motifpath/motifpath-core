@@ -18,12 +18,14 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
@@ -38,6 +40,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
@@ -111,12 +114,14 @@ func checkColumn(t, c string) error {
 			contentnode.Table:             contentnode.ValidColumn,
 			contentnodeconcept.Table:      contentnodeconcept.ValidColumn,
 			contentnodeexercise.Table:     contentnodeexercise.ValidColumn,
+			contentnodeinstrument.Table:   contentnodeinstrument.ValidColumn,
 			contentnodelanguage.Table:     contentnodelanguage.ValidColumn,
 			contentnodeskill.Table:        contentnodeskill.ValidColumn,
 			contentnodeversion.Table:      contentnodeversion.ValidColumn,
 			course.Table:                  course.ValidColumn,
 			coursecheckpoint.Table:        coursecheckpoint.ValidColumn,
 			courseenrollment.Table:        courseenrollment.ValidColumn,
+			courseinstrument.Table:        courseinstrument.ValidColumn,
 			courseversion.Table:           courseversion.ValidColumn,
 			courseversioncheckpoint.Table: courseversioncheckpoint.ValidColumn,
 			diagram.Table:                 diagram.ValidColumn,
@@ -131,6 +136,7 @@ func checkColumn(t, c string) error {
 			instrument.Table:              instrument.ValidColumn,
 			language.Table:                language.ValidColumn,
 			learningpath.Table:            learningpath.ValidColumn,
+			learningpathinstrument.Table:  learningpathinstrument.ValidColumn,
 			learningpathitem.Table:        learningpathitem.ValidColumn,
 			position.Table:                position.ValidColumn,
 			skill.Table:                   skill.ValidColumn,

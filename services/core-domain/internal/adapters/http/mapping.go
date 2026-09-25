@@ -88,9 +88,10 @@ func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVers
 			DifficultyLevel: generated.ClassificationDifficultyLevel(v.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(v.Classification.ReviewState),
 		},
-		LanguagesSnapshot: toGeneratedLanguages(v.Languages),
-		MediaUrlSnapshot:  v.MediaURL,
-		PublishedAt:       v.PublishedAt,
+		LanguagesSnapshot:     toGeneratedLanguages(v.Languages),
+		InstrumentIdsSnapshot: toUUIDs(v.InstrumentIDsSnapshot),
+		MediaUrlSnapshot:      v.MediaURL,
+		PublishedAt:           v.PublishedAt,
 	}
 	if v.RichContent != nil {
 		doc := toGeneratedPromptDocument(*v.RichContent)
@@ -111,9 +112,10 @@ func toContentNode(n domain.ContentNode, names userNames) generated.ContentNode 
 			DifficultyLevel: generated.ClassificationDifficultyLevel(n.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(n.Classification.ReviewState),
 		},
-		MediaUrl:  n.MediaURL,
-		Languages: toGeneratedLanguages(n.Languages),
-		CreatedAt: n.CreatedAt,
+		MediaUrl:      n.MediaURL,
+		Languages:     toGeneratedLanguages(n.Languages),
+		InstrumentIds: toUUIDs(n.InstrumentIDs),
+		CreatedAt:     n.CreatedAt,
 	}
 	if n.RichContent != nil {
 		doc := toGeneratedPromptDocument(*n.RichContent)
@@ -396,6 +398,7 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
 		UpdatedAt:      p.UpdatedAt,
+		InstrumentIds:  toUUIDs(p.InstrumentIDs),
 	}
 	if p.Level != nil {
 		level := generated.LearningPathLevel(*p.Level)
@@ -407,7 +410,7 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 // learningPathListFilter maps GET /learning-paths' query parameters onto the
 // domain filter.
 func learningPathListFilter(params generated.ListLearningPathsParams) domain.LearningPathFilter {
-	filter := domain.LearningPathFilter{Query: searchQuery(params.Q)}
+	filter := domain.LearningPathFilter{Query: searchQuery(params.Q), InstrumentID: uuidPtrToString(params.InstrumentId)}
 	if params.CreatedBy != nil {
 		filter.CreatedBy = params.CreatedBy.String()
 	}
@@ -776,6 +779,7 @@ func toCourse(c domain.Course, latest *domain.CourseVersion, names userNames) ge
 		Summary:               c.Summary,
 		Level:                 generated.CourseLevel(c.Level),
 		Language:              c.Language,
+		InstrumentIds:         toUUIDs(c.InstrumentIDs),
 		Status:                generated.CourseStatus(c.Status),
 		CreatedBy:             names.ref(c.CreatedBy),
 		CreatedAt:             c.CreatedAt,
@@ -810,13 +814,14 @@ const (
 // from it.
 func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain.CourseVersion, names userNames) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
-		CourseId:  mustUUID(c.ID),
-		Title:     c.Title,
-		Summary:   c.Summary,
-		Level:     generated.CourseCatalogEntryLevel(c.Level),
-		Language:  c.Language,
-		CreatedBy: names.ref(c.CreatedBy),
-		Status:    generated.CourseCatalogEntryStatus(c.Status),
+		CourseId:      mustUUID(c.ID),
+		Title:         c.Title,
+		Summary:       c.Summary,
+		Level:         generated.CourseCatalogEntryLevel(c.Level),
+		Language:      c.Language,
+		InstrumentIds: toUUIDs(c.InstrumentIDs),
+		CreatedBy:     names.ref(c.CreatedBy),
+		Status:        generated.CourseCatalogEntryStatus(c.Status),
 	}
 	if latest != nil {
 		publishedAt := latest.PublishedAt
@@ -829,6 +834,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 			entry.Summary = latest.SummarySnapshot
 			entry.Level = generated.CourseCatalogEntryLevel(latest.LevelSnapshot)
 			entry.Language = latest.LanguageSnapshot
+			entry.InstrumentIds = toUUIDs(latest.InstrumentIDsSnapshot)
 		}
 	}
 	if view == authoringListView {
@@ -863,6 +869,7 @@ func toGeneratedCourseVersion(v domain.CourseVersion) generated.CourseVersion {
 		SummarySnapshot:            v.SummarySnapshot,
 		LevelSnapshot:              generated.CourseVersionLevelSnapshot(v.LevelSnapshot),
 		LanguageSnapshot:           v.LanguageSnapshot,
+		InstrumentIdsSnapshot:      toUUIDs(v.InstrumentIDsSnapshot),
 		PublishedAt:                v.PublishedAt,
 		AvailableForNewEnrollments: v.AvailableForNewEnrollments,
 	}
@@ -887,14 +894,15 @@ func toCourseDetail(courseID string, view application.PublishedCourseView) gener
 	}
 	publishedAt := view.PublishedAt
 	return generated.CourseDetail{
-		CourseId:    mustUUID(courseID),
-		Title:       view.Title,
-		Summary:     view.Summary,
-		Level:       generated.CourseDetailLevel(view.Level),
-		Language:    view.Language,
-		Status:      generated.CourseDetailStatus(view.Status),
-		PublishedAt: &publishedAt,
-		Checkpoints: checkpoints,
+		CourseId:      mustUUID(courseID),
+		Title:         view.Title,
+		Summary:       view.Summary,
+		Level:         generated.CourseDetailLevel(view.Level),
+		Language:      view.Language,
+		InstrumentIds: toUUIDs(view.InstrumentIDs),
+		Status:        generated.CourseDetailStatus(view.Status),
+		PublishedAt:   &publishedAt,
+		Checkpoints:   checkpoints,
 	}
 }
 
@@ -902,7 +910,7 @@ func toCourseDetail(courseID string, view application.PublishedCourseView) gener
 // domain filter. Role-dependent scoping is the application layer's job, not
 // this mapping's.
 func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilter {
-	filter := domain.CourseListFilter{Query: searchQuery(params.Q)}
+	filter := domain.CourseListFilter{Query: searchQuery(params.Q), InstrumentID: uuidPtrToString(params.InstrumentId)}
 	if params.Status != nil {
 		status := domain.CourseStatus(*params.Status)
 		filter.Status = &status
@@ -930,7 +938,7 @@ func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilte
 // catalogCourseListFilter maps GET /catalog/courses' parameters onto the
 // same filter the authoring list uses; the catalog has no status parameter.
 func catalogCourseListFilter(params generated.ListCatalogCoursesParams) domain.CourseListFilter {
-	filter := domain.CourseListFilter{Query: searchQuery(params.Q)}
+	filter := domain.CourseListFilter{Query: searchQuery(params.Q), InstrumentID: uuidPtrToString(params.InstrumentId)}
 	if params.Language != nil {
 		filter.Language = *params.Language
 	}
@@ -957,4 +965,14 @@ func uuidStrings(ids []uuid.UUID) []string {
 		out[i] = id.String()
 	}
 	return out
+}
+
+// toUUIDs converts ids to their wire form, always a list (empty when there
+// are none), since every instrument_ids field is required.
+func toUUIDs(ids []string) []uuid.UUID {
+	result := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		result[i] = mustUUID(id)
+	}
+	return result
 }

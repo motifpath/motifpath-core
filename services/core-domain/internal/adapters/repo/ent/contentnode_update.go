@@ -15,9 +15,11 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
@@ -178,6 +180,21 @@ func (_u *ContentNodeUpdate) AddConcepts(v ...*Concept) *ContentNodeUpdate {
 	return _u.AddConceptIDs(ids...)
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *ContentNodeUpdate) AddInstrumentIDs(ids ...uuid.UUID) *ContentNodeUpdate {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *ContentNodeUpdate) AddInstruments(v ...*Instrument) *ContentNodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_u *ContentNodeUpdate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdate {
 	_u.mutation.AddContentNodeExerciseIDs(ids...)
@@ -236,6 +253,21 @@ func (_u *ContentNodeUpdate) AddContentNodeConcepts(v ...*ContentNodeConcept) *C
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeConceptIDs(ids...)
+}
+
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (_u *ContentNodeUpdate) AddContentNodeInstrumentIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.AddContentNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// AddContentNodeInstruments adds the "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_u *ContentNodeUpdate) AddContentNodeInstruments(v ...*ContentNodeInstrument) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -327,6 +359,27 @@ func (_u *ContentNodeUpdate) RemoveConcepts(v ...*Concept) *ContentNodeUpdate {
 	return _u.RemoveConceptIDs(ids...)
 }
 
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *ContentNodeUpdate) ClearInstruments() *ContentNodeUpdate {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *ContentNodeUpdate) RemoveInstrumentIDs(ids ...uuid.UUID) *ContentNodeUpdate {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *ContentNodeUpdate) RemoveInstruments(v ...*Instrument) *ContentNodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
 // ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
 func (_u *ContentNodeUpdate) ClearContentNodeExercises() *ContentNodeUpdate {
 	_u.mutation.ClearContentNodeExercises()
@@ -409,6 +462,27 @@ func (_u *ContentNodeUpdate) RemoveContentNodeConcepts(v ...*ContentNodeConcept)
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeConceptIDs(ids...)
+}
+
+// ClearContentNodeInstruments clears all "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_u *ContentNodeUpdate) ClearContentNodeInstruments() *ContentNodeUpdate {
+	_u.mutation.ClearContentNodeInstruments()
+	return _u
+}
+
+// RemoveContentNodeInstrumentIDs removes the "content_node_instruments" edge to ContentNodeInstrument entities by IDs.
+func (_u *ContentNodeUpdate) RemoveContentNodeInstrumentIDs(ids ...int) *ContentNodeUpdate {
+	_u.mutation.RemoveContentNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeInstruments removes "content_node_instruments" edges to ContentNodeInstrument entities.
+func (_u *ContentNodeUpdate) RemoveContentNodeInstruments(v ...*ContentNodeInstrument) *ContentNodeUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeInstrumentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -714,6 +788,63 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -894,6 +1025,51 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ContentNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{contentnode.Label}
@@ -1056,6 +1232,21 @@ func (_u *ContentNodeUpdateOne) AddConcepts(v ...*Concept) *ContentNodeUpdateOne
 	return _u.AddConceptIDs(ids...)
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *ContentNodeUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *ContentNodeUpdateOne) AddInstruments(v ...*Instrument) *ContentNodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_u *ContentNodeUpdateOne) AddContentNodeExerciseIDs(ids ...int) *ContentNodeUpdateOne {
 	_u.mutation.AddContentNodeExerciseIDs(ids...)
@@ -1114,6 +1305,21 @@ func (_u *ContentNodeUpdateOne) AddContentNodeConcepts(v ...*ContentNodeConcept)
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeConceptIDs(ids...)
+}
+
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (_u *ContentNodeUpdateOne) AddContentNodeInstrumentIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.AddContentNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// AddContentNodeInstruments adds the "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_u *ContentNodeUpdateOne) AddContentNodeInstruments(v ...*ContentNodeInstrument) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddContentNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -1205,6 +1411,27 @@ func (_u *ContentNodeUpdateOne) RemoveConcepts(v ...*Concept) *ContentNodeUpdate
 	return _u.RemoveConceptIDs(ids...)
 }
 
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *ContentNodeUpdateOne) ClearInstruments() *ContentNodeUpdateOne {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *ContentNodeUpdateOne) RemoveInstrumentIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *ContentNodeUpdateOne) RemoveInstruments(v ...*Instrument) *ContentNodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
 // ClearContentNodeExercises clears all "content_node_exercises" edges to the ContentNodeExercise entity.
 func (_u *ContentNodeUpdateOne) ClearContentNodeExercises() *ContentNodeUpdateOne {
 	_u.mutation.ClearContentNodeExercises()
@@ -1287,6 +1514,27 @@ func (_u *ContentNodeUpdateOne) RemoveContentNodeConcepts(v ...*ContentNodeConce
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeConceptIDs(ids...)
+}
+
+// ClearContentNodeInstruments clears all "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_u *ContentNodeUpdateOne) ClearContentNodeInstruments() *ContentNodeUpdateOne {
+	_u.mutation.ClearContentNodeInstruments()
+	return _u
+}
+
+// RemoveContentNodeInstrumentIDs removes the "content_node_instruments" edge to ContentNodeInstrument entities by IDs.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeInstrumentIDs(ids ...int) *ContentNodeUpdateOne {
+	_u.mutation.RemoveContentNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveContentNodeInstruments removes "content_node_instruments" edges to ContentNodeInstrument entities.
+func (_u *ContentNodeUpdateOne) RemoveContentNodeInstruments(v ...*ContentNodeInstrument) *ContentNodeUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveContentNodeInstrumentIDs(ids...)
 }
 
 // Where appends a list predicates to the ContentNodeUpdate builder.
@@ -1622,6 +1870,63 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _u.config, mutation: newContentNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ContentNodeExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1795,6 +2100,51 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ContentNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedContentNodeInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.ContentNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ContentNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

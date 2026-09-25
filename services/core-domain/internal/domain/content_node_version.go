@@ -25,8 +25,11 @@ type ContentNodeVersion struct {
 	// version's classification/languages is a known gap.
 	Classification Classification
 	Languages      []Language
-	PublishedBy    string
-	PublishedAt    time.Time
+	// InstrumentIDsSnapshot is the node's InstrumentIDs when this version
+	// was published; empty means every instrument.
+	InstrumentIDsSnapshot []string
+	PublishedBy           string
+	PublishedAt           time.Time
 }
 
 // NewContentNodeVersionSnapshot builds the next version of node.
@@ -36,16 +39,17 @@ type ContentNodeVersion struct {
 // this.
 func NewContentNodeVersionSnapshot(id string, node ContentNode, versionNumber int, publishedBy string, publishedAt time.Time) ContentNodeVersion {
 	return ContentNodeVersion{
-		ID:             id,
-		ContentNodeID:  node.ID,
-		VersionNumber:  versionNumber,
-		Title:          node.Title,
-		ContentType:    node.ContentType,
-		MediaURL:       node.MediaURL,
-		RichContent:    node.RichContent,
-		Classification: node.Classification,
-		Languages:      node.Languages,
-		PublishedBy:    publishedBy,
-		PublishedAt:    publishedAt,
+		ID:                    id,
+		ContentNodeID:         node.ID,
+		VersionNumber:         versionNumber,
+		Title:                 node.Title,
+		ContentType:           node.ContentType,
+		MediaURL:              node.MediaURL,
+		RichContent:           node.RichContent,
+		Classification:        node.Classification,
+		Languages:             node.Languages,
+		InstrumentIDsSnapshot: append([]string(nil), node.InstrumentIDs...),
+		PublishedBy:           publishedBy,
+		PublishedAt:           publishedAt,
 	}
 }

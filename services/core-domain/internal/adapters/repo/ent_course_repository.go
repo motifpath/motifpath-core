@@ -36,6 +36,11 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		return err
 	}
 
+	instrumentIDs, err := parseUUIDs(c.InstrumentIDs)
+	if err != nil {
+		return err
+	}
+
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
@@ -50,6 +55,7 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		SetStatus(course.Status(c.Status)).
 		SetCreatedBy(createdBy).
 		SetCreatedAt(c.CreatedAt).
+		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -67,7 +73,7 @@ func (r *EntCourseRepository) GetByID(ctx context.Context, id string) (domain.Co
 		return domain.Course{}, domain.ErrNotFound
 	}
 
-	courseRow, err := r.client.Course.Get(ctx, parsed)
+	courseRow, err := r.client.Course.Query().Where(course.ID(parsed)).WithInstruments().Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.Course{}, domain.ErrNotFound
@@ -112,6 +118,7 @@ func (r *EntCourseRepository) List(ctx context.Context, filter domain.CourseList
 		return domain.Page[domain.Course]{}, err
 	}
 	courseRows, err := query.
+		WithInstruments().
 		Order(courseListOrder(filter)...).
 		Limit(page.Limit).
 		Offset(page.Offset).
@@ -196,6 +203,11 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 		return domain.ErrNotFound
 	}
 
+	instrumentIDs, err := parseUUIDs(c.InstrumentIDs)
+	if err != nil {
+		return err
+	}
+
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
@@ -206,6 +218,8 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 		SetSummary(c.Summary).
 		SetLevel(course.Level(c.Level)).
 		SetLanguage(c.Language).
+		ClearInstruments().
+		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
@@ -312,14 +326,15 @@ func buildCourseCheckpoints(checkpointRows []*ent.CourseCheckpoint, pathsByID ma
 
 func toDomainCourse(row *ent.Course, checkpoints []domain.CourseCheckpoint) domain.Course {
 	return domain.Course{
-		ID:          row.ID.String(),
-		Title:       row.Title,
-		Summary:     row.Summary,
-		Level:       domain.DifficultyLevel(row.Level),
-		Language:    row.Language,
-		Status:      domain.CourseStatus(row.Status),
-		CreatedBy:   row.CreatedBy.String(),
-		CreatedAt:   row.CreatedAt,
-		Checkpoints: checkpoints,
+		ID:            row.ID.String(),
+		Title:         row.Title,
+		Summary:       row.Summary,
+		Level:         domain.DifficultyLevel(row.Level),
+		Language:      row.Language,
+		InstrumentIDs: instrumentIDsOf(row.Edges.Instruments),
+		Status:        domain.CourseStatus(row.Status),
+		CreatedBy:     row.CreatedBy.String(),
+		CreatedAt:     row.CreatedAt,
+		Checkpoints:   checkpoints,
 	}
 }
