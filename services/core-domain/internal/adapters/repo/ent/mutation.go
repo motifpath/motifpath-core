@@ -18795,7 +18795,7 @@ type InstrumentMutation struct {
 	op                Op
 	typ               string
 	id                *uuid.UUID
-	name              *string
+	names             *map[string]string
 	family            *instrument.Family
 	string_count      *int
 	addstring_count   *int
@@ -18916,40 +18916,40 @@ func (m *InstrumentMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
-// SetName sets the "name" field.
-func (m *InstrumentMutation) SetName(s string) {
-	m.name = &s
+// SetNames sets the "names" field.
+func (m *InstrumentMutation) SetNames(value map[string]string) {
+	m.names = &value
 }
 
-// Name returns the value of the "name" field in the mutation.
-func (m *InstrumentMutation) Name() (r string, exists bool) {
-	v := m.name
+// Names returns the value of the "names" field in the mutation.
+func (m *InstrumentMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldName returns the old "name" field's value of the Instrument entity.
+// OldNames returns the old "names" field's value of the Instrument entity.
 // If the Instrument object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *InstrumentMutation) OldName(ctx context.Context) (v string, err error) {
+func (m *InstrumentMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
+		return v, errors.New("OldNames requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
 	}
-	return oldValue.Name, nil
+	return oldValue.Names, nil
 }
 
-// ResetName resets all changes to the "name" field.
-func (m *InstrumentMutation) ResetName() {
-	m.name = nil
+// ResetNames resets all changes to the "names" field.
+func (m *InstrumentMutation) ResetNames() {
+	m.names = nil
 }
 
 // SetFamily sets the "family" field.
@@ -19310,8 +19310,8 @@ func (m *InstrumentMutation) Type() string {
 // AddedFields().
 func (m *InstrumentMutation) Fields() []string {
 	fields := make([]string, 0, 6)
-	if m.name != nil {
-		fields = append(fields, instrument.FieldName)
+	if m.names != nil {
+		fields = append(fields, instrument.FieldNames)
 	}
 	if m.family != nil {
 		fields = append(fields, instrument.FieldFamily)
@@ -19336,8 +19336,8 @@ func (m *InstrumentMutation) Fields() []string {
 // schema.
 func (m *InstrumentMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case instrument.FieldName:
-		return m.Name()
+	case instrument.FieldNames:
+		return m.Names()
 	case instrument.FieldFamily:
 		return m.Family()
 	case instrument.FieldStringCount:
@@ -19357,8 +19357,8 @@ func (m *InstrumentMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *InstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case instrument.FieldName:
-		return m.OldName(ctx)
+	case instrument.FieldNames:
+		return m.OldNames(ctx)
 	case instrument.FieldFamily:
 		return m.OldFamily(ctx)
 	case instrument.FieldStringCount:
@@ -19378,12 +19378,12 @@ func (m *InstrumentMutation) OldField(ctx context.Context, name string) (ent.Val
 // type.
 func (m *InstrumentMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case instrument.FieldName:
-		v, ok := value.(string)
+	case instrument.FieldNames:
+		v, ok := value.(map[string]string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetName(v)
+		m.SetNames(v)
 		return nil
 	case instrument.FieldFamily:
 		v, ok := value.(instrument.Family)
@@ -19511,8 +19511,8 @@ func (m *InstrumentMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *InstrumentMutation) ResetField(name string) error {
 	switch name {
-	case instrument.FieldName:
-		m.ResetName()
+	case instrument.FieldNames:
+		m.ResetNames()
 		return nil
 	case instrument.FieldFamily:
 		m.ResetFamily()

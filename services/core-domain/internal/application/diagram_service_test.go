@@ -21,8 +21,8 @@ type diagramFixture struct {
 func newDiagramFixture() diagramFixture {
 	six := 6
 	instruments := newFakeInstrumentRepository()
-	instruments.put(domain.Instrument{ID: "guitar", Name: "Guitar", Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"}})
-	instruments.put(domain.Instrument{ID: "piano", Name: "Piano", Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}})
+	instruments.put(domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"}})
+	instruments.put(domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}})
 	diagrams := newFakeDiagramRepository()
 	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 	return diagramFixture{diagrams: diagrams, instruments: instruments, svc: svc}

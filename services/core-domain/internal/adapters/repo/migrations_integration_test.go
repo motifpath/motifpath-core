@@ -145,6 +145,39 @@ func TestDiagramOwnershipMigration(t *testing.T) {
 	})
 }
 
+// TestInstrumentNamesMigration covers moving each instrument's single name
+// into the per-language names map: the existing name becomes the English
+// one, and no other language is invented for it.
+func TestInstrumentNamesMigration(t *testing.T) {
+	ctx := context.Background()
+	files := migrationFiles(t)
+	target := -1
+	for i, f := range files {
+		if strings.HasSuffix(f, "_instrument_names_per_language.up.sql") {
+			target = i
+		}
+	}
+	require.NotEqual(t, -1, target, "expected a *_instrument_names_per_language.up.sql migration")
+
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range files[:target] {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	mustExec(t, ctx, db, `INSERT INTO instruments (id, name, family, string_count) VALUES ('11111111-1111-1111-1111-111111111111', 'Guitar', 'fretted', 6)`)
+
+	_, err := execMigrationFile(ctx, db, files[target])
+	require.NoError(t, err)
+
+	var names string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT names::text FROM instruments`).Scan(&names))
+	assert.JSONEq(t, `{"en": "Guitar"}`, names)
+	var nameColumns int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT count(*) FROM information_schema.columns WHERE table_name = 'instruments' AND column_name = 'name'`).Scan(&nameColumns))
+	assert.Zero(t, nameColumns, "the single name column should be gone")
+}
+
 // startMigrationPostgres starts an empty Postgres container and returns a
 // connection to it that is known to accept statements.
 func startMigrationPostgres(t *testing.T, ctx context.Context) *sql.DB {

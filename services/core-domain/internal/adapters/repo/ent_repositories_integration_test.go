@@ -47,7 +47,7 @@ func seedDiagram(t *testing.T, ctx context.Context, client *ent.Client, instrume
 	t.Helper()
 	strings := 6
 	instrument := domain.Instrument{
-		ID: uuid.NewString(), Name: instrumentName, Family: domain.InstrumentFamilyFretted,
+		ID: uuid.NewString(), Names: domain.LocalizedText{"en": instrumentName}, Family: domain.InstrumentFamilyFretted,
 		StringCount: &strings, Tuning: []string{"E", "A", "D", "G", "B", "E"},
 	}
 	require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, instrument))
@@ -306,6 +306,19 @@ func TestEntLanguageRepository_GetByCode(t *testing.T) {
 
 	_, err = repo.GetByCode(ctx, "xx")
 	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntLanguageRepository_List(t *testing.T) {
+	repo := NewEntLanguageRepository(setupPostgres(t))
+
+	got, err := repo.List(context.Background())
+
+	require.NoError(t, err)
+	codes := make([]string, len(got))
+	for i, lang := range got {
+		codes[i] = lang.Code
+	}
+	assert.Equal(t, []string{"any", "en", "pt_BR"}, codes)
 }
 
 func TestEntChallengeRepository_CreateAndGet(t *testing.T) {

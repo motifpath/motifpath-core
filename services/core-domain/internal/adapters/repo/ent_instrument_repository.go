@@ -26,7 +26,7 @@ func (r *EntInstrumentRepository) Create(ctx context.Context, i domain.Instrumen
 	}
 	builder := r.client.Instrument.Create().
 		SetID(id).
-		SetName(i.Name).
+		SetNames(i.Names).
 		SetFamily(instrument.Family(i.Family)).
 		SetNillableStringCount(i.StringCount)
 	if len(i.Tuning) > 0 {
@@ -66,10 +66,22 @@ func (r *EntInstrumentRepository) List(ctx context.Context) ([]domain.Instrument
 	return result, nil
 }
 
+func (r *EntInstrumentRepository) UpdateNames(ctx context.Context, id string, names domain.LocalizedText) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	err = r.client.Instrument.UpdateOneID(parsed).SetNames(names).Exec(ctx)
+	if ent.IsNotFound(err) {
+		return domain.ErrNotFound
+	}
+	return err
+}
+
 func toDomainInstrument(row *ent.Instrument) domain.Instrument {
 	i := domain.Instrument{
 		ID:          row.ID.String(),
-		Name:        row.Name,
+		Names:       domain.LocalizedText(row.Names),
 		Family:      domain.InstrumentFamily(row.Family),
 		StringCount: row.StringCount,
 		Tuning:      row.Tuning,

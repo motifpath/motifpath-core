@@ -21,9 +21,9 @@ type InstrumentCreate struct {
 	hooks    []Hook
 }
 
-// SetName sets the "name" field.
-func (_c *InstrumentCreate) SetName(v string) *InstrumentCreate {
-	_c.mutation.SetName(v)
+// SetNames sets the "names" field.
+func (_c *InstrumentCreate) SetNames(v map[string]string) *InstrumentCreate {
+	_c.mutation.SetNames(v)
 	return _c
 }
 
@@ -153,8 +153,8 @@ func (_c *InstrumentCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *InstrumentCreate) check() error {
-	if _, ok := _c.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Instrument.name"`)}
+	if _, ok := _c.mutation.Names(); !ok {
+		return &ValidationError{Name: "names", err: errors.New(`ent: missing required field "Instrument.names"`)}
 	}
 	if _, ok := _c.mutation.Family(); !ok {
 		return &ValidationError{Name: "family", err: errors.New(`ent: missing required field "Instrument.family"`)}
@@ -199,9 +199,9 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.Name(); ok {
-		_spec.SetField(instrument.FieldName, field.TypeString, value)
-		_node.Name = value
+	if value, ok := _c.mutation.Names(); ok {
+		_spec.SetField(instrument.FieldNames, field.TypeJSON, value)
+		_node.Names = value
 	}
 	if value, ok := _c.mutation.Family(); ok {
 		_spec.SetField(instrument.FieldFamily, field.TypeEnum, value)

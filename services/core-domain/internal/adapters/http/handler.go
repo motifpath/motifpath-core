@@ -1566,7 +1566,7 @@ func (h *Handler) CreateInstrument(ctx context.Context, request generated.Create
 	if body.KeyRange != nil {
 		keyRange = &domain.KeyRange{Lowest: body.KeyRange.Lowest, Highest: body.KeyRange.Highest}
 	}
-	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Name, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange)
+	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1580,6 +1580,30 @@ func (h *Handler) CreateInstrument(ctx context.Context, request generated.Create
 	}
 
 	return generated.CreateInstrument201JSONResponse(toGeneratedInstrument(instrument)), nil
+}
+
+func (h *Handler) UpdateInstrument(ctx context.Context, request generated.UpdateInstrumentRequestObject) (generated.UpdateInstrumentResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateInstrument401JSONResponse(unauthorizedError()), nil
+	}
+
+	instrument, err := h.instrument.UpdateInstrumentNames(ctx, caller, request.InstrumentId.String(), request.Body.Names)
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateInstrument400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateInstrument403JSONResponse(forbiddenError("only admins may update an instrument")), nil
+		case errKindNotFound:
+			return generated.UpdateInstrument404JSONResponse(notFoundError("no instrument exists with the given instrument_id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateInstrument200JSONResponse(toGeneratedInstrument(instrument)), nil
 }
 
 func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagramsRequestObject) (generated.ListDiagramsResponseObject, error) {

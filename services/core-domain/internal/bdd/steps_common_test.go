@@ -271,6 +271,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ListMyStandalonePaths403JSONResponse,
 		generated.ListCourses403JSONResponse,
 		generated.ListDiagrams403JSONResponse,
+		generated.UpdateInstrument403JSONResponse,
 		generated.UpdateContentNode403JSONResponse,
 		generated.UpdateChallenge403JSONResponse,
 		generated.UpdateExpandedContent403JSONResponse,
@@ -303,6 +304,7 @@ func (w *world) requestRefusedForbidden() error {
 func (w *world) requestRefusedNotFound() error {
 	switch w.lastResp.(type) {
 	case generated.GetContentNode404JSONResponse,
+		generated.UpdateInstrument404JSONResponse,
 		generated.ListContentNodeVersions404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
 		generated.GetChallenge404JSONResponse,
@@ -408,6 +410,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.CreateConcept401JSONResponse,
 		generated.ListInstruments401JSONResponse,
 		generated.CreateInstrument401JSONResponse,
+		generated.UpdateInstrument401JSONResponse,
 		generated.ListDiagrams401JSONResponse,
 		generated.CreateDiagram401JSONResponse,
 		generated.GetDiagram401JSONResponse,
@@ -503,6 +506,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.ListCourses400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListDiagrams400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateInstrument400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateCourse400JSONResponse:
 		return resp.Errors, nil

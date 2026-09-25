@@ -17,14 +17,14 @@ func intPtr(n int) *int { return &n }
 
 func frettedInstrument() domain.Instrument {
 	return domain.Instrument{
-		ID: uuid.NewString(), Name: "6-string guitar", Family: domain.InstrumentFamilyFretted,
+		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "6-string guitar", "pt_BR": "Violão de 6 cordas"}, Family: domain.InstrumentFamilyFretted,
 		StringCount: intPtr(6), Tuning: []string{"E", "A", "D", "G", "B", "E"},
 	}
 }
 
 func keyboardInstrument() domain.Instrument {
 	return domain.Instrument{
-		ID: uuid.NewString(), Name: "Piano", Family: domain.InstrumentFamilyKeyboard,
+		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
 		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"},
 	}
 }
@@ -54,6 +54,26 @@ func TestEntInstrumentRepository_CreateGetAndList(t *testing.T) {
 	all, err := repo.List(ctx)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []domain.Instrument{guitar, piano}, all)
+}
+
+func TestEntInstrumentRepository_UpdateNames(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntInstrumentRepository(client)
+	guitar := frettedInstrument()
+	require.NoError(t, repo.Create(ctx, guitar))
+
+	renamed := domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}
+	require.NoError(t, repo.UpdateNames(ctx, guitar.ID, renamed))
+
+	got, err := repo.GetByID(ctx, guitar.ID)
+	require.NoError(t, err)
+	assert.Equal(t, renamed, got.Names)
+	assert.Equal(t, guitar.Family, got.Family)
+	assert.Equal(t, guitar.Tuning, got.Tuning)
+
+	require.ErrorIs(t, repo.UpdateNames(ctx, uuid.NewString(), renamed), domain.ErrNotFound)
+	require.ErrorIs(t, repo.UpdateNames(ctx, "not-a-uuid", renamed), domain.ErrNotFound)
 }
 
 func TestEntDiagramRepository_CreateAndGet(t *testing.T) {

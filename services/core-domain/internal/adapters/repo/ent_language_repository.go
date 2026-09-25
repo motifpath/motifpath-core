@@ -27,3 +27,15 @@ func (r *EntLanguageRepository) GetByCode(ctx context.Context, code string) (dom
 	}
 	return domain.Language{Code: row.Code, Name: row.Name}, nil
 }
+
+func (r *EntLanguageRepository) List(ctx context.Context) ([]domain.Language, error) {
+	rows, err := r.client.Language.Query().Order(ent.Asc(language.FieldCode)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domain.Language, len(rows))
+	for i, row := range rows {
+		result[i] = domain.Language{Code: row.Code, Name: row.Name}
+	}
+	return result, nil
+}

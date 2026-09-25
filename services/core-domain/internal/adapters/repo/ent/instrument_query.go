@@ -300,12 +300,12 @@ func (_q *InstrumentQuery) WithDiagrams(opts ...func(*DiagramQuery)) *Instrument
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Names map[string]string `json:"names,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Instrument.Query().
-//		GroupBy(instrument.FieldName).
+//		GroupBy(instrument.FieldNames).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *InstrumentQuery) GroupBy(field string, fields ...string) *InstrumentGroupBy {
@@ -323,11 +323,11 @@ func (_q *InstrumentQuery) GroupBy(field string, fields ...string) *InstrumentGr
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Names map[string]string `json:"names,omitempty"`
 //	}
 //
 //	client.Instrument.Query().
-//		Select(instrument.FieldName).
+//		Select(instrument.FieldNames).
 //		Scan(ctx, &v)
 func (_q *InstrumentQuery) Select(fields ...string) *InstrumentSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

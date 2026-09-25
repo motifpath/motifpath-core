@@ -246,7 +246,7 @@ func newWorld() *world {
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
-	instrument := application.NewInstrumentService(w.instruments, newID)
+	instrument := application.NewInstrumentService(w.instruments, newFakeLanguageRepo(), newID)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newID, now)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, diagram, w.pgPinger, w.mongoPinger)
