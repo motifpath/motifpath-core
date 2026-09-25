@@ -178,6 +178,42 @@ func TestInstrumentNamesMigration(t *testing.T) {
 	assert.Zero(t, nameColumns, "the single name column should be gone")
 }
 
+// TestDiagramNamesMigration covers moving each diagram's single name into
+// the per-language names map, as its English name.
+func TestDiagramNamesMigration(t *testing.T) {
+	ctx := context.Background()
+	files := migrationFiles(t)
+	target := -1
+	for i, f := range files {
+		if strings.HasSuffix(f, "_diagram_names_per_language.up.sql") {
+			target = i
+		}
+	}
+	require.NotEqual(t, -1, target, "expected a *_diagram_names_per_language.up.sql migration")
+
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range files[:target] {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	mustExec(t, ctx, db, `INSERT INTO users (id, clerk_user_id, role, registered_at, locale_id, display_name)
+		SELECT 'aaaaaaaa-0000-0000-0000-000000000001', 'clerk-admin', 'admin', now(), id, 'Admin' FROM languages WHERE code = 'en'`)
+	mustExec(t, ctx, db, `INSERT INTO instruments (id, names, family, string_count) VALUES ('11111111-1111-1111-1111-111111111111', '{"en": "Guitar"}', 'fretted', 6)`)
+	mustExec(t, ctx, db, `INSERT INTO diagrams (id, name, created_at, instrument_id, kind, created_by, label_display)
+		VALUES ('22222222-2222-2222-2222-222222222222', 'A Minor Pentatonic', now(), '11111111-1111-1111-1111-111111111111', 'basic', 'aaaaaaaa-0000-0000-0000-000000000001', 'interval')`)
+
+	_, err := execMigrationFile(ctx, db, files[target])
+	require.NoError(t, err)
+
+	var names string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT names::text FROM diagrams`).Scan(&names))
+	assert.JSONEq(t, `{"en": "A Minor Pentatonic"}`, names)
+	var nameColumns int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT count(*) FROM information_schema.columns WHERE table_name = 'diagrams' AND column_name = 'name'`).Scan(&nameColumns))
+	assert.Zero(t, nameColumns, "the single name column should be gone")
+}
+
 // startMigrationPostgres starts an empty Postgres container and returns a
 // connection to it that is known to accept statements.
 func startMigrationPostgres(t *testing.T, ctx context.Context) *sql.DB {
