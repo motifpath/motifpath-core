@@ -413,6 +413,14 @@ func TestEntDiagramRepository_AnnotationsRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, d, got)
 
+	t.Run("a diagram may resend its own region ids on update", func(t *testing.T) {
+		require.NoError(t, diagrams.Update(ctx, d))
+
+		again, err := diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Equal(t, d, again)
+	})
+
 	t.Run("keyboard regions round-trip their key range", func(t *testing.T) {
 		k := domain.Diagram{
 			ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Octave"}, LabelDisplay: domain.LabelDisplayInterval,

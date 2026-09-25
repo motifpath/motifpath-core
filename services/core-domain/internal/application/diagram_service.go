@@ -137,8 +137,11 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 // UpdateDiagram applies update to an existing diagram. Only an admin may
 // update a basic diagram; a custom one may be updated by its creator or an
 // admin. Kind and CreatedBy are never changed. The result is re-validated
-// as a whole, so replaced positions are checked against the diagram's own
-// instrument; the instrument itself can't change.
+// as a whole, so replaced positions and regions are checked against the
+// diagram's own instrument, and every custom label, note and region
+// description against the languages of the names as updated — a rename that
+// drops a language the existing notes still use is refused. The instrument
+// itself can't change.
 func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, id string, update DiagramUpdate) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden

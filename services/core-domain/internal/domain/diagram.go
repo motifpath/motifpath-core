@@ -139,7 +139,7 @@ type Diagram struct {
 	// without a Color of its own; nil means none is recorded.
 	Color     *string
 	Positions []Position
-	// Regions are drawn in order, later ones on top; empty when there are
+	// Regions are drawn in order, later ones on top; nil when there are
 	// none.
 	Regions   []Region
 	Skills    []Skill
