@@ -292,3 +292,37 @@ func TestEntCourseRepository_List_FiltersByClassification(t *testing.T) {
 	})
 }
 
+
+func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
+	f := newCourseListFixture(t)
+	path := f.pathWith(nil, nil)
+	bob, carol, dave := uuid.NewString(), uuid.NewString(), uuid.NewString()
+
+	f.publish(f.draft("Fingerstyle Journey", "", domain.DifficultyLevelBeginner, bob, path), "Fingerstyle Journey", domain.DifficultyLevelBeginner, path)
+	f.publish(f.draft("Fingerstyle Mastery", "", domain.DifficultyLevelExpert, bob, path), "Fingerstyle Mastery", domain.DifficultyLevelExpert, path)
+	f.draft("Strumming Basics", "", domain.DifficultyLevelBeginner, carol, path)
+	retired := f.draft("Theory Primer", "", domain.DifficultyLevelBeginner, dave, path)
+	f.publish(retired, "Theory Primer", domain.DifficultyLevelBeginner, path)
+	require.NoError(t, f.courses.UpdateStatus(f.ctx, retired.ID, domain.CourseStatusRetired))
+
+	published := domain.CourseStatusPublished
+	tests := []struct {
+		name   string
+		filter domain.CourseListFilter
+		want   []string
+	}{
+		{name: "every creator once, whatever the status", filter: domain.CourseListFilter{}, want: []string{bob, carol, dave}},
+		{name: "only creators of a course in the given status", filter: domain.CourseListFilter{Status: &published}, want: []string{bob}},
+		{name: "narrowed to one creator", filter: domain.CourseListFilter{CreatedBy: carol}, want: []string{carol}},
+		{name: "an empty, non-nil list when nothing matches", filter: domain.CourseListFilter{CreatedBy: uuid.NewString()}, want: []string{}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := f.courses.ListCreatorIDs(f.ctx, tc.filter)
+
+			require.NoError(t, err)
+			assert.NotNil(t, got)
+			assert.ElementsMatch(t, tc.want, got)
+		})
+	}
+}

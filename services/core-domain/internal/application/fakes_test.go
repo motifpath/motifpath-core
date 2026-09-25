@@ -787,6 +787,23 @@ func (f *fakeCourseRepository) List(_ context.Context, filter domain.CourseListF
 	return paginate(result, page), nil
 }
 
+// ListCreatorIDs applies the same filters as List, over every matching course.
+func (f *fakeCourseRepository) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
+	all, err := f.List(ctx, filter, domain.PageRequest{Limit: len(f.byID) + 1})
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, course := range all.Items {
+		if !seen[course.CreatedBy] {
+			seen[course.CreatedBy] = true
+			ids = append(ids, course.CreatedBy)
+		}
+	}
+	return ids, nil
+}
+
 func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {
 	for _, l := range levels {
 		if l == level {

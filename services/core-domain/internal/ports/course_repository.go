@@ -20,6 +20,11 @@ type CourseRepository interface {
 	// set), with the count of all matches across pages.
 	List(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error)
 
+	// ListCreatorIDs returns the distinct creator user ids of every course
+	// matching filter, in no particular order; an empty, non-nil slice when
+	// nothing matches.
+	ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error)
+
 	// Replace replaces course's title, summary, level, and checkpoints
 	// wholesale — its current checkpoints are deleted and
 	// course.Checkpoints inserted in their place, in one transaction.

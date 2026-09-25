@@ -156,6 +156,65 @@ func TestCourseService_GetCourse(t *testing.T) {
 	})
 }
 
+func TestCourseService_ListCourseCreatorIDs(t *testing.T) {
+	published, draft, retired := domain.CourseStatusPublished, domain.CourseStatusDraft, domain.CourseStatusRetired
+	seeded := []domain.Course{
+		{ID: "course-1", CreatedBy: "teacher-1", Status: published},
+		{ID: "course-2", CreatedBy: "teacher-1", Status: published},
+		{ID: "course-3", CreatedBy: "teacher-2", Status: draft},
+		{ID: "course-4", CreatedBy: "teacher-3", Status: retired},
+		{ID: "course-5", CreatedBy: "admin-1", Status: published},
+	}
+
+	tests := []struct {
+		name    string
+		caller  domain.User
+		courses []domain.Course
+		want    []string
+	}{
+		{
+			name:   "a student gets each creator of a published course once, never a draft-only or retired-only one",
+			caller: studentCaller(), courses: seeded,
+			want: []string{"admin-1", "teacher-1"},
+		},
+		{
+			name:   "a teacher gets only themselves, whatever their courses' status",
+			caller: otherTeacherCaller(), courses: seeded,
+			want: []string{"teacher-2"},
+		},
+		{
+			name:   "a teacher with no course gets no creators",
+			caller: domain.User{ID: "teacher-9", Role: domain.RoleTeacher}, courses: seeded,
+			want: []string{},
+		},
+		{
+			name:   "an admin gets the creator of every course, whatever its status",
+			caller: adminCaller(), courses: seeded,
+			want: []string{"admin-1", "teacher-1", "teacher-2", "teacher-3"},
+		},
+		{
+			name:   "no visible course means no creators",
+			caller: studentCaller(), courses: nil,
+			want: []string{},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			courses := newFakeCourseRepository()
+			for _, c := range tc.courses {
+				courses.put(c)
+			}
+			svc := newCourseService(newFakeLearningPathRepository(), courses)
+
+			got, err := svc.ListCourseCreatorIDs(context.Background(), tc.caller)
+
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tc.want, got)
+			assert.NotNil(t, got)
+		})
+	}
+}
+
 func TestCourseService_ListCourses(t *testing.T) {
 	firstPage := domain.PageRequest{Limit: 20, Offset: 0}
 

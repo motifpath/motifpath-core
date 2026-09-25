@@ -90,6 +90,24 @@ func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, fil
 	return s.courses.List(ctx, filter, page)
 }
 
+// ListCourseCreatorIDs returns the distinct creators of the courses the
+// caller would see in ListCourses, so a creator filter can offer every
+// option without paging through the catalog: a student gets the creators of
+// published courses, a teacher at most themselves, an admin the creator of
+// every course.
+func (s *CourseService) ListCourseCreatorIDs(ctx context.Context, caller domain.User) ([]string, error) {
+	var filter domain.CourseListFilter
+	switch caller.Role {
+	case domain.RoleStudent:
+		published := domain.CourseStatusPublished
+		filter.Status = &published
+	case domain.RoleTeacher:
+		filter.CreatedBy = caller.ID
+	case domain.RoleAdmin:
+	}
+	return s.courses.ListCreatorIDs(ctx, filter)
+}
+
 // ReplaceCourse replaces the given course's title, summary, level, and
 // checkpoints wholesale — the same way CreateCourse establishes them
 // initially, reusing domain.NewCourse to recompute checkpoint positions and
