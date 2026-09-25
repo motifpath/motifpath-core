@@ -24,11 +24,11 @@ func mustInstrument(t *testing.T, family domain.InstrumentFamily) domain.Instrum
 	t.Helper()
 	switch family {
 	case domain.InstrumentFamilyFretted:
-		i, err := domain.NewInstrument("guitar", "6-string guitar", family, intPtr(6), []string{"E", "A", "D", "G", "B", "E"}, nil)
+		i, err := domain.NewInstrument("guitar", map[string]string{"en": "Guitar"}, []string{"en"}, family, intPtr(6), []string{"E", "A", "D", "G", "B", "E"}, nil)
 		require.NoError(t, err)
 		return i
 	case domain.InstrumentFamilyKeyboard:
-		i, err := domain.NewInstrument("piano", "Piano", family, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"})
+		i, err := domain.NewInstrument("piano", map[string]string{"en": "Piano"}, []string{"en"}, family, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"})
 		require.NoError(t, err)
 		return i
 	}

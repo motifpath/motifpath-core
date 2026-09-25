@@ -11,6 +11,11 @@ import (
 
 func intPtr(n int) *int { return &n }
 
+var (
+	offeredLanguages = []string{"en", "pt_BR"}
+	guitarNames      = map[string]string{"en": "Guitar", "pt_BR": "Violão"}
+)
+
 func TestNewInstrument(t *testing.T) {
 	guitarTuning := []string{"E", "A", "D", "G", "B", "E"}
 	pianoRange := &domain.KeyRange{Lowest: "A0", Highest: "C8"}
@@ -40,12 +45,13 @@ func TestNewInstrument(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := domain.NewInstrument("instrument-1", "An instrument", tt.family, tt.stringCount, tt.tuning, tt.keyRange)
+			got, err := domain.NewInstrument("instrument-1", guitarNames, offeredLanguages, tt.family, tt.stringCount, tt.tuning, tt.keyRange)
 
 			if tt.wantField == "" {
 				require.NoError(t, err)
 				assert.Equal(t, "instrument-1", got.ID)
-				assert.Equal(t, "An instrument", got.Name)
+				assert.Equal(t, domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}, got.Names)
+				assert.Equal(t, []string{"en", "pt_BR"}, got.Names.Languages())
 				assert.Equal(t, tt.family, got.Family)
 				return
 			}
@@ -57,11 +63,11 @@ func TestNewInstrument(t *testing.T) {
 		})
 	}
 
-	t.Run("an empty name is rejected", func(t *testing.T) {
-		_, err := domain.NewInstrument("instrument-1", "", domain.InstrumentFamilyKeyboard, nil, nil, pianoRange)
+	t.Run("names missing an offered language are rejected", func(t *testing.T) {
+		_, err := domain.NewInstrument("instrument-1", map[string]string{"en": "Piano"}, offeredLanguages, domain.InstrumentFamilyKeyboard, nil, nil, pianoRange)
 
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
-		assert.Equal(t, "name", valErr.Fields[0].Field)
+		assert.Equal(t, "names", valErr.Fields[0].Field)
 	})
 }

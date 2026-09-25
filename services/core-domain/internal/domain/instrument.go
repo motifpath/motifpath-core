@@ -27,22 +27,30 @@ type KeyRange struct {
 // StringCount/Tuning (fretted) or KeyRange (keyboard) is populated follows
 // Family; the other group is always empty.
 type Instrument struct {
-	ID          string
-	Name        string
+	ID string
+	// Names is the instrument's name in every language MotifPath offers:
+	// instruments are shared by every user, so every language is required.
+	Names       LocalizedText
 	Family      InstrumentFamily
 	StringCount *int
 	Tuning      []string
 	KeyRange    *KeyRange
 }
 
+// MaxInstrumentNameLength is the longest an instrument's name may be, in
+// characters, in any one language.
+const MaxInstrumentNameLength = 200
+
 // NewInstrument validates and constructs an Instrument, stopping at the
-// first violated invariant. A fretted instrument needs a positive
+// first violated invariant. names must cover exactly languages — every
+// language MotifPath offers (never LanguageCodeAny). A fretted instrument needs a positive
 // stringCount and a tuning with exactly one entry per string, and no
 // keyRange; a keyboard instrument needs a keyRange with both ends named, and
 // neither stringCount nor tuning.
-func NewInstrument(id, name string, family InstrumentFamily, stringCount *int, tuning []string, keyRange *KeyRange) (Instrument, error) {
-	if name == "" {
-		return Instrument{}, NewValidationError("name", "must not be empty")
+func NewInstrument(id string, names map[string]string, languages []string, family InstrumentFamily, stringCount *int, tuning []string, keyRange *KeyRange) (Instrument, error) {
+	localized, err := NewLocalizedText("names", names, MaxInstrumentNameLength, languages)
+	if err != nil {
+		return Instrument{}, err
 	}
 
 	switch family {
@@ -60,7 +68,7 @@ func NewInstrument(id, name string, family InstrumentFamily, stringCount *int, t
 
 	return Instrument{
 		ID:          id,
-		Name:        name,
+		Names:       localized,
 		Family:      family,
 		StringCount: stringCount,
 		Tuning:      tuning,
