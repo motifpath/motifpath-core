@@ -18,8 +18,8 @@ type Instrument struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	// Names holds the value of the "names" field.
+	Names map[string]string `json:"names,omitempty"`
 	// Family holds the value of the "family" field.
 	Family instrument.Family `json:"family,omitempty"`
 	// StringCount holds the value of the "string_count" field.
@@ -59,11 +59,11 @@ func (*Instrument) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case instrument.FieldTuning:
+		case instrument.FieldNames, instrument.FieldTuning:
 			values[i] = new([]byte)
 		case instrument.FieldStringCount:
 			values[i] = new(sql.NullInt64)
-		case instrument.FieldName, instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest:
+		case instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest:
 			values[i] = new(sql.NullString)
 		case instrument.FieldID:
 			values[i] = new(uuid.UUID)
@@ -88,11 +88,13 @@ func (_m *Instrument) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case instrument.FieldName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
-			} else if value.Valid {
-				_m.Name = value.String
+		case instrument.FieldNames:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field names", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Names); err != nil {
+					return fmt.Errorf("unmarshal field names: %w", err)
+				}
 			}
 		case instrument.FieldFamily:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -170,8 +172,8 @@ func (_m *Instrument) String() string {
 	var builder strings.Builder
 	builder.WriteString("Instrument(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("name=")
-	builder.WriteString(_m.Name)
+	builder.WriteString("names=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Names))
 	builder.WriteString(", ")
 	builder.WriteString("family=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Family))

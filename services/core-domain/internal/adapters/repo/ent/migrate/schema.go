@@ -654,7 +654,7 @@ var (
 	// InstrumentsColumns holds the columns for the "instruments" table.
 	InstrumentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "name", Type: field.TypeString},
+		{Name: "names", Type: field.TypeJSON},
 		{Name: "family", Type: field.TypeEnum, Enums: []string{"fretted", "keyboard"}},
 		{Name: "string_count", Type: field.TypeInt, Nullable: true},
 		{Name: "tuning", Type: field.TypeJSON, Nullable: true},

@@ -22,7 +22,9 @@ func (Instrument) Fields() []ent.Field {
 			Default(uuid.New).
 			Immutable(),
 
-		field.String("name"),
+		// names maps a language code to the instrument's name in that
+		// language; every language MotifPath offers is required on write.
+		field.JSON("names", map[string]string{}),
 
 		field.Enum("family").
 			Values("fretted", "keyboard").

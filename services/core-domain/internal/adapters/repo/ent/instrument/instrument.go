@@ -15,8 +15,8 @@ const (
 	Label = "instrument"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldName holds the string denoting the name field in the database.
-	FieldName = "name"
+	// FieldNames holds the string denoting the names field in the database.
+	FieldNames = "names"
 	// FieldFamily holds the string denoting the family field in the database.
 	FieldFamily = "family"
 	// FieldStringCount holds the string denoting the string_count field in the database.
@@ -43,7 +43,7 @@ const (
 // Columns holds all SQL columns for instrument fields.
 var Columns = []string{
 	FieldID,
-	FieldName,
+	FieldNames,
 	FieldFamily,
 	FieldStringCount,
 	FieldTuning,
@@ -95,11 +95,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// ByName orders the results by the name field.
-func ByName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
 // ByFamily orders the results by the family field.

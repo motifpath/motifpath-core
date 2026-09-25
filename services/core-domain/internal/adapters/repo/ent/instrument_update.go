@@ -30,17 +30,9 @@ func (_u *InstrumentUpdate) Where(ps ...predicate.Instrument) *InstrumentUpdate 
 	return _u
 }
 
-// SetName sets the "name" field.
-func (_u *InstrumentUpdate) SetName(v string) *InstrumentUpdate {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *InstrumentUpdate) SetNillableName(v *string) *InstrumentUpdate {
-	if v != nil {
-		_u.SetName(*v)
-	}
+// SetNames sets the "names" field.
+func (_u *InstrumentUpdate) SetNames(v map[string]string) *InstrumentUpdate {
+	_u.mutation.SetNames(v)
 	return _u
 }
 
@@ -206,8 +198,8 @@ func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(instrument.FieldName, field.TypeString, value)
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(instrument.FieldNames, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.StringCount(); ok {
 		_spec.SetField(instrument.FieldStringCount, field.TypeInt, value)
@@ -306,17 +298,9 @@ type InstrumentUpdateOne struct {
 	mutation *InstrumentMutation
 }
 
-// SetName sets the "name" field.
-func (_u *InstrumentUpdateOne) SetName(v string) *InstrumentUpdateOne {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *InstrumentUpdateOne) SetNillableName(v *string) *InstrumentUpdateOne {
-	if v != nil {
-		_u.SetName(*v)
-	}
+// SetNames sets the "names" field.
+func (_u *InstrumentUpdateOne) SetNames(v map[string]string) *InstrumentUpdateOne {
+	_u.mutation.SetNames(v)
 	return _u
 }
 
@@ -512,8 +496,8 @@ func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, 
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(instrument.FieldName, field.TypeString, value)
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(instrument.FieldNames, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.StringCount(); ok {
 		_spec.SetField(instrument.FieldStringCount, field.TypeInt, value)
