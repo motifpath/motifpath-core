@@ -27,6 +27,18 @@ func (LearningPath) Fields() []ent.Field {
 
 		field.String("title"),
 
+		// level is the level a learner should be at to follow the path.
+		// NULL only for a path created before levels were recorded, until
+		// it is next saved.
+		field.Enum("level").
+			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert").
+			Optional().
+			Nillable(),
+
+		// updated_at is when the path was created or last replaced.
+		field.Time("updated_at").
+			Default(time.Now),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

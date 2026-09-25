@@ -65,6 +65,11 @@ func Title(v string) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldTitle, v))
 }
 
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldCreatedAt, v))
@@ -173,6 +178,76 @@ func TitleEqualFold(v string) predicate.LearningPath {
 // TitleContainsFold applies the ContainsFold predicate on the "title" field.
 func TitleContainsFold(v string) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldContainsFold(FieldTitle, v))
+}
+
+// LevelEQ applies the EQ predicate on the "level" field.
+func LevelEQ(v Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldLevel, v))
+}
+
+// LevelNEQ applies the NEQ predicate on the "level" field.
+func LevelNEQ(v Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldLevel, v))
+}
+
+// LevelIn applies the In predicate on the "level" field.
+func LevelIn(vs ...Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldLevel, vs...))
+}
+
+// LevelNotIn applies the NotIn predicate on the "level" field.
+func LevelNotIn(vs ...Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldLevel, vs...))
+}
+
+// LevelIsNil applies the IsNil predicate on the "level" field.
+func LevelIsNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIsNull(FieldLevel))
+}
+
+// LevelNotNil applies the NotNil predicate on the "level" field.
+func LevelNotNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotNull(FieldLevel))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

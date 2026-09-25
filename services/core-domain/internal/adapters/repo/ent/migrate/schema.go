@@ -686,6 +686,8 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "teacher_id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString},
+		{Name: "level", Type: field.TypeEnum, Nullable: true, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// LearningPathsTable holds the schema information for the "learning_paths" table.

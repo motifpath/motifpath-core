@@ -87,7 +87,13 @@ func (w *world) unauthListsAllLearningPaths() error {
 }
 
 func (w *world) replacesLearningPathWithSpecs(slug string, specs []pathItemSpec) error {
-	body := &generated.ReplaceLearningPathRequest{Title: slug}
+	return w.replacesLearningPathAt(generated.ReplaceLearningPathRequestLevelBeginner, slug, specs)
+}
+
+// replacesLearningPathAt replaces slug's path at level; the other replace
+// steps use beginner, since they don't care about the level.
+func (w *world) replacesLearningPathAt(level generated.ReplaceLearningPathRequestLevel, slug string, specs []pathItemSpec) error {
+	body := &generated.ReplaceLearningPathRequest{Level: level, Title: slug}
 	for _, spec := range specs {
 		item := struct {
 			ContentNodeId uuid.UUID `json:"content_node_id"`
@@ -149,7 +155,7 @@ func (w *world) replacesLearningPathMissingNode(name, slug string) error {
 }
 
 func (w *world) attemptsReplaceMissingLearningPath(string) error {
-	body := &generated.ReplaceLearningPathRequest{Title: "Title"}
+	body := &generated.ReplaceLearningPathRequest{Level: generated.ReplaceLearningPathRequestLevelBeginner, Title: "Title"}
 	body.Items = append(body.Items, struct {
 		ContentNodeId uuid.UUID `json:"content_node_id"`
 		SectionLabel  *string   `json:"section_label,omitempty"`
@@ -262,8 +268,14 @@ func (w *world) putLearningPathThreeItems(slug, n1, n2, n3 string) error {
 // content node (unlike the multi-item variants below) — every scenario
 // that uses the single-item form is in content-node-versioning.feature,
 // which manages publishing explicitly itself as the thing under test.
+// putLearningPathOneItem creates n1 only if it doesn't exist yet, so a
+// classification an earlier step gave it survives.
 func (w *world) putLearningPathOneItem(slug, n1 string) error {
-	if err := w.putContentNode(n1, domain.ContentTypeVideo); err != nil {
+	if _, err := w.nodes.GetByID(context.Background(), nodeID(n1).String()); errors.Is(err, domain.ErrNotFound) {
+		if err := w.putContentNode(n1, domain.ContentTypeVideo); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 	w.paths.put(domain.LearningPath{
@@ -367,7 +379,13 @@ func (w *world) createsLearningPath(title string, nodeSlugs []string) error {
 }
 
 func (w *world) createsLearningPathWithSpecs(title string, specs []pathItemSpec) error {
-	body := &generated.CreateLearningPathRequest{Title: title}
+	return w.createsLearningPathAt(generated.CreateLearningPathRequestLevelBeginner, title, specs)
+}
+
+// createsLearningPathAt creates a path at level; the other create steps use
+// beginner, since they don't care about the level.
+func (w *world) createsLearningPathAt(level generated.CreateLearningPathRequestLevel, title string, specs []pathItemSpec) error {
+	body := &generated.CreateLearningPathRequest{Level: level, Title: title}
 	for _, spec := range specs {
 		item := struct {
 			ContentNodeId uuid.UUID `json:"content_node_id"`

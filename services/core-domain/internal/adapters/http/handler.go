@@ -716,7 +716,7 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Items: pathItems})
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -775,10 +775,14 @@ func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListL
 		})
 	}
 
-	result, err := h.path.ListLearningPaths(ctx, caller, domain.LearningPathFilter{Query: searchQuery(request.Params.Q)}, page)
+	result, err := h.path.ListLearningPaths(ctx, caller, learningPathListFilter(request.Params), page)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
 			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
+		case errKindValidation:
+			return generated.ListLearningPaths400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
 		}
 		return nil, err
 	}
@@ -806,7 +810,7 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Items: pathItems})
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

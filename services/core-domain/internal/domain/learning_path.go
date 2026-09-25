@@ -35,14 +35,21 @@ type LearningPath struct {
 	ID        string
 	TeacherID string
 	Title     string
+	// Level is the level a learner should be at to follow the path. It is
+	// nil only for a path created before levels were recorded, until it is
+	// next saved.
+	Level     *DifficultyLevel
 	Items     []LearningPathItem
 	CreatedAt time.Time
+	// UpdatedAt is when the path was created or last replaced.
+	UpdatedAt time.Time
 }
 
 // LearningPathFields are the parts of a learning path its author writes, as
 // given to NewLearningPath to create or replace one.
 type LearningPathFields struct {
 	Title string
+	Level DifficultyLevel
 	Items []NewLearningPathItem
 }
 
@@ -64,6 +71,9 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
+	if !fields.Level.Valid() {
+		errs = append(errs, FieldError{Field: "level", Reason: "must be one of beginner, early_intermediate, intermediate, advanced, expert"})
+	}
 	if len(pathItems) == 0 {
 		errs = append(errs, FieldError{Field: "items", Reason: "must contain at least one item"})
 	}
@@ -83,12 +93,15 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 		}
 	}
 
+	level := fields.Level
 	return LearningPath{
 		ID:        id,
 		TeacherID: teacherID,
 		Title:     title,
+		Level:     &level,
 		Items:     items,
 		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
 	}, nil
 }
 

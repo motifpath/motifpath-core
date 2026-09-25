@@ -312,3 +312,62 @@ func assertColumnExists(t *testing.T, ctx context.Context, db *sql.DB, table, co
 	require.NoError(t, err)
 	assert.Truef(t, exists, "expected migrations to create %s.%s", table, column)
 }
+
+// migrateUpTo applies every migration before the one whose file name ends in
+// suffix and returns the database with that one's index, so a test can seed
+// rows in the old shape before applying it.
+func migrateUpTo(t *testing.T, ctx context.Context, suffix string) (*sql.DB, []string, int) {
+	t.Helper()
+	files := migrationFiles(t)
+	target := -1
+	for i, f := range files {
+		if strings.HasSuffix(f, suffix) {
+			target = i
+		}
+	}
+	require.NotEqual(t, -1, target, "expected a *%s migration", suffix)
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range files[:target] {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	return db, files, target
+}
+
+// TestCourseLanguageMigration covers existing courses, and the versions
+// already published from them, all being English.
+func TestCourseLanguageMigration(t *testing.T) {
+	ctx := context.Background()
+	db, files, target := migrateUpTo(t, ctx, "_course_language.up.sql")
+	mustExec(t, ctx, db, `INSERT INTO courses (id, title, summary, level, status, created_by, created_at)
+		VALUES ('33333333-3333-3333-3333-333333333333', 'Fingerstyle', 'S', 'beginner', 'published', '44444444-4444-4444-4444-444444444444', now())`)
+	mustExec(t, ctx, db, `INSERT INTO course_versions (id, course_id, version_number, title_snapshot, summary_snapshot, level_snapshot, available_for_new_enrollments, published_at)
+		VALUES ('55555555-5555-5555-5555-555555555555', '33333333-3333-3333-3333-333333333333', 1, 'Fingerstyle', 'S', 'beginner', true, now())`)
+
+	_, err := execMigrationFile(ctx, db, files[target])
+	require.NoError(t, err)
+
+	var language, snapshot string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT language FROM courses`).Scan(&language))
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT language_snapshot FROM course_versions`).Scan(&snapshot))
+	assert.Equal(t, "en", language)
+	assert.Equal(t, "en", snapshot)
+}
+
+// TestLearningPathLevelMigration covers existing paths getting no level, and
+// a last update equal to their creation time.
+func TestLearningPathLevelMigration(t *testing.T) {
+	ctx := context.Background()
+	db, files, target := migrateUpTo(t, ctx, "_learning_path_level_and_updated_at.up.sql")
+	mustExec(t, ctx, db, `INSERT INTO learning_paths (id, teacher_id, title, created_at)
+		VALUES ('66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444', 'Open Chords', '2026-09-01T10:00:00Z')`)
+
+	_, err := execMigrationFile(ctx, db, files[target])
+	require.NoError(t, err)
+
+	var level sql.NullString
+	var createdAt, updatedAt time.Time
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT level, created_at, updated_at FROM learning_paths`).Scan(&level, &createdAt, &updatedAt))
+	assert.False(t, level.Valid, "an existing path has no level recorded")
+	assert.True(t, updatedAt.Equal(createdAt), "an existing path was last updated when it was created")
+}

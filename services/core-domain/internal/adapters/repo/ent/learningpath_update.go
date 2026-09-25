@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -37,6 +38,40 @@ func (_u *LearningPathUpdate) SetTitle(v string) *LearningPathUpdate {
 func (_u *LearningPathUpdate) SetNillableTitle(v *string) *LearningPathUpdate {
 	if v != nil {
 		_u.SetTitle(*v)
+	}
+	return _u
+}
+
+// SetLevel sets the "level" field.
+func (_u *LearningPathUpdate) SetLevel(v learningpath.Level) *LearningPathUpdate {
+	_u.mutation.SetLevel(v)
+	return _u
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableLevel(v *learningpath.Level) *LearningPathUpdate {
+	if v != nil {
+		_u.SetLevel(*v)
+	}
+	return _u
+}
+
+// ClearLevel clears the value of the "level" field.
+func (_u *LearningPathUpdate) ClearLevel() *LearningPathUpdate {
+	_u.mutation.ClearLevel()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *LearningPathUpdate) SetUpdatedAt(v time.Time) *LearningPathUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableUpdatedAt(v *time.Time) *LearningPathUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
 	}
 	return _u
 }
@@ -73,7 +108,20 @@ func (_u *LearningPathUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LearningPathUpdate) check() error {
+	if v, ok := _u.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(learningpath.Table, learningpath.Columns, sqlgraph.NewFieldSpec(learningpath.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -84,6 +132,15 @@ func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+	}
+	if _u.mutation.LevelCleared() {
+		_spec.ClearField(learningpath.FieldLevel, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -115,6 +172,40 @@ func (_u *LearningPathUpdateOne) SetTitle(v string) *LearningPathUpdateOne {
 func (_u *LearningPathUpdateOne) SetNillableTitle(v *string) *LearningPathUpdateOne {
 	if v != nil {
 		_u.SetTitle(*v)
+	}
+	return _u
+}
+
+// SetLevel sets the "level" field.
+func (_u *LearningPathUpdateOne) SetLevel(v learningpath.Level) *LearningPathUpdateOne {
+	_u.mutation.SetLevel(v)
+	return _u
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableLevel(v *learningpath.Level) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetLevel(*v)
+	}
+	return _u
+}
+
+// ClearLevel clears the value of the "level" field.
+func (_u *LearningPathUpdateOne) ClearLevel() *LearningPathUpdateOne {
+	_u.mutation.ClearLevel()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *LearningPathUpdateOne) SetUpdatedAt(v time.Time) *LearningPathUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableUpdatedAt(v *time.Time) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
 	}
 	return _u
 }
@@ -164,7 +255,20 @@ func (_u *LearningPathUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LearningPathUpdateOne) check() error {
+	if v, ok := _u.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPath, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(learningpath.Table, learningpath.Columns, sqlgraph.NewFieldSpec(learningpath.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -192,6 +296,15 @@ func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPa
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+	}
+	if _u.mutation.LevelCleared() {
+		_spec.ClearField(learningpath.FieldLevel, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
 	}
 	_node = &LearningPath{config: _u.config}
 	_spec.Assign = _node.assignValues

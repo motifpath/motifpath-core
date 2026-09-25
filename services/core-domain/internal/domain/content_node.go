@@ -25,6 +25,15 @@ const (
 	DifficultyLevelExpert            DifficultyLevel = "expert"
 )
 
+// Valid reports whether l is one of the five difficulty levels.
+func (l DifficultyLevel) Valid() bool {
+	switch l {
+	case DifficultyLevelBeginner, DifficultyLevelEarlyIntermediate, DifficultyLevelIntermediate, DifficultyLevelAdvanced, DifficultyLevelExpert:
+		return true
+	}
+	return false
+}
+
 // ReviewState tracks whether an admin has confirmed a ContentNode's
 // classification as ground truth.
 type ReviewState string

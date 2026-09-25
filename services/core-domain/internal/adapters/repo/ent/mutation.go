@@ -20461,6 +20461,8 @@ type LearningPathMutation struct {
 	id            *uuid.UUID
 	teacher_id    *uuid.UUID
 	title         *string
+	level         *learningpath.Level
+	updated_at    *time.Time
 	created_at    *time.Time
 	clearedFields map[string]struct{}
 	done          bool
@@ -20644,6 +20646,91 @@ func (m *LearningPathMutation) ResetTitle() {
 	m.title = nil
 }
 
+// SetLevel sets the "level" field.
+func (m *LearningPathMutation) SetLevel(l learningpath.Level) {
+	m.level = &l
+}
+
+// Level returns the value of the "level" field in the mutation.
+func (m *LearningPathMutation) Level() (r learningpath.Level, exists bool) {
+	v := m.level
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevel returns the old "level" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldLevel(ctx context.Context) (v *learningpath.Level, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevel: %w", err)
+	}
+	return oldValue.Level, nil
+}
+
+// ClearLevel clears the value of the "level" field.
+func (m *LearningPathMutation) ClearLevel() {
+	m.level = nil
+	m.clearedFields[learningpath.FieldLevel] = struct{}{}
+}
+
+// LevelCleared returns if the "level" field was cleared in this mutation.
+func (m *LearningPathMutation) LevelCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldLevel]
+	return ok
+}
+
+// ResetLevel resets all changes to the "level" field.
+func (m *LearningPathMutation) ResetLevel() {
+	m.level = nil
+	delete(m.clearedFields, learningpath.FieldLevel)
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *LearningPathMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *LearningPathMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *LearningPathMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *LearningPathMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -20714,12 +20801,18 @@ func (m *LearningPathMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LearningPathMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 5)
 	if m.teacher_id != nil {
 		fields = append(fields, learningpath.FieldTeacherID)
 	}
 	if m.title != nil {
 		fields = append(fields, learningpath.FieldTitle)
+	}
+	if m.level != nil {
+		fields = append(fields, learningpath.FieldLevel)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, learningpath.FieldUpdatedAt)
 	}
 	if m.created_at != nil {
 		fields = append(fields, learningpath.FieldCreatedAt)
@@ -20736,6 +20829,10 @@ func (m *LearningPathMutation) Field(name string) (ent.Value, bool) {
 		return m.TeacherID()
 	case learningpath.FieldTitle:
 		return m.Title()
+	case learningpath.FieldLevel:
+		return m.Level()
+	case learningpath.FieldUpdatedAt:
+		return m.UpdatedAt()
 	case learningpath.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -20751,6 +20848,10 @@ func (m *LearningPathMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldTeacherID(ctx)
 	case learningpath.FieldTitle:
 		return m.OldTitle(ctx)
+	case learningpath.FieldLevel:
+		return m.OldLevel(ctx)
+	case learningpath.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
 	case learningpath.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -20775,6 +20876,20 @@ func (m *LearningPathMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTitle(v)
+		return nil
+	case learningpath.FieldLevel:
+		v, ok := value.(learningpath.Level)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevel(v)
+		return nil
+	case learningpath.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
 		return nil
 	case learningpath.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -20812,7 +20927,11 @@ func (m *LearningPathMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *LearningPathMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(learningpath.FieldLevel) {
+		fields = append(fields, learningpath.FieldLevel)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -20825,6 +20944,11 @@ func (m *LearningPathMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *LearningPathMutation) ClearField(name string) error {
+	switch name {
+	case learningpath.FieldLevel:
+		m.ClearLevel()
+		return nil
+	}
 	return fmt.Errorf("unknown LearningPath nullable field %s", name)
 }
 
@@ -20837,6 +20961,12 @@ func (m *LearningPathMutation) ResetField(name string) error {
 		return nil
 	case learningpath.FieldTitle:
 		m.ResetTitle()
+		return nil
+	case learningpath.FieldLevel:
+		m.ResetLevel()
+		return nil
+	case learningpath.FieldUpdatedAt:
+		m.ResetUpdatedAt()
 		return nil
 	case learningpath.FieldCreatedAt:
 		m.ResetCreatedAt()

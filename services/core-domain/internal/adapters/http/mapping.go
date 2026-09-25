@@ -389,13 +389,43 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 	for i, item := range p.Items {
 		items[i] = toLearningPathItem(item)
 	}
-	return generated.LearningPath{
+	result := generated.LearningPath{
 		LearningPathId: mustUUID(p.ID),
 		Teacher:        names.ref(p.TeacherID),
 		Title:          p.Title,
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
+		UpdatedAt:      p.UpdatedAt,
 	}
+	if p.Level != nil {
+		level := generated.LearningPathLevel(*p.Level)
+		result.Level = &level
+	}
+	return result
+}
+
+// learningPathListFilter maps GET /learning-paths' query parameters onto the
+// domain filter.
+func learningPathListFilter(params generated.ListLearningPathsParams) domain.LearningPathFilter {
+	filter := domain.LearningPathFilter{Query: searchQuery(params.Q)}
+	if params.CreatedBy != nil {
+		filter.CreatedBy = params.CreatedBy.String()
+	}
+	if params.Levels != nil {
+		for _, l := range *params.Levels {
+			filter.Levels = append(filter.Levels, domain.DifficultyLevel(l))
+		}
+	}
+	if params.SkillIds != nil {
+		filter.SkillIDs = uuidStrings(*params.SkillIds)
+	}
+	if params.ConceptIds != nil {
+		filter.ConceptIDs = uuidStrings(*params.ConceptIds)
+	}
+	if params.Sort != nil {
+		filter.Sort = domain.LearningPathSort(*params.Sort)
+	}
+	return filter
 }
 
 func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.LearningPath {

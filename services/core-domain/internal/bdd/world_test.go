@@ -198,6 +198,7 @@ func newWorld() *world {
 	concepts := newFakeConceptRepo()
 	nodes := newFakeContentNodeRepo(skills, concepts)
 	paths := newFakeLearningPathRepo()
+	paths.nodes = nodes
 	courseVersions := newFakeCourseVersionRepo()
 	w := &world{
 		users:             newFakeUserRepo(),

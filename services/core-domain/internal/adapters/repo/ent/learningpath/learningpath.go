@@ -3,6 +3,7 @@
 package learningpath
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -18,6 +19,10 @@ const (
 	FieldTeacherID = "teacher_id"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
+	// FieldLevel holds the string denoting the level field in the database.
+	FieldLevel = "level"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// Table holds the table name of the learningpath in the database.
@@ -29,6 +34,8 @@ var Columns = []string{
 	FieldID,
 	FieldTeacherID,
 	FieldTitle,
+	FieldLevel,
+	FieldUpdatedAt,
 	FieldCreatedAt,
 }
 
@@ -43,11 +50,39 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// Level defines the type for the "level" enum field.
+type Level string
+
+// Level values.
+const (
+	LevelBeginner          Level = "beginner"
+	LevelEarlyIntermediate Level = "early_intermediate"
+	LevelIntermediate      Level = "intermediate"
+	LevelAdvanced          Level = "advanced"
+	LevelExpert            Level = "expert"
+)
+
+func (l Level) String() string {
+	return string(l)
+}
+
+// LevelValidator is a validator for the "level" field enum values. It is called by the builders before save.
+func LevelValidator(l Level) error {
+	switch l {
+	case LevelBeginner, LevelEarlyIntermediate, LevelIntermediate, LevelAdvanced, LevelExpert:
+		return nil
+	default:
+		return fmt.Errorf("learningpath: invalid enum value for level field: %q", l)
+	}
+}
 
 // OrderOption defines the ordering options for the LearningPath queries.
 type OrderOption func(*sql.Selector)
@@ -65,6 +100,16 @@ func ByTeacherID(opts ...sql.OrderTermOption) OrderOption {
 // ByTitle orders the results by the title field.
 func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTitle, opts...).ToFunc()
+}
+
+// ByLevel orders the results by the level field.
+func ByLevel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLevel, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

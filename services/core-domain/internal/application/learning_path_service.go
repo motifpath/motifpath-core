@@ -33,13 +33,14 @@ type PathItemInput struct {
 // path.
 type LearningPathInput struct {
 	Title string
+	Level domain.DifficultyLevel
 	Items []PathItemInput
 }
 
 // fields resolves input into the domain's LearningPathFields, given its items
 // already resolved against their content nodes.
 func (input LearningPathInput) fields(items []domain.NewLearningPathItem) domain.LearningPathFields {
-	return domain.LearningPathFields{Title: input.Title, Items: items}
+	return domain.LearningPathFields{Title: input.Title, Level: input.Level, Items: items}
 }
 
 // CreateLearningPath creates a learning path from the given ordered items.
@@ -84,6 +85,9 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 	if !canManageContent(caller.Role) {
 		return domain.Page[domain.LearningPath]{}, domain.ErrForbidden
 	}
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("sort", "must be one of: title, updated")
+	}
 	return s.paths.List(ctx, filter, page)
 }
 
@@ -116,6 +120,7 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
+	replaced.UpdatedAt = s.now()
 	if err := s.paths.Replace(ctx, replaced); err != nil {
 		return domain.LearningPath{}, err
 	}

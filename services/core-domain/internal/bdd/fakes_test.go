@@ -693,6 +693,9 @@ func sortExpandedContent(items []domain.ExpandedContent) {
 type fakeLearningPathRepo struct {
 	mu   sync.Mutex
 	byID map[string]domain.LearningPath
+	// nodes resolves items' classifications for the skill and concept
+	// filters; nil when a test never filters on them.
+	nodes *fakeContentNodeRepo
 }
 
 func newFakeLearningPathRepo() *fakeLearningPathRepo {
@@ -727,18 +730,50 @@ func (f *fakeLearningPathRepo) List(_ context.Context, filter domain.LearningPat
 	defer f.mu.Unlock()
 	result := make([]domain.LearningPath, 0, len(f.byID))
 	for _, p := range f.byID {
-		if !containsFold(p.Title, filter.Query) {
-			continue
+		if f.matches(p, filter) {
+			result = append(result, p)
 		}
-		result = append(result, p)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		if result[i].Title != result[j].Title {
+		if filter.Sort == domain.LearningPathSortUpdated && !result[i].UpdatedAt.Equal(result[j].UpdatedAt) {
+			return result[i].UpdatedAt.After(result[j].UpdatedAt)
+		}
+		if filter.Sort != domain.LearningPathSortUpdated && result[i].Title != result[j].Title {
 			return result[i].Title < result[j].Title
 		}
 		return result[i].ID < result[j].ID
 	})
 	return paginate(result, page), nil
+}
+
+// matches states the repository's learning path filter rules in memory.
+func (f *fakeLearningPathRepo) matches(p domain.LearningPath, filter domain.LearningPathFilter) bool {
+	if !containsFold(p.Title, filter.Query) {
+		return false
+	}
+	if filter.CreatedBy != "" && p.TeacherID != filter.CreatedBy {
+		return false
+	}
+	if len(filter.Levels) > 0 && (p.Level == nil || !containsLevel(filter.Levels, *p.Level)) {
+		return false
+	}
+	if len(filter.SkillIDs) == 0 && len(filter.ConceptIDs) == 0 {
+		return true
+	}
+	for _, item := range p.Items {
+		node, ok := f.nodes.byID[item.ContentNodeID]
+		if !ok {
+			continue
+		}
+		if len(filter.SkillIDs) > 0 && !overlaps(node.Classification.SkillIDs(), filter.SkillIDs) {
+			continue
+		}
+		if len(filter.ConceptIDs) > 0 && !overlaps(node.Classification.ConceptIDs(), filter.ConceptIDs) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath) error {

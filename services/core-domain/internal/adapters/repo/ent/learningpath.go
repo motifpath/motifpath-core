@@ -22,6 +22,10 @@ type LearningPath struct {
 	TeacherID uuid.UUID `json:"teacher_id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
+	// Level holds the value of the "level" field.
+	Level *learningpath.Level `json:"level,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 	selectValues sql.SelectValues
@@ -32,9 +36,9 @@ func (*LearningPath) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case learningpath.FieldTitle:
+		case learningpath.FieldTitle, learningpath.FieldLevel:
 			values[i] = new(sql.NullString)
-		case learningpath.FieldCreatedAt:
+		case learningpath.FieldUpdatedAt, learningpath.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case learningpath.FieldID, learningpath.FieldTeacherID:
 			values[i] = new(uuid.UUID)
@@ -70,6 +74,19 @@ func (_m *LearningPath) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field title", values[i])
 			} else if value.Valid {
 				_m.Title = value.String
+			}
+		case learningpath.FieldLevel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field level", values[i])
+			} else if value.Valid {
+				_m.Level = new(learningpath.Level)
+				*_m.Level = learningpath.Level(value.String)
+			}
+		case learningpath.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		case learningpath.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -118,6 +135,14 @@ func (_m *LearningPath) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
+	builder.WriteString(", ")
+	if v := _m.Level; v != nil {
+		builder.WriteString("level=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

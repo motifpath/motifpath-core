@@ -39,7 +39,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-03", Title: "Three", ContentType: domain.ContentTypeArticle})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Beginner Guitar — Week 1", Items: pathItems("node-01", "node-02", "node-03")})
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Beginner Guitar — Week 1", Items: pathItems("node-01", "node-02", "node-03")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "teacher-1", path.TeacherID)
@@ -56,7 +56,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-03", Title: "Three", ContentType: domain.ContentTypeArticle})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Rhythm Foundations", Items: []application.PathItemInput{
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Rhythm Foundations", Items: []application.PathItemInput{
 			{ContentNodeID: "node-01", SectionLabel: strPtr("Open chords")},
 			{ContentNodeID: "node-02", SectionLabel: strPtr("Open chords")},
 			{ContentNodeID: "node-03", SectionLabel: strPtr("Strumming patterns")},
@@ -78,7 +78,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Unlabelled", Items: []application.PathItemInput{{ContentNodeID: "node-01"}, {ContentNodeID: "node-02"}}})
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Unlabelled", Items: []application.PathItemInput{{ContentNodeID: "node-01"}, {ContentNodeID: "node-02"}}})
 
 		require.NoError(t, err)
 		require.Len(t, path.Items, 2)
@@ -92,7 +92,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Rhythm Foundations", Items: []application.PathItemInput{
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Rhythm Foundations", Items: []application.PathItemInput{
 			{ContentNodeID: "node-01", SectionLabel: strPtr("Open chords ")},
 			{ContentNodeID: "node-02", SectionLabel: strPtr(" Open chords")},
 		}})
@@ -113,7 +113,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-02", Title: "Two", ContentType: domain.ContentTypeVideo})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Rhythm Foundations", Items: []application.PathItemInput{
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Rhythm Foundations", Items: []application.PathItemInput{
 			{ContentNodeID: "node-01", SectionLabel: strPtr("")},
 			{ContentNodeID: "node-02", SectionLabel: strPtr("   ")},
 		}})
@@ -129,7 +129,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		_, err := svc.CreateLearningPath(context.Background(), adminCaller(), application.LearningPathInput{Title: "Advanced Techniques", Items: pathItems("node-01")})
+		_, err := svc.CreateLearningPath(context.Background(), adminCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Advanced Techniques", Items: pathItems("node-01")})
 
 		require.NoError(t, err)
 	})
@@ -139,7 +139,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-01"})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "", Items: pathItems("node-01")})
+		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "", Items: pathItems("node-01")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -149,7 +149,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 	t.Run("creating a learning path with no items is rejected", func(t *testing.T) {
 		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
 
-		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Title", Items: nil})
+		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: nil})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -159,7 +159,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 	t.Run("creating a learning path that references a non-existent content node is rejected", func(t *testing.T) {
 		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
 
-		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Title: "Title", Items: pathItems("missing")})
+		_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: pathItems("missing")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -169,7 +169,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 	t.Run("a student cannot create a learning path", func(t *testing.T) {
 		svc := newLearningPathService(newFakeContentNodeRepository(), newFakeLearningPathRepository())
 
-		_, err := svc.CreateLearningPath(context.Background(), studentCaller(), application.LearningPathInput{Title: "Title", Items: pathItems("node-01")})
+		_, err := svc.CreateLearningPath(context.Background(), studentCaller(), application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: pathItems("node-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -297,7 +297,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 			}, CreatedAt: fixedCreatedAt})
 		svc := newLearningPathService(nodes, paths)
 
-		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Title: "Beginner Guitar", Items: pathItems("node-02", "node-01", "node-03")})
+		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Beginner Guitar", Items: pathItems("node-02", "node-01", "node-03")})
 
 		require.NoError(t, err)
 		require.Len(t, got.Items, 3)
@@ -316,7 +316,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 			CreatedAt: fixedCreatedAt})
 		svc := newLearningPathService(nodes, paths)
 
-		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Title: "New title", Items: pathItems("node-01")})
+		got, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "New title", Items: pathItems("node-01")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "path-1", got.ID)
@@ -330,7 +330,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Title: "Title", Items: nil})
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: nil})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -342,7 +342,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Title: "Title", Items: pathItems("missing")})
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: pathItems("missing")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -354,7 +354,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Title"})
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
-		_, err := svc.ReplaceLearningPath(context.Background(), studentCaller(), "path-1", application.LearningPathInput{Title: "Title", Items: pathItems("node-01")})
+		_, err := svc.ReplaceLearningPath(context.Background(), studentCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: pathItems("node-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -367,7 +367,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}}, CreatedAt: fixedCreatedAt})
 		svc := newLearningPathService(nodes, paths)
 
-		_, err := svc.ReplaceLearningPath(context.Background(), otherTeacherCaller(), "path-1", application.LearningPathInput{Title: "Hijacked title", Items: pathItems("node-01")})
+		_, err := svc.ReplaceLearningPath(context.Background(), otherTeacherCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Hijacked title", Items: pathItems("node-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -380,7 +380,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-01"}}, CreatedAt: fixedCreatedAt})
 		svc := newLearningPathService(nodes, paths)
 
-		got, err := svc.ReplaceLearningPath(context.Background(), adminCaller(), "path-1", application.LearningPathInput{Title: "Revised by admin", Items: pathItems("node-01")})
+		got, err := svc.ReplaceLearningPath(context.Background(), adminCaller(), "path-1", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Revised by admin", Items: pathItems("node-01")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "Revised by admin", got.Title)
@@ -391,7 +391,7 @@ func TestLearningPathService_ReplaceLearningPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-01"})
 		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
 
-		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "missing", application.LearningPathInput{Title: "Title", Items: pathItems("node-01")})
+		_, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), "missing", application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Title", Items: pathItems("node-01")})
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -475,5 +475,65 @@ func TestLearningPathService_DeleteLearningPath(t *testing.T) {
 		err := svc.DeleteLearningPath(context.Background(), teacherCaller(), "path-1")
 
 		require.NoError(t, err)
+	})
+}
+
+func TestLearningPathService_LevelAndLastUpdate(t *testing.T) {
+	nodes := newFakeContentNodeRepository()
+	nodes.put(domain.ContentNode{ID: "node-01", Title: "One", ContentType: domain.ContentTypeVideo})
+	input := func(level domain.DifficultyLevel) application.LearningPathInput {
+		return application.LearningPathInput{Title: "Open Chords", Level: level, Items: pathItems("node-01")}
+	}
+
+	t.Run("a path is created at a level, last updated when it was created", func(t *testing.T) {
+		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+		path, err := svc.CreateLearningPath(context.Background(), teacherCaller(), input(domain.DifficultyLevelBeginner))
+
+		require.NoError(t, err)
+		require.NotNil(t, path.Level)
+		assert.Equal(t, domain.DifficultyLevelBeginner, *path.Level)
+		assert.Equal(t, fixedCreatedAt, path.UpdatedAt)
+	})
+
+	for name, level := range map[string]domain.DifficultyLevel{"no level": "", "an unknown level": "virtuoso"} {
+		t.Run("rejected: "+name, func(t *testing.T) {
+			svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+			_, err := svc.CreateLearningPath(context.Background(), teacherCaller(), input(level))
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, "level", valErr.Fields[0].Field)
+		})
+	}
+
+	t.Run("replacing a path records the replace time and keeps the creation time", func(t *testing.T) {
+		later := fixedCreatedAt.Add(48 * time.Hour)
+		clock := []time.Time{fixedCreatedAt, later}
+		svc := application.NewLearningPathService(nodes, newFakeLearningPathRepository(), newFakeCourseVersionRepository(), idSequence(), func() time.Time {
+			now := clock[0]
+			clock = clock[1:]
+			return now
+		})
+		created, err := svc.CreateLearningPath(context.Background(), teacherCaller(), input(domain.DifficultyLevelBeginner))
+		require.NoError(t, err)
+
+		replaced, err := svc.ReplaceLearningPath(context.Background(), teacherCaller(), created.ID, input(domain.DifficultyLevelIntermediate))
+
+		require.NoError(t, err)
+		assert.Equal(t, fixedCreatedAt, replaced.CreatedAt)
+		assert.Equal(t, later, replaced.UpdatedAt)
+		assert.Equal(t, domain.DifficultyLevelIntermediate, *replaced.Level)
+	})
+
+	t.Run("an unknown sort order is rejected", func(t *testing.T) {
+		svc := newLearningPathService(nodes, newFakeLearningPathRepository())
+
+		_, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{Sort: "popularity"}, domain.PageRequest{Limit: 20})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "sort", valErr.Fields[0].Field)
 	})
 }

@@ -33,6 +33,34 @@ func (_c *LearningPathCreate) SetTitle(v string) *LearningPathCreate {
 	return _c
 }
 
+// SetLevel sets the "level" field.
+func (_c *LearningPathCreate) SetLevel(v learningpath.Level) *LearningPathCreate {
+	_c.mutation.SetLevel(v)
+	return _c
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableLevel(v *learningpath.Level) *LearningPathCreate {
+	if v != nil {
+		_c.SetLevel(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *LearningPathCreate) SetUpdatedAt(v time.Time) *LearningPathCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableUpdatedAt(v *time.Time) *LearningPathCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *LearningPathCreate) SetCreatedAt(v time.Time) *LearningPathCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -96,6 +124,10 @@ func (_c *LearningPathCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *LearningPathCreate) defaults() {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := learningpath.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := learningpath.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -113,6 +145,14 @@ func (_c *LearningPathCreate) check() error {
 	}
 	if _, ok := _c.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "LearningPath.title"`)}
+	}
+	if v, ok := _c.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "LearningPath.updated_at"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "LearningPath.created_at"`)}
@@ -159,6 +199,14 @@ func (_c *LearningPathCreate) createSpec() (*LearningPath, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
 		_node.Title = value
+	}
+	if value, ok := _c.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+		_node.Level = &value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(learningpath.FieldCreatedAt, field.TypeTime, value)

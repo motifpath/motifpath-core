@@ -68,6 +68,34 @@ type ExerciseFilter struct {
 // case-insensitive substring match against the path's title.
 type LearningPathFilter struct {
 	Query string
+	// CreatedBy keeps only paths created by that user.
+	CreatedBy string
+	// Levels keeps paths at any of these levels; a path with no level
+	// recorded never matches.
+	Levels []DifficultyLevel
+	// SkillIDs and ConceptIDs keep a path when one of its content nodes is
+	// classified with any of the skills and, if both are given, also with
+	// any of the concepts.
+	SkillIDs   []string
+	ConceptIDs []string
+	// Sort orders the results; the zero value orders by title.
+	Sort LearningPathSort
+}
+
+// LearningPathSort is the order a learning path listing is returned in.
+type LearningPathSort string
+
+const (
+	// LearningPathSortTitle orders by title, then id.
+	LearningPathSortTitle LearningPathSort = "title"
+	// LearningPathSortUpdated orders by most recently updated first, then id.
+	LearningPathSortUpdated LearningPathSort = "updated"
+)
+
+// Valid reports whether s is a sort order this service knows; the zero
+// value means the default, title.
+func (s LearningPathSort) Valid() bool {
+	return s == "" || s == LearningPathSortTitle || s == LearningPathSortUpdated
 }
 
 // CourseListFilter narrows a course catalog listing. A zero-valued field
