@@ -71,7 +71,7 @@ func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEntUserRepository(client)
 
-	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en", Name: "English"}, RegisteredAt: fixedAt}
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleStudent, DisplayName: "Alice Test", Locale: domain.Language{Code: "en", Name: "English"}, RegisteredAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, user))
 
 	byClerk, err := repo.GetByClerkUserID(ctx, "clerk-alice")
@@ -82,7 +82,7 @@ func TestEntUserRepository_CreateAndGet(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, user, byID)
 
-	err = repo.Create(ctx, domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleTeacher, Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt})
+	err = repo.Create(ctx, domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-alice", Role: domain.RoleTeacher, DisplayName: "Alice Test", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt})
 	assert.ErrorIs(t, err, domain.ErrAlreadyExists)
 
 	_, err = repo.GetByID(ctx, uuid.NewString())
@@ -92,7 +92,7 @@ func TestEntUserRepository_CreateAndGet(t *testing.T) {
 func TestEntUserRepository_Create_UnknownLocaleRejected(t *testing.T) {
 	repo := NewEntUserRepository(setupPostgres(t))
 
-	err := repo.Create(context.Background(), domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-bob", Role: domain.RoleStudent, Locale: domain.Language{Code: "xx"}, RegisteredAt: fixedAt})
+	err := repo.Create(context.Background(), domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-bob", Role: domain.RoleStudent, DisplayName: "Bob Test", Locale: domain.Language{Code: "xx"}, RegisteredAt: fixedAt})
 
 	var valErr *domain.ValidationError
 	require.ErrorAs(t, err, &valErr)
@@ -104,7 +104,7 @@ func TestEntUserRepository_UpdateLocale(t *testing.T) {
 	ctx := context.Background()
 	repo := NewEntUserRepository(client)
 
-	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-carol", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-carol", Role: domain.RoleStudent, DisplayName: "Carol Test", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, user))
 
 	require.NoError(t, repo.UpdateLocale(ctx, user.ID, "pt_BR"))
@@ -115,6 +115,45 @@ func TestEntUserRepository_UpdateLocale(t *testing.T) {
 
 	err = repo.UpdateLocale(ctx, uuid.NewString(), "en")
 	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntUserRepository_UpdateDisplayName(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntUserRepository(client)
+
+	user := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-dora", Role: domain.RoleTeacher, DisplayName: "Dora Souza", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, user))
+
+	require.NoError(t, repo.UpdateDisplayName(ctx, user.ID, "Dora Souza Lima"))
+
+	got, err := repo.GetByClerkUserID(ctx, "clerk-dora")
+	require.NoError(t, err)
+	assert.Equal(t, "Dora Souza Lima", got.DisplayName)
+
+	err = repo.UpdateDisplayName(ctx, uuid.NewString(), "Nobody")
+	assert.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestEntUserRepository_GetDisplayNames(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntUserRepository(client)
+
+	ana := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-ana-" + uuid.NewString(), Role: domain.RoleTeacher, DisplayName: "Ana Souza", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	rui := domain.User{ID: uuid.NewString(), ClerkUserID: "clerk-rui-" + uuid.NewString(), Role: domain.RoleStudent, DisplayName: "Rui Costa", Locale: domain.Language{Code: "en"}, RegisteredAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, ana))
+	require.NoError(t, repo.Create(ctx, rui))
+	missing := uuid.NewString()
+
+	names, err := repo.GetDisplayNames(ctx, []string{ana.ID, rui.ID, missing, "not-a-uuid"})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{ana.ID: "Ana Souza", rui.ID: "Rui Costa"}, names)
+
+	empty, err := repo.GetDisplayNames(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
 }
 
 func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {

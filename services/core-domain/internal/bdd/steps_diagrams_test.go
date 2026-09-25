@@ -741,8 +741,8 @@ func (w *world) diagramRecordsCreator(name string) error {
 	if !ok {
 		return fmt.Errorf("no user %q has been registered in this scenario", name)
 	}
-	if diagram.CreatedBy != want {
-		return fmt.Errorf("expected created_by %s (%s), got %s", want, name, diagram.CreatedBy)
+	if diagram.CreatedBy.UserId != want {
+		return fmt.Errorf("expected created_by %s (%s), got %s", want, name, diagram.CreatedBy.UserId)
 	}
 	return nil
 }

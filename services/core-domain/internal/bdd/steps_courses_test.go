@@ -278,8 +278,8 @@ func (w *world) courseRecordsCreator(name string) error {
 	if !ok {
 		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if resp.CreatedBy != w.userMotifID[name] {
-		return fmt.Errorf("expected created_by %s for %q, got %s", w.userMotifID[name], name, resp.CreatedBy)
+	if resp.CreatedBy.UserId != w.userMotifID[name] {
+		return fmt.Errorf("expected created_by %s for %q, got %s", w.userMotifID[name], name, resp.CreatedBy.UserId)
 	}
 	return nil
 }

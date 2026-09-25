@@ -139,12 +139,12 @@ func (w *world) studentPathRecordsAssignerAndOwner(assignerName, studentName str
 	if !ok {
 		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
 	}
-	if resp.AssignedBy != w.userMotifID[assignerName] {
-		return fmt.Errorf("expected assigned_by %s for %q, got %s", w.userMotifID[assignerName], assignerName, resp.AssignedBy)
+	if resp.AssignedBy.UserId != w.userMotifID[assignerName] {
+		return fmt.Errorf("expected assigned_by %s for %q, got %s", w.userMotifID[assignerName], assignerName, resp.AssignedBy.UserId)
 	}
 	expectedStudent := w.userMotifID[studentName]
-	if resp.StudentId != expectedStudent {
-		return fmt.Errorf("expected student_id %s for %q, got %s", expectedStudent, studentName, resp.StudentId)
+	if resp.Student.UserId != expectedStudent {
+		return fmt.Errorf("expected student_id %s for %q, got %s", expectedStudent, studentName, resp.Student.UserId)
 	}
 	return nil
 }

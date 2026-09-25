@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -14,7 +15,7 @@ import (
 const defaultLocale = "en"
 
 // IdentityService maps Clerk identities to MotifPath User records.
-// GetProfile doubles as the "resolve caller" lookup every other application
+// ResolveCaller is the "resolve caller" lookup every other application
 // service depends on: the HTTP handler layer calls it once per request to
 // turn the JWT's Clerk sub claim into a domain.User carrying the real
 // user_id and role, then passes that resolved User into whichever service
@@ -39,11 +40,12 @@ func NewIdentityService(users ports.UserRepository, languages ports.LanguageRepo
 // locale when it names a known, non-"any" Language; falls back to
 // defaultLocale otherwise. Returns domain.ErrAlreadyExists if a user record
 // already exists for that Clerk identity — registration is callable once per
-// identity.
-func (s *IdentityService) RegisterUser(ctx context.Context, clerkUserID string, role domain.Role, acceptLanguageCandidate string) (domain.User, error) {
+// identity. claimedName is the name carried by the caller's identity token,
+// never a client-supplied value; a blank one is rejected on field "name".
+func (s *IdentityService) RegisterUser(ctx context.Context, clerkUserID string, role domain.Role, acceptLanguageCandidate, claimedName string) (domain.User, error) {
 	locale := s.resolveRegistrationLocale(ctx, acceptLanguageCandidate)
 
-	user, err := domain.NewUser(s.newID(), clerkUserID, role, locale, s.now())
+	user, err := domain.NewUser(s.newID(), clerkUserID, role, claimedName, locale, s.now())
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -72,10 +74,56 @@ func (s *IdentityService) resolveRegistrationLocale(ctx context.Context, candida
 	return domain.Language{Code: defaultLocale}
 }
 
-// GetProfile returns the user registered for clerkUserID. Returns
-// domain.ErrNotFound if the identity has never registered.
-func (s *IdentityService) GetProfile(ctx context.Context, clerkUserID string) (domain.User, error) {
-	return s.users.GetByClerkUserID(ctx, clerkUserID)
+// ResolveCaller returns the user registered for clerkUserID, first bringing
+// their stored display name up to date with claimedName — the name carried
+// by the identity token of the request being served. The identity provider
+// owns the name, so a rename there reaches MotifPath on the user's next
+// request. A blank claim is ignored rather than clearing the stored name,
+// and an unchanged one writes nothing. Returns domain.ErrNotFound if the
+// identity has never registered.
+func (s *IdentityService) ResolveCaller(ctx context.Context, clerkUserID, claimedName string) (domain.User, error) {
+	user, err := s.users.GetByClerkUserID(ctx, clerkUserID)
+	if err != nil {
+		return domain.User{}, err
+	}
+	name, ok := domain.NormalizeDisplayName(claimedName)
+	if !ok || name == user.DisplayName {
+		return user, nil
+	}
+	if err := s.users.UpdateDisplayName(ctx, user.ID, name); err != nil {
+		return domain.User{}, err
+	}
+	user.DisplayName = name
+	return user, nil
+}
+
+// DisplayNames returns the current display name of every user in ids, keyed
+// by user_id, in one lookup however many times an id repeats. Every id is
+// expected to name a real user — anything that points at a user was
+// recorded from an authenticated caller — so a missing one is reported as
+// domain.ErrNotFound rather than shown without a name.
+func (s *IdentityService) DisplayNames(ctx context.Context, ids []string) (map[string]string, error) {
+	unique := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			unique = append(unique, id)
+		}
+	}
+	if len(unique) == 0 {
+		return map[string]string{}, nil
+	}
+	names, err := s.users.GetDisplayNames(ctx, unique)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range unique {
+		if _, ok := names[id]; !ok {
+			return nil, fmt.Errorf("display name for user %s: %w", id, domain.ErrNotFound)
+		}
+	}
+	return names, nil
 }
 
 // UpdateLocale sets the authenticated user's locale preference to locale.

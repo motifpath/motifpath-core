@@ -3,12 +3,10 @@
 package bdd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/cucumber/godog"
 
-	appHTTP "github.com/motifpath/core-domain/internal/adapters/http"
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -37,8 +35,7 @@ func (w *world) hasAlreadyRegisteredAsStudent(name string) error {
 }
 
 func (w *world) registers(name, role string) error {
-	ctx := appHTTP.WithClerkUserID(context.Background(), clerkSub(name))
-	resp, err := w.handler.RegisterUser(ctx, generated.RegisterUserRequestObject{
+	resp, err := w.handler.RegisterUser(w.identityCtx(name), generated.RegisterUserRequestObject{
 		Body: &generated.RegisterUserRequest{Role: generated.RegisterUserRequestRole(role)},
 	})
 	w.lastResp, w.lastErr = resp, err
@@ -62,6 +59,7 @@ func (w *world) registersWithRoleOmitted(name string) error {
 func (w *world) requestsOwnProfile(name string) error {
 	w.hasToken = true
 	w.clerkSub = clerkSub(name)
+	w.persona = name
 	resp, err := w.handler.GetMyProfile(w.ctx(), generated.GetMyProfileRequestObject{})
 	w.lastResp, w.lastErr = resp, err
 	return err

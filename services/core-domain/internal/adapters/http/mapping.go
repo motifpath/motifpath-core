@@ -37,6 +37,7 @@ func toUserProfile(u domain.User) generated.UserProfile {
 	return generated.UserProfile{
 		UserId:       mustUUID(u.ID),
 		Role:         generated.UserProfileRole(u.Role),
+		DisplayName:  u.DisplayName,
 		Locale:       toGeneratedLanguage(u.Locale),
 		RegisteredAt: u.RegisteredAt,
 	}
@@ -98,10 +99,10 @@ func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVers
 	return result
 }
 
-func toContentNode(n domain.ContentNode) generated.ContentNode {
+func toContentNode(n domain.ContentNode, names userNames) generated.ContentNode {
 	result := generated.ContentNode{
 		ContentNodeId: mustUUID(n.ID),
-		TeacherId:     mustUUID(n.TeacherID),
+		Teacher:       names.ref(n.TeacherID),
 		Title:         n.Title,
 		ContentType:   generated.ContentNodeContentType(n.ContentType),
 		Classification: generated.Classification{
@@ -121,10 +122,10 @@ func toContentNode(n domain.ContentNode) generated.ContentNode {
 	return result
 }
 
-func toContentNodes(nodes []domain.ContentNode) []generated.ContentNode {
+func toContentNodes(nodes []domain.ContentNode, names userNames) []generated.ContentNode {
 	result := make([]generated.ContentNode, 0, len(nodes))
 	for _, n := range nodes {
-		result = append(result, toContentNode(n))
+		result = append(result, toContentNode(n, names))
 	}
 	return result
 }
@@ -383,35 +384,35 @@ func toLearningPathItem(item domain.LearningPathItem) generated.LearningPathItem
 	}
 }
 
-func toLearningPath(p domain.LearningPath) generated.LearningPath {
+func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPath {
 	items := make([]generated.LearningPathItem, len(p.Items))
 	for i, item := range p.Items {
 		items[i] = toLearningPathItem(item)
 	}
 	return generated.LearningPath{
 		LearningPathId: mustUUID(p.ID),
-		TeacherId:      mustUUID(p.TeacherID),
+		Teacher:        names.ref(p.TeacherID),
 		Title:          p.Title,
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
 	}
 }
 
-func toLearningPaths(paths []domain.LearningPath) []generated.LearningPath {
+func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.LearningPath {
 	result := make([]generated.LearningPath, 0, len(paths))
 	for _, p := range paths {
-		result = append(result, toLearningPath(p))
+		result = append(result, toLearningPath(p, names))
 	}
 	return result
 }
 
-func toStudentPath(sp domain.StudentPath) generated.StudentPath {
+func toStudentPath(sp domain.StudentPath, names userNames) generated.StudentPath {
 	result := generated.StudentPath{
 		StudentPathId:            mustUUID(sp.ID),
-		StudentId:                mustUUID(sp.StudentID),
+		Student:                  names.ref(sp.StudentID),
 		SourceTemplateId:         mustUUID(sp.SourceTemplateID),
 		Title:                    sp.Title,
-		AssignedBy:               mustUUID(sp.AssignedBy),
+		AssignedBy:               names.ref(sp.AssignedBy),
 		AssignedAt:               sp.AssignedAt,
 		ArchivedAt:               sp.ArchivedAt,
 		CourseCheckpointPosition: sp.CourseCheckpointPosition,
@@ -456,10 +457,10 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 	return view
 }
 
-func toCourseEnrollment(e domain.CourseEnrollment) generated.CourseEnrollment {
+func toCourseEnrollment(e domain.CourseEnrollment, names userNames) generated.CourseEnrollment {
 	result := generated.CourseEnrollment{
 		CourseEnrollmentId:       mustUUID(e.ID),
-		StudentId:                mustUUID(e.StudentID),
+		Student:                  names.ref(e.StudentID),
 		CourseId:                 mustUUID(e.CourseID),
 		CourseTitle:              e.CourseTitle,
 		CourseVersionNumber:      e.CourseVersionNumber,
@@ -474,10 +475,10 @@ func toCourseEnrollment(e domain.CourseEnrollment) generated.CourseEnrollment {
 	return result
 }
 
-func toCourseEnrollments(enrollments []domain.CourseEnrollment) []generated.CourseEnrollment {
+func toCourseEnrollments(enrollments []domain.CourseEnrollment, names userNames) []generated.CourseEnrollment {
 	result := make([]generated.CourseEnrollment, len(enrollments))
 	for i, e := range enrollments {
-		result[i] = toCourseEnrollment(e)
+		result[i] = toCourseEnrollment(e, names)
 	}
 	return result
 }
@@ -634,7 +635,7 @@ func diagramListFilter(params generated.ListDiagramsParams) domain.DiagramListFi
 	return filter
 }
 
-func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
+func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 	positions := make([]generated.DiagramPosition, len(d.Positions))
 	for i, p := range d.Positions {
 		id := mustUUID(p.ID)
@@ -656,7 +657,7 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 		InstrumentId: mustUUID(d.InstrumentID),
 		Name:         d.Name,
 		Kind:         generated.DiagramKind(d.Kind),
-		CreatedBy:    mustUUID(d.CreatedBy),
+		CreatedBy:    names.ref(d.CreatedBy),
 		RootNote:     d.RootNote,
 		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
 		Color:        d.Color,
@@ -669,10 +670,10 @@ func toGeneratedDiagram(d domain.Diagram) generated.Diagram {
 	}
 }
 
-func toGeneratedDiagrams(diagrams []domain.Diagram) []generated.Diagram {
+func toGeneratedDiagrams(diagrams []domain.Diagram, names userNames) []generated.Diagram {
 	result := make([]generated.Diagram, len(diagrams))
 	for i, d := range diagrams {
-		result[i] = toGeneratedDiagram(d)
+		result[i] = toGeneratedDiagram(d, names)
 	}
 	return result
 }
@@ -742,14 +743,14 @@ func toCourseCheckpoints(checkpoints []domain.CourseCheckpoint) []generated.Cour
 // has_unpublished_changes are both derived from it via
 // domain.HasUnpublishedChanges, matching the OpenAPI contract's "or
 // nothing has been published yet" case.
-func toCourse(c domain.Course, latest *domain.CourseVersion) generated.Course {
+func toCourse(c domain.Course, latest *domain.CourseVersion, names userNames) generated.Course {
 	result := generated.Course{
 		CourseId:              mustUUID(c.ID),
 		Title:                 c.Title,
 		Summary:               c.Summary,
 		Level:                 generated.CourseLevel(c.Level),
 		Status:                generated.CourseStatus(c.Status),
-		CreatedBy:             mustUUID(c.CreatedBy),
+		CreatedBy:             names.ref(c.CreatedBy),
 		CreatedAt:             c.CreatedAt,
 		HasUnpublishedChanges: domain.HasUnpublishedChanges(c, latest),
 		Checkpoints:           toCourseCheckpoints(c.Checkpoints),
@@ -768,13 +769,13 @@ func toCourse(c domain.Course, latest *domain.CourseVersion) generated.Course {
 // never receives it. latest is c's latest published CourseVersion, or nil
 // if the course has never been published; published_at and
 // has_unpublished_changes are both derived from it.
-func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion) generated.CourseCatalogEntry {
+func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion, names userNames) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
 		CourseId:  mustUUID(c.ID),
 		Title:     c.Title,
 		Summary:   c.Summary,
 		Level:     generated.CourseCatalogEntryLevel(c.Level),
-		CreatedBy: mustUUID(c.CreatedBy),
+		CreatedBy: names.ref(c.CreatedBy),
 		Status:    generated.CourseCatalogEntryStatus(c.Status),
 	}
 	if latest != nil {
@@ -801,14 +802,14 @@ func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.Co
 // error is returned unchanged as the second value.
 type courseVersionLookup func(courseID string) (*domain.CourseVersion, error)
 
-func toCourseCatalogEntries(courses []domain.Course, caller domain.User, latest courseVersionLookup) ([]generated.CourseCatalogEntry, error) {
+func toCourseCatalogEntries(courses []domain.Course, caller domain.User, latest courseVersionLookup, names userNames) ([]generated.CourseCatalogEntry, error) {
 	result := make([]generated.CourseCatalogEntry, len(courses))
 	for i, c := range courses {
 		version, err := latest(c.ID)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = toCourseCatalogEntry(c, caller, version)
+		result[i] = toCourseCatalogEntry(c, caller, version, names)
 	}
 	return result, nil
 }

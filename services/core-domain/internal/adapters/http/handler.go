@@ -108,7 +108,7 @@ func (h *Handler) resolveCaller(ctx context.Context) (domain.User, bool) {
 	if !ok {
 		return domain.User{}, false
 	}
-	user, err := h.identity.GetProfile(ctx, clerkUserID)
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
 	if err != nil {
 		return domain.User{}, false
 	}
@@ -122,7 +122,7 @@ func (h *Handler) RegisterUser(ctx context.Context, request generated.RegisterUs
 	}
 
 	acceptLanguageCandidate := AcceptLanguageCandidateFromContext(ctx)
-	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate)
+	user, err := h.identity.RegisterUser(ctx, clerkUserID, domain.Role(request.Body.Role), acceptLanguageCandidate, NameClaimFromContext(ctx))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch {
@@ -144,7 +144,7 @@ func (h *Handler) GetMyProfile(ctx context.Context, _ generated.GetMyProfileRequ
 		return generated.GetMyProfile401JSONResponse(unauthorizedError()), nil
 	}
 
-	user, err := h.identity.GetProfile(ctx, clerkUserID)
+	user, err := h.identity.ResolveCaller(ctx, clerkUserID, NameClaimFromContext(ctx))
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindNotFound {
 			return generated.GetMyProfile404JSONResponse(notFoundError("no user record exists for this Clerk identity")), nil
@@ -201,7 +201,11 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 		}
 	}
 
-	return generated.CreateContentNode201JSONResponse(toContentNode(node)), nil
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateContentNode201JSONResponse(toContentNode(node, names)), nil
 }
 
 func (h *Handler) GetContentNode(ctx context.Context, request generated.GetContentNodeRequestObject) (generated.GetContentNodeResponseObject, error) {
@@ -217,7 +221,11 @@ func (h *Handler) GetContentNode(ctx context.Context, request generated.GetConte
 		return nil, err
 	}
 
-	return generated.GetContentNode200JSONResponse(toContentNode(node)), nil
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetContentNode200JSONResponse(toContentNode(node, names)), nil
 }
 
 func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListContentNodesRequestObject) (generated.ListContentNodesResponseObject, error) {
@@ -265,8 +273,12 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 		return nil, err
 	}
 
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
 	return generated.ListContentNodes200JSONResponse{
-		Items: toContentNodes(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+		Items: toContentNodes(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
 }
 
@@ -295,7 +307,11 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 		}
 	}
 
-	return generated.UpdateContentNode200JSONResponse(toContentNode(node)), nil
+	names, err := h.loadUserNames(ctx, contentNodeUserIDs(node))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateContentNode200JSONResponse(toContentNode(node, names)), nil
 }
 
 func (h *Handler) CreateChallenge(ctx context.Context, request generated.CreateChallengeRequestObject) (generated.CreateChallengeResponseObject, error) {
@@ -713,7 +729,11 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	return generated.CreateLearningPath201JSONResponse(toLearningPath(path)), nil
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateLearningPath201JSONResponse(toLearningPath(path, names)), nil
 }
 
 func (h *Handler) GetLearningPath(ctx context.Context, request generated.GetLearningPathRequestObject) (generated.GetLearningPathResponseObject, error) {
@@ -735,7 +755,11 @@ func (h *Handler) GetLearningPath(ctx context.Context, request generated.GetLear
 		}
 	}
 
-	return generated.GetLearningPath200JSONResponse(toLearningPath(path)), nil
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetLearningPath200JSONResponse(toLearningPath(path, names)), nil
 }
 
 func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListLearningPathsRequestObject) (generated.ListLearningPathsResponseObject, error) {
@@ -759,8 +783,12 @@ func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListL
 		return nil, err
 	}
 
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
 	return generated.ListLearningPaths200JSONResponse{
-		Items: toLearningPaths(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+		Items: toLearningPaths(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
 }
 
@@ -793,7 +821,11 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path)), nil
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReplaceLearningPath200JSONResponse(toLearningPath(path, names)), nil
 }
 
 func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.DeleteLearningPathRequestObject) (generated.DeleteLearningPathResponseObject, error) {
@@ -840,7 +872,11 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		}
 	}
 
-	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp)), nil
+	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	if err != nil {
+		return nil, err
+	}
+	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp, names)), nil
 }
 
 func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
@@ -881,7 +917,11 @@ func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request gene
 		}
 	}
 
-	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp)), nil
+	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp, names)), nil
 }
 
 func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
@@ -946,9 +986,13 @@ func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyS
 		return nil, err
 	}
 
+	names, err := h.loadUserNames(ctx, studentPathUserIDs(paths...))
+	if err != nil {
+		return nil, err
+	}
 	items := make([]generated.StudentPath, len(paths))
 	for i, sp := range paths {
-		items[i] = toStudentPath(sp)
+		items[i] = toStudentPath(sp, names)
 	}
 	return generated.ListMyStandalonePaths200JSONResponse(items), nil
 }
@@ -983,12 +1027,16 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 		return nil, err
 	}
 
+	names, err := h.loadUserNames(ctx, courseUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
 	entries, err := toCourseCatalogEntries(result.Items, caller, func(courseID string) (*domain.CourseVersion, error) {
 		if v, ok := latestByCourse[courseID]; ok {
 			return &v, nil
 		}
 		return nil, nil
-	})
+	}, names)
 	if err != nil {
 		return nil, err
 	}
@@ -1041,7 +1089,11 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		}
 	}
 
-	return generated.CreateCourse201JSONResponse(toCourse(course, nil)), nil
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateCourse201JSONResponse(toCourse(course, nil, names)), nil
 }
 
 func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequestObject) (generated.GetCourseResponseObject, error) {
@@ -1068,7 +1120,11 @@ func (h *Handler) GetCourse(ctx context.Context, request generated.GetCourseRequ
 		return nil, err
 	}
 
-	return generated.GetCourse200JSONResponse(toCourse(course, latest)), nil
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetCourse200JSONResponse(toCourse(course, latest, names)), nil
 }
 
 func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCourseRequestObject) (generated.ReplaceCourseResponseObject, error) {
@@ -1106,7 +1162,11 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		return nil, err
 	}
 
-	return generated.ReplaceCourse200JSONResponse(toCourse(course, latest)), nil
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReplaceCourse200JSONResponse(toCourse(course, latest, names)), nil
 }
 
 func (h *Handler) PublishCourse(ctx context.Context, request generated.PublishCourseRequestObject) (generated.PublishCourseResponseObject, error) {
@@ -1172,7 +1232,11 @@ func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCour
 		return nil, err
 	}
 
-	return generated.RetireCourse200JSONResponse(toCourse(course, latest)), nil
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.RetireCourse200JSONResponse(toCourse(course, latest, names)), nil
 }
 
 func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
@@ -1189,7 +1253,11 @@ func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListM
 		return nil, err
 	}
 
-	return generated.ListMyCourseEnrollments200JSONResponse(toCourseEnrollments(enrollments)), nil
+	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollments...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListMyCourseEnrollments200JSONResponse(toCourseEnrollments(enrollments, names)), nil
 }
 
 func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
@@ -1216,7 +1284,11 @@ func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.
 		}
 	}
 
-	return generated.CreateCourseEnrollment201JSONResponse(toCourseEnrollment(enrollment)), nil
+	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollment))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateCourseEnrollment201JSONResponse(toCourseEnrollment(enrollment, names)), nil
 }
 
 func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
@@ -1239,7 +1311,11 @@ func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated
 		}
 	}
 
-	return generated.AbandonCourseEnrollment200JSONResponse(toCourseEnrollment(enrollment)), nil
+	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollment))
+	if err != nil {
+		return nil, err
+	}
+	return generated.AbandonCourseEnrollment200JSONResponse(toCourseEnrollment(enrollment, names)), nil
 }
 
 func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {
@@ -1532,8 +1608,12 @@ func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagra
 		}
 	}
 
+	names, err := h.loadUserNames(ctx, diagramUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
 	return generated.ListDiagrams200JSONResponse{
-		Items: toGeneratedDiagrams(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+		Items: toGeneratedDiagrams(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
 }
 
@@ -1559,7 +1639,11 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 		}
 	}
 
-	return generated.CreateDiagram201JSONResponse(toGeneratedDiagram(diagram)), nil
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateDiagram201JSONResponse(toGeneratedDiagram(diagram, names)), nil
 }
 
 func (h *Handler) GetDiagram(ctx context.Context, request generated.GetDiagramRequestObject) (generated.GetDiagramResponseObject, error) {
@@ -1575,7 +1659,11 @@ func (h *Handler) GetDiagram(ctx context.Context, request generated.GetDiagramRe
 		return nil, err
 	}
 
-	return generated.GetDiagram200JSONResponse(toGeneratedDiagram(diagram)), nil
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetDiagram200JSONResponse(toGeneratedDiagram(diagram, names)), nil
 }
 
 func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDiagramRequestObject) (generated.UpdateDiagramResponseObject, error) {
@@ -1613,5 +1701,9 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 		}
 	}
 
-	return generated.UpdateDiagram200JSONResponse(toGeneratedDiagram(diagram)), nil
+	names, err := h.loadUserNames(ctx, diagramUserIDs(diagram))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateDiagram200JSONResponse(toGeneratedDiagram(diagram, names)), nil
 }

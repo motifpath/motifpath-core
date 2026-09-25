@@ -640,8 +640,8 @@ func (w *world) entryRecordsCreator(slug, creator string) error {
 	want := w.ensureRegistered(creator, domain.RoleTeacher)
 	for _, entry := range resp.Items {
 		if w.courseMatchesSlug(entry, slug) {
-			if entry.CreatedBy != want {
-				return fmt.Errorf("expected %q's creator to be %s, got %s", slug, want, entry.CreatedBy)
+			if entry.CreatedBy.UserId != want {
+				return fmt.Errorf("expected %q's creator to be %s, got %s", slug, want, entry.CreatedBy.UserId)
 			}
 			return nil
 		}

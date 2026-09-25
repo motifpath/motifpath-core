@@ -20,6 +20,8 @@ const (
 	FieldClerkUserID = "clerk_user_id"
 	// FieldRole holds the string denoting the role field in the database.
 	FieldRole = "role"
+	// FieldDisplayName holds the string denoting the display_name field in the database.
+	FieldDisplayName = "display_name"
 	// FieldLocaleID holds the string denoting the locale_id field in the database.
 	FieldLocaleID = "locale_id"
 	// FieldRegisteredAt holds the string denoting the registered_at field in the database.
@@ -42,6 +44,7 @@ var Columns = []string{
 	FieldID,
 	FieldClerkUserID,
 	FieldRole,
+	FieldDisplayName,
 	FieldLocaleID,
 	FieldRegisteredAt,
 }
@@ -57,6 +60,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
+	DisplayNameValidator func(string) error
 	// DefaultRegisteredAt holds the default value on creation for the "registered_at" field.
 	DefaultRegisteredAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -103,6 +108,11 @@ func ByClerkUserID(opts ...sql.OrderTermOption) OrderOption {
 // ByRole orders the results by the role field.
 func ByRole(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRole, opts...).ToFunc()
+}
+
+// ByDisplayName orders the results by the display_name field.
+func ByDisplayName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDisplayName, opts...).ToFunc()
 }
 
 // ByLocaleID orders the results by the locale_id field.

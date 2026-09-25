@@ -36,6 +36,7 @@ func (r *EntUserRepository) Create(ctx context.Context, u domain.User) error {
 		SetID(id).
 		SetClerkUserID(u.ClerkUserID).
 		SetRole(user.Role(u.Role)).
+		SetDisplayName(u.DisplayName).
 		SetLocaleID(localeRow.ID).
 		SetRegisteredAt(u.RegisteredAt).
 		Save(ctx)
@@ -96,6 +97,48 @@ func (r *EntUserRepository) UpdateLocale(ctx context.Context, id, locale string)
 	return nil
 }
 
+func (r *EntUserRepository) UpdateDisplayName(ctx context.Context, id, displayName string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	_, err = r.client.User.UpdateOneID(parsed).SetDisplayName(displayName).Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+// GetDisplayNames reads only the id and display_name columns of the
+// requested users in one query. An id that isn't a valid UUID can't name a
+// user, so it is skipped the same way as a valid id with no row.
+func (r *EntUserRepository) GetDisplayNames(ctx context.Context, ids []string) (map[string]string, error) {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	names := make(map[string]string, len(parsed))
+	if len(parsed) == 0 {
+		return names, nil
+	}
+	rows, err := r.client.User.Query().
+		Where(user.IDIn(parsed...)).
+		Select(user.FieldID, user.FieldDisplayName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		names[row.ID.String()] = row.DisplayName
+	}
+	return names, nil
+}
+
 func toDomainUser(row *ent.User) domain.User {
 	var locale domain.Language
 	if row.Edges.Locale != nil {
@@ -105,6 +148,7 @@ func toDomainUser(row *ent.User) domain.User {
 		ID:           row.ID.String(),
 		ClerkUserID:  row.ClerkUserID,
 		Role:         domain.Role(row.Role),
+		DisplayName:  row.DisplayName,
 		Locale:       locale,
 		RegisteredAt: row.RegisteredAt,
 	}

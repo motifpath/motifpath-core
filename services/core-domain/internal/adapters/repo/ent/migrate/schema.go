@@ -826,6 +826,7 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "clerk_user_id", Type: field.TypeString, Unique: true},
 		{Name: "role", Type: field.TypeEnum, Enums: []string{"student", "teacher", "admin"}},
+		{Name: "display_name", Type: field.TypeString},
 		{Name: "registered_at", Type: field.TypeTime},
 		{Name: "locale_id", Type: field.TypeUUID},
 	}
@@ -837,7 +838,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_languages_locale",
-				Columns:    []*schema.Column{UsersColumns[4]},
+				Columns:    []*schema.Column{UsersColumns[5]},
 				RefColumns: []*schema.Column{LanguagesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

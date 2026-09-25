@@ -23,4 +23,14 @@ type UserRepository interface {
 	// UpdateLocale sets the locale (a Language.Code) on the user with the
 	// given id. Returns domain.ErrNotFound if no such user exists.
 	UpdateLocale(ctx context.Context, id, locale string) error
+
+	// UpdateDisplayName sets the display name of the user with the given
+	// id. displayName is already normalized. Returns domain.ErrNotFound if
+	// no such user exists.
+	UpdateDisplayName(ctx context.Context, id, displayName string) error
+
+	// GetDisplayNames returns the display name of every user in ids that
+	// exists, keyed by user_id, in a single query. Ids with no user are
+	// simply absent from the result.
+	GetDisplayNames(ctx context.Context, ids []string) (map[string]string, error)
 }

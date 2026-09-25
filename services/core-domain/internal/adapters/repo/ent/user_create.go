@@ -34,6 +34,12 @@ func (_c *UserCreate) SetRole(v user.Role) *UserCreate {
 	return _c
 }
 
+// SetDisplayName sets the "display_name" field.
+func (_c *UserCreate) SetDisplayName(v string) *UserCreate {
+	_c.mutation.SetDisplayName(v)
+	return _c
+}
+
 // SetLocaleID sets the "locale_id" field.
 func (_c *UserCreate) SetLocaleID(v uuid.UUID) *UserCreate {
 	_c.mutation.SetLocaleID(v)
@@ -131,6 +137,14 @@ func (_c *UserCreate) check() error {
 			return &ValidationError{Name: "role", err: fmt.Errorf(`ent: validator failed for field "User.role": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.DisplayName(); !ok {
+		return &ValidationError{Name: "display_name", err: errors.New(`ent: missing required field "User.display_name"`)}
+	}
+	if v, ok := _c.mutation.DisplayName(); ok {
+		if err := user.DisplayNameValidator(v); err != nil {
+			return &ValidationError{Name: "display_name", err: fmt.Errorf(`ent: validator failed for field "User.display_name": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.LocaleID(); !ok {
 		return &ValidationError{Name: "locale_id", err: errors.New(`ent: missing required field "User.locale_id"`)}
 	}
@@ -182,6 +196,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Role(); ok {
 		_spec.SetField(user.FieldRole, field.TypeEnum, value)
 		_node.Role = value
+	}
+	if value, ok := _c.mutation.DisplayName(); ok {
+		_spec.SetField(user.FieldDisplayName, field.TypeString, value)
+		_node.DisplayName = value
 	}
 	if value, ok := _c.mutation.RegisteredAt(); ok {
 		_spec.SetField(user.FieldRegisteredAt, field.TypeTime, value)

@@ -766,8 +766,8 @@ func (w *world) contentNodeRecordsOwner(name string) error {
 	if !ok {
 		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
 	}
-	if resp.TeacherId != w.userMotifID[name] {
-		return fmt.Errorf("expected teacher_id %s for %q, got %s", w.userMotifID[name], name, resp.TeacherId)
+	if resp.Teacher.UserId != w.userMotifID[name] {
+		return fmt.Errorf("expected teacher_id %s for %q, got %s", w.userMotifID[name], name, resp.Teacher.UserId)
 	}
 	return nil
 }

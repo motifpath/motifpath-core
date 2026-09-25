@@ -296,8 +296,12 @@ func init() {
 	studentpathitem.DefaultID = studentpathitemDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
+	// userDescDisplayName is the schema descriptor for display_name field.
+	userDescDisplayName := userFields[3].Descriptor()
+	// user.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
+	user.DisplayNameValidator = userDescDisplayName.Validators[0].(func(string) error)
 	// userDescRegisteredAt is the schema descriptor for registered_at field.
-	userDescRegisteredAt := userFields[4].Descriptor()
+	userDescRegisteredAt := userFields[5].Descriptor()
 	// user.DefaultRegisteredAt holds the default value on creation for the registered_at field.
 	user.DefaultRegisteredAt = userDescRegisteredAt.Default.(func() time.Time)
 	// userDescID is the schema descriptor for id field.

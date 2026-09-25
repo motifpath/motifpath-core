@@ -6,6 +6,7 @@ type contextKey int
 
 const (
 	clerkUserIDContextKey contextKey = iota
+	nameClaimContextKey
 	acceptLanguageContextKey
 )
 
@@ -19,6 +20,20 @@ func WithClerkUserID(ctx context.Context, clerkUserID string) context.Context {
 func ClerkUserIDFromContext(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(clerkUserIDContextKey).(string)
 	return v, ok
+}
+
+// WithNameClaim stores the "name" claim of the caller's session token — the
+// user's full name as the identity provider holds it — in ctx. Populated by
+// ClerkAuthMiddleware; read by registration and caller resolution to record
+// and refresh the user's display name.
+func WithNameClaim(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, nameClaimContextKey, name)
+}
+
+// NameClaimFromContext returns "" if the session token carried no name.
+func NameClaimFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(nameClaimContextKey).(string)
+	return v
 }
 
 // WithAcceptLanguageCandidate stores the request's normalized

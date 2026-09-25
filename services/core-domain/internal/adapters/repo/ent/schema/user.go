@@ -33,6 +33,15 @@ func (User) Fields() []ent.Field {
 			Values("student", "teacher", "admin").
 			Immutable(),
 
+		// DisplayName is the user's full name as held by Clerk, refreshed
+		// from the session token whenever it changes. Required: no user may
+		// exist without a name. Its 200-character cap is enforced (in
+		// characters, not bytes) by the domain before it gets here, so no
+		// MaxLen validator — ent's counts bytes and would reject a long
+		// non-ASCII name the domain accepted.
+		field.String("display_name").
+			NotEmpty(),
+
 		// LocaleID is the user's resolved locale preference. Required —
 		// every user has one, defaulted in the application layer at
 		// registration time rather than via a DB default, matching how role

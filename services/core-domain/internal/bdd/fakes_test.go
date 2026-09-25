@@ -41,6 +41,31 @@ func (f *fakeUserRepo) Create(_ context.Context, u domain.User) error {
 	return nil
 }
 
+func (f *fakeUserRepo) UpdateDisplayName(_ context.Context, id, displayName string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.DisplayName = displayName
+	f.byID[id] = u
+	f.byClerkID[u.ClerkUserID] = u
+	return nil
+}
+
+func (f *fakeUserRepo) GetDisplayNames(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	names := make(map[string]string, len(ids))
+	for _, id := range ids {
+		if u, ok := f.byID[id]; ok {
+			names[id] = u.DisplayName
+		}
+	}
+	return names, nil
+}
+
 func (f *fakeUserRepo) GetByClerkUserID(_ context.Context, clerkUserID string) (domain.User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
