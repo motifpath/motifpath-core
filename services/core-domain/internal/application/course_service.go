@@ -3,7 +3,13 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
 	"time"
+
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+	"golang.org/x/text/search"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -17,12 +23,13 @@ type CourseService struct {
 	paths    ports.LearningPathRepository
 	courses  ports.CourseRepository
 	versions ports.CourseVersionRepository
+	users    ports.UserRepository
 	newID    func() string
 	now      func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, versions: versions, newID: newID, now: now}
+func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -90,12 +97,21 @@ func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, fil
 	return s.courses.List(ctx, filter, page)
 }
 
-// ListCourseCreatorIDs returns the distinct creators of the courses the
+// CourseCreator is a user who created at least one course, with their
+// current display name.
+type CourseCreator struct {
+	UserID      string
+	DisplayName string
+}
+
+// ListCourseCreators returns the distinct creators of the courses the
 // caller would see in ListCourses, so a creator filter can offer every
 // option without paging through the catalog: a student gets the creators of
 // published courses, a teacher at most themselves, an admin the creator of
-// every course.
-func (s *CourseService) ListCourseCreatorIDs(ctx context.Context, caller domain.User) ([]string, error) {
+// every course. A non-empty nameQuery keeps only the creators whose display
+// name contains it. Matching and ordering both ignore case and accents, the
+// way a person reads a list of names; equal names fall back to user id.
+func (s *CourseService) ListCourseCreators(ctx context.Context, caller domain.User, nameQuery string) ([]CourseCreator, error) {
 	var filter domain.CourseListFilter
 	switch caller.Role {
 	case domain.RoleStudent:
@@ -105,7 +121,41 @@ func (s *CourseService) ListCourseCreatorIDs(ctx context.Context, caller domain.
 		filter.CreatedBy = caller.ID
 	case domain.RoleAdmin:
 	}
-	return s.courses.ListCreatorIDs(ctx, filter)
+	ids, err := s.courses.ListCreatorIDs(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	creators := []CourseCreator{}
+	if len(ids) == 0 {
+		return creators, nil
+	}
+	names, err := s.users.GetDisplayNames(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	matcher := search.New(language.Und, search.Loose)
+	for _, id := range ids {
+		name, ok := names[id]
+		if !ok {
+			return nil, fmt.Errorf("display name for course creator %s: %w", id, domain.ErrNotFound)
+		}
+		if nameQuery != "" {
+			if start, _ := matcher.IndexString(name, nameQuery); start < 0 {
+				continue
+			}
+		}
+		creators = append(creators, CourseCreator{UserID: id, DisplayName: name})
+	}
+
+	collator := collate.New(language.Und)
+	sort.Slice(creators, func(i, j int) bool {
+		if c := collator.CompareString(creators[i].DisplayName, creators[j].DisplayName); c != 0 {
+			return c < 0
+		}
+		return creators[i].UserID < creators[j].UserID
+	})
+	return creators, nil
 }
 
 // ReplaceCourse replaces the given course's title, summary, level, and

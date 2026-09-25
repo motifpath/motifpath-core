@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"sort"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -17,22 +16,6 @@ type userNames map[string]string
 // ref renders id as the UserRef every response uses to point at a user.
 func (n userNames) ref(id string) generated.UserRef {
 	return generated.UserRef{UserId: mustUUID(id), DisplayName: n[id]}
-}
-
-// sortedRefs renders ids as UserRefs ordered by display name, then user id,
-// for a response that lists users rather than pointing at them.
-func (n userNames) sortedRefs(ids []string) []generated.UserRef {
-	refs := make([]generated.UserRef, len(ids))
-	for i, id := range ids {
-		refs[i] = n.ref(id)
-	}
-	sort.Slice(refs, func(i, j int) bool {
-		if refs[i].DisplayName != refs[j].DisplayName {
-			return refs[i].DisplayName < refs[j].DisplayName
-		}
-		return refs[i].UserId.String() < refs[j].UserId.String()
-	})
-	return refs
 }
 
 // loadUserNames looks up the names of every user in ids. A reference to a

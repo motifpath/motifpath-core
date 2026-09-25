@@ -60,6 +60,8 @@ func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response does not include the "([^"]+)" course$`, w.responseExcludesLevelCourse)
 	sc.Step(`^the entry for "([^"]+)" records "([^"]+)" as the creator$`, w.entryRecordsCreator)
 	sc.Step(`^"([^"]+)" lists the course creators$`, w.listsCourseCreators)
+	sc.Step(`^"([^"]+)" lists the course creators whose name matches "([^"]+)"$`, w.listsCourseCreatorsMatching)
+	sc.Step(`^no creators are returned$`, w.noCreatorsReturned)
 	sc.Step(`^an unauthenticated request attempts to list the course creators$`, w.unauthListsCourseCreators)
 	sc.Step(`^the creators returned are "([^"]+)"(?: and "([^"]+)")?, each with their display name$`, w.creatorsReturnedAre)
 	sc.Step(`^the creators returned do not include "([^"]+)"$`, w.creatorsReturnedExclude)
@@ -659,6 +661,25 @@ func (w *world) listsCourseCreators(string) error {
 	return err
 }
 
+func (w *world) listsCourseCreatorsMatching(_, query string) error {
+	resp, err := w.handler.ListCourseCreators(w.ctx(), generated.ListCourseCreatorsRequestObject{
+		Params: generated.ListCourseCreatorsParams{Q: &query},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) noCreatorsReturned() error {
+	resp, err := w.courseCreatorsResponse()
+	if err != nil {
+		return err
+	}
+	if len(resp) != 0 {
+		return fmt.Errorf("expected no creators, got %#v", resp)
+	}
+	return nil
+}
+
 func (w *world) unauthListsCourseCreators() error {
 	w.noAuthToken() //nolint:errcheck // never errors
 	return w.listsCourseCreators("")
@@ -673,8 +694,7 @@ func (w *world) courseCreatorsResponse() (generated.ListCourseCreators200JSONRes
 }
 
 // creatorsReturnedAre asserts the response holds exactly the named creators,
-// in the order given — which the scenarios write in display-name order —
-// each carrying their current display name.
+// in the order given, each carrying their current display name.
 func (w *world) creatorsReturnedAre(first, second string) error {
 	resp, err := w.courseCreatorsResponse()
 	if err != nil {
