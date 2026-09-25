@@ -268,7 +268,6 @@ func (w *world) requestRefusedForbidden() error {
 		generated.AssignLearningPath403JSONResponse,
 		generated.ListContentNodes403JSONResponse,
 		generated.ListContentNodeVersions403JSONResponse,
-		generated.ListMyStandalonePaths403JSONResponse,
 		generated.ListCourses403JSONResponse,
 		generated.ListDiagrams403JSONResponse,
 		generated.UpdateInstrument403JSONResponse,
@@ -285,16 +284,12 @@ func (w *world) requestRefusedForbidden() error {
 		generated.CreateDiagram403JSONResponse,
 		generated.UpdateDiagram403JSONResponse,
 		generated.PublishContentNode403JSONResponse,
-		generated.ArchiveStandaloneStudentPath403JSONResponse,
 		generated.CreateCourse403JSONResponse,
 		generated.GetCourse403JSONResponse,
 		generated.ReplaceCourse403JSONResponse,
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
-		generated.CreateCourseEnrollment403JSONResponse,
-		generated.ListMyCourseEnrollments403JSONResponse,
-		generated.AbandonCourseEnrollment403JSONResponse,
-		generated.SetCurrentPath403JSONResponse:
+		generated.ListCourseCreators403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -370,6 +365,8 @@ func (w *world) requestRefusedAuthError() error {
 	case generated.RegisterUser401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
 		generated.ListCourseCreators401JSONResponse,
+		generated.ListCatalogCreators401JSONResponse,
+		generated.ListCatalogCourses401JSONResponse,
 		generated.ListMyStandalonePaths401JSONResponse,
 		generated.GetMyProfile401JSONResponse,
 		generated.CreateContentNode401JSONResponse,
@@ -505,6 +502,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.ListLearningPaths400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCourses400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListCatalogCourses400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListDiagrams400JSONResponse:
 		return resp.Errors, nil

@@ -9,12 +9,6 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// canActAsStudent reports whether role may hold and progress through a
-// course enrollment or standalone student path — a real student, or an
-// admin using their own identity to dogfood the learner experience.
-func canActAsStudent(role domain.Role) bool {
-	return role == domain.RoleStudent || role == domain.RoleAdmin
-}
 
 // StudentPathService assigns learning paths to students by copying a
 // template's items into a new StudentPath, and composes a student's
@@ -129,17 +123,10 @@ func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller doma
 		return domain.StudentPath{}, domain.ErrForbidden
 	}
 
-	student, err := s.users.GetByID(ctx, studentID)
-	if err != nil {
+	// Any user may be assigned a path, whatever their role — every user can
+	// learn. The target only has to exist.
+	if _, err := s.users.GetByID(ctx, studentID); err != nil {
 		return domain.StudentPath{}, err
-	}
-	if !canActAsStudent(student.Role) {
-		// A user that exists but can't act as a student is reported as not
-		// found, not forbidden — the assignment target space is students
-		// (plus admins dogfooding the learner experience under their own
-		// identity), so a teacher_id simply isn't a valid target, same as an
-		// id that doesn't exist at all.
-		return domain.StudentPath{}, domain.ErrNotFound
 	}
 
 	template, err := s.paths.GetByID(ctx, learningPathID)
@@ -353,12 +340,8 @@ func (s *StudentPathService) composeView(ctx context.Context, caller domain.User
 
 // ListMyStandalonePaths returns the caller's standalone StudentPaths — those
 // not belonging to a course enrollment — active and archived alike, newest
-// assigned first. Only a student, or an admin using their own identity, holds
-// student paths.
+// assigned first. Every user, whatever their role, may hold student paths.
 func (s *StudentPathService) ListMyStandalonePaths(ctx context.Context, caller domain.User) ([]domain.StudentPath, error) {
-	if !canActAsStudent(caller.Role) {
-		return nil, domain.ErrForbidden
-	}
 	return s.studentPaths.ListStandaloneByStudentID(ctx, caller.ID)
 }
 
@@ -410,8 +393,9 @@ type SetCurrentPathInput struct {
 // course enrollment or standalone path they already hold, then returns the
 // same composed view GetMyPath does for whatever is now current. Does not
 // touch a CourseEnrollment's own checkpoint progress — switching back later
-// resumes exactly where that course's checkpoint was left. Only students
-// hold a current course or path. Refused with a *domain.ValidationError
+// resumes exactly where that course's checkpoint was left. Every user,
+// whatever their role, may hold a current course or path. Refused with a
+// *domain.ValidationError
 // unless exactly one of input's two fields is set, and with
 // domain.ErrNotFound if the referenced course enrollment or student path
 // does not exist, is not active/non-archived, or does not belong to
@@ -421,9 +405,6 @@ type SetCurrentPathInput struct {
 // system) isn't something the caller should be able to distinguish
 // "exists but isn't yours" from "doesn't exist" by response code alone.
 func (s *StudentPathService) SetCurrentPath(ctx context.Context, caller domain.User, input SetCurrentPathInput) (StudentPathView, error) {
-	if !canActAsStudent(caller.Role) {
-		return StudentPathView{}, domain.ErrForbidden
-	}
 	if (input.CourseEnrollmentID == nil) == (input.StudentPathID == nil) {
 		return StudentPathView{}, domain.NewValidationError("course_enrollment_id", "exactly one of course_enrollment_id or student_path_id must be given")
 	}

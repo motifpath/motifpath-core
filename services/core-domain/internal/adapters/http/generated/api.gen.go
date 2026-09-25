@@ -362,6 +362,15 @@ const (
 	UserProfileRoleTeacher UserProfileRole = "teacher"
 )
 
+// Defines values for ListCatalogCoursesParamsLevels.
+const (
+	ListCatalogCoursesParamsLevelsAdvanced          ListCatalogCoursesParamsLevels = "advanced"
+	ListCatalogCoursesParamsLevelsBeginner          ListCatalogCoursesParamsLevels = "beginner"
+	ListCatalogCoursesParamsLevelsEarlyIntermediate ListCatalogCoursesParamsLevels = "early_intermediate"
+	ListCatalogCoursesParamsLevelsExpert            ListCatalogCoursesParamsLevels = "expert"
+	ListCatalogCoursesParamsLevelsIntermediate      ListCatalogCoursesParamsLevels = "intermediate"
+)
+
 // Defines values for ListContentNodesParamsContentType.
 const (
 	Article ListContentNodesParamsContentType = "article"
@@ -379,11 +388,11 @@ const (
 
 // Defines values for ListCoursesParamsLevels.
 const (
-	ListCoursesParamsLevelsAdvanced          ListCoursesParamsLevels = "advanced"
-	ListCoursesParamsLevelsBeginner          ListCoursesParamsLevels = "beginner"
-	ListCoursesParamsLevelsEarlyIntermediate ListCoursesParamsLevels = "early_intermediate"
-	ListCoursesParamsLevelsExpert            ListCoursesParamsLevels = "expert"
-	ListCoursesParamsLevelsIntermediate      ListCoursesParamsLevels = "intermediate"
+	Advanced          ListCoursesParamsLevels = "advanced"
+	Beginner          ListCoursesParamsLevels = "beginner"
+	EarlyIntermediate ListCoursesParamsLevels = "early_intermediate"
+	Expert            ListCoursesParamsLevels = "expert"
+	Intermediate      ListCoursesParamsLevels = "intermediate"
 )
 
 // Defines values for ListCoursesParamsStatus.
@@ -696,8 +705,8 @@ type CourseStatus string
 
 // CourseCatalogEntry A course as it appears in the catalog list — enough to browse
 // and pick one, never authoring detail such as a checkpoint's
-// learning_path_id. Returned by GET /courses for every caller,
-// teacher/admin and student alike.
+// learning_path_id. Returned by GET /catalog/courses to every
+// caller and by GET /courses to teachers and admins.
 type CourseCatalogEntry struct {
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
@@ -710,7 +719,7 @@ type CourseCatalogEntry struct {
 	// receive.
 	CreatedBy UserRef `json:"created_by"`
 
-	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field.
+	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
 	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
 
 	// Level The level a student should be at to start this course.
@@ -719,7 +728,7 @@ type CourseCatalogEntry struct {
 	// PublishedAt Timestamp the latest published version was published at, or null if the course has never been published.
 	PublishedAt *time.Time `json:"published_at"`
 
-	// Status A student's result is always published. Teachers and admins may see any status.
+	// Status Always published in GET /catalog/courses; any status in the authoring list, GET /courses.
 	Status CourseCatalogEntryStatus `json:"status"`
 
 	// Summary Short description of the course.
@@ -732,7 +741,7 @@ type CourseCatalogEntry struct {
 // CourseCatalogEntryLevel The level a student should be at to start this course.
 type CourseCatalogEntryLevel string
 
-// CourseCatalogEntryStatus A student's result is always published. Teachers and admins may see any status.
+// CourseCatalogEntryStatus Always published in GET /catalog/courses; any status in the authoring list, GET /courses.
 type CourseCatalogEntryStatus string
 
 // CourseCheckpoint One stage of a course's journey, pointing at a learning path template.
@@ -2857,6 +2866,39 @@ type Offset = int
 // SearchText defines model for SearchText.
 type SearchText = string
 
+// ListCatalogCoursesParams defines parameters for ListCatalogCourses.
+type ListCatalogCoursesParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Levels Restricts the results to courses at any of these levels.
+	Levels *[]ListCatalogCoursesParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
+
+	// CreatedBy Restricts the results to courses created by this user.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// SkillIds Restricts the results to courses classified with at least one of these skills.
+	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
+	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+}
+
+// ListCatalogCoursesParamsLevels defines parameters for ListCatalogCourses.
+type ListCatalogCoursesParamsLevels string
+
+// ListCatalogCreatorsParams defines parameters for ListCatalogCreators.
+type ListCatalogCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // ListContentNodesParams defines parameters for ListContentNodes.
 type ListContentNodesParams struct {
 	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
@@ -2910,10 +2952,7 @@ type ListCoursesParams struct {
 	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
 
-	// Status Restricts the results to courses in this status. Only
-	// teachers and admins may use this parameter; a student's
-	// results are always implicitly published regardless of this
-	// parameter.
+	// Status Restricts the results to courses in this status.
 	Status *ListCoursesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
@@ -3078,6 +3117,12 @@ type UpdateMyLocaleJSONRequestBody = UpdateMyLocaleRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Browse the published course catalog
+	// (GET /catalog/courses)
+	ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams)
+	// List the creators of the published courses
+	// (GET /catalog/creators)
+	ListCatalogCreators(w http.ResponseWriter, r *http.Request, params ListCatalogCreatorsParams)
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
@@ -3138,13 +3183,13 @@ type ServerInterface interface {
 	// List a content node's published version history
 	// (GET /content-nodes/{content_node_id}/versions)
 	ListContentNodeVersions(w http.ResponseWriter, r *http.Request, contentNodeId openapi_types.UUID)
-	// List courses
+	// List the courses the caller authors or manages
 	// (GET /courses)
 	ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams)
 	// Create a course
 	// (POST /courses)
 	CreateCourse(w http.ResponseWriter, r *http.Request)
-	// List the creators of the courses visible to the caller
+	// List the creators of the courses the caller authors or manages
 	// (GET /courses/creators)
 	ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams)
 	// Get a course's live, current state by ID
@@ -3276,6 +3321,18 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// Browse the published course catalog
+// (GET /catalog/courses)
+func (_ Unimplemented) ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the published courses
+// (GET /catalog/creators)
+func (_ Unimplemented) ListCatalogCreators(w http.ResponseWriter, r *http.Request, params ListCatalogCreatorsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get a challenge by ID
 // (GET /challenges/{challenge_id})
 func (_ Unimplemented) GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID) {
@@ -3396,7 +3453,7 @@ func (_ Unimplemented) ListContentNodeVersions(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// List courses
+// List the courses the caller authors or manages
 // (GET /courses)
 func (_ Unimplemented) ListCourses(w http.ResponseWriter, r *http.Request, params ListCoursesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -3408,7 +3465,7 @@ func (_ Unimplemented) CreateCourse(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// List the creators of the courses visible to the caller
+// List the creators of the courses the caller authors or manages
 // (GET /courses/creators)
 func (_ Unimplemented) ListCourseCreators(w http.ResponseWriter, r *http.Request, params ListCourseCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -3668,6 +3725,120 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListCatalogCourses operation middleware
+func (siw *ServerInterfaceWrapper) ListCatalogCourses(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCatalogCoursesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "levels" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "levels", r.URL.Query(), &params.Levels)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "levels", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCatalogCourses(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCatalogCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListCatalogCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCatalogCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCatalogCreators(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetChallenge operation middleware
 func (siw *ServerInterfaceWrapper) GetChallenge(w http.ResponseWriter, r *http.Request) {
@@ -5778,6 +5949,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/courses", wrapper.ListCatalogCourses)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/creators", wrapper.ListCatalogCreators)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/challenges/{challenge_id}", wrapper.GetChallenge)
 	})
 	r.Group(func(r chi.Router) {
@@ -5971,6 +6148,67 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 
 	return r
+}
+
+type ListCatalogCoursesRequestObject struct {
+	Params ListCatalogCoursesParams
+}
+
+type ListCatalogCoursesResponseObject interface {
+	VisitListCatalogCoursesResponse(w http.ResponseWriter) error
+}
+
+type ListCatalogCourses200JSONResponse PagedCourseCatalog
+
+func (response ListCatalogCourses200JSONResponse) VisitListCatalogCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogCourses400JSONResponse ValidationError
+
+func (response ListCatalogCourses400JSONResponse) VisitListCatalogCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogCourses401JSONResponse UnauthorizedError
+
+func (response ListCatalogCourses401JSONResponse) VisitListCatalogCoursesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogCreatorsRequestObject struct {
+	Params ListCatalogCreatorsParams
+}
+
+type ListCatalogCreatorsResponseObject interface {
+	VisitListCatalogCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListCatalogCreators200JSONResponse []UserRef
+
+func (response ListCatalogCreators200JSONResponse) VisitListCatalogCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogCreators401JSONResponse UnauthorizedError
+
+func (response ListCatalogCreators401JSONResponse) VisitListCatalogCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type GetChallengeRequestObject struct {
@@ -6956,6 +7194,15 @@ type ListCourseCreators401JSONResponse UnauthorizedError
 func (response ListCourseCreators401JSONResponse) VisitListCourseCreatorsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCourseCreators403JSONResponse ForbiddenError
+
+func (response ListCourseCreators403JSONResponse) VisitListCourseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8251,15 +8498,6 @@ func (response ListMyCourseEnrollments401JSONResponse) VisitListMyCourseEnrollme
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListMyCourseEnrollments403JSONResponse ForbiddenError
-
-func (response ListMyCourseEnrollments403JSONResponse) VisitListMyCourseEnrollmentsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type CreateCourseEnrollmentRequestObject struct {
 	Body *CreateCourseEnrollmentJSONRequestBody
 }
@@ -8291,15 +8529,6 @@ type CreateCourseEnrollment401JSONResponse UnauthorizedError
 func (response CreateCourseEnrollment401JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateCourseEnrollment403JSONResponse ForbiddenError
-
-func (response CreateCourseEnrollment403JSONResponse) VisitCreateCourseEnrollmentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8344,15 +8573,6 @@ type AbandonCourseEnrollment401JSONResponse UnauthorizedError
 func (response AbandonCourseEnrollment401JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type AbandonCourseEnrollment403JSONResponse ForbiddenError
-
-func (response AbandonCourseEnrollment403JSONResponse) VisitAbandonCourseEnrollmentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8406,15 +8626,6 @@ type SetCurrentPath401JSONResponse UnauthorizedError
 func (response SetCurrentPath401JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type SetCurrentPath403JSONResponse ForbiddenError
-
-func (response SetCurrentPath403JSONResponse) VisitSetCurrentPathResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8488,15 +8699,6 @@ func (response ArchiveStandaloneStudentPath401JSONResponse) VisitArchiveStandalo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ArchiveStandaloneStudentPath403JSONResponse ForbiddenError
-
-func (response ArchiveStandaloneStudentPath403JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type ArchiveStandaloneStudentPath404JSONResponse NotFoundError
 
 func (response ArchiveStandaloneStudentPath404JSONResponse) VisitArchiveStandaloneStudentPathResponse(w http.ResponseWriter) error {
@@ -8536,15 +8738,6 @@ type ListMyStandalonePaths401JSONResponse UnauthorizedError
 func (response ListMyStandalonePaths401JSONResponse) VisitListMyStandalonePathsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListMyStandalonePaths403JSONResponse ForbiddenError
-
-func (response ListMyStandalonePaths403JSONResponse) VisitListMyStandalonePathsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8727,6 +8920,12 @@ func (response UpdateMyLocale404JSONResponse) VisitUpdateMyLocaleResponse(w http
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Browse the published course catalog
+	// (GET /catalog/courses)
+	ListCatalogCourses(ctx context.Context, request ListCatalogCoursesRequestObject) (ListCatalogCoursesResponseObject, error)
+	// List the creators of the published courses
+	// (GET /catalog/creators)
+	ListCatalogCreators(ctx context.Context, request ListCatalogCreatorsRequestObject) (ListCatalogCreatorsResponseObject, error)
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(ctx context.Context, request GetChallengeRequestObject) (GetChallengeResponseObject, error)
@@ -8787,13 +8986,13 @@ type StrictServerInterface interface {
 	// List a content node's published version history
 	// (GET /content-nodes/{content_node_id}/versions)
 	ListContentNodeVersions(ctx context.Context, request ListContentNodeVersionsRequestObject) (ListContentNodeVersionsResponseObject, error)
-	// List courses
+	// List the courses the caller authors or manages
 	// (GET /courses)
 	ListCourses(ctx context.Context, request ListCoursesRequestObject) (ListCoursesResponseObject, error)
 	// Create a course
 	// (POST /courses)
 	CreateCourse(ctx context.Context, request CreateCourseRequestObject) (CreateCourseResponseObject, error)
-	// List the creators of the courses visible to the caller
+	// List the creators of the courses the caller authors or manages
 	// (GET /courses/creators)
 	ListCourseCreators(ctx context.Context, request ListCourseCreatorsRequestObject) (ListCourseCreatorsResponseObject, error)
 	// Get a course's live, current state by ID
@@ -8948,6 +9147,58 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListCatalogCourses operation middleware
+func (sh *strictHandler) ListCatalogCourses(w http.ResponseWriter, r *http.Request, params ListCatalogCoursesParams) {
+	var request ListCatalogCoursesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCatalogCourses(ctx, request.(ListCatalogCoursesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCatalogCourses")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCatalogCoursesResponseObject); ok {
+		if err := validResponse.VisitListCatalogCoursesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCatalogCreators operation middleware
+func (sh *strictHandler) ListCatalogCreators(w http.ResponseWriter, r *http.Request, params ListCatalogCreatorsParams) {
+	var request ListCatalogCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCatalogCreators(ctx, request.(ListCatalogCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCatalogCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCatalogCreatorsResponseObject); ok {
+		if err := validResponse.VisitListCatalogCreatorsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetChallenge operation middleware

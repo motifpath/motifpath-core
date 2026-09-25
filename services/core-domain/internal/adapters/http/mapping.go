@@ -715,15 +715,6 @@ func toDomainLabelDisplay[T ~string](labelDisplay *T) domain.LabelDisplay {
 	return domain.LabelDisplay(*labelDisplay)
 }
 
-// isStaff reports whether role is teacher or admin — the HTTP layer's own
-// copy of the teacher-or-admin check, used only to decide response shape
-// (e.g. whether to include has_unpublished_changes on a catalog entry).
-// The actual authorization gate for an operation is enforced in the
-// application layer, not here.
-func isStaff(role domain.Role) bool {
-	return role == domain.RoleTeacher || role == domain.RoleAdmin
-}
-
 func toCourseCheckpoint(cp domain.CourseCheckpoint) generated.CourseCheckpoint {
 	return generated.CourseCheckpoint{
 		Position:       cp.Position,
@@ -767,14 +758,26 @@ func toCourse(c domain.Course, latest *domain.CourseVersion, names userNames) ge
 	return result
 }
 
-// toCourseCatalogEntry renders c as a lightweight catalog entry for the
-// given caller — never a checkpoint's learning_path_id or other live-draft
-// authoring detail, matching the OpenAPI CourseCatalogEntry contract.
-// has_unpublished_changes is included only for teachers/admins; a student
-// never receives it. latest is c's latest published CourseVersion, or nil
-// if the course has never been published; published_at and
-// has_unpublished_changes are both derived from it.
-func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.CourseVersion, names userNames) generated.CourseCatalogEntry {
+// catalogEntryView is which list a CourseCatalogEntry is rendered for.
+type catalogEntryView int
+
+const (
+	// learnerCatalogView is the published catalog every user browses: the
+	// latest published version's text, never draft edits or authoring
+	// annotations.
+	learnerCatalogView catalogEntryView = iota
+	// authoringListView is a teacher's or admin's course list: the live
+	// draft, annotated with whether it has unpublished changes.
+	authoringListView
+)
+
+// toCourseCatalogEntry renders c as a lightweight catalog entry for view —
+// never a checkpoint's learning_path_id or other live-draft authoring
+// detail, matching the OpenAPI CourseCatalogEntry contract. latest is c's
+// latest published CourseVersion, or nil if the course has never been
+// published; published_at and has_unpublished_changes are both derived
+// from it.
+func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain.CourseVersion, names userNames) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
 		CourseId:  mustUUID(c.ID),
 		Title:     c.Title,
@@ -786,16 +789,16 @@ func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.Co
 	if latest != nil {
 		publishedAt := latest.PublishedAt
 		entry.PublishedAt = &publishedAt
-		// A student only ever sees what the latest published version says,
+		// A learner only ever sees what the latest published version says,
 		// never the live draft's unpublished edits — the same text, level
 		// and ordering their search and filters are evaluated against.
-		if !isStaff(caller.Role) {
+		if view == learnerCatalogView {
 			entry.Title = latest.TitleSnapshot
 			entry.Summary = latest.SummarySnapshot
 			entry.Level = generated.CourseCatalogEntryLevel(latest.LevelSnapshot)
 		}
 	}
-	if isStaff(caller.Role) {
+	if view == authoringListView {
 		hasUnpublishedChanges := domain.HasUnpublishedChanges(c, latest)
 		entry.HasUnpublishedChanges = &hasUnpublishedChanges
 	}
@@ -807,14 +810,14 @@ func toCourseCatalogEntry(c domain.Course, caller domain.User, latest *domain.Co
 // error is returned unchanged as the second value.
 type courseVersionLookup func(courseID string) (*domain.CourseVersion, error)
 
-func toCourseCatalogEntries(courses []domain.Course, caller domain.User, latest courseVersionLookup, names userNames) ([]generated.CourseCatalogEntry, error) {
+func toCourseCatalogEntries(courses []domain.Course, view catalogEntryView, latest courseVersionLookup, names userNames) ([]generated.CourseCatalogEntry, error) {
 	result := make([]generated.CourseCatalogEntry, len(courses))
 	for i, c := range courses {
 		version, err := latest(c.ID)
 		if err != nil {
 			return nil, err
 		}
-		result[i] = toCourseCatalogEntry(c, caller, version, names)
+		result[i] = toCourseCatalogEntry(c, view, version, names)
 	}
 	return result, nil
 }
@@ -869,6 +872,27 @@ func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilte
 		status := domain.CourseStatus(*params.Status)
 		filter.Status = &status
 	}
+	if params.CreatedBy != nil {
+		filter.CreatedBy = params.CreatedBy.String()
+	}
+	if params.Levels != nil {
+		for _, l := range *params.Levels {
+			filter.Levels = append(filter.Levels, domain.DifficultyLevel(l))
+		}
+	}
+	if params.SkillIds != nil {
+		filter.SkillIDs = uuidStrings(*params.SkillIds)
+	}
+	if params.ConceptIds != nil {
+		filter.ConceptIDs = uuidStrings(*params.ConceptIds)
+	}
+	return filter
+}
+
+// catalogCourseListFilter maps GET /catalog/courses' parameters onto the
+// same filter the authoring list uses; the catalog has no status parameter.
+func catalogCourseListFilter(params generated.ListCatalogCoursesParams) domain.CourseListFilter {
+	filter := domain.CourseListFilter{Query: searchQuery(params.Q)}
 	if params.CreatedBy != nil {
 		filter.CreatedBy = params.CreatedBy.String()
 	}

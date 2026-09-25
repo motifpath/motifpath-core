@@ -980,9 +980,6 @@ func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyS
 
 	paths, err := h.studentPath.ListMyStandalonePaths(ctx, caller)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
-			return generated.ListMyStandalonePaths403JSONResponse(forbiddenError("only students hold student paths")), nil
-		}
 		return nil, err
 	}
 
@@ -1013,30 +1010,12 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 	result, err := h.course.ListCourses(ctx, caller, courseListFilter(request.Params), page)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
-			return generated.ListCourses403JSONResponse(forbiddenError("a teacher may only list courses they created")), nil
+			return generated.ListCourses403JSONResponse(forbiddenError("the authoring course list is for teachers and admins, and a teacher may only list courses they created")), nil
 		}
 		return nil, err
 	}
 
-	courseIDs := make([]string, len(result.Items))
-	for i, c := range result.Items {
-		courseIDs[i] = c.ID
-	}
-	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	names, err := h.loadUserNames(ctx, courseUserIDs(result.Items...))
-	if err != nil {
-		return nil, err
-	}
-	entries, err := toCourseCatalogEntries(result.Items, caller, func(courseID string) (*domain.CourseVersion, error) {
-		if v, ok := latestByCourse[courseID]; ok {
-			return &v, nil
-		}
-		return nil, nil
-	}, names)
+	entries, err := h.catalogEntries(ctx, result.Items, authoringListView)
 	if err != nil {
 		return nil, err
 	}
@@ -1044,6 +1023,57 @@ func (h *Handler) ListCourses(ctx context.Context, request generated.ListCourses
 	return generated.ListCourses200JSONResponse{
 		Items: entries, Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
+}
+
+// ListCatalogCourses returns one page of the published learner catalog, the
+// same for every authenticated caller whatever their role.
+func (h *Handler) ListCatalogCourses(ctx context.Context, request generated.ListCatalogCoursesRequestObject) (generated.ListCatalogCoursesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListCatalogCourses401JSONResponse(unauthorizedError()), nil
+	}
+
+	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
+	if err != nil {
+		return listValidationFailure[generated.ListCatalogCoursesResponseObject](err, func(e generated.ValidationError) generated.ListCatalogCoursesResponseObject {
+			return generated.ListCatalogCourses400JSONResponse(e)
+		})
+	}
+
+	result, err := h.course.ListCatalogCourses(ctx, catalogCourseListFilter(request.Params), page)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := h.catalogEntries(ctx, result.Items, learnerCatalogView)
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListCatalogCourses200JSONResponse{
+		Items: entries, Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+	}, nil
+}
+
+// catalogEntries renders courses as catalog entries for view, resolving
+// every course's latest published version and every creator's name in one
+// lookup each.
+func (h *Handler) catalogEntries(ctx context.Context, courses []domain.Course, view catalogEntryView) ([]generated.CourseCatalogEntry, error) {
+	courseIDs := make([]string, len(courses))
+	for i, c := range courses {
+		courseIDs[i] = c.ID
+	}
+	latestByCourse, err := h.course.LatestVersions(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+	names, err := h.loadUserNames(ctx, courseUserIDs(courses...))
+	if err != nil {
+		return nil, err
+	}
+	return toCourseCatalogEntries(courses, view, func(courseID string) (*domain.CourseVersion, error) {
+		if v, ok := latestByCourse[courseID]; ok {
+			return &v, nil
+		}
+		return nil, nil
+	}, names)
 }
 
 // ListCourseCreators returns the creators of the courses visible to the
@@ -1056,13 +1086,34 @@ func (h *Handler) ListCourseCreators(ctx context.Context, request generated.List
 
 	creators, err := h.course.ListCourseCreators(ctx, caller, searchQuery(request.Params.Q))
 	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListCourseCreators403JSONResponse(forbiddenError("the authoring creator list is for teachers and admins")), nil
+		}
 		return nil, err
 	}
-	refs := make(generated.ListCourseCreators200JSONResponse, len(creators))
+	return generated.ListCourseCreators200JSONResponse(toUserRefs(creators)), nil
+}
+
+// ListCatalogCreators returns the creators of the published courses, the
+// same for every caller, optionally narrowed by name, in name order.
+func (h *Handler) ListCatalogCreators(ctx context.Context, request generated.ListCatalogCreatorsRequestObject) (generated.ListCatalogCreatorsResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListCatalogCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.course.ListCatalogCreators(ctx, searchQuery(request.Params.Q))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListCatalogCreators200JSONResponse(toUserRefs(creators)), nil
+}
+
+func toUserRefs(creators []application.CourseCreator) []generated.UserRef {
+	refs := make([]generated.UserRef, len(creators))
 	for i, c := range creators {
 		refs[i] = generated.UserRef{UserId: mustUUID(c.UserID), DisplayName: c.DisplayName}
 	}
-	return refs, nil
+	return refs
 }
 
 // latestCourseVersion returns course's latest published CourseVersion, or
@@ -1266,9 +1317,6 @@ func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListM
 
 	enrollments, err := h.courseEnrollment.ListMyCourseEnrollments(ctx, caller)
 	if err != nil {
-		if errors.Is(err, domain.ErrForbidden) {
-			return generated.ListMyCourseEnrollments403JSONResponse(forbiddenError("only students hold course enrollments")), nil
-		}
 		return nil, err
 	}
 
@@ -1288,8 +1336,6 @@ func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.
 	enrollment, err := h.courseEnrollment.CreateCourseEnrollment(ctx, caller, request.Body.CourseId.String())
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrForbidden):
-			return generated.CreateCourseEnrollment403JSONResponse(forbiddenError("only students may self-enroll")), nil
 		case errors.Is(err, domain.ErrNotFound):
 			return generated.CreateCourseEnrollment404JSONResponse(notFoundError("the course_id does not exist, the course is draft or retired, or its latest published version is not currently available for new enrollments")), nil
 		case errors.Is(err, domain.ErrConflict):
@@ -1319,8 +1365,6 @@ func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated
 	enrollment, err := h.courseEnrollment.AbandonCourseEnrollment(ctx, caller, request.CourseEnrollmentId.String())
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrForbidden):
-			return generated.AbandonCourseEnrollment403JSONResponse(forbiddenError("only students hold course enrollments")), nil
 		case errors.Is(err, domain.ErrNotFound):
 			return generated.AbandonCourseEnrollment404JSONResponse(notFoundError("no active enrollment with this id exists for the caller")), nil
 		case errors.Is(err, domain.ErrConflict):
@@ -1352,11 +1396,9 @@ func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurre
 		switch kind {
 		case errKindValidation:
 			return generated.SetCurrentPath400JSONResponse(validationErrorResponse(valErr)), nil
-		case errKindForbidden:
-			return generated.SetCurrentPath403JSONResponse(forbiddenError("only students hold a current course or path")), nil
 		case errKindNotFound:
 			return generated.SetCurrentPath404JSONResponse(notFoundError("the referenced course enrollment or student path does not exist or does not belong to the caller")), nil
-		case errKindOther:
+		case errKindForbidden, errKindOther:
 			return nil, err
 		}
 	}

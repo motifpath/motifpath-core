@@ -177,16 +177,17 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("assigning a path to a user with role teacher returns not found", func(t *testing.T) {
+	t.Run("a path can be assigned to a teacher, like any learner", func(t *testing.T) {
 		users := newFakeUserRepository()
 		users.put(domain.User{ID: "carol-1", Role: domain.RoleTeacher})
 		paths := newFakeLearningPathRepository()
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "carol-1", "path-1")
+		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "carol-1", "path-1")
 
-		assert.ErrorIs(t, err, domain.ErrNotFound)
+		require.NoError(t, err)
+		assert.Equal(t, "carol-1", sp.StudentID)
 	})
 
 	t.Run("assigning a path to a user with role admin succeeds — admins may dogfood as students", func(t *testing.T) {
@@ -522,13 +523,13 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("only students may switch their current path", func(t *testing.T) {
+	t.Run("a teacher is not refused for their role, only for not holding the path", func(t *testing.T) {
 		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 		spID := "sp-1"
 
 		_, err := svc.SetCurrentPath(context.Background(), teacherCaller(), application.SetCurrentPathInput{StudentPathID: &spID})
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
 
@@ -581,9 +582,9 @@ func TestStudentPathService_ListMyStandalonePaths(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("a teacher is forbidden", func(t *testing.T) {
+	t.Run("a teacher may list their own, like any learner", func(t *testing.T) {
 		_, err := newService(newFakeStudentPathRepository()).ListMyStandalonePaths(context.Background(), teacherCaller())
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		require.NoError(t, err)
 	})
 }
