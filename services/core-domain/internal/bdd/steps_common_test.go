@@ -369,6 +369,7 @@ func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
+		generated.ListCourseCreators401JSONResponse,
 		generated.ListMyStandalonePaths401JSONResponse,
 		generated.GetMyProfile401JSONResponse,
 		generated.CreateContentNode401JSONResponse,

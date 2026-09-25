@@ -905,6 +905,26 @@ func overlaps(have, want []string) bool {
 	return false
 }
 
+// ListCreatorIDs applies the same filters as List, over every matching course.
+func (f *fakeCourseRepo) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
+	f.mu.Lock()
+	all := len(f.byID)
+	f.mu.Unlock()
+	matches, err := f.List(ctx, filter, domain.PageRequest{Limit: all + 1})
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, c := range matches.Items {
+		if !seen[c.CreatedBy] {
+			seen[c.CreatedBy] = true
+			ids = append(ids, c.CreatedBy)
+		}
+	}
+	return ids, nil
+}
+
 func (f *fakeCourseRepo) Replace(_ context.Context, c domain.Course) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

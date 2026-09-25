@@ -59,6 +59,10 @@ func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response includes the "([^"]+)" and "([^"]+)" courses$`, w.responseIncludesLevelCourses)
 	sc.Step(`^the response does not include the "([^"]+)" course$`, w.responseExcludesLevelCourse)
 	sc.Step(`^the entry for "([^"]+)" records "([^"]+)" as the creator$`, w.entryRecordsCreator)
+	sc.Step(`^"([^"]+)" lists the course creators$`, w.listsCourseCreators)
+	sc.Step(`^an unauthenticated request attempts to list the course creators$`, w.unauthListsCourseCreators)
+	sc.Step(`^the creators returned are "([^"]+)"(?: and "([^"]+)")?, each with their display name$`, w.creatorsReturnedAre)
+	sc.Step(`^the creators returned do not include "([^"]+)"$`, w.creatorsReturnedExclude)
 
 	// ── Content node version history ─────────────────────────────────────
 	sc.Step(`^"([^"]+)" lists the versions of content node "([^"]+)"$`, w.listsContentNodeVersions)
@@ -647,6 +651,63 @@ func (w *world) entryRecordsCreator(slug, creator string) error {
 		}
 	}
 	return fmt.Errorf("expected the response to include %q", slug)
+}
+
+func (w *world) listsCourseCreators(string) error {
+	resp, err := w.handler.ListCourseCreators(w.ctx(), generated.ListCourseCreatorsRequestObject{})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) unauthListsCourseCreators() error {
+	w.noAuthToken() //nolint:errcheck // never errors
+	return w.listsCourseCreators("")
+}
+
+func (w *world) courseCreatorsResponse() (generated.ListCourseCreators200JSONResponse, error) {
+	resp, ok := w.lastResp.(generated.ListCourseCreators200JSONResponse)
+	if !ok {
+		return nil, fmt.Errorf("expected a course creators response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return resp, nil
+}
+
+// creatorsReturnedAre asserts the response holds exactly the named creators,
+// in the order given — which the scenarios write in display-name order —
+// each carrying their current display name.
+func (w *world) creatorsReturnedAre(first, second string) error {
+	resp, err := w.courseCreatorsResponse()
+	if err != nil {
+		return err
+	}
+	names := []string{first}
+	if second != "" {
+		names = append(names, second)
+	}
+	if len(resp) != len(names) {
+		return fmt.Errorf("expected %d creators, got %d: %#v", len(names), len(resp), resp)
+	}
+	for i, name := range names {
+		want := generated.UserRef{UserId: w.ensureRegistered(name, domain.RoleTeacher), DisplayName: w.nameClaim(name)}
+		if resp[i] != want {
+			return fmt.Errorf("expected creator %d to be %#v, got %#v", i+1, want, resp[i])
+		}
+	}
+	return nil
+}
+
+func (w *world) creatorsReturnedExclude(name string) error {
+	resp, err := w.courseCreatorsResponse()
+	if err != nil {
+		return err
+	}
+	excluded := w.ensureRegistered(name, domain.RoleTeacher)
+	for _, ref := range resp {
+		if ref.UserId == excluded {
+			return fmt.Errorf("expected the creators not to include %q, got %#v", name, resp)
+		}
+	}
+	return nil
 }
 
 // ── Content node version history ────────────────────────────────────────
