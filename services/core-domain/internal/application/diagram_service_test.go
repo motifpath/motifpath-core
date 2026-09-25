@@ -24,8 +24,14 @@ func newDiagramFixture() diagramFixture {
 	instruments.put(domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"}})
 	instruments.put(domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}})
 	diagrams := newFakeDiagramRepository()
-	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), newFakeLanguageRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 	return diagramFixture{diagrams: diagrams, instruments: instruments, svc: svc}
+}
+
+// names names a diagram name in both offered languages, which every kind of
+// diagram accepts.
+func names(name string) map[string]string {
+	return map[string]string{"en": name, "pt_BR": name}
 }
 
 func frettedPos(str, fret int) domain.Position {
@@ -38,7 +44,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 	t.Run("a teacher creates a diagram, positions get server-assigned ids", func(t *testing.T) {
 		f := newDiagramFixture()
 
-		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Minor Pentatonic", []domain.Position{frettedPos(6, 5), frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Minor Pentatonic"), []domain.Position{frettedPos(6, 5), frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, got.ID)
@@ -55,7 +61,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		pos := frettedPos(6, 5)
 		pos.ID = "client-id"
 
-		got, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", "D", []domain.Position{pos}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+		got, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", names("D"), []domain.Position{pos}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
 
 		require.NoError(t, err)
 		assert.Equal(t, "client-id", got.Positions[0].ID)
@@ -64,7 +70,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 	t.Run("a student cannot create a diagram", func(t *testing.T) {
 		f := newDiagramFixture()
 
-		_, err := f.svc.CreateDiagram(ctx, studentCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+		_, err := f.svc.CreateDiagram(ctx, studentCaller(), "guitar", names("D"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -73,7 +79,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		f := newDiagramFixture()
 		root := "A"
 
-		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{RootNote: &root, LabelDisplay: domain.LabelDisplayNote})
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("D"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{RootNote: &root, LabelDisplay: domain.LabelDisplayNote})
 
 		require.NoError(t, err)
 		require.NotNil(t, got.RootNote)
@@ -87,7 +93,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		colored := frettedPos(6, 5)
 		colored.Color = &override
 
-		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{colored, frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Color: &general})
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("D"), []domain.Position{colored, frettedPos(6, 8)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Color: &general})
 
 		require.NoError(t, err)
 		require.NotNil(t, got.Color)
@@ -101,7 +107,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		f := newDiagramFixture()
 		bad := "blue"
 
-		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Color: &bad})
+		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("D"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Color: &bad})
 
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
@@ -126,7 +132,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		t.Run("rejected: "+tt.name, func(t *testing.T) {
 			f := newDiagramFixture()
 
-			_, err := f.svc.CreateDiagram(ctx, teacherCaller(), tt.instrument, "D", tt.positions, tt.skillIDs, tt.conceptIDs, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+			_, err := f.svc.CreateDiagram(ctx, teacherCaller(), tt.instrument, names("D"), tt.positions, tt.skillIDs, tt.conceptIDs, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)
@@ -156,7 +162,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 
 	seed := func(t *testing.T, f diagramFixture) domain.Diagram {
 		t.Helper()
-		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", "Original", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Original"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
 		require.NoError(t, err)
 		return d
 	}
@@ -166,10 +172,10 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		d := seed(t, f)
 		name := "Renamed"
 
-		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Name: &name})
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names(name)})
 
 		require.NoError(t, err)
-		assert.Equal(t, "Renamed", got.Name)
+		assert.Equal(t, "Renamed", got.Names["en"])
 		assert.Equal(t, d.Positions, got.Positions)
 		assert.Equal(t, d.SkillIDs(), got.SkillIDs())
 		assert.Equal(t, d.InstrumentID, got.InstrumentID)
@@ -229,7 +235,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		d := seed(t, f)
 		name := "X"
 
-		_, err := f.svc.UpdateDiagram(ctx, studentCaller(), d.ID, application.DiagramUpdate{Name: &name})
+		_, err := f.svc.UpdateDiagram(ctx, studentCaller(), d.ID, application.DiagramUpdate{Names: names(name)})
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -238,7 +244,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		f := newDiagramFixture()
 		name := "X"
 
-		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), "nope", application.DiagramUpdate{Name: &name})
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), "nope", application.DiagramUpdate{Names: names(name)})
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -256,7 +262,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		assert.Equal(t, domain.LabelDisplayNote, got.LabelDisplay)
 
 		name := "Renamed"
-		again, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Name: &name})
+		again, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names(name)})
 		require.NoError(t, err)
 		require.NotNil(t, again.RootNote)
 		assert.Equal(t, "A", *again.RootNote)
@@ -278,7 +284,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		assert.Equal(t, "#F59E0B", *got.Positions[0].Color)
 
 		name := "Renamed"
-		again, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Name: &name})
+		again, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names(name)})
 		require.NoError(t, err)
 		require.NotNil(t, again.Color)
 		assert.Equal(t, "#22C55E", *again.Color)
@@ -292,7 +298,7 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 func TestDiagramService_CreateDiagram_KindAndOwner(t *testing.T) {
 	ctx := context.Background()
 	create := func(f diagramFixture, caller domain.User, kind domain.DiagramKind) (domain.Diagram, error) {
-		return f.svc.CreateDiagram(ctx, caller, "guitar", "D", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
+		return f.svc.CreateDiagram(ctx, caller, "guitar", names("D"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
 	}
 
 	t.Run("a teacher's diagram is custom by default and owned by the teacher", func(t *testing.T) {
@@ -338,12 +344,11 @@ func TestDiagramService_CreateDiagram_KindAndOwner(t *testing.T) {
 func TestDiagramService_UpdateDiagram_Ownership(t *testing.T) {
 	ctx := context.Background()
 	rename := func(f diagramFixture, caller domain.User, id string) (domain.Diagram, error) {
-		name := "Renamed"
-		return f.svc.UpdateDiagram(ctx, caller, id, application.DiagramUpdate{Name: &name})
+		return f.svc.UpdateDiagram(ctx, caller, id, application.DiagramUpdate{Names: names("Renamed")})
 	}
 	seed := func(t *testing.T, f diagramFixture, owner domain.User, kind domain.DiagramKind) domain.Diagram {
 		t.Helper()
-		d, err := f.svc.CreateDiagram(ctx, owner, "guitar", "Original", []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
+		d, err := f.svc.CreateDiagram(ctx, owner, "guitar", names("Original"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
 		require.NoError(t, err)
 		return d
 	}
@@ -355,7 +360,7 @@ func TestDiagramService_UpdateDiagram_Ownership(t *testing.T) {
 		got, err := rename(f, teacherCaller(), d.ID)
 
 		require.NoError(t, err)
-		assert.Equal(t, "Renamed", got.Name)
+		assert.Equal(t, "Renamed", got.Names["en"])
 	})
 
 	t.Run("a teacher cannot update another teacher's custom diagram", func(t *testing.T) {
@@ -418,7 +423,7 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 	seedLibrary := func(t *testing.T, f diagramFixture) (basic, mine, theirs domain.Diagram) {
 		t.Helper()
 		mk := func(owner domain.User, name string, kind domain.DiagramKind) domain.Diagram {
-			d, err := f.svc.CreateDiagram(ctx, owner, "guitar", name, []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
+			d, err := f.svc.CreateDiagram(ctx, owner, "guitar", names(name), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
 			require.NoError(t, err)
 			return d
 		}
@@ -524,7 +529,7 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 		f := newDiagramFixture()
 		basic, _, _ := seedLibrary(t, f)
 		key := "A3"
-		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "piano", "Piano", []domain.Position{{Interval: "R", NoteName: "A", Key: &key}}, []string{"skill-2"}, []string{"concept-2"}, domain.DiagramOptions{})
+		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "piano", names("Piano"), []domain.Position{{Interval: "R", NoteName: "A", Key: &key}}, []string{"skill-2"}, []string{"concept-2"}, domain.DiagramOptions{})
 		require.NoError(t, err)
 
 		byInstrument, err := f.svc.ListDiagrams(ctx, adminCaller(), domain.DiagramListFilter{InstrumentID: "piano"}, page)
@@ -544,8 +549,103 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Len(t, got.Items, 2)
-		assert.Equal(t, "Mine", got.Items[0].Name)
-		assert.Equal(t, "Theirs", got.Items[1].Name)
+		assert.Equal(t, "Mine", got.Items[0].Names["en"])
+		assert.Equal(t, "Theirs", got.Items[1].Names["en"])
 		assert.Equal(t, 3, got.Total)
+	})
+}
+
+func TestDiagramService_Localization(t *testing.T) {
+	ctx := context.Background()
+	create := func(f diagramFixture, caller domain.User, diagramNames map[string]string, kind domain.DiagramKind) (domain.Diagram, error) {
+		return f.svc.CreateDiagram(ctx, caller, "guitar", diagramNames, []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
+	}
+
+	t.Run("a teacher's diagram may be named in one language only", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		got, err := create(f, teacherCaller(), map[string]string{"pt_BR": "Pentatônica menor"}, domain.DiagramKindCustom)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"pt_BR"}, got.Names.Languages())
+	})
+
+	t.Run("a basic diagram needs a name in every offered language", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		_, err := create(f, adminCaller(), map[string]string{"en": "Major Scale"}, domain.DiagramKindBasic)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "names", valErr.Fields[0].Field)
+	})
+
+	t.Run("renaming replaces the names; omitting them keeps the current ones", func(t *testing.T) {
+		f := newDiagramFixture()
+		d, err := create(f, teacherCaller(), map[string]string{"en": "Scale"}, domain.DiagramKindCustom)
+		require.NoError(t, err)
+
+		renamed, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: map[string]string{"pt_BR": "Escala"}})
+		require.NoError(t, err)
+		assert.Equal(t, domain.LocalizedText{"pt_BR": "Escala"}, renamed.Names)
+
+		root := "C"
+		kept, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{RootNote: &root})
+		require.NoError(t, err)
+		assert.Equal(t, domain.LocalizedText{"pt_BR": "Escala"}, kept.Names)
+	})
+
+	t.Run("renaming a basic diagram without every language is rejected", func(t *testing.T) {
+		f := newDiagramFixture()
+		d, err := create(f, adminCaller(), names("Major Scale"), domain.DiagramKindBasic)
+		require.NoError(t, err)
+
+		_, err = f.svc.UpdateDiagram(ctx, adminCaller(), d.ID, application.DiagramUpdate{Names: map[string]string{"en": "Major Scale"}})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "names", valErr.Fields[0].Field)
+	})
+
+	t.Run("the list narrows to diagrams named in a language", func(t *testing.T) {
+		f := newDiagramFixture()
+		english, err := create(f, teacherCaller(), map[string]string{"en": "English only"}, domain.DiagramKindCustom)
+		require.NoError(t, err)
+		both, err := create(f, teacherCaller(), names("Both"), domain.DiagramKindCustom)
+		require.NoError(t, err)
+
+		got, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{Language: "pt_BR"}, domain.PageRequest{Limit: domain.MaxPageLimit})
+
+		require.NoError(t, err)
+		require.Len(t, got.Items, 1)
+		assert.Equal(t, both.ID, got.Items[0].ID)
+		assert.NotEqual(t, english.ID, got.Items[0].ID)
+	})
+
+	t.Run("an unknown or language-agnostic language filter is a validation error", func(t *testing.T) {
+		f := newDiagramFixture()
+		for _, language := range []string{"fr", domain.LanguageCodeAny} {
+			_, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{Language: language}, domain.PageRequest{Limit: domain.MaxPageLimit})
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr, "language %q", language)
+			assert.Equal(t, "language", valErr.Fields[0].Field)
+		}
+	})
+
+	t.Run("the list is ordered by the names the caller reads", func(t *testing.T) {
+		f := newDiagramFixture()
+		a, err := create(f, adminCaller(), map[string]string{"en": "Zebra", "pt_BR": "Arpejo"}, domain.DiagramKindBasic)
+		require.NoError(t, err)
+		b, err := create(f, adminCaller(), map[string]string{"en": "Arpeggio", "pt_BR": "Zebra"}, domain.DiagramKindBasic)
+		require.NoError(t, err)
+		reader := teacherCaller()
+		reader.Locale = domain.Language{Code: "pt_BR"}
+
+		got, err := f.svc.ListDiagrams(ctx, reader, domain.DiagramListFilter{}, domain.PageRequest{Limit: domain.MaxPageLimit})
+
+		require.NoError(t, err)
+		require.Len(t, got.Items, 2)
+		assert.Equal(t, []string{a.ID, b.ID}, []string{got.Items[0].ID, got.Items[1].ID})
 	})
 }

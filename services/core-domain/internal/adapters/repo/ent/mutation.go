@@ -10384,7 +10384,7 @@ type DiagramMutation struct {
 	op                      Op
 	typ                     string
 	id                      *uuid.UUID
-	name                    *string
+	names                   *map[string]string
 	kind                    *diagram.Kind
 	created_by              *uuid.UUID
 	root_note               *string
@@ -10554,40 +10554,40 @@ func (m *DiagramMutation) ResetInstrumentID() {
 	m.instrument = nil
 }
 
-// SetName sets the "name" field.
-func (m *DiagramMutation) SetName(s string) {
-	m.name = &s
+// SetNames sets the "names" field.
+func (m *DiagramMutation) SetNames(value map[string]string) {
+	m.names = &value
 }
 
-// Name returns the value of the "name" field in the mutation.
-func (m *DiagramMutation) Name() (r string, exists bool) {
-	v := m.name
+// Names returns the value of the "names" field in the mutation.
+func (m *DiagramMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldName returns the old "name" field's value of the Diagram entity.
+// OldNames returns the old "names" field's value of the Diagram entity.
 // If the Diagram object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DiagramMutation) OldName(ctx context.Context) (v string, err error) {
+func (m *DiagramMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
+		return v, errors.New("OldNames requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
 	}
-	return oldValue.Name, nil
+	return oldValue.Names, nil
 }
 
-// ResetName resets all changes to the "name" field.
-func (m *DiagramMutation) ResetName() {
-	m.name = nil
+// ResetNames resets all changes to the "names" field.
+func (m *DiagramMutation) ResetNames() {
+	m.names = nil
 }
 
 // SetKind sets the "kind" field.
@@ -11167,8 +11167,8 @@ func (m *DiagramMutation) Fields() []string {
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
-	if m.name != nil {
-		fields = append(fields, diagram.FieldName)
+	if m.names != nil {
+		fields = append(fields, diagram.FieldNames)
 	}
 	if m.kind != nil {
 		fields = append(fields, diagram.FieldKind)
@@ -11198,8 +11198,8 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case diagram.FieldInstrumentID:
 		return m.InstrumentID()
-	case diagram.FieldName:
-		return m.Name()
+	case diagram.FieldNames:
+		return m.Names()
 	case diagram.FieldKind:
 		return m.Kind()
 	case diagram.FieldCreatedBy:
@@ -11223,8 +11223,8 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case diagram.FieldInstrumentID:
 		return m.OldInstrumentID(ctx)
-	case diagram.FieldName:
-		return m.OldName(ctx)
+	case diagram.FieldNames:
+		return m.OldNames(ctx)
 	case diagram.FieldKind:
 		return m.OldKind(ctx)
 	case diagram.FieldCreatedBy:
@@ -11253,12 +11253,12 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetInstrumentID(v)
 		return nil
-	case diagram.FieldName:
-		v, ok := value.(string)
+	case diagram.FieldNames:
+		v, ok := value.(map[string]string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetName(v)
+		m.SetNames(v)
 		return nil
 	case diagram.FieldKind:
 		v, ok := value.(diagram.Kind)
@@ -11369,8 +11369,8 @@ func (m *DiagramMutation) ResetField(name string) error {
 	case diagram.FieldInstrumentID:
 		m.ResetInstrumentID()
 		return nil
-	case diagram.FieldName:
-		m.ResetName()
+	case diagram.FieldNames:
+		m.ResetNames()
 		return nil
 	case diagram.FieldKind:
 		m.ResetKind()

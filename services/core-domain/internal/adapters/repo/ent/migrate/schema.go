@@ -371,7 +371,7 @@ var (
 	// DiagramsColumns holds the columns for the "diagrams" table.
 	DiagramsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "name", Type: field.TypeString},
+		{Name: "names", Type: field.TypeJSON},
 		{Name: "kind", Type: field.TypeEnum, Enums: []string{"basic", "custom"}},
 		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "root_note", Type: field.TypeString, Nullable: true},

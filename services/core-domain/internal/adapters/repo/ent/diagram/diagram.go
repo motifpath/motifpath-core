@@ -18,8 +18,8 @@ const (
 	FieldID = "id"
 	// FieldInstrumentID holds the string denoting the instrument_id field in the database.
 	FieldInstrumentID = "instrument_id"
-	// FieldName holds the string denoting the name field in the database.
-	FieldName = "name"
+	// FieldNames holds the string denoting the names field in the database.
+	FieldNames = "names"
 	// FieldKind holds the string denoting the kind field in the database.
 	FieldKind = "kind"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
@@ -90,7 +90,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldInstrumentID,
-	FieldName,
+	FieldNames,
 	FieldKind,
 	FieldCreatedBy,
 	FieldRootNote,
@@ -186,11 +186,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByInstrumentID orders the results by the instrument_id field.
 func ByInstrumentID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldInstrumentID, opts...).ToFunc()
-}
-
-// ByName orders the results by the name field.
-func ByName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
 // ByKind orders the results by the kind field.

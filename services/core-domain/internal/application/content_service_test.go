@@ -652,7 +652,7 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 
 func seedContentDiagram(t *testing.T, diagrams *fakeDiagramRepository, id, instrumentID string) domain.Diagram {
 	t.Helper()
-	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Name: id, Positions: []domain.Position{{ID: "pos-1", Interval: "R", NoteName: "A"}}}
+	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Names: domain.LocalizedText{"en": id}, Positions: []domain.Position{{ID: "pos-1", Interval: "R", NoteName: "A"}}}
 	require.NoError(t, diagrams.Create(context.Background(), diagram))
 	return diagram
 }

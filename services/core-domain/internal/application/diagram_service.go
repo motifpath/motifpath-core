@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -16,12 +17,13 @@ type DiagramService struct {
 	instruments ports.InstrumentRepository
 	skills      ports.SkillRepository
 	concepts    ports.ConceptRepository
+	languages   ports.LanguageRepository
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, skills: skills, concepts: concepts, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, languages ports.LanguageRepository, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, skills: skills, concepts: concepts, languages: languages, newID: newID, now: now}
 }
 
 // DiagramUpdate carries the fields UpdateDiagram may replace. A nil field
@@ -33,7 +35,8 @@ func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.Instr
 // Per-position colors travel with Positions and so can be cleared by
 // resending Positions without them.
 type DiagramUpdate struct {
-	Name         *string
+	// Names replaces every name when non-nil; nil keeps the current ones.
+	Names        map[string]string
 	Positions    []domain.Position
 	SkillIDs     []string
 	ConceptIDs   []string
@@ -47,7 +50,7 @@ type DiagramUpdate struct {
 // create a basic one; opts.Kind defaults to custom. Positions without an id
 // are assigned one; a client-supplied id is kept. See domain.DiagramOptions
 // for the other optional settings.
-func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID, name string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
+func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
 	}
@@ -63,7 +66,11 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, name, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, names, offered, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
 	}
@@ -86,7 +93,8 @@ func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diag
 }
 
 // ListDiagrams returns one page of the diagrams matching filter that caller
-// may discover. Students may not list diagrams at all. A teacher sees every
+// may discover, ordered by the name caller reads (their locale, then English,
+// then the first language a diagram is named in). Students may not list diagrams at all. A teacher sees every
 // basic diagram plus their own custom ones, and may pass only their own id
 // as filter.CreatedBy. An admin sees every diagram. filter.VisibleTo is set
 // here from caller's role; any value the caller supplied is overwritten.
@@ -94,6 +102,16 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 	if filter.Kind != "" && !filter.Kind.Valid() {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
 	}
+	if filter.Language != "" {
+		offered, err := offeredLanguages(ctx, s.languages)
+		if err != nil {
+			return domain.Page[domain.Diagram]{}, err
+		}
+		if !slices.Contains(offered, filter.Language) {
+			return domain.Page[domain.Diagram]{}, domain.NewValidationError("language", "must be one of the languages MotifPath offers")
+		}
+	}
+	filter.Locale = caller.Locale.Code
 	filter.VisibleTo = ""
 	switch caller.Role {
 	case domain.RoleTeacher:
@@ -134,9 +152,9 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	name := current.Name
-	if update.Name != nil {
-		name = *update.Name
+	names := map[string]string(current.Names)
+	if update.Names != nil {
+		names = update.Names
 	}
 	positions := current.Positions
 	if update.Positions != nil {
@@ -147,7 +165,11 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if classificationChanged {
 		skillIDs, conceptIDs = update.SkillIDs, update.ConceptIDs
 	}
-	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, name, positions, skillIDs, conceptIDs, updatedDiagramOptions(current, update), current.CreatedAt)
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, updatedDiagramOptions(current, update), current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
 	}

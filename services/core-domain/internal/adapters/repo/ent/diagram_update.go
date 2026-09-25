@@ -33,17 +33,9 @@ func (_u *DiagramUpdate) Where(ps ...predicate.Diagram) *DiagramUpdate {
 	return _u
 }
 
-// SetName sets the "name" field.
-func (_u *DiagramUpdate) SetName(v string) *DiagramUpdate {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *DiagramUpdate) SetNillableName(v *string) *DiagramUpdate {
-	if v != nil {
-		_u.SetName(*v)
-	}
+// SetNames sets the "names" field.
+func (_u *DiagramUpdate) SetNames(v map[string]string) *DiagramUpdate {
+	_u.mutation.SetNames(v)
 	return _u
 }
 
@@ -338,8 +330,8 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(diagram.FieldName, field.TypeString, value)
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(diagram.FieldNames, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.RootNote(); ok {
 		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)
@@ -625,17 +617,9 @@ type DiagramUpdateOne struct {
 	mutation *DiagramMutation
 }
 
-// SetName sets the "name" field.
-func (_u *DiagramUpdateOne) SetName(v string) *DiagramUpdateOne {
-	_u.mutation.SetName(v)
-	return _u
-}
-
-// SetNillableName sets the "name" field if the given value is not nil.
-func (_u *DiagramUpdateOne) SetNillableName(v *string) *DiagramUpdateOne {
-	if v != nil {
-		_u.SetName(*v)
-	}
+// SetNames sets the "names" field.
+func (_u *DiagramUpdateOne) SetNames(v map[string]string) *DiagramUpdateOne {
+	_u.mutation.SetNames(v)
 	return _u
 }
 
@@ -960,8 +944,8 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			}
 		}
 	}
-	if value, ok := _u.mutation.Name(); ok {
-		_spec.SetField(diagram.FieldName, field.TypeString, value)
+	if value, ok := _u.mutation.Names(); ok {
+		_spec.SetField(diagram.FieldNames, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.RootNote(); ok {
 		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)

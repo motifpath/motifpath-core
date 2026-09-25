@@ -99,6 +99,10 @@ type CourseListFilter struct {
 //
 // VisibleTo, when set, is the role scoping a teacher's listing gets: only
 // basic diagrams, plus custom diagrams created by that user id, match.
+// Language, when set, keeps only diagrams with a name in that language.
+//
+// Locale does not filter: it is the caller's language, which orders the
+// results by the name that caller sees (see LocalizedText.Resolve).
 type DiagramListFilter struct {
 	InstrumentID string
 	SkillID      string
@@ -106,20 +110,31 @@ type DiagramListFilter struct {
 	Kind         DiagramKind
 	CreatedBy    string
 	VisibleTo    string
+	Language     string
+	Locale       string
 }
 
 // Matches reports whether d satisfies every set field of f — the
 // in-memory statement of the predicate a repository applies in its query.
 func (f DiagramListFilter) Matches(d Diagram) bool {
+	return f.matchesScope(d) && f.matchesContent(d)
+}
+
+// matchesScope checks who may see d and who made it: VisibleTo, Kind and
+// CreatedBy.
+func (f DiagramListFilter) matchesScope(d Diagram) bool {
 	if f.VisibleTo != "" && d.Kind != DiagramKindBasic && d.CreatedBy != f.VisibleTo {
 		return false
 	}
 	if f.Kind != "" && d.Kind != f.Kind {
 		return false
 	}
-	if f.CreatedBy != "" && d.CreatedBy != f.CreatedBy {
-		return false
-	}
+	return f.CreatedBy == "" || d.CreatedBy == f.CreatedBy
+}
+
+// matchesContent checks what d is: its instrument, classification and the
+// languages it is named in.
+func (f DiagramListFilter) matchesContent(d Diagram) bool {
 	if f.InstrumentID != "" && d.InstrumentID != f.InstrumentID {
 		return false
 	}
@@ -129,5 +144,6 @@ func (f DiagramListFilter) Matches(d Diagram) bool {
 	if f.ConceptID != "" && !slices.Contains(d.ConceptIDs(), f.ConceptID) {
 		return false
 	}
-	return true
+	_, named := d.Names[f.Language]
+	return f.Language == "" || named
 }

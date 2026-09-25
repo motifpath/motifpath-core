@@ -33,9 +33,9 @@ func (_c *DiagramCreate) SetInstrumentID(v uuid.UUID) *DiagramCreate {
 	return _c
 }
 
-// SetName sets the "name" field.
-func (_c *DiagramCreate) SetName(v string) *DiagramCreate {
-	_c.mutation.SetName(v)
+// SetNames sets the "names" field.
+func (_c *DiagramCreate) SetNames(v map[string]string) *DiagramCreate {
+	_c.mutation.SetNames(v)
 	return _c
 }
 
@@ -255,8 +255,8 @@ func (_c *DiagramCreate) check() error {
 	if _, ok := _c.mutation.InstrumentID(); !ok {
 		return &ValidationError{Name: "instrument_id", err: errors.New(`ent: missing required field "Diagram.instrument_id"`)}
 	}
-	if _, ok := _c.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Diagram.name"`)}
+	if _, ok := _c.mutation.Names(); !ok {
+		return &ValidationError{Name: "names", err: errors.New(`ent: missing required field "Diagram.names"`)}
 	}
 	if _, ok := _c.mutation.Kind(); !ok {
 		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "Diagram.kind"`)}
@@ -318,9 +318,9 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.Name(); ok {
-		_spec.SetField(diagram.FieldName, field.TypeString, value)
-		_node.Name = value
+	if value, ok := _c.mutation.Names(); ok {
+		_spec.SetField(diagram.FieldNames, field.TypeJSON, value)
+		_node.Names = value
 	}
 	if value, ok := _c.mutation.Kind(); ok {
 		_spec.SetField(diagram.FieldKind, field.TypeEnum, value)

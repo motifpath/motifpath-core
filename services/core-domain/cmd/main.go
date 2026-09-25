@@ -269,7 +269,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, languageRepo, newID)
-	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
 		courseService, courseEnrollmentService, instrumentService, diagramService, learningGraphPinger, completionReader), nil

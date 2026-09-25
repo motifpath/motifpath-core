@@ -89,7 +89,7 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 	// Deliberately not in id order: the repository must return positions in
 	// the order the author listed them, not in primary-key order.
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Minor Pentatonic — Position 1", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Position 1"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(0)},
 			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -119,7 +119,7 @@ func TestEntDiagramRepository_KeyboardPositionsRoundTrip(t *testing.T) {
 
 	a3, c4 := "A3", "C4"
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Minor Pentatonic — Piano", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Piano"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &a3},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, Key: &c4},
@@ -155,17 +155,17 @@ func TestEntDiagramRepository_List(t *testing.T) {
 	// Names are deliberately out of creation order, so the name ordering is
 	// observable.
 	basic := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindBasic, CreatedBy: admin, Name: "C Basic", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindBasic, CreatedBy: admin, Names: domain.LocalizedText{"en": "C Basic"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptA}, CreatedAt: fixedAt,
 	}
 	mine := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: me, Name: "A Mine", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: me, Names: domain.LocalizedText{"en": "A Mine"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &key}},
 		Skills:    []domain.Skill{skillB}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
 	theirs := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: them, Name: "B Theirs", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: them, Names: domain.LocalizedText{"en": "B Theirs", "pt_BR": "0 Deles"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
@@ -188,6 +188,9 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		{name: "visible to one user: basic plus their own custom", filter: domain.DiagramListFilter{VisibleTo: me}, want: []domain.Diagram{mine, basic}},
 		{name: "visibility combines with kind", filter: domain.DiagramListFilter{VisibleTo: me, Kind: domain.DiagramKindCustom}, want: []domain.Diagram{mine}},
 		{name: "filters combine with AND", filter: domain.DiagramListFilter{InstrumentID: guitar.ID, SkillID: skillB.ID}, want: []domain.Diagram{}},
+		{name: "by language: only diagrams named in it", filter: domain.DiagramListFilter{Language: "pt_BR"}, want: []domain.Diagram{theirs}},
+		{name: "ordered by the names a pt_BR reader sees", filter: domain.DiagramListFilter{Locale: "pt_BR"}, want: []domain.Diagram{theirs, mine, basic}},
+		{name: "a locale that is not a language code orders as English, never reaching the SQL", filter: domain.DiagramListFilter{Locale: "en'; DROP TABLE diagrams; --"}, want: []domain.Diagram{mine, theirs, basic}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -229,7 +232,7 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 
 	original := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Original", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Original"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -240,7 +243,7 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 
 	t.Run("replaces name, positions and classification but not instrument or creation time", func(t *testing.T) {
 		updated := original
-		updated.Name = "Renamed"
+		updated.Names = domain.LocalizedText{"en": "Renamed", "pt_BR": "Renomeado"}
 		updated.Positions = []domain.Position{
 			{ID: uuid.NewString(), Interval: "5", NoteName: "E", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)},
 		}
@@ -282,7 +285,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 
 	newDiagram := func(positionID string) domain.Diagram {
 		return domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "D", LabelDisplay: domain.LabelDisplayInterval,
+			ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "D"}, LabelDisplay: domain.LabelDisplayInterval,
 			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 			Skills:    []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 		}
@@ -313,7 +316,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 		other := newDiagram(uuid.NewString())
 		require.NoError(t, diagrams.Create(ctx, other))
 		update := other
-		update.Name = "Renamed"
+		update.Names = domain.LocalizedText{"en": "Renamed"}
 		update.Positions = []domain.Position{{ID: sharedID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}}
 
 		err := diagrams.Update(ctx, update)
@@ -326,7 +329,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 
 	t.Run("a diagram may resend its own position ids on update", func(t *testing.T) {
 		update := owner
-		update.Name = "Renamed"
+		update.Names = domain.LocalizedText{"en": "Renamed"}
 
 		require.NoError(t, diagrams.Update(ctx, update))
 
@@ -348,7 +351,7 @@ func TestEntDiagramRepository_ColorsRoundTrip(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Name: "Colored", LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Colored"}, LabelDisplay: domain.LabelDisplayInterval,
 		Color: strPtr("#3B82F6"),
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), Color: strPtr("#EF4444")},

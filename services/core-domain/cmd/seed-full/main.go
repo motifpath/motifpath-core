@@ -207,7 +207,7 @@ func wireServices(res resources) (services, seedDeps) {
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
 		instrument:  application.NewInstrumentService(instrumentRepo, languageRepo, newID),
-		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, newID, now),
+		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, newID, now),
 	}
 
 	return svc, seedDeps{
@@ -273,7 +273,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	if err != nil {
 		return fmt.Errorf("seed instrument and diagram: %w", err)
 	}
-	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Name)
+	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Names["en"])
 
 	templateA, err := svc.path.CreateLearningPath(ctx, teacher, "Open Position Foundations", []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
@@ -589,7 +589,8 @@ func seedInstrumentAndDiagram(ctx context.Context, teacher, curator domain.User,
 	}
 
 	root, general := "A", "#3B82F6"
-	diagram, err := diagramSvc.CreateDiagram(ctx, curator, instrument.ID, "A Minor Pentatonic — Position 1", positions, []string{skillID}, []string{conceptID},
+	diagram, err := diagramSvc.CreateDiagram(ctx, curator, instrument.ID,
+		map[string]string{"en": "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor de Lá — Posição 1"}, positions, []string{skillID}, []string{conceptID},
 		domain.DiagramOptions{RootNote: &root, LabelDisplay: domain.LabelDisplayInterval, Color: &general, Kind: domain.DiagramKindBasic})
 	if err != nil {
 		return domain.Diagram{}, fmt.Errorf("create diagram: %w", err)

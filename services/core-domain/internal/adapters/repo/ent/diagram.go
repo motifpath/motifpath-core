@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -21,8 +22,8 @@ type Diagram struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// InstrumentID holds the value of the "instrument_id" field.
 	InstrumentID uuid.UUID `json:"instrument_id,omitempty"`
-	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	// Names holds the value of the "names" field.
+	Names map[string]string `json:"names,omitempty"`
 	// Kind holds the value of the "kind" field.
 	Kind diagram.Kind `json:"kind,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
@@ -121,7 +122,9 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case diagram.FieldName, diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor:
+		case diagram.FieldNames:
+			values[i] = new([]byte)
+		case diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor:
 			values[i] = new(sql.NullString)
 		case diagram.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -154,11 +157,13 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.InstrumentID = *value
 			}
-		case diagram.FieldName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field name", values[i])
-			} else if value.Valid {
-				_m.Name = value.String
+		case diagram.FieldNames:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field names", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Names); err != nil {
+					return fmt.Errorf("unmarshal field names: %w", err)
+				}
 			}
 		case diagram.FieldKind:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -267,8 +272,8 @@ func (_m *Diagram) String() string {
 	builder.WriteString("instrument_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.InstrumentID))
 	builder.WriteString(", ")
-	builder.WriteString("name=")
-	builder.WriteString(_m.Name)
+	builder.WriteString("names=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Names))
 	builder.WriteString(", ")
 	builder.WriteString("kind=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Kind))

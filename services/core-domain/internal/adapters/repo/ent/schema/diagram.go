@@ -28,7 +28,10 @@ func (Diagram) Fields() []ent.Field {
 		field.UUID("instrument_id", uuid.UUID{}).
 			Immutable(),
 
-		field.String("name"),
+		// names maps a language code to the diagram's name in that language:
+		// every offered language for a basic diagram, at least one for a
+		// custom one.
+		field.JSON("names", map[string]string{}),
 
 		// kind and created_by are fixed at creation: basic diagrams are
 		// admin-curated templates, custom ones belong to created_by.

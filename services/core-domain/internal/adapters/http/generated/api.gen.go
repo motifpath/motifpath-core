@@ -191,6 +191,33 @@ const (
 	DiagramLabelDisplayNote     DiagramLabelDisplay = "note"
 )
 
+// Defines values for DiagramPositionInterval.
+const (
+	B13    DiagramPositionInterval = "b13"
+	B2     DiagramPositionInterval = "b2"
+	B3     DiagramPositionInterval = "b3"
+	B5     DiagramPositionInterval = "b5"
+	B6     DiagramPositionInterval = "b6"
+	B7     DiagramPositionInterval = "b7"
+	B9     DiagramPositionInterval = "b9"
+	Bb7    DiagramPositionInterval = "bb7"
+	Hash11 DiagramPositionInterval = "#11"
+	Hash2  DiagramPositionInterval = "#2"
+	Hash4  DiagramPositionInterval = "#4"
+	Hash5  DiagramPositionInterval = "#5"
+	Hash9  DiagramPositionInterval = "#9"
+	N11    DiagramPositionInterval = "11"
+	N13    DiagramPositionInterval = "13"
+	N2     DiagramPositionInterval = "2"
+	N3     DiagramPositionInterval = "3"
+	N4     DiagramPositionInterval = "4"
+	N5     DiagramPositionInterval = "5"
+	N6     DiagramPositionInterval = "6"
+	N7     DiagramPositionInterval = "7"
+	N9     DiagramPositionInterval = "9"
+	R      DiagramPositionInterval = "R"
+)
+
 // Defines values for DiagramPositionShape.
 const (
 	Dot    DiagramPositionShape = "dot"
@@ -1012,8 +1039,11 @@ type CreateDiagramRequest struct {
 	// Omitted defaults to interval.
 	LabelDisplay *CreateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
 
-	// Name Human-readable name for this diagram.
-	Name string `json:"name"`
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
 
 	// Positions Every marked position in this diagram, in the coordinate shape
 	// matching the referenced instrument's family. position_id may be
@@ -1340,8 +1370,15 @@ type Diagram struct {
 	// particular embedding.
 	LabelDisplay DiagramLabelDisplay `json:"label_display"`
 
-	// Name Human-readable name (e.g. "Minor Pentatonic — Position 1").
-	Name string `json:"name"`
+	// Languages The Language.code of every language this diagram has a name in —
+	// the keys of names, sorted.
+	Languages []string `json:"languages"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
 
 	// Positions Every marked position in this diagram. All positions share the
 	// same coordinate shape, decided by this diagram's instrument's
@@ -1417,16 +1454,17 @@ type DiagramPosition struct {
 	// Diagram's instrument family is fretted; absent when keyboard.
 	Fret *int `json:"fret,omitempty"`
 
-	// Interval The interval this position represents — e.g. "R", "b3", "4",
-	// "5", "b7", "2", "3", "6", "7" — relative to the root it was
-	// authored against. That is normally the parent Diagram's own root
-	// (see Diagram.root_note). In a diagram saved by combining several
-	// overlaid diagrams into one, each position keeps the interval it
-	// had in the diagram it came from, relative to that diagram's
-	// root. Not globally standardized beyond being consistent within
-	// one authored diagram; MotifPath does not validate interval names
-	// against a fixed enum.
-	Interval string `json:"interval"`
+	// Interval The interval this position represents, as a canonical code (R is
+	// the root) — a storage identifier, not display text: clients show
+	// each code in the viewer's language (e.g. R as "T" and b3 as "3m"
+	// in Brazilian Portuguese). Enharmonic codes stay distinct (#4 vs
+	// b5) because the author's spelling carries musical meaning. The
+	// interval is relative to the root it was authored against:
+	// normally the parent Diagram's own root (see Diagram.root_note).
+	// In a diagram saved by combining several overlaid diagrams into
+	// one, each position keeps the interval it had in the diagram it
+	// came from, relative to that diagram's root.
+	Interval DiagramPositionInterval `json:"interval"`
 
 	// Key Note name of the key, relative to the Diagram's own root (e.g.
 	// "C4"). Present only when the parent Diagram's instrument family
@@ -1469,6 +1507,18 @@ type DiagramPosition struct {
 	// fretted; absent when keyboard.
 	String *int `json:"string,omitempty"`
 }
+
+// DiagramPositionInterval The interval this position represents, as a canonical code (R is
+// the root) — a storage identifier, not display text: clients show
+// each code in the viewer's language (e.g. R as "T" and b3 as "3m"
+// in Brazilian Portuguese). Enharmonic codes stay distinct (#4 vs
+// b5) because the author's spelling carries musical meaning. The
+// interval is relative to the root it was authored against:
+// normally the parent Diagram's own root (see Diagram.root_note).
+// In a diagram saved by combining several overlaid diagrams into
+// one, each position keeps the interval it had in the diagram it
+// came from, relative to that diagram's root.
+type DiagramPositionInterval string
 
 // DiagramPositionShape Which marker shape this position renders as (standard fretboard-
 // diagram terminology — a round marker is a "dot", not a
@@ -2445,7 +2495,7 @@ type UpdateContentNodeRequest struct {
 	Title string `json:"title"`
 }
 
-// UpdateDiagramRequest Payload for replacing an existing diagram's name, positions,
+// UpdateDiagramRequest Payload for replacing an existing diagram's names, positions,
 // classification, root_note, label_display, or color. instrument_id is not
 // present here — it cannot be changed after creation, since every
 // position's coordinate shape depends on it. Nor are kind and
@@ -2473,8 +2523,11 @@ type UpdateDiagramRequest struct {
 	// unchanged.
 	LabelDisplay *UpdateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
 
-	// Name Human-readable name for this diagram, replacing the current value.
-	Name *string `json:"name,omitempty"`
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names *LocalizedNames `json:"names,omitempty"`
 
 	// Positions The diagram's full position list, replacing the current set. A
 	// caller that only wants to change one position must resend the
@@ -2793,6 +2846,11 @@ type ListDiagramsParams struct {
 
 	// Offset Number of matching items to skip before this page (ADR-031).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Language Restricts the results to diagrams with a name in this language
+	// (a Language.code other than "any") — e.g. to offer only
+	// diagrams that read natively in a content node's language.
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
 
 	// Kind Restricts the results to diagrams of this kind. For a teacher,
 	// custom means only their own custom diagrams.
@@ -4476,6 +4534,14 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
 		return
 	}
 

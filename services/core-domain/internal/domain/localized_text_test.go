@@ -67,3 +67,12 @@ func TestNewLocalizedText_ReportsTheSameProblemEveryTime(t *testing.T) {
 	}
 	assert.Equal(t, `must not be blank in "en"`, firstErr.Fields[0].Reason)
 }
+
+func TestLocalizedText_Resolve(t *testing.T) {
+	names := domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}
+
+	assert.Equal(t, "Violão", names.Resolve("pt_BR"), "the viewer's language first")
+	assert.Equal(t, "Guitar", domain.LocalizedText{"en": "Guitar"}.Resolve("pt_BR"), "then English")
+	assert.Equal(t, "Guitarra", domain.LocalizedText{"pt_BR": "Violão", "es": "Guitarra"}.Resolve("fr"), "then the alphabetically first language")
+	assert.Equal(t, "", domain.LocalizedText{}.Resolve("en"), "empty only when there is no text")
+}

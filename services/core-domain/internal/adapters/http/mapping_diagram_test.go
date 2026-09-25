@@ -19,7 +19,7 @@ func TestDiagramColorMapping(t *testing.T) {
 	diagram := domain.Diagram{
 		ID:           uuid.NewString(),
 		InstrumentID: uuid.NewString(),
-		Name:         "Colored",
+		Names: domain.LocalizedText{"en": "Colored"},
 		Kind:         domain.DiagramKindCustom,
 		CreatedBy:    uuid.NewString(),
 		LabelDisplay: domain.LabelDisplayInterval,
@@ -71,7 +71,7 @@ func TestDiagramColorMapping(t *testing.T) {
 func TestDiagramOwnershipMapping(t *testing.T) {
 	owner := uuid.New()
 	diagram := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Name: "Owned",
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Names: domain.LocalizedText{"en": "Owned"},
 		Kind: domain.DiagramKindBasic, CreatedBy: owner.String(), LabelDisplay: domain.LabelDisplayInterval,
 		CreatedAt: time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC),
 	}
@@ -105,5 +105,37 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 
 	t.Run("absent list parameters leave the filter empty", func(t *testing.T) {
 		assert.Equal(t, domain.DiagramListFilter{}, diagramListFilter(generated.ListDiagramsParams{}))
+	})
+}
+
+func TestDiagramLocalizationMapping(t *testing.T) {
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Kind: domain.DiagramKindBasic, CreatedBy: uuid.NewString(),
+		Names:        domain.LocalizedText{"pt_BR": "Escala maior", "en": "Major Scale"},
+		LabelDisplay: domain.LabelDisplayInterval,
+		Positions:    []domain.Position{{ID: uuid.NewString(), Interval: "#4", NoteName: "F#", Shape: domain.PositionShapeDot}},
+	}
+
+	t.Run("names and their sorted languages reach the response", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		assert.Equal(t, generated.LocalizedNames{"en": "Major Scale", "pt_BR": "Escala maior"}, got.Names)
+		assert.Equal(t, []string{"en", "pt_BR"}, got.Languages)
+	})
+
+	t.Run("interval codes pass through unchanged in both directions", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+		assert.Equal(t, generated.DiagramPositionInterval("#4"), got.Positions[0].Interval)
+
+		back := toDomainPositions(got.Positions)
+		assert.Equal(t, "#4", back[0].Interval)
+	})
+
+	t.Run("the language list parameter maps onto the filter", func(t *testing.T) {
+		language := "pt_BR"
+
+		got := diagramListFilter(generated.ListDiagramsParams{Language: &language})
+
+		assert.Equal(t, "pt_BR", got.Language)
 	})
 }

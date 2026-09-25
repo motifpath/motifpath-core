@@ -2,6 +2,10 @@ package repo
 
 import (
 	"context"
+	"regexp"
+
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqljson"
 
 	"github.com/google/uuid"
 
@@ -53,7 +57,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 	if _, err := tx.Diagram.Create().
 		SetID(id).
 		SetInstrumentID(instrumentID).
-		SetName(d.Name).
+		SetNames(d.Names).
 		SetKind(diagram.Kind(d.Kind)).
 		SetCreatedBy(createdBy).
 		SetNillableRootNote(d.RootNote).
@@ -98,7 +102,7 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 		return domain.Page[domain.Diagram]{}, err
 	}
 	rows, err := withDiagramEdges(query).
-		Order(ent.Asc(diagram.FieldName), ent.Asc(diagram.FieldID)).
+		Order(byResolvedName(filter.Locale), ent.Asc(diagram.FieldID)).
 		Limit(page.Limit).
 		Offset(page.Offset).
 		All(ctx)
@@ -111,6 +115,30 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 	}
 	return domain.Page[domain.Diagram]{Items: items, Total: total}, nil
 }
+
+// byResolvedName orders diagrams by the name a reader of locale sees — the
+// name in locale, else the English one, else the one in the alphabetically
+// first language — the SQL form of domain.LocalizedText.Resolve.
+//
+// locale is written into the SQL as a literal rather than a bind argument:
+// ent numbers ORDER BY arguments apart from WHERE arguments, so a bound one
+// collides with the filters'. It is only ever a language code, and anything
+// that isn't one falls back to "en", so nothing unvalidated reaches the SQL.
+func byResolvedName(locale string) func(*sql.Selector) {
+	if !languageCodePattern.MatchString(locale) {
+		locale = "en"
+	}
+	return func(s *sql.Selector) {
+		names := s.C(diagram.FieldNames)
+		s.OrderExpr(sql.Expr(
+			"COALESCE(" + names + " ->> '" + locale + "', " + names + " ->> 'en', " +
+				"(SELECT value FROM jsonb_each_text(" + names + ") ORDER BY key LIMIT 1))",
+		))
+	}
+}
+
+// languageCodePattern matches a Language.code such as "en" or "pt_BR".
+var languageCodePattern = regexp.MustCompile(`^[A-Za-z_]+$`)
 
 // diagramListPredicates translates filter into ent predicates, one per set
 // field; domain.DiagramListFilter.Matches states the same rules in memory.
@@ -130,6 +158,12 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 		{filter.InstrumentID, diagram.InstrumentID},
 		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(skill.ID(id)) }},
 		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(concept.ID(id)) }},
+	}
+	if filter.Language != "" {
+		language := filter.Language
+		predicates = append(predicates, func(s *sql.Selector) {
+			s.Where(sqljson.HasKey(s.C(diagram.FieldNames), sqljson.Path(language)))
+		})
 	}
 	for _, f := range byID {
 		if f.value == "" {
@@ -172,7 +206,7 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 		return rollback(tx, domain.ErrNotFound)
 	}
 	if _, err := tx.Diagram.UpdateOneID(id).
-		SetName(d.Name).
+		SetNames(d.Names).
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
@@ -249,7 +283,7 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 	return domain.Diagram{
 		ID:           row.ID.String(),
 		InstrumentID: row.InstrumentID.String(),
-		Name:         row.Name,
+		Names:        domain.LocalizedText(row.Names),
 		Kind:         domain.DiagramKind(row.Kind),
 		CreatedBy:    row.CreatedBy.String(),
 		RootNote:     row.RootNote,

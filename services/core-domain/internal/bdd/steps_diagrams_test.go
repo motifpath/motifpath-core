@@ -5,6 +5,7 @@ package bdd
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 
 	"github.com/cucumber/godog"
@@ -27,8 +28,23 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" creates a basic diagram named "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsBasicDiagramWithFrettedPositions)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with kind "([^"]*)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithKind)
 	sc.Step(`^"([^"]+)" attempts to create a basic diagram$`, w.attemptsCreateBasicDiagram)
+	sc.Step(`^"([^"]+)" creates a (basic )?diagram named "([^"]+)" in English and "([^"]+)" in Portuguese on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsBilingualDiagram)
+	sc.Step(`^"([^"]+)" creates a (basic )?diagram named only "([^"]+)" in (English|Portuguese) on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsSingleLanguageDiagram)
+	sc.Step(`^"([^"]+)" creates a diagram with names "([^"]+)" "([^"]+)" and "([^"]+)" "([^"]+)" on instrument "([^"]+)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithTwoNames)
+	sc.Step(`^"([^"]+)" renames diagram "([^"]+)" to "([^"]+)" in English and "([^"]+)" in Portuguese$`, w.renamesDiagram)
+	sc.Step(`^"([^"]+)" renames diagram "([^"]+)" to only "([^"]+)" in English$`, w.renamesDiagramEnglishOnly)
+	sc.Step(`^a custom diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)", named only in "([^"]+)"$`, func(slug, instrument, creator, language string) error {
+		return w.aCustomDiagramNamedIn(slug, instrument, creator, language, "")
+	})
+	sc.Step(`^a custom diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)", named in "([^"]+)" and "([^"]+)"$`, w.aCustomDiagramNamedIn)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)", named "([^"]+)" in English and "([^"]+)" in Portuguese$`, w.aBasicDiagramNamed)
+	sc.Step(`^"([^"]+)" lists diagrams in language "([^"]+)"$`, w.listsDiagramsInLanguage)
+	sc.Step(`^the response lists "([^"]+)" before "([^"]+)"$`, w.responseListsBefore)
+	sc.Step(`^the diagram's name in "([^"]+)" is "([^"]+)"$`, w.diagramNameIs)
+	sc.Step(`^the diagram's languages are "([^"]+)"$`, w.diagramLanguagesAre)
+	sc.Step(`^position (\d+) has interval "([^"]+)"$`, w.positionHasInterval)
 	sc.Step(`^"([^"]+)" saves a copy of diagram "([^"]+)" named "([^"]+)"$`, w.savesCopyOfDiagram)
-	sc.Step(`^"([^"]+)" saves a copy of diagram "([^"]+)" as a basic diagram named "([^"]+)"$`, w.savesCopyOfDiagramAsBasic)
+	sc.Step(`^"([^"]+)" saves a copy of diagram "([^"]+)" as a basic diagram named "([^"]+)" in English and "([^"]+)" in Portuguese$`, w.savesCopyOfDiagramAsBasic)
 	sc.Step(`^"([^"]+)" creates a diagram named "([^"]+)" on instrument "([^"]+)" with color "([^"]*)" classified under skills "([^"]+)", concepts "([^"]+)" with fretted positions:$`, w.createsDiagramWithColor)
 	sc.Step(`^"([^"]+)" updates diagram "([^"]+)" setting color "([^"]+)" and position (\d+) color "([^"]+)"$`, w.updatesDiagramColors)
 	sc.Step(`^"([^"]+)" submits a create diagram request on instrument "([^"]+)" with the skill_ids field omitted$`, w.submitsDiagramWithoutSkills)
@@ -100,14 +116,46 @@ func (w *world) curatorID() string {
 // instrument has. A diagram whose kind a scenario doesn't state is basic:
 // that's what every teacher can find and use.
 func (w *world) aDiagramExistsOn(slug, instrumentName string) error {
-	return w.seedOnePositionDiagram(slug, slug, instrumentName, domain.DiagramKindBasic, w.curatorID())
+	return w.seedOnePositionDiagram(slug, bothLanguages(slug), instrumentName, domain.DiagramKindBasic, w.curatorID())
 }
 
 // aCustomDiagramExistsOn seeds a one-position custom diagram owned by the
 // teacher named creator.
 func (w *world) aCustomDiagramExistsOn(slug, instrumentName, creator string) error {
 	owner := w.ensureRegistered(creator, domain.RoleTeacher).String()
-	return w.seedOnePositionDiagram(slug, slug, instrumentName, domain.DiagramKindCustom, owner)
+	return w.seedOnePositionDiagram(slug, map[string]string{"en": slug}, instrumentName, domain.DiagramKindCustom, owner)
+}
+
+// aCustomDiagramNamedIn seeds a custom diagram owned by creator, named (after
+// its slug) in exactly the given languages.
+func (w *world) aCustomDiagramNamedIn(slug, instrumentName, creator, first, second string) error {
+	owner := w.ensureRegistered(creator, domain.RoleTeacher).String()
+	names := map[string]string{first: slug}
+	if second != "" {
+		names[second] = slug
+	}
+	return w.seedOnePositionDiagram(slug, names, instrumentName, domain.DiagramKindCustom, owner)
+}
+
+// aBasicDiagramNamed seeds a basic diagram with explicit English and
+// Portuguese names.
+func (w *world) aBasicDiagramNamed(slug, instrumentName, englishName, portugueseName string) error {
+	return w.seedOnePositionDiagram(slug, map[string]string{"en": englishName, "pt_BR": portugueseName}, instrumentName, domain.DiagramKindBasic, w.curatorID())
+}
+
+// offeredLanguages are the languages the BDD world's language repository
+// offers — every one a basic diagram must be named in.
+var offeredLanguages = []string{"en", "pt_BR"}
+
+// bothLanguages names something the same in every offered language, which
+// any kind of diagram accepts.
+func bothLanguages(name string) map[string]string {
+	return map[string]string{"en": name, "pt_BR": name}
+}
+
+// english is a request names map with only an English name.
+func english(name string) generated.LocalizedNames {
+	return generated.LocalizedNames{"en": name}
 }
 
 // bulkBasicDiagrams seeds count basic diagrams with zero-padded names, so
@@ -116,14 +164,14 @@ func (w *world) bulkBasicDiagrams(count int, instrumentName string) error {
 	curator := w.curatorID()
 	for i := 1; i <= count; i++ {
 		name := padded("bulk-diagram-", i, 3)
-		if err := w.seedOnePositionDiagram(name, name, instrumentName, domain.DiagramKindBasic, curator); err != nil {
+		if err := w.seedOnePositionDiagram(name, bothLanguages(name), instrumentName, domain.DiagramKindBasic, curator); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *world) seedOnePositionDiagram(slug, name, instrumentName string, kind domain.DiagramKind, owner string) error {
+func (w *world) seedOnePositionDiagram(slug string, names map[string]string, instrumentName string, kind domain.DiagramKind, owner string) error {
 	instrument, err := w.ensureInstrumentSeeded(instrumentName)
 	if err != nil {
 		return err
@@ -137,7 +185,7 @@ func (w *world) seedOnePositionDiagram(slug, name, instrumentName string, kind d
 		position.Key = &key
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), owner, instrument, name, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: kind}, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), owner, instrument, names, offeredLanguages, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: kind}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -186,7 +234,7 @@ func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table
 		})
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), w.curatorID(), instrument, slug, positions, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: domain.DiagramKindBasic}, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), w.curatorID(), instrument, bothLanguages(slug), offeredLanguages, positions, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: domain.DiagramKindBasic}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -241,14 +289,14 @@ func (w *world) createsDiagramWithFrettedPositions(_, name, instrument, skills, 
 		if err != nil {
 			return fmt.Errorf("fret %q is not a number: %w", fretCell, err)
 		}
-		position := generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret}
+		position := generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret}
 		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
 			position.Color = &colorCell
 		}
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: name, Positions: positions,
+		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -271,14 +319,14 @@ func (w *world) createsDiagramWithColor(_, name, instrument, color, skills, conc
 		if err != nil {
 			return err
 		}
-		position := generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret}
+		position := generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret}
 		if colorCell := optionalCell(table, row, "color"); colorCell != "" {
 			position.Color = &colorCell
 		}
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: name, Positions: positions, Color: &color,
+		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions, Color: &color,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -319,7 +367,7 @@ func (w *world) updatesDiagramColors(_, slug, color, index, positionColor string
 	positions := make([]generated.DiagramPosition, len(current.Positions))
 	for j, p := range current.Positions {
 		id := uuid.MustParse(p.ID)
-		positions[j] = generated.DiagramPosition{PositionId: &id, Interval: p.Interval, NoteName: p.NoteName, String: p.String, Fret: p.Fret, Key: p.Key}
+		positions[j] = generated.DiagramPosition{PositionId: &id, Interval: generated.DiagramPositionInterval(p.Interval), NoteName: p.NoteName, String: p.String, Fret: p.Fret, Key: p.Key}
 	}
 	positions[i-1].Color = &positionColor
 	body := generated.UpdateDiagramRequest{Color: &color, Positions: &positions}
@@ -366,7 +414,7 @@ func (w *world) createsDiagramWithRootAndLabelDisplay(_, name, instrument, rootN
 		if err != nil {
 			return fmt.Errorf("fret %q is not a number: %w", fretCell, err)
 		}
-		position := generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret}
+		position := generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret}
 		if shapeCell := optionalCell(table, row, "shape"); shapeCell != "" {
 			shape := generated.DiagramPositionShape(shapeCell)
 			position.Shape = &shape
@@ -375,7 +423,7 @@ func (w *world) createsDiagramWithRootAndLabelDisplay(_, name, instrument, rootN
 	}
 	display := generated.CreateDiagramRequestLabelDisplay(labelDisplay)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: name, Positions: positions,
+		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
 		RootNote: &rootNote, LabelDisplay: &display,
 		Classification: w.diagramClassification(skills, concepts),
 	})
@@ -540,10 +588,10 @@ func (w *world) createsDiagramWithKeyboardPositions(_, name, instrument, skills,
 		if err != nil {
 			return err
 		}
-		positions = append(positions, generated.DiagramPosition{Interval: interval, NoteName: note, Key: &key})
+		positions = append(positions, generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, Key: &key})
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: name, Positions: positions,
+		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -555,21 +603,21 @@ func onePositionOnGuitar() []generated.DiagramPosition {
 
 func (w *world) submitsDiagramWithoutSkills(_, instrument string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: "No skills", Positions: onePositionOnGuitar(),
+		InstrumentId: instrumentID(instrument), Names: english("No skills"), Positions: onePositionOnGuitar(),
 		Classification: generated.DiagramClassificationInput{ConceptIds: w.conceptIDsFor("scale-construction")},
 	})
 }
 
 func (w *world) submitsDiagramOnMissingInstrument(string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: deterministicUUID("instrument", "does-not-exist"), Name: "Orphan", Positions: onePositionOnGuitar(),
+		InstrumentId: deterministicUUID("instrument", "does-not-exist"), Names: english("Orphan"), Positions: onePositionOnGuitar(),
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
 
 func (w *world) attemptsCreateDiagram(string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID("guitar"), Name: "Attempted", Positions: onePositionOnGuitar(),
+		InstrumentId: instrumentID("guitar"), Names: english("Attempted"), Positions: onePositionOnGuitar(),
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
@@ -647,7 +695,7 @@ func frettedPositionsFromTable(table *godog.Table) ([]generated.DiagramPosition,
 		if err != nil {
 			return nil, err
 		}
-		positions = append(positions, generated.DiagramPosition{Interval: interval, NoteName: note, String: &str, Fret: &fret})
+		positions = append(positions, generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, String: &str, Fret: &fret})
 	}
 	return positions, nil
 }
@@ -663,7 +711,7 @@ func (w *world) createsDiagramWithKind(_, name, instrument, kind, skills, concep
 	}
 	k := generated.CreateDiagramRequestKind(kind)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Name: name, Positions: positions, Kind: &k,
+		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions, Kind: &k,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -671,25 +719,25 @@ func (w *world) createsDiagramWithKind(_, name, instrument, kind, skills, concep
 func (w *world) attemptsCreateBasicDiagram(string) error {
 	basic := generated.CreateDiagramRequestKindBasic
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID("guitar"), Name: "Attempted template", Positions: onePositionOnGuitar(), Kind: &basic,
+		InstrumentId: instrumentID("guitar"), Names: english("Attempted template"), Positions: onePositionOnGuitar(), Kind: &basic,
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
 
 func (w *world) savesCopyOfDiagram(_, slug, name string) error {
-	return w.saveCopy(slug, name, nil)
+	return w.saveCopy(slug, english(name), nil)
 }
 
-func (w *world) savesCopyOfDiagramAsBasic(_, slug, name string) error {
+func (w *world) savesCopyOfDiagramAsBasic(_, slug, englishName, portugueseName string) error {
 	basic := generated.CreateDiagramRequestKindBasic
-	return w.saveCopy(slug, name, &basic)
+	return w.saveCopy(slug, generated.LocalizedNames{"en": englishName, "pt_BR": portugueseName}, &basic)
 }
 
 // saveCopy does what the diagram editor's "Save as" does: it reads the
 // source diagram as the caller, then creates a new one from what it read —
 // every authored field carried over, position ids left for the server to
 // assign. The source as read is kept so later steps can compare against it.
-func (w *world) saveCopy(slug, name string, kind *generated.CreateDiagramRequestKind) error {
+func (w *world) saveCopy(slug string, names generated.LocalizedNames, kind *generated.CreateDiagramRequestKind) error {
 	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID(slug)})
 	if err != nil {
 		return err
@@ -715,7 +763,7 @@ func (w *world) saveCopy(slug, name string, kind *generated.CreateDiagramRequest
 	}
 	labelDisplay := generated.CreateDiagramRequestLabelDisplay(source.LabelDisplay)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: source.InstrumentId, Name: name, Kind: kind, Positions: positions,
+		InstrumentId: source.InstrumentId, Names: names, Kind: kind, Positions: positions,
 		RootNote: source.RootNote, LabelDisplay: &labelDisplay, Color: source.Color,
 		Classification: generated.DiagramClassificationInput{SkillIds: skills, ConceptIds: concepts},
 	})
@@ -756,7 +804,7 @@ type authoredPosition struct {
 func authoredPositions(positions []generated.DiagramPosition) []authoredPosition {
 	out := make([]authoredPosition, len(positions))
 	for i, p := range positions {
-		a := authoredPosition{interval: p.Interval, note: p.NoteName}
+		a := authoredPosition{interval: string(p.Interval), note: p.NoteName}
 		if p.Shape != nil {
 			a.shape = string(*p.Shape)
 		}
@@ -858,4 +906,110 @@ func (w *world) retrievesDiagram(_, slug string) error {
 	resp, err := w.handler.GetDiagram(w.ctx(), generated.GetDiagramRequestObject{DiagramId: diagramID(slug)})
 	w.lastResp, w.lastErr = resp, err
 	return err
+}
+
+// createDiagramNamed is the table-driven create, with explicit names and an
+// optional kind.
+func (w *world) createDiagramNamed(names generated.LocalizedNames, basic bool, instrument, skills, concepts string, table *godog.Table) error {
+	positions, err := frettedPositionsFromTable(table)
+	if err != nil {
+		return err
+	}
+	body := generated.CreateDiagramRequest{
+		InstrumentId: instrumentID(instrument), Names: names, Positions: positions,
+		Classification: w.diagramClassification(skills, concepts),
+	}
+	if basic {
+		kind := generated.CreateDiagramRequestKindBasic
+		body.Kind = &kind
+	}
+	return w.createDiagram(body)
+}
+
+func (w *world) createsBilingualDiagram(_, basic, englishName, portugueseName, instrument, skills, concepts string, table *godog.Table) error {
+	return w.createDiagramNamed(generated.LocalizedNames{"en": englishName, "pt_BR": portugueseName}, basic != "", instrument, skills, concepts, table)
+}
+
+func (w *world) createsSingleLanguageDiagram(_, basic, name, language, instrument, skills, concepts string, table *godog.Table) error {
+	code := "en"
+	if language == "Portuguese" {
+		code = "pt_BR"
+	}
+	return w.createDiagramNamed(generated.LocalizedNames{code: name}, basic != "", instrument, skills, concepts, table)
+}
+
+func (w *world) createsDiagramWithTwoNames(_, lang1, name1, lang2, name2, instrument, skills, concepts string, table *godog.Table) error {
+	return w.createDiagramNamed(generated.LocalizedNames{lang1: name1, lang2: name2}, false, instrument, skills, concepts, table)
+}
+
+func (w *world) renameDiagram(slug string, names generated.LocalizedNames) error {
+	body := generated.UpdateDiagramRequest{Names: &names}
+	resp, err := w.handler.UpdateDiagram(w.ctx(), generated.UpdateDiagramRequestObject{DiagramId: diagramID(slug), Body: &body})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) renamesDiagram(_, slug, englishName, portugueseName string) error {
+	return w.renameDiagram(slug, generated.LocalizedNames{"en": englishName, "pt_BR": portugueseName})
+}
+
+func (w *world) renamesDiagramEnglishOnly(_, slug, englishName string) error {
+	return w.renameDiagram(slug, english(englishName))
+}
+
+func (w *world) listsDiagramsInLanguage(_, language string) error {
+	return w.listDiagrams(generated.ListDiagramsParams{Language: &language})
+}
+
+func (w *world) responseListsBefore(first, second string) error {
+	resp, ok := w.lastResp.(generated.ListDiagrams200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a diagram list, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	indexOf := func(slug string) int {
+		for i, d := range resp.Items {
+			if d.DiagramId == diagramID(slug) {
+				return i
+			}
+		}
+		return -1
+	}
+	a, b := indexOf(first), indexOf(second)
+	if a == -1 || b == -1 || a > b {
+		return fmt.Errorf("expected %q before %q, got positions %d and %d", first, second, a, b)
+	}
+	return nil
+}
+
+func (w *world) diagramNameIs(language, want string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if got, ok := diagram.Names[language]; !ok || got != want {
+		return fmt.Errorf("expected the %q name to be %q, got names %v", language, want, diagram.Names)
+	}
+	return nil
+}
+
+func (w *world) diagramLanguagesAre(list string) error {
+	diagram, err := w.currentDiagram()
+	if err != nil {
+		return err
+	}
+	if want := splitCommaList(list); !slices.Equal(diagram.Languages, want) {
+		return fmt.Errorf("expected languages %v, got %v", want, diagram.Languages)
+	}
+	return nil
+}
+
+func (w *world) positionHasInterval(index, want string) error {
+	p, err := w.positionAt(index)
+	if err != nil {
+		return err
+	}
+	if string(p.Interval) != want {
+		return fmt.Errorf("expected position %s to have interval %q, got %q", index, want, p.Interval)
+	}
+	return nil
 }
