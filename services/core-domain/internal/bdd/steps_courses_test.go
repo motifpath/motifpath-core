@@ -582,9 +582,9 @@ func (w *world) enrollmentAndCurrentPathUnaffected(name string) error {
 	return w.currentPathUnaffected(name)
 }
 
-func (w *world) listsCourseCatalog(name string) error {
-	resp, err := w.handler.ListCourses(w.ctx(), generated.ListCoursesRequestObject{})
-	w.lastResp, w.lastErr = resp, err
+func (w *world) listsCourseCatalog(string) error {
+	resp, err := w.handler.ListCatalogCourses(w.ctx(), generated.ListCatalogCoursesRequestObject{})
+	w.storeCatalogResponse(resp, err)
 	return err
 }
 

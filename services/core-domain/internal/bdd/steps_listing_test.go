@@ -56,6 +56,9 @@ func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a content node in "([^"]+)" is classified with (skill|concept) "([^"]+)"(?: and (skill|concept) "([^"]+)")?$`, w.nodeInPathClassified)
 	sc.Step(`^"([^"]+)" replaces the draft of "([^"]+)" with checkpoints "([^"]+)", "([^"]+)"$`, w.replacesDraftAs)
 	sc.Step(`^"([^"]+)" lists the course catalog(.+)$`, w.listsCourseCatalogWith)
+	sc.Step(`^"([^"]+)" lists the courses they manage$`, w.listsManagedCourses)
+	sc.Step(`^"([^"]+)" lists the courses they manage(.+)$`, w.listsManagedCoursesWith)
+	sc.Step(`^"([^"]+)" lists the creators of the courses they manage$`, w.listsManagedCourseCreators)
 	sc.Step(`^the response includes the "([^"]+)" and "([^"]+)" courses$`, w.responseIncludesLevelCourses)
 	sc.Step(`^the response does not include the "([^"]+)" course$`, w.responseExcludesLevelCourse)
 	sc.Step(`^the entry for "([^"]+)" records "([^"]+)" as the creator$`, w.entryRecordsCreator)
@@ -566,37 +569,104 @@ func (w *world) nodeInPathClassified(pathSlug, kindA, nameA, kindB, nameB string
 // trailing text into query parameters: paging ("with limit N and offset M"),
 // text ("matching text ..."), and any "filtered by" clauses — level(s),
 // skill(s), concept(s), creator and text — each holding quoted values.
-func (w *world) listsCourseCatalogWith(_ string, tail string) error {
+// courseListQuery is a course-list step's parsed page and filter clauses,
+// shared by the learner catalog and the authoring list, which take the same
+// filters under two parameter types.
+type courseListQuery struct {
+	limit, offset *int
+	q             *string
+	levels        []string
+	skillIDs      *[]uuid.UUID
+	conceptIDs    *[]uuid.UUID
+	createdBy     *uuid.UUID
+}
+
+func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
 	limit, offset, err := pageParams(tail)
 	if err != nil {
-		return err
+		return courseListQuery{}, err
 	}
-	params := generated.ListCoursesParams{Limit: limit, Offset: offset, Q: searchParam(tail)}
-
+	query := courseListQuery{limit: limit, offset: offset, q: searchParam(tail)}
 	for _, m := range filterClauses.FindAllStringSubmatch(tail, -1) {
 		values := quotedValues(m[2])
 		switch m[1] {
 		case "level", "levels":
-			levels := make([]generated.ListCoursesParamsLevels, len(values))
-			for i, v := range values {
-				levels[i] = generated.ListCoursesParamsLevels(v)
-			}
-			params.Levels = &levels
+			query.levels = values
 		case "skill", "skills":
 			ids := w.skillIDsForNames(values)
-			params.SkillIds = &ids
+			query.skillIDs = &ids
 		case "concept", "concepts":
 			ids := w.conceptIDsForNames(values)
-			params.ConceptIds = &ids
+			query.conceptIDs = &ids
 		case "creator":
 			id := w.ensureRegistered(values[0], domain.RoleTeacher)
-			params.CreatedBy = &id
+			query.createdBy = &id
 		case "text":
 			text := values[0]
-			params.Q = &text
+			query.q = &text
 		}
 	}
+	return query, nil
+}
 
+// listsCourseCatalogWith lists the learner catalog with the page and filter
+// clauses in tail: page size/offset, level(s), skill(s), concept(s), creator
+// and text — each holding quoted values.
+func (w *world) listsCourseCatalogWith(_ string, tail string) error {
+	query, err := w.parseCourseListQuery(tail)
+	if err != nil {
+		return err
+	}
+	params := generated.ListCatalogCoursesParams{
+		Limit: query.limit, Offset: query.offset, Q: query.q,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy,
+	}
+	if query.levels != nil {
+		levels := make([]generated.ListCatalogCoursesParamsLevels, len(query.levels))
+		for i, v := range query.levels {
+			levels[i] = generated.ListCatalogCoursesParamsLevels(v)
+		}
+		params.Levels = &levels
+	}
+	resp, callErr := w.handler.ListCatalogCourses(w.ctx(), generated.ListCatalogCoursesRequestObject{Params: params})
+	w.storeCatalogResponse(resp, callErr)
+	return callErr
+}
+
+// storeCatalogResponse records a learner-catalog response. The catalog and
+// the authoring list share one response schema, so a successful catalog
+// page is stored as the authoring list's type, letting every course-list
+// assertion read either.
+func (w *world) storeCatalogResponse(resp generated.ListCatalogCoursesResponseObject, err error) {
+	if page, ok := resp.(generated.ListCatalogCourses200JSONResponse); ok {
+		w.lastResp, w.lastErr = generated.ListCourses200JSONResponse(page), err
+		return
+	}
+	w.lastResp, w.lastErr = resp, err
+}
+
+func (w *world) listsManagedCourses(name string) error {
+	return w.listsManagedCoursesWith(name, "")
+}
+
+// listsManagedCoursesWith lists the caller's authoring course list, with the
+// same clauses as listsCourseCatalogWith.
+func (w *world) listsManagedCoursesWith(_ string, tail string) error {
+	query, err := w.parseCourseListQuery(tail)
+	if err != nil {
+		return err
+	}
+	params := generated.ListCoursesParams{
+		Limit: query.limit, Offset: query.offset, Q: query.q,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy,
+	}
+	if query.levels != nil {
+		levels := make([]generated.ListCoursesParamsLevels, len(query.levels))
+		for i, v := range query.levels {
+			levels[i] = generated.ListCoursesParamsLevels(v)
+		}
+		params.Levels = &levels
+	}
 	resp, callErr := w.handler.ListCourses(w.ctx(), generated.ListCoursesRequestObject{Params: params})
 	w.lastResp, w.lastErr = resp, callErr
 	return callErr
@@ -655,16 +725,29 @@ func (w *world) entryRecordsCreator(slug, creator string) error {
 	return fmt.Errorf("expected the response to include %q", slug)
 }
 
+// listsCourseCreators lists the learner catalog's creators. Like course
+// pages, a successful catalog response is stored as the authoring list's
+// type (both are a plain UserRef list) so the creator assertions read either.
 func (w *world) listsCourseCreators(string) error {
-	resp, err := w.handler.ListCourseCreators(w.ctx(), generated.ListCourseCreatorsRequestObject{})
+	return w.listCatalogCreators(generated.ListCatalogCreatorsParams{})
+}
+
+func (w *world) listsCourseCreatorsMatching(_, query string) error {
+	return w.listCatalogCreators(generated.ListCatalogCreatorsParams{Q: &query})
+}
+
+func (w *world) listCatalogCreators(params generated.ListCatalogCreatorsParams) error {
+	resp, err := w.handler.ListCatalogCreators(w.ctx(), generated.ListCatalogCreatorsRequestObject{Params: params})
+	if creators, ok := resp.(generated.ListCatalogCreators200JSONResponse); ok {
+		w.lastResp, w.lastErr = generated.ListCourseCreators200JSONResponse(creators), err
+		return err
+	}
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
 
-func (w *world) listsCourseCreatorsMatching(_, query string) error {
-	resp, err := w.handler.ListCourseCreators(w.ctx(), generated.ListCourseCreatorsRequestObject{
-		Params: generated.ListCourseCreatorsParams{Q: &query},
-	})
+func (w *world) listsManagedCourseCreators(string) error {
+	resp, err := w.handler.ListCourseCreators(w.ctx(), generated.ListCourseCreatorsRequestObject{})
 	w.lastResp, w.lastErr = resp, err
 	return err
 }
