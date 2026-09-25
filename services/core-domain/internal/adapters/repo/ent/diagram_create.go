@@ -14,6 +14,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
@@ -139,6 +140,21 @@ func (_c *DiagramCreate) AddPositions(v ...*Position) *DiagramCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddPositionIDs(ids...)
+}
+
+// AddRegionIDs adds the "regions" edge to the DiagramRegion entity by IDs.
+func (_c *DiagramCreate) AddRegionIDs(ids ...uuid.UUID) *DiagramCreate {
+	_c.mutation.AddRegionIDs(ids...)
+	return _c
+}
+
+// AddRegions adds the "regions" edges to the DiagramRegion entity.
+func (_c *DiagramCreate) AddRegions(v ...*DiagramRegion) *DiagramCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddRegionIDs(ids...)
 }
 
 // AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
@@ -372,6 +388,22 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(position.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RegionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -380,3 +380,91 @@ func TestEntDiagramRepository_ColorsRoundTrip(t *testing.T) {
 		assert.Nil(t, again.Positions[0].Color)
 	})
 }
+
+func TestEntDiagramRepository_AnnotationsRoundTrip(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	instruments, diagrams := NewEntInstrumentRepository(client), NewEntDiagramRepository(client)
+
+	guitar, piano := frettedInstrument(), keyboardInstrument()
+	require.NoError(t, instruments.Create(ctx, guitar))
+	require.NoError(t, instruments.Create(ctx, piano))
+	skill := seedSkill(t, ctx, client, "s-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "c-"+uuid.NewString())
+	strPtr := func(s string) *string { return &s }
+
+	// Regions deliberately not in id order: they come back in drawing order.
+	d := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Two Boxes", "pt_BR": "Duas caixas"}, LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8),
+				CustomLabel: domain.LocalizedText{"en": "Av", "pt_BR": "Ev"}, Note: domain.LocalizedText{"en": "Avoid it", "pt_BR": "Evite"}},
+		},
+		Regions: []domain.Region{
+			{ID: "ffffffff-0000-4000-8000-000000000001", FretStart: intPtr(5), FretEnd: intPtr(8), Description: domain.LocalizedText{"en": "Box 1", "pt_BR": "Caixa 1"}},
+			{ID: "00000000-0000-4000-8000-000000000002", FretStart: intPtr(7), FretEnd: intPtr(10), StringStart: intPtr(1), StringEnd: intPtr(3), Description: domain.LocalizedText{"en": "Box 2", "pt_BR": "Caixa 2"}, Color: strPtr("#22C55E")},
+		},
+		Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
+	}
+	require.NoError(t, diagrams.Create(ctx, d))
+
+	got, err := diagrams.GetByID(ctx, d.ID)
+	require.NoError(t, err)
+	assert.Equal(t, d, got)
+
+	t.Run("keyboard regions round-trip their key range", func(t *testing.T) {
+		k := domain.Diagram{
+			ID: uuid.NewString(), InstrumentID: piano.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Octave"}, LabelDisplay: domain.LabelDisplayInterval,
+			Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "C", Shape: domain.PositionShapeDot, Key: strPtr("C4")}},
+			Regions:   []domain.Region{{ID: uuid.NewString(), KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: domain.LocalizedText{"en": "Octave 4"}}},
+			Skills:    []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
+		}
+		require.NoError(t, diagrams.Create(ctx, k))
+
+		again, err := diagrams.GetByID(ctx, k.ID)
+		require.NoError(t, err)
+		assert.Equal(t, k, again)
+	})
+
+	t.Run("update replaces the regions and clears a position's annotations", func(t *testing.T) {
+		updated := d
+		updated.Positions = []domain.Position{d.Positions[0], {ID: d.Positions[1].ID, Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)}}
+		updated.Regions = []domain.Region{{ID: uuid.NewString(), FretStart: intPtr(0), FretEnd: intPtr(3), Description: domain.LocalizedText{"en": "Open", "pt_BR": "Solta"}}}
+
+		require.NoError(t, diagrams.Update(ctx, updated))
+
+		again, err := diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Equal(t, updated, again)
+	})
+
+	t.Run("update with no regions removes them all", func(t *testing.T) {
+		updated := d
+		updated.Regions = nil
+
+		require.NoError(t, diagrams.Update(ctx, updated))
+
+		again, err := diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Nil(t, again.Regions)
+	})
+
+	t.Run("a region id owned by another diagram is a validation error", func(t *testing.T) {
+		other := d
+		other.ID = uuid.NewString()
+		other.Positions = []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}}
+		other.Regions = []domain.Region{{ID: "ffffffff-0000-4000-8000-000000000009", FretStart: intPtr(5), FretEnd: intPtr(8), Description: domain.LocalizedText{"en": "Box", "pt_BR": "Caixa"}}}
+		require.NoError(t, diagrams.Create(ctx, other))
+		clash := d
+		clash.ID = uuid.NewString()
+		clash.Positions = []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}}
+		clash.Regions = other.Regions
+
+		err := diagrams.Create(ctx, clash)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "regions", valErr.Fields[0].Field)
+	})
+}

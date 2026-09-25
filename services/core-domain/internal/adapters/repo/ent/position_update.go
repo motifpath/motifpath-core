@@ -227,6 +227,30 @@ func (_u *PositionUpdate) ClearKey() *PositionUpdate {
 	return _u
 }
 
+// SetCustomLabel sets the "custom_label" field.
+func (_u *PositionUpdate) SetCustomLabel(v map[string]string) *PositionUpdate {
+	_u.mutation.SetCustomLabel(v)
+	return _u
+}
+
+// ClearCustomLabel clears the value of the "custom_label" field.
+func (_u *PositionUpdate) ClearCustomLabel() *PositionUpdate {
+	_u.mutation.ClearCustomLabel()
+	return _u
+}
+
+// SetNote sets the "note" field.
+func (_u *PositionUpdate) SetNote(v map[string]string) *PositionUpdate {
+	_u.mutation.SetNote(v)
+	return _u
+}
+
+// ClearNote clears the value of the "note" field.
+func (_u *PositionUpdate) ClearNote() *PositionUpdate {
+	_u.mutation.ClearNote()
+	return _u
+}
+
 // SetDiagram sets the "diagram" edge to the Diagram entity.
 func (_u *PositionUpdate) SetDiagram(v *Diagram) *PositionUpdate {
 	return _u.SetDiagramID(v.ID)
@@ -348,6 +372,18 @@ func (_u *PositionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.KeyCleared() {
 		_spec.ClearField(position.FieldKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.CustomLabel(); ok {
+		_spec.SetField(position.FieldCustomLabel, field.TypeJSON, value)
+	}
+	if _u.mutation.CustomLabelCleared() {
+		_spec.ClearField(position.FieldCustomLabel, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Note(); ok {
+		_spec.SetField(position.FieldNote, field.TypeJSON, value)
+	}
+	if _u.mutation.NoteCleared() {
+		_spec.ClearField(position.FieldNote, field.TypeJSON)
 	}
 	if _u.mutation.DiagramCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -596,6 +632,30 @@ func (_u *PositionUpdateOne) ClearKey() *PositionUpdateOne {
 	return _u
 }
 
+// SetCustomLabel sets the "custom_label" field.
+func (_u *PositionUpdateOne) SetCustomLabel(v map[string]string) *PositionUpdateOne {
+	_u.mutation.SetCustomLabel(v)
+	return _u
+}
+
+// ClearCustomLabel clears the value of the "custom_label" field.
+func (_u *PositionUpdateOne) ClearCustomLabel() *PositionUpdateOne {
+	_u.mutation.ClearCustomLabel()
+	return _u
+}
+
+// SetNote sets the "note" field.
+func (_u *PositionUpdateOne) SetNote(v map[string]string) *PositionUpdateOne {
+	_u.mutation.SetNote(v)
+	return _u
+}
+
+// ClearNote clears the value of the "note" field.
+func (_u *PositionUpdateOne) ClearNote() *PositionUpdateOne {
+	_u.mutation.ClearNote()
+	return _u
+}
+
 // SetDiagram sets the "diagram" edge to the Diagram entity.
 func (_u *PositionUpdateOne) SetDiagram(v *Diagram) *PositionUpdateOne {
 	return _u.SetDiagramID(v.ID)
@@ -747,6 +807,18 @@ func (_u *PositionUpdateOne) sqlSave(ctx context.Context) (_node *Position, err 
 	}
 	if _u.mutation.KeyCleared() {
 		_spec.ClearField(position.FieldKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.CustomLabel(); ok {
+		_spec.SetField(position.FieldCustomLabel, field.TypeJSON, value)
+	}
+	if _u.mutation.CustomLabelCleared() {
+		_spec.ClearField(position.FieldCustomLabel, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Note(); ok {
+		_spec.SetField(position.FieldNote, field.TypeJSON, value)
+	}
+	if _u.mutation.NoteCleared() {
+		_spec.ClearField(position.FieldNote, field.TypeJSON)
 	}
 	if _u.mutation.DiagramCleared() {
 		edge := &sqlgraph.EdgeSpec{

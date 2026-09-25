@@ -36,6 +36,8 @@ const (
 	EdgeInstrument = "instrument"
 	// EdgePositions holds the string denoting the positions edge name in mutations.
 	EdgePositions = "positions"
+	// EdgeRegions holds the string denoting the regions edge name in mutations.
+	EdgeRegions = "regions"
 	// EdgeSkills holds the string denoting the skills edge name in mutations.
 	EdgeSkills = "skills"
 	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
@@ -60,6 +62,13 @@ const (
 	PositionsInverseTable = "positions"
 	// PositionsColumn is the table column denoting the positions relation/edge.
 	PositionsColumn = "diagram_id"
+	// RegionsTable is the table that holds the regions relation/edge.
+	RegionsTable = "diagram_regions"
+	// RegionsInverseTable is the table name for the DiagramRegion entity.
+	// It exists in this package in order to avoid circular dependency with the "diagramregion" package.
+	RegionsInverseTable = "diagram_regions"
+	// RegionsColumn is the table column denoting the regions relation/edge.
+	RegionsColumn = "diagram_id"
 	// SkillsTable is the table that holds the skills relation/edge. The primary key declared below.
 	SkillsTable = "diagram_skills"
 	// SkillsInverseTable is the table name for the Skill entity.
@@ -239,6 +248,20 @@ func ByPositions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByRegionsCount orders the results by regions count.
+func ByRegionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRegionsStep(), opts...)
+	}
+}
+
+// ByRegions orders the results by regions terms.
+func ByRegions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRegionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // BySkillsCount orders the results by skills count.
 func BySkillsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -306,6 +329,13 @@ func newPositionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PositionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PositionsTable, PositionsColumn),
+	)
+}
+func newRegionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RegionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RegionsTable, RegionsColumn),
 	)
 }
 func newSkillsStep() *sqlgraph.Step {

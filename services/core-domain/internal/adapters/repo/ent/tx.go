@@ -48,6 +48,8 @@ type Tx struct {
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
 	DiagramConcept *DiagramConceptClient
+	// DiagramRegion is the client for interacting with the DiagramRegion builders.
+	DiagramRegion *DiagramRegionClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
 	DiagramSkill *DiagramSkillClient
 	// Exercise is the client for interacting with the Exercise builders.
@@ -233,6 +235,7 @@ func (tx *Tx) init() {
 	tx.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(tx.config)
 	tx.Diagram = NewDiagramClient(tx.config)
 	tx.DiagramConcept = NewDiagramConceptClient(tx.config)
+	tx.DiagramRegion = NewDiagramRegionClient(tx.config)
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)

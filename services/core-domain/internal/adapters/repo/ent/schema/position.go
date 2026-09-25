@@ -58,6 +58,15 @@ func (Position) Fields() []ent.Field {
 		field.String("key").
 			Optional().
 			Nillable(),
+
+		// custom_label and note map a language code to the text in that
+		// language, covering exactly the parent diagram's languages; NULL =
+		// none.
+		field.JSON("custom_label", map[string]string{}).
+			Optional(),
+
+		field.JSON("note", map[string]string{}).
+			Optional(),
 	}
 }
 

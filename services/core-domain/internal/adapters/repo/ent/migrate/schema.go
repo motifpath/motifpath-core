@@ -505,6 +505,41 @@ var (
 			},
 		},
 	}
+	// DiagramRegionsColumns holds the columns for the "diagram_regions" table.
+	DiagramRegionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "ordinal", Type: field.TypeInt},
+		{Name: "fret_start", Type: field.TypeInt, Nullable: true},
+		{Name: "fret_end", Type: field.TypeInt, Nullable: true},
+		{Name: "string_start", Type: field.TypeInt, Nullable: true},
+		{Name: "string_end", Type: field.TypeInt, Nullable: true},
+		{Name: "key_start", Type: field.TypeString, Nullable: true},
+		{Name: "key_end", Type: field.TypeString, Nullable: true},
+		{Name: "description", Type: field.TypeJSON},
+		{Name: "color", Type: field.TypeString, Nullable: true},
+		{Name: "diagram_id", Type: field.TypeUUID},
+	}
+	// DiagramRegionsTable holds the schema information for the "diagram_regions" table.
+	DiagramRegionsTable = &schema.Table{
+		Name:       "diagram_regions",
+		Columns:    DiagramRegionsColumns,
+		PrimaryKey: []*schema.Column{DiagramRegionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagram_regions_diagrams_regions",
+				Columns:    []*schema.Column{DiagramRegionsColumns[10]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "diagramregion_diagram_id_ordinal",
+				Unique:  true,
+				Columns: []*schema.Column{DiagramRegionsColumns[10], DiagramRegionsColumns[1]},
+			},
+		},
+	}
 	// DiagramSkillsColumns holds the columns for the "diagram_skills" table.
 	DiagramSkillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -839,6 +874,8 @@ var (
 		{Name: "string_number", Type: field.TypeInt, Nullable: true},
 		{Name: "fret", Type: field.TypeInt, Nullable: true},
 		{Name: "key", Type: field.TypeString, Nullable: true},
+		{Name: "custom_label", Type: field.TypeJSON, Nullable: true},
+		{Name: "note", Type: field.TypeJSON, Nullable: true},
 		{Name: "diagram_id", Type: field.TypeUUID},
 	}
 	// PositionsTable holds the schema information for the "positions" table.
@@ -849,7 +886,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "positions_diagrams_positions",
-				Columns:    []*schema.Column{PositionsColumns[10]},
+				Columns:    []*schema.Column{PositionsColumns[12]},
 				RefColumns: []*schema.Column{DiagramsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -858,7 +895,7 @@ var (
 			{
 				Name:    "position_diagram_id_ordinal",
 				Unique:  true,
-				Columns: []*schema.Column{PositionsColumns[10], PositionsColumns[1]},
+				Columns: []*schema.Column{PositionsColumns[12], PositionsColumns[1]},
 			},
 		},
 	}
@@ -978,6 +1015,7 @@ var (
 		CourseVersionCheckpointsTable,
 		DiagramsTable,
 		DiagramConceptsTable,
+		DiagramRegionsTable,
 		DiagramSkillsTable,
 		ExercisesTable,
 		ExerciseConceptsTable,
@@ -1018,6 +1056,7 @@ func init() {
 	DiagramsTable.ForeignKeys[0].RefTable = InstrumentsTable
 	DiagramConceptsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	DiagramRegionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[1].RefTable = SkillsTable
 	ExerciseConceptsTable.ForeignKeys[0].RefTable = ExercisesTable

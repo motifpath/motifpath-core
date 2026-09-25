@@ -34,6 +34,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
@@ -95,6 +96,8 @@ type Client struct {
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
 	DiagramConcept *DiagramConceptClient
+	// DiagramRegion is the client for interacting with the DiagramRegion builders.
+	DiagramRegion *DiagramRegionClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
 	DiagramSkill *DiagramSkillClient
 	// Exercise is the client for interacting with the Exercise builders.
@@ -160,6 +163,7 @@ func (c *Client) init() {
 	c.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(c.config)
 	c.Diagram = NewDiagramClient(c.config)
 	c.DiagramConcept = NewDiagramConceptClient(c.config)
+	c.DiagramRegion = NewDiagramRegionClient(c.config)
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseConcept = NewExerciseConceptClient(c.config)
@@ -288,6 +292,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		CourseVersionCheckpoint: NewCourseVersionCheckpointClient(cfg),
 		Diagram:                 NewDiagramClient(cfg),
 		DiagramConcept:          NewDiagramConceptClient(cfg),
+		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
@@ -343,6 +348,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		CourseVersionCheckpoint: NewCourseVersionCheckpointClient(cfg),
 		Diagram:                 NewDiagramClient(cfg),
 		DiagramConcept:          NewDiagramConceptClient(cfg),
+		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
@@ -394,11 +400,11 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
 		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
 		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramSkill,
-		c.Exercise, c.ExerciseConcept, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position, c.Skill,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramRegion,
+		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
+		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
+		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -412,11 +418,11 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
 		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
 		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramSkill,
-		c.Exercise, c.ExerciseConcept, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position, c.Skill,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramRegion,
+		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
+		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
+		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -461,6 +467,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Diagram.mutate(ctx, m)
 	case *DiagramConceptMutation:
 		return c.DiagramConcept.mutate(ctx, m)
+	case *DiagramRegionMutation:
+		return c.DiagramRegion.mutate(ctx, m)
 	case *DiagramSkillMutation:
 		return c.DiagramSkill.mutate(ctx, m)
 	case *ExerciseMutation:
@@ -3346,6 +3354,22 @@ func (c *DiagramClient) QueryPositions(_m *Diagram) *PositionQuery {
 	return query
 }
 
+// QueryRegions queries the regions edge of a Diagram.
+func (c *DiagramClient) QueryRegions(_m *Diagram) *DiagramRegionQuery {
+	query := (&DiagramRegionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(diagramregion.Table, diagramregion.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, diagram.RegionsTable, diagram.RegionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QuerySkills queries the skills edge of a Diagram.
 func (c *DiagramClient) QuerySkills(_m *Diagram) *SkillQuery {
 	query := (&SkillClient{config: c.config}).Query()
@@ -3597,6 +3621,155 @@ func (c *DiagramConceptClient) mutate(ctx context.Context, m *DiagramConceptMuta
 		return (&DiagramConceptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DiagramConcept mutation op: %q", m.Op())
+	}
+}
+
+// DiagramRegionClient is a client for the DiagramRegion schema.
+type DiagramRegionClient struct {
+	config
+}
+
+// NewDiagramRegionClient returns a client for the DiagramRegion from the given config.
+func NewDiagramRegionClient(c config) *DiagramRegionClient {
+	return &DiagramRegionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagramregion.Hooks(f(g(h())))`.
+func (c *DiagramRegionClient) Use(hooks ...Hook) {
+	c.hooks.DiagramRegion = append(c.hooks.DiagramRegion, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagramregion.Intercept(f(g(h())))`.
+func (c *DiagramRegionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramRegion = append(c.inters.DiagramRegion, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramRegion entity.
+func (c *DiagramRegionClient) Create() *DiagramRegionCreate {
+	mutation := newDiagramRegionMutation(c.config, OpCreate)
+	return &DiagramRegionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramRegion entities.
+func (c *DiagramRegionClient) CreateBulk(builders ...*DiagramRegionCreate) *DiagramRegionCreateBulk {
+	return &DiagramRegionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramRegionClient) MapCreateBulk(slice any, setFunc func(*DiagramRegionCreate, int)) *DiagramRegionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramRegionCreateBulk{err: fmt.Errorf("calling to DiagramRegionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramRegionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramRegionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramRegion.
+func (c *DiagramRegionClient) Update() *DiagramRegionUpdate {
+	mutation := newDiagramRegionMutation(c.config, OpUpdate)
+	return &DiagramRegionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramRegionClient) UpdateOne(_m *DiagramRegion) *DiagramRegionUpdateOne {
+	mutation := newDiagramRegionMutation(c.config, OpUpdateOne, withDiagramRegion(_m))
+	return &DiagramRegionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramRegionClient) UpdateOneID(id uuid.UUID) *DiagramRegionUpdateOne {
+	mutation := newDiagramRegionMutation(c.config, OpUpdateOne, withDiagramRegionID(id))
+	return &DiagramRegionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramRegion.
+func (c *DiagramRegionClient) Delete() *DiagramRegionDelete {
+	mutation := newDiagramRegionMutation(c.config, OpDelete)
+	return &DiagramRegionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramRegionClient) DeleteOne(_m *DiagramRegion) *DiagramRegionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramRegionClient) DeleteOneID(id uuid.UUID) *DiagramRegionDeleteOne {
+	builder := c.Delete().Where(diagramregion.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramRegionDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramRegion.
+func (c *DiagramRegionClient) Query() *DiagramRegionQuery {
+	return &DiagramRegionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramRegion},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramRegion entity by its id.
+func (c *DiagramRegionClient) Get(ctx context.Context, id uuid.UUID) (*DiagramRegion, error) {
+	return c.Query().Where(diagramregion.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramRegionClient) GetX(ctx context.Context, id uuid.UUID) *DiagramRegion {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a DiagramRegion.
+func (c *DiagramRegionClient) QueryDiagram(_m *DiagramRegion) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramregion.Table, diagramregion.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, diagramregion.DiagramTable, diagramregion.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramRegionClient) Hooks() []Hook {
+	return c.hooks.DiagramRegion
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramRegionClient) Interceptors() []Interceptor {
+	return c.inters.DiagramRegion
+}
+
+func (c *DiagramRegionClient) mutate(ctx context.Context, m *DiagramRegionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramRegionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramRegionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramRegionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramRegionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramRegion mutation op: %q", m.Op())
 	}
 }
 
@@ -6721,20 +6894,21 @@ type (
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramSkill, Exercise, ExerciseConcept,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		Language, LearningPath, LearningPathInstrument, LearningPathItem, Position,
-		Skill, StudentLearningState, StudentPath, StudentPathItem, User []ent.Hook
+		Diagram, DiagramConcept, DiagramRegion, DiagramSkill, Exercise,
+		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
+		StudentPathItem, User []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramSkill, Exercise, ExerciseConcept,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		Language, LearningPath, LearningPathInstrument, LearningPathItem, Position,
-		Skill, StudentLearningState, StudentPath, StudentPathItem,
-		User []ent.Interceptor
+		Diagram, DiagramConcept, DiagramRegion, DiagramSkill, Exercise,
+		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
+		StudentPathItem, User []ent.Interceptor
 	}
 )

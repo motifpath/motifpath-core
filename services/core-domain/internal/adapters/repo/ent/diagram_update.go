@@ -14,6 +14,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -108,6 +109,21 @@ func (_u *DiagramUpdate) AddPositions(v ...*Position) *DiagramUpdate {
 	return _u.AddPositionIDs(ids...)
 }
 
+// AddRegionIDs adds the "regions" edge to the DiagramRegion entity by IDs.
+func (_u *DiagramUpdate) AddRegionIDs(ids ...uuid.UUID) *DiagramUpdate {
+	_u.mutation.AddRegionIDs(ids...)
+	return _u
+}
+
+// AddRegions adds the "regions" edges to the DiagramRegion entity.
+func (_u *DiagramUpdate) AddRegions(v ...*DiagramRegion) *DiagramUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRegionIDs(ids...)
+}
+
 // AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
 func (_u *DiagramUpdate) AddSkillIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddSkillIDs(ids...)
@@ -192,6 +208,27 @@ func (_u *DiagramUpdate) RemovePositions(v ...*Position) *DiagramUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePositionIDs(ids...)
+}
+
+// ClearRegions clears all "regions" edges to the DiagramRegion entity.
+func (_u *DiagramUpdate) ClearRegions() *DiagramUpdate {
+	_u.mutation.ClearRegions()
+	return _u
+}
+
+// RemoveRegionIDs removes the "regions" edge to DiagramRegion entities by IDs.
+func (_u *DiagramUpdate) RemoveRegionIDs(ids ...uuid.UUID) *DiagramUpdate {
+	_u.mutation.RemoveRegionIDs(ids...)
+	return _u
+}
+
+// RemoveRegions removes "regions" edges to DiagramRegion entities.
+func (_u *DiagramUpdate) RemoveRegions(v ...*DiagramRegion) *DiagramUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRegionIDs(ids...)
 }
 
 // ClearSkills clears all "skills" edges to the Skill entity.
@@ -386,6 +423,51 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(position.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RegionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRegionsIDs(); len(nodes) > 0 && !_u.mutation.RegionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RegionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -692,6 +774,21 @@ func (_u *DiagramUpdateOne) AddPositions(v ...*Position) *DiagramUpdateOne {
 	return _u.AddPositionIDs(ids...)
 }
 
+// AddRegionIDs adds the "regions" edge to the DiagramRegion entity by IDs.
+func (_u *DiagramUpdateOne) AddRegionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
+	_u.mutation.AddRegionIDs(ids...)
+	return _u
+}
+
+// AddRegions adds the "regions" edges to the DiagramRegion entity.
+func (_u *DiagramUpdateOne) AddRegions(v ...*DiagramRegion) *DiagramUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRegionIDs(ids...)
+}
+
 // AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
 func (_u *DiagramUpdateOne) AddSkillIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddSkillIDs(ids...)
@@ -776,6 +873,27 @@ func (_u *DiagramUpdateOne) RemovePositions(v ...*Position) *DiagramUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePositionIDs(ids...)
+}
+
+// ClearRegions clears all "regions" edges to the DiagramRegion entity.
+func (_u *DiagramUpdateOne) ClearRegions() *DiagramUpdateOne {
+	_u.mutation.ClearRegions()
+	return _u
+}
+
+// RemoveRegionIDs removes the "regions" edge to DiagramRegion entities by IDs.
+func (_u *DiagramUpdateOne) RemoveRegionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
+	_u.mutation.RemoveRegionIDs(ids...)
+	return _u
+}
+
+// RemoveRegions removes "regions" edges to DiagramRegion entities.
+func (_u *DiagramUpdateOne) RemoveRegions(v ...*DiagramRegion) *DiagramUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRegionIDs(ids...)
 }
 
 // ClearSkills clears all "skills" edges to the Skill entity.
@@ -1000,6 +1118,51 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(position.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.RegionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRegionsIDs(); len(nodes) > 0 && !_u.mutation.RegionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RegionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   diagram.RegionsTable,
+			Columns: []string{diagram.RegionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramregion.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

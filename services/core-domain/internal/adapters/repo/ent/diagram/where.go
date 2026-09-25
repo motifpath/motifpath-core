@@ -417,6 +417,29 @@ func HasPositionsWith(preds ...predicate.Position) predicate.Diagram {
 	})
 }
 
+// HasRegions applies the HasEdge predicate on the "regions" edge.
+func HasRegions() predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RegionsTable, RegionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRegionsWith applies the HasEdge predicate on the "regions" edge with a given conditions (other predicates).
+func HasRegionsWith(preds ...predicate.DiagramRegion) predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := newRegionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasSkills applies the HasEdge predicate on the "skills" edge.
 func HasSkills() predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {

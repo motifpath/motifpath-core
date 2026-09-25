@@ -12,14 +12,15 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// EntDiagramRepository persists Diagram records, with their Positions and
-// skill/concept links, via ent/Postgres.
+// EntDiagramRepository persists Diagram records, with their Positions,
+// Regions and skill/concept links, via ent/Postgres.
 type EntDiagramRepository struct {
 	client *ent.Client
 }
@@ -70,6 +71,9 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		return rollback(tx, err)
 	}
 	if err := createPositions(ctx, tx, id, d.Positions); err != nil {
+		return rollback(tx, err)
+	}
+	if err := createRegions(ctx, tx, id, d.Regions); err != nil {
 		return rollback(tx, err)
 	}
 	return tx.Commit()
@@ -220,17 +224,25 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	if _, err := tx.Position.Delete().Where(position.DiagramID(id)).Exec(ctx); err != nil {
 		return rollback(tx, err)
 	}
+	if _, err := tx.DiagramRegion.Delete().Where(diagramregion.DiagramID(id)).Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
 	if err := createPositions(ctx, tx, id, d.Positions); err != nil {
+		return rollback(tx, err)
+	}
+	if err := createRegions(ctx, tx, id, d.Regions); err != nil {
 		return rollback(tx, err)
 	}
 	return tx.Commit()
 }
 
 // withDiagramEdges eager-loads everything toDomainDiagram reads, with
-// positions in the order the author listed them.
+// positions in the order the author listed them and regions in drawing
+// order.
 func withDiagramEdges(q *ent.DiagramQuery) *ent.DiagramQuery {
 	return q.
 		WithPositions(func(pq *ent.PositionQuery) { pq.Order(ent.Asc(position.FieldOrdinal)) }).
+		WithRegions(func(rq *ent.DiagramRegionQuery) { rq.Order(ent.Asc(diagramregion.FieldOrdinal)) }).
 		WithSkills().
 		WithConcepts()
 }
@@ -254,6 +266,12 @@ func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, posit
 			SetNillableStringNumber(p.String).
 			SetNillableFret(p.Fret).
 			SetNillableKey(p.Key)
+		if p.CustomLabel != nil {
+			builders[i].SetCustomLabel(p.CustomLabel)
+		}
+		if p.Note != nil {
+			builders[i].SetNote(p.Note)
+		}
 	}
 	_, err := tx.Position.CreateBulk(builders...).Save(ctx)
 	if ent.IsConstraintError(err) {
@@ -261,6 +279,39 @@ func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, posit
 		// only constraint a caller can trip here is the global uniqueness of
 		// a client-supplied position id already owned by another diagram.
 		return domain.NewValidationError("positions", "a position_id is already used by another diagram")
+	}
+	return err
+}
+
+// createRegions stores regions under diagramID in drawing order.
+func createRegions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, regions []domain.Region) error {
+	if len(regions) == 0 {
+		return nil
+	}
+	builders := make([]*ent.DiagramRegionCreate, len(regions))
+	for i, r := range regions {
+		id, err := uuid.Parse(r.ID)
+		if err != nil {
+			return err
+		}
+		builders[i] = tx.DiagramRegion.Create().
+			SetID(id).
+			SetDiagramID(diagramID).
+			SetOrdinal(i).
+			SetNillableFretStart(r.FretStart).
+			SetNillableFretEnd(r.FretEnd).
+			SetNillableStringStart(r.StringStart).
+			SetNillableStringEnd(r.StringEnd).
+			SetNillableKeyStart(r.KeyStart).
+			SetNillableKeyEnd(r.KeyEnd).
+			SetDescription(r.Description).
+			SetNillableColor(r.Color)
+	}
+	_, err := tx.DiagramRegion.CreateBulk(builders...).Save(ctx)
+	if ent.IsConstraintError(err) {
+		// As with positions, the only constraint a caller can trip is a
+		// client-supplied region id already owned by another diagram.
+		return domain.NewValidationError("regions", "a region_id is already used by another diagram")
 	}
 	return err
 }
@@ -278,7 +329,23 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 			String:        p.StringNumber,
 			Fret:          p.Fret,
 			Key:           p.Key,
+			CustomLabel:   localizedTextOrNil(p.CustomLabel),
+			Note:          localizedTextOrNil(p.Note),
 		}
+	}
+	var regions []domain.Region
+	for _, r := range row.Edges.Regions {
+		regions = append(regions, domain.Region{
+			ID:          r.ID.String(),
+			FretStart:   r.FretStart,
+			FretEnd:     r.FretEnd,
+			StringStart: r.StringStart,
+			StringEnd:   r.StringEnd,
+			KeyStart:    r.KeyStart,
+			KeyEnd:      r.KeyEnd,
+			Description: domain.LocalizedText(r.Description),
+			Color:       r.Color,
+		})
 	}
 	return domain.Diagram{
 		ID:           row.ID.String(),
@@ -290,8 +357,18 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		LabelDisplay: domain.LabelDisplay(row.LabelDisplay),
 		Color:        row.Color,
 		Positions:    positions,
+		Regions:      regions,
 		Skills:       domainSkillsFromEdges(row.Edges.Skills),
 		Concepts:     domainConceptsFromEdges(row.Edges.Concepts),
 		CreatedAt:    row.CreatedAt,
 	}
+}
+
+// localizedTextOrNil is text as a domain.LocalizedText, keeping an absent
+// (NULL) column as nil rather than an empty map.
+func localizedTextOrNil(text map[string]string) domain.LocalizedText {
+	if len(text) == 0 {
+		return nil
+	}
+	return domain.LocalizedText(text)
 }
