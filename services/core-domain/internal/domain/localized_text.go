@@ -33,7 +33,10 @@ func NewLocalizedText(field string, text map[string]string, maxLength int, langu
 		return nil, NewValidationError(field, "must contain text in at least one language")
 	}
 	result := make(LocalizedText, len(text))
-	for code, value := range text {
+	// Walked in sorted order, so identical input always reports the same
+	// problem first.
+	for _, code := range LocalizedText(text).Languages() {
+		value := text[code]
 		if code == LanguageCodeAny {
 			return nil, NewValidationError(field, fmt.Sprintf("must not use %q as a language", LanguageCodeAny))
 		}

@@ -49,3 +49,21 @@ func TestNewLocalizedText(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestNewLocalizedText_ReportsTheSameProblemEveryTime(t *testing.T) {
+	// Two problems at once: a blank English value and an unoffered French one.
+	// Map iteration order is random, so without a fixed order the reason would
+	// change between identical requests.
+	text := map[string]string{"en": "  ", "fr": "Guitare", "pt_BR": "Violão"}
+
+	_, first := domain.NewLocalizedText("names", text, 200, []string{"en", "pt_BR"})
+	var firstErr *domain.ValidationError
+	require.ErrorAs(t, first, &firstErr)
+	for range 50 {
+		_, err := domain.NewLocalizedText("names", text, 200, []string{"en", "pt_BR"})
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		require.Equal(t, firstErr.Fields[0].Reason, valErr.Fields[0].Reason)
+	}
+	assert.Equal(t, `must not be blank in "en"`, firstErr.Fields[0].Reason)
+}
