@@ -27,7 +27,7 @@ func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.
 	if !canManageContent(caller.Role) {
 		return domain.Instrument{}, domain.ErrForbidden
 	}
-	offered, err := s.offeredLanguages(ctx)
+	offered, err := offeredLanguages(ctx, s.languages)
 	if err != nil {
 		return domain.Instrument{}, err
 	}
@@ -53,7 +53,7 @@ func (s *InstrumentService) UpdateInstrumentNames(ctx context.Context, caller do
 	if err != nil {
 		return domain.Instrument{}, err
 	}
-	offered, err := s.offeredLanguages(ctx)
+	offered, err := offeredLanguages(ctx, s.languages)
 	if err != nil {
 		return domain.Instrument{}, err
 	}
@@ -77,13 +77,13 @@ func (s *InstrumentService) ListInstruments(ctx context.Context) ([]domain.Instr
 // offeredLanguages returns the code of every language MotifPath offers —
 // every Language row except the language-agnostic LanguageCodeAny marker,
 // which is never a language text can be written in.
-func (s *InstrumentService) offeredLanguages(ctx context.Context) ([]string, error) {
-	languages, err := s.languages.List(ctx)
+func offeredLanguages(ctx context.Context, languages ports.LanguageRepository) ([]string, error) {
+	all, err := languages.List(ctx)
 	if err != nil {
 		return nil, err
 	}
-	codes := make([]string, 0, len(languages))
-	for _, lang := range languages {
+	codes := make([]string, 0, len(all))
+	for _, lang := range all {
 		if lang.Code != domain.LanguageCodeAny {
 			codes = append(codes, lang.Code)
 		}

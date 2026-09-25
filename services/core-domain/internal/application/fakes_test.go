@@ -1461,8 +1461,9 @@ func (f *fakeDiagramRepository) List(_ context.Context, filter domain.DiagramLis
 		}
 	}
 	sort.Slice(matched, func(i, j int) bool {
-		if matched[i].Name != matched[j].Name {
-			return matched[i].Name < matched[j].Name
+		a, b := matched[i].Names.Resolve(filter.Locale), matched[j].Names.Resolve(filter.Locale)
+		if a != b {
+			return a < b
 		}
 		return matched[i].ID < matched[j].ID
 	})

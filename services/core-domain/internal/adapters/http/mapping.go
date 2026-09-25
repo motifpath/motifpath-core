@@ -633,6 +633,9 @@ func diagramListFilter(params generated.ListDiagramsParams) domain.DiagramListFi
 	if params.Kind != nil {
 		filter.Kind = domain.DiagramKind(*params.Kind)
 	}
+	if params.Language != nil {
+		filter.Language = *params.Language
+	}
 	return filter
 }
 
@@ -643,7 +646,7 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		shape := generated.DiagramPositionShape(p.Shape)
 		positions[i] = generated.DiagramPosition{
 			PositionId:    &id,
-			Interval:      p.Interval,
+			Interval:      generated.DiagramPositionInterval(p.Interval),
 			NoteName:      p.NoteName,
 			Shape:         &shape,
 			Color:         p.Color,
@@ -656,7 +659,8 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 	return generated.Diagram{
 		DiagramId:    mustUUID(d.ID),
 		InstrumentId: mustUUID(d.InstrumentID),
-		Name:         d.Name,
+		Names:        generated.LocalizedNames(d.Names),
+		Languages:    d.Names.Languages(),
 		Kind:         generated.DiagramKind(d.Kind),
 		CreatedBy:    names.ref(d.CreatedBy),
 		RootNote:     d.RootNote,
@@ -683,7 +687,7 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 	result := make([]domain.Position, len(positions))
 	for i, p := range positions {
 		result[i] = domain.Position{
-			Interval:      p.Interval,
+			Interval:      string(p.Interval),
 			NoteName:      p.NoteName,
 			SequenceIndex: p.SequenceIndex,
 			String:        p.String,

@@ -164,7 +164,7 @@ func (w *world) currentPage() (pageView, error) {
 	case generated.ListDiagrams200JSONResponse:
 		names := make([]string, len(resp.Items))
 		for i, d := range resp.Items {
-			names[i] = d.Name
+			names[i] = domain.LocalizedText(d.Names).Resolve("en")
 		}
 		return pageView{names, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
 	default:

@@ -388,7 +388,7 @@ func richRemediationContent(caption string) domain.PromptDocument {
 
 func seedDiagram(t *testing.T, diagrams *fakeDiagramRepository, id, instrumentID string, positions []domain.Position) domain.Diagram {
 	t.Helper()
-	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Name: id, Positions: positions, Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}}
+	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Names: domain.LocalizedText{"en": id}, Positions: positions, Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}}
 	require.NoError(t, diagrams.Create(context.Background(), diagram))
 	return diagram
 }
