@@ -85,6 +85,9 @@ func (_u *CourseVersionUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	if _u.mutation.InstrumentIdsSnapshotCleared() {
 		_spec.ClearField(courseversion.FieldInstrumentIdsSnapshot, field.TypeJSON)
 	}
+	if _u.mutation.ThumbnailURLSnapshotCleared() {
+		_spec.ClearField(courseversion.FieldThumbnailURLSnapshot, field.TypeString)
+	}
 	if value, ok := _u.mutation.AvailableForNewEnrollments(); ok {
 		_spec.SetField(courseversion.FieldAvailableForNewEnrollments, field.TypeBool, value)
 	}
@@ -195,6 +198,9 @@ func (_u *CourseVersionUpdateOne) sqlSave(ctx context.Context) (_node *CourseVer
 	}
 	if _u.mutation.InstrumentIdsSnapshotCleared() {
 		_spec.ClearField(courseversion.FieldInstrumentIdsSnapshot, field.TypeJSON)
+	}
+	if _u.mutation.ThumbnailURLSnapshotCleared() {
+		_spec.ClearField(courseversion.FieldThumbnailURLSnapshot, field.TypeString)
 	}
 	if value, ok := _u.mutation.AvailableForNewEnrollments(); ok {
 		_spec.SetField(courseversion.FieldAvailableForNewEnrollments, field.TypeBool, value)

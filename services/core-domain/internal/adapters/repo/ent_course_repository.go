@@ -55,6 +55,7 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		SetStatus(course.Status(c.Status)).
 		SetCreatedBy(createdBy).
 		SetCreatedAt(c.CreatedAt).
+		SetNillableThumbnailURL(c.ThumbnailURL).
 		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -213,14 +214,19 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 		return err
 	}
 
-	if _, err := tx.Course.UpdateOneID(id).
+	update := tx.Course.UpdateOneID(id).
 		SetTitle(c.Title).
 		SetSummary(c.Summary).
 		SetLevel(course.Level(c.Level)).
 		SetLanguage(c.Language).
+		SetNillableThumbnailURL(c.ThumbnailURL).
 		ClearInstruments().
-		AddInstrumentIDs(instrumentIDs...).
-		Save(ctx); err != nil {
+		AddInstrumentIDs(instrumentIDs...)
+	// A replace without a thumbnail removes the stored one.
+	if c.ThumbnailURL == nil {
+		update = update.ClearThumbnailURL()
+	}
+	if _, err := update.Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
 		}
@@ -332,6 +338,7 @@ func toDomainCourse(row *ent.Course, checkpoints []domain.CourseCheckpoint) doma
 		Level:         domain.DifficultyLevel(row.Level),
 		Language:      row.Language,
 		InstrumentIDs: instrumentIDsOf(row.Edges.Instruments),
+		ThumbnailURL:  row.ThumbnailURL,
 		Status:        domain.CourseStatus(row.Status),
 		CreatedBy:     row.CreatedBy.String(),
 		CreatedAt:     row.CreatedAt,

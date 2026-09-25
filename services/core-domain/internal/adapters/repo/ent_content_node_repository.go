@@ -66,6 +66,7 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
 		AddInstrumentIDs(instrumentIDs...).
+		SetNillableThumbnailURL(node.ThumbnailURL).
 		Save(ctx)
 	return err
 }
@@ -211,6 +212,10 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	if richContentJSON == nil {
 		update = update.ClearRichContent()
 	}
+	update = update.SetNillableThumbnailURL(node.ThumbnailURL)
+	if node.ThumbnailURL == nil {
+		update = update.ClearThumbnailURL()
+	}
 	_, err = update.Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -241,6 +246,7 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 		RichContent:   unmarshalRichContent(row.RichContent),
 		Languages:     languages,
 		InstrumentIDs: instrumentIDsOf(row.Edges.Instruments),
+		ThumbnailURL:  row.ThumbnailURL,
 		CreatedAt:     row.CreatedAt,
 	}
 }

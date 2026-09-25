@@ -55,6 +55,7 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 		SetNillableLevel(entLevel(path.Level)).
 		SetCreatedAt(path.CreatedAt).
 		SetUpdatedAt(path.UpdatedAt).
+		SetNillableThumbnailURL(path.ThumbnailURL).
 		AddInstrumentIDs(instrumentIDs...).
 		Save(ctx); err != nil {
 		return rollback(tx, err)
@@ -118,6 +119,7 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 		Title:         pathRow.Title,
 		Level:         domainLevel(pathRow.Level),
 		InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
+		ThumbnailURL:  pathRow.ThumbnailURL,
 		Items:         items,
 		CreatedAt:     pathRow.CreatedAt,
 		UpdatedAt:     pathRow.UpdatedAt,
@@ -186,6 +188,7 @@ func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.Lear
 			Title:         pathRow.Title,
 			Level:         domainLevel(pathRow.Level),
 			InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
+			ThumbnailURL:  pathRow.ThumbnailURL,
 			Items:         items,
 			CreatedAt:     pathRow.CreatedAt,
 			UpdatedAt:     pathRow.UpdatedAt,
@@ -251,13 +254,18 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 		return err
 	}
 
-	if _, err := tx.LearningPath.UpdateOneID(id).
+	update := tx.LearningPath.UpdateOneID(id).
 		SetTitle(path.Title).
 		SetNillableLevel(entLevel(path.Level)).
 		SetUpdatedAt(path.UpdatedAt).
+		SetNillableThumbnailURL(path.ThumbnailURL).
 		ClearInstruments().
-		AddInstrumentIDs(instrumentIDs...).
-		Save(ctx); err != nil {
+		AddInstrumentIDs(instrumentIDs...)
+	// A replace without a thumbnail removes the stored one.
+	if path.ThumbnailURL == nil {
+		update = update.ClearThumbnailURL()
+	}
+	if _, err := update.Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
 		}

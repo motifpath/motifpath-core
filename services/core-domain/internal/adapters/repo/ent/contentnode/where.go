@@ -76,6 +76,11 @@ func RichContent(v string) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldRichContent, v))
 }
 
+// ThumbnailURL applies equality check predicate on the "thumbnail_url" field. It's identical to ThumbnailURLEQ.
+func ThumbnailURL(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldEQ(FieldCreatedAt, v))
@@ -394,6 +399,81 @@ func ReviewStateIn(vs ...ReviewState) predicate.ContentNode {
 // ReviewStateNotIn applies the NotIn predicate on the "review_state" field.
 func ReviewStateNotIn(vs ...ReviewState) predicate.ContentNode {
 	return predicate.ContentNode(sql.FieldNotIn(FieldReviewState, vs...))
+}
+
+// ThumbnailURLEQ applies the EQ predicate on the "thumbnail_url" field.
+func ThumbnailURLEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLNEQ applies the NEQ predicate on the "thumbnail_url" field.
+func ThumbnailURLNEQ(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIn applies the In predicate on the "thumbnail_url" field.
+func ThumbnailURLIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLNotIn applies the NotIn predicate on the "thumbnail_url" field.
+func ThumbnailURLNotIn(vs ...string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLGT applies the GT predicate on the "thumbnail_url" field.
+func ThumbnailURLGT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLGTE applies the GTE predicate on the "thumbnail_url" field.
+func ThumbnailURLGTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldGTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLT applies the LT predicate on the "thumbnail_url" field.
+func ThumbnailURLLT(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLTE applies the LTE predicate on the "thumbnail_url" field.
+func ThumbnailURLLTE(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldLTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContains applies the Contains predicate on the "thumbnail_url" field.
+func ThumbnailURLContains(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContains(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasPrefix applies the HasPrefix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasPrefix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasPrefix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasSuffix applies the HasSuffix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasSuffix(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldHasSuffix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIsNil applies the IsNil predicate on the "thumbnail_url" field.
+func ThumbnailURLIsNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldIsNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLNotNil applies the NotNil predicate on the "thumbnail_url" field.
+func ThumbnailURLNotNil() predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldNotNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLEqualFold applies the EqualFold predicate on the "thumbnail_url" field.
+func ThumbnailURLEqualFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldEqualFold(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContainsFold applies the ContainsFold predicate on the "thumbnail_url" field.
+func ThumbnailURLContainsFold(v string) predicate.ContentNode {
+	return predicate.ContentNode(sql.FieldContainsFold(FieldThumbnailURL, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

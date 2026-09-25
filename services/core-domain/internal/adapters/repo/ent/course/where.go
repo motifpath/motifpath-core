@@ -71,6 +71,11 @@ func Language(v string) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldLanguage, v))
 }
 
+// ThumbnailURL applies equality check predicate on the "thumbnail_url" field. It's identical to ThumbnailURLEQ.
+func ThumbnailURL(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
 // CreatedBy applies equality check predicate on the "created_by" field. It's identical to CreatedByEQ.
 func CreatedBy(v uuid.UUID) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldCreatedBy, v))
@@ -314,6 +319,81 @@ func StatusIn(vs ...Status) predicate.Course {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Course {
 	return predicate.Course(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// ThumbnailURLEQ applies the EQ predicate on the "thumbnail_url" field.
+func ThumbnailURLEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLNEQ applies the NEQ predicate on the "thumbnail_url" field.
+func ThumbnailURLNEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIn applies the In predicate on the "thumbnail_url" field.
+func ThumbnailURLIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLNotIn applies the NotIn predicate on the "thumbnail_url" field.
+func ThumbnailURLNotIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLGT applies the GT predicate on the "thumbnail_url" field.
+func ThumbnailURLGT(v string) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLGTE applies the GTE predicate on the "thumbnail_url" field.
+func ThumbnailURLGTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLT applies the LT predicate on the "thumbnail_url" field.
+func ThumbnailURLLT(v string) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLTE applies the LTE predicate on the "thumbnail_url" field.
+func ThumbnailURLLTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContains applies the Contains predicate on the "thumbnail_url" field.
+func ThumbnailURLContains(v string) predicate.Course {
+	return predicate.Course(sql.FieldContains(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasPrefix applies the HasPrefix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasPrefix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasPrefix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasSuffix applies the HasSuffix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasSuffix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasSuffix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIsNil applies the IsNil predicate on the "thumbnail_url" field.
+func ThumbnailURLIsNil() predicate.Course {
+	return predicate.Course(sql.FieldIsNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLNotNil applies the NotNil predicate on the "thumbnail_url" field.
+func ThumbnailURLNotNil() predicate.Course {
+	return predicate.Course(sql.FieldNotNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLEqualFold applies the EqualFold predicate on the "thumbnail_url" field.
+func ThumbnailURLEqualFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldEqualFold(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContainsFold applies the ContainsFold predicate on the "thumbnail_url" field.
+func ThumbnailURLContainsFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldContainsFold(FieldThumbnailURL, v))
 }
 
 // CreatedByEQ applies the EQ predicate on the "created_by" field.

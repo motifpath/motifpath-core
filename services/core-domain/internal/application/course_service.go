@@ -51,13 +51,15 @@ type CourseInput struct {
 	// InstrumentIDs are the instruments the course is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Checkpoints   []CheckpointInput
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Checkpoints  []CheckpointInput
 }
 
 // fields resolves input into the domain's CourseFields, given its
 // checkpoints already resolved against their learning paths.
 func (input CourseInput) fields(checkpoints []domain.NewCourseCheckpoint) domain.CourseFields {
-	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Language: input.Language, InstrumentIDs: input.InstrumentIDs, Checkpoints: checkpoints}
+	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Language: input.Language, InstrumentIDs: input.InstrumentIDs, ThumbnailURL: input.ThumbnailURL, Checkpoints: checkpoints}
 }
 
 // CreateCourse creates a course draft from the given ordered checkpoints.
@@ -389,9 +391,11 @@ type PublishedCourseView struct {
 	// InstrumentIDs are the instruments the published version is for; empty
 	// means every instrument.
 	InstrumentIDs []string
-	Status        domain.CourseStatus
-	PublishedAt   time.Time
-	Checkpoints   []CourseOutlineCheckpoint
+	// ThumbnailURL is the published version's thumbnail; nil means none.
+	ThumbnailURL *string
+	Status       domain.CourseStatus
+	PublishedAt  time.Time
+	Checkpoints  []CourseOutlineCheckpoint
 }
 
 // GetPublishedCourse returns course's latest published version rendered as
@@ -432,6 +436,7 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 		Level:         latest.LevelSnapshot,
 		Language:      latest.LanguageSnapshot,
 		InstrumentIDs: latest.InstrumentIDsSnapshot,
+		ThumbnailURL:  latest.ThumbnailURLSnapshot,
 		Status:        course.Status,
 		PublishedAt:   latest.PublishedAt,
 		Checkpoints:   checkpoints,

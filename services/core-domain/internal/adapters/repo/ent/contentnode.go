@@ -32,6 +32,8 @@ type ContentNode struct {
 	DifficultyLevel contentnode.DifficultyLevel `json:"difficulty_level,omitempty"`
 	// ReviewState holds the value of the "review_state" field.
 	ReviewState contentnode.ReviewState `json:"review_state,omitempty"`
+	// ThumbnailURL holds the value of the "thumbnail_url" field.
+	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -162,7 +164,7 @@ func (*ContentNode) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
+		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState, contentnode.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
 		case contentnode.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -232,6 +234,13 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field review_state", values[i])
 			} else if value.Valid {
 				_m.ReviewState = contentnode.ReviewState(value.String)
+			}
+		case contentnode.FieldThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURL = new(string)
+				*_m.ThumbnailURL = value.String
 			}
 		case contentnode.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -349,6 +358,11 @@ func (_m *ContentNode) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("review_state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ReviewState))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURL; v != nil {
+		builder.WriteString("thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

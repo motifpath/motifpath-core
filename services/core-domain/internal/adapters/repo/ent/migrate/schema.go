@@ -97,6 +97,7 @@ var (
 		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "difficulty_level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "review_state", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "overridden"}, Default: "pending"},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ContentNodesTable holds the schema information for the "content_nodes" table.
@@ -287,6 +288,7 @@ var (
 		{Name: "classification_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "languages_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "instrument_ids_snapshot", Type: field.TypeJSON, Nullable: true},
+		{Name: "thumbnail_url_snapshot", Type: field.TypeString, Nullable: true},
 		{Name: "published_by", Type: field.TypeUUID},
 		{Name: "published_at", Type: field.TypeTime},
 	}
@@ -311,6 +313,7 @@ var (
 		{Name: "level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "language", Type: field.TypeString, Default: "en"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published", "retired"}, Default: "draft"},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
 	}
@@ -347,6 +350,7 @@ var (
 		{Name: "student_id", Type: field.TypeUUID},
 		{Name: "course_id", Type: field.TypeUUID},
 		{Name: "course_title", Type: field.TypeString},
+		{Name: "course_thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "course_version_number", Type: field.TypeInt},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "completed", "abandoned"}, Default: "active"},
 		{Name: "active_checkpoint_student_path_id", Type: field.TypeUUID, Nullable: true},
@@ -403,6 +407,7 @@ var (
 		{Name: "level_snapshot", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "language_snapshot", Type: field.TypeString, Default: "en"},
 		{Name: "instrument_ids_snapshot", Type: field.TypeJSON, Nullable: true},
+		{Name: "thumbnail_url_snapshot", Type: field.TypeString, Nullable: true},
 		{Name: "available_for_new_enrollments", Type: field.TypeBool, Default: true},
 		{Name: "published_at", Type: field.TypeTime},
 	}
@@ -758,6 +763,7 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "level", Type: field.TypeEnum, Nullable: true, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// LearningPathsTable holds the schema information for the "learning_paths" table.

@@ -97,6 +97,20 @@ func (_c *ContentNodeCreate) SetNillableReviewState(v *contentnode.ReviewState) 
 	return _c
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *ContentNodeCreate) SetThumbnailURL(v string) *ContentNodeCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableThumbnailURL(v *string) *ContentNodeCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ContentNodeCreate) SetCreatedAt(v time.Time) *ContentNodeCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -421,6 +435,10 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ReviewState(); ok {
 		_spec.SetField(contentnode.FieldReviewState, field.TypeEnum, value)
 		_node.ReviewState = value
+	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(contentnode.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(contentnode.FieldCreatedAt, field.TypeTime, value)

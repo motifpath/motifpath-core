@@ -69,6 +69,20 @@ func (_c *CourseCreate) SetNillableStatus(v *course.Status) *CourseCreate {
 	return _c
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *CourseCreate) SetThumbnailURL(v string) *CourseCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableThumbnailURL(v *string) *CourseCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
+	}
+	return _c
+}
+
 // SetCreatedBy sets the "created_by" field.
 func (_c *CourseCreate) SetCreatedBy(v uuid.UUID) *CourseCreate {
 	_c.mutation.SetCreatedBy(v)
@@ -273,6 +287,10 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(course.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
 	}
 	if value, ok := _c.mutation.CreatedBy(); ok {
 		_spec.SetField(course.FieldCreatedBy, field.TypeUUID, value)

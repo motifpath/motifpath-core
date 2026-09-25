@@ -100,6 +100,26 @@ func (_u *CourseUpdate) SetNillableStatus(v *course.Status) *CourseUpdate {
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *CourseUpdate) SetThumbnailURL(v string) *CourseUpdate {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableThumbnailURL(v *string) *CourseUpdate {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *CourseUpdate) ClearThumbnailURL() *CourseUpdate {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
 func (_u *CourseUpdate) AddInstrumentIDs(ids ...uuid.UUID) *CourseUpdate {
 	_u.mutation.AddInstrumentIDs(ids...)
@@ -245,6 +265,12 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(course.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(course.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -438,6 +464,26 @@ func (_u *CourseUpdateOne) SetNillableStatus(v *course.Status) *CourseUpdateOne 
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *CourseUpdateOne) SetThumbnailURL(v string) *CourseUpdateOne {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableThumbnailURL(v *string) *CourseUpdateOne {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *CourseUpdateOne) ClearThumbnailURL() *CourseUpdateOne {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
 func (_u *CourseUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *CourseUpdateOne {
 	_u.mutation.AddInstrumentIDs(ids...)
@@ -613,6 +659,12 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(course.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(course.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{

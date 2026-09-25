@@ -67,6 +67,13 @@ func (ContentNodeVersion) Fields() []ent.Field {
 			Optional().
 			Immutable(),
 
+		// thumbnail_url_snapshot is the thumbnail when this version was
+		// published; NULL = none.
+		field.String("thumbnail_url_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
 		field.UUID("published_by", uuid.UUID{}).
 			Immutable(),
 

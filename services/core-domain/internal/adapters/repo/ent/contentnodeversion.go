@@ -37,6 +37,8 @@ type ContentNodeVersion struct {
 	LanguagesSnapshot *string `json:"languages_snapshot,omitempty"`
 	// InstrumentIdsSnapshot holds the value of the "instrument_ids_snapshot" field.
 	InstrumentIdsSnapshot []string `json:"instrument_ids_snapshot,omitempty"`
+	// ThumbnailURLSnapshot holds the value of the "thumbnail_url_snapshot" field.
+	ThumbnailURLSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
 	// PublishedBy holds the value of the "published_by" field.
 	PublishedBy uuid.UUID `json:"published_by,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -53,7 +55,7 @@ func (*ContentNodeVersion) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case contentnodeversion.FieldVersionNumber:
 			values[i] = new(sql.NullInt64)
-		case contentnodeversion.FieldTitle, contentnodeversion.FieldContentType, contentnodeversion.FieldMediaURL, contentnodeversion.FieldRichContent, contentnodeversion.FieldClassificationSnapshot, contentnodeversion.FieldLanguagesSnapshot:
+		case contentnodeversion.FieldTitle, contentnodeversion.FieldContentType, contentnodeversion.FieldMediaURL, contentnodeversion.FieldRichContent, contentnodeversion.FieldClassificationSnapshot, contentnodeversion.FieldLanguagesSnapshot, contentnodeversion.FieldThumbnailURLSnapshot:
 			values[i] = new(sql.NullString)
 		case contentnodeversion.FieldPublishedAt:
 			values[i] = new(sql.NullTime)
@@ -140,6 +142,13 @@ func (_m *ContentNodeVersion) assignValues(columns []string, values []any) error
 					return fmt.Errorf("unmarshal field instrument_ids_snapshot: %w", err)
 				}
 			}
+		case contentnodeversion.FieldThumbnailURLSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url_snapshot", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURLSnapshot = new(string)
+				*_m.ThumbnailURLSnapshot = value.String
+			}
 		case contentnodeversion.FieldPublishedBy:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field published_by", values[i])
@@ -222,6 +231,11 @@ func (_m *ContentNodeVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("instrument_ids_snapshot=")
 	builder.WriteString(fmt.Sprintf("%v", _m.InstrumentIdsSnapshot))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURLSnapshot; v != nil {
+		builder.WriteString("thumbnail_url_snapshot=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("published_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PublishedBy))

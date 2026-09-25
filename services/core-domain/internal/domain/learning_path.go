@@ -42,8 +42,10 @@ type LearningPath struct {
 	// InstrumentIDs are the instruments the path is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Items         []LearningPathItem
-	CreatedAt     time.Time
+	// ThumbnailURL is the image shown for the path; nil means none.
+	ThumbnailURL *string
+	Items        []LearningPathItem
+	CreatedAt    time.Time
 	// UpdatedAt is when the path was created or last replaced.
 	UpdatedAt time.Time
 }
@@ -56,7 +58,9 @@ type LearningPathFields struct {
 	// InstrumentIDs are the instruments the path is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Items         []NewLearningPathItem
+	// ThumbnailURL is the image shown for the path; nil means none.
+	ThumbnailURL *string
+	Items        []NewLearningPathItem
 }
 
 // NewLearningPath validates title and items and assigns each item its
@@ -83,6 +87,7 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
 		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
 	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 	if len(pathItems) == 0 {
 		errs = append(errs, FieldError{Field: "items", Reason: "must contain at least one item"})
 	}
@@ -109,6 +114,7 @@ func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt 
 		Title:         title,
 		Level:         &level,
 		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
 		Items:         items,
 		CreatedAt:     createdAt,
 		UpdatedAt:     createdAt,

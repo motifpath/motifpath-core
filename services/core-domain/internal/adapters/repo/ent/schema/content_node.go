@@ -51,6 +51,12 @@ func (ContentNode) Fields() []ent.Field {
 			Values("pending", "confirmed", "overridden").
 			Default("pending"),
 
+		// thumbnail_url is the image shown for it in lists and cards; NULL =
+		// none.
+		field.String("thumbnail_url").
+			Optional().
+			Nillable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

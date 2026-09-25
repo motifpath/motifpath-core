@@ -54,10 +54,12 @@ type Course struct {
 	// InstrumentIDs are the instruments the course is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Status        CourseStatus
-	CreatedBy     string
-	CreatedAt     time.Time
-	Checkpoints   []CourseCheckpoint
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Status       CourseStatus
+	CreatedBy    string
+	CreatedAt    time.Time
+	Checkpoints  []CourseCheckpoint
 }
 
 // CourseFields are the parts of a course its author writes, as given to
@@ -70,7 +72,9 @@ type CourseFields struct {
 	// InstrumentIDs are the instruments the course is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Checkpoints   []NewCourseCheckpoint
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Checkpoints  []NewCourseCheckpoint
 }
 
 // NewCourse validates title, summary, level, language, and checkpoints, and assigns
@@ -108,6 +112,7 @@ func NewCourse(id, createdBy string, fields CourseFields, languages []string, cr
 	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
 		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
 	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 
 	if len(checkpoints) == 0 {
 		errs = append(errs, FieldError{Field: "checkpoints", Reason: "must contain at least one checkpoint"})
@@ -138,6 +143,7 @@ func NewCourse(id, createdBy string, fields CourseFields, languages []string, cr
 		Level:         level,
 		Language:      fields.Language,
 		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
 		Status:        CourseStatusDraft,
 		CreatedBy:     createdBy,
 		CreatedAt:     createdAt,

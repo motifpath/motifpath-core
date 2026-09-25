@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 import "time"
 
 // MediaUploadPurpose identifies what an uploaded object is for, which
@@ -9,6 +11,9 @@ type MediaUploadPurpose string
 const (
 	MediaUploadPurposeExerciseAsset MediaUploadPurpose = "exercise_asset"
 	MediaUploadPurposeLibraryAsset  MediaUploadPurpose = "library_asset"
+	// MediaUploadPurposeThumbnail is an image shown for a course, learning
+	// path or content node in lists and cards.
+	MediaUploadPurposeThumbnail MediaUploadPurpose = "thumbnail"
 )
 
 // MediaContentType is the media type of the file being uploaded.
@@ -46,9 +51,9 @@ func NewMediaUploadRequest(purpose MediaUploadPurpose, exerciseID *string, conte
 	var errs []FieldError
 
 	switch purpose {
-	case MediaUploadPurposeExerciseAsset, MediaUploadPurposeLibraryAsset:
+	case MediaUploadPurposeExerciseAsset, MediaUploadPurposeLibraryAsset, MediaUploadPurposeThumbnail:
 	default:
-		errs = append(errs, FieldError{Field: "purpose", Reason: "must be one of exercise_asset, library_asset"})
+		errs = append(errs, FieldError{Field: "purpose", Reason: "must be one of exercise_asset, library_asset, thumbnail"})
 	}
 
 	switch contentType {
@@ -65,8 +70,11 @@ func NewMediaUploadRequest(purpose MediaUploadPurpose, exerciseID *string, conte
 	if purpose == MediaUploadPurposeExerciseAsset && !hasExerciseID {
 		errs = append(errs, FieldError{Field: "exercise_id", Reason: "required when purpose is exercise_asset"})
 	}
-	if purpose == MediaUploadPurposeLibraryAsset && hasExerciseID {
-		errs = append(errs, FieldError{Field: "exercise_id", Reason: "must be absent when purpose is library_asset"})
+	if purpose != MediaUploadPurposeExerciseAsset && hasExerciseID {
+		errs = append(errs, FieldError{Field: "exercise_id", Reason: fmt.Sprintf("must be absent when purpose is %s", purpose)})
+	}
+	if purpose == MediaUploadPurposeThumbnail && contentType != MediaContentTypeImage {
+		errs = append(errs, FieldError{Field: "content_type", Reason: "must be image when purpose is thumbnail"})
 	}
 
 	if len(errs) > 0 {

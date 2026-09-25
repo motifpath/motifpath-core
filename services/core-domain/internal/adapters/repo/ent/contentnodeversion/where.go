@@ -90,6 +90,11 @@ func LanguagesSnapshot(v string) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldEQ(FieldLanguagesSnapshot, v))
 }
 
+// ThumbnailURLSnapshot applies equality check predicate on the "thumbnail_url_snapshot" field. It's identical to ThumbnailURLSnapshotEQ.
+func ThumbnailURLSnapshot(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
 // PublishedBy applies equality check predicate on the "published_by" field. It's identical to PublishedByEQ.
 func PublishedBy(v uuid.UUID) predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldEQ(FieldPublishedBy, v))
@@ -573,6 +578,81 @@ func InstrumentIdsSnapshotIsNil() predicate.ContentNodeVersion {
 // InstrumentIdsSnapshotNotNil applies the NotNil predicate on the "instrument_ids_snapshot" field.
 func InstrumentIdsSnapshotNotNil() predicate.ContentNodeVersion {
 	return predicate.ContentNodeVersion(sql.FieldNotNull(FieldInstrumentIdsSnapshot))
+}
+
+// ThumbnailURLSnapshotEQ applies the EQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotNEQ applies the NEQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNEQ(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIn applies the In predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotNotIn applies the NotIn predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotIn(vs ...string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotGT applies the GT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotGTE applies the GTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldGTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLT applies the LT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLT(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLTE applies the LTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLTE(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldLTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContains applies the Contains predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContains(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContains(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasPrefix applies the HasPrefix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasPrefix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasPrefix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasSuffix applies the HasSuffix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasSuffix(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldHasSuffix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIsNil applies the IsNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIsNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldIsNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotNotNil applies the NotNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotNil() predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldNotNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotEqualFold applies the EqualFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEqualFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldEqualFold(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContainsFold applies the ContainsFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContainsFold(v string) predicate.ContentNodeVersion {
+	return predicate.ContentNodeVersion(sql.FieldContainsFold(FieldThumbnailURLSnapshot, v))
 }
 
 // PublishedByEQ applies the EQ predicate on the "published_by" field.

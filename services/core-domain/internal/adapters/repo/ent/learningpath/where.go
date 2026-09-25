@@ -71,6 +71,11 @@ func UpdatedAt(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// ThumbnailURL applies equality check predicate on the "thumbnail_url" field. It's identical to ThumbnailURLEQ.
+func ThumbnailURL(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldCreatedAt, v))
@@ -249,6 +254,81 @@ func UpdatedAtLT(v time.Time) predicate.LearningPath {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// ThumbnailURLEQ applies the EQ predicate on the "thumbnail_url" field.
+func ThumbnailURLEQ(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLNEQ applies the NEQ predicate on the "thumbnail_url" field.
+func ThumbnailURLNEQ(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIn applies the In predicate on the "thumbnail_url" field.
+func ThumbnailURLIn(vs ...string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLNotIn applies the NotIn predicate on the "thumbnail_url" field.
+func ThumbnailURLNotIn(vs ...string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLGT applies the GT predicate on the "thumbnail_url" field.
+func ThumbnailURLGT(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLGTE applies the GTE predicate on the "thumbnail_url" field.
+func ThumbnailURLGTE(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLT applies the LT predicate on the "thumbnail_url" field.
+func ThumbnailURLLT(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLTE applies the LTE predicate on the "thumbnail_url" field.
+func ThumbnailURLLTE(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContains applies the Contains predicate on the "thumbnail_url" field.
+func ThumbnailURLContains(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldContains(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasPrefix applies the HasPrefix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasPrefix(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldHasPrefix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasSuffix applies the HasSuffix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasSuffix(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldHasSuffix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIsNil applies the IsNil predicate on the "thumbnail_url" field.
+func ThumbnailURLIsNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIsNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLNotNil applies the NotNil predicate on the "thumbnail_url" field.
+func ThumbnailURLNotNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLEqualFold applies the EqualFold predicate on the "thumbnail_url" field.
+func ThumbnailURLEqualFold(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEqualFold(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContainsFold applies the ContainsFold predicate on the "thumbnail_url" field.
+func ThumbnailURLContainsFold(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldContainsFold(FieldThumbnailURL, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

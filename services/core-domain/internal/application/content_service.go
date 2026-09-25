@@ -111,12 +111,15 @@ type ContentNodeInput struct {
 	// InstrumentIDs are the instruments the node is for; empty means every
 	// instrument.
 	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
 }
 
 func (input ContentNodeInput) fields() domain.ContentNodeFields {
 	return domain.ContentNodeFields{
 		Title: input.Title, SkillIDs: input.SkillIDs, ConceptIDs: input.ConceptIDs, Difficulty: input.Difficulty,
 		LanguageCodes: input.Languages, MediaURL: input.MediaURL, RichContent: input.RichContent, InstrumentIDs: input.InstrumentIDs,
+		ThumbnailURL: input.ThumbnailURL,
 	}
 }
 

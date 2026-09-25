@@ -41,6 +41,12 @@ func (Course) Fields() []ent.Field {
 			Values("draft", "published", "retired").
 			Default("draft"),
 
+		// thumbnail_url is the image shown for it in lists and cards; NULL =
+		// none.
+		field.String("thumbnail_url").
+			Optional().
+			Nillable(),
+
 		field.UUID("created_by", uuid.UUID{}).
 			Immutable(),
 

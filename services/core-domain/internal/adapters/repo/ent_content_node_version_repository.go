@@ -60,6 +60,7 @@ func (r *EntContentNodeVersionRepository) Create(ctx context.Context, version do
 		SetClassificationSnapshot(classificationJSON).
 		SetLanguagesSnapshot(languagesJSON).
 		SetInstrumentIdsSnapshot(version.InstrumentIDsSnapshot).
+		SetNillableThumbnailURLSnapshot(version.ThumbnailURLSnapshot).
 		SetPublishedBy(publishedBy).
 		SetPublishedAt(version.PublishedAt).
 		Save(ctx)
@@ -122,6 +123,7 @@ func toDomainContentNodeVersion(row *ent.ContentNodeVersion) domain.ContentNodeV
 		Classification:        unmarshalVersionClassification(row.ClassificationSnapshot),
 		Languages:             unmarshalVersionLanguages(row.LanguagesSnapshot),
 		InstrumentIDsSnapshot: row.InstrumentIdsSnapshot,
+		ThumbnailURLSnapshot:  row.ThumbnailURLSnapshot,
 	}
 }
 

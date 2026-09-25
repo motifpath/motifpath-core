@@ -120,6 +120,26 @@ func (_u *ContentNodeUpdate) SetNillableReviewState(v *contentnode.ReviewState) 
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *ContentNodeUpdate) SetThumbnailURL(v string) *ContentNodeUpdate {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *ContentNodeUpdate) SetNillableThumbnailURL(v *string) *ContentNodeUpdate {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *ContentNodeUpdate) ClearThumbnailURL() *ContentNodeUpdate {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by IDs.
 func (_u *ContentNodeUpdate) AddPathExerciseIDs(ids ...uuid.UUID) *ContentNodeUpdate {
 	_u.mutation.AddPathExerciseIDs(ids...)
@@ -559,6 +579,12 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if value, ok := _u.mutation.ReviewState(); ok {
 		_spec.SetField(contentnode.FieldReviewState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(contentnode.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(contentnode.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.PathExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1172,6 +1198,26 @@ func (_u *ContentNodeUpdateOne) SetNillableReviewState(v *contentnode.ReviewStat
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *ContentNodeUpdateOne) SetThumbnailURL(v string) *ContentNodeUpdateOne {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *ContentNodeUpdateOne) SetNillableThumbnailURL(v *string) *ContentNodeUpdateOne {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *ContentNodeUpdateOne) ClearThumbnailURL() *ContentNodeUpdateOne {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddPathExerciseIDs adds the "path_exercises" edge to the Exercise entity by IDs.
 func (_u *ContentNodeUpdateOne) AddPathExerciseIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.AddPathExerciseIDs(ids...)
@@ -1641,6 +1687,12 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 	}
 	if value, ok := _u.mutation.ReviewState(); ok {
 		_spec.SetField(contentnode.FieldReviewState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(contentnode.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(contentnode.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.PathExercisesCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -40,6 +40,12 @@ func (LearningPath) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now),
 
+		// thumbnail_url is the image shown for it in lists and cards; NULL =
+		// none.
+		field.String("thumbnail_url").
+			Optional().
+			Nillable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

@@ -100,7 +100,9 @@ type ContentNode struct {
 	// InstrumentIDs are the instruments the node is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	CreatedAt     time.Time
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
+	CreatedAt    time.Time
 }
 
 // ContentNodeFields are the parts of a content node its author writes, as
@@ -116,6 +118,8 @@ type ContentNodeFields struct {
 	// InstrumentIDs are the instruments the node is for; empty means every
 	// instrument.
 	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
 }
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
@@ -135,6 +139,7 @@ func NewContentNode(id, teacherID string, contentType ContentType, fields Conten
 	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
 		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
 	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 
 	switch contentType {
 	case ContentTypeVideo, ContentTypeArticle:
@@ -162,6 +167,7 @@ func NewContentNode(id, teacherID string, contentType ContentType, fields Conten
 		RichContent:   richContent,
 		Languages:     languagesFromCodes(languageCodes),
 		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
 		CreatedAt:     createdAt,
 	}, nil
 }
@@ -180,6 +186,7 @@ func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
 	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
 		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
 	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 	errs = append(errs, validateContentNodeBody(n.ContentType, mediaURL, richContent)...)
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
@@ -194,6 +201,7 @@ func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
 	updated.RichContent = richContent
 	updated.Languages = languagesFromCodes(languageCodes)
 	updated.InstrumentIDs = fields.InstrumentIDs
+	updated.ThumbnailURL = fields.ThumbnailURL
 	return updated, nil
 }
 

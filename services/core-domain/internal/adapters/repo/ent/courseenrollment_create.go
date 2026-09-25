@@ -39,6 +39,20 @@ func (_c *CourseEnrollmentCreate) SetCourseTitle(v string) *CourseEnrollmentCrea
 	return _c
 }
 
+// SetCourseThumbnailURL sets the "course_thumbnail_url" field.
+func (_c *CourseEnrollmentCreate) SetCourseThumbnailURL(v string) *CourseEnrollmentCreate {
+	_c.mutation.SetCourseThumbnailURL(v)
+	return _c
+}
+
+// SetNillableCourseThumbnailURL sets the "course_thumbnail_url" field if the given value is not nil.
+func (_c *CourseEnrollmentCreate) SetNillableCourseThumbnailURL(v *string) *CourseEnrollmentCreate {
+	if v != nil {
+		_c.SetCourseThumbnailURL(*v)
+	}
+	return _c
+}
+
 // SetCourseVersionNumber sets the "course_version_number" field.
 func (_c *CourseEnrollmentCreate) SetCourseVersionNumber(v int) *CourseEnrollmentCreate {
 	_c.mutation.SetCourseVersionNumber(v)
@@ -235,6 +249,10 @@ func (_c *CourseEnrollmentCreate) createSpec() (*CourseEnrollment, *sqlgraph.Cre
 	if value, ok := _c.mutation.CourseTitle(); ok {
 		_spec.SetField(courseenrollment.FieldCourseTitle, field.TypeString, value)
 		_node.CourseTitle = value
+	}
+	if value, ok := _c.mutation.CourseThumbnailURL(); ok {
+		_spec.SetField(courseenrollment.FieldCourseThumbnailURL, field.TypeString, value)
+		_node.CourseThumbnailURL = &value
 	}
 	if value, ok := _c.mutation.CourseVersionNumber(); ok {
 		_spec.SetField(courseenrollment.FieldCourseVersionNumber, field.TypeInt, value)

@@ -79,6 +79,26 @@ func (_u *LearningPathUpdate) SetNillableUpdatedAt(v *time.Time) *LearningPathUp
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *LearningPathUpdate) SetThumbnailURL(v string) *LearningPathUpdate {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableThumbnailURL(v *string) *LearningPathUpdate {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *LearningPathUpdate) ClearThumbnailURL() *LearningPathUpdate {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
 func (_u *LearningPathUpdate) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdate {
 	_u.mutation.AddInstrumentIDs(ids...)
@@ -216,6 +236,12 @@ func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(learningpath.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -387,6 +413,26 @@ func (_u *LearningPathUpdateOne) SetNillableUpdatedAt(v *time.Time) *LearningPat
 	return _u
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *LearningPathUpdateOne) SetThumbnailURL(v string) *LearningPathUpdateOne {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableThumbnailURL(v *string) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *LearningPathUpdateOne) ClearThumbnailURL() *LearningPathUpdateOne {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
 func (_u *LearningPathUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdateOne {
 	_u.mutation.AddInstrumentIDs(ids...)
@@ -554,6 +600,12 @@ func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPa
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(learningpath.FieldThumbnailURL, field.TypeString)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{

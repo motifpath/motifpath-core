@@ -63,6 +63,20 @@ func (_c *LearningPathCreate) SetNillableUpdatedAt(v *time.Time) *LearningPathCr
 	return _c
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *LearningPathCreate) SetThumbnailURL(v string) *LearningPathCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableThumbnailURL(v *string) *LearningPathCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *LearningPathCreate) SetCreatedAt(v time.Time) *LearningPathCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -239,6 +253,10 @@ func (_c *LearningPathCreate) createSpec() (*LearningPath, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(learningpath.FieldCreatedAt, field.TypeTime, value)

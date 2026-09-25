@@ -38,13 +38,15 @@ type LearningPathInput struct {
 	// InstrumentIDs are the instruments the path is for; empty means every
 	// instrument.
 	InstrumentIDs []string
-	Items         []PathItemInput
+	// ThumbnailURL is the image shown for the path; nil means none.
+	ThumbnailURL *string
+	Items        []PathItemInput
 }
 
 // fields resolves input into the domain's LearningPathFields, given its items
 // already resolved against their content nodes.
 func (input LearningPathInput) fields(items []domain.NewLearningPathItem) domain.LearningPathFields {
-	return domain.LearningPathFields{Title: input.Title, Level: input.Level, InstrumentIDs: input.InstrumentIDs, Items: items}
+	return domain.LearningPathFields{Title: input.Title, Level: input.Level, InstrumentIDs: input.InstrumentIDs, ThumbnailURL: input.ThumbnailURL, Items: items}
 }
 
 // CreateLearningPath creates a learning path from the given ordered items.

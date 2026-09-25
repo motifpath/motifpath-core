@@ -39,6 +39,7 @@ func (r *EntCourseEnrollmentRepository) Create(ctx context.Context, e domain.Cou
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetCourseTitle(e.CourseTitle).
+		SetNillableCourseThumbnailURL(e.CourseThumbnailURL).
 		SetCourseVersionNumber(e.CourseVersionNumber).
 		SetStatus(courseenrollment.Status(e.Status)).
 		SetEnrolledAt(e.EnrolledAt).
@@ -214,6 +215,7 @@ func toDomainCourseEnrollment(row *ent.CourseEnrollment) domain.CourseEnrollment
 		StudentID:                     row.StudentID.String(),
 		CourseID:                      row.CourseID.String(),
 		CourseTitle:                   row.CourseTitle,
+		CourseThumbnailURL:            row.CourseThumbnailURL,
 		CourseVersionNumber:           row.CourseVersionNumber,
 		Status:                        domain.CourseEnrollmentStatus(row.Status),
 		ActiveCheckpointStudentPathID: activeCheckpointStudentPathID,

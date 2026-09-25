@@ -33,6 +33,8 @@ type CourseVersion struct {
 	LanguageSnapshot string `json:"language_snapshot,omitempty"`
 	// InstrumentIdsSnapshot holds the value of the "instrument_ids_snapshot" field.
 	InstrumentIdsSnapshot []string `json:"instrument_ids_snapshot,omitempty"`
+	// ThumbnailURLSnapshot holds the value of the "thumbnail_url_snapshot" field.
+	ThumbnailURLSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
 	// AvailableForNewEnrollments holds the value of the "available_for_new_enrollments" field.
 	AvailableForNewEnrollments bool `json:"available_for_new_enrollments,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -51,7 +53,7 @@ func (*CourseVersion) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case courseversion.FieldVersionNumber:
 			values[i] = new(sql.NullInt64)
-		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot, courseversion.FieldLanguageSnapshot:
+		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot, courseversion.FieldLanguageSnapshot, courseversion.FieldThumbnailURLSnapshot:
 			values[i] = new(sql.NullString)
 		case courseversion.FieldPublishedAt:
 			values[i] = new(sql.NullTime)
@@ -122,6 +124,13 @@ func (_m *CourseVersion) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field instrument_ids_snapshot: %w", err)
 				}
 			}
+		case courseversion.FieldThumbnailURLSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url_snapshot", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURLSnapshot = new(string)
+				*_m.ThumbnailURLSnapshot = value.String
+			}
 		case courseversion.FieldAvailableForNewEnrollments:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field available_for_new_enrollments", values[i])
@@ -190,6 +199,11 @@ func (_m *CourseVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("instrument_ids_snapshot=")
 	builder.WriteString(fmt.Sprintf("%v", _m.InstrumentIdsSnapshot))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURLSnapshot; v != nil {
+		builder.WriteString("thumbnail_url_snapshot=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("available_for_new_enrollments=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AvailableForNewEnrollments))

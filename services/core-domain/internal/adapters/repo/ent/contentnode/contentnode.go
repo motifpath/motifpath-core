@@ -30,6 +30,8 @@ const (
 	FieldDifficultyLevel = "difficulty_level"
 	// FieldReviewState holds the string denoting the review_state field in the database.
 	FieldReviewState = "review_state"
+	// FieldThumbnailURL holds the string denoting the thumbnail_url field in the database.
+	FieldThumbnailURL = "thumbnail_url"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgePathExercises holds the string denoting the path_exercises edge name in mutations.
@@ -126,6 +128,7 @@ var Columns = []string{
 	FieldRichContent,
 	FieldDifficultyLevel,
 	FieldReviewState,
+	FieldThumbnailURL,
 	FieldCreatedAt,
 }
 
@@ -281,6 +284,11 @@ func ByDifficultyLevel(opts ...sql.OrderTermOption) OrderOption {
 // ByReviewState orders the results by the review_state field.
 func ByReviewState(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldReviewState, opts...).ToFunc()
+}
+
+// ByThumbnailURL orders the results by the thumbnail_url field.
+func ByThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURL, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -26,6 +26,8 @@ const (
 	FieldLanguage = "language"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldThumbnailURL holds the string denoting the thumbnail_url field in the database.
+	FieldThumbnailURL = "thumbnail_url"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
 	FieldCreatedBy = "created_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -58,6 +60,7 @@ var Columns = []string{
 	FieldLevel,
 	FieldLanguage,
 	FieldStatus,
+	FieldThumbnailURL,
 	FieldCreatedBy,
 	FieldCreatedAt,
 }
@@ -171,6 +174,11 @@ func ByLanguage(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByThumbnailURL orders the results by the thumbnail_url field.
+func ByThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURL, opts...).ToFunc()
 }
 
 // ByCreatedBy orders the results by the created_by field.

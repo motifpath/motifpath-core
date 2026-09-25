@@ -90,6 +90,7 @@ func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVers
 		},
 		LanguagesSnapshot:     toGeneratedLanguages(v.Languages),
 		InstrumentIdsSnapshot: toUUIDs(v.InstrumentIDsSnapshot),
+		ThumbnailUrlSnapshot:  v.ThumbnailURLSnapshot,
 		MediaUrlSnapshot:      v.MediaURL,
 		PublishedAt:           v.PublishedAt,
 	}
@@ -115,6 +116,7 @@ func toContentNode(n domain.ContentNode, names userNames) generated.ContentNode 
 		MediaUrl:      n.MediaURL,
 		Languages:     toGeneratedLanguages(n.Languages),
 		InstrumentIds: toUUIDs(n.InstrumentIDs),
+		ThumbnailUrl:  n.ThumbnailURL,
 		CreatedAt:     n.CreatedAt,
 	}
 	if n.RichContent != nil {
@@ -399,6 +401,7 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 		CreatedAt:      p.CreatedAt,
 		UpdatedAt:      p.UpdatedAt,
 		InstrumentIds:  toUUIDs(p.InstrumentIDs),
+		ThumbnailUrl:   p.ThumbnailURL,
 	}
 	if p.Level != nil {
 		level := generated.LearningPathLevel(*p.Level)
@@ -496,6 +499,7 @@ func toCourseEnrollment(e domain.CourseEnrollment, names userNames) generated.Co
 		Student:                  names.ref(e.StudentID),
 		CourseId:                 mustUUID(e.CourseID),
 		CourseTitle:              e.CourseTitle,
+		CourseThumbnailUrl:       e.CourseThumbnailURL,
 		CourseVersionNumber:      e.CourseVersionNumber,
 		Status:                   generated.CourseEnrollmentStatus(e.Status),
 		ActiveCheckpointPosition: e.ActiveCheckpointPosition,
@@ -780,6 +784,7 @@ func toCourse(c domain.Course, latest *domain.CourseVersion, names userNames) ge
 		Level:                 generated.CourseLevel(c.Level),
 		Language:              c.Language,
 		InstrumentIds:         toUUIDs(c.InstrumentIDs),
+		ThumbnailUrl:          c.ThumbnailURL,
 		Status:                generated.CourseStatus(c.Status),
 		CreatedBy:             names.ref(c.CreatedBy),
 		CreatedAt:             c.CreatedAt,
@@ -820,6 +825,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 		Level:         generated.CourseCatalogEntryLevel(c.Level),
 		Language:      c.Language,
 		InstrumentIds: toUUIDs(c.InstrumentIDs),
+		ThumbnailUrl:  c.ThumbnailURL,
 		CreatedBy:     names.ref(c.CreatedBy),
 		Status:        generated.CourseCatalogEntryStatus(c.Status),
 	}
@@ -835,6 +841,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 			entry.Level = generated.CourseCatalogEntryLevel(latest.LevelSnapshot)
 			entry.Language = latest.LanguageSnapshot
 			entry.InstrumentIds = toUUIDs(latest.InstrumentIDsSnapshot)
+			entry.ThumbnailUrl = latest.ThumbnailURLSnapshot
 		}
 	}
 	if view == authoringListView {
@@ -870,6 +877,7 @@ func toGeneratedCourseVersion(v domain.CourseVersion) generated.CourseVersion {
 		LevelSnapshot:              generated.CourseVersionLevelSnapshot(v.LevelSnapshot),
 		LanguageSnapshot:           v.LanguageSnapshot,
 		InstrumentIdsSnapshot:      toUUIDs(v.InstrumentIDsSnapshot),
+		ThumbnailUrlSnapshot:       v.ThumbnailURLSnapshot,
 		PublishedAt:                v.PublishedAt,
 		AvailableForNewEnrollments: v.AvailableForNewEnrollments,
 	}
@@ -900,6 +908,7 @@ func toCourseDetail(courseID string, view application.PublishedCourseView) gener
 		Level:         generated.CourseDetailLevel(view.Level),
 		Language:      view.Language,
 		InstrumentIds: toUUIDs(view.InstrumentIDs),
+		ThumbnailUrl:  view.ThumbnailURL,
 		Status:        generated.CourseDetailStatus(view.Status),
 		PublishedAt:   &publishedAt,
 		Checkpoints:   checkpoints,

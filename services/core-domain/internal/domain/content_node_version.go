@@ -28,8 +28,11 @@ type ContentNodeVersion struct {
 	// InstrumentIDsSnapshot is the node's InstrumentIDs when this version
 	// was published; empty means every instrument.
 	InstrumentIDsSnapshot []string
-	PublishedBy           string
-	PublishedAt           time.Time
+	// ThumbnailURLSnapshot is the node's ThumbnailURL when this version was
+	// published; nil means none.
+	ThumbnailURLSnapshot *string
+	PublishedBy          string
+	PublishedAt          time.Time
 }
 
 // NewContentNodeVersionSnapshot builds the next version of node.
@@ -49,6 +52,7 @@ func NewContentNodeVersionSnapshot(id string, node ContentNode, versionNumber in
 		Classification:        node.Classification,
 		Languages:             node.Languages,
 		InstrumentIDsSnapshot: append([]string(nil), node.InstrumentIDs...),
+		ThumbnailURLSnapshot:  node.ThumbnailURL,
 		PublishedBy:           publishedBy,
 		PublishedAt:           publishedAt,
 	}

@@ -28,6 +28,8 @@ type Course struct {
 	Language string `json:"language,omitempty"`
 	// Status holds the value of the "status" field.
 	Status course.Status `json:"status,omitempty"`
+	// ThumbnailURL holds the value of the "thumbnail_url" field.
+	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy uuid.UUID `json:"created_by,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -72,7 +74,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldLanguage, course.FieldStatus:
+		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldLanguage, course.FieldStatus, course.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
 		case course.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -128,6 +130,13 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = course.Status(value.String)
+			}
+		case course.FieldThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURL = new(string)
+				*_m.ThumbnailURL = value.String
 			}
 		case course.FieldCreatedBy:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -201,6 +210,11 @@ func (_m *Course) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURL; v != nil {
+		builder.WriteString("thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CreatedBy))

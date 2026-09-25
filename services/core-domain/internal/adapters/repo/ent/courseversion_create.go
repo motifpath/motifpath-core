@@ -71,6 +71,20 @@ func (_c *CourseVersionCreate) SetInstrumentIdsSnapshot(v []string) *CourseVersi
 	return _c
 }
 
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (_c *CourseVersionCreate) SetThumbnailURLSnapshot(v string) *CourseVersionCreate {
+	_c.mutation.SetThumbnailURLSnapshot(v)
+	return _c
+}
+
+// SetNillableThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field if the given value is not nil.
+func (_c *CourseVersionCreate) SetNillableThumbnailURLSnapshot(v *string) *CourseVersionCreate {
+	if v != nil {
+		_c.SetThumbnailURLSnapshot(*v)
+	}
+	return _c
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (_c *CourseVersionCreate) SetAvailableForNewEnrollments(v bool) *CourseVersionCreate {
 	_c.mutation.SetAvailableForNewEnrollments(v)
@@ -259,6 +273,10 @@ func (_c *CourseVersionCreate) createSpec() (*CourseVersion, *sqlgraph.CreateSpe
 	if value, ok := _c.mutation.InstrumentIdsSnapshot(); ok {
 		_spec.SetField(courseversion.FieldInstrumentIdsSnapshot, field.TypeJSON, value)
 		_node.InstrumentIdsSnapshot = value
+	}
+	if value, ok := _c.mutation.ThumbnailURLSnapshot(); ok {
+		_spec.SetField(courseversion.FieldThumbnailURLSnapshot, field.TypeString, value)
+		_node.ThumbnailURLSnapshot = &value
 	}
 	if value, ok := _c.mutation.AvailableForNewEnrollments(); ok {
 		_spec.SetField(courseversion.FieldAvailableForNewEnrollments, field.TypeBool, value)

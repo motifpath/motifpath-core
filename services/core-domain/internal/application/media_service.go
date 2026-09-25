@@ -44,14 +44,19 @@ func (s *MediaService) CreateUploadURL(ctx context.Context, caller domain.User, 
 }
 
 // objectKey lays objects out as exercises/{exercise_id}/... for
-// exercise-specific uploads, library/... for the shared image-picker
-// library. The stored key never reuses the caller's file name — only its
-// extension — so two uploads with the same original name never collide.
+// exercise-specific uploads, thumbnails/... for course, path and content node
+// thumbnails, and library/... for the shared image-picker library. The stored
+// key never reuses the caller's file name — only its extension — so two
+// uploads with the same original name never collide.
 func (s *MediaService) objectKey(req domain.MediaUploadRequest) string {
 	ext := filepath.Ext(req.FileName)
 	id := s.newID()
-	if req.Purpose == domain.MediaUploadPurposeExerciseAsset {
+	switch req.Purpose {
+	case domain.MediaUploadPurposeExerciseAsset:
 		return "exercises/" + *req.ExerciseID + "/" + id + ext
+	case domain.MediaUploadPurposeThumbnail:
+		return "thumbnails/" + id + ext
+	case domain.MediaUploadPurposeLibraryAsset:
 	}
 	return "library/" + id + ext
 }

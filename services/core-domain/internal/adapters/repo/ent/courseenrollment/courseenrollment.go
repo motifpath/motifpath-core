@@ -21,6 +21,8 @@ const (
 	FieldCourseID = "course_id"
 	// FieldCourseTitle holds the string denoting the course_title field in the database.
 	FieldCourseTitle = "course_title"
+	// FieldCourseThumbnailURL holds the string denoting the course_thumbnail_url field in the database.
+	FieldCourseThumbnailURL = "course_thumbnail_url"
 	// FieldCourseVersionNumber holds the string denoting the course_version_number field in the database.
 	FieldCourseVersionNumber = "course_version_number"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -41,6 +43,7 @@ var Columns = []string{
 	FieldStudentID,
 	FieldCourseID,
 	FieldCourseTitle,
+	FieldCourseThumbnailURL,
 	FieldCourseVersionNumber,
 	FieldStatus,
 	FieldActiveCheckpointStudentPathID,
@@ -113,6 +116,11 @@ func ByCourseID(opts ...sql.OrderTermOption) OrderOption {
 // ByCourseTitle orders the results by the course_title field.
 func ByCourseTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCourseTitle, opts...).ToFunc()
+}
+
+// ByCourseThumbnailURL orders the results by the course_thumbnail_url field.
+func ByCourseThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCourseThumbnailURL, opts...).ToFunc()
 }
 
 // ByCourseVersionNumber orders the results by the course_version_number field.

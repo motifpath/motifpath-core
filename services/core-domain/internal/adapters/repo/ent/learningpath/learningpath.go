@@ -24,6 +24,8 @@ const (
 	FieldLevel = "level"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldThumbnailURL holds the string denoting the thumbnail_url field in the database.
+	FieldThumbnailURL = "thumbnail_url"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInstruments holds the string denoting the instruments edge name in mutations.
@@ -53,6 +55,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldLevel,
 	FieldUpdatedAt,
+	FieldThumbnailURL,
 	FieldCreatedAt,
 }
 
@@ -133,6 +136,11 @@ func ByLevel(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByThumbnailURL orders the results by the thumbnail_url field.
+func ByThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURL, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

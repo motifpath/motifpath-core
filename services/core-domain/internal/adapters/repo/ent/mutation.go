@@ -2706,6 +2706,7 @@ type ContentNodeMutation struct {
 	rich_content                    *string
 	difficulty_level                *contentnode.DifficultyLevel
 	review_state                    *contentnode.ReviewState
+	thumbnail_url                   *string
 	created_at                      *time.Time
 	clearedFields                   map[string]struct{}
 	path_exercises                  map[uuid.UUID]struct{}
@@ -3123,6 +3124,55 @@ func (m *ContentNodeMutation) OldReviewState(ctx context.Context) (v contentnode
 // ResetReviewState resets all changes to the "review_state" field.
 func (m *ContentNodeMutation) ResetReviewState() {
 	m.review_state = nil
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *ContentNodeMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *ContentNodeMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *ContentNodeMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[contentnode.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *ContentNodeMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[contentnode.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *ContentNodeMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, contentnode.FieldThumbnailURL)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -3735,7 +3785,7 @@ func (m *ContentNodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.teacher_id != nil {
 		fields = append(fields, contentnode.FieldTeacherID)
 	}
@@ -3756,6 +3806,9 @@ func (m *ContentNodeMutation) Fields() []string {
 	}
 	if m.review_state != nil {
 		fields = append(fields, contentnode.FieldReviewState)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, contentnode.FieldThumbnailURL)
 	}
 	if m.created_at != nil {
 		fields = append(fields, contentnode.FieldCreatedAt)
@@ -3782,6 +3835,8 @@ func (m *ContentNodeMutation) Field(name string) (ent.Value, bool) {
 		return m.DifficultyLevel()
 	case contentnode.FieldReviewState:
 		return m.ReviewState()
+	case contentnode.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case contentnode.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -3807,6 +3862,8 @@ func (m *ContentNodeMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldDifficultyLevel(ctx)
 	case contentnode.FieldReviewState:
 		return m.OldReviewState(ctx)
+	case contentnode.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case contentnode.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -3867,6 +3924,13 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetReviewState(v)
 		return nil
+	case contentnode.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
+		return nil
 	case contentnode.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -3910,6 +3974,9 @@ func (m *ContentNodeMutation) ClearedFields() []string {
 	if m.FieldCleared(contentnode.FieldRichContent) {
 		fields = append(fields, contentnode.FieldRichContent)
 	}
+	if m.FieldCleared(contentnode.FieldThumbnailURL) {
+		fields = append(fields, contentnode.FieldThumbnailURL)
+	}
 	return fields
 }
 
@@ -3929,6 +3996,9 @@ func (m *ContentNodeMutation) ClearField(name string) error {
 		return nil
 	case contentnode.FieldRichContent:
 		m.ClearRichContent()
+		return nil
+	case contentnode.FieldThumbnailURL:
+		m.ClearThumbnailURL()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode nullable field %s", name)
@@ -3958,6 +4028,9 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 		return nil
 	case contentnode.FieldReviewState:
 		m.ResetReviewState()
+		return nil
+	case contentnode.FieldThumbnailURL:
+		m.ResetThumbnailURL()
 		return nil
 	case contentnode.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -6971,6 +7044,7 @@ type ContentNodeVersionMutation struct {
 	languages_snapshot            *string
 	instrument_ids_snapshot       *[]string
 	appendinstrument_ids_snapshot []string
+	thumbnail_url_snapshot        *string
 	published_by                  *uuid.UUID
 	published_at                  *time.Time
 	clearedFields                 map[string]struct{}
@@ -7508,6 +7582,55 @@ func (m *ContentNodeVersionMutation) ResetInstrumentIdsSnapshot() {
 	delete(m.clearedFields, contentnodeversion.FieldInstrumentIdsSnapshot)
 }
 
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) SetThumbnailURLSnapshot(s string) {
+	m.thumbnail_url_snapshot = &s
+}
+
+// ThumbnailURLSnapshot returns the value of the "thumbnail_url_snapshot" field in the mutation.
+func (m *ContentNodeVersionMutation) ThumbnailURLSnapshot() (r string, exists bool) {
+	v := m.thumbnail_url_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURLSnapshot returns the old "thumbnail_url_snapshot" field's value of the ContentNodeVersion entity.
+// If the ContentNodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeVersionMutation) OldThumbnailURLSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURLSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURLSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURLSnapshot: %w", err)
+	}
+	return oldValue.ThumbnailURLSnapshot, nil
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) ClearThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	m.clearedFields[contentnodeversion.FieldThumbnailURLSnapshot] = struct{}{}
+}
+
+// ThumbnailURLSnapshotCleared returns if the "thumbnail_url_snapshot" field was cleared in this mutation.
+func (m *ContentNodeVersionMutation) ThumbnailURLSnapshotCleared() bool {
+	_, ok := m.clearedFields[contentnodeversion.FieldThumbnailURLSnapshot]
+	return ok
+}
+
+// ResetThumbnailURLSnapshot resets all changes to the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) ResetThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	delete(m.clearedFields, contentnodeversion.FieldThumbnailURLSnapshot)
+}
+
 // SetPublishedBy sets the "published_by" field.
 func (m *ContentNodeVersionMutation) SetPublishedBy(u uuid.UUID) {
 	m.published_by = &u
@@ -7614,7 +7737,7 @@ func (m *ContentNodeVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeVersionMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.content_node_id != nil {
 		fields = append(fields, contentnodeversion.FieldContentNodeID)
 	}
@@ -7641,6 +7764,9 @@ func (m *ContentNodeVersionMutation) Fields() []string {
 	}
 	if m.instrument_ids_snapshot != nil {
 		fields = append(fields, contentnodeversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.thumbnail_url_snapshot != nil {
+		fields = append(fields, contentnodeversion.FieldThumbnailURLSnapshot)
 	}
 	if m.published_by != nil {
 		fields = append(fields, contentnodeversion.FieldPublishedBy)
@@ -7674,6 +7800,8 @@ func (m *ContentNodeVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.LanguagesSnapshot()
 	case contentnodeversion.FieldInstrumentIdsSnapshot:
 		return m.InstrumentIdsSnapshot()
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		return m.ThumbnailURLSnapshot()
 	case contentnodeversion.FieldPublishedBy:
 		return m.PublishedBy()
 	case contentnodeversion.FieldPublishedAt:
@@ -7705,6 +7833,8 @@ func (m *ContentNodeVersionMutation) OldField(ctx context.Context, name string) 
 		return m.OldLanguagesSnapshot(ctx)
 	case contentnodeversion.FieldInstrumentIdsSnapshot:
 		return m.OldInstrumentIdsSnapshot(ctx)
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		return m.OldThumbnailURLSnapshot(ctx)
 	case contentnodeversion.FieldPublishedBy:
 		return m.OldPublishedBy(ctx)
 	case contentnodeversion.FieldPublishedAt:
@@ -7781,6 +7911,13 @@ func (m *ContentNodeVersionMutation) SetField(name string, value ent.Value) erro
 		}
 		m.SetInstrumentIdsSnapshot(v)
 		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURLSnapshot(v)
+		return nil
 	case contentnodeversion.FieldPublishedBy:
 		v, ok := value.(uuid.UUID)
 		if !ok {
@@ -7855,6 +7992,9 @@ func (m *ContentNodeVersionMutation) ClearedFields() []string {
 	if m.FieldCleared(contentnodeversion.FieldInstrumentIdsSnapshot) {
 		fields = append(fields, contentnodeversion.FieldInstrumentIdsSnapshot)
 	}
+	if m.FieldCleared(contentnodeversion.FieldThumbnailURLSnapshot) {
+		fields = append(fields, contentnodeversion.FieldThumbnailURLSnapshot)
+	}
 	return fields
 }
 
@@ -7883,6 +8023,9 @@ func (m *ContentNodeVersionMutation) ClearField(name string) error {
 		return nil
 	case contentnodeversion.FieldInstrumentIdsSnapshot:
 		m.ClearInstrumentIdsSnapshot()
+		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		m.ClearThumbnailURLSnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNodeVersion nullable field %s", name)
@@ -7918,6 +8061,9 @@ func (m *ContentNodeVersionMutation) ResetField(name string) error {
 		return nil
 	case contentnodeversion.FieldInstrumentIdsSnapshot:
 		m.ResetInstrumentIdsSnapshot()
+		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		m.ResetThumbnailURLSnapshot()
 		return nil
 	case contentnodeversion.FieldPublishedBy:
 		m.ResetPublishedBy()
@@ -7988,6 +8134,7 @@ type CourseMutation struct {
 	level                     *course.Level
 	language                  *string
 	status                    *course.Status
+	thumbnail_url             *string
 	created_by                *uuid.UUID
 	created_at                *time.Time
 	clearedFields             map[string]struct{}
@@ -8286,6 +8433,55 @@ func (m *CourseMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *CourseMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *CourseMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *CourseMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[course.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *CourseMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[course.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *CourseMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, course.FieldThumbnailURL)
+}
+
 // SetCreatedBy sets the "created_by" field.
 func (m *CourseMutation) SetCreatedBy(u uuid.UUID) {
 	m.created_by = &u
@@ -8500,7 +8696,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.title != nil {
 		fields = append(fields, course.FieldTitle)
 	}
@@ -8515,6 +8711,9 @@ func (m *CourseMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, course.FieldStatus)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, course.FieldThumbnailURL)
 	}
 	if m.created_by != nil {
 		fields = append(fields, course.FieldCreatedBy)
@@ -8540,6 +8739,8 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.Language()
 	case course.FieldStatus:
 		return m.Status()
+	case course.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case course.FieldCreatedBy:
 		return m.CreatedBy()
 	case course.FieldCreatedAt:
@@ -8563,6 +8764,8 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldLanguage(ctx)
 	case course.FieldStatus:
 		return m.OldStatus(ctx)
+	case course.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case course.FieldCreatedBy:
 		return m.OldCreatedBy(ctx)
 	case course.FieldCreatedAt:
@@ -8611,6 +8814,13 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case course.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
+		return nil
 	case course.FieldCreatedBy:
 		v, ok := value.(uuid.UUID)
 		if !ok {
@@ -8654,7 +8864,11 @@ func (m *CourseMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *CourseMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(course.FieldThumbnailURL) {
+		fields = append(fields, course.FieldThumbnailURL)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -8667,6 +8881,11 @@ func (m *CourseMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *CourseMutation) ClearField(name string) error {
+	switch name {
+	case course.FieldThumbnailURL:
+		m.ClearThumbnailURL()
+		return nil
+	}
 	return fmt.Errorf("unknown Course nullable field %s", name)
 }
 
@@ -8688,6 +8907,9 @@ func (m *CourseMutation) ResetField(name string) error {
 		return nil
 	case course.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case course.FieldThumbnailURL:
+		m.ResetThumbnailURL()
 		return nil
 	case course.FieldCreatedBy:
 		m.ResetCreatedBy()
@@ -9370,6 +9592,7 @@ type CourseEnrollmentMutation struct {
 	student_id                        *uuid.UUID
 	course_id                         *uuid.UUID
 	course_title                      *string
+	course_thumbnail_url              *string
 	course_version_number             *int
 	addcourse_version_number          *int
 	status                            *courseenrollment.Status
@@ -9593,6 +9816,55 @@ func (m *CourseEnrollmentMutation) OldCourseTitle(ctx context.Context) (v string
 // ResetCourseTitle resets all changes to the "course_title" field.
 func (m *CourseEnrollmentMutation) ResetCourseTitle() {
 	m.course_title = nil
+}
+
+// SetCourseThumbnailURL sets the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) SetCourseThumbnailURL(s string) {
+	m.course_thumbnail_url = &s
+}
+
+// CourseThumbnailURL returns the value of the "course_thumbnail_url" field in the mutation.
+func (m *CourseEnrollmentMutation) CourseThumbnailURL() (r string, exists bool) {
+	v := m.course_thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseThumbnailURL returns the old "course_thumbnail_url" field's value of the CourseEnrollment entity.
+// If the CourseEnrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseEnrollmentMutation) OldCourseThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseThumbnailURL: %w", err)
+	}
+	return oldValue.CourseThumbnailURL, nil
+}
+
+// ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) ClearCourseThumbnailURL() {
+	m.course_thumbnail_url = nil
+	m.clearedFields[courseenrollment.FieldCourseThumbnailURL] = struct{}{}
+}
+
+// CourseThumbnailURLCleared returns if the "course_thumbnail_url" field was cleared in this mutation.
+func (m *CourseEnrollmentMutation) CourseThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[courseenrollment.FieldCourseThumbnailURL]
+	return ok
+}
+
+// ResetCourseThumbnailURL resets all changes to the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) ResetCourseThumbnailURL() {
+	m.course_thumbnail_url = nil
+	delete(m.clearedFields, courseenrollment.FieldCourseThumbnailURL)
 }
 
 // SetCourseVersionNumber sets the "course_version_number" field.
@@ -9876,7 +10148,7 @@ func (m *CourseEnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseEnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.student_id != nil {
 		fields = append(fields, courseenrollment.FieldStudentID)
 	}
@@ -9885,6 +10157,9 @@ func (m *CourseEnrollmentMutation) Fields() []string {
 	}
 	if m.course_title != nil {
 		fields = append(fields, courseenrollment.FieldCourseTitle)
+	}
+	if m.course_thumbnail_url != nil {
+		fields = append(fields, courseenrollment.FieldCourseThumbnailURL)
 	}
 	if m.course_version_number != nil {
 		fields = append(fields, courseenrollment.FieldCourseVersionNumber)
@@ -9915,6 +10190,8 @@ func (m *CourseEnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.CourseID()
 	case courseenrollment.FieldCourseTitle:
 		return m.CourseTitle()
+	case courseenrollment.FieldCourseThumbnailURL:
+		return m.CourseThumbnailURL()
 	case courseenrollment.FieldCourseVersionNumber:
 		return m.CourseVersionNumber()
 	case courseenrollment.FieldStatus:
@@ -9940,6 +10217,8 @@ func (m *CourseEnrollmentMutation) OldField(ctx context.Context, name string) (e
 		return m.OldCourseID(ctx)
 	case courseenrollment.FieldCourseTitle:
 		return m.OldCourseTitle(ctx)
+	case courseenrollment.FieldCourseThumbnailURL:
+		return m.OldCourseThumbnailURL(ctx)
 	case courseenrollment.FieldCourseVersionNumber:
 		return m.OldCourseVersionNumber(ctx)
 	case courseenrollment.FieldStatus:
@@ -9979,6 +10258,13 @@ func (m *CourseEnrollmentMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCourseTitle(v)
+		return nil
+	case courseenrollment.FieldCourseThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseThumbnailURL(v)
 		return nil
 	case courseenrollment.FieldCourseVersionNumber:
 		v, ok := value.(int)
@@ -10072,6 +10358,9 @@ func (m *CourseEnrollmentMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *CourseEnrollmentMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(courseenrollment.FieldCourseThumbnailURL) {
+		fields = append(fields, courseenrollment.FieldCourseThumbnailURL)
+	}
 	if m.FieldCleared(courseenrollment.FieldActiveCheckpointStudentPathID) {
 		fields = append(fields, courseenrollment.FieldActiveCheckpointStudentPathID)
 	}
@@ -10092,6 +10381,9 @@ func (m *CourseEnrollmentMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *CourseEnrollmentMutation) ClearField(name string) error {
 	switch name {
+	case courseenrollment.FieldCourseThumbnailURL:
+		m.ClearCourseThumbnailURL()
+		return nil
 	case courseenrollment.FieldActiveCheckpointStudentPathID:
 		m.ClearActiveCheckpointStudentPathID()
 		return nil
@@ -10114,6 +10406,9 @@ func (m *CourseEnrollmentMutation) ResetField(name string) error {
 		return nil
 	case courseenrollment.FieldCourseTitle:
 		m.ResetCourseTitle()
+		return nil
+	case courseenrollment.FieldCourseThumbnailURL:
+		m.ResetCourseThumbnailURL()
 		return nil
 	case courseenrollment.FieldCourseVersionNumber:
 		m.ResetCourseVersionNumber()
@@ -10731,6 +11026,7 @@ type CourseVersionMutation struct {
 	language_snapshot             *string
 	instrument_ids_snapshot       *[]string
 	appendinstrument_ids_snapshot []string
+	thumbnail_url_snapshot        *string
 	available_for_new_enrollments *bool
 	published_at                  *time.Time
 	clearedFields                 map[string]struct{}
@@ -11144,6 +11440,55 @@ func (m *CourseVersionMutation) ResetInstrumentIdsSnapshot() {
 	delete(m.clearedFields, courseversion.FieldInstrumentIdsSnapshot)
 }
 
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) SetThumbnailURLSnapshot(s string) {
+	m.thumbnail_url_snapshot = &s
+}
+
+// ThumbnailURLSnapshot returns the value of the "thumbnail_url_snapshot" field in the mutation.
+func (m *CourseVersionMutation) ThumbnailURLSnapshot() (r string, exists bool) {
+	v := m.thumbnail_url_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURLSnapshot returns the old "thumbnail_url_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldThumbnailURLSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURLSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURLSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURLSnapshot: %w", err)
+	}
+	return oldValue.ThumbnailURLSnapshot, nil
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) ClearThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	m.clearedFields[courseversion.FieldThumbnailURLSnapshot] = struct{}{}
+}
+
+// ThumbnailURLSnapshotCleared returns if the "thumbnail_url_snapshot" field was cleared in this mutation.
+func (m *CourseVersionMutation) ThumbnailURLSnapshotCleared() bool {
+	_, ok := m.clearedFields[courseversion.FieldThumbnailURLSnapshot]
+	return ok
+}
+
+// ResetThumbnailURLSnapshot resets all changes to the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) ResetThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	delete(m.clearedFields, courseversion.FieldThumbnailURLSnapshot)
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (m *CourseVersionMutation) SetAvailableForNewEnrollments(b bool) {
 	m.available_for_new_enrollments = &b
@@ -11250,7 +11595,7 @@ func (m *CourseVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseVersionMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.course_id != nil {
 		fields = append(fields, courseversion.FieldCourseID)
 	}
@@ -11271,6 +11616,9 @@ func (m *CourseVersionMutation) Fields() []string {
 	}
 	if m.instrument_ids_snapshot != nil {
 		fields = append(fields, courseversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.thumbnail_url_snapshot != nil {
+		fields = append(fields, courseversion.FieldThumbnailURLSnapshot)
 	}
 	if m.available_for_new_enrollments != nil {
 		fields = append(fields, courseversion.FieldAvailableForNewEnrollments)
@@ -11300,6 +11648,8 @@ func (m *CourseVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.LanguageSnapshot()
 	case courseversion.FieldInstrumentIdsSnapshot:
 		return m.InstrumentIdsSnapshot()
+	case courseversion.FieldThumbnailURLSnapshot:
+		return m.ThumbnailURLSnapshot()
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.AvailableForNewEnrollments()
 	case courseversion.FieldPublishedAt:
@@ -11327,6 +11677,8 @@ func (m *CourseVersionMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldLanguageSnapshot(ctx)
 	case courseversion.FieldInstrumentIdsSnapshot:
 		return m.OldInstrumentIdsSnapshot(ctx)
+	case courseversion.FieldThumbnailURLSnapshot:
+		return m.OldThumbnailURLSnapshot(ctx)
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.OldAvailableForNewEnrollments(ctx)
 	case courseversion.FieldPublishedAt:
@@ -11388,6 +11740,13 @@ func (m *CourseVersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetInstrumentIdsSnapshot(v)
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURLSnapshot(v)
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		v, ok := value.(bool)
@@ -11451,6 +11810,9 @@ func (m *CourseVersionMutation) ClearedFields() []string {
 	if m.FieldCleared(courseversion.FieldInstrumentIdsSnapshot) {
 		fields = append(fields, courseversion.FieldInstrumentIdsSnapshot)
 	}
+	if m.FieldCleared(courseversion.FieldThumbnailURLSnapshot) {
+		fields = append(fields, courseversion.FieldThumbnailURLSnapshot)
+	}
 	return fields
 }
 
@@ -11467,6 +11829,9 @@ func (m *CourseVersionMutation) ClearField(name string) error {
 	switch name {
 	case courseversion.FieldInstrumentIdsSnapshot:
 		m.ClearInstrumentIdsSnapshot()
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		m.ClearThumbnailURLSnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown CourseVersion nullable field %s", name)
@@ -11496,6 +11861,9 @@ func (m *CourseVersionMutation) ResetField(name string) error {
 		return nil
 	case courseversion.FieldInstrumentIdsSnapshot:
 		m.ResetInstrumentIdsSnapshot()
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		m.ResetThumbnailURLSnapshot()
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		m.ResetAvailableForNewEnrollments()
@@ -22560,6 +22928,7 @@ type LearningPathMutation struct {
 	title                            *string
 	level                            *learningpath.Level
 	updated_at                       *time.Time
+	thumbnail_url                    *string
 	created_at                       *time.Time
 	clearedFields                    map[string]struct{}
 	instruments                      map[uuid.UUID]struct{}
@@ -22834,6 +23203,55 @@ func (m *LearningPathMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *LearningPathMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *LearningPathMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *LearningPathMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[learningpath.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *LearningPathMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *LearningPathMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, learningpath.FieldThumbnailURL)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *LearningPathMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -23012,7 +23430,7 @@ func (m *LearningPathMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LearningPathMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.teacher_id != nil {
 		fields = append(fields, learningpath.FieldTeacherID)
 	}
@@ -23024,6 +23442,9 @@ func (m *LearningPathMutation) Fields() []string {
 	}
 	if m.updated_at != nil {
 		fields = append(fields, learningpath.FieldUpdatedAt)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, learningpath.FieldThumbnailURL)
 	}
 	if m.created_at != nil {
 		fields = append(fields, learningpath.FieldCreatedAt)
@@ -23044,6 +23465,8 @@ func (m *LearningPathMutation) Field(name string) (ent.Value, bool) {
 		return m.Level()
 	case learningpath.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case learningpath.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case learningpath.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -23063,6 +23486,8 @@ func (m *LearningPathMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldLevel(ctx)
 	case learningpath.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case learningpath.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case learningpath.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -23101,6 +23526,13 @@ func (m *LearningPathMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
+		return nil
+	case learningpath.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
 		return nil
 	case learningpath.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -23142,6 +23574,9 @@ func (m *LearningPathMutation) ClearedFields() []string {
 	if m.FieldCleared(learningpath.FieldLevel) {
 		fields = append(fields, learningpath.FieldLevel)
 	}
+	if m.FieldCleared(learningpath.FieldThumbnailURL) {
+		fields = append(fields, learningpath.FieldThumbnailURL)
+	}
 	return fields
 }
 
@@ -23158,6 +23593,9 @@ func (m *LearningPathMutation) ClearField(name string) error {
 	switch name {
 	case learningpath.FieldLevel:
 		m.ClearLevel()
+		return nil
+	case learningpath.FieldThumbnailURL:
+		m.ClearThumbnailURL()
 		return nil
 	}
 	return fmt.Errorf("unknown LearningPath nullable field %s", name)
@@ -23178,6 +23616,9 @@ func (m *LearningPathMutation) ResetField(name string) error {
 		return nil
 	case learningpath.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case learningpath.FieldThumbnailURL:
+		m.ResetThumbnailURL()
 		return nil
 	case learningpath.FieldCreatedAt:
 		m.ResetCreatedAt()
