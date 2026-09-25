@@ -1198,8 +1198,8 @@ type CreateExpandedContentRequest struct {
 // mutually exclusive with the others.
 type CreateExpandedContentRequestContentType string
 
-// CreateInstrumentRequest Payload for creating a new instrument. There is no update or delete
-// endpoint yet — instruments are expected to be created rarely, and
+// CreateInstrumentRequest Payload for creating a new instrument. Only its names can change
+// afterwards (see updateInstrument); there is no delete endpoint, and
 // changing family or string/key shape after Diagrams exist against it
 // is a deliberately open question.
 type CreateInstrumentRequest struct {
@@ -1215,8 +1215,11 @@ type CreateInstrumentRequest struct {
 		Lowest string `json:"lowest"`
 	} `json:"key_range,omitempty"`
 
-	// Name Human-readable name for this instrument.
-	Name string `json:"name"`
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
 
 	// StringCount Required when family is fretted; must be absent when family is keyboard.
 	StringCount *int `json:"string_count,omitempty"`
@@ -1760,9 +1763,15 @@ type Instrument struct {
 		Lowest string `json:"lowest"`
 	} `json:"key_range,omitempty"`
 
-	// Name Human-readable name (e.g. "6-string guitar, standard tuning",
-	// "4-string bass", "Piano").
-	Name string `json:"name"`
+	// Languages The Language.code of every language this instrument has a name
+	// in — the keys of names, sorted.
+	Languages []string `json:"languages"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
 
 	// StringCount Number of strings/courses. Present only when family is fretted;
 	// absent when family is keyboard.
@@ -1839,6 +1848,12 @@ type LearningPathItem struct {
 
 // LearningPathItemContentType Media format of the content node, denormalised for display.
 type LearningPathItemContentType string
+
+// LocalizedNames Text in one or more languages, keyed by Language.code — for example
+// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+// always words in some language. Clients display the name for the
+// viewer's locale, falling back to "en", then to any name present.
+type LocalizedNames map[string]string
 
 // MediaUploadUrl A presigned upload URL and the object's eventual read URL. The caller
 // performs an HTTP PUT of the file's raw bytes to upload_url, then stores
@@ -2615,6 +2630,15 @@ type UpdateExpandedContentRequest struct {
 // requires diagram_ref or diagram_stack_ref instead.
 type UpdateExpandedContentRequestContentType string
 
+// UpdateInstrumentRequest Payload for replacing an instrument's names.
+type UpdateInstrumentRequest struct {
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+}
+
 // UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
 type UpdateMyLocaleRequest struct {
 	// Locale The Language.code to set as this user's locale preference. Must
@@ -2874,6 +2898,9 @@ type UpdateExpandedContentJSONRequestBody = UpdateExpandedContentRequest
 // CreateInstrumentJSONRequestBody defines body for CreateInstrument for application/json ContentType.
 type CreateInstrumentJSONRequestBody = CreateInstrumentRequest
 
+// UpdateInstrumentJSONRequestBody defines body for UpdateInstrument for application/json ContentType.
+type UpdateInstrumentJSONRequestBody = UpdateInstrumentRequest
+
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
 
@@ -3026,6 +3053,9 @@ type ServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(w http.ResponseWriter, r *http.Request)
+	// Replace an instrument's names
+	// (PATCH /instruments/{instrument_id})
+	UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams)
@@ -3338,6 +3368,12 @@ func (_ Unimplemented) ListInstruments(w http.ResponseWriter, r *http.Request) {
 // Create an instrument
 // (POST /instruments)
 func (_ Unimplemented) CreateInstrument(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace an instrument's names
+// (PATCH /instruments/{instrument_id})
+func (_ Unimplemented) UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4862,6 +4898,37 @@ func (siw *ServerInterfaceWrapper) CreateInstrument(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateInstrument operation middleware
+func (siw *ServerInterfaceWrapper) UpdateInstrument(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "instrument_id" -------------
+	var instrumentId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "instrument_id", chi.URLParam(r, "instrument_id"), &instrumentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateInstrument(w, r, instrumentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListLearningPaths operation middleware
 func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
 
@@ -5634,6 +5701,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/instruments", wrapper.CreateInstrument)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/instruments/{instrument_id}", wrapper.UpdateInstrument)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths", wrapper.ListLearningPaths)
@@ -7455,6 +7525,60 @@ func (response CreateInstrument403JSONResponse) VisitCreateInstrumentResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateInstrumentRequestObject struct {
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+	Body         *UpdateInstrumentJSONRequestBody
+}
+
+type UpdateInstrumentResponseObject interface {
+	VisitUpdateInstrumentResponse(w http.ResponseWriter) error
+}
+
+type UpdateInstrument200JSONResponse Instrument
+
+func (response UpdateInstrument200JSONResponse) VisitUpdateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateInstrument400JSONResponse ValidationError
+
+func (response UpdateInstrument400JSONResponse) VisitUpdateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateInstrument401JSONResponse UnauthorizedError
+
+func (response UpdateInstrument401JSONResponse) VisitUpdateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateInstrument403JSONResponse ForbiddenError
+
+func (response UpdateInstrument403JSONResponse) VisitUpdateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateInstrument404JSONResponse NotFoundError
+
+func (response UpdateInstrument404JSONResponse) VisitUpdateInstrumentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListLearningPathsRequestObject struct {
 	Params ListLearningPathsParams
 }
@@ -8499,6 +8623,9 @@ type StrictServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(ctx context.Context, request CreateInstrumentRequestObject) (CreateInstrumentResponseObject, error)
+	// Replace an instrument's names
+	// (PATCH /instruments/{instrument_id})
+	UpdateInstrument(ctx context.Context, request UpdateInstrumentRequestObject) (UpdateInstrumentResponseObject, error)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(ctx context.Context, request ListLearningPathsRequestObject) (ListLearningPathsResponseObject, error)
@@ -9736,6 +9863,39 @@ func (sh *strictHandler) CreateInstrument(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateInstrumentResponseObject); ok {
 		if err := validResponse.VisitCreateInstrumentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateInstrument operation middleware
+func (sh *strictHandler) UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID) {
+	var request UpdateInstrumentRequestObject
+
+	request.InstrumentId = instrumentId
+
+	var body UpdateInstrumentJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateInstrument(ctx, request.(UpdateInstrumentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateInstrument")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateInstrumentResponseObject); ok {
+		if err := validResponse.VisitUpdateInstrumentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
