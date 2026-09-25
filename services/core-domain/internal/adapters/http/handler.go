@@ -1307,6 +1307,39 @@ func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCour
 	return generated.RetireCourse200JSONResponse(toCourse(course, latest, names)), nil
 }
 
+func (h *Handler) ReactivateCourse(ctx context.Context, request generated.ReactivateCourseRequestObject) (generated.ReactivateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReactivateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.ReactivateCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ReactivateCourse403JSONResponse(forbiddenError("only admins may reactivate a course")), nil
+		case errKindNotFound:
+			return generated.ReactivateCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation:
+			return generated.ReactivateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReactivateCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
 func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {

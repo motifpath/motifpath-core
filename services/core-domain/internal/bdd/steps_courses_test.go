@@ -662,3 +662,81 @@ func (w *world) responseStillShowsCheckpoints(n1, n2 string) error {
 	}
 	return nil
 }
+
+func registerCourseReactivationSteps(sc *godog.ScenarioContext, w *world) {
+	sc.Step(`^"([^"]+)" reactivates course "([^"]+)"$`, w.reactivatesCourse)
+	sc.Step(`^"([^"]+)" attempts to reactivate course "([^"]+)"$`, w.reactivatesCourse)
+	sc.Step(`^"([^"]+)" reactivates a course with an ID that does not exist$`, w.reactivatesMissingCourse)
+	sc.Step(`^course "([^"]+)" still has only course version (\d+)$`, w.courseStillHasOnlyVersion)
+	sc.Step(`^the course has unpublished changes$`, w.courseHasUnpublishedChanges)
+	sc.Step(`^the published version of "([^"]+)" still has checkpoints "([^"]+)"$`, w.publishedVersionHasCheckpoints)
+}
+
+// reactivatesCourse goes through the HTTP handler, unlike retiresCourse:
+// reactivation's own refusals (a course that isn't retired, a caller who
+// isn't an admin) are what several scenarios assert.
+func (w *world) reactivatesCourse(_, courseSlug string) error {
+	resp, err := w.handler.ReactivateCourse(w.ctx(), generated.ReactivateCourseRequestObject{CourseId: w.courseIDBySlug[courseSlug]})
+	w.lastResp, w.lastErr = resp, err
+	w.lastCourseSlug = courseSlug
+	return err
+}
+
+func (w *world) reactivatesMissingCourse(string) error {
+	resp, err := w.handler.ReactivateCourse(w.ctx(), generated.ReactivateCourseRequestObject{CourseId: deterministicUUID("course", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) courseStillHasOnlyVersion(courseSlug, versionStr string) error {
+	want, err := parseInt(versionStr)
+	if err != nil {
+		return err
+	}
+	latest, ok := w.courseVersions.latest(w.courseIDBySlug[courseSlug].String())
+	if !ok {
+		return fmt.Errorf("course %q has no published version", courseSlug)
+	}
+	if latest.VersionNumber != want {
+		return fmt.Errorf("expected course %q's latest version to be %d, got %d", courseSlug, want, latest.VersionNumber)
+	}
+	return nil
+}
+
+func (w *world) courseHasUnpublishedChanges() error {
+	resp, err := w.handler.GetCourse(w.ctx(), generated.GetCourseRequestObject{CourseId: w.courseIDBySlug[w.lastCourseSlug]})
+	if err != nil {
+		return err
+	}
+	course, ok := resp.(generated.GetCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected the course, got %#v", resp)
+	}
+	if !course.HasUnpublishedChanges {
+		return fmt.Errorf("expected course %q to have unpublished changes", w.lastCourseSlug)
+	}
+	return nil
+}
+
+// publishedVersionHasCheckpoints compares the published outline's checkpoint
+// titles with the listed learning path slugs, which the seeding helpers use
+// as each template's own title.
+func (w *world) publishedVersionHasCheckpoints(courseSlug, slugList string) error {
+	resp, err := w.handler.GetPublishedCourse(w.ctx(), generated.GetPublishedCourseRequestObject{CourseId: w.courseIDBySlug[courseSlug]})
+	if err != nil {
+		return err
+	}
+	detail, ok := resp.(generated.GetPublishedCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected the published course, got %#v", resp)
+	}
+	var got []string
+	for _, checkpoint := range detail.Checkpoints {
+		got = append(got, checkpoint.Title)
+	}
+	want := quotedValues(`"` + slugList + `"`)
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		return fmt.Errorf("expected the published version of %q to have checkpoints %v, got %v", courseSlug, want, got)
+	}
+	return nil
+}

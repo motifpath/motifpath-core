@@ -298,6 +298,31 @@ func (s *CourseService) RetireCourse(ctx context.Context, caller domain.User, id
 	return course, nil
 }
 
+// ReactivateCourse returns a retired course to published: back in the
+// catalog, open to new enrollment, with the latest version it already has.
+// It never creates a version, so draft edits made since the last publish
+// stay unpublished. Only a retired course can be reactivated. Admin-only,
+// like retiring.
+func (s *CourseService) ReactivateCourse(ctx context.Context, caller domain.User, id string) (domain.Course, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.Course{}, domain.ErrForbidden
+	}
+
+	course, err := s.courses.GetByID(ctx, id)
+	if err != nil {
+		return domain.Course{}, err
+	}
+	if course.Status != domain.CourseStatusRetired {
+		return domain.Course{}, domain.NewValidationError("status", "only a retired course can be reactivated")
+	}
+
+	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished); err != nil {
+		return domain.Course{}, err
+	}
+	course.Status = domain.CourseStatusPublished
+	return course, nil
+}
+
 // LatestVersion returns the latest published CourseVersion for the course
 // with the given id. Returns domain.ErrNotFound if the course has never
 // been published. Exposed so the HTTP layer can compute

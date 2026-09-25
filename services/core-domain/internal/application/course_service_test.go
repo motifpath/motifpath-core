@@ -845,3 +845,58 @@ func TestCourseService_GetPublishedCourse(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }
+
+func TestCourseService_ReactivateCourse(t *testing.T) {
+	withStatus := func(status domain.CourseStatus) *application.CourseService {
+		courses := newFakeCourseRepository()
+		course := fingerstyleCourseDraft()
+		course.Status = status
+		courses.put(course)
+		return newCourseService(newFakeLearningPathRepository(), courses)
+	}
+
+	t.Run("an admin reactivates a retired course, back to published", func(t *testing.T) {
+		svc := withStatus(domain.CourseStatusRetired)
+
+		reactivated, err := svc.ReactivateCourse(context.Background(), adminCaller(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, reactivated.Status)
+		got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, got.Status)
+	})
+
+	for _, status := range []domain.CourseStatus{domain.CourseStatusDraft, domain.CourseStatusPublished} {
+		t.Run("a "+string(status)+" course cannot be reactivated", func(t *testing.T) {
+			svc := withStatus(status)
+
+			_, err := svc.ReactivateCourse(context.Background(), adminCaller(), "course-1")
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, "status", valErr.Fields[0].Field)
+			got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+			require.NoError(t, err)
+			assert.Equal(t, status, got.Status)
+		})
+	}
+
+	t.Run("only an admin may reactivate a course", func(t *testing.T) {
+		for _, caller := range []domain.User{teacherCaller(), studentCaller()} {
+			svc := withStatus(domain.CourseStatusRetired)
+
+			_, err := svc.ReactivateCourse(context.Background(), caller, "course-1")
+
+			assert.ErrorIs(t, err, domain.ErrForbidden)
+		}
+	})
+
+	t.Run("reactivating a course that does not exist returns not found", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.ReactivateCourse(context.Background(), adminCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}

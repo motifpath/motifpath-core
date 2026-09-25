@@ -289,6 +289,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ReplaceCourse403JSONResponse,
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
+		generated.ReactivateCourse403JSONResponse,
 		generated.ListCourseCreators403JSONResponse:
 		return nil
 	default:
@@ -336,6 +337,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.ReplaceCourse404JSONResponse,
 		generated.PublishCourse404JSONResponse,
 		generated.RetireCourse404JSONResponse,
+		generated.ReactivateCourse404JSONResponse,
 		generated.CreateCourseEnrollment404JSONResponse,
 		generated.AbandonCourseEnrollment404JSONResponse,
 		generated.SetCurrentPath404JSONResponse:
@@ -512,6 +514,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.CreateCourse400JSONResponse:
 		return resp.Errors, nil
 	case generated.ReplaceCourse400JSONResponse:
+		return resp.Errors, nil
+	case generated.ReactivateCourse400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateCourseEnrollment400JSONResponse:
 		return resp.Errors, nil
