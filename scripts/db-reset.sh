@@ -15,7 +15,21 @@
 # Usage:
 #   make db:reset                                    # local defaults
 #   ADMIN_CLERK_USER_ID=user_xxx make db:reset        # also bootstrap your own admin
+#
+# A repo-root .env (gitignored, see .env.example) is loaded automatically if
+# present, so ADMIN_CLERK_USER_ID only has to be set once instead of typed on
+# every invocation. A variable already set in the shell environment wins over
+# the .env value.
 set -euo pipefail
+
+if [ -f .env ]; then
+  while IFS='=' read -r key value; do
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [ -z "${!key:-}" ]; then
+      export "$key=$value"
+    fi
+  done < <(grep -v '^\s*#' .env | grep -v '^\s*$')
+fi
 
 DATABASE_URL="${DATABASE_URL:-postgres://motifpath:motifpath@localhost:5432/core_domain?sslmode=disable}"
 MONGO_URI="${MONGO_URI:-mongodb://motifpath:motifpath@localhost:27017/?authSource=admin}"
