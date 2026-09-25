@@ -69,6 +69,20 @@ func (_u *CourseUpdate) SetNillableLevel(v *course.Level) *CourseUpdate {
 	return _u
 }
 
+// SetLanguage sets the "language" field.
+func (_u *CourseUpdate) SetLanguage(v string) *CourseUpdate {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableLanguage(v *string) *CourseUpdate {
+	if v != nil {
+		_u.SetLanguage(*v)
+	}
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *CourseUpdate) SetStatus(v course.Status) *CourseUpdate {
 	_u.mutation.SetStatus(v)
@@ -151,6 +165,9 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(course.FieldLevel, field.TypeEnum, value)
 	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(course.FieldLanguage, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
 	}
@@ -212,6 +229,20 @@ func (_u *CourseUpdateOne) SetLevel(v course.Level) *CourseUpdateOne {
 func (_u *CourseUpdateOne) SetNillableLevel(v *course.Level) *CourseUpdateOne {
 	if v != nil {
 		_u.SetLevel(*v)
+	}
+	return _u
+}
+
+// SetLanguage sets the "language" field.
+func (_u *CourseUpdateOne) SetLanguage(v string) *CourseUpdateOne {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableLanguage(v *string) *CourseUpdateOne {
+	if v != nil {
+		_u.SetLanguage(*v)
 	}
 	return _u
 }
@@ -327,6 +358,9 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(course.FieldLevel, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(course.FieldLanguage, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)

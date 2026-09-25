@@ -39,6 +39,20 @@ func (_c *CourseCreate) SetLevel(v course.Level) *CourseCreate {
 	return _c
 }
 
+// SetLanguage sets the "language" field.
+func (_c *CourseCreate) SetLanguage(v string) *CourseCreate {
+	_c.mutation.SetLanguage(v)
+	return _c
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableLanguage(v *string) *CourseCreate {
+	if v != nil {
+		_c.SetLanguage(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *CourseCreate) SetStatus(v course.Status) *CourseCreate {
 	_c.mutation.SetStatus(v)
@@ -122,6 +136,10 @@ func (_c *CourseCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *CourseCreate) defaults() {
+	if _, ok := _c.mutation.Language(); !ok {
+		v := course.DefaultLanguage
+		_c.mutation.SetLanguage(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := course.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -151,6 +169,9 @@ func (_c *CourseCreate) check() error {
 		if err := course.LevelValidator(v); err != nil {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Course.level": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Language(); !ok {
+		return &ValidationError{Name: "language", err: errors.New(`ent: missing required field "Course.language"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Course.status"`)}
@@ -212,6 +233,10 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Level(); ok {
 		_spec.SetField(course.FieldLevel, field.TypeEnum, value)
 		_node.Level = value
+	}
+	if value, ok := _c.mutation.Language(); ok {
+		_spec.SetField(course.FieldLanguage, field.TypeString, value)
+		_node.Language = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)

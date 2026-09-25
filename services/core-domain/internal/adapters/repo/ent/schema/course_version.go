@@ -43,6 +43,13 @@ func (CourseVersion) Fields() []ent.Field {
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert").
 			Immutable(),
 
+		// language_snapshot is the course's language when this version was
+		// published. The default only backfills versions published before
+		// courses had a language, which were all written in English.
+		field.String("language_snapshot").
+			Default("en").
+			Immutable(),
+
 		field.Bool("available_for_new_enrollments").
 			Default(true),
 

@@ -30,6 +30,12 @@ func (Course) Fields() []ent.Field {
 		field.Enum("level").
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert"),
 
+		// language is the Language.code the course is written in. The
+		// default only backfills courses created before courses had a
+		// language; every create and replace sets it explicitly.
+		field.String("language").
+			Default("en"),
+
 		field.Enum("status").
 			Values("draft", "published", "retired").
 			Default("draft"),

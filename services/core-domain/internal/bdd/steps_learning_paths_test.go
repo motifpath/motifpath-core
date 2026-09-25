@@ -571,9 +571,10 @@ func (w *world) seedCourseWithCheckpoint(courseSlug, pathSlug string, publish bo
 
 	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{
 		Body: &generated.CreateCourseRequest{
-			Title:   courseSlug,
-			Summary: "Seeded for testing",
-			Level:   generated.CreateCourseRequestLevelBeginner,
+			Language: "en",
+			Title:    courseSlug,
+			Summary:  "Seeded for testing",
+			Level:    generated.CreateCourseRequestLevelBeginner,
 			Checkpoints: []struct {
 				LearningPathId uuid.UUID `json:"learning_path_id"`
 				Title          *string   `json:"title,omitempty"`

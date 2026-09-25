@@ -65,6 +65,11 @@ func Summary(v string) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldSummary, v))
 }
 
+// Language applies equality check predicate on the "language" field. It's identical to LanguageEQ.
+func Language(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLanguage, v))
+}
+
 // CreatedBy applies equality check predicate on the "created_by" field. It's identical to CreatedByEQ.
 func CreatedBy(v uuid.UUID) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldCreatedBy, v))
@@ -223,6 +228,71 @@ func LevelIn(vs ...Level) predicate.Course {
 // LevelNotIn applies the NotIn predicate on the "level" field.
 func LevelNotIn(vs ...Level) predicate.Course {
 	return predicate.Course(sql.FieldNotIn(FieldLevel, vs...))
+}
+
+// LanguageEQ applies the EQ predicate on the "language" field.
+func LanguageEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLanguage, v))
+}
+
+// LanguageNEQ applies the NEQ predicate on the "language" field.
+func LanguageNEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldLanguage, v))
+}
+
+// LanguageIn applies the In predicate on the "language" field.
+func LanguageIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldLanguage, vs...))
+}
+
+// LanguageNotIn applies the NotIn predicate on the "language" field.
+func LanguageNotIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldLanguage, vs...))
+}
+
+// LanguageGT applies the GT predicate on the "language" field.
+func LanguageGT(v string) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldLanguage, v))
+}
+
+// LanguageGTE applies the GTE predicate on the "language" field.
+func LanguageGTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldLanguage, v))
+}
+
+// LanguageLT applies the LT predicate on the "language" field.
+func LanguageLT(v string) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldLanguage, v))
+}
+
+// LanguageLTE applies the LTE predicate on the "language" field.
+func LanguageLTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldLanguage, v))
+}
+
+// LanguageContains applies the Contains predicate on the "language" field.
+func LanguageContains(v string) predicate.Course {
+	return predicate.Course(sql.FieldContains(FieldLanguage, v))
+}
+
+// LanguageHasPrefix applies the HasPrefix predicate on the "language" field.
+func LanguageHasPrefix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasPrefix(FieldLanguage, v))
+}
+
+// LanguageHasSuffix applies the HasSuffix predicate on the "language" field.
+func LanguageHasSuffix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasSuffix(FieldLanguage, v))
+}
+
+// LanguageEqualFold applies the EqualFold predicate on the "language" field.
+func LanguageEqualFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldEqualFold(FieldLanguage, v))
+}
+
+// LanguageContainsFold applies the ContainsFold predicate on the "language" field.
+func LanguageContainsFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldContainsFold(FieldLanguage, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

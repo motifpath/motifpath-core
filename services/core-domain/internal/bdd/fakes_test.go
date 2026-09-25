@@ -804,7 +804,7 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 	}
 	var matches []candidate
 	for _, c := range f.byID {
-		view := courseView{title: c.Title, summary: c.Summary, level: c.Level}
+		view := courseView{title: c.Title, summary: c.Summary, level: c.Level, language: c.Language}
 		checkpointPaths := make([]string, len(c.Checkpoints))
 		for i, cp := range c.Checkpoints {
 			checkpointPaths[i] = cp.LearningPathID
@@ -814,7 +814,7 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 			if !ok {
 				continue
 			}
-			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot}
+			view = courseView{title: latest.TitleSnapshot, summary: latest.SummarySnapshot, level: latest.LevelSnapshot, language: latest.LanguageSnapshot}
 			checkpointPaths = checkpointPaths[:0]
 			for _, cp := range latest.Checkpoints {
 				checkpointPaths = append(checkpointPaths, cp.LearningPathID)
@@ -828,6 +828,9 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 			continue
 		}
 		if len(filter.Levels) > 0 && !containsLevel(filter.Levels, view.level) {
+			continue
+		}
+		if filter.Language != "" && view.language != filter.Language {
 			continue
 		}
 		if !containsFold(view.title, filter.Query) && !containsFold(view.summary, filter.Query) {
@@ -854,8 +857,8 @@ func (f *fakeCourseRepo) List(_ context.Context, filter domain.CourseListFilter,
 // courseView is the text and level a course's filters and ordering read —
 // the live draft's, or the latest published version's snapshot.
 type courseView struct {
-	title, summary string
-	level          domain.DifficultyLevel
+	title, summary, language string
+	level                    domain.DifficultyLevel
 }
 
 func containsLevel(levels []domain.DifficultyLevel, level domain.DifficultyLevel) bool {

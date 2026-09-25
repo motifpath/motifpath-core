@@ -1,4 +1,4 @@
-h1:U+bwFVUEokHv/c/O2YujhnbqetClczv/uvVC1lL7NLo=
+h1:ySvbIiwg5xRpIw/9HzxdjZNqTjZOiyo7mB9xbdJsTyM=
 20260922172448_initial_schema_student_path_and_content_versioning.up.sql h1:DTJlaJskch0SS4KJeracxn45WipONPrVf42g0LWYRJI=
 20260922180356_add_course_and_course_checkpoint.up.sql h1:KIefEsgObvQNHWLZ5FNgMrgjJIAPUbXoCmAeIdn5DFk=
 20260922181952_add_course_version.up.sql h1:H62FZAUVd4Q1DBgXnoTJapnk7zMUIgCOQcZzlKNd1qA=
@@ -12,3 +12,4 @@ h1:U+bwFVUEokHv/c/O2YujhnbqetClczv/uvVC1lL7NLo=
 20260924184650_pb66_user_display_name.up.sql h1:qZobFKQS9fFClSDJ3HSPztkqUArTlyaznLHSwrHuB7E=
 20260925001005_instrument_names_per_language.up.sql h1:iyAOOGM/CfM34EXMSHY5HJaOAlZS7Xnk/lvk9Ayx2XY=
 20260925020950_diagram_names_per_language.up.sql h1:BB/WwWea1V0idJG0QL75kNWLK67cWc6/000tS0SPqAE=
+20260925202643_course_language.up.sql h1:CTrdJ+j+li8bshMI8j4+icjhtfUr3MOZ4mYCVdsK0Y8=

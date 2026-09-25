@@ -745,6 +745,7 @@ func toCourse(c domain.Course, latest *domain.CourseVersion, names userNames) ge
 		Title:                 c.Title,
 		Summary:               c.Summary,
 		Level:                 generated.CourseLevel(c.Level),
+		Language:              c.Language,
 		Status:                generated.CourseStatus(c.Status),
 		CreatedBy:             names.ref(c.CreatedBy),
 		CreatedAt:             c.CreatedAt,
@@ -783,6 +784,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 		Title:     c.Title,
 		Summary:   c.Summary,
 		Level:     generated.CourseCatalogEntryLevel(c.Level),
+		Language:  c.Language,
 		CreatedBy: names.ref(c.CreatedBy),
 		Status:    generated.CourseCatalogEntryStatus(c.Status),
 	}
@@ -796,6 +798,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 			entry.Title = latest.TitleSnapshot
 			entry.Summary = latest.SummarySnapshot
 			entry.Level = generated.CourseCatalogEntryLevel(latest.LevelSnapshot)
+			entry.Language = latest.LanguageSnapshot
 		}
 	}
 	if view == authoringListView {
@@ -829,6 +832,7 @@ func toGeneratedCourseVersion(v domain.CourseVersion) generated.CourseVersion {
 		TitleSnapshot:              v.TitleSnapshot,
 		SummarySnapshot:            v.SummarySnapshot,
 		LevelSnapshot:              generated.CourseVersionLevelSnapshot(v.LevelSnapshot),
+		LanguageSnapshot:           v.LanguageSnapshot,
 		PublishedAt:                v.PublishedAt,
 		AvailableForNewEnrollments: v.AvailableForNewEnrollments,
 	}
@@ -857,6 +861,7 @@ func toCourseDetail(courseID string, view application.PublishedCourseView) gener
 		Title:       view.Title,
 		Summary:     view.Summary,
 		Level:       generated.CourseDetailLevel(view.Level),
+		Language:    view.Language,
 		Status:      generated.CourseDetailStatus(view.Status),
 		PublishedAt: &publishedAt,
 		Checkpoints: checkpoints,
@@ -871,6 +876,9 @@ func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilte
 	if params.Status != nil {
 		status := domain.CourseStatus(*params.Status)
 		filter.Status = &status
+	}
+	if params.Language != nil {
+		filter.Language = *params.Language
 	}
 	if params.CreatedBy != nil {
 		filter.CreatedBy = params.CreatedBy.String()
@@ -893,6 +901,9 @@ func courseListFilter(params generated.ListCoursesParams) domain.CourseListFilte
 // same filter the authoring list uses; the catalog has no status parameter.
 func catalogCourseListFilter(params generated.ListCatalogCoursesParams) domain.CourseListFilter {
 	filter := domain.CourseListFilter{Query: searchQuery(params.Q)}
+	if params.Language != nil {
+		filter.Language = *params.Language
+	}
 	if params.CreatedBy != nil {
 		filter.CreatedBy = params.CreatedBy.String()
 	}

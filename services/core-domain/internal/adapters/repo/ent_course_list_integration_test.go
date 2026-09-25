@@ -292,7 +292,6 @@ func TestEntCourseRepository_List_FiltersByClassification(t *testing.T) {
 	})
 }
 
-
 func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
 	f := newCourseListFixture(t)
 	path := f.pathWith(nil, nil)
@@ -325,4 +324,62 @@ func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
 			assert.ElementsMatch(t, tc.want, got)
 		})
 	}
+}
+
+func TestEntCourseRepository_Language(t *testing.T) {
+	f := newCourseListFixture(t)
+	path := f.pathWith(nil, nil)
+	course := func(title, language string) domain.Course {
+		c := domain.Course{
+			ID: uuid.NewString(), CreatedBy: uuid.NewString(), Title: title, Summary: "S", Level: domain.DifficultyLevelBeginner,
+			Language: language, Status: domain.CourseStatusDraft, CreatedAt: fixedAt, Checkpoints: checkpointsOf(path),
+		}
+		require.NoError(t, f.courses.Create(f.ctx, c))
+		return c
+	}
+	english, portuguese := course("English course", "en"), course("Curso em português", "pt_BR")
+
+	t.Run("a course keeps its language through create and replace", func(t *testing.T) {
+		got, err := f.courses.GetByID(f.ctx, portuguese.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "pt_BR", got.Language)
+
+		english.Language = "pt_BR"
+		require.NoError(t, f.courses.Replace(f.ctx, english))
+		got, err = f.courses.GetByID(f.ctx, english.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "pt_BR", got.Language)
+		english.Language = "en"
+		require.NoError(t, f.courses.Replace(f.ctx, english))
+	})
+
+	t.Run("a version snapshots the language it was published in", func(t *testing.T) {
+		version := domain.CourseVersion{
+			ID: uuid.NewString(), CourseID: portuguese.ID, VersionNumber: 1, TitleSnapshot: portuguese.Title, SummarySnapshot: "S",
+			LevelSnapshot: domain.DifficultyLevelBeginner, LanguageSnapshot: "pt_BR", Checkpoints: versionCheckpointsOf(path),
+			PublishedAt: fixedAt, AvailableForNewEnrollments: true,
+		}
+		require.NoError(t, f.versions.Create(f.ctx, version))
+		require.NoError(t, f.courses.UpdateStatus(f.ctx, portuguese.ID, domain.CourseStatusPublished))
+
+		got, err := f.versions.GetLatestByCourseID(f.ctx, portuguese.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "pt_BR", got.LanguageSnapshot)
+	})
+
+	t.Run("the authoring list filters on the live draft's language", func(t *testing.T) {
+		page := f.list(domain.CourseListFilter{Language: "en"}, domain.PageRequest{Limit: 50})
+
+		assert.Equal(t, []string{english.ID}, courseIDs(page))
+	})
+
+	t.Run("the published view filters on the latest version's language", func(t *testing.T) {
+		// The live draft moves to English, but the published version stays Portuguese.
+		portuguese.Language = "en"
+		require.NoError(t, f.courses.Replace(f.ctx, portuguese))
+
+		page := f.list(domain.CourseListFilter{Language: "pt_BR", PublishedView: true}, domain.PageRequest{Limit: 50})
+
+		assert.Equal(t, []string{portuguese.ID}, courseIDs(page))
+	})
 }

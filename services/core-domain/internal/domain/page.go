@@ -83,12 +83,14 @@ type LearningPathFilter struct {
 // published version when true, its live draft when false. Status filters the
 // live row either way.
 type CourseListFilter struct {
-	Status        *CourseStatus
-	Query         string
-	Levels        []DifficultyLevel
-	CreatedBy     string
-	SkillIDs      []string
-	ConceptIDs    []string
+	Status     *CourseStatus
+	Query      string
+	Levels     []DifficultyLevel
+	CreatedBy  string
+	SkillIDs   []string
+	ConceptIDs []string
+	// Language, when set, keeps only courses written in that language.
+	Language      string
 	PublishedView bool
 }
 

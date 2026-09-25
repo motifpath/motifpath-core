@@ -45,6 +45,7 @@ func (r *EntCourseVersionRepository) Create(ctx context.Context, v domain.Course
 		SetTitleSnapshot(v.TitleSnapshot).
 		SetSummarySnapshot(v.SummarySnapshot).
 		SetLevelSnapshot(courseversion.LevelSnapshot(v.LevelSnapshot)).
+		SetLanguageSnapshot(v.LanguageSnapshot).
 		SetAvailableForNewEnrollments(v.AvailableForNewEnrollments).
 		SetPublishedAt(v.PublishedAt).
 		Save(ctx); err != nil {
@@ -99,6 +100,7 @@ func (r *EntCourseVersionRepository) GetLatestByCourseID(ctx context.Context, co
 		TitleSnapshot:              row.TitleSnapshot,
 		SummarySnapshot:            row.SummarySnapshot,
 		LevelSnapshot:              domain.DifficultyLevel(row.LevelSnapshot),
+		LanguageSnapshot:           row.LanguageSnapshot,
 		Checkpoints:                checkpoints,
 		PublishedAt:                row.PublishedAt,
 		AvailableForNewEnrollments: row.AvailableForNewEnrollments,
@@ -165,6 +167,7 @@ func (r *EntCourseVersionRepository) GetLatestByCourseIDs(ctx context.Context, c
 			TitleSnapshot:              row.TitleSnapshot,
 			SummarySnapshot:            row.SummarySnapshot,
 			LevelSnapshot:              domain.DifficultyLevel(row.LevelSnapshot),
+			LanguageSnapshot:           row.LanguageSnapshot,
 			Checkpoints:                checkpointsByVersion[row.ID],
 			PublishedAt:                row.PublishedAt,
 			AvailableForNewEnrollments: row.AvailableForNewEnrollments,

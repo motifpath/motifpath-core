@@ -274,6 +274,7 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "summary", Type: field.TypeString},
 		{Name: "level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "language", Type: field.TypeString, Default: "en"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published", "retired"}, Default: "draft"},
 		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
@@ -331,6 +332,7 @@ var (
 		{Name: "title_snapshot", Type: field.TypeString},
 		{Name: "summary_snapshot", Type: field.TypeString},
 		{Name: "level_snapshot", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "language_snapshot", Type: field.TypeString, Default: "en"},
 		{Name: "available_for_new_enrollments", Type: field.TypeBool, Default: true},
 		{Name: "published_at", Type: field.TypeTime},
 	}

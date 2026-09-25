@@ -46,6 +46,7 @@ func (r *EntCourseRepository) Create(ctx context.Context, c domain.Course) error
 		SetTitle(c.Title).
 		SetSummary(c.Summary).
 		SetLevel(course.Level(c.Level)).
+		SetLanguage(c.Language).
 		SetStatus(course.Status(c.Status)).
 		SetCreatedBy(createdBy).
 		SetCreatedAt(c.CreatedAt).
@@ -204,6 +205,7 @@ func (r *EntCourseRepository) Replace(ctx context.Context, c domain.Course) erro
 		SetTitle(c.Title).
 		SetSummary(c.Summary).
 		SetLevel(course.Level(c.Level)).
+		SetLanguage(c.Language).
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
@@ -314,6 +316,7 @@ func toDomainCourse(row *ent.Course, checkpoints []domain.CourseCheckpoint) doma
 		Title:       row.Title,
 		Summary:     row.Summary,
 		Level:       domain.DifficultyLevel(row.Level),
+		Language:    row.Language,
 		Status:      domain.CourseStatus(row.Status),
 		CreatedBy:   row.CreatedBy.String(),
 		CreatedAt:   row.CreatedAt,

@@ -94,7 +94,7 @@ var (
 	offsetClause   = regexp.MustCompile(`offset (-?\d+)`)
 	textClause     = regexp.MustCompile(`(?:matching )?text "([^"]*)"`)
 	typeClause     = regexp.MustCompile(`of type "([^"]+)"`)
-	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|text) ((?:"[^"]*"(?:, )?)+)`)
+	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|text) ((?:"[^"]*"(?:, )?)+)`)
 	quotedListItem = regexp.MustCompile(`"([^"]*)"`)
 )
 
@@ -387,7 +387,8 @@ func (w *world) seedCourseFrom(seed courseSeed) (uuid.UUID, error) {
 	}
 	resp, err := w.handler.CreateCourse(creatorCtx, generated.CreateCourseRequestObject{
 		Body: &generated.CreateCourseRequest{
-			Title: seed.title, Summary: "Seeded for testing", Level: seed.level, Checkpoints: toCourseCheckpointBody(specs),
+			Language: "en",
+			Title:    seed.title, Summary: "Seeded for testing", Level: seed.level, Checkpoints: toCourseCheckpointBody(specs),
 		},
 	})
 	if err != nil {
@@ -579,6 +580,7 @@ type courseListQuery struct {
 	skillIDs      *[]uuid.UUID
 	conceptIDs    *[]uuid.UUID
 	createdBy     *uuid.UUID
+	language      *string
 }
 
 func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
@@ -601,6 +603,9 @@ func (w *world) parseCourseListQuery(tail string) (courseListQuery, error) {
 		case "creator":
 			id := w.ensureRegistered(values[0], domain.RoleTeacher)
 			query.createdBy = &id
+		case "language":
+			language := values[0]
+			query.language = &language
 		case "text":
 			text := values[0]
 			query.q = &text
@@ -619,7 +624,7 @@ func (w *world) listsCourseCatalogWith(_ string, tail string) error {
 	}
 	params := generated.ListCatalogCoursesParams{
 		Limit: query.limit, Offset: query.offset, Q: query.q,
-		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language,
 	}
 	if query.levels != nil {
 		levels := make([]generated.ListCatalogCoursesParamsLevels, len(query.levels))
@@ -658,7 +663,7 @@ func (w *world) listsManagedCoursesWith(_ string, tail string) error {
 	}
 	params := generated.ListCoursesParams{
 		Limit: query.limit, Offset: query.offset, Q: query.q,
-		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy,
+		SkillIds: query.skillIDs, ConceptIds: query.conceptIDs, CreatedBy: query.createdBy, Language: query.language,
 	}
 	if query.levels != nil {
 		levels := make([]generated.ListCoursesParamsLevels, len(query.levels))

@@ -24,6 +24,8 @@ type Course struct {
 	Summary string `json:"summary,omitempty"`
 	// Level holds the value of the "level" field.
 	Level course.Level `json:"level,omitempty"`
+	// Language holds the value of the "language" field.
+	Language string `json:"language,omitempty"`
 	// Status holds the value of the "status" field.
 	Status course.Status `json:"status,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
@@ -38,7 +40,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldStatus:
+		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldLanguage, course.FieldStatus:
 			values[i] = new(sql.NullString)
 		case course.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -82,6 +84,12 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field level", values[i])
 			} else if value.Valid {
 				_m.Level = course.Level(value.String)
+			}
+		case course.FieldLanguage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language", values[i])
+			} else if value.Valid {
+				_m.Language = value.String
 			}
 		case course.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -145,6 +153,9 @@ func (_m *Course) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("level=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Level))
+	builder.WriteString(", ")
+	builder.WriteString("language=")
+	builder.WriteString(_m.Language)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

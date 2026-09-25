@@ -122,8 +122,12 @@ func init() {
 	contentnodeversion.DefaultID = contentnodeversionDescID.Default.(func() uuid.UUID)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
+	// courseDescLanguage is the schema descriptor for language field.
+	courseDescLanguage := courseFields[4].Descriptor()
+	// course.DefaultLanguage holds the default value on creation for the language field.
+	course.DefaultLanguage = courseDescLanguage.Default.(string)
 	// courseDescCreatedAt is the schema descriptor for created_at field.
-	courseDescCreatedAt := courseFields[6].Descriptor()
+	courseDescCreatedAt := courseFields[7].Descriptor()
 	// course.DefaultCreatedAt holds the default value on creation for the created_at field.
 	course.DefaultCreatedAt = courseDescCreatedAt.Default.(func() time.Time)
 	// courseDescID is the schema descriptor for id field.
@@ -148,12 +152,16 @@ func init() {
 	courseenrollment.DefaultID = courseenrollmentDescID.Default.(func() uuid.UUID)
 	courseversionFields := schema.CourseVersion{}.Fields()
 	_ = courseversionFields
+	// courseversionDescLanguageSnapshot is the schema descriptor for language_snapshot field.
+	courseversionDescLanguageSnapshot := courseversionFields[6].Descriptor()
+	// courseversion.DefaultLanguageSnapshot holds the default value on creation for the language_snapshot field.
+	courseversion.DefaultLanguageSnapshot = courseversionDescLanguageSnapshot.Default.(string)
 	// courseversionDescAvailableForNewEnrollments is the schema descriptor for available_for_new_enrollments field.
-	courseversionDescAvailableForNewEnrollments := courseversionFields[6].Descriptor()
+	courseversionDescAvailableForNewEnrollments := courseversionFields[7].Descriptor()
 	// courseversion.DefaultAvailableForNewEnrollments holds the default value on creation for the available_for_new_enrollments field.
 	courseversion.DefaultAvailableForNewEnrollments = courseversionDescAvailableForNewEnrollments.Default.(bool)
 	// courseversionDescPublishedAt is the schema descriptor for published_at field.
-	courseversionDescPublishedAt := courseversionFields[7].Descriptor()
+	courseversionDescPublishedAt := courseversionFields[8].Descriptor()
 	// courseversion.DefaultPublishedAt holds the default value on creation for the published_at field.
 	courseversion.DefaultPublishedAt = courseversionDescPublishedAt.Default.(func() time.Time)
 	// courseversionDescID is the schema descriptor for id field.

@@ -28,6 +28,8 @@ type CourseVersion struct {
 	SummarySnapshot string `json:"summary_snapshot,omitempty"`
 	// LevelSnapshot holds the value of the "level_snapshot" field.
 	LevelSnapshot courseversion.LevelSnapshot `json:"level_snapshot,omitempty"`
+	// LanguageSnapshot holds the value of the "language_snapshot" field.
+	LanguageSnapshot string `json:"language_snapshot,omitempty"`
 	// AvailableForNewEnrollments holds the value of the "available_for_new_enrollments" field.
 	AvailableForNewEnrollments bool `json:"available_for_new_enrollments,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -44,7 +46,7 @@ func (*CourseVersion) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case courseversion.FieldVersionNumber:
 			values[i] = new(sql.NullInt64)
-		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot:
+		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot, courseversion.FieldLanguageSnapshot:
 			values[i] = new(sql.NullString)
 		case courseversion.FieldPublishedAt:
 			values[i] = new(sql.NullTime)
@@ -100,6 +102,12 @@ func (_m *CourseVersion) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field level_snapshot", values[i])
 			} else if value.Valid {
 				_m.LevelSnapshot = courseversion.LevelSnapshot(value.String)
+			}
+		case courseversion.FieldLanguageSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language_snapshot", values[i])
+			} else if value.Valid {
+				_m.LanguageSnapshot = value.String
 			}
 		case courseversion.FieldAvailableForNewEnrollments:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -163,6 +171,9 @@ func (_m *CourseVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("level_snapshot=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LevelSnapshot))
+	builder.WriteString(", ")
+	builder.WriteString("language_snapshot=")
+	builder.WriteString(_m.LanguageSnapshot)
 	builder.WriteString(", ")
 	builder.WriteString("available_for_new_enrollments=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AvailableForNewEnrollments))

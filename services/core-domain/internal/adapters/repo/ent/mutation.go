@@ -7190,6 +7190,7 @@ type CourseMutation struct {
 	title         *string
 	summary       *string
 	level         *course.Level
+	language      *string
 	status        *course.Status
 	created_by    *uuid.UUID
 	created_at    *time.Time
@@ -7411,6 +7412,42 @@ func (m *CourseMutation) ResetLevel() {
 	m.level = nil
 }
 
+// SetLanguage sets the "language" field.
+func (m *CourseMutation) SetLanguage(s string) {
+	m.language = &s
+}
+
+// Language returns the value of the "language" field in the mutation.
+func (m *CourseMutation) Language() (r string, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguage returns the old "language" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldLanguage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguage: %w", err)
+	}
+	return oldValue.Language, nil
+}
+
+// ResetLanguage resets all changes to the "language" field.
+func (m *CourseMutation) ResetLanguage() {
+	m.language = nil
+}
+
 // SetStatus sets the "status" field.
 func (m *CourseMutation) SetStatus(c course.Status) {
 	m.status = &c
@@ -7553,7 +7590,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.title != nil {
 		fields = append(fields, course.FieldTitle)
 	}
@@ -7562,6 +7599,9 @@ func (m *CourseMutation) Fields() []string {
 	}
 	if m.level != nil {
 		fields = append(fields, course.FieldLevel)
+	}
+	if m.language != nil {
+		fields = append(fields, course.FieldLanguage)
 	}
 	if m.status != nil {
 		fields = append(fields, course.FieldStatus)
@@ -7586,6 +7626,8 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.Summary()
 	case course.FieldLevel:
 		return m.Level()
+	case course.FieldLanguage:
+		return m.Language()
 	case course.FieldStatus:
 		return m.Status()
 	case course.FieldCreatedBy:
@@ -7607,6 +7649,8 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldSummary(ctx)
 	case course.FieldLevel:
 		return m.OldLevel(ctx)
+	case course.FieldLanguage:
+		return m.OldLanguage(ctx)
 	case course.FieldStatus:
 		return m.OldStatus(ctx)
 	case course.FieldCreatedBy:
@@ -7642,6 +7686,13 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLevel(v)
+		return nil
+	case course.FieldLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguage(v)
 		return nil
 	case course.FieldStatus:
 		v, ok := value.(course.Status)
@@ -7721,6 +7772,9 @@ func (m *CourseMutation) ResetField(name string) error {
 		return nil
 	case course.FieldLevel:
 		m.ResetLevel()
+		return nil
+	case course.FieldLanguage:
+		m.ResetLanguage()
 		return nil
 	case course.FieldStatus:
 		m.ResetStatus()
@@ -9168,6 +9222,7 @@ type CourseVersionMutation struct {
 	title_snapshot                *string
 	summary_snapshot              *string
 	level_snapshot                *courseversion.LevelSnapshot
+	language_snapshot             *string
 	available_for_new_enrollments *bool
 	published_at                  *time.Time
 	clearedFields                 map[string]struct{}
@@ -9480,6 +9535,42 @@ func (m *CourseVersionMutation) ResetLevelSnapshot() {
 	m.level_snapshot = nil
 }
 
+// SetLanguageSnapshot sets the "language_snapshot" field.
+func (m *CourseVersionMutation) SetLanguageSnapshot(s string) {
+	m.language_snapshot = &s
+}
+
+// LanguageSnapshot returns the value of the "language_snapshot" field in the mutation.
+func (m *CourseVersionMutation) LanguageSnapshot() (r string, exists bool) {
+	v := m.language_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguageSnapshot returns the old "language_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldLanguageSnapshot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguageSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguageSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguageSnapshot: %w", err)
+	}
+	return oldValue.LanguageSnapshot, nil
+}
+
+// ResetLanguageSnapshot resets all changes to the "language_snapshot" field.
+func (m *CourseVersionMutation) ResetLanguageSnapshot() {
+	m.language_snapshot = nil
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (m *CourseVersionMutation) SetAvailableForNewEnrollments(b bool) {
 	m.available_for_new_enrollments = &b
@@ -9586,7 +9677,7 @@ func (m *CourseVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseVersionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.course_id != nil {
 		fields = append(fields, courseversion.FieldCourseID)
 	}
@@ -9601,6 +9692,9 @@ func (m *CourseVersionMutation) Fields() []string {
 	}
 	if m.level_snapshot != nil {
 		fields = append(fields, courseversion.FieldLevelSnapshot)
+	}
+	if m.language_snapshot != nil {
+		fields = append(fields, courseversion.FieldLanguageSnapshot)
 	}
 	if m.available_for_new_enrollments != nil {
 		fields = append(fields, courseversion.FieldAvailableForNewEnrollments)
@@ -9626,6 +9720,8 @@ func (m *CourseVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.SummarySnapshot()
 	case courseversion.FieldLevelSnapshot:
 		return m.LevelSnapshot()
+	case courseversion.FieldLanguageSnapshot:
+		return m.LanguageSnapshot()
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.AvailableForNewEnrollments()
 	case courseversion.FieldPublishedAt:
@@ -9649,6 +9745,8 @@ func (m *CourseVersionMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldSummarySnapshot(ctx)
 	case courseversion.FieldLevelSnapshot:
 		return m.OldLevelSnapshot(ctx)
+	case courseversion.FieldLanguageSnapshot:
+		return m.OldLanguageSnapshot(ctx)
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.OldAvailableForNewEnrollments(ctx)
 	case courseversion.FieldPublishedAt:
@@ -9696,6 +9794,13 @@ func (m *CourseVersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLevelSnapshot(v)
+		return nil
+	case courseversion.FieldLanguageSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguageSnapshot(v)
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		v, ok := value.(bool)
@@ -9789,6 +9894,9 @@ func (m *CourseVersionMutation) ResetField(name string) error {
 		return nil
 	case courseversion.FieldLevelSnapshot:
 		m.ResetLevelSnapshot()
+		return nil
+	case courseversion.FieldLanguageSnapshot:
+		m.ResetLanguageSnapshot()
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		m.ResetAvailableForNewEnrollments()

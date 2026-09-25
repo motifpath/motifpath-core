@@ -75,6 +75,11 @@ func SummarySnapshot(v string) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldEQ(FieldSummarySnapshot, v))
 }
 
+// LanguageSnapshot applies equality check predicate on the "language_snapshot" field. It's identical to LanguageSnapshotEQ.
+func LanguageSnapshot(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldLanguageSnapshot, v))
+}
+
 // AvailableForNewEnrollments applies equality check predicate on the "available_for_new_enrollments" field. It's identical to AvailableForNewEnrollmentsEQ.
 func AvailableForNewEnrollments(v bool) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldEQ(FieldAvailableForNewEnrollments, v))
@@ -313,6 +318,71 @@ func LevelSnapshotIn(vs ...LevelSnapshot) predicate.CourseVersion {
 // LevelSnapshotNotIn applies the NotIn predicate on the "level_snapshot" field.
 func LevelSnapshotNotIn(vs ...LevelSnapshot) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldNotIn(FieldLevelSnapshot, vs...))
+}
+
+// LanguageSnapshotEQ applies the EQ predicate on the "language_snapshot" field.
+func LanguageSnapshotEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotNEQ applies the NEQ predicate on the "language_snapshot" field.
+func LanguageSnapshotNEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNEQ(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotIn applies the In predicate on the "language_snapshot" field.
+func LanguageSnapshotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIn(FieldLanguageSnapshot, vs...))
+}
+
+// LanguageSnapshotNotIn applies the NotIn predicate on the "language_snapshot" field.
+func LanguageSnapshotNotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotIn(FieldLanguageSnapshot, vs...))
+}
+
+// LanguageSnapshotGT applies the GT predicate on the "language_snapshot" field.
+func LanguageSnapshotGT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGT(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotGTE applies the GTE predicate on the "language_snapshot" field.
+func LanguageSnapshotGTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGTE(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotLT applies the LT predicate on the "language_snapshot" field.
+func LanguageSnapshotLT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLT(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotLTE applies the LTE predicate on the "language_snapshot" field.
+func LanguageSnapshotLTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLTE(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotContains applies the Contains predicate on the "language_snapshot" field.
+func LanguageSnapshotContains(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContains(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotHasPrefix applies the HasPrefix predicate on the "language_snapshot" field.
+func LanguageSnapshotHasPrefix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasPrefix(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotHasSuffix applies the HasSuffix predicate on the "language_snapshot" field.
+func LanguageSnapshotHasSuffix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasSuffix(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotEqualFold applies the EqualFold predicate on the "language_snapshot" field.
+func LanguageSnapshotEqualFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEqualFold(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotContainsFold applies the ContainsFold predicate on the "language_snapshot" field.
+func LanguageSnapshotContainsFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContainsFold(FieldLanguageSnapshot, v))
 }
 
 // AvailableForNewEnrollmentsEQ applies the EQ predicate on the "available_for_new_enrollments" field.

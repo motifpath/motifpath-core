@@ -42,8 +42,8 @@ func courseListPredicates(filter domain.CourseListFilter) ([]predicate.Course, e
 	return predicates, nil
 }
 
-// textAndLevelPredicates matches filter.Query against title or summary and
-// filter.Levels against the level, reading the published version's snapshot
+// textAndLevelPredicates matches filter.Query against title or summary, and
+// filter.Levels and filter.Language against the level and language, reading the published version's snapshot
 // when filter.PublishedView is set and the live draft otherwise.
 func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 	var predicates []predicate.Course
@@ -54,6 +54,9 @@ func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 		}
 		if len(filter.Levels) > 0 {
 			predicates = append(predicates, publishedVersionMatches(publishedLevelCondition(filter.Levels)))
+		}
+		if filter.Language != "" {
+			predicates = append(predicates, publishedVersionMatches(publishedLanguageCondition(filter.Language)))
 		}
 		return predicates
 	}
@@ -70,6 +73,9 @@ func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 			levels[i] = course.Level(l)
 		}
 		predicates = append(predicates, course.LevelIn(levels...))
+	}
+	if filter.Language != "" {
+		predicates = append(predicates, course.LanguageEQ(filter.Language))
 	}
 	return predicates
 }
@@ -119,6 +125,12 @@ func publishedTextCondition(query string) func(b *sql.Builder) {
 	return func(b *sql.Builder) {
 		b.WriteString(" AND (cv.title_snapshot ILIKE ").Arg(pattern).
 			WriteString(" OR cv.summary_snapshot ILIKE ").Arg(pattern).WriteString(")")
+	}
+}
+
+func publishedLanguageCondition(language string) func(b *sql.Builder) {
+	return func(b *sql.Builder) {
+		b.WriteString(" AND cv.language_snapshot = ").Arg(language)
 	}
 }
 

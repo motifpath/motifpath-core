@@ -200,7 +200,7 @@ func wireServices(res resources) (services, seedDeps) {
 		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, newID, now),
 		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now),
 		studentPath: studentPathService,
-		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, newID, now),
+		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
 		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle),
@@ -707,12 +707,12 @@ type seededCourses struct {
 
 func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *application.CourseService, templateAID, templateBID string) (seededCourses, error) {
 
-	draft, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Title: "Draft Course — Never Published", Summary: "A course still being authored.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	draft, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Draft Course — Never Published", Summary: "A course still being authored.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create draft course: %w", err)
 	}
 
-	published, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Title: "Fingerstyle Foundations", Summary: "Two checkpoints, from open position to improvisation.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}, {LearningPathID: templateBID}}})
+	published, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Fingerstyle Foundations", Summary: "Two checkpoints, from open position to improvisation.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}, {LearningPathID: templateBID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create published course: %w", err)
 	}
@@ -720,7 +720,7 @@ func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *app
 		return seededCourses{}, fmt.Errorf("publish published course: %w", err)
 	}
 
-	single, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Title: "Rhythm Basics", Summary: "One checkpoint, for quick complete/abandon scenarios.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateBID}}})
+	single, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Rhythm Basics", Summary: "One checkpoint, for quick complete/abandon scenarios.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateBID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create single-checkpoint course: %w", err)
 	}
@@ -728,7 +728,7 @@ func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *app
 		return seededCourses{}, fmt.Errorf("publish single-checkpoint course: %w", err)
 	}
 
-	retired, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Title: "Retired Classics", Summary: "Published once, then retired.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	retired, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Retired Classics", Summary: "Published once, then retired.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create retired course: %w", err)
 	}

@@ -51,6 +51,20 @@ func (_c *CourseVersionCreate) SetLevelSnapshot(v courseversion.LevelSnapshot) *
 	return _c
 }
 
+// SetLanguageSnapshot sets the "language_snapshot" field.
+func (_c *CourseVersionCreate) SetLanguageSnapshot(v string) *CourseVersionCreate {
+	_c.mutation.SetLanguageSnapshot(v)
+	return _c
+}
+
+// SetNillableLanguageSnapshot sets the "language_snapshot" field if the given value is not nil.
+func (_c *CourseVersionCreate) SetNillableLanguageSnapshot(v *string) *CourseVersionCreate {
+	if v != nil {
+		_c.SetLanguageSnapshot(*v)
+	}
+	return _c
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (_c *CourseVersionCreate) SetAvailableForNewEnrollments(v bool) *CourseVersionCreate {
 	_c.mutation.SetAvailableForNewEnrollments(v)
@@ -128,6 +142,10 @@ func (_c *CourseVersionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *CourseVersionCreate) defaults() {
+	if _, ok := _c.mutation.LanguageSnapshot(); !ok {
+		v := courseversion.DefaultLanguageSnapshot
+		_c.mutation.SetLanguageSnapshot(v)
+	}
 	if _, ok := _c.mutation.AvailableForNewEnrollments(); !ok {
 		v := courseversion.DefaultAvailableForNewEnrollments
 		_c.mutation.SetAvailableForNewEnrollments(v)
@@ -163,6 +181,9 @@ func (_c *CourseVersionCreate) check() error {
 		if err := courseversion.LevelSnapshotValidator(v); err != nil {
 			return &ValidationError{Name: "level_snapshot", err: fmt.Errorf(`ent: validator failed for field "CourseVersion.level_snapshot": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.LanguageSnapshot(); !ok {
+		return &ValidationError{Name: "language_snapshot", err: errors.New(`ent: missing required field "CourseVersion.language_snapshot"`)}
 	}
 	if _, ok := _c.mutation.AvailableForNewEnrollments(); !ok {
 		return &ValidationError{Name: "available_for_new_enrollments", err: errors.New(`ent: missing required field "CourseVersion.available_for_new_enrollments"`)}
@@ -224,6 +245,10 @@ func (_c *CourseVersionCreate) createSpec() (*CourseVersion, *sqlgraph.CreateSpe
 	if value, ok := _c.mutation.LevelSnapshot(); ok {
 		_spec.SetField(courseversion.FieldLevelSnapshot, field.TypeEnum, value)
 		_node.LevelSnapshot = value
+	}
+	if value, ok := _c.mutation.LanguageSnapshot(); ok {
+		_spec.SetField(courseversion.FieldLanguageSnapshot, field.TypeString, value)
+		_node.LanguageSnapshot = value
 	}
 	if value, ok := _c.mutation.AvailableForNewEnrollments(); ok {
 		_spec.SetField(courseversion.FieldAvailableForNewEnrollments, field.TypeBool, value)

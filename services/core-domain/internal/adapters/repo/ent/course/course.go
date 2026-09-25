@@ -21,6 +21,8 @@ const (
 	FieldSummary = "summary"
 	// FieldLevel holds the string denoting the level field in the database.
 	FieldLevel = "level"
+	// FieldLanguage holds the string denoting the language field in the database.
+	FieldLanguage = "language"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
@@ -37,6 +39,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldSummary,
 	FieldLevel,
+	FieldLanguage,
 	FieldStatus,
 	FieldCreatedBy,
 	FieldCreatedAt,
@@ -53,6 +56,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultLanguage holds the default value on creation for the "language" field.
+	DefaultLanguage string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -133,6 +138,11 @@ func BySummary(opts ...sql.OrderTermOption) OrderOption {
 // ByLevel orders the results by the level field.
 func ByLevel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLevel, opts...).ToFunc()
+}
+
+// ByLanguage orders the results by the language field.
+func ByLanguage(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLanguage, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

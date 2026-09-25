@@ -26,8 +26,11 @@ type CourseVersion struct {
 	TitleSnapshot   string
 	SummarySnapshot string
 	LevelSnapshot   DifficultyLevel
-	Checkpoints     []CourseVersionCheckpoint
-	PublishedAt     time.Time
+	// LanguageSnapshot is the course's Language when this version was
+	// published.
+	LanguageSnapshot string
+	Checkpoints      []CourseVersionCheckpoint
+	PublishedAt      time.Time
 	// AvailableForNewEnrollments is true by default on a freshly published
 	// version. Nothing in this slice of the feature sets it false — a
 	// later course-retirement or superseding-version capability is its
@@ -58,6 +61,7 @@ func NewCourseVersionSnapshot(id string, course Course, versionNumber int, publi
 		VersionNumber:              versionNumber,
 		TitleSnapshot:              course.Title,
 		SummarySnapshot:            course.Summary,
+		LanguageSnapshot:           course.Language,
 		LevelSnapshot:              course.Level,
 		Checkpoints:                checkpoints,
 		PublishedAt:                publishedAt,
