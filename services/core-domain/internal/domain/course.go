@@ -49,6 +49,15 @@ type Course struct {
 	Checkpoints []CourseCheckpoint
 }
 
+// CourseFields are the parts of a course its author writes, as given to
+// NewCourse to create or replace a course draft.
+type CourseFields struct {
+	Title       string
+	Summary     string
+	Level       DifficultyLevel
+	Checkpoints []NewCourseCheckpoint
+}
+
 // NewCourse validates title, summary, level, and checkpoints, and assigns
 // each checkpoint its 1-based position in the order given. Each
 // checkpoint's Path must already be the resolved LearningPath — the
@@ -57,7 +66,8 @@ type Course struct {
 // this constructor can check on its own) and this constructor reuses that
 // same lookup to resolve EffectiveTitle rather than requiring a second
 // round-trip. A newly created course always starts in CourseStatusDraft.
-func NewCourse(id, createdBy, title, summary string, level DifficultyLevel, checkpoints []NewCourseCheckpoint, createdAt time.Time) (Course, error) {
+func NewCourse(id, createdBy string, fields CourseFields, createdAt time.Time) (Course, error) {
+	title, summary, level, checkpoints := fields.Title, fields.Summary, fields.Level, fields.Checkpoints
 	var errs []FieldError
 
 	if title == "" {

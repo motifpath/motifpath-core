@@ -40,21 +40,35 @@ type CheckpointInput struct {
 	Title          *string
 }
 
+// CourseInput is what a caller writes to create or replace a course draft.
+type CourseInput struct {
+	Title       string
+	Summary     string
+	Level       domain.DifficultyLevel
+	Checkpoints []CheckpointInput
+}
+
+// fields resolves input into the domain's CourseFields, given its
+// checkpoints already resolved against their learning paths.
+func (input CourseInput) fields(checkpoints []domain.NewCourseCheckpoint) domain.CourseFields {
+	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Checkpoints: checkpoints}
+}
+
 // CreateCourse creates a course draft from the given ordered checkpoints.
 // Only teachers and admins may create courses. A learning_path_id that
 // doesn't exist is a validation failure (400), not a not-found error — the
 // whole request is malformed, not a lookup that simply missed.
-func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, title, summary string, level domain.DifficultyLevel, checkpoints []CheckpointInput) (domain.Course, error) {
+func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, input CourseInput) (domain.Course, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Course{}, domain.ErrForbidden
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, checkpoints)
+	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
 	if err != nil {
 		return domain.Course{}, err
 	}
 
-	course, err := domain.NewCourse(s.newID(), caller.ID, title, summary, level, resolved, s.now())
+	course, err := domain.NewCourse(s.newID(), caller.ID, input.fields(resolved), s.now())
 	if err != nil {
 		return domain.Course{}, err
 	}
@@ -193,7 +207,7 @@ func (s *CourseService) creatorsNamed(ctx context.Context, filter domain.CourseL
 // brand-new course can start in. A learning_path_id that doesn't exist is a
 // validation failure (400), matching CreateCourse. Only the creating
 // teacher or an admin may replace a course.
-func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, id, title, summary string, level domain.DifficultyLevel, checkpoints []CheckpointInput) (domain.Course, error) {
+func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, id string, input CourseInput) (domain.Course, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Course{}, domain.ErrForbidden
 	}
@@ -206,12 +220,12 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 		return domain.Course{}, err
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, checkpoints)
+	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
 	if err != nil {
 		return domain.Course{}, err
 	}
 
-	replaced, err := domain.NewCourse(existing.ID, existing.CreatedBy, title, summary, level, resolved, existing.CreatedAt)
+	replaced, err := domain.NewCourse(existing.ID, existing.CreatedBy, input.fields(resolved), existing.CreatedAt)
 	if err != nil {
 		return domain.Course{}, err
 	}

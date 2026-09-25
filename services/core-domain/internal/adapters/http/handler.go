@@ -1145,8 +1145,7 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		}
 	}
 
-	course, err := h.course.CreateCourse(ctx, caller, request.Body.Title, request.Body.Summary,
-		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	course, err := h.course.CreateCourse(ctx, caller, application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1211,8 +1210,7 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		}
 	}
 
-	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), request.Body.Title, request.Body.Summary,
-		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
