@@ -16,6 +16,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
@@ -32,6 +33,7 @@ type DiagramQuery struct {
 	predicates          []predicate.Diagram
 	withInstrument      *InstrumentQuery
 	withPositions       *PositionQuery
+	withRegions         *DiagramRegionQuery
 	withSkills          *SkillQuery
 	withConcepts        *ConceptQuery
 	withDiagramSkills   *DiagramSkillQuery
@@ -109,6 +111,28 @@ func (_q *DiagramQuery) QueryPositions() *PositionQuery {
 			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
 			sqlgraph.To(position.Table, position.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, diagram.PositionsTable, diagram.PositionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRegions chains the current query on the "regions" edge.
+func (_q *DiagramQuery) QueryRegions() *DiagramRegionQuery {
+	query := (&DiagramRegionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
+			sqlgraph.To(diagramregion.Table, diagramregion.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, diagram.RegionsTable, diagram.RegionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -398,6 +422,7 @@ func (_q *DiagramQuery) Clone() *DiagramQuery {
 		predicates:          append([]predicate.Diagram{}, _q.predicates...),
 		withInstrument:      _q.withInstrument.Clone(),
 		withPositions:       _q.withPositions.Clone(),
+		withRegions:         _q.withRegions.Clone(),
 		withSkills:          _q.withSkills.Clone(),
 		withConcepts:        _q.withConcepts.Clone(),
 		withDiagramSkills:   _q.withDiagramSkills.Clone(),
@@ -427,6 +452,17 @@ func (_q *DiagramQuery) WithPositions(opts ...func(*PositionQuery)) *DiagramQuer
 		opt(query)
 	}
 	_q.withPositions = query
+	return _q
+}
+
+// WithRegions tells the query-builder to eager-load the nodes that are connected to
+// the "regions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *DiagramQuery) WithRegions(opts ...func(*DiagramRegionQuery)) *DiagramQuery {
+	query := (&DiagramRegionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRegions = query
 	return _q
 }
 
@@ -552,9 +588,10 @@ func (_q *DiagramQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Diag
 	var (
 		nodes       = []*Diagram{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [7]bool{
 			_q.withInstrument != nil,
 			_q.withPositions != nil,
+			_q.withRegions != nil,
 			_q.withSkills != nil,
 			_q.withConcepts != nil,
 			_q.withDiagramSkills != nil,
@@ -589,6 +626,13 @@ func (_q *DiagramQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Diag
 		if err := _q.loadPositions(ctx, query, nodes,
 			func(n *Diagram) { n.Edges.Positions = []*Position{} },
 			func(n *Diagram, e *Position) { n.Edges.Positions = append(n.Edges.Positions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withRegions; query != nil {
+		if err := _q.loadRegions(ctx, query, nodes,
+			func(n *Diagram) { n.Edges.Regions = []*DiagramRegion{} },
+			func(n *Diagram, e *DiagramRegion) { n.Edges.Regions = append(n.Edges.Regions, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -667,6 +711,36 @@ func (_q *DiagramQuery) loadPositions(ctx context.Context, query *PositionQuery,
 	}
 	query.Where(predicate.Position(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(diagram.PositionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.DiagramID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "diagram_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *DiagramQuery) loadRegions(ctx context.Context, query *DiagramRegionQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *DiagramRegion)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Diagram)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(diagramregion.FieldDiagramID)
+	}
+	query.Where(predicate.DiagramRegion(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(diagram.RegionsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

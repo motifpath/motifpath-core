@@ -24,6 +24,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
@@ -205,6 +206,12 @@ func init() {
 	diagramconceptDescLinkedAt := diagramconceptFields[2].Descriptor()
 	// diagramconcept.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	diagramconcept.DefaultLinkedAt = diagramconceptDescLinkedAt.Default.(func() time.Time)
+	diagramregionFields := schema.DiagramRegion{}.Fields()
+	_ = diagramregionFields
+	// diagramregionDescID is the schema descriptor for id field.
+	diagramregionDescID := diagramregionFields[0].Descriptor()
+	// diagramregion.DefaultID holds the default value on creation for the id field.
+	diagramregion.DefaultID = diagramregionDescID.Default.(func() uuid.UUID)
 	diagramskillFields := schema.DiagramSkill{}.Fields()
 	_ = diagramskillFields
 	// diagramskillDescLinkedAt is the schema descriptor for linked_at field.

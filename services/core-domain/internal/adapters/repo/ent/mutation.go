@@ -30,6 +30,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
@@ -78,6 +79,7 @@ const (
 	TypeCourseVersionCheckpoint = "CourseVersionCheckpoint"
 	TypeDiagram                 = "Diagram"
 	TypeDiagramConcept          = "DiagramConcept"
+	TypeDiagramRegion           = "DiagramRegion"
 	TypeDiagramSkill            = "DiagramSkill"
 	TypeExercise                = "Exercise"
 	TypeExerciseConcept         = "ExerciseConcept"
@@ -12472,6 +12474,9 @@ type DiagramMutation struct {
 	positions               map[uuid.UUID]struct{}
 	removedpositions        map[uuid.UUID]struct{}
 	clearedpositions        bool
+	regions                 map[uuid.UUID]struct{}
+	removedregions          map[uuid.UUID]struct{}
+	clearedregions          bool
 	skills                  map[uuid.UUID]struct{}
 	removedskills           map[uuid.UUID]struct{}
 	clearedskills           bool
@@ -12988,6 +12993,60 @@ func (m *DiagramMutation) ResetPositions() {
 	m.removedpositions = nil
 }
 
+// AddRegionIDs adds the "regions" edge to the DiagramRegion entity by ids.
+func (m *DiagramMutation) AddRegionIDs(ids ...uuid.UUID) {
+	if m.regions == nil {
+		m.regions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.regions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRegions clears the "regions" edge to the DiagramRegion entity.
+func (m *DiagramMutation) ClearRegions() {
+	m.clearedregions = true
+}
+
+// RegionsCleared reports if the "regions" edge to the DiagramRegion entity was cleared.
+func (m *DiagramMutation) RegionsCleared() bool {
+	return m.clearedregions
+}
+
+// RemoveRegionIDs removes the "regions" edge to the DiagramRegion entity by IDs.
+func (m *DiagramMutation) RemoveRegionIDs(ids ...uuid.UUID) {
+	if m.removedregions == nil {
+		m.removedregions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.regions, ids[i])
+		m.removedregions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRegions returns the removed IDs of the "regions" edge to the DiagramRegion entity.
+func (m *DiagramMutation) RemovedRegionsIDs() (ids []uuid.UUID) {
+	for id := range m.removedregions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RegionsIDs returns the "regions" edge IDs in the mutation.
+func (m *DiagramMutation) RegionsIDs() (ids []uuid.UUID) {
+	for id := range m.regions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRegions resets all changes to the "regions" edge.
+func (m *DiagramMutation) ResetRegions() {
+	m.regions = nil
+	m.clearedregions = false
+	m.removedregions = nil
+}
+
 // AddSkillIDs adds the "skills" edge to the Skill entity by ids.
 func (m *DiagramMutation) AddSkillIDs(ids ...uuid.UUID) {
 	if m.skills == nil {
@@ -13471,12 +13530,15 @@ func (m *DiagramMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DiagramMutation) AddedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.instrument != nil {
 		edges = append(edges, diagram.EdgeInstrument)
 	}
 	if m.positions != nil {
 		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.regions != nil {
+		edges = append(edges, diagram.EdgeRegions)
 	}
 	if m.skills != nil {
 		edges = append(edges, diagram.EdgeSkills)
@@ -13504,6 +13566,12 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 	case diagram.EdgePositions:
 		ids := make([]ent.Value, 0, len(m.positions))
 		for id := range m.positions {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeRegions:
+		ids := make([]ent.Value, 0, len(m.regions))
+		for id := range m.regions {
 			ids = append(ids, id)
 		}
 		return ids
@@ -13537,9 +13605,12 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DiagramMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.removedpositions != nil {
 		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.removedregions != nil {
+		edges = append(edges, diagram.EdgeRegions)
 	}
 	if m.removedskills != nil {
 		edges = append(edges, diagram.EdgeSkills)
@@ -13563,6 +13634,12 @@ func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 	case diagram.EdgePositions:
 		ids := make([]ent.Value, 0, len(m.removedpositions))
 		for id := range m.removedpositions {
+			ids = append(ids, id)
+		}
+		return ids
+	case diagram.EdgeRegions:
+		ids := make([]ent.Value, 0, len(m.removedregions))
+		for id := range m.removedregions {
 			ids = append(ids, id)
 		}
 		return ids
@@ -13596,12 +13673,15 @@ func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DiagramMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 6)
+	edges := make([]string, 0, 7)
 	if m.clearedinstrument {
 		edges = append(edges, diagram.EdgeInstrument)
 	}
 	if m.clearedpositions {
 		edges = append(edges, diagram.EdgePositions)
+	}
+	if m.clearedregions {
+		edges = append(edges, diagram.EdgeRegions)
 	}
 	if m.clearedskills {
 		edges = append(edges, diagram.EdgeSkills)
@@ -13626,6 +13706,8 @@ func (m *DiagramMutation) EdgeCleared(name string) bool {
 		return m.clearedinstrument
 	case diagram.EdgePositions:
 		return m.clearedpositions
+	case diagram.EdgeRegions:
+		return m.clearedregions
 	case diagram.EdgeSkills:
 		return m.clearedskills
 	case diagram.EdgeConcepts:
@@ -13658,6 +13740,9 @@ func (m *DiagramMutation) ResetEdge(name string) error {
 		return nil
 	case diagram.EdgePositions:
 		m.ResetPositions()
+		return nil
+	case diagram.EdgeRegions:
+		m.ResetRegions()
 		return nil
 	case diagram.EdgeSkills:
 		m.ResetSkills()
@@ -14207,6 +14292,1186 @@ func (m *DiagramConceptMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown DiagramConcept edge %s", name)
+}
+
+// DiagramRegionMutation represents an operation that mutates the DiagramRegion nodes in the graph.
+type DiagramRegionMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *uuid.UUID
+	ordinal         *int
+	addordinal      *int
+	fret_start      *int
+	addfret_start   *int
+	fret_end        *int
+	addfret_end     *int
+	string_start    *int
+	addstring_start *int
+	string_end      *int
+	addstring_end   *int
+	key_start       *string
+	key_end         *string
+	description     *map[string]string
+	color           *string
+	clearedFields   map[string]struct{}
+	diagram         *uuid.UUID
+	cleareddiagram  bool
+	done            bool
+	oldValue        func(context.Context) (*DiagramRegion, error)
+	predicates      []predicate.DiagramRegion
+}
+
+var _ ent.Mutation = (*DiagramRegionMutation)(nil)
+
+// diagramregionOption allows management of the mutation configuration using functional options.
+type diagramregionOption func(*DiagramRegionMutation)
+
+// newDiagramRegionMutation creates new mutation for the DiagramRegion entity.
+func newDiagramRegionMutation(c config, op Op, opts ...diagramregionOption) *DiagramRegionMutation {
+	m := &DiagramRegionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramRegion,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramRegionID sets the ID field of the mutation.
+func withDiagramRegionID(id uuid.UUID) diagramregionOption {
+	return func(m *DiagramRegionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramRegion
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramRegion, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramRegion.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramRegion sets the old DiagramRegion of the mutation.
+func withDiagramRegion(node *DiagramRegion) diagramregionOption {
+	return func(m *DiagramRegionMutation) {
+		m.oldValue = func(context.Context) (*DiagramRegion, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramRegionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramRegionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DiagramRegion entities.
+func (m *DiagramRegionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramRegionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramRegionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramRegion.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *DiagramRegionMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *DiagramRegionMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *DiagramRegionMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetOrdinal sets the "ordinal" field.
+func (m *DiagramRegionMutation) SetOrdinal(i int) {
+	m.ordinal = &i
+	m.addordinal = nil
+}
+
+// Ordinal returns the value of the "ordinal" field in the mutation.
+func (m *DiagramRegionMutation) Ordinal() (r int, exists bool) {
+	v := m.ordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrdinal returns the old "ordinal" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldOrdinal(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrdinal is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrdinal requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrdinal: %w", err)
+	}
+	return oldValue.Ordinal, nil
+}
+
+// AddOrdinal adds i to the "ordinal" field.
+func (m *DiagramRegionMutation) AddOrdinal(i int) {
+	if m.addordinal != nil {
+		*m.addordinal += i
+	} else {
+		m.addordinal = &i
+	}
+}
+
+// AddedOrdinal returns the value that was added to the "ordinal" field in this mutation.
+func (m *DiagramRegionMutation) AddedOrdinal() (r int, exists bool) {
+	v := m.addordinal
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrdinal resets all changes to the "ordinal" field.
+func (m *DiagramRegionMutation) ResetOrdinal() {
+	m.ordinal = nil
+	m.addordinal = nil
+}
+
+// SetFretStart sets the "fret_start" field.
+func (m *DiagramRegionMutation) SetFretStart(i int) {
+	m.fret_start = &i
+	m.addfret_start = nil
+}
+
+// FretStart returns the value of the "fret_start" field in the mutation.
+func (m *DiagramRegionMutation) FretStart() (r int, exists bool) {
+	v := m.fret_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFretStart returns the old "fret_start" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldFretStart(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFretStart is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFretStart requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFretStart: %w", err)
+	}
+	return oldValue.FretStart, nil
+}
+
+// AddFretStart adds i to the "fret_start" field.
+func (m *DiagramRegionMutation) AddFretStart(i int) {
+	if m.addfret_start != nil {
+		*m.addfret_start += i
+	} else {
+		m.addfret_start = &i
+	}
+}
+
+// AddedFretStart returns the value that was added to the "fret_start" field in this mutation.
+func (m *DiagramRegionMutation) AddedFretStart() (r int, exists bool) {
+	v := m.addfret_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearFretStart clears the value of the "fret_start" field.
+func (m *DiagramRegionMutation) ClearFretStart() {
+	m.fret_start = nil
+	m.addfret_start = nil
+	m.clearedFields[diagramregion.FieldFretStart] = struct{}{}
+}
+
+// FretStartCleared returns if the "fret_start" field was cleared in this mutation.
+func (m *DiagramRegionMutation) FretStartCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldFretStart]
+	return ok
+}
+
+// ResetFretStart resets all changes to the "fret_start" field.
+func (m *DiagramRegionMutation) ResetFretStart() {
+	m.fret_start = nil
+	m.addfret_start = nil
+	delete(m.clearedFields, diagramregion.FieldFretStart)
+}
+
+// SetFretEnd sets the "fret_end" field.
+func (m *DiagramRegionMutation) SetFretEnd(i int) {
+	m.fret_end = &i
+	m.addfret_end = nil
+}
+
+// FretEnd returns the value of the "fret_end" field in the mutation.
+func (m *DiagramRegionMutation) FretEnd() (r int, exists bool) {
+	v := m.fret_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFretEnd returns the old "fret_end" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldFretEnd(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFretEnd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFretEnd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFretEnd: %w", err)
+	}
+	return oldValue.FretEnd, nil
+}
+
+// AddFretEnd adds i to the "fret_end" field.
+func (m *DiagramRegionMutation) AddFretEnd(i int) {
+	if m.addfret_end != nil {
+		*m.addfret_end += i
+	} else {
+		m.addfret_end = &i
+	}
+}
+
+// AddedFretEnd returns the value that was added to the "fret_end" field in this mutation.
+func (m *DiagramRegionMutation) AddedFretEnd() (r int, exists bool) {
+	v := m.addfret_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearFretEnd clears the value of the "fret_end" field.
+func (m *DiagramRegionMutation) ClearFretEnd() {
+	m.fret_end = nil
+	m.addfret_end = nil
+	m.clearedFields[diagramregion.FieldFretEnd] = struct{}{}
+}
+
+// FretEndCleared returns if the "fret_end" field was cleared in this mutation.
+func (m *DiagramRegionMutation) FretEndCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldFretEnd]
+	return ok
+}
+
+// ResetFretEnd resets all changes to the "fret_end" field.
+func (m *DiagramRegionMutation) ResetFretEnd() {
+	m.fret_end = nil
+	m.addfret_end = nil
+	delete(m.clearedFields, diagramregion.FieldFretEnd)
+}
+
+// SetStringStart sets the "string_start" field.
+func (m *DiagramRegionMutation) SetStringStart(i int) {
+	m.string_start = &i
+	m.addstring_start = nil
+}
+
+// StringStart returns the value of the "string_start" field in the mutation.
+func (m *DiagramRegionMutation) StringStart() (r int, exists bool) {
+	v := m.string_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStringStart returns the old "string_start" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldStringStart(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStringStart is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStringStart requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStringStart: %w", err)
+	}
+	return oldValue.StringStart, nil
+}
+
+// AddStringStart adds i to the "string_start" field.
+func (m *DiagramRegionMutation) AddStringStart(i int) {
+	if m.addstring_start != nil {
+		*m.addstring_start += i
+	} else {
+		m.addstring_start = &i
+	}
+}
+
+// AddedStringStart returns the value that was added to the "string_start" field in this mutation.
+func (m *DiagramRegionMutation) AddedStringStart() (r int, exists bool) {
+	v := m.addstring_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStringStart clears the value of the "string_start" field.
+func (m *DiagramRegionMutation) ClearStringStart() {
+	m.string_start = nil
+	m.addstring_start = nil
+	m.clearedFields[diagramregion.FieldStringStart] = struct{}{}
+}
+
+// StringStartCleared returns if the "string_start" field was cleared in this mutation.
+func (m *DiagramRegionMutation) StringStartCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldStringStart]
+	return ok
+}
+
+// ResetStringStart resets all changes to the "string_start" field.
+func (m *DiagramRegionMutation) ResetStringStart() {
+	m.string_start = nil
+	m.addstring_start = nil
+	delete(m.clearedFields, diagramregion.FieldStringStart)
+}
+
+// SetStringEnd sets the "string_end" field.
+func (m *DiagramRegionMutation) SetStringEnd(i int) {
+	m.string_end = &i
+	m.addstring_end = nil
+}
+
+// StringEnd returns the value of the "string_end" field in the mutation.
+func (m *DiagramRegionMutation) StringEnd() (r int, exists bool) {
+	v := m.string_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStringEnd returns the old "string_end" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldStringEnd(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStringEnd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStringEnd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStringEnd: %w", err)
+	}
+	return oldValue.StringEnd, nil
+}
+
+// AddStringEnd adds i to the "string_end" field.
+func (m *DiagramRegionMutation) AddStringEnd(i int) {
+	if m.addstring_end != nil {
+		*m.addstring_end += i
+	} else {
+		m.addstring_end = &i
+	}
+}
+
+// AddedStringEnd returns the value that was added to the "string_end" field in this mutation.
+func (m *DiagramRegionMutation) AddedStringEnd() (r int, exists bool) {
+	v := m.addstring_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearStringEnd clears the value of the "string_end" field.
+func (m *DiagramRegionMutation) ClearStringEnd() {
+	m.string_end = nil
+	m.addstring_end = nil
+	m.clearedFields[diagramregion.FieldStringEnd] = struct{}{}
+}
+
+// StringEndCleared returns if the "string_end" field was cleared in this mutation.
+func (m *DiagramRegionMutation) StringEndCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldStringEnd]
+	return ok
+}
+
+// ResetStringEnd resets all changes to the "string_end" field.
+func (m *DiagramRegionMutation) ResetStringEnd() {
+	m.string_end = nil
+	m.addstring_end = nil
+	delete(m.clearedFields, diagramregion.FieldStringEnd)
+}
+
+// SetKeyStart sets the "key_start" field.
+func (m *DiagramRegionMutation) SetKeyStart(s string) {
+	m.key_start = &s
+}
+
+// KeyStart returns the value of the "key_start" field in the mutation.
+func (m *DiagramRegionMutation) KeyStart() (r string, exists bool) {
+	v := m.key_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyStart returns the old "key_start" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldKeyStart(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyStart is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyStart requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyStart: %w", err)
+	}
+	return oldValue.KeyStart, nil
+}
+
+// ClearKeyStart clears the value of the "key_start" field.
+func (m *DiagramRegionMutation) ClearKeyStart() {
+	m.key_start = nil
+	m.clearedFields[diagramregion.FieldKeyStart] = struct{}{}
+}
+
+// KeyStartCleared returns if the "key_start" field was cleared in this mutation.
+func (m *DiagramRegionMutation) KeyStartCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldKeyStart]
+	return ok
+}
+
+// ResetKeyStart resets all changes to the "key_start" field.
+func (m *DiagramRegionMutation) ResetKeyStart() {
+	m.key_start = nil
+	delete(m.clearedFields, diagramregion.FieldKeyStart)
+}
+
+// SetKeyEnd sets the "key_end" field.
+func (m *DiagramRegionMutation) SetKeyEnd(s string) {
+	m.key_end = &s
+}
+
+// KeyEnd returns the value of the "key_end" field in the mutation.
+func (m *DiagramRegionMutation) KeyEnd() (r string, exists bool) {
+	v := m.key_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKeyEnd returns the old "key_end" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldKeyEnd(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKeyEnd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKeyEnd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKeyEnd: %w", err)
+	}
+	return oldValue.KeyEnd, nil
+}
+
+// ClearKeyEnd clears the value of the "key_end" field.
+func (m *DiagramRegionMutation) ClearKeyEnd() {
+	m.key_end = nil
+	m.clearedFields[diagramregion.FieldKeyEnd] = struct{}{}
+}
+
+// KeyEndCleared returns if the "key_end" field was cleared in this mutation.
+func (m *DiagramRegionMutation) KeyEndCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldKeyEnd]
+	return ok
+}
+
+// ResetKeyEnd resets all changes to the "key_end" field.
+func (m *DiagramRegionMutation) ResetKeyEnd() {
+	m.key_end = nil
+	delete(m.clearedFields, diagramregion.FieldKeyEnd)
+}
+
+// SetDescription sets the "description" field.
+func (m *DiagramRegionMutation) SetDescription(value map[string]string) {
+	m.description = &value
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *DiagramRegionMutation) Description() (r map[string]string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldDescription(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *DiagramRegionMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetColor sets the "color" field.
+func (m *DiagramRegionMutation) SetColor(s string) {
+	m.color = &s
+}
+
+// Color returns the value of the "color" field in the mutation.
+func (m *DiagramRegionMutation) Color() (r string, exists bool) {
+	v := m.color
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldColor returns the old "color" field's value of the DiagramRegion entity.
+// If the DiagramRegion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramRegionMutation) OldColor(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldColor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldColor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldColor: %w", err)
+	}
+	return oldValue.Color, nil
+}
+
+// ClearColor clears the value of the "color" field.
+func (m *DiagramRegionMutation) ClearColor() {
+	m.color = nil
+	m.clearedFields[diagramregion.FieldColor] = struct{}{}
+}
+
+// ColorCleared returns if the "color" field was cleared in this mutation.
+func (m *DiagramRegionMutation) ColorCleared() bool {
+	_, ok := m.clearedFields[diagramregion.FieldColor]
+	return ok
+}
+
+// ResetColor resets all changes to the "color" field.
+func (m *DiagramRegionMutation) ResetColor() {
+	m.color = nil
+	delete(m.clearedFields, diagramregion.FieldColor)
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *DiagramRegionMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[diagramregion.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *DiagramRegionMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *DiagramRegionMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *DiagramRegionMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// Where appends a list predicates to the DiagramRegionMutation builder.
+func (m *DiagramRegionMutation) Where(ps ...predicate.DiagramRegion) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramRegionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramRegionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramRegion, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramRegionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramRegionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramRegion).
+func (m *DiagramRegionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramRegionMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.diagram != nil {
+		fields = append(fields, diagramregion.FieldDiagramID)
+	}
+	if m.ordinal != nil {
+		fields = append(fields, diagramregion.FieldOrdinal)
+	}
+	if m.fret_start != nil {
+		fields = append(fields, diagramregion.FieldFretStart)
+	}
+	if m.fret_end != nil {
+		fields = append(fields, diagramregion.FieldFretEnd)
+	}
+	if m.string_start != nil {
+		fields = append(fields, diagramregion.FieldStringStart)
+	}
+	if m.string_end != nil {
+		fields = append(fields, diagramregion.FieldStringEnd)
+	}
+	if m.key_start != nil {
+		fields = append(fields, diagramregion.FieldKeyStart)
+	}
+	if m.key_end != nil {
+		fields = append(fields, diagramregion.FieldKeyEnd)
+	}
+	if m.description != nil {
+		fields = append(fields, diagramregion.FieldDescription)
+	}
+	if m.color != nil {
+		fields = append(fields, diagramregion.FieldColor)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramRegionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagramregion.FieldDiagramID:
+		return m.DiagramID()
+	case diagramregion.FieldOrdinal:
+		return m.Ordinal()
+	case diagramregion.FieldFretStart:
+		return m.FretStart()
+	case diagramregion.FieldFretEnd:
+		return m.FretEnd()
+	case diagramregion.FieldStringStart:
+		return m.StringStart()
+	case diagramregion.FieldStringEnd:
+		return m.StringEnd()
+	case diagramregion.FieldKeyStart:
+		return m.KeyStart()
+	case diagramregion.FieldKeyEnd:
+		return m.KeyEnd()
+	case diagramregion.FieldDescription:
+		return m.Description()
+	case diagramregion.FieldColor:
+		return m.Color()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramRegionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagramregion.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case diagramregion.FieldOrdinal:
+		return m.OldOrdinal(ctx)
+	case diagramregion.FieldFretStart:
+		return m.OldFretStart(ctx)
+	case diagramregion.FieldFretEnd:
+		return m.OldFretEnd(ctx)
+	case diagramregion.FieldStringStart:
+		return m.OldStringStart(ctx)
+	case diagramregion.FieldStringEnd:
+		return m.OldStringEnd(ctx)
+	case diagramregion.FieldKeyStart:
+		return m.OldKeyStart(ctx)
+	case diagramregion.FieldKeyEnd:
+		return m.OldKeyEnd(ctx)
+	case diagramregion.FieldDescription:
+		return m.OldDescription(ctx)
+	case diagramregion.FieldColor:
+		return m.OldColor(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramRegion field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramRegionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagramregion.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case diagramregion.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrdinal(v)
+		return nil
+	case diagramregion.FieldFretStart:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFretStart(v)
+		return nil
+	case diagramregion.FieldFretEnd:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFretEnd(v)
+		return nil
+	case diagramregion.FieldStringStart:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStringStart(v)
+		return nil
+	case diagramregion.FieldStringEnd:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStringEnd(v)
+		return nil
+	case diagramregion.FieldKeyStart:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyStart(v)
+		return nil
+	case diagramregion.FieldKeyEnd:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKeyEnd(v)
+		return nil
+	case diagramregion.FieldDescription:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case diagramregion.FieldColor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetColor(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramRegionMutation) AddedFields() []string {
+	var fields []string
+	if m.addordinal != nil {
+		fields = append(fields, diagramregion.FieldOrdinal)
+	}
+	if m.addfret_start != nil {
+		fields = append(fields, diagramregion.FieldFretStart)
+	}
+	if m.addfret_end != nil {
+		fields = append(fields, diagramregion.FieldFretEnd)
+	}
+	if m.addstring_start != nil {
+		fields = append(fields, diagramregion.FieldStringStart)
+	}
+	if m.addstring_end != nil {
+		fields = append(fields, diagramregion.FieldStringEnd)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramRegionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case diagramregion.FieldOrdinal:
+		return m.AddedOrdinal()
+	case diagramregion.FieldFretStart:
+		return m.AddedFretStart()
+	case diagramregion.FieldFretEnd:
+		return m.AddedFretEnd()
+	case diagramregion.FieldStringStart:
+		return m.AddedStringStart()
+	case diagramregion.FieldStringEnd:
+		return m.AddedStringEnd()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramRegionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case diagramregion.FieldOrdinal:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrdinal(v)
+		return nil
+	case diagramregion.FieldFretStart:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFretStart(v)
+		return nil
+	case diagramregion.FieldFretEnd:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFretEnd(v)
+		return nil
+	case diagramregion.FieldStringStart:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStringStart(v)
+		return nil
+	case diagramregion.FieldStringEnd:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStringEnd(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramRegionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(diagramregion.FieldFretStart) {
+		fields = append(fields, diagramregion.FieldFretStart)
+	}
+	if m.FieldCleared(diagramregion.FieldFretEnd) {
+		fields = append(fields, diagramregion.FieldFretEnd)
+	}
+	if m.FieldCleared(diagramregion.FieldStringStart) {
+		fields = append(fields, diagramregion.FieldStringStart)
+	}
+	if m.FieldCleared(diagramregion.FieldStringEnd) {
+		fields = append(fields, diagramregion.FieldStringEnd)
+	}
+	if m.FieldCleared(diagramregion.FieldKeyStart) {
+		fields = append(fields, diagramregion.FieldKeyStart)
+	}
+	if m.FieldCleared(diagramregion.FieldKeyEnd) {
+		fields = append(fields, diagramregion.FieldKeyEnd)
+	}
+	if m.FieldCleared(diagramregion.FieldColor) {
+		fields = append(fields, diagramregion.FieldColor)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramRegionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramRegionMutation) ClearField(name string) error {
+	switch name {
+	case diagramregion.FieldFretStart:
+		m.ClearFretStart()
+		return nil
+	case diagramregion.FieldFretEnd:
+		m.ClearFretEnd()
+		return nil
+	case diagramregion.FieldStringStart:
+		m.ClearStringStart()
+		return nil
+	case diagramregion.FieldStringEnd:
+		m.ClearStringEnd()
+		return nil
+	case diagramregion.FieldKeyStart:
+		m.ClearKeyStart()
+		return nil
+	case diagramregion.FieldKeyEnd:
+		m.ClearKeyEnd()
+		return nil
+	case diagramregion.FieldColor:
+		m.ClearColor()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramRegionMutation) ResetField(name string) error {
+	switch name {
+	case diagramregion.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case diagramregion.FieldOrdinal:
+		m.ResetOrdinal()
+		return nil
+	case diagramregion.FieldFretStart:
+		m.ResetFretStart()
+		return nil
+	case diagramregion.FieldFretEnd:
+		m.ResetFretEnd()
+		return nil
+	case diagramregion.FieldStringStart:
+		m.ResetStringStart()
+		return nil
+	case diagramregion.FieldStringEnd:
+		m.ResetStringEnd()
+		return nil
+	case diagramregion.FieldKeyStart:
+		m.ResetKeyStart()
+		return nil
+	case diagramregion.FieldKeyEnd:
+		m.ResetKeyEnd()
+		return nil
+	case diagramregion.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case diagramregion.FieldColor:
+		m.ResetColor()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramRegionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.diagram != nil {
+		edges = append(edges, diagramregion.EdgeDiagram)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramRegionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagramregion.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramRegionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramRegionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramRegionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddiagram {
+		edges = append(edges, diagramregion.EdgeDiagram)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramRegionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagramregion.EdgeDiagram:
+		return m.cleareddiagram
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramRegionMutation) ClearEdge(name string) error {
+	switch name {
+	case diagramregion.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramRegionMutation) ResetEdge(name string) error {
+	switch name {
+	case diagramregion.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramRegion edge %s", name)
 }
 
 // DiagramSkillMutation represents an operation that mutates the DiagramSkill nodes in the graph.
@@ -24842,6 +26107,8 @@ type PositionMutation struct {
 	fret              *int
 	addfret           *int
 	key               *string
+	custom_label      *map[string]string
+	note              *map[string]string
 	clearedFields     map[string]struct{}
 	diagram           *uuid.UUID
 	cleareddiagram    bool
@@ -25462,6 +26729,104 @@ func (m *PositionMutation) ResetKey() {
 	delete(m.clearedFields, position.FieldKey)
 }
 
+// SetCustomLabel sets the "custom_label" field.
+func (m *PositionMutation) SetCustomLabel(value map[string]string) {
+	m.custom_label = &value
+}
+
+// CustomLabel returns the value of the "custom_label" field in the mutation.
+func (m *PositionMutation) CustomLabel() (r map[string]string, exists bool) {
+	v := m.custom_label
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCustomLabel returns the old "custom_label" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldCustomLabel(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCustomLabel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCustomLabel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCustomLabel: %w", err)
+	}
+	return oldValue.CustomLabel, nil
+}
+
+// ClearCustomLabel clears the value of the "custom_label" field.
+func (m *PositionMutation) ClearCustomLabel() {
+	m.custom_label = nil
+	m.clearedFields[position.FieldCustomLabel] = struct{}{}
+}
+
+// CustomLabelCleared returns if the "custom_label" field was cleared in this mutation.
+func (m *PositionMutation) CustomLabelCleared() bool {
+	_, ok := m.clearedFields[position.FieldCustomLabel]
+	return ok
+}
+
+// ResetCustomLabel resets all changes to the "custom_label" field.
+func (m *PositionMutation) ResetCustomLabel() {
+	m.custom_label = nil
+	delete(m.clearedFields, position.FieldCustomLabel)
+}
+
+// SetNote sets the "note" field.
+func (m *PositionMutation) SetNote(value map[string]string) {
+	m.note = &value
+}
+
+// Note returns the value of the "note" field in the mutation.
+func (m *PositionMutation) Note() (r map[string]string, exists bool) {
+	v := m.note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNote returns the old "note" field's value of the Position entity.
+// If the Position object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PositionMutation) OldNote(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNote is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNote requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNote: %w", err)
+	}
+	return oldValue.Note, nil
+}
+
+// ClearNote clears the value of the "note" field.
+func (m *PositionMutation) ClearNote() {
+	m.note = nil
+	m.clearedFields[position.FieldNote] = struct{}{}
+}
+
+// NoteCleared returns if the "note" field was cleared in this mutation.
+func (m *PositionMutation) NoteCleared() bool {
+	_, ok := m.clearedFields[position.FieldNote]
+	return ok
+}
+
+// ResetNote resets all changes to the "note" field.
+func (m *PositionMutation) ResetNote() {
+	m.note = nil
+	delete(m.clearedFields, position.FieldNote)
+}
+
 // ClearDiagram clears the "diagram" edge to the Diagram entity.
 func (m *PositionMutation) ClearDiagram() {
 	m.cleareddiagram = true
@@ -25523,7 +26888,7 @@ func (m *PositionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PositionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.diagram != nil {
 		fields = append(fields, position.FieldDiagramID)
 	}
@@ -25554,6 +26919,12 @@ func (m *PositionMutation) Fields() []string {
 	if m.key != nil {
 		fields = append(fields, position.FieldKey)
 	}
+	if m.custom_label != nil {
+		fields = append(fields, position.FieldCustomLabel)
+	}
+	if m.note != nil {
+		fields = append(fields, position.FieldNote)
+	}
 	return fields
 }
 
@@ -25582,6 +26953,10 @@ func (m *PositionMutation) Field(name string) (ent.Value, bool) {
 		return m.Fret()
 	case position.FieldKey:
 		return m.Key()
+	case position.FieldCustomLabel:
+		return m.CustomLabel()
+	case position.FieldNote:
+		return m.Note()
 	}
 	return nil, false
 }
@@ -25611,6 +26986,10 @@ func (m *PositionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldFret(ctx)
 	case position.FieldKey:
 		return m.OldKey(ctx)
+	case position.FieldCustomLabel:
+		return m.OldCustomLabel(ctx)
+	case position.FieldNote:
+		return m.OldNote(ctx)
 	}
 	return nil, fmt.Errorf("unknown Position field %s", name)
 }
@@ -25689,6 +27068,20 @@ func (m *PositionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKey(v)
+		return nil
+	case position.FieldCustomLabel:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCustomLabel(v)
+		return nil
+	case position.FieldNote:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNote(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Position field %s", name)
@@ -25786,6 +27179,12 @@ func (m *PositionMutation) ClearedFields() []string {
 	if m.FieldCleared(position.FieldKey) {
 		fields = append(fields, position.FieldKey)
 	}
+	if m.FieldCleared(position.FieldCustomLabel) {
+		fields = append(fields, position.FieldCustomLabel)
+	}
+	if m.FieldCleared(position.FieldNote) {
+		fields = append(fields, position.FieldNote)
+	}
 	return fields
 }
 
@@ -25814,6 +27213,12 @@ func (m *PositionMutation) ClearField(name string) error {
 		return nil
 	case position.FieldKey:
 		m.ClearKey()
+		return nil
+	case position.FieldCustomLabel:
+		m.ClearCustomLabel()
+		return nil
+	case position.FieldNote:
+		m.ClearNote()
 		return nil
 	}
 	return fmt.Errorf("unknown Position nullable field %s", name)
@@ -25852,6 +27257,12 @@ func (m *PositionMutation) ResetField(name string) error {
 		return nil
 	case position.FieldKey:
 		m.ResetKey()
+		return nil
+	case position.FieldCustomLabel:
+		m.ResetCustomLabel()
+		return nil
+	case position.FieldNote:
+		m.ResetNote()
 		return nil
 	}
 	return fmt.Errorf("unknown Position field %s", name)

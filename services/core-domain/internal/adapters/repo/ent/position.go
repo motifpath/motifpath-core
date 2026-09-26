@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -38,6 +39,10 @@ type Position struct {
 	Fret *int `json:"fret,omitempty"`
 	// Key holds the value of the "key" field.
 	Key *string `json:"key,omitempty"`
+	// CustomLabel holds the value of the "custom_label" field.
+	CustomLabel map[string]string `json:"custom_label,omitempty"`
+	// Note holds the value of the "note" field.
+	Note map[string]string `json:"note,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the PositionQuery when eager-loading is set.
 	Edges        PositionEdges `json:"edges"`
@@ -69,6 +74,8 @@ func (*Position) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case position.FieldCustomLabel, position.FieldNote:
+			values[i] = new([]byte)
 		case position.FieldOrdinal, position.FieldSequenceIndex, position.FieldStringNumber, position.FieldFret:
 			values[i] = new(sql.NullInt64)
 		case position.FieldInterval, position.FieldNoteName, position.FieldShape, position.FieldColor, position.FieldKey:
@@ -161,6 +168,22 @@ func (_m *Position) assignValues(columns []string, values []any) error {
 				_m.Key = new(string)
 				*_m.Key = value.String
 			}
+		case position.FieldCustomLabel:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field custom_label", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.CustomLabel); err != nil {
+					return fmt.Errorf("unmarshal field custom_label: %w", err)
+				}
+			}
+		case position.FieldNote:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field note", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Note); err != nil {
+					return fmt.Errorf("unmarshal field note: %w", err)
+				}
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -241,6 +264,12 @@ func (_m *Position) String() string {
 		builder.WriteString("key=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("custom_label=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CustomLabel))
+	builder.WriteString(", ")
+	builder.WriteString("note=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Note))
 	builder.WriteByte(')')
 	return builder.String()
 }

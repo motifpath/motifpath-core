@@ -692,6 +692,14 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 			Fret:          p.Fret,
 			Key:           p.Key,
 		}
+		if p.CustomLabel != nil {
+			label := generated.LocalizedMarkerLabel(p.CustomLabel)
+			positions[i].CustomLabel = &label
+		}
+		if p.Note != nil {
+			note := generated.LocalizedNote(p.Note)
+			positions[i].Note = &note
+		}
 	}
 	return generated.Diagram{
 		DiagramId:    mustUUID(d.ID),
@@ -704,6 +712,7 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
 		Color:        d.Color,
 		Positions:    positions,
+		Regions:      toGeneratedRegions(d.Regions),
 		Classification: generated.DiagramClassification{
 			Skills:   toGeneratedSkills(d.Skills),
 			Concepts: toGeneratedConcepts(d.Concepts),
@@ -735,8 +744,61 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 		if p.Shape != nil {
 			result[i].Shape = domain.PositionShape(*p.Shape)
 		}
+		if p.CustomLabel != nil {
+			result[i].CustomLabel = domain.LocalizedText(*p.CustomLabel)
+		}
+		if p.Note != nil {
+			result[i].Note = domain.LocalizedText(*p.Note)
+		}
 		if p.PositionId != nil {
 			result[i].ID = p.PositionId.String()
+		}
+	}
+	return result
+}
+
+// toGeneratedRegions converts regions to their wire shape — always a list,
+// empty when there are none, since the response requires the field.
+func toGeneratedRegions(regions []domain.Region) []generated.DiagramRegion {
+	result := make([]generated.DiagramRegion, len(regions))
+	for i, r := range regions {
+		id := mustUUID(r.ID)
+		result[i] = generated.DiagramRegion{
+			RegionId:    &id,
+			FretStart:   r.FretStart,
+			FretEnd:     r.FretEnd,
+			StringStart: r.StringStart,
+			StringEnd:   r.StringEnd,
+			KeyStart:    r.KeyStart,
+			KeyEnd:      r.KeyEnd,
+			Description: generated.LocalizedCaption(r.Description),
+			Color:       r.Color,
+		}
+	}
+	return result
+}
+
+// toDomainRegions converts a request's optional region list. An omitted
+// list is nil and an empty one stays empty, so an update can tell "keep the
+// regions" from "remove them all".
+func toDomainRegions(regions *[]generated.DiagramRegion) []domain.Region {
+	if regions == nil {
+		return nil
+	}
+	result := make([]domain.Region, len(*regions))
+	for i, r := range *regions {
+		result[i] = domain.Region{
+			FretStart:   r.FretStart,
+			FretEnd:     r.FretEnd,
+			StringStart: r.StringStart,
+			StringEnd:   r.StringEnd,
+			KeyStart:    r.KeyStart,
+			KeyEnd:      r.KeyEnd,
+			Description: domain.LocalizedText(r.Description),
+			Color:       r.Color,
+		}
+		if r.RegionId != nil {
+			result[i].ID = r.RegionId.String()
 		}
 	}
 	return result

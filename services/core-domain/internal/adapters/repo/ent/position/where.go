@@ -609,6 +609,26 @@ func KeyContainsFold(v string) predicate.Position {
 	return predicate.Position(sql.FieldContainsFold(FieldKey, v))
 }
 
+// CustomLabelIsNil applies the IsNil predicate on the "custom_label" field.
+func CustomLabelIsNil() predicate.Position {
+	return predicate.Position(sql.FieldIsNull(FieldCustomLabel))
+}
+
+// CustomLabelNotNil applies the NotNil predicate on the "custom_label" field.
+func CustomLabelNotNil() predicate.Position {
+	return predicate.Position(sql.FieldNotNull(FieldCustomLabel))
+}
+
+// NoteIsNil applies the IsNil predicate on the "note" field.
+func NoteIsNil() predicate.Position {
+	return predicate.Position(sql.FieldIsNull(FieldNote))
+}
+
+// NoteNotNil applies the NotNil predicate on the "note" field.
+func NoteNotNil() predicate.Position {
+	return predicate.Position(sql.FieldNotNull(FieldNote))
+}
+
 // HasDiagram applies the HasEdge predicate on the "diagram" edge.
 func HasDiagram() predicate.Position {
 	return predicate.Position(func(s *sql.Selector) {

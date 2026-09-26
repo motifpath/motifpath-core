@@ -14,6 +14,8 @@ import (
 
 func strPtr(s string) *string { return &s }
 
+func intPtr(n int) *int { return &n }
+
 func TestDiagramColorMapping(t *testing.T) {
 	positionID := uuid.NewString()
 	diagram := domain.Diagram{
@@ -137,5 +139,83 @@ func TestDiagramLocalizationMapping(t *testing.T) {
 		got := diagramListFilter(generated.ListDiagramsParams{Language: &language})
 
 		assert.Equal(t, "pt_BR", got.Language)
+	})
+}
+
+func TestDiagramAnnotationMapping(t *testing.T) {
+	regionID := uuid.NewString()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: uuid.NewString(), Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(),
+		Names:        domain.LocalizedText{"en": "Boxes"},
+		LabelDisplay: domain.LabelDisplayInterval,
+		Positions: []domain.Position{
+			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, CustomLabel: domain.LocalizedText{"en": "Av"}, Note: domain.LocalizedText{"en": "Avoid it"}},
+			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot},
+		},
+		Regions: []domain.Region{
+			{ID: regionID, FretStart: intPtr(7), FretEnd: intPtr(10), StringStart: intPtr(1), StringEnd: intPtr(3), Description: domain.LocalizedText{"en": "Box 2"}, Color: strPtr("#22C55E")},
+		},
+	}
+
+	t.Run("custom labels and notes reach the response; absent ones stay absent", func(t *testing.T) {
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		require.NotNil(t, got.Positions[0].CustomLabel)
+		assert.Equal(t, generated.LocalizedMarkerLabel{"en": "Av"}, *got.Positions[0].CustomLabel)
+		require.NotNil(t, got.Positions[0].Note)
+		assert.Equal(t, generated.LocalizedNote{"en": "Avoid it"}, *got.Positions[0].Note)
+		assert.Nil(t, got.Positions[1].CustomLabel)
+		assert.Nil(t, got.Positions[1].Note)
+	})
+
+	t.Run("regions reach the response in order", func(t *testing.T) {
+		id := uuid.MustParse(regionID)
+
+		got := toGeneratedDiagram(diagram, userNames{})
+
+		assert.Equal(t, []generated.DiagramRegion{{
+			RegionId: &id, FretStart: intPtr(7), FretEnd: intPtr(10), StringStart: intPtr(1), StringEnd: intPtr(3),
+			Description: generated.LocalizedCaption{"en": "Box 2"}, Color: strPtr("#22C55E"),
+		}}, got.Regions)
+	})
+
+	t.Run("a diagram without regions responds with an empty list, never null", func(t *testing.T) {
+		plain := diagram
+		plain.Regions = nil
+
+		got := toGeneratedDiagram(plain, userNames{})
+
+		assert.NotNil(t, got.Regions)
+		assert.Empty(t, got.Regions)
+	})
+
+	t.Run("request positions carry their custom label and note into the domain", func(t *testing.T) {
+		label, note := generated.LocalizedMarkerLabel{"en": "Av"}, generated.LocalizedNote{"en": "Avoid it"}
+
+		got := toDomainPositions([]generated.DiagramPosition{{Interval: "b3", NoteName: "C", CustomLabel: &label, Note: &note}, {Interval: "R", NoteName: "A"}})
+
+		assert.Equal(t, domain.LocalizedText{"en": "Av"}, got[0].CustomLabel)
+		assert.Equal(t, domain.LocalizedText{"en": "Avoid it"}, got[0].Note)
+		assert.Nil(t, got[1].CustomLabel)
+		assert.Nil(t, got[1].Note)
+	})
+
+	t.Run("request regions map into the domain, an omitted list staying nil and an empty one empty", func(t *testing.T) {
+		id := uuid.New()
+		regions := []generated.DiagramRegion{
+			{RegionId: &id, KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: generated.LocalizedCaption{"en": "Octave 4"}},
+			{FretStart: intPtr(5), FretEnd: intPtr(8), Description: generated.LocalizedCaption{"en": "Box 1"}},
+		}
+
+		got := toDomainRegions(&regions)
+
+		assert.Equal(t, []domain.Region{
+			{ID: id.String(), KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: domain.LocalizedText{"en": "Octave 4"}},
+			{FretStart: intPtr(5), FretEnd: intPtr(8), Description: domain.LocalizedText{"en": "Box 1"}},
+		}, got)
+		assert.Nil(t, toDomainRegions(nil))
+		empty := toDomainRegions(&[]generated.DiagramRegion{})
+		assert.NotNil(t, empty)
+		assert.Empty(t, empty)
 	})
 }

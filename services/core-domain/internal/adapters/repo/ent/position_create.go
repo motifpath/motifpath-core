@@ -129,6 +129,18 @@ func (_c *PositionCreate) SetNillableKey(v *string) *PositionCreate {
 	return _c
 }
 
+// SetCustomLabel sets the "custom_label" field.
+func (_c *PositionCreate) SetCustomLabel(v map[string]string) *PositionCreate {
+	_c.mutation.SetCustomLabel(v)
+	return _c
+}
+
+// SetNote sets the "note" field.
+func (_c *PositionCreate) SetNote(v map[string]string) *PositionCreate {
+	_c.mutation.SetNote(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *PositionCreate) SetID(v uuid.UUID) *PositionCreate {
 	_c.mutation.SetID(v)
@@ -288,6 +300,14 @@ func (_c *PositionCreate) createSpec() (*Position, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Key(); ok {
 		_spec.SetField(position.FieldKey, field.TypeString, value)
 		_node.Key = &value
+	}
+	if value, ok := _c.mutation.CustomLabel(); ok {
+		_spec.SetField(position.FieldCustomLabel, field.TypeJSON, value)
+		_node.CustomLabel = value
+	}
+	if value, ok := _c.mutation.Note(); ok {
+		_spec.SetField(position.FieldNote, field.TypeJSON, value)
+		_node.Note = value
 	}
 	if nodes := _c.mutation.DiagramIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -225,6 +225,18 @@ func (f DiagramConceptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramConceptMutation", m)
 }
 
+// The DiagramRegionFunc type is an adapter to allow the use of ordinary
+// function as DiagramRegion mutator.
+type DiagramRegionFunc func(context.Context, *ent.DiagramRegionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramRegionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramRegionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramRegionMutation", m)
+}
+
 // The DiagramSkillFunc type is an adapter to allow the use of ordinary
 // function as DiagramSkill mutator.
 type DiagramSkillFunc func(context.Context, *ent.DiagramSkillMutation) (ent.Value, error)

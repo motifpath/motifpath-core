@@ -649,3 +649,81 @@ func TestDiagramService_Localization(t *testing.T) {
 		assert.Equal(t, []string{a.ID, b.ID}, []string{got.Items[0].ID, got.Items[1].ID})
 	})
 }
+
+func TestDiagramService_Annotations(t *testing.T) {
+	ctx := context.Background()
+	fretRegion := func(id string, start, end int) domain.Region {
+		return domain.Region{ID: id, FretStart: &start, FretEnd: &end, Description: domain.LocalizedText(names("Box"))}
+	}
+	annotatedPos := func() domain.Position {
+		p := frettedPos(6, 5)
+		p.CustomLabel = domain.LocalizedText{"en": "Av", "pt_BR": "Ev"}
+		p.Note = domain.LocalizedText(names("Avoid it"))
+		return p
+	}
+	create := func(f diagramFixture, regions []domain.Region) domain.Diagram {
+		t.Helper()
+		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Boxes"), []domain.Position{annotatedPos()}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Regions: regions})
+		require.NoError(t, err)
+		return d
+	}
+
+	t.Run("custom labels, notes and regions are carried onto the created diagram, regions getting server-assigned ids", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		got := create(f, []domain.Region{fretRegion("", 5, 8), fretRegion("client-region", 7, 10)})
+
+		assert.Equal(t, domain.LocalizedText{"en": "Av", "pt_BR": "Ev"}, got.Positions[0].CustomLabel)
+		assert.Equal(t, domain.LocalizedText(names("Avoid it")), got.Positions[0].Note)
+		require.Len(t, got.Regions, 2)
+		assert.NotEmpty(t, got.Regions[0].ID)
+		assert.Equal(t, "client-region", got.Regions[1].ID)
+		stored, err := f.diagrams.GetByID(ctx, got.ID)
+		require.NoError(t, err)
+		assert.Equal(t, got.Regions, stored.Regions)
+	})
+
+	t.Run("an update without regions keeps them; an empty list removes them all; a new list replaces them", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(f, []domain.Region{fretRegion("r1", 5, 8)})
+		root := "A"
+
+		kept, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{RootNote: &root})
+		require.NoError(t, err)
+		assert.Equal(t, d.Regions, kept.Regions)
+
+		replaced, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Regions: []domain.Region{fretRegion("", 0, 3), fretRegion("", 12, 15)}})
+		require.NoError(t, err)
+		require.Len(t, replaced.Regions, 2)
+		assert.NotEmpty(t, replaced.Regions[0].ID)
+		assert.Equal(t, 12, *replaced.Regions[1].FretStart)
+
+		cleared, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Regions: []domain.Region{}})
+		require.NoError(t, err)
+		assert.Empty(t, cleared.Regions)
+	})
+
+	t.Run("dropping a language from the names while notes still use it is rejected, leaving the diagram unchanged", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(f, nil)
+
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: map[string]string{"en": "Boxes"}})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "positions", valErr.Fields[0].Field)
+		stored, err := f.diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"en", "pt_BR"}, stored.Names.Languages())
+	})
+
+	t.Run("an invalid region is rejected as regions", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		_, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Boxes"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Regions: []domain.Region{fretRegion("", 8, 5)}})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "regions", valErr.Fields[0].Field)
+	})
+}

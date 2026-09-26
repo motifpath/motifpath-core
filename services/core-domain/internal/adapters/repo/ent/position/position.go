@@ -35,6 +35,10 @@ const (
 	FieldFret = "fret"
 	// FieldKey holds the string denoting the key field in the database.
 	FieldKey = "key"
+	// FieldCustomLabel holds the string denoting the custom_label field in the database.
+	FieldCustomLabel = "custom_label"
+	// FieldNote holds the string denoting the note field in the database.
+	FieldNote = "note"
 	// EdgeDiagram holds the string denoting the diagram edge name in mutations.
 	EdgeDiagram = "diagram"
 	// Table holds the table name of the position in the database.
@@ -61,6 +65,8 @@ var Columns = []string{
 	FieldStringNumber,
 	FieldFret,
 	FieldKey,
+	FieldCustomLabel,
+	FieldNote,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

@@ -71,6 +71,8 @@ func (Diagram) Edges() []ent.Edge {
 
 		edge.To("positions", Position.Type),
 
+		edge.To("regions", DiagramRegion.Type),
+
 		edge.To("skills", Skill.Type).
 			Through("diagram_skills", DiagramSkill.Type),
 

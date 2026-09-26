@@ -48,6 +48,8 @@ type DiagramEdges struct {
 	Instrument *Instrument `json:"instrument,omitempty"`
 	// Positions holds the value of the positions edge.
 	Positions []*Position `json:"positions,omitempty"`
+	// Regions holds the value of the regions edge.
+	Regions []*DiagramRegion `json:"regions,omitempty"`
 	// Skills holds the value of the skills edge.
 	Skills []*Skill `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
@@ -58,7 +60,7 @@ type DiagramEdges struct {
 	DiagramConcepts []*DiagramConcept `json:"diagram_concepts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [7]bool
 }
 
 // InstrumentOrErr returns the Instrument value or an error if the edge
@@ -81,10 +83,19 @@ func (e DiagramEdges) PositionsOrErr() ([]*Position, error) {
 	return nil, &NotLoadedError{edge: "positions"}
 }
 
+// RegionsOrErr returns the Regions value or an error if the edge
+// was not loaded in eager-loading.
+func (e DiagramEdges) RegionsOrErr() ([]*DiagramRegion, error) {
+	if e.loadedTypes[2] {
+		return e.Regions, nil
+	}
+	return nil, &NotLoadedError{edge: "regions"}
+}
+
 // SkillsOrErr returns the Skills value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) SkillsOrErr() ([]*Skill, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Skills, nil
 	}
 	return nil, &NotLoadedError{edge: "skills"}
@@ -93,7 +104,7 @@ func (e DiagramEdges) SkillsOrErr() ([]*Skill, error) {
 // ConceptsOrErr returns the Concepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) ConceptsOrErr() ([]*Concept, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.Concepts, nil
 	}
 	return nil, &NotLoadedError{edge: "concepts"}
@@ -102,7 +113,7 @@ func (e DiagramEdges) ConceptsOrErr() ([]*Concept, error) {
 // DiagramSkillsOrErr returns the DiagramSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) DiagramSkillsOrErr() ([]*DiagramSkill, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.DiagramSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_skills"}
@@ -111,7 +122,7 @@ func (e DiagramEdges) DiagramSkillsOrErr() ([]*DiagramSkill, error) {
 // DiagramConceptsOrErr returns the DiagramConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) DiagramConceptsOrErr() ([]*DiagramConcept, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.DiagramConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_concepts"}
@@ -224,6 +235,11 @@ func (_m *Diagram) QueryInstrument() *InstrumentQuery {
 // QueryPositions queries the "positions" edge of the Diagram entity.
 func (_m *Diagram) QueryPositions() *PositionQuery {
 	return NewDiagramClient(_m.config).QueryPositions(_m)
+}
+
+// QueryRegions queries the "regions" edge of the Diagram entity.
+func (_m *Diagram) QueryRegions() *DiagramRegionQuery {
+	return NewDiagramClient(_m.config).QueryRegions(_m)
 }
 
 // QuerySkills queries the "skills" edge of the Diagram entity.
