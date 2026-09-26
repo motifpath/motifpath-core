@@ -74,7 +74,9 @@ NEVER access the database directly from the domain layer.
 - `make dev`           → start local dependencies via docker-compose (Redpanda, Postgres, MongoDB)
 - `make db:reset`      → wipe the local dev Postgres, re-migrate from scratch, and repopulate via
   `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
-  and archived, every `ExerciseType`). Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
+  and archived, every `ExerciseType`, guitar/bass/piano instruments, a diagram library of basic
+  templates and two teachers' custom diagrams, and lessons with cues, pop-ups and a version
+  history). Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
   `pg_dump -t users --data-only --inserts` — since reset wipes them; restore by re-inserting with
