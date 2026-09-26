@@ -1,7 +1,10 @@
 // Command seed-full populates a fresh local dev database with a broad,
 // self-contained combination matrix of MotifPath's domain state — every
 // CourseStatus, every CourseEnrollmentStatus, standalone paths both current
-// and archived, and every ExerciseType — rather than the single happy-path
+// and archived, every ExerciseType, and a diagram library (guitar, bass and
+// piano; basic templates and custom diagrams with regions, notes, custom
+// labels, every marker shape and label display) used by lessons' cues and
+// pop-ups — rather than the single happy-path
 // student `seed-dev-data` seeds. It creates its own synthetic teacher and
 // student users (fake clerk_user_id values, never real Clerk identities),
 // so it never depends on anyone having signed in through the SPA first —
@@ -156,7 +159,10 @@ type seedDeps struct {
 	// named one.
 	teacher    domain.User
 	synthAdmin domain.User
-	classifier *classificationSeeder
+	// otherTeacher is a second teacher, so there is work owned by someone
+	// other than teacher (a custom diagram teacher can only view).
+	otherTeacher domain.User
+	classifier   *classificationSeeder
 }
 
 // wireServices builds every repository and application service seeding
@@ -228,6 +234,10 @@ func seedStaff(ctx context.Context, svc services, deps *seedDeps) error {
 	if err != nil {
 		return fmt.Errorf("register seed teacher: %w", err)
 	}
+	otherTeacher, err := svc.identity.RegisterUser(ctx, "seed_teacher_helena", domain.RoleTeacher, "pt_BR", "Helena Costa")
+	if err != nil {
+		return fmt.Errorf("register second seed teacher: %w", err)
+	}
 	synthAdmin := domain.User{
 		ID:           deps.newID(),
 		ClerkUserID:  "seed_admin_marina",
@@ -241,8 +251,9 @@ func seedStaff(ctx context.Context, svc services, deps *seedDeps) error {
 	}
 	deps.teacher = teacher
 	deps.synthAdmin = synthAdmin
+	deps.otherTeacher = otherTeacher
 	deps.classifier = &classificationSeeder{skills: svc.skill, concepts: svc.concept, teacher: teacher}
-	log.Printf("seeded synthetic teacher %q and admin %q", teacher.DisplayName, synthAdmin.DisplayName)
+	log.Printf("seeded synthetic teachers %q and %q, and admin %q", teacher.DisplayName, otherTeacher.DisplayName, synthAdmin.DisplayName)
 	return nil
 }
 
@@ -269,13 +280,19 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Println("seeded one exercise of every exercise_type, linked to a challenge")
 
-	diagram, err := seedInstrumentAndDiagram(ctx, teacher, templateCurator(admin, deps.synthAdmin), svc.instrument, svc.diagram, classifier)
+	diagrams, err := seedInstrumentsAndDiagrams(ctx, teacher, deps.otherTeacher, templateCurator(admin, deps.synthAdmin), svc.instrument, svc.diagram, classifier)
 	if err != nil {
-		return fmt.Errorf("seed instrument and diagram: %w", err)
+		return fmt.Errorf("seed instruments and diagrams: %w", err)
 	}
-	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Names["en"])
+	log.Println("seeded instruments Guitar, Bass and Piano; 6 basic diagram templates (regions, notes, custom labels, every shape and label display, a joined two-shape diagram, a bass scale) and 2 custom diagrams (one per teacher)")
 
-	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", InstrumentIDs: []string{diagram.InstrumentID}, Items: []application.PathItemInput{
+	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
+	if err != nil {
+		return fmt.Errorf("seed diagram lessons: %w", err)
+	}
+	log.Printf("seeded video %q (image, rich-text and diagram cues) and article %q (paragraph pop-ups; 3 published versions plus unpublished edits)", lessons.video.Title, lessons.article.Title)
+
+	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", InstrumentIDs: []string{diagrams.guitar.ID}, Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
 		{ContentNodeID: nodes["article-beginner"].ID},
 	}})
@@ -291,7 +308,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded 2 learning path templates: %q, %q", templateA.Title, templateB.Title)
 
-	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID, diagram.InstrumentID)
+	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID, diagrams.guitar.ID)
 	if err != nil {
 		return fmt.Errorf("seed courses: %w", err)
 	}
@@ -541,61 +558,6 @@ func templateCurator(admin, synthAdmin domain.User) domain.User {
 		return admin
 	}
 	return synthAdmin
-}
-
-// seedInstrumentAndDiagram creates one fretted Instrument ("Guitar" /
-// "Violão", standard tuning) and one basic Diagram against it (an open-position A minor
-// pentatonic shape), owned by curator — without this, the diagram authoring
-// UI's instrument picker has nothing to list, since no other seed step
-// creates an Instrument row.
-func seedInstrumentAndDiagram(ctx context.Context, teacher, curator domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (domain.Diagram, error) {
-	stringCount := 6
-	instrument, err := instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
-		&stringCount, []string{"E", "A", "D", "G", "B", "E"}, nil)
-	if err != nil {
-		return domain.Diagram{}, fmt.Errorf("create instrument: %w", err)
-	}
-
-	skillID, err := classifier.skillID(ctx, "Scales")
-	if err != nil {
-		return domain.Diagram{}, err
-	}
-	conceptID, err := classifier.conceptID(ctx, "Pentatonic scale shapes")
-	if err != nil {
-		return domain.Diagram{}, err
-	}
-
-	type positionSpec struct {
-		interval, noteName string
-		string, fret       int
-	}
-	specs := []positionSpec{
-		{"R", "A", 6, 5}, {"b3", "C", 6, 8}, {"4", "D", 6, 10},
-		{"5", "E", 5, 7}, {"b7", "G", 5, 10}, {"R", "A", 4, 7},
-		{"b3", "C", 4, 10}, {"4", "D", 3, 7}, {"5", "E", 3, 9},
-		{"b7", "G", 2, 8}, {"R", "A", 2, 10}, {"b3", "C", 1, 8},
-	}
-	positions := make([]domain.Position, len(specs))
-	for i, spec := range specs {
-		str, fret := spec.string, spec.fret
-		shape := domain.PositionShapeDot
-		var color *string
-		if spec.interval == "R" {
-			shape = domain.PositionShapeStar
-			roots := "#EF4444"
-			color = &roots
-		}
-		positions[i] = domain.Position{Interval: spec.interval, NoteName: spec.noteName, Shape: shape, String: &str, Fret: &fret, Color: color}
-	}
-
-	root, general := "A", "#3B82F6"
-	diagram, err := diagramSvc.CreateDiagram(ctx, curator, instrument.ID,
-		map[string]string{"en": "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor de Lá — Posição 1"}, positions, []string{skillID}, []string{conceptID},
-		domain.DiagramOptions{RootNote: &root, LabelDisplay: domain.LabelDisplayInterval, Color: &general, Kind: domain.DiagramKindBasic})
-	if err != nil {
-		return domain.Diagram{}, fmt.Errorf("create diagram: %w", err)
-	}
-	return diagram, nil
 }
 
 // seedExercisesAllTypes creates one exercise of every domain.ExerciseType,
