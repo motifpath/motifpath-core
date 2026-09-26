@@ -6,11 +6,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -41,9 +45,135 @@ func (_u *LearningPathUpdate) SetNillableTitle(v *string) *LearningPathUpdate {
 	return _u
 }
 
+// SetLevel sets the "level" field.
+func (_u *LearningPathUpdate) SetLevel(v learningpath.Level) *LearningPathUpdate {
+	_u.mutation.SetLevel(v)
+	return _u
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableLevel(v *learningpath.Level) *LearningPathUpdate {
+	if v != nil {
+		_u.SetLevel(*v)
+	}
+	return _u
+}
+
+// ClearLevel clears the value of the "level" field.
+func (_u *LearningPathUpdate) ClearLevel() *LearningPathUpdate {
+	_u.mutation.ClearLevel()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *LearningPathUpdate) SetUpdatedAt(v time.Time) *LearningPathUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableUpdatedAt(v *time.Time) *LearningPathUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *LearningPathUpdate) SetThumbnailURL(v string) *LearningPathUpdate {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableThumbnailURL(v *string) *LearningPathUpdate {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *LearningPathUpdate) ClearThumbnailURL() *LearningPathUpdate {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *LearningPathUpdate) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdate {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdate) AddInstruments(v ...*Instrument) *LearningPathUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_u *LearningPathUpdate) AddLearningPathInstrumentIDs(ids ...int) *LearningPathUpdate {
+	_u.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdate) AddLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLearningPathInstrumentIDs(ids...)
+}
+
 // Mutation returns the LearningPathMutation object of the builder.
 func (_u *LearningPathUpdate) Mutation() *LearningPathMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdate) ClearInstruments() *LearningPathUpdate {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *LearningPathUpdate) RemoveInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdate {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *LearningPathUpdate) RemoveInstruments(v ...*Instrument) *LearningPathUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearLearningPathInstruments clears all "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdate) ClearLearningPathInstruments() *LearningPathUpdate {
+	_u.mutation.ClearLearningPathInstruments()
+	return _u
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to LearningPathInstrument entities by IDs.
+func (_u *LearningPathUpdate) RemoveLearningPathInstrumentIDs(ids ...int) *LearningPathUpdate {
+	_u.mutation.RemoveLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveLearningPathInstruments removes "learning_path_instruments" edges to LearningPathInstrument entities.
+func (_u *LearningPathUpdate) RemoveLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLearningPathInstrumentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -73,7 +203,20 @@ func (_u *LearningPathUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LearningPathUpdate) check() error {
+	if v, ok := _u.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(learningpath.Table, learningpath.Columns, sqlgraph.NewFieldSpec(learningpath.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -84,6 +227,123 @@ func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+	}
+	if _u.mutation.LevelCleared() {
+		_spec.ClearField(learningpath.FieldLevel, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(learningpath.FieldThumbnailURL, field.TypeString)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLearningPathInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -119,9 +379,135 @@ func (_u *LearningPathUpdateOne) SetNillableTitle(v *string) *LearningPathUpdate
 	return _u
 }
 
+// SetLevel sets the "level" field.
+func (_u *LearningPathUpdateOne) SetLevel(v learningpath.Level) *LearningPathUpdateOne {
+	_u.mutation.SetLevel(v)
+	return _u
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableLevel(v *learningpath.Level) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetLevel(*v)
+	}
+	return _u
+}
+
+// ClearLevel clears the value of the "level" field.
+func (_u *LearningPathUpdateOne) ClearLevel() *LearningPathUpdateOne {
+	_u.mutation.ClearLevel()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *LearningPathUpdateOne) SetUpdatedAt(v time.Time) *LearningPathUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableUpdatedAt(v *time.Time) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_u *LearningPathUpdateOne) SetThumbnailURL(v string) *LearningPathUpdateOne {
+	_u.mutation.SetThumbnailURL(v)
+	return _u
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableThumbnailURL(v *string) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (_u *LearningPathUpdateOne) ClearThumbnailURL() *LearningPathUpdateOne {
+	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_u *LearningPathUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdateOne {
+	_u.mutation.AddInstrumentIDs(ids...)
+	return _u
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdateOne) AddInstruments(v ...*Instrument) *LearningPathUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_u *LearningPathUpdateOne) AddLearningPathInstrumentIDs(ids ...int) *LearningPathUpdateOne {
+	_u.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdateOne) AddLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddLearningPathInstrumentIDs(ids...)
+}
+
 // Mutation returns the LearningPathMutation object of the builder.
 func (_u *LearningPathUpdateOne) Mutation() *LearningPathMutation {
 	return _u.mutation
+}
+
+// ClearInstruments clears all "instruments" edges to the Instrument entity.
+func (_u *LearningPathUpdateOne) ClearInstruments() *LearningPathUpdateOne {
+	_u.mutation.ClearInstruments()
+	return _u
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to Instrument entities by IDs.
+func (_u *LearningPathUpdateOne) RemoveInstrumentIDs(ids ...uuid.UUID) *LearningPathUpdateOne {
+	_u.mutation.RemoveInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveInstruments removes "instruments" edges to Instrument entities.
+func (_u *LearningPathUpdateOne) RemoveInstruments(v ...*Instrument) *LearningPathUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInstrumentIDs(ids...)
+}
+
+// ClearLearningPathInstruments clears all "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_u *LearningPathUpdateOne) ClearLearningPathInstruments() *LearningPathUpdateOne {
+	_u.mutation.ClearLearningPathInstruments()
+	return _u
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to LearningPathInstrument entities by IDs.
+func (_u *LearningPathUpdateOne) RemoveLearningPathInstrumentIDs(ids ...int) *LearningPathUpdateOne {
+	_u.mutation.RemoveLearningPathInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveLearningPathInstruments removes "learning_path_instruments" edges to LearningPathInstrument entities.
+func (_u *LearningPathUpdateOne) RemoveLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveLearningPathInstrumentIDs(ids...)
 }
 
 // Where appends a list predicates to the LearningPathUpdate builder.
@@ -164,7 +550,20 @@ func (_u *LearningPathUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *LearningPathUpdateOne) check() error {
+	if v, ok := _u.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	return nil
+}
+
 func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPath, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(learningpath.Table, learningpath.Columns, sqlgraph.NewFieldSpec(learningpath.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -192,6 +591,123 @@ func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPa
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+	}
+	if _u.mutation.LevelCleared() {
+		_spec.ClearField(learningpath.FieldLevel, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.ThumbnailURLCleared() {
+		_spec.ClearField(learningpath.FieldThumbnailURL, field.TypeString)
+	}
+	if _u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.InstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _u.config, mutation: newLearningPathInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedLearningPathInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.LearningPathInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &LearningPath{config: _u.config}
 	_spec.Assign = _node.assignValues

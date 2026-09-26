@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -30,9 +31,21 @@ func (Course) Fields() []ent.Field {
 		field.Enum("level").
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert"),
 
+		// language is the Language.code the course is written in. The
+		// default only backfills courses created before courses had a
+		// language; every create and replace sets it explicitly.
+		field.String("language").
+			Default("en"),
+
 		field.Enum("status").
 			Values("draft", "published", "retired").
 			Default("draft"),
+
+		// thumbnail_url is the image shown for it in lists and cards; NULL =
+		// none.
+		field.String("thumbnail_url").
+			Optional().
+			Nillable(),
 
 		field.UUID("created_by", uuid.UUID{}).
 			Immutable(),
@@ -40,5 +53,12 @@ func (Course) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+	}
+}
+
+func (Course) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("instruments", Instrument.Type).
+			Through("course_instruments", CourseInstrument.Type),
 	}
 }

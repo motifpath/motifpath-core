@@ -51,5 +51,17 @@ func (Instrument) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("diagrams", Diagram.Type).
 			Ref("instrument"),
+
+		edge.From("courses", Course.Type).
+			Ref("instruments").
+			Through("course_instruments", CourseInstrument.Type),
+
+		edge.From("learning_paths", LearningPath.Type).
+			Ref("instruments").
+			Through("learning_path_instruments", LearningPathInstrument.Type),
+
+		edge.From("content_nodes", ContentNode.Type).
+			Ref("instruments").
+			Through("content_node_instruments", ContentNodeInstrument.Type),
 	}
 }

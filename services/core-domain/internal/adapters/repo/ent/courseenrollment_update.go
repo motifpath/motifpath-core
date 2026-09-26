@@ -28,6 +28,26 @@ func (_u *CourseEnrollmentUpdate) Where(ps ...predicate.CourseEnrollment) *Cours
 	return _u
 }
 
+// SetCourseThumbnailURL sets the "course_thumbnail_url" field.
+func (_u *CourseEnrollmentUpdate) SetCourseThumbnailURL(v string) *CourseEnrollmentUpdate {
+	_u.mutation.SetCourseThumbnailURL(v)
+	return _u
+}
+
+// SetNillableCourseThumbnailURL sets the "course_thumbnail_url" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdate) SetNillableCourseThumbnailURL(v *string) *CourseEnrollmentUpdate {
+	if v != nil {
+		_u.SetCourseThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
+func (_u *CourseEnrollmentUpdate) ClearCourseThumbnailURL() *CourseEnrollmentUpdate {
+	_u.mutation.ClearCourseThumbnailURL()
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *CourseEnrollmentUpdate) SetStatus(v courseenrollment.Status) *CourseEnrollmentUpdate {
 	_u.mutation.SetStatus(v)
@@ -143,6 +163,12 @@ func (_u *CourseEnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err e
 			}
 		}
 	}
+	if value, ok := _u.mutation.CourseThumbnailURL(); ok {
+		_spec.SetField(courseenrollment.FieldCourseThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.CourseThumbnailURLCleared() {
+		_spec.ClearField(courseenrollment.FieldCourseThumbnailURL, field.TypeString)
+	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(courseenrollment.FieldStatus, field.TypeEnum, value)
 	}
@@ -179,6 +205,26 @@ type CourseEnrollmentUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *CourseEnrollmentMutation
+}
+
+// SetCourseThumbnailURL sets the "course_thumbnail_url" field.
+func (_u *CourseEnrollmentUpdateOne) SetCourseThumbnailURL(v string) *CourseEnrollmentUpdateOne {
+	_u.mutation.SetCourseThumbnailURL(v)
+	return _u
+}
+
+// SetNillableCourseThumbnailURL sets the "course_thumbnail_url" field if the given value is not nil.
+func (_u *CourseEnrollmentUpdateOne) SetNillableCourseThumbnailURL(v *string) *CourseEnrollmentUpdateOne {
+	if v != nil {
+		_u.SetCourseThumbnailURL(*v)
+	}
+	return _u
+}
+
+// ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
+func (_u *CourseEnrollmentUpdateOne) ClearCourseThumbnailURL() *CourseEnrollmentUpdateOne {
+	_u.mutation.ClearCourseThumbnailURL()
+	return _u
 }
 
 // SetStatus sets the "status" field.
@@ -325,6 +371,12 @@ func (_u *CourseEnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Course
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.CourseThumbnailURL(); ok {
+		_spec.SetField(courseenrollment.FieldCourseThumbnailURL, field.TypeString, value)
+	}
+	if _u.mutation.CourseThumbnailURLCleared() {
+		_spec.ClearField(courseenrollment.FieldCourseThumbnailURL, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(courseenrollment.FieldStatus, field.TypeEnum, value)

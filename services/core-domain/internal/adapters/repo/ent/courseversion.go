@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -28,6 +29,12 @@ type CourseVersion struct {
 	SummarySnapshot string `json:"summary_snapshot,omitempty"`
 	// LevelSnapshot holds the value of the "level_snapshot" field.
 	LevelSnapshot courseversion.LevelSnapshot `json:"level_snapshot,omitempty"`
+	// LanguageSnapshot holds the value of the "language_snapshot" field.
+	LanguageSnapshot string `json:"language_snapshot,omitempty"`
+	// InstrumentIdsSnapshot holds the value of the "instrument_ids_snapshot" field.
+	InstrumentIdsSnapshot []string `json:"instrument_ids_snapshot,omitempty"`
+	// ThumbnailURLSnapshot holds the value of the "thumbnail_url_snapshot" field.
+	ThumbnailURLSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
 	// AvailableForNewEnrollments holds the value of the "available_for_new_enrollments" field.
 	AvailableForNewEnrollments bool `json:"available_for_new_enrollments,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -40,11 +47,13 @@ func (*CourseVersion) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case courseversion.FieldInstrumentIdsSnapshot:
+			values[i] = new([]byte)
 		case courseversion.FieldAvailableForNewEnrollments:
 			values[i] = new(sql.NullBool)
 		case courseversion.FieldVersionNumber:
 			values[i] = new(sql.NullInt64)
-		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot:
+		case courseversion.FieldTitleSnapshot, courseversion.FieldSummarySnapshot, courseversion.FieldLevelSnapshot, courseversion.FieldLanguageSnapshot, courseversion.FieldThumbnailURLSnapshot:
 			values[i] = new(sql.NullString)
 		case courseversion.FieldPublishedAt:
 			values[i] = new(sql.NullTime)
@@ -100,6 +109,27 @@ func (_m *CourseVersion) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field level_snapshot", values[i])
 			} else if value.Valid {
 				_m.LevelSnapshot = courseversion.LevelSnapshot(value.String)
+			}
+		case courseversion.FieldLanguageSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language_snapshot", values[i])
+			} else if value.Valid {
+				_m.LanguageSnapshot = value.String
+			}
+		case courseversion.FieldInstrumentIdsSnapshot:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field instrument_ids_snapshot", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.InstrumentIdsSnapshot); err != nil {
+					return fmt.Errorf("unmarshal field instrument_ids_snapshot: %w", err)
+				}
+			}
+		case courseversion.FieldThumbnailURLSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url_snapshot", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURLSnapshot = new(string)
+				*_m.ThumbnailURLSnapshot = value.String
 			}
 		case courseversion.FieldAvailableForNewEnrollments:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -163,6 +193,17 @@ func (_m *CourseVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("level_snapshot=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LevelSnapshot))
+	builder.WriteString(", ")
+	builder.WriteString("language_snapshot=")
+	builder.WriteString(_m.LanguageSnapshot)
+	builder.WriteString(", ")
+	builder.WriteString("instrument_ids_snapshot=")
+	builder.WriteString(fmt.Sprintf("%v", _m.InstrumentIdsSnapshot))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURLSnapshot; v != nil {
+		builder.WriteString("thumbnail_url_snapshot=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("available_for_new_enrollments=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AvailableForNewEnrollments))

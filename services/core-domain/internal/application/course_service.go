@@ -20,16 +20,18 @@ import (
 // live, currently-being-authored draft; snapshotting a draft into an
 // immutable published CourseVersion is a separate, later capability.
 type CourseService struct {
-	paths    ports.LearningPathRepository
-	courses  ports.CourseRepository
-	versions ports.CourseVersionRepository
-	users    ports.UserRepository
-	newID    func() string
-	now      func() time.Time
+	paths       ports.LearningPathRepository
+	courses     ports.CourseRepository
+	versions    ports.CourseVersionRepository
+	users       ports.UserRepository
+	languages   ports.LanguageRepository
+	instruments ports.InstrumentRepository
+	newID       func() string
+	now         func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, newID: newID, now: now}
+func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -40,22 +42,49 @@ type CheckpointInput struct {
 	Title          *string
 }
 
+// CourseInput is what a caller writes to create or replace a course draft.
+type CourseInput struct {
+	Title    string
+	Summary  string
+	Level    domain.DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Checkpoints  []CheckpointInput
+}
+
+// fields resolves input into the domain's CourseFields, given its
+// checkpoints already resolved against their learning paths.
+func (input CourseInput) fields(checkpoints []domain.NewCourseCheckpoint) domain.CourseFields {
+	return domain.CourseFields{Title: input.Title, Summary: input.Summary, Level: input.Level, Language: input.Language, InstrumentIDs: input.InstrumentIDs, ThumbnailURL: input.ThumbnailURL, Checkpoints: checkpoints}
+}
+
 // CreateCourse creates a course draft from the given ordered checkpoints.
 // Only teachers and admins may create courses. A learning_path_id that
 // doesn't exist is a validation failure (400), not a not-found error — the
 // whole request is malformed, not a lookup that simply missed.
-func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, title, summary string, level domain.DifficultyLevel, checkpoints []CheckpointInput) (domain.Course, error) {
+func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, input CourseInput) (domain.Course, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Course{}, domain.ErrForbidden
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, checkpoints)
+	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
+	if err != nil {
+		return domain.Course{}, err
+	}
+	offered, err := offeredLanguages(ctx, s.languages)
 	if err != nil {
 		return domain.Course{}, err
 	}
 
-	course, err := domain.NewCourse(s.newID(), caller.ID, title, summary, level, resolved, s.now())
+	course, err := domain.NewCourse(s.newID(), caller.ID, input.fields(resolved), offered, s.now())
 	if err != nil {
+		return domain.Course{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.Course{}, err
 	}
 	if err := s.courses.Create(ctx, course); err != nil {
@@ -193,7 +222,7 @@ func (s *CourseService) creatorsNamed(ctx context.Context, filter domain.CourseL
 // brand-new course can start in. A learning_path_id that doesn't exist is a
 // validation failure (400), matching CreateCourse. Only the creating
 // teacher or an admin may replace a course.
-func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, id, title, summary string, level domain.DifficultyLevel, checkpoints []CheckpointInput) (domain.Course, error) {
+func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, id string, input CourseInput) (domain.Course, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Course{}, domain.ErrForbidden
 	}
@@ -206,13 +235,20 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 		return domain.Course{}, err
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, checkpoints)
+	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
+	if err != nil {
+		return domain.Course{}, err
+	}
+	offered, err := offeredLanguages(ctx, s.languages)
 	if err != nil {
 		return domain.Course{}, err
 	}
 
-	replaced, err := domain.NewCourse(existing.ID, existing.CreatedBy, title, summary, level, resolved, existing.CreatedAt)
+	replaced, err := domain.NewCourse(existing.ID, existing.CreatedBy, input.fields(resolved), offered, existing.CreatedAt)
 	if err != nil {
+		return domain.Course{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.Course{}, err
 	}
 	replaced.Status = existing.Status
@@ -284,6 +320,31 @@ func (s *CourseService) RetireCourse(ctx context.Context, caller domain.User, id
 	return course, nil
 }
 
+// ReactivateCourse returns a retired course to published: back in the
+// catalog, open to new enrollment, with the latest version it already has.
+// It never creates a version, so draft edits made since the last publish
+// stay unpublished. Only a retired course can be reactivated. Admin-only,
+// like retiring.
+func (s *CourseService) ReactivateCourse(ctx context.Context, caller domain.User, id string) (domain.Course, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.Course{}, domain.ErrForbidden
+	}
+
+	course, err := s.courses.GetByID(ctx, id)
+	if err != nil {
+		return domain.Course{}, err
+	}
+	if course.Status != domain.CourseStatusRetired {
+		return domain.Course{}, domain.NewValidationError("status", "only a retired course can be reactivated")
+	}
+
+	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished); err != nil {
+		return domain.Course{}, err
+	}
+	course.Status = domain.CourseStatusPublished
+	return course, nil
+}
+
 // LatestVersion returns the latest published CourseVersion for the course
 // with the given id. Returns domain.ErrNotFound if the course has never
 // been published. Exposed so the HTTP layer can compute
@@ -323,12 +384,18 @@ type CourseOutlineCheckpoint struct {
 // PublishedCourseView is a course's latest published version, rendered as
 // an outline — the composed result GetPublishedCourse returns.
 type PublishedCourseView struct {
-	Title       string
-	Summary     string
-	Level       domain.DifficultyLevel
-	Status      domain.CourseStatus
-	PublishedAt time.Time
-	Checkpoints []CourseOutlineCheckpoint
+	Title    string
+	Summary  string
+	Level    domain.DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the published version is for; empty
+	// means every instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the published version's thumbnail; nil means none.
+	ThumbnailURL *string
+	Status       domain.CourseStatus
+	PublishedAt  time.Time
+	Checkpoints  []CourseOutlineCheckpoint
 }
 
 // GetPublishedCourse returns course's latest published version rendered as
@@ -364,12 +431,15 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 	}
 
 	return PublishedCourseView{
-		Title:       latest.TitleSnapshot,
-		Summary:     latest.SummarySnapshot,
-		Level:       latest.LevelSnapshot,
-		Status:      course.Status,
-		PublishedAt: latest.PublishedAt,
-		Checkpoints: checkpoints,
+		Title:         latest.TitleSnapshot,
+		Summary:       latest.SummarySnapshot,
+		Level:         latest.LevelSnapshot,
+		Language:      latest.LanguageSnapshot,
+		InstrumentIDs: latest.InstrumentIDsSnapshot,
+		ThumbnailURL:  latest.ThumbnailURLSnapshot,
+		Status:        course.Status,
+		PublishedAt:   latest.PublishedAt,
+		Checkpoints:   checkpoints,
 	}, nil
 }
 

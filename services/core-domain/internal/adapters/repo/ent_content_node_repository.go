@@ -8,6 +8,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -47,6 +48,10 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	instrumentIDs, err := parseUUIDs(node.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 	_, err = r.client.ContentNode.Create().
 		SetID(id).
 		SetTeacherID(teacherID).
@@ -60,6 +65,8 @@ func (r *EntContentNodeRepository) Create(ctx context.Context, node domain.Conte
 		AddLanguageIDs(langIDs...).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
+		AddInstrumentIDs(instrumentIDs...).
+		SetNillableThumbnailURL(node.ThumbnailURL).
 		Save(ctx)
 	return err
 }
@@ -74,6 +81,7 @@ func (r *EntContentNodeRepository) GetByID(ctx context.Context, id string) (doma
 		WithLanguages().
 		WithSkills().
 		WithConcepts().
+		WithInstruments().
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -91,7 +99,7 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 	}
 
 	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parseUUIDsSkippingInvalid(ids)...)).
-		WithLanguages().WithSkills().WithConcepts().All(ctx)
+		WithLanguages().WithSkills().WithConcepts().WithInstruments().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +134,23 @@ func (r *EntContentNodeRepository) List(ctx context.Context, filter domain.Conte
 	if filter.Query != "" {
 		query = query.Where(contentnode.TitleContainsFold(filter.Query))
 	}
+	if filter.InstrumentID != "" {
+		parsed, err := uuid.Parse(filter.InstrumentID)
+		if err != nil {
+			return domain.Page[domain.ContentNode]{}, err
+		}
+		query = query.Where(contentnode.Or(
+			contentnode.HasInstrumentsWith(instrument.ID(parsed)),
+			contentnode.Not(contentnode.HasInstruments()),
+		))
+	}
 
 	total, err := query.Clone().Count(ctx)
 	if err != nil {
 		return domain.Page[domain.ContentNode]{}, err
 	}
 	rows, err := query.
-		WithLanguages().WithSkills().WithConcepts().
+		WithLanguages().WithSkills().WithConcepts().WithInstruments().
 		Order(contentnode.ByTitle(), contentnode.ByID()).
 		Limit(page.Limit).
 		Offset(page.Offset).
@@ -168,6 +186,10 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	if err != nil {
 		return err
 	}
+	instrumentIDs, err := parseUUIDs(node.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 	update := r.client.ContentNode.UpdateOneID(id).
 		SetTitle(node.Title).
 		SetNillableMediaURL(node.MediaURL).
@@ -178,7 +200,9 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 		ClearConcepts().
 		AddConceptIDs(conceptIDs...).
 		ClearLanguages().
-		AddLanguageIDs(langIDs...)
+		AddLanguageIDs(langIDs...).
+		ClearInstruments().
+		AddInstrumentIDs(instrumentIDs...)
 	// A nil body field means the caller cleared it (e.g. the other content
 	// type's field), so the stored column must be cleared too — the Nillable
 	// setters alone would leave a stale value in place.
@@ -187,6 +211,10 @@ func (r *EntContentNodeRepository) Update(ctx context.Context, node domain.Conte
 	}
 	if richContentJSON == nil {
 		update = update.ClearRichContent()
+	}
+	update = update.SetNillableThumbnailURL(node.ThumbnailURL)
+	if node.ThumbnailURL == nil {
+		update = update.ClearThumbnailURL()
 	}
 	_, err = update.Save(ctx)
 	if err != nil {
@@ -214,10 +242,12 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 			DifficultyLevel: domain.DifficultyLevel(row.DifficultyLevel),
 			ReviewState:     domain.ReviewState(row.ReviewState),
 		},
-		MediaURL:    row.MediaURL,
-		RichContent: unmarshalRichContent(row.RichContent),
-		Languages:   languages,
-		CreatedAt:   row.CreatedAt,
+		MediaURL:      row.MediaURL,
+		RichContent:   unmarshalRichContent(row.RichContent),
+		Languages:     languages,
+		InstrumentIDs: instrumentIDsOf(row.Edges.Instruments),
+		ThumbnailURL:  row.ThumbnailURL,
+		CreatedAt:     row.CreatedAt,
 	}
 }
 

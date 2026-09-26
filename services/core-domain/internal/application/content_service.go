@@ -13,18 +13,19 @@ import (
 // creation/retrieval, the expositive media items attached to them, and
 // publishing a content node's draft into an immutable ContentNodeVersion.
 type ContentService struct {
-	nodes    ports.ContentNodeRepository
-	expanded ports.ExpandedContentRepository
-	skills   ports.SkillRepository
-	concepts ports.ConceptRepository
-	versions ports.ContentNodeVersionRepository
-	diagrams ports.DiagramRepository
-	newID    func() string
-	now      func() time.Time
+	nodes       ports.ContentNodeRepository
+	expanded    ports.ExpandedContentRepository
+	skills      ports.SkillRepository
+	concepts    ports.ConceptRepository
+	versions    ports.ContentNodeVersionRepository
+	diagrams    ports.DiagramRepository
+	newID       func() string
+	now         func() time.Time
+	instruments ports.InstrumentRepository
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments}
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -96,18 +97,47 @@ func (s *ContentService) ListContentNodeVersions(ctx context.Context, caller dom
 	return versions, nil
 }
 
+// ContentNodeInput is what a caller writes to create or update a content
+// node. ContentType is read on create only: it can't change afterwards.
+type ContentNodeInput struct {
+	Title       string
+	ContentType domain.ContentType
+	SkillIDs    []string
+	ConceptIDs  []string
+	Difficulty  domain.DifficultyLevel
+	Languages   []string
+	MediaURL    *string
+	RichContent *domain.PromptDocument
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
+}
+
+func (input ContentNodeInput) fields() domain.ContentNodeFields {
+	return domain.ContentNodeFields{
+		Title: input.Title, SkillIDs: input.SkillIDs, ConceptIDs: input.ConceptIDs, Difficulty: input.Difficulty,
+		LanguageCodes: input.Languages, MediaURL: input.MediaURL, RichContent: input.RichContent, InstrumentIDs: input.InstrumentIDs,
+		ThumbnailURL: input.ThumbnailURL,
+	}
+}
+
 // CreateContentNode creates a content node owned by caller. Only teachers
 // and admins may create content nodes.
-func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.User, title string, contentType domain.ContentType, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string, mediaURL *string, richContent *domain.PromptDocument) (domain.ContentNode, error) {
+func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.User, input ContentNodeInput) (domain.ContentNode, error) {
 	if !canManageContent(caller.Role) {
 		return domain.ContentNode{}, domain.ErrForbidden
 	}
 
-	node, err := domain.NewContentNode(s.newID(), caller.ID, title, contentType, skillIDs, conceptIDs, difficulty, languages, mediaURL, richContent, s.now())
+	node, err := domain.NewContentNode(s.newID(), caller.ID, input.ContentType, input.fields(), s.now())
 	if err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := s.nodes.Create(ctx, node); err != nil {
@@ -141,7 +171,7 @@ func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.Use
 // untouched. Only the creating teacher or an admin may update a content
 // node. Returns domain.ErrNotFound if no content node exists with the given
 // id.
-func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id, title string, skillIDs, conceptIDs []string, difficulty domain.DifficultyLevel, languages []string, mediaURL *string, richContent *domain.PromptDocument) (domain.ContentNode, error) {
+func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.User, id string, input ContentNodeInput) (domain.ContentNode, error) {
 	if !canManageContent(caller.Role) {
 		return domain.ContentNode{}, domain.ErrForbidden
 	}
@@ -154,11 +184,14 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 
-	updated, err := existing.Update(title, skillIDs, conceptIDs, difficulty, languages, mediaURL, richContent)
+	updated, err := existing.Update(input.fields())
 	if err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 

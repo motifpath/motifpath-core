@@ -11,7 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 )
 
 // LearningPathCreate is the builder for creating a LearningPath entity.
@@ -30,6 +32,48 @@ func (_c *LearningPathCreate) SetTeacherID(v uuid.UUID) *LearningPathCreate {
 // SetTitle sets the "title" field.
 func (_c *LearningPathCreate) SetTitle(v string) *LearningPathCreate {
 	_c.mutation.SetTitle(v)
+	return _c
+}
+
+// SetLevel sets the "level" field.
+func (_c *LearningPathCreate) SetLevel(v learningpath.Level) *LearningPathCreate {
+	_c.mutation.SetLevel(v)
+	return _c
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableLevel(v *learningpath.Level) *LearningPathCreate {
+	if v != nil {
+		_c.SetLevel(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *LearningPathCreate) SetUpdatedAt(v time.Time) *LearningPathCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableUpdatedAt(v *time.Time) *LearningPathCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *LearningPathCreate) SetThumbnailURL(v string) *LearningPathCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableThumbnailURL(v *string) *LearningPathCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
+	}
 	return _c
 }
 
@@ -59,6 +103,36 @@ func (_c *LearningPathCreate) SetNillableID(v *uuid.UUID) *LearningPathCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_c *LearningPathCreate) AddInstrumentIDs(ids ...uuid.UUID) *LearningPathCreate {
+	_c.mutation.AddInstrumentIDs(ids...)
+	return _c
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_c *LearningPathCreate) AddInstruments(v ...*Instrument) *LearningPathCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_c *LearningPathCreate) AddLearningPathInstrumentIDs(ids ...int) *LearningPathCreate {
+	_c.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _c
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_c *LearningPathCreate) AddLearningPathInstruments(v ...*LearningPathInstrument) *LearningPathCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLearningPathInstrumentIDs(ids...)
 }
 
 // Mutation returns the LearningPathMutation object of the builder.
@@ -96,6 +170,10 @@ func (_c *LearningPathCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *LearningPathCreate) defaults() {
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := learningpath.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := learningpath.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -113,6 +191,14 @@ func (_c *LearningPathCreate) check() error {
 	}
 	if _, ok := _c.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "LearningPath.title"`)}
+	}
+	if v, ok := _c.mutation.Level(); ok {
+		if err := learningpath.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "LearningPath.updated_at"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "LearningPath.created_at"`)}
@@ -160,9 +246,57 @@ func (_c *LearningPathCreate) createSpec() (*LearningPath, *sqlgraph.CreateSpec)
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
 		_node.Title = value
 	}
+	if value, ok := _c.mutation.Level(); ok {
+		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
+		_node.Level = &value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(learningpath.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(learningpath.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(learningpath.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   learningpath.InstrumentsTable,
+			Columns: learningpath.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _c.config, mutation: newLearningPathInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   learningpath.LearningPathInstrumentsTable,
+			Columns: []string{learningpath.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

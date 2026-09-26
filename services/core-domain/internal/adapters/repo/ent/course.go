@@ -24,13 +24,49 @@ type Course struct {
 	Summary string `json:"summary,omitempty"`
 	// Level holds the value of the "level" field.
 	Level course.Level `json:"level,omitempty"`
+	// Language holds the value of the "language" field.
+	Language string `json:"language,omitempty"`
 	// Status holds the value of the "status" field.
 	Status course.Status `json:"status,omitempty"`
+	// ThumbnailURL holds the value of the "thumbnail_url" field.
+	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy uuid.UUID `json:"created_by,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the CourseQuery when eager-loading is set.
+	Edges        CourseEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// CourseEdges holds the relations/edges for other nodes in the graph.
+type CourseEdges struct {
+	// Instruments holds the value of the instruments edge.
+	Instruments []*Instrument `json:"instruments,omitempty"`
+	// CourseInstruments holds the value of the course_instruments edge.
+	CourseInstruments []*CourseInstrument `json:"course_instruments,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// InstrumentsOrErr returns the Instruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e CourseEdges) InstrumentsOrErr() ([]*Instrument, error) {
+	if e.loadedTypes[0] {
+		return e.Instruments, nil
+	}
+	return nil, &NotLoadedError{edge: "instruments"}
+}
+
+// CourseInstrumentsOrErr returns the CourseInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e CourseEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
+	if e.loadedTypes[1] {
+		return e.CourseInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "course_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -38,7 +74,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldStatus:
+		case course.FieldTitle, course.FieldSummary, course.FieldLevel, course.FieldLanguage, course.FieldStatus, course.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
 		case course.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -83,11 +119,24 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Level = course.Level(value.String)
 			}
+		case course.FieldLanguage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language", values[i])
+			} else if value.Valid {
+				_m.Language = value.String
+			}
 		case course.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = course.Status(value.String)
+			}
+		case course.FieldThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURL = new(string)
+				*_m.ThumbnailURL = value.String
 			}
 		case course.FieldCreatedBy:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -112,6 +161,16 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Course) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryInstruments queries the "instruments" edge of the Course entity.
+func (_m *Course) QueryInstruments() *InstrumentQuery {
+	return NewCourseClient(_m.config).QueryInstruments(_m)
+}
+
+// QueryCourseInstruments queries the "course_instruments" edge of the Course entity.
+func (_m *Course) QueryCourseInstruments() *CourseInstrumentQuery {
+	return NewCourseClient(_m.config).QueryCourseInstruments(_m)
 }
 
 // Update returns a builder for updating this Course.
@@ -146,8 +205,16 @@ func (_m *Course) String() string {
 	builder.WriteString("level=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Level))
 	builder.WriteString(", ")
+	builder.WriteString("language=")
+	builder.WriteString(_m.Language)
+	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURL; v != nil {
+		builder.WriteString("thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CreatedBy))

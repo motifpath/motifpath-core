@@ -18,10 +18,13 @@ const (
 // active checkpoint independently of whichever course or path is currently
 // focused (StudentLearningState).
 type CourseEnrollment struct {
-	ID                  string
-	StudentID           string
-	CourseID            string
-	CourseTitle         string
+	ID          string
+	StudentID   string
+	CourseID    string
+	CourseTitle string
+	// CourseThumbnailURL is the pinned version's thumbnail, like
+	// CourseTitle; nil means none.
+	CourseThumbnailURL  *string
 	CourseVersionNumber int
 	Status              CourseEnrollmentStatus
 	// ActiveCheckpointStudentPathID is the StudentPath for the checkpoint
@@ -60,6 +63,7 @@ func NewCourseEnrollment(id, studentID string, version CourseVersion, studentPat
 		StudentID:                     studentID,
 		CourseID:                      version.CourseID,
 		CourseTitle:                   version.TitleSnapshot,
+		CourseThumbnailURL:            version.ThumbnailURLSnapshot,
 		CourseVersionNumber:           version.VersionNumber,
 		Status:                        CourseEnrollmentStatusActive,
 		ActiveCheckpointStudentPathID: &studentPathID,

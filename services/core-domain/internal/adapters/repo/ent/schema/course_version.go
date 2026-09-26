@@ -43,6 +43,27 @@ func (CourseVersion) Fields() []ent.Field {
 			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert").
 			Immutable(),
 
+		// language_snapshot is the course's language when this version was
+		// published. The default only backfills versions published before
+		// courses had a language, which were all written in English.
+		field.String("language_snapshot").
+			Default("en").
+			Immutable(),
+
+		// instrument_ids_snapshot is the instruments this version was for
+		// when published; NULL (a version published before instruments were
+		// recorded) or empty means every instrument.
+		field.JSON("instrument_ids_snapshot", []string{}).
+			Optional().
+			Immutable(),
+
+		// thumbnail_url_snapshot is the thumbnail when this version was
+		// published; NULL = none.
+		field.String("thumbnail_url_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
 		field.Bool("available_for_new_enrollments").
 			Default(true),
 

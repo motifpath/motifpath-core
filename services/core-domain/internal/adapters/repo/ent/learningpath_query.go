@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -12,17 +13,21 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
 // LearningPathQuery is the builder for querying LearningPath entities.
 type LearningPathQuery struct {
 	config
-	ctx        *QueryContext
-	order      []learningpath.OrderOption
-	inters     []Interceptor
-	predicates []predicate.LearningPath
+	ctx                         *QueryContext
+	order                       []learningpath.OrderOption
+	inters                      []Interceptor
+	predicates                  []predicate.LearningPath
+	withInstruments             *InstrumentQuery
+	withLearningPathInstruments *LearningPathInstrumentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +62,50 @@ func (_q *LearningPathQuery) Unique(unique bool) *LearningPathQuery {
 func (_q *LearningPathQuery) Order(o ...learningpath.OrderOption) *LearningPathQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryInstruments chains the current query on the "instruments" edge.
+func (_q *LearningPathQuery) QueryInstruments() *InstrumentQuery {
+	query := (&InstrumentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(learningpath.Table, learningpath.FieldID, selector),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, learningpath.InstrumentsTable, learningpath.InstrumentsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryLearningPathInstruments chains the current query on the "learning_path_instruments" edge.
+func (_q *LearningPathQuery) QueryLearningPathInstruments() *LearningPathInstrumentQuery {
+	query := (&LearningPathInstrumentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(learningpath.Table, learningpath.FieldID, selector),
+			sqlgraph.To(learningpathinstrument.Table, learningpathinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, learningpath.LearningPathInstrumentsTable, learningpath.LearningPathInstrumentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first LearningPath entity from the query.
@@ -246,15 +295,39 @@ func (_q *LearningPathQuery) Clone() *LearningPathQuery {
 		return nil
 	}
 	return &LearningPathQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]learningpath.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.LearningPath{}, _q.predicates...),
+		config:                      _q.config,
+		ctx:                         _q.ctx.Clone(),
+		order:                       append([]learningpath.OrderOption{}, _q.order...),
+		inters:                      append([]Interceptor{}, _q.inters...),
+		predicates:                  append([]predicate.LearningPath{}, _q.predicates...),
+		withInstruments:             _q.withInstruments.Clone(),
+		withLearningPathInstruments: _q.withLearningPathInstruments.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithInstruments tells the query-builder to eager-load the nodes that are connected to
+// the "instruments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LearningPathQuery) WithInstruments(opts ...func(*InstrumentQuery)) *LearningPathQuery {
+	query := (&InstrumentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInstruments = query
+	return _q
+}
+
+// WithLearningPathInstruments tells the query-builder to eager-load the nodes that are connected to
+// the "learning_path_instruments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LearningPathQuery) WithLearningPathInstruments(opts ...func(*LearningPathInstrumentQuery)) *LearningPathQuery {
+	query := (&LearningPathInstrumentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withLearningPathInstruments = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -333,8 +406,12 @@ func (_q *LearningPathQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *LearningPathQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*LearningPath, error) {
 	var (
-		nodes = []*LearningPath{}
-		_spec = _q.querySpec()
+		nodes       = []*LearningPath{}
+		_spec       = _q.querySpec()
+		loadedTypes = [2]bool{
+			_q.withInstruments != nil,
+			_q.withLearningPathInstruments != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*LearningPath).scanValues(nil, columns)
@@ -342,6 +419,7 @@ func (_q *LearningPathQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &LearningPath{config: _q.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +431,115 @@ func (_q *LearningPathQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withInstruments; query != nil {
+		if err := _q.loadInstruments(ctx, query, nodes,
+			func(n *LearningPath) { n.Edges.Instruments = []*Instrument{} },
+			func(n *LearningPath, e *Instrument) { n.Edges.Instruments = append(n.Edges.Instruments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withLearningPathInstruments; query != nil {
+		if err := _q.loadLearningPathInstruments(ctx, query, nodes,
+			func(n *LearningPath) { n.Edges.LearningPathInstruments = []*LearningPathInstrument{} },
+			func(n *LearningPath, e *LearningPathInstrument) {
+				n.Edges.LearningPathInstruments = append(n.Edges.LearningPathInstruments, e)
+			}); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (_q *LearningPathQuery) loadInstruments(ctx context.Context, query *InstrumentQuery, nodes []*LearningPath, init func(*LearningPath), assign func(*LearningPath, *Instrument)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*LearningPath)
+	nids := make(map[uuid.UUID]map[*LearningPath]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(learningpath.InstrumentsTable)
+		s.Join(joinT).On(s.C(instrument.FieldID), joinT.C(learningpath.InstrumentsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(learningpath.InstrumentsPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(learningpath.InstrumentsPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*LearningPath]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Instrument](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "instruments" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *LearningPathQuery) loadLearningPathInstruments(ctx context.Context, query *LearningPathInstrumentQuery, nodes []*LearningPath, init func(*LearningPath), assign func(*LearningPath, *LearningPathInstrument)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*LearningPath)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(learningpathinstrument.FieldLearningPathID)
+	}
+	query.Where(predicate.LearningPathInstrument(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(learningpath.LearningPathInstrumentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.LearningPathID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "learning_path_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
 }
 
 func (_q *LearningPathQuery) sqlCount(ctx context.Context) (int, error) {

@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 )
 
 // CourseCreate is the builder for creating a Course entity.
@@ -39,6 +41,20 @@ func (_c *CourseCreate) SetLevel(v course.Level) *CourseCreate {
 	return _c
 }
 
+// SetLanguage sets the "language" field.
+func (_c *CourseCreate) SetLanguage(v string) *CourseCreate {
+	_c.mutation.SetLanguage(v)
+	return _c
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableLanguage(v *string) *CourseCreate {
+	if v != nil {
+		_c.SetLanguage(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *CourseCreate) SetStatus(v course.Status) *CourseCreate {
 	_c.mutation.SetStatus(v)
@@ -49,6 +65,20 @@ func (_c *CourseCreate) SetStatus(v course.Status) *CourseCreate {
 func (_c *CourseCreate) SetNillableStatus(v *course.Status) *CourseCreate {
 	if v != nil {
 		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *CourseCreate) SetThumbnailURL(v string) *CourseCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableThumbnailURL(v *string) *CourseCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
 	}
 	return _c
 }
@@ -87,6 +117,36 @@ func (_c *CourseCreate) SetNillableID(v *uuid.UUID) *CourseCreate {
 	return _c
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_c *CourseCreate) AddInstrumentIDs(ids ...uuid.UUID) *CourseCreate {
+	_c.mutation.AddInstrumentIDs(ids...)
+	return _c
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_c *CourseCreate) AddInstruments(v ...*Instrument) *CourseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInstrumentIDs(ids...)
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (_c *CourseCreate) AddCourseInstrumentIDs(ids ...int) *CourseCreate {
+	_c.mutation.AddCourseInstrumentIDs(ids...)
+	return _c
+}
+
+// AddCourseInstruments adds the "course_instruments" edges to the CourseInstrument entity.
+func (_c *CourseCreate) AddCourseInstruments(v ...*CourseInstrument) *CourseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCourseInstrumentIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (_c *CourseCreate) Mutation() *CourseMutation {
 	return _c.mutation
@@ -122,6 +182,10 @@ func (_c *CourseCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *CourseCreate) defaults() {
+	if _, ok := _c.mutation.Language(); !ok {
+		v := course.DefaultLanguage
+		_c.mutation.SetLanguage(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := course.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -151,6 +215,9 @@ func (_c *CourseCreate) check() error {
 		if err := course.LevelValidator(v); err != nil {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Course.level": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Language(); !ok {
+		return &ValidationError{Name: "language", err: errors.New(`ent: missing required field "Course.language"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Course.status"`)}
@@ -213,9 +280,17 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 		_spec.SetField(course.FieldLevel, field.TypeEnum, value)
 		_node.Level = value
 	}
+	if value, ok := _c.mutation.Language(); ok {
+		_spec.SetField(course.FieldLanguage, field.TypeString, value)
+		_node.Language = value
+	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(course.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(course.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
 	}
 	if value, ok := _c.mutation.CreatedBy(); ok {
 		_spec.SetField(course.FieldCreatedBy, field.TypeUUID, value)
@@ -224,6 +299,42 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(course.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   course.InstrumentsTable,
+			Columns: course.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _c.config, mutation: newCourseInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CourseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   course.CourseInstrumentsTable,
+			Columns: []string{course.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

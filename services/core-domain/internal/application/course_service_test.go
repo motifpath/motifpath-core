@@ -18,7 +18,7 @@ func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepo
 	if len(versions) > 0 {
 		v = versions[0]
 	}
-	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // checkpointInputs builds an unlabelled CheckpointInput slice from learning
@@ -38,8 +38,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-02", Title: "Strumming Patterns"})
 		svc := newCourseService(paths, newFakeCourseRepository())
 
-		course, err := svc.CreateCourse(context.Background(), teacherCaller(), "Fingerstyle Journey",
-			"From first chords to a repertoire.", domain.DifficultyLevelBeginner, checkpointInputs("path-01", "path-02"))
+		course, err := svc.CreateCourse(context.Background(), teacherCaller(), application.CourseInput{Language: "en", Title: "Fingerstyle Journey", Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01", "path-02")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "teacher-1", course.CreatedBy)
@@ -56,9 +55,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords"})
 		svc := newCourseService(paths, newFakeCourseRepository())
 
-		course, err := svc.CreateCourse(context.Background(), teacherCaller(), "Title", "Summary",
-			domain.DifficultyLevelBeginner,
-			[]application.CheckpointInput{{LearningPathID: "path-01", Title: strPtr("Stage 1: Open chords")}})
+		course, err := svc.CreateCourse(context.Background(), teacherCaller(), application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: "path-01", Title: strPtr("Stage 1: Open chords")}}})
 
 		require.NoError(t, err)
 		require.Len(t, course.Checkpoints, 1)
@@ -72,8 +69,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords"})
 		svc := newCourseService(paths, newFakeCourseRepository())
 
-		_, err := svc.CreateCourse(context.Background(), adminCaller(), "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.CreateCourse(context.Background(), adminCaller(), application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		require.NoError(t, err)
 	})
@@ -83,8 +79,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-01"})
 		svc := newCourseService(paths, newFakeCourseRepository())
 
-		_, err := svc.CreateCourse(context.Background(), teacherCaller(), "", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.CreateCourse(context.Background(), teacherCaller(), application.CourseInput{Language: "en", Title: "", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -95,8 +90,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 	t.Run("creating a course with no checkpoints is rejected", func(t *testing.T) {
 		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
 
-		_, err := svc.CreateCourse(context.Background(), teacherCaller(), "Title", "Summary",
-			domain.DifficultyLevelBeginner, nil)
+		_, err := svc.CreateCourse(context.Background(), teacherCaller(), application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: nil})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -107,8 +101,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 	t.Run("creating a course that references a non-existent learning path is rejected", func(t *testing.T) {
 		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
 
-		_, err := svc.CreateCourse(context.Background(), teacherCaller(), "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("missing"))
+		_, err := svc.CreateCourse(context.Background(), teacherCaller(), application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("missing")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -118,8 +111,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 	t.Run("a student cannot create a course", func(t *testing.T) {
 		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
 
-		_, err := svc.CreateCourse(context.Background(), studentCaller(), "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.CreateCourse(context.Background(), studentCaller(), application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -186,7 +178,7 @@ func TestCourseService_ListCourseCreators(t *testing.T) {
 		for id, name := range users {
 			userRepo.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 		}
-		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo,
+		return application.NewCourseService(newFakeLearningPathRepository(), courseRepo, newFakeCourseVersionRepository(), userRepo, newFakeLanguageRepository(), seededInstrumentRepository(),
 			idSequence(), func() time.Time { return fixedCreatedAt })
 	}
 
@@ -280,7 +272,7 @@ func TestCourseService_ListCatalogCreators(t *testing.T) {
 	for id, name := range names {
 		users.put(domain.User{ID: id, ClerkUserID: "clerk-" + id, DisplayName: name})
 	}
-	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users,
+	svc := application.NewCourseService(newFakeLearningPathRepository(), courses, newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(),
 		idSequence(), func() time.Time { return fixedCreatedAt })
 	creator := func(id string) application.CourseCreator {
 		return application.CourseCreator{UserID: id, DisplayName: names[id]}
@@ -533,8 +525,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 			}})
 		svc := newCourseService(paths, courses)
 
-		got, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "New", "New summary",
-			domain.DifficultyLevelIntermediate, checkpointInputs("path-02", "path-01"))
+		got, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "New", Summary: "New summary", Level: domain.DifficultyLevelIntermediate, Checkpoints: checkpointInputs("path-02", "path-01")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "New", got.Title)
@@ -554,8 +545,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 			Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: "path-01", EffectiveTitle: "One"}}})
 		svc := newCourseService(paths, courses)
 
-		got, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "New", "New summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		got, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "New", Summary: "New summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "course-1", got.ID)
@@ -569,8 +559,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1"})
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
-		_, err := svc.ReplaceCourse(context.Background(), studentCaller(), "course-1", "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.ReplaceCourse(context.Background(), studentCaller(), "course-1", application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -583,8 +572,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 			Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: "path-01", EffectiveTitle: "One"}}})
 		svc := newCourseService(paths, courses)
 
-		_, err := svc.ReplaceCourse(context.Background(), otherTeacherCaller(), "course-1", "Hijacked", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.ReplaceCourse(context.Background(), otherTeacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "Hijacked", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -597,8 +585,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 			Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: "path-01", EffectiveTitle: "One"}}})
 		svc := newCourseService(paths, courses)
 
-		got, err := svc.ReplaceCourse(context.Background(), adminCaller(), "course-1", "Revised by admin", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		got, err := svc.ReplaceCourse(context.Background(), adminCaller(), "course-1", application.CourseInput{Language: "en", Title: "Revised by admin", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		require.NoError(t, err)
 		assert.Equal(t, "Revised by admin", got.Title)
@@ -609,8 +596,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1"})
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
-		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Title", "Summary",
-			domain.DifficultyLevelBeginner, nil)
+		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: nil})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -622,8 +608,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 		courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1"})
 		svc := newCourseService(newFakeLearningPathRepository(), courses)
 
-		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("missing"))
+		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("missing")})
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -635,8 +620,7 @@ func TestCourseService_ReplaceCourse(t *testing.T) {
 		paths.put(domain.LearningPath{ID: "path-01"})
 		svc := newCourseService(paths, newFakeCourseRepository())
 
-		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "missing", "Title", "Summary",
-			domain.DifficultyLevelBeginner, checkpointInputs("path-01"))
+		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), "missing", application.CourseInput{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs("path-01")})
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -707,8 +691,7 @@ func TestCourseService_PublishCourse(t *testing.T) {
 		published, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
 		require.NoError(t, err)
 
-		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Renamed", "New summary",
-			domain.DifficultyLevelAdvanced, checkpointInputs("path-01"))
+		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "Renamed", Summary: "New summary", Level: domain.DifficultyLevelAdvanced, Checkpoints: checkpointInputs("path-01")})
 		require.NoError(t, err)
 
 		latest, err := versions.GetLatestByCourseID(context.Background(), "course-1")
@@ -835,9 +818,7 @@ func TestCourseService_GetPublishedCourse(t *testing.T) {
 		_, err := svc.PublishCourse(context.Background(), adminCaller(), "course-1")
 		require.NoError(t, err)
 
-		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", "Fingerstyle Journey",
-			"From first chords to a repertoire.", domain.DifficultyLevelBeginner,
-			[]application.CheckpointInput{{LearningPathID: "path-01", Title: strPtr("Renamed after publish")}, {LearningPathID: "path-02"}})
+		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), "course-1", application.CourseInput{Language: "en", Title: "Fingerstyle Journey", Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: "path-01", Title: strPtr("Renamed after publish")}, {LearningPathID: "path-02"}}})
 		require.NoError(t, err)
 
 		detail, err := svc.GetPublishedCourse(context.Background(), "course-1")
@@ -862,5 +843,91 @@ func TestCourseService_GetPublishedCourse(t *testing.T) {
 		_, err := svc.GetPublishedCourse(context.Background(), "missing")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestCourseService_ReactivateCourse(t *testing.T) {
+	withStatus := func(status domain.CourseStatus) *application.CourseService {
+		courses := newFakeCourseRepository()
+		course := fingerstyleCourseDraft()
+		course.Status = status
+		courses.put(course)
+		return newCourseService(newFakeLearningPathRepository(), courses)
+	}
+
+	t.Run("an admin reactivates a retired course, back to published", func(t *testing.T) {
+		svc := withStatus(domain.CourseStatusRetired)
+
+		reactivated, err := svc.ReactivateCourse(context.Background(), adminCaller(), "course-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, reactivated.Status)
+		got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+		require.NoError(t, err)
+		assert.Equal(t, domain.CourseStatusPublished, got.Status)
+	})
+
+	for _, status := range []domain.CourseStatus{domain.CourseStatusDraft, domain.CourseStatusPublished} {
+		t.Run("a "+string(status)+" course cannot be reactivated", func(t *testing.T) {
+			svc := withStatus(status)
+
+			_, err := svc.ReactivateCourse(context.Background(), adminCaller(), "course-1")
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, "status", valErr.Fields[0].Field)
+			got, err := svc.GetCourse(context.Background(), adminCaller(), "course-1")
+			require.NoError(t, err)
+			assert.Equal(t, status, got.Status)
+		})
+	}
+
+	t.Run("only an admin may reactivate a course", func(t *testing.T) {
+		for _, caller := range []domain.User{teacherCaller(), studentCaller()} {
+			svc := withStatus(domain.CourseStatusRetired)
+
+			_, err := svc.ReactivateCourse(context.Background(), caller, "course-1")
+
+			assert.ErrorIs(t, err, domain.ErrForbidden)
+		}
+	})
+
+	t.Run("reactivating a course that does not exist returns not found", func(t *testing.T) {
+		svc := newCourseService(newFakeLearningPathRepository(), newFakeCourseRepository())
+
+		_, err := svc.ReactivateCourse(context.Background(), adminCaller(), "missing")
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestCourseService_CourseLanguage(t *testing.T) {
+	paths := newFakeLearningPathRepository()
+	paths.put(domain.LearningPath{ID: "path-01", Title: "Open Chords"})
+	input := func(language string) application.CourseInput {
+		return application.CourseInput{Title: "Violão Fingerstyle", Summary: "Do básico ao repertório.", Level: domain.DifficultyLevelBeginner,
+			Language: language, Checkpoints: checkpointInputs("path-01")}
+	}
+
+	t.Run("a course is created and replaced in the language its author chose", func(t *testing.T) {
+		svc := newCourseService(paths, newFakeCourseRepository())
+
+		created, err := svc.CreateCourse(context.Background(), teacherCaller(), input("pt_BR"))
+		require.NoError(t, err)
+		assert.Equal(t, "pt_BR", created.Language)
+
+		replaced, err := svc.ReplaceCourse(context.Background(), teacherCaller(), created.ID, input("en"))
+		require.NoError(t, err)
+		assert.Equal(t, "en", replaced.Language)
+	})
+
+	t.Run("a language MotifPath does not offer is rejected", func(t *testing.T) {
+		svc := newCourseService(paths, newFakeCourseRepository())
+
+		_, err := svc.CreateCourse(context.Background(), teacherCaller(), input("xx"))
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "language", valErr.Fields[0].Field)
 	})
 }

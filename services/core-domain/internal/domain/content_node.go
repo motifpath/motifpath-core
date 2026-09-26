@@ -25,6 +25,15 @@ const (
 	DifficultyLevelExpert            DifficultyLevel = "expert"
 )
 
+// Valid reports whether l is one of the five difficulty levels.
+func (l DifficultyLevel) Valid() bool {
+	switch l {
+	case DifficultyLevelBeginner, DifficultyLevelEarlyIntermediate, DifficultyLevelIntermediate, DifficultyLevelAdvanced, DifficultyLevelExpert:
+		return true
+	}
+	return false
+}
+
 // ReviewState tracks whether an admin has confirmed a ContentNode's
 // classification as ground truth.
 type ReviewState string
@@ -88,7 +97,29 @@ type ContentNode struct {
 	// this ContentNode has been read back from the repository with its
 	// Language rows joined in.
 	Languages []Language
-	CreatedAt time.Time
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
+	CreatedAt    time.Time
+}
+
+// ContentNodeFields are the parts of a content node its author writes, as
+// given to NewContentNode and ContentNode.Update.
+type ContentNodeFields struct {
+	Title         string
+	SkillIDs      []string
+	ConceptIDs    []string
+	Difficulty    DifficultyLevel
+	LanguageCodes []string
+	MediaURL      *string
+	RichContent   *PromptDocument
+	// InstrumentIDs are the instruments the node is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the node; nil means none.
+	ThumbnailURL *string
 }
 
 // NewContentNode validates and constructs a ContentNode. ReviewState is
@@ -100,9 +131,15 @@ type ContentNode struct {
 // Whether each id actually references an existing Skill/Concept is an
 // application-layer concern, requiring a repository round trip this
 // constructor can't perform.
-func NewContentNode(id, teacherID, title string, contentType ContentType, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument, createdAt time.Time) (ContentNode, error) {
+func NewContentNode(id, teacherID string, contentType ContentType, fields ContentNodeFields, createdAt time.Time) (ContentNode, error) {
+	title, skillIDs, conceptIDs, difficulty := fields.Title, fields.SkillIDs, fields.ConceptIDs, fields.Difficulty
+	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 
 	switch contentType {
 	case ContentTypeVideo, ContentTypeArticle:
@@ -126,10 +163,12 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 			DifficultyLevel: difficulty,
 			ReviewState:     ReviewStatePending,
 		},
-		MediaURL:    mediaURL,
-		RichContent: richContent,
-		Languages:   languagesFromCodes(languageCodes),
-		CreatedAt:   createdAt,
+		MediaURL:      mediaURL,
+		RichContent:   richContent,
+		Languages:     languagesFromCodes(languageCodes),
+		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
+		CreatedAt:     createdAt,
 	}, nil
 }
 
@@ -139,9 +178,15 @@ func NewContentNode(id, teacherID, title string, contentType ContentType, skillI
 // determines which ExpandedContent trigger fields are valid for items
 // already attached to this node, and an edit does not reset or require
 // re-confirming an admin's prior review.
-func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficulty DifficultyLevel, languageCodes []string, mediaURL *string, richContent *PromptDocument) (ContentNode, error) {
+func (n ContentNode) Update(fields ContentNodeFields) (ContentNode, error) {
+	title, skillIDs, conceptIDs, difficulty := fields.Title, fields.SkillIDs, fields.ConceptIDs, fields.Difficulty
+	languageCodes, mediaURL, richContent := fields.LanguageCodes, fields.MediaURL, fields.RichContent
 	errs := validateContentNodeClassification(title, skillIDs, conceptIDs, difficulty)
 	errs = append(errs, validateLanguageCodes("language_codes", languageCodes)...)
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 	errs = append(errs, validateContentNodeBody(n.ContentType, mediaURL, richContent)...)
 	if len(errs) > 0 {
 		return ContentNode{}, &ValidationError{Fields: errs}
@@ -155,6 +200,8 @@ func (n ContentNode) Update(title string, skillIDs, conceptIDs []string, difficu
 	updated.MediaURL = mediaURL
 	updated.RichContent = richContent
 	updated.Languages = languagesFromCodes(languageCodes)
+	updated.InstrumentIDs = fields.InstrumentIDs
+	updated.ThumbnailURL = fields.ThumbnailURL
 	return updated, nil
 }
 

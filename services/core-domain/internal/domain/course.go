@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"slices"
+	"time"
+)
 
 // CourseStatus tracks a Course's lifecycle: draft (never published),
 // published (has at least one CourseVersion), or retired (removed from the
@@ -39,17 +43,41 @@ type NewCourseCheckpoint struct {
 // publishing a snapshot of it into an immutable CourseVersion is a
 // separate operation this type does not perform.
 type Course struct {
-	ID          string
-	Title       string
-	Summary     string
-	Level       DifficultyLevel
-	Status      CourseStatus
-	CreatedBy   string
-	CreatedAt   time.Time
-	Checkpoints []CourseCheckpoint
+	ID      string
+	Title   string
+	Summary string
+	Level   DifficultyLevel
+	// Language is the Language.Code the course is written in: a course is
+	// not localized, so its title, summary and checkpoint titles all read
+	// in this one language.
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Status       CourseStatus
+	CreatedBy    string
+	CreatedAt    time.Time
+	Checkpoints  []CourseCheckpoint
 }
 
-// NewCourse validates title, summary, level, and checkpoints, and assigns
+// CourseFields are the parts of a course its author writes, as given to
+// NewCourse to create or replace a course draft.
+type CourseFields struct {
+	Title    string
+	Summary  string
+	Level    DifficultyLevel
+	Language string
+	// InstrumentIDs are the instruments the course is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the course; nil means none.
+	ThumbnailURL *string
+	Checkpoints  []NewCourseCheckpoint
+}
+
+// NewCourse validates title, summary, level, language, and checkpoints, and assigns
 // each checkpoint its 1-based position in the order given. Each
 // checkpoint's Path must already be the resolved LearningPath — the
 // application layer fetches them to verify existence (a learning_path_id
@@ -57,7 +85,11 @@ type Course struct {
 // this constructor can check on its own) and this constructor reuses that
 // same lookup to resolve EffectiveTitle rather than requiring a second
 // round-trip. A newly created course always starts in CourseStatusDraft.
-func NewCourse(id, createdBy, title, summary string, level DifficultyLevel, checkpoints []NewCourseCheckpoint, createdAt time.Time) (Course, error) {
+// languages are the languages MotifPath offers; the course's language must
+// be one of them, and never LanguageCodeAny, since a course always has
+// written words.
+func NewCourse(id, createdBy string, fields CourseFields, languages []string, createdAt time.Time) (Course, error) {
+	title, summary, level, checkpoints := fields.Title, fields.Summary, fields.Level, fields.Checkpoints
 	var errs []FieldError
 
 	if title == "" {
@@ -72,6 +104,15 @@ func NewCourse(id, createdBy, title, summary string, level DifficultyLevel, chec
 	default:
 		errs = append(errs, FieldError{Field: "level", Reason: "must be one of beginner, early_intermediate, intermediate, advanced, expert"})
 	}
+
+	if reason := courseLanguageProblem(fields.Language, languages); reason != "" {
+		errs = append(errs, FieldError{Field: "language", Reason: reason})
+	}
+
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 
 	if len(checkpoints) == 0 {
 		errs = append(errs, FieldError{Field: "checkpoints", Reason: "must contain at least one checkpoint"})
@@ -96,13 +137,30 @@ func NewCourse(id, createdBy, title, summary string, level DifficultyLevel, chec
 	}
 
 	return Course{
-		ID:          id,
-		Title:       title,
-		Summary:     summary,
-		Level:       level,
-		Status:      CourseStatusDraft,
-		CreatedBy:   createdBy,
-		CreatedAt:   createdAt,
-		Checkpoints: built,
+		ID:            id,
+		Title:         title,
+		Summary:       summary,
+		Level:         level,
+		Language:      fields.Language,
+		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
+		Status:        CourseStatusDraft,
+		CreatedBy:     createdBy,
+		CreatedAt:     createdAt,
+		Checkpoints:   built,
 	}, nil
+}
+
+// courseLanguageProblem returns why language can't be a course's language
+// among the offered languages, or "" if it can.
+func courseLanguageProblem(language string, languages []string) string {
+	switch {
+	case language == "":
+		return "must not be empty"
+	case language == LanguageCodeAny:
+		return fmt.Sprintf("must be a language, not %q", LanguageCodeAny)
+	case !slices.Contains(languages, language):
+		return "must be one of the languages MotifPath offers"
+	}
+	return ""
 }

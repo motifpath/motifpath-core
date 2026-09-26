@@ -22,9 +22,47 @@ type LearningPath struct {
 	TeacherID uuid.UUID `json:"teacher_id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
+	// Level holds the value of the "level" field.
+	Level *learningpath.Level `json:"level,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// ThumbnailURL holds the value of the "thumbnail_url" field.
+	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the LearningPathQuery when eager-loading is set.
+	Edges        LearningPathEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// LearningPathEdges holds the relations/edges for other nodes in the graph.
+type LearningPathEdges struct {
+	// Instruments holds the value of the instruments edge.
+	Instruments []*Instrument `json:"instruments,omitempty"`
+	// LearningPathInstruments holds the value of the learning_path_instruments edge.
+	LearningPathInstruments []*LearningPathInstrument `json:"learning_path_instruments,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// InstrumentsOrErr returns the Instruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e LearningPathEdges) InstrumentsOrErr() ([]*Instrument, error) {
+	if e.loadedTypes[0] {
+		return e.Instruments, nil
+	}
+	return nil, &NotLoadedError{edge: "instruments"}
+}
+
+// LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e LearningPathEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
+	if e.loadedTypes[1] {
+		return e.LearningPathInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "learning_path_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -32,9 +70,9 @@ func (*LearningPath) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case learningpath.FieldTitle:
+		case learningpath.FieldTitle, learningpath.FieldLevel, learningpath.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
-		case learningpath.FieldCreatedAt:
+		case learningpath.FieldUpdatedAt, learningpath.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		case learningpath.FieldID, learningpath.FieldTeacherID:
 			values[i] = new(uuid.UUID)
@@ -71,6 +109,26 @@ func (_m *LearningPath) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Title = value.String
 			}
+		case learningpath.FieldLevel:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field level", values[i])
+			} else if value.Valid {
+				_m.Level = new(learningpath.Level)
+				*_m.Level = learningpath.Level(value.String)
+			}
+		case learningpath.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
+			}
+		case learningpath.FieldThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURL = new(string)
+				*_m.ThumbnailURL = value.String
+			}
 		case learningpath.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -88,6 +146,16 @@ func (_m *LearningPath) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *LearningPath) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryInstruments queries the "instruments" edge of the LearningPath entity.
+func (_m *LearningPath) QueryInstruments() *InstrumentQuery {
+	return NewLearningPathClient(_m.config).QueryInstruments(_m)
+}
+
+// QueryLearningPathInstruments queries the "learning_path_instruments" edge of the LearningPath entity.
+func (_m *LearningPath) QueryLearningPathInstruments() *LearningPathInstrumentQuery {
+	return NewLearningPathClient(_m.config).QueryLearningPathInstruments(_m)
 }
 
 // Update returns a builder for updating this LearningPath.
@@ -118,6 +186,19 @@ func (_m *LearningPath) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
+	builder.WriteString(", ")
+	if v := _m.Level; v != nil {
+		builder.WriteString("level=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURL; v != nil {
+		builder.WriteString("thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

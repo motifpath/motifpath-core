@@ -24,6 +24,8 @@ type CourseEnrollment struct {
 	CourseID uuid.UUID `json:"course_id,omitempty"`
 	// CourseTitle holds the value of the "course_title" field.
 	CourseTitle string `json:"course_title,omitempty"`
+	// CourseThumbnailURL holds the value of the "course_thumbnail_url" field.
+	CourseThumbnailURL *string `json:"course_thumbnail_url,omitempty"`
 	// CourseVersionNumber holds the value of the "course_version_number" field.
 	CourseVersionNumber int `json:"course_version_number,omitempty"`
 	// Status holds the value of the "status" field.
@@ -46,7 +48,7 @@ func (*CourseEnrollment) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case courseenrollment.FieldCourseVersionNumber, courseenrollment.FieldActiveCheckpointPosition:
 			values[i] = new(sql.NullInt64)
-		case courseenrollment.FieldCourseTitle, courseenrollment.FieldStatus:
+		case courseenrollment.FieldCourseTitle, courseenrollment.FieldCourseThumbnailURL, courseenrollment.FieldStatus:
 			values[i] = new(sql.NullString)
 		case courseenrollment.FieldEnrolledAt:
 			values[i] = new(sql.NullTime)
@@ -90,6 +92,13 @@ func (_m *CourseEnrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field course_title", values[i])
 			} else if value.Valid {
 				_m.CourseTitle = value.String
+			}
+		case courseenrollment.FieldCourseThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field course_thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.CourseThumbnailURL = new(string)
+				*_m.CourseThumbnailURL = value.String
 			}
 		case courseenrollment.FieldCourseVersionNumber:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -167,6 +176,11 @@ func (_m *CourseEnrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("course_title=")
 	builder.WriteString(_m.CourseTitle)
+	builder.WriteString(", ")
+	if v := _m.CourseThumbnailURL; v != nil {
+		builder.WriteString("course_thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("course_version_number=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CourseVersionNumber))

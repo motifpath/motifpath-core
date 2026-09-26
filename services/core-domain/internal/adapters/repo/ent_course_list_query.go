@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -32,6 +33,21 @@ func courseListPredicates(filter domain.CourseListFilter) ([]predicate.Course, e
 
 	predicates = append(predicates, textAndLevelPredicates(filter)...)
 
+	if filter.InstrumentID != "" {
+		instrumentID, err := uuid.Parse(filter.InstrumentID)
+		if err != nil {
+			return nil, err
+		}
+		if filter.PublishedView {
+			predicates = append(predicates, publishedVersionMatches(publishedInstrumentCondition(instrumentID)))
+		} else {
+			predicates = append(predicates, course.Or(
+				course.HasInstrumentsWith(instrument.ID(instrumentID)),
+				course.Not(course.HasInstruments()),
+			))
+		}
+	}
+
 	if len(filter.SkillIDs) > 0 || len(filter.ConceptIDs) > 0 {
 		classified, err := classificationPredicate(filter)
 		if err != nil {
@@ -42,8 +58,8 @@ func courseListPredicates(filter domain.CourseListFilter) ([]predicate.Course, e
 	return predicates, nil
 }
 
-// textAndLevelPredicates matches filter.Query against title or summary and
-// filter.Levels against the level, reading the published version's snapshot
+// textAndLevelPredicates matches filter.Query against title or summary, and
+// filter.Levels and filter.Language against the level and language, reading the published version's snapshot
 // when filter.PublishedView is set and the live draft otherwise.
 func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 	var predicates []predicate.Course
@@ -54,6 +70,9 @@ func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 		}
 		if len(filter.Levels) > 0 {
 			predicates = append(predicates, publishedVersionMatches(publishedLevelCondition(filter.Levels)))
+		}
+		if filter.Language != "" {
+			predicates = append(predicates, publishedVersionMatches(publishedLanguageCondition(filter.Language)))
 		}
 		return predicates
 	}
@@ -70,6 +89,9 @@ func textAndLevelPredicates(filter domain.CourseListFilter) []predicate.Course {
 			levels[i] = course.Level(l)
 		}
 		predicates = append(predicates, course.LevelIn(levels...))
+	}
+	if filter.Language != "" {
+		predicates = append(predicates, course.LanguageEQ(filter.Language))
 	}
 	return predicates
 }
@@ -119,6 +141,23 @@ func publishedTextCondition(query string) func(b *sql.Builder) {
 	return func(b *sql.Builder) {
 		b.WriteString(" AND (cv.title_snapshot ILIKE ").Arg(pattern).
 			WriteString(" OR cv.summary_snapshot ILIKE ").Arg(pattern).WriteString(")")
+	}
+}
+
+// publishedInstrumentCondition matches a version for instrumentID or for
+// every instrument: a snapshot that is SQL NULL (published before instruments
+// were recorded), JSON null (an empty list written as nil) or an empty array.
+func publishedInstrumentCondition(instrumentID uuid.UUID) func(b *sql.Builder) {
+	return func(b *sql.Builder) {
+		b.WriteString(" AND (cv.instrument_ids_snapshot IS NULL OR jsonb_typeof(cv.instrument_ids_snapshot) <> 'array'" +
+			" OR jsonb_array_length(cv.instrument_ids_snapshot) = 0" +
+			" OR cv.instrument_ids_snapshot @> jsonb_build_array(").Arg(instrumentID.String()).WriteString("::text))")
+	}
+}
+
+func publishedLanguageCondition(language string) func(b *sql.Builder) {
+	return func(b *sql.Builder) {
+		b.WriteString(" AND cv.language_snapshot = ").Arg(language)
 	}
 }
 

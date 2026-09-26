@@ -258,15 +258,15 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	now := func() time.Time { return time.Now().UTC() }
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, mathrand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
-	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, newID, now)
+	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
 	instrumentService := application.NewInstrumentService(instrumentRepo, languageRepo, newID)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, newID, now)

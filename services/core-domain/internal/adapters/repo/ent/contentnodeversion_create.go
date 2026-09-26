@@ -101,6 +101,26 @@ func (_c *ContentNodeVersionCreate) SetNillableLanguagesSnapshot(v *string) *Con
 	return _c
 }
 
+// SetInstrumentIdsSnapshot sets the "instrument_ids_snapshot" field.
+func (_c *ContentNodeVersionCreate) SetInstrumentIdsSnapshot(v []string) *ContentNodeVersionCreate {
+	_c.mutation.SetInstrumentIdsSnapshot(v)
+	return _c
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (_c *ContentNodeVersionCreate) SetThumbnailURLSnapshot(v string) *ContentNodeVersionCreate {
+	_c.mutation.SetThumbnailURLSnapshot(v)
+	return _c
+}
+
+// SetNillableThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field if the given value is not nil.
+func (_c *ContentNodeVersionCreate) SetNillableThumbnailURLSnapshot(v *string) *ContentNodeVersionCreate {
+	if v != nil {
+		_c.SetThumbnailURLSnapshot(*v)
+	}
+	return _c
+}
+
 // SetPublishedBy sets the "published_by" field.
 func (_c *ContentNodeVersionCreate) SetPublishedBy(v uuid.UUID) *ContentNodeVersionCreate {
 	_c.mutation.SetPublishedBy(v)
@@ -271,6 +291,14 @@ func (_c *ContentNodeVersionCreate) createSpec() (*ContentNodeVersion, *sqlgraph
 	if value, ok := _c.mutation.LanguagesSnapshot(); ok {
 		_spec.SetField(contentnodeversion.FieldLanguagesSnapshot, field.TypeString, value)
 		_node.LanguagesSnapshot = &value
+	}
+	if value, ok := _c.mutation.InstrumentIdsSnapshot(); ok {
+		_spec.SetField(contentnodeversion.FieldInstrumentIdsSnapshot, field.TypeJSON, value)
+		_node.InstrumentIdsSnapshot = value
+	}
+	if value, ok := _c.mutation.ThumbnailURLSnapshot(); ok {
+		_spec.SetField(contentnodeversion.FieldThumbnailURLSnapshot, field.TypeString, value)
+		_node.ThumbnailURLSnapshot = &value
 	}
 	if value, ok := _c.mutation.PublishedBy(); ok {
 		_spec.SetField(contentnodeversion.FieldPublishedBy, field.TypeUUID, value)

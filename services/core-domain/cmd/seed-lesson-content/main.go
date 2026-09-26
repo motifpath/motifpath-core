@@ -184,6 +184,7 @@ func run(completed int, current string) error {
 		repo.NewEntConceptRepository(conns.ent),
 		repo.NewEntContentNodeVersionRepository(conns.ent),
 		repo.NewEntDiagramRepository(conns.ent),
+		repo.NewEntInstrumentRepository(conns.ent),
 		newID, now,
 	)
 
@@ -445,7 +446,7 @@ func setMedia(ctx context.Context, svc *application.ContentService, admin domain
 		conceptIDs = orDefault(conceptIDs, defaults.conceptID)
 		languages = orDefault(languages, defaultLanguageCode)
 	}
-	if _, err := svc.UpdateContentNode(ctx, admin, node.ID, node.Title, skillIDs, conceptIDs, node.Classification.DifficultyLevel, languages, &mediaURL, node.RichContent); err != nil {
+	if _, err := svc.UpdateContentNode(ctx, admin, node.ID, application.ContentNodeInput{Title: node.Title, SkillIDs: skillIDs, ConceptIDs: conceptIDs, Difficulty: node.Classification.DifficultyLevel, Languages: languages, MediaURL: &mediaURL, RichContent: node.RichContent}); err != nil {
 		return fmt.Errorf("set media URL on %s: %w", node.ID, err)
 	}
 	return nil

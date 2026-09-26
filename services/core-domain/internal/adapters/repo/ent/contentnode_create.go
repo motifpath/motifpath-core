@@ -15,9 +15,11 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
@@ -91,6 +93,20 @@ func (_c *ContentNodeCreate) SetReviewState(v contentnode.ReviewState) *ContentN
 func (_c *ContentNodeCreate) SetNillableReviewState(v *contentnode.ReviewState) *ContentNodeCreate {
 	if v != nil {
 		_c.SetReviewState(*v)
+	}
+	return _c
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (_c *ContentNodeCreate) SetThumbnailURL(v string) *ContentNodeCreate {
+	_c.mutation.SetThumbnailURL(v)
+	return _c
+}
+
+// SetNillableThumbnailURL sets the "thumbnail_url" field if the given value is not nil.
+func (_c *ContentNodeCreate) SetNillableThumbnailURL(v *string) *ContentNodeCreate {
+	if v != nil {
+		_c.SetThumbnailURL(*v)
 	}
 	return _c
 }
@@ -183,6 +199,21 @@ func (_c *ContentNodeCreate) AddConcepts(v ...*Concept) *ContentNodeCreate {
 	return _c.AddConceptIDs(ids...)
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_c *ContentNodeCreate) AddInstrumentIDs(ids ...uuid.UUID) *ContentNodeCreate {
+	_c.mutation.AddInstrumentIDs(ids...)
+	return _c
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_c *ContentNodeCreate) AddInstruments(v ...*Instrument) *ContentNodeCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInstrumentIDs(ids...)
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by IDs.
 func (_c *ContentNodeCreate) AddContentNodeExerciseIDs(ids ...int) *ContentNodeCreate {
 	_c.mutation.AddContentNodeExerciseIDs(ids...)
@@ -241,6 +272,21 @@ func (_c *ContentNodeCreate) AddContentNodeConcepts(v ...*ContentNodeConcept) *C
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeConceptIDs(ids...)
+}
+
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (_c *ContentNodeCreate) AddContentNodeInstrumentIDs(ids ...int) *ContentNodeCreate {
+	_c.mutation.AddContentNodeInstrumentIDs(ids...)
+	return _c
+}
+
+// AddContentNodeInstruments adds the "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_c *ContentNodeCreate) AddContentNodeInstruments(v ...*ContentNodeInstrument) *ContentNodeCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the ContentNodeMutation object of the builder.
@@ -390,6 +436,10 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 		_spec.SetField(contentnode.FieldReviewState, field.TypeEnum, value)
 		_node.ReviewState = value
 	}
+	if value, ok := _c.mutation.ThumbnailURL(); ok {
+		_spec.SetField(contentnode.FieldThumbnailURL, field.TypeString, value)
+		_node.ThumbnailURL = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(contentnode.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -474,6 +524,26 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   contentnode.InstrumentsTable,
+			Columns: contentnode.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _c.config, mutation: newContentNodeInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.ContentNodeExercisesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -531,6 +601,22 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   contentnode.ContentNodeInstrumentsTable,
+			Columns: []string{contentnode.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

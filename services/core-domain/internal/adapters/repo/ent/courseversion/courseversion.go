@@ -25,6 +25,12 @@ const (
 	FieldSummarySnapshot = "summary_snapshot"
 	// FieldLevelSnapshot holds the string denoting the level_snapshot field in the database.
 	FieldLevelSnapshot = "level_snapshot"
+	// FieldLanguageSnapshot holds the string denoting the language_snapshot field in the database.
+	FieldLanguageSnapshot = "language_snapshot"
+	// FieldInstrumentIdsSnapshot holds the string denoting the instrument_ids_snapshot field in the database.
+	FieldInstrumentIdsSnapshot = "instrument_ids_snapshot"
+	// FieldThumbnailURLSnapshot holds the string denoting the thumbnail_url_snapshot field in the database.
+	FieldThumbnailURLSnapshot = "thumbnail_url_snapshot"
 	// FieldAvailableForNewEnrollments holds the string denoting the available_for_new_enrollments field in the database.
 	FieldAvailableForNewEnrollments = "available_for_new_enrollments"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
@@ -41,6 +47,9 @@ var Columns = []string{
 	FieldTitleSnapshot,
 	FieldSummarySnapshot,
 	FieldLevelSnapshot,
+	FieldLanguageSnapshot,
+	FieldInstrumentIdsSnapshot,
+	FieldThumbnailURLSnapshot,
 	FieldAvailableForNewEnrollments,
 	FieldPublishedAt,
 }
@@ -56,6 +65,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultLanguageSnapshot holds the default value on creation for the "language_snapshot" field.
+	DefaultLanguageSnapshot string
 	// DefaultAvailableForNewEnrollments holds the default value on creation for the "available_for_new_enrollments" field.
 	DefaultAvailableForNewEnrollments bool
 	// DefaultPublishedAt holds the default value on creation for the "published_at" field.
@@ -121,6 +132,16 @@ func BySummarySnapshot(opts ...sql.OrderTermOption) OrderOption {
 // ByLevelSnapshot orders the results by the level_snapshot field.
 func ByLevelSnapshot(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLevelSnapshot, opts...).ToFunc()
+}
+
+// ByLanguageSnapshot orders the results by the language_snapshot field.
+func ByLanguageSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLanguageSnapshot, opts...).ToFunc()
+}
+
+// ByThumbnailURLSnapshot orders the results by the thumbnail_url_snapshot field.
+func ByThumbnailURLSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURLSnapshot, opts...).ToFunc()
 }
 
 // ByAvailableForNewEnrollments orders the results by the available_for_new_enrollments field.

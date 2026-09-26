@@ -125,6 +125,19 @@ func registerCourseSteps(sc *godog.ScenarioContext, w *world) {
 // exists" Given step of their own, so "a course ... exists ..." must be
 // self-sufficient rather than depend on Background ordering.
 func (w *world) seedCourse(courseSlug string, pathSlugs []string, creatorName string, publish bool) (uuid.UUID, error) {
+	return w.seedCourseIn("en", courseSlug, pathSlugs, creatorName, publish)
+}
+
+// seedCourseIn is seedCourse for a course written in language.
+func (w *world) seedCourseIn(language, courseSlug string, pathSlugs []string, creatorName string, publish bool) (uuid.UUID, error) {
+	return w.seedCourseWith(courseSlug, pathSlugs, creatorName, publish, func(body *generated.CreateCourseRequest) {
+		body.Language = language
+	})
+}
+
+// seedCourseWith is seedCourse with the create request adjusted before it is
+// sent, for a scenario that needs a particular language or instruments.
+func (w *world) seedCourseWith(courseSlug string, pathSlugs []string, creatorName string, publish bool, adjust func(*generated.CreateCourseRequest)) (uuid.UUID, error) {
 	for _, slug := range pathSlugs {
 		if _, err := w.paths.GetByID(context.Background(), pathID(slug).String()); err != nil {
 			if !errors.Is(err, domain.ErrNotFound) {
@@ -144,14 +157,15 @@ func (w *world) seedCourse(courseSlug string, pathSlugs []string, creatorName st
 		specs[i] = courseCheckpointSpec{slug: slug}
 	}
 
-	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{
-		Body: &generated.CreateCourseRequest{
-			Title:       courseSlug,
-			Summary:     "Seeded for testing",
-			Level:       generated.CreateCourseRequestLevelBeginner,
-			Checkpoints: toCourseCheckpointBody(specs),
-		},
-	})
+	body := &generated.CreateCourseRequest{
+		Language:    "en",
+		Title:       courseSlug,
+		Summary:     "Seeded for testing",
+		Level:       generated.CreateCourseRequestLevelBeginner,
+		Checkpoints: toCourseCheckpointBody(specs),
+	}
+	adjust(body)
+	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{Body: body})
 	if err != nil {
 		return uuid.UUID{}, err
 	}
@@ -196,6 +210,7 @@ func (w *world) courseExistsDraftWithCreator(courseSlug, p1, creatorName string)
 func (w *world) createsCourse(title string, specs []courseCheckpointSpec) error {
 	resp, err := w.handler.CreateCourse(w.ctx(), generated.CreateCourseRequestObject{
 		Body: &generated.CreateCourseRequest{
+			Language:    "en",
 			Title:       title,
 			Summary:     "A summary",
 			Level:       generated.CreateCourseRequestLevelBeginner,
@@ -354,6 +369,7 @@ func (w *world) replacesCourseWithCheckpoints(name, courseSlug string, checkpoin
 	resp, err := w.handler.ReplaceCourse(w.ctx(), generated.ReplaceCourseRequestObject{
 		CourseId: w.courseIDBySlug[courseSlug],
 		Body: &generated.ReplaceCourseRequest{
+			Language:    "en",
 			Title:       courseSlug,
 			Summary:     "A summary",
 			Level:       generated.ReplaceCourseRequestLevelBeginner,
@@ -659,6 +675,186 @@ func (w *world) responseStillShowsCheckpoints(n1, n2 string) error {
 		if cp.Title != want[i] {
 			return fmt.Errorf("expected checkpoint %d title %q, got %q", i, want[i], cp.Title)
 		}
+	}
+	return nil
+}
+
+func registerCourseReactivationSteps(sc *godog.ScenarioContext, w *world) {
+	sc.Step(`^"([^"]+)" reactivates course "([^"]+)"$`, w.reactivatesCourse)
+	sc.Step(`^"([^"]+)" attempts to reactivate course "([^"]+)"$`, w.reactivatesCourse)
+	sc.Step(`^"([^"]+)" reactivates a course with an ID that does not exist$`, w.reactivatesMissingCourse)
+	sc.Step(`^course "([^"]+)" still has only course version (\d+)$`, w.courseStillHasOnlyVersion)
+	sc.Step(`^the course has unpublished changes$`, w.courseHasUnpublishedChanges)
+	sc.Step(`^the published version of "([^"]+)" still has checkpoints "([^"]+)"$`, w.publishedVersionHasCheckpoints)
+}
+
+// reactivatesCourse goes through the HTTP handler, unlike retiresCourse:
+// reactivation's own refusals (a course that isn't retired, a caller who
+// isn't an admin) are what several scenarios assert.
+func (w *world) reactivatesCourse(_, courseSlug string) error {
+	resp, err := w.handler.ReactivateCourse(w.ctx(), generated.ReactivateCourseRequestObject{CourseId: w.courseIDBySlug[courseSlug]})
+	w.lastResp, w.lastErr = resp, err
+	w.lastCourseSlug = courseSlug
+	return err
+}
+
+func (w *world) reactivatesMissingCourse(string) error {
+	resp, err := w.handler.ReactivateCourse(w.ctx(), generated.ReactivateCourseRequestObject{CourseId: deterministicUUID("course", "does-not-exist")})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) courseStillHasOnlyVersion(courseSlug, versionStr string) error {
+	want, err := parseInt(versionStr)
+	if err != nil {
+		return err
+	}
+	latest, ok := w.courseVersions.latest(w.courseIDBySlug[courseSlug].String())
+	if !ok {
+		return fmt.Errorf("course %q has no published version", courseSlug)
+	}
+	if latest.VersionNumber != want {
+		return fmt.Errorf("expected course %q's latest version to be %d, got %d", courseSlug, want, latest.VersionNumber)
+	}
+	return nil
+}
+
+func (w *world) courseHasUnpublishedChanges() error {
+	resp, err := w.handler.GetCourse(w.ctx(), generated.GetCourseRequestObject{CourseId: w.courseIDBySlug[w.lastCourseSlug]})
+	if err != nil {
+		return err
+	}
+	course, ok := resp.(generated.GetCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected the course, got %#v", resp)
+	}
+	if !course.HasUnpublishedChanges {
+		return fmt.Errorf("expected course %q to have unpublished changes", w.lastCourseSlug)
+	}
+	return nil
+}
+
+// publishedVersionHasCheckpoints compares the published outline's checkpoint
+// titles with the listed learning path slugs, which the seeding helpers use
+// as each template's own title.
+func (w *world) publishedVersionHasCheckpoints(courseSlug, slugList string) error {
+	resp, err := w.handler.GetPublishedCourse(w.ctx(), generated.GetPublishedCourseRequestObject{CourseId: w.courseIDBySlug[courseSlug]})
+	if err != nil {
+		return err
+	}
+	detail, ok := resp.(generated.GetPublishedCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected the published course, got %#v", resp)
+	}
+	var got []string
+	for _, checkpoint := range detail.Checkpoints {
+		got = append(got, checkpoint.Title)
+	}
+	want := quotedValues(`"` + slugList + `"`)
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		return fmt.Errorf("expected the published version of %q to have checkpoints %v, got %v", courseSlug, want, got)
+	}
+	return nil
+}
+
+func registerCourseLanguageSteps(sc *godog.ScenarioContext, w *world) {
+	sc.Step(`^"([^"]+)" creates a course titled "([^"]+)" in language "([^"]*)" with checkpoints in order: "([^"]+)"$`, w.createsCourseInLanguage)
+	sc.Step(`^"([^"]+)" submits a create course request with the language field omitted$`, w.submitsCreateCourseWithoutLanguage)
+	sc.Step(`^the course's language is "([^"]+)"$`, w.courseLanguageIs)
+	sc.Step(`^a course "([^"]+)" exists, published in language "([^"]+)", with checkpoints "([^"]+)"$`, func(courseSlug, language, pathSlug string) error {
+		_, err := w.seedCourseIn(language, courseSlug, []string{pathSlug}, "bob", true)
+		return err
+	})
+	sc.Step(`^a course "([^"]+)" exists, published in language "([^"]+)", created by "([^"]+)", with checkpoints "([^"]+)"$`, func(courseSlug, language, creator, pathSlug string) error {
+		_, err := w.seedCourseIn(language, courseSlug, []string{pathSlug}, creator, true)
+		return err
+	})
+	sc.Step(`^a course "([^"]+)" exists as a draft in language "([^"]+)" with checkpoints "([^"]+)"$`, func(courseSlug, language, pathSlug string) error {
+		_, err := w.seedCourseIn(language, courseSlug, []string{pathSlug}, "bob", false)
+		return err
+	})
+	sc.Step(`^"([^"]+)" replaces course "([^"]+)" setting its language to "([^"]+)"$`, w.replacesCourseLanguage)
+	sc.Step(`^course version (\d+) records the language "([^"]+)"$`, w.courseVersionRecordsLanguage)
+}
+
+func (w *world) createCourseWithLanguage(title, language string, specs []courseCheckpointSpec) error {
+	resp, err := w.handler.CreateCourse(w.ctx(), generated.CreateCourseRequestObject{
+		Body: &generated.CreateCourseRequest{
+			Title:       title,
+			Summary:     "A summary",
+			Level:       generated.CreateCourseRequestLevelBeginner,
+			Language:    language,
+			Checkpoints: toCourseCheckpointBody(specs),
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) createsCourseInLanguage(_, title, language, pathSlug string) error {
+	return w.createCourseWithLanguage(title, language, []courseCheckpointSpec{{slug: pathSlug}})
+}
+
+// submitsCreateCourseWithoutLanguage sends the request with language left
+// at its zero value, which is how an omitted JSON field decodes.
+func (w *world) submitsCreateCourseWithoutLanguage(string) error {
+	return w.createCourseWithLanguage("Title", "", []courseCheckpointSpec{{slug: "open-chords-path"}})
+}
+
+func (w *world) courseLanguageIs(want string) error {
+	resp, ok := w.lastResp.(generated.CreateCourse201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.Language != want {
+		return fmt.Errorf("expected the course's language to be %q, got %q", want, resp.Language)
+	}
+	return nil
+}
+
+// replacesCourseLanguage replaces the course's live draft with the same
+// content in another language, leaving it otherwise as it was.
+func (w *world) replacesCourseLanguage(_, courseSlug, language string) error {
+	current, err := w.courses.GetByID(context.Background(), w.courseIDBySlug[courseSlug].String())
+	if err != nil {
+		return err
+	}
+	checkpoints := make([]courseCheckpointBody, len(current.Checkpoints))
+	for i, cp := range current.Checkpoints {
+		checkpoints[i].LearningPathId = uuid.MustParse(cp.LearningPathID)
+		checkpoints[i].Title = cp.Title
+	}
+	resp, err := w.handler.ReplaceCourse(w.ctx(), generated.ReplaceCourseRequestObject{
+		CourseId: w.courseIDBySlug[courseSlug],
+		Body: &generated.ReplaceCourseRequest{
+			Title:       current.Title,
+			Summary:     current.Summary,
+			Level:       generated.ReplaceCourseRequestLevel(current.Level),
+			Language:    language,
+			Checkpoints: checkpoints,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if _, ok := resp.(generated.ReplaceCourse200JSONResponse); !ok {
+		return fmt.Errorf("setup: expected the course replace to succeed, got %#v", resp)
+	}
+	w.lastCourseSlug = courseSlug
+	return nil
+}
+
+func (w *world) courseVersionRecordsLanguage(versionStr, want string) error {
+	resp, ok := w.lastResp.(generated.PublishCourse201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a 201 response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	number, err := parseInt(versionStr)
+	if err != nil {
+		return err
+	}
+	if resp.VersionNumber != number || resp.LanguageSnapshot != want {
+		return fmt.Errorf("expected course version %d to record language %q, got version %d in %q", number, want, resp.VersionNumber, resp.LanguageSnapshot)
 	}
 	return nil
 }

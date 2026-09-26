@@ -76,11 +76,12 @@ func setupPipeline(t *testing.T) *pipeline {
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 
 	return &pipeline{
-		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, newID, now),
+		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, instrumentRepo, newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
-		path:        application.NewLearningPathService(nodes, paths, courseVersions, newID, now),
+		path:        application.NewLearningPathService(nodes, paths, courseVersions, instrumentRepo, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),
 		skills:      application.NewSkillService(skillRepo, newID),
 		concepts:    application.NewConceptService(conceptRepo, newID),
@@ -109,14 +110,14 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	student := domain.User{ID: uuid.NewString(), Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}}
 
 	skillID, conceptID := seedClassification(t, ctx, p, teacher, "triads")
-	node, err := p.content.CreateContentNode(ctx, teacher, "Intro to Triads", domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Intro to Triads", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 
 	challenge, err := p.challenge.CreateChallenge(ctx, teacher, node.ID, &skillID, nil, 70, nil, false, false)
 	require.NoError(t, err)
 	assert.Equal(t, node.ID, challenge.ContentNodeID)
 
-	learningPath, err := p.path.CreateLearningPath(ctx, teacher, "Week 1", []application.PathItemInput{{ContentNodeID: node.ID}})
+	learningPath, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Week 1", Items: []application.PathItemInput{{ContentNodeID: node.ID}}})
 	require.NoError(t, err)
 
 	// AssignLearningPath needs the student to exist in the same Postgres
@@ -157,11 +158,11 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	seedStudentInto(t, ctx, p, student)
 
 	skillID1, conceptID1 := seedClassification(t, ctx, p, teacher, "n1")
-	node1, err := p.content.CreateContentNode(ctx, teacher, "Node 1", domain.ContentTypeVideo, []string{skillID1}, []string{conceptID1}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node1, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Node 1", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID1}, ConceptIDs: []string{conceptID1}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node1.ID)
 	require.NoError(t, err)
-	path1, err := p.path.CreateLearningPath(ctx, teacher, "Path 1", []application.PathItemInput{{ContentNodeID: node1.ID}})
+	path1, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 1", Items: []application.PathItemInput{{ContentNodeID: node1.ID}}})
 	require.NoError(t, err)
 
 	first, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
@@ -177,11 +178,11 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 
 	skillID2, conceptID2 := seedClassification(t, ctx, p, teacher, "n2")
-	node2, err := p.content.CreateContentNode(ctx, teacher, "Node 2", domain.ContentTypeVideo, []string{skillID2}, []string{conceptID2}, domain.DifficultyLevelBeginner, []string{"en"}, testVideoURL(), nil)
+	node2, err := p.content.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: "Node 2", ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID2}, ConceptIDs: []string{conceptID2}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: testVideoURL(), RichContent: nil})
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node2.ID)
 	require.NoError(t, err)
-	path2, err := p.path.CreateLearningPath(ctx, teacher, "Path 2", []application.PathItemInput{{ContentNodeID: node2.ID}})
+	path2, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 2", Items: []application.PathItemInput{{ContentNodeID: node2.ID}}})
 	require.NoError(t, err)
 
 	second, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)

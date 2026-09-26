@@ -32,6 +32,8 @@ type ContentNode struct {
 	DifficultyLevel contentnode.DifficultyLevel `json:"difficulty_level,omitempty"`
 	// ReviewState holds the value of the "review_state" field.
 	ReviewState contentnode.ReviewState `json:"review_state,omitempty"`
+	// ThumbnailURL holds the value of the "thumbnail_url" field.
+	ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -50,6 +52,8 @@ type ContentNodeEdges struct {
 	Skills []*Skill `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
 	Concepts []*Concept `json:"concepts,omitempty"`
+	// Instruments holds the value of the instruments edge.
+	Instruments []*Instrument `json:"instruments,omitempty"`
 	// ContentNodeExercises holds the value of the content_node_exercises edge.
 	ContentNodeExercises []*ContentNodeExercise `json:"content_node_exercises,omitempty"`
 	// ContentNodeLanguages holds the value of the content_node_languages edge.
@@ -58,9 +62,11 @@ type ContentNodeEdges struct {
 	ContentNodeSkills []*ContentNodeSkill `json:"content_node_skills,omitempty"`
 	// ContentNodeConcepts holds the value of the content_node_concepts edge.
 	ContentNodeConcepts []*ContentNodeConcept `json:"content_node_concepts,omitempty"`
+	// ContentNodeInstruments holds the value of the content_node_instruments edge.
+	ContentNodeInstruments []*ContentNodeInstrument `json:"content_node_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [10]bool
 }
 
 // PathExercisesOrErr returns the PathExercises value or an error if the edge
@@ -99,10 +105,19 @@ func (e ContentNodeEdges) ConceptsOrErr() ([]*Concept, error) {
 	return nil, &NotLoadedError{edge: "concepts"}
 }
 
+// InstrumentsOrErr returns the Instruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) InstrumentsOrErr() ([]*Instrument, error) {
+	if e.loadedTypes[4] {
+		return e.Instruments, nil
+	}
+	return nil, &NotLoadedError{edge: "instruments"}
+}
+
 // ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.ContentNodeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_exercises"}
@@ -111,7 +126,7 @@ func (e ContentNodeEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, e
 // ContentNodeLanguagesOrErr returns the ContentNodeLanguages value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeLanguagesOrErr() ([]*ContentNodeLanguage, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.ContentNodeLanguages, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_languages"}
@@ -120,7 +135,7 @@ func (e ContentNodeEdges) ContentNodeLanguagesOrErr() ([]*ContentNodeLanguage, e
 // ContentNodeSkillsOrErr returns the ContentNodeSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeSkillsOrErr() ([]*ContentNodeSkill, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ContentNodeSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_skills"}
@@ -129,10 +144,19 @@ func (e ContentNodeEdges) ContentNodeSkillsOrErr() ([]*ContentNodeSkill, error) 
 // ContentNodeConceptsOrErr returns the ContentNodeConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e ContentNodeEdges) ContentNodeConceptsOrErr() ([]*ContentNodeConcept, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.ContentNodeConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_concepts"}
+}
+
+// ContentNodeInstrumentsOrErr returns the ContentNodeInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentNodeEdges) ContentNodeInstrumentsOrErr() ([]*ContentNodeInstrument, error) {
+	if e.loadedTypes[9] {
+		return e.ContentNodeInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -140,7 +164,7 @@ func (*ContentNode) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState:
+		case contentnode.FieldTitle, contentnode.FieldContentType, contentnode.FieldMediaURL, contentnode.FieldRichContent, contentnode.FieldDifficultyLevel, contentnode.FieldReviewState, contentnode.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
 		case contentnode.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -211,6 +235,13 @@ func (_m *ContentNode) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ReviewState = contentnode.ReviewState(value.String)
 			}
+		case contentnode.FieldThumbnailURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURL = new(string)
+				*_m.ThumbnailURL = value.String
+			}
 		case contentnode.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -250,6 +281,11 @@ func (_m *ContentNode) QueryConcepts() *ConceptQuery {
 	return NewContentNodeClient(_m.config).QueryConcepts(_m)
 }
 
+// QueryInstruments queries the "instruments" edge of the ContentNode entity.
+func (_m *ContentNode) QueryInstruments() *InstrumentQuery {
+	return NewContentNodeClient(_m.config).QueryInstruments(_m)
+}
+
 // QueryContentNodeExercises queries the "content_node_exercises" edge of the ContentNode entity.
 func (_m *ContentNode) QueryContentNodeExercises() *ContentNodeExerciseQuery {
 	return NewContentNodeClient(_m.config).QueryContentNodeExercises(_m)
@@ -268,6 +304,11 @@ func (_m *ContentNode) QueryContentNodeSkills() *ContentNodeSkillQuery {
 // QueryContentNodeConcepts queries the "content_node_concepts" edge of the ContentNode entity.
 func (_m *ContentNode) QueryContentNodeConcepts() *ContentNodeConceptQuery {
 	return NewContentNodeClient(_m.config).QueryContentNodeConcepts(_m)
+}
+
+// QueryContentNodeInstruments queries the "content_node_instruments" edge of the ContentNode entity.
+func (_m *ContentNode) QueryContentNodeInstruments() *ContentNodeInstrumentQuery {
+	return NewContentNodeClient(_m.config).QueryContentNodeInstruments(_m)
 }
 
 // Update returns a builder for updating this ContentNode.
@@ -317,6 +358,11 @@ func (_m *ContentNode) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("review_state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ReviewState))
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURL; v != nil {
+		builder.WriteString("thumbnail_url=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -23,12 +23,10 @@ func TestNewCourse(t *testing.T) {
 	createdAt := time.Date(2026, 9, 22, 10, 0, 0, 0, time.UTC)
 
 	t.Run("a course is created as a draft with 1-based checkpoint positions", func(t *testing.T) {
-		course, err := domain.NewCourse("course-1", "teacher-1", "Fingerstyle Journey", "From first chords to a repertoire.",
-			domain.DifficultyLevelBeginner,
-			[]domain.NewCourseCheckpoint{
-				{Path: openChordsPath()},
-				{Path: strummingPath()},
-			}, createdAt)
+		course, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Fingerstyle Journey", Summary: "From first chords to a repertoire.", Level: domain.DifficultyLevelBeginner, Checkpoints: []domain.NewCourseCheckpoint{
+			{Path: openChordsPath()},
+			{Path: strummingPath()},
+		}}, offered, createdAt)
 
 		require.NoError(t, err)
 		assert.Equal(t, "course-1", course.ID)
@@ -43,8 +41,7 @@ func TestNewCourse(t *testing.T) {
 	})
 
 	t.Run("a checkpoint without a title override shows the learning path's own title as effective_title", func(t *testing.T) {
-		course, err := domain.NewCourse("course-1", "teacher-1", "Title", "Summary", domain.DifficultyLevelBeginner,
-			[]domain.NewCourseCheckpoint{{Path: openChordsPath()}}, createdAt)
+		course, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: []domain.NewCourseCheckpoint{{Path: openChordsPath()}}}, offered, createdAt)
 
 		require.NoError(t, err)
 		require.Len(t, course.Checkpoints, 1)
@@ -54,8 +51,7 @@ func TestNewCourse(t *testing.T) {
 
 	t.Run("a checkpoint with a title override shows the override as effective_title", func(t *testing.T) {
 		override := "Stage 1: Open chords"
-		course, err := domain.NewCourse("course-1", "teacher-1", "Title", "Summary", domain.DifficultyLevelBeginner,
-			[]domain.NewCourseCheckpoint{{Path: openChordsPath(), Title: &override}}, createdAt)
+		course, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: []domain.NewCourseCheckpoint{{Path: openChordsPath(), Title: &override}}}, offered, createdAt)
 
 		require.NoError(t, err)
 		require.Len(t, course.Checkpoints, 1)
@@ -65,8 +61,7 @@ func TestNewCourse(t *testing.T) {
 	})
 
 	t.Run("creating a course without a title is rejected", func(t *testing.T) {
-		_, err := domain.NewCourse("course-1", "teacher-1", "", "Summary", domain.DifficultyLevelBeginner,
-			[]domain.NewCourseCheckpoint{{Path: openChordsPath()}}, createdAt)
+		_, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: []domain.NewCourseCheckpoint{{Path: openChordsPath()}}}, offered, createdAt)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -75,8 +70,7 @@ func TestNewCourse(t *testing.T) {
 	})
 
 	t.Run("creating a course without a summary is rejected", func(t *testing.T) {
-		_, err := domain.NewCourse("course-1", "teacher-1", "Title", "", domain.DifficultyLevelBeginner,
-			[]domain.NewCourseCheckpoint{{Path: openChordsPath()}}, createdAt)
+		_, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Title", Summary: "", Level: domain.DifficultyLevelBeginner, Checkpoints: []domain.NewCourseCheckpoint{{Path: openChordsPath()}}}, offered, createdAt)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -85,8 +79,7 @@ func TestNewCourse(t *testing.T) {
 	})
 
 	t.Run("creating a course with an invalid level is rejected", func(t *testing.T) {
-		_, err := domain.NewCourse("course-1", "teacher-1", "Title", "Summary", domain.DifficultyLevel("not-a-level"),
-			[]domain.NewCourseCheckpoint{{Path: openChordsPath()}}, createdAt)
+		_, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevel("not-a-level"), Checkpoints: []domain.NewCourseCheckpoint{{Path: openChordsPath()}}}, offered, createdAt)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -95,7 +88,7 @@ func TestNewCourse(t *testing.T) {
 	})
 
 	t.Run("creating a course with no checkpoints is rejected", func(t *testing.T) {
-		_, err := domain.NewCourse("course-1", "teacher-1", "Title", "Summary", domain.DifficultyLevelBeginner, nil, createdAt)
+		_, err := domain.NewCourse("course-1", "teacher-1", domain.CourseFields{Language: "en", Title: "Title", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: nil}, offered, createdAt)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))

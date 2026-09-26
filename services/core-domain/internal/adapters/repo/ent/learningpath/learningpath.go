@@ -3,9 +3,11 @@
 package learningpath
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -18,10 +20,32 @@ const (
 	FieldTeacherID = "teacher_id"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
+	// FieldLevel holds the string denoting the level field in the database.
+	FieldLevel = "level"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
+	// FieldThumbnailURL holds the string denoting the thumbnail_url field in the database.
+	FieldThumbnailURL = "thumbnail_url"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// EdgeInstruments holds the string denoting the instruments edge name in mutations.
+	EdgeInstruments = "instruments"
+	// EdgeLearningPathInstruments holds the string denoting the learning_path_instruments edge name in mutations.
+	EdgeLearningPathInstruments = "learning_path_instruments"
 	// Table holds the table name of the learningpath in the database.
 	Table = "learning_paths"
+	// InstrumentsTable is the table that holds the instruments relation/edge. The primary key declared below.
+	InstrumentsTable = "learning_path_instruments"
+	// InstrumentsInverseTable is the table name for the Instrument entity.
+	// It exists in this package in order to avoid circular dependency with the "instrument" package.
+	InstrumentsInverseTable = "instruments"
+	// LearningPathInstrumentsTable is the table that holds the learning_path_instruments relation/edge.
+	LearningPathInstrumentsTable = "learning_path_instruments"
+	// LearningPathInstrumentsInverseTable is the table name for the LearningPathInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "learningpathinstrument" package.
+	LearningPathInstrumentsInverseTable = "learning_path_instruments"
+	// LearningPathInstrumentsColumn is the table column denoting the learning_path_instruments relation/edge.
+	LearningPathInstrumentsColumn = "learning_path_id"
 )
 
 // Columns holds all SQL columns for learningpath fields.
@@ -29,8 +53,17 @@ var Columns = []string{
 	FieldID,
 	FieldTeacherID,
 	FieldTitle,
+	FieldLevel,
+	FieldUpdatedAt,
+	FieldThumbnailURL,
 	FieldCreatedAt,
 }
+
+var (
+	// InstrumentsPrimaryKey and InstrumentsColumn2 are the table columns denoting the
+	// primary key for the instruments relation (M2M).
+	InstrumentsPrimaryKey = []string{"learning_path_id", "instrument_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -43,11 +76,39 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// Level defines the type for the "level" enum field.
+type Level string
+
+// Level values.
+const (
+	LevelBeginner          Level = "beginner"
+	LevelEarlyIntermediate Level = "early_intermediate"
+	LevelIntermediate      Level = "intermediate"
+	LevelAdvanced          Level = "advanced"
+	LevelExpert            Level = "expert"
+)
+
+func (l Level) String() string {
+	return string(l)
+}
+
+// LevelValidator is a validator for the "level" field enum values. It is called by the builders before save.
+func LevelValidator(l Level) error {
+	switch l {
+	case LevelBeginner, LevelEarlyIntermediate, LevelIntermediate, LevelAdvanced, LevelExpert:
+		return nil
+	default:
+		return fmt.Errorf("learningpath: invalid enum value for level field: %q", l)
+	}
+}
 
 // OrderOption defines the ordering options for the LearningPath queries.
 type OrderOption func(*sql.Selector)
@@ -67,7 +128,64 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTitle, opts...).ToFunc()
 }
 
+// ByLevel orders the results by the level field.
+func ByLevel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLevel, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByThumbnailURL orders the results by the thumbnail_url field.
+func ByThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURL, opts...).ToFunc()
+}
+
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByInstrumentsCount orders the results by instruments count.
+func ByInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInstrumentsStep(), opts...)
+	}
+}
+
+// ByInstruments orders the results by instruments terms.
+func ByInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByLearningPathInstrumentsCount orders the results by learning_path_instruments count.
+func ByLearningPathInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newLearningPathInstrumentsStep(), opts...)
+	}
+}
+
+// ByLearningPathInstruments orders the results by learning_path_instruments terms.
+func ByLearningPathInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLearningPathInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+	)
+}
+func newLearningPathInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LearningPathInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, LearningPathInstrumentsTable, LearningPathInstrumentsColumn),
+	)
 }

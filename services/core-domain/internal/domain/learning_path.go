@@ -35,8 +35,32 @@ type LearningPath struct {
 	ID        string
 	TeacherID string
 	Title     string
-	Items     []LearningPathItem
-	CreatedAt time.Time
+	// Level is the level a learner should be at to follow the path. It is
+	// nil only for a path created before levels were recorded, until it is
+	// next saved.
+	Level *DifficultyLevel
+	// InstrumentIDs are the instruments the path is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the path; nil means none.
+	ThumbnailURL *string
+	Items        []LearningPathItem
+	CreatedAt    time.Time
+	// UpdatedAt is when the path was created or last replaced.
+	UpdatedAt time.Time
+}
+
+// LearningPathFields are the parts of a learning path its author writes, as
+// given to NewLearningPath to create or replace one.
+type LearningPathFields struct {
+	Title string
+	Level DifficultyLevel
+	// InstrumentIDs are the instruments the path is for; empty means every
+	// instrument.
+	InstrumentIDs []string
+	// ThumbnailURL is the image shown for the path; nil means none.
+	ThumbnailURL *string
+	Items        []NewLearningPathItem
 }
 
 // NewLearningPath validates title and items and assigns each item its
@@ -50,12 +74,20 @@ type LearningPath struct {
 // Section labels are normalised here (see normaliseSectionLabel) so the
 // stored path is the single source of truth about which items belong to the
 // same section — consumers must not have to re-derive that by trimming.
-func NewLearningPath(id, teacherID, title string, pathItems []NewLearningPathItem, createdAt time.Time) (LearningPath, error) {
+func NewLearningPath(id, teacherID string, fields LearningPathFields, createdAt time.Time) (LearningPath, error) {
+	title, pathItems := fields.Title, fields.Items
 	var errs []FieldError
 
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
+	if !fields.Level.Valid() {
+		errs = append(errs, FieldError{Field: "level", Reason: "must be one of beginner, early_intermediate, intermediate, advanced, expert"})
+	}
+	if reason := instrumentIDsProblem(fields.InstrumentIDs); reason != "" {
+		errs = append(errs, FieldError{Field: "instrument_ids", Reason: reason})
+	}
+	errs = append(errs, thumbnailProblems(fields.ThumbnailURL)...)
 	if len(pathItems) == 0 {
 		errs = append(errs, FieldError{Field: "items", Reason: "must contain at least one item"})
 	}
@@ -75,12 +107,17 @@ func NewLearningPath(id, teacherID, title string, pathItems []NewLearningPathIte
 		}
 	}
 
+	level := fields.Level
 	return LearningPath{
-		ID:        id,
-		TeacherID: teacherID,
-		Title:     title,
-		Items:     items,
-		CreatedAt: createdAt,
+		ID:            id,
+		TeacherID:     teacherID,
+		Title:         title,
+		Level:         &level,
+		InstrumentIDs: fields.InstrumentIDs,
+		ThumbnailURL:  fields.ThumbnailURL,
+		Items:         items,
+		CreatedAt:     createdAt,
+		UpdatedAt:     createdAt,
 	}, nil
 }
 

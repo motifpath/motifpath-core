@@ -70,6 +70,11 @@ func CourseTitle(v string) predicate.CourseEnrollment {
 	return predicate.CourseEnrollment(sql.FieldEQ(FieldCourseTitle, v))
 }
 
+// CourseThumbnailURL applies equality check predicate on the "course_thumbnail_url" field. It's identical to CourseThumbnailURLEQ.
+func CourseThumbnailURL(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldEQ(FieldCourseThumbnailURL, v))
+}
+
 // CourseVersionNumber applies equality check predicate on the "course_version_number" field. It's identical to CourseVersionNumberEQ.
 func CourseVersionNumber(v int) predicate.CourseEnrollment {
 	return predicate.CourseEnrollment(sql.FieldEQ(FieldCourseVersionNumber, v))
@@ -233,6 +238,81 @@ func CourseTitleEqualFold(v string) predicate.CourseEnrollment {
 // CourseTitleContainsFold applies the ContainsFold predicate on the "course_title" field.
 func CourseTitleContainsFold(v string) predicate.CourseEnrollment {
 	return predicate.CourseEnrollment(sql.FieldContainsFold(FieldCourseTitle, v))
+}
+
+// CourseThumbnailURLEQ applies the EQ predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLEQ(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldEQ(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLNEQ applies the NEQ predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLNEQ(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldNEQ(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLIn applies the In predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLIn(vs ...string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldIn(FieldCourseThumbnailURL, vs...))
+}
+
+// CourseThumbnailURLNotIn applies the NotIn predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLNotIn(vs ...string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldNotIn(FieldCourseThumbnailURL, vs...))
+}
+
+// CourseThumbnailURLGT applies the GT predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLGT(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldGT(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLGTE applies the GTE predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLGTE(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldGTE(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLLT applies the LT predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLLT(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldLT(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLLTE applies the LTE predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLLTE(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldLTE(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLContains applies the Contains predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLContains(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldContains(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLHasPrefix applies the HasPrefix predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLHasPrefix(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldHasPrefix(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLHasSuffix applies the HasSuffix predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLHasSuffix(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldHasSuffix(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLIsNil applies the IsNil predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLIsNil() predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldIsNull(FieldCourseThumbnailURL))
+}
+
+// CourseThumbnailURLNotNil applies the NotNil predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLNotNil() predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldNotNull(FieldCourseThumbnailURL))
+}
+
+// CourseThumbnailURLEqualFold applies the EqualFold predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLEqualFold(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldEqualFold(FieldCourseThumbnailURL, v))
+}
+
+// CourseThumbnailURLContainsFold applies the ContainsFold predicate on the "course_thumbnail_url" field.
+func CourseThumbnailURLContainsFold(v string) predicate.CourseEnrollment {
+	return predicate.CourseEnrollment(sql.FieldContainsFold(FieldCourseThumbnailURL, v))
 }
 
 // CourseVersionNumberEQ applies the EQ predicate on the "course_version_number" field.

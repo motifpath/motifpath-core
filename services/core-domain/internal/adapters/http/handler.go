@@ -184,11 +184,7 @@ func (h *Handler) CreateContentNode(ctx context.Context, request generated.Creat
 	}
 
 	body := request.Body
-	node, err := h.content.CreateContentNode(ctx, caller, body.Title,
-		domain.ContentType(body.ContentType),
-		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DifficultyLevel(body.Classification.DifficultyLevel),
-		body.LanguageCodes, body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
+	node, err := h.content.CreateContentNode(ctx, caller, application.ContentNodeInput{Title: body.Title, ContentType: domain.ContentType(body.ContentType), SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds), ThumbnailURL: body.ThumbnailUrl})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -258,11 +254,12 @@ func (h *Handler) ListContentNodes(ctx context.Context, request generated.ListCo
 		})
 	}
 	filter := domain.ContentNodeFilter{
-		ContentType: contentType,
-		SkillID:     skillID,
-		ConceptID:   conceptID,
-		Difficulty:  difficulty,
-		Query:       searchQuery(request.Params.Q),
+		ContentType:  contentType,
+		SkillID:      skillID,
+		ConceptID:    conceptID,
+		Difficulty:   difficulty,
+		Query:        searchQuery(request.Params.Q),
+		InstrumentID: uuidPtrToString(request.Params.InstrumentId),
 	}
 
 	result, err := h.content.ListContentNodes(ctx, caller, filter, page)
@@ -289,10 +286,7 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 	}
 
 	body := request.Body
-	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), body.Title,
-		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DifficultyLevel(body.Classification.DifficultyLevel), body.LanguageCodes,
-		body.MediaUrl, toDomainPromptDocumentPtr(body.RichContent))
+	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds), ThumbnailURL: body.ThumbnailUrl})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -716,7 +710,7 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, request.Body.Title, pathItems)
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -775,10 +769,14 @@ func (h *Handler) ListLearningPaths(ctx context.Context, request generated.ListL
 		})
 	}
 
-	result, err := h.path.ListLearningPaths(ctx, caller, domain.LearningPathFilter{Query: searchQuery(request.Params.Q)}, page)
+	result, err := h.path.ListLearningPaths(ctx, caller, learningPathListFilter(request.Params), page)
 	if err != nil {
-		if kind, _ := classify(err); kind == errKindForbidden {
+		switch kind, valErr := classify(err); kind {
+		case errKindForbidden:
 			return generated.ListLearningPaths403JSONResponse(forbiddenError("students may not list learning paths directly")), nil
+		case errKindValidation:
+			return generated.ListLearningPaths400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindNotFound, errKindOther:
 		}
 		return nil, err
 	}
@@ -806,7 +804,7 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), request.Body.Title, pathItems)
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1145,8 +1143,7 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		}
 	}
 
-	course, err := h.course.CreateCourse(ctx, caller, request.Body.Title, request.Body.Summary,
-		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	course, err := h.course.CreateCourse(ctx, caller, application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1211,8 +1208,7 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		}
 	}
 
-	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), request.Body.Title, request.Body.Summary,
-		domain.DifficultyLevel(request.Body.Level), checkpoints)
+	course, err := h.course.ReplaceCourse(ctx, caller, request.CourseId.String(), application.CourseInput{Title: request.Body.Title, Summary: request.Body.Summary, Level: domain.DifficultyLevel(request.Body.Level), Language: request.Body.Language, InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Checkpoints: checkpoints})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1307,6 +1303,39 @@ func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCour
 		return nil, err
 	}
 	return generated.RetireCourse200JSONResponse(toCourse(course, latest, names)), nil
+}
+
+func (h *Handler) ReactivateCourse(ctx context.Context, request generated.ReactivateCourseRequestObject) (generated.ReactivateCourseResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReactivateCourse401JSONResponse(unauthorizedError()), nil
+	}
+
+	course, err := h.course.ReactivateCourse(ctx, caller, request.CourseId.String())
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ReactivateCourse403JSONResponse(forbiddenError("only admins may reactivate a course")), nil
+		case errKindNotFound:
+			return generated.ReactivateCourse404JSONResponse(notFoundError("no course exists with the given id")), nil
+		case errKindValidation:
+			return generated.ReactivateCourse400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	latest, err := h.latestCourseVersion(ctx, course.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := h.loadUserNames(ctx, courseUserIDs(course))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ReactivateCourse200JSONResponse(toCourse(course, latest, names)), nil
 }
 
 func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListMyCourseEnrollmentsRequestObject) (generated.ListMyCourseEnrollmentsResponseObject, error) {

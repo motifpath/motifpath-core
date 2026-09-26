@@ -12,12 +12,14 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
@@ -32,6 +34,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
@@ -79,7 +82,7 @@ func init() {
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
-	contentnodeDescCreatedAt := contentnodeFields[8].Descriptor()
+	contentnodeDescCreatedAt := contentnodeFields[9].Descriptor()
 	// contentnode.DefaultCreatedAt holds the default value on creation for the created_at field.
 	contentnode.DefaultCreatedAt = contentnodeDescCreatedAt.Default.(func() time.Time)
 	// contentnodeDescID is the schema descriptor for id field.
@@ -98,6 +101,12 @@ func init() {
 	contentnodeexerciseDescLinkedAt := contentnodeexerciseFields[2].Descriptor()
 	// contentnodeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	contentnodeexercise.DefaultLinkedAt = contentnodeexerciseDescLinkedAt.Default.(func() time.Time)
+	contentnodeinstrumentFields := schema.ContentNodeInstrument{}.Fields()
+	_ = contentnodeinstrumentFields
+	// contentnodeinstrumentDescLinkedAt is the schema descriptor for linked_at field.
+	contentnodeinstrumentDescLinkedAt := contentnodeinstrumentFields[2].Descriptor()
+	// contentnodeinstrument.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	contentnodeinstrument.DefaultLinkedAt = contentnodeinstrumentDescLinkedAt.Default.(func() time.Time)
 	contentnodelanguageFields := schema.ContentNodeLanguage{}.Fields()
 	_ = contentnodelanguageFields
 	// contentnodelanguageDescLinkedAt is the schema descriptor for linked_at field.
@@ -113,7 +122,7 @@ func init() {
 	contentnodeversionFields := schema.ContentNodeVersion{}.Fields()
 	_ = contentnodeversionFields
 	// contentnodeversionDescPublishedAt is the schema descriptor for published_at field.
-	contentnodeversionDescPublishedAt := contentnodeversionFields[10].Descriptor()
+	contentnodeversionDescPublishedAt := contentnodeversionFields[12].Descriptor()
 	// contentnodeversion.DefaultPublishedAt holds the default value on creation for the published_at field.
 	contentnodeversion.DefaultPublishedAt = contentnodeversionDescPublishedAt.Default.(func() time.Time)
 	// contentnodeversionDescID is the schema descriptor for id field.
@@ -122,8 +131,12 @@ func init() {
 	contentnodeversion.DefaultID = contentnodeversionDescID.Default.(func() uuid.UUID)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
+	// courseDescLanguage is the schema descriptor for language field.
+	courseDescLanguage := courseFields[4].Descriptor()
+	// course.DefaultLanguage holds the default value on creation for the language field.
+	course.DefaultLanguage = courseDescLanguage.Default.(string)
 	// courseDescCreatedAt is the schema descriptor for created_at field.
-	courseDescCreatedAt := courseFields[6].Descriptor()
+	courseDescCreatedAt := courseFields[8].Descriptor()
 	// course.DefaultCreatedAt holds the default value on creation for the created_at field.
 	course.DefaultCreatedAt = courseDescCreatedAt.Default.(func() time.Time)
 	// courseDescID is the schema descriptor for id field.
@@ -139,21 +152,31 @@ func init() {
 	courseenrollmentFields := schema.CourseEnrollment{}.Fields()
 	_ = courseenrollmentFields
 	// courseenrollmentDescEnrolledAt is the schema descriptor for enrolled_at field.
-	courseenrollmentDescEnrolledAt := courseenrollmentFields[8].Descriptor()
+	courseenrollmentDescEnrolledAt := courseenrollmentFields[9].Descriptor()
 	// courseenrollment.DefaultEnrolledAt holds the default value on creation for the enrolled_at field.
 	courseenrollment.DefaultEnrolledAt = courseenrollmentDescEnrolledAt.Default.(func() time.Time)
 	// courseenrollmentDescID is the schema descriptor for id field.
 	courseenrollmentDescID := courseenrollmentFields[0].Descriptor()
 	// courseenrollment.DefaultID holds the default value on creation for the id field.
 	courseenrollment.DefaultID = courseenrollmentDescID.Default.(func() uuid.UUID)
+	courseinstrumentFields := schema.CourseInstrument{}.Fields()
+	_ = courseinstrumentFields
+	// courseinstrumentDescLinkedAt is the schema descriptor for linked_at field.
+	courseinstrumentDescLinkedAt := courseinstrumentFields[2].Descriptor()
+	// courseinstrument.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	courseinstrument.DefaultLinkedAt = courseinstrumentDescLinkedAt.Default.(func() time.Time)
 	courseversionFields := schema.CourseVersion{}.Fields()
 	_ = courseversionFields
+	// courseversionDescLanguageSnapshot is the schema descriptor for language_snapshot field.
+	courseversionDescLanguageSnapshot := courseversionFields[6].Descriptor()
+	// courseversion.DefaultLanguageSnapshot holds the default value on creation for the language_snapshot field.
+	courseversion.DefaultLanguageSnapshot = courseversionDescLanguageSnapshot.Default.(string)
 	// courseversionDescAvailableForNewEnrollments is the schema descriptor for available_for_new_enrollments field.
-	courseversionDescAvailableForNewEnrollments := courseversionFields[6].Descriptor()
+	courseversionDescAvailableForNewEnrollments := courseversionFields[9].Descriptor()
 	// courseversion.DefaultAvailableForNewEnrollments holds the default value on creation for the available_for_new_enrollments field.
 	courseversion.DefaultAvailableForNewEnrollments = courseversionDescAvailableForNewEnrollments.Default.(bool)
 	// courseversionDescPublishedAt is the schema descriptor for published_at field.
-	courseversionDescPublishedAt := courseversionFields[7].Descriptor()
+	courseversionDescPublishedAt := courseversionFields[10].Descriptor()
 	// courseversion.DefaultPublishedAt holds the default value on creation for the published_at field.
 	courseversion.DefaultPublishedAt = courseversionDescPublishedAt.Default.(func() time.Time)
 	// courseversionDescID is the schema descriptor for id field.
@@ -246,14 +269,24 @@ func init() {
 	language.DefaultID = languageDescID.Default.(func() uuid.UUID)
 	learningpathFields := schema.LearningPath{}.Fields()
 	_ = learningpathFields
+	// learningpathDescUpdatedAt is the schema descriptor for updated_at field.
+	learningpathDescUpdatedAt := learningpathFields[4].Descriptor()
+	// learningpath.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	learningpath.DefaultUpdatedAt = learningpathDescUpdatedAt.Default.(func() time.Time)
 	// learningpathDescCreatedAt is the schema descriptor for created_at field.
-	learningpathDescCreatedAt := learningpathFields[3].Descriptor()
+	learningpathDescCreatedAt := learningpathFields[6].Descriptor()
 	// learningpath.DefaultCreatedAt holds the default value on creation for the created_at field.
 	learningpath.DefaultCreatedAt = learningpathDescCreatedAt.Default.(func() time.Time)
 	// learningpathDescID is the schema descriptor for id field.
 	learningpathDescID := learningpathFields[0].Descriptor()
 	// learningpath.DefaultID holds the default value on creation for the id field.
 	learningpath.DefaultID = learningpathDescID.Default.(func() uuid.UUID)
+	learningpathinstrumentFields := schema.LearningPathInstrument{}.Fields()
+	_ = learningpathinstrumentFields
+	// learningpathinstrumentDescLinkedAt is the schema descriptor for linked_at field.
+	learningpathinstrumentDescLinkedAt := learningpathinstrumentFields[2].Descriptor()
+	// learningpathinstrument.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	learningpathinstrument.DefaultLinkedAt = learningpathinstrumentDescLinkedAt.Default.(func() time.Time)
 	learningpathitemFields := schema.LearningPathItem{}.Fields()
 	_ = learningpathitemFields
 	// learningpathitemDescID is the schema descriptor for id field.

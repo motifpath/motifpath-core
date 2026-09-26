@@ -961,14 +961,28 @@ func (w *world) listsDiagramsInLanguage(_, language string) error {
 	return w.listDiagrams(generated.ListDiagramsParams{Language: &language})
 }
 
+// responseListsBefore reads a diagram or learning path list, whichever the
+// last step fetched.
 func (w *world) responseListsBefore(first, second string) error {
-	resp, ok := w.lastResp.(generated.ListDiagrams200JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a diagram list, got %#v (err=%v)", w.lastResp, w.lastErr)
+	var ids []uuid.UUID
+	var idOf func(slug string) uuid.UUID
+	switch resp := w.lastResp.(type) {
+	case generated.ListDiagrams200JSONResponse:
+		for _, d := range resp.Items {
+			ids = append(ids, d.DiagramId)
+		}
+		idOf = diagramID
+	case generated.ListLearningPaths200JSONResponse:
+		for _, p := range resp.Items {
+			ids = append(ids, p.LearningPathId)
+		}
+		idOf = pathID
+	default:
+		return fmt.Errorf("expected a diagram or learning path list, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
 	indexOf := func(slug string) int {
-		for i, d := range resp.Items {
-			if d.DiagramId == diagramID(slug) {
+		for i, id := range ids {
+			if id == idOf(slug) {
 				return i
 			}
 		}

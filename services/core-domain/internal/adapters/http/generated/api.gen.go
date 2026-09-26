@@ -166,6 +166,15 @@ const (
 	CreateInstrumentRequestFamilyKeyboard CreateInstrumentRequestFamily = "keyboard"
 )
 
+// Defines values for CreateLearningPathRequestLevel.
+const (
+	CreateLearningPathRequestLevelAdvanced          CreateLearningPathRequestLevel = "advanced"
+	CreateLearningPathRequestLevelBeginner          CreateLearningPathRequestLevel = "beginner"
+	CreateLearningPathRequestLevelEarlyIntermediate CreateLearningPathRequestLevel = "early_intermediate"
+	CreateLearningPathRequestLevelExpert            CreateLearningPathRequestLevel = "expert"
+	CreateLearningPathRequestLevelIntermediate      CreateLearningPathRequestLevel = "intermediate"
+)
+
 // Defines values for CreateMediaUploadUrlRequestContentType.
 const (
 	CreateMediaUploadUrlRequestContentTypeAudio CreateMediaUploadUrlRequestContentType = "audio"
@@ -176,6 +185,7 @@ const (
 const (
 	ExerciseAsset CreateMediaUploadUrlRequestPurpose = "exercise_asset"
 	LibraryAsset  CreateMediaUploadUrlRequestPurpose = "library_asset"
+	Thumbnail     CreateMediaUploadUrlRequestPurpose = "thumbnail"
 )
 
 // Defines values for DiagramKind.
@@ -266,6 +276,15 @@ const (
 	InstrumentFamilyKeyboard InstrumentFamily = "keyboard"
 )
 
+// Defines values for LearningPathLevel.
+const (
+	LearningPathLevelAdvanced          LearningPathLevel = "advanced"
+	LearningPathLevelBeginner          LearningPathLevel = "beginner"
+	LearningPathLevelEarlyIntermediate LearningPathLevel = "early_intermediate"
+	LearningPathLevelExpert            LearningPathLevel = "expert"
+	LearningPathLevelIntermediate      LearningPathLevel = "intermediate"
+)
+
 // Defines values for LearningPathItemContentType.
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
@@ -324,6 +343,15 @@ const (
 	ReplaceCourseRequestLevelEarlyIntermediate ReplaceCourseRequestLevel = "early_intermediate"
 	ReplaceCourseRequestLevelExpert            ReplaceCourseRequestLevel = "expert"
 	ReplaceCourseRequestLevelIntermediate      ReplaceCourseRequestLevel = "intermediate"
+)
+
+// Defines values for ReplaceLearningPathRequestLevel.
+const (
+	ReplaceLearningPathRequestLevelAdvanced          ReplaceLearningPathRequestLevel = "advanced"
+	ReplaceLearningPathRequestLevelBeginner          ReplaceLearningPathRequestLevel = "beginner"
+	ReplaceLearningPathRequestLevelEarlyIntermediate ReplaceLearningPathRequestLevel = "early_intermediate"
+	ReplaceLearningPathRequestLevelExpert            ReplaceLearningPathRequestLevel = "expert"
+	ReplaceLearningPathRequestLevelIntermediate      ReplaceLearningPathRequestLevel = "intermediate"
 )
 
 // Defines values for StudentPathItemContentType.
@@ -388,11 +416,11 @@ const (
 
 // Defines values for ListCoursesParamsLevels.
 const (
-	Advanced          ListCoursesParamsLevels = "advanced"
-	Beginner          ListCoursesParamsLevels = "beginner"
-	EarlyIntermediate ListCoursesParamsLevels = "early_intermediate"
-	Expert            ListCoursesParamsLevels = "expert"
-	Intermediate      ListCoursesParamsLevels = "intermediate"
+	ListCoursesParamsLevelsAdvanced          ListCoursesParamsLevels = "advanced"
+	ListCoursesParamsLevelsBeginner          ListCoursesParamsLevels = "beginner"
+	ListCoursesParamsLevelsEarlyIntermediate ListCoursesParamsLevels = "early_intermediate"
+	ListCoursesParamsLevelsExpert            ListCoursesParamsLevels = "expert"
+	ListCoursesParamsLevelsIntermediate      ListCoursesParamsLevels = "intermediate"
 )
 
 // Defines values for ListCoursesParamsStatus.
@@ -415,6 +443,21 @@ const (
 	ImageChoice      ListExercisesParamsExerciseType = "image_choice"
 	ImageRecognition ListExercisesParamsExerciseType = "image_recognition"
 	TextResponse     ListExercisesParamsExerciseType = "text_response"
+)
+
+// Defines values for ListLearningPathsParamsLevels.
+const (
+	Advanced          ListLearningPathsParamsLevels = "advanced"
+	Beginner          ListLearningPathsParamsLevels = "beginner"
+	EarlyIntermediate ListLearningPathsParamsLevels = "early_intermediate"
+	Expert            ListLearningPathsParamsLevels = "expert"
+	Intermediate      ListLearningPathsParamsLevels = "intermediate"
+)
+
+// Defines values for ListLearningPathsParamsSort.
+const (
+	Title   ListLearningPathsParamsSort = "title"
+	Updated ListLearningPathsParamsSort = "updated"
 )
 
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
@@ -569,6 +612,12 @@ type ContentNode struct {
 	// CreatedAt Timestamp at which the content node was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// Languages The language(s) this content node is available in, or a single
 	// "any" entry for language-agnostic content. A student whose locale
 	// matches none of these (and "any" is absent) sees this node
@@ -602,6 +651,9 @@ type ContentNode struct {
 	// receive.
 	Teacher UserRef `json:"teacher"`
 
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Human-readable title of the content node.
 	Title string `json:"title"`
 }
@@ -627,6 +679,9 @@ type ContentNodeVersion struct {
 	// ContentNodeId The content node this version belongs to.
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
 
+	// InstrumentIdsSnapshot The instrument_ids at the moment of publishing; empty means every instrument.
+	InstrumentIdsSnapshot []openapi_types.UUID `json:"instrument_ids_snapshot"`
+
 	// LanguagesSnapshot The node's available languages at the moment of publishing.
 	LanguagesSnapshot []Language `json:"languages_snapshot"`
 
@@ -647,6 +702,9 @@ type ContentNodeVersion struct {
 	// content may). Always has type "doc" at the root, with the
 	// document's block-level content nested beneath it.
 	RichContentSnapshot *PromptDocument `json:"rich_content_snapshot,omitempty"`
+
+	// ThumbnailUrlSnapshot The thumbnail_url at the moment of publishing; absent when there was none.
+	ThumbnailUrlSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
 
 	// TitleSnapshot The node's title at the moment of publishing.
 	TitleSnapshot string `json:"title_snapshot"`
@@ -681,6 +739,15 @@ type Course struct {
 	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet).
 	HasUnpublishedChanges bool `json:"has_unpublished_changes"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the course is written in, as a Language.code.
+	Language string `json:"language"`
+
 	// LatestPublishedVersion The version_number of the most recently published CourseVersion, or null if the course has never been published.
 	LatestPublishedVersion *int `json:"latest_published_version"`
 
@@ -692,6 +759,9 @@ type Course struct {
 
 	// Summary Short description of the course's current draft.
 	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the course's current draft.
 	Title string `json:"title"`
@@ -722,6 +792,15 @@ type CourseCatalogEntry struct {
 	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
 	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the course is written in, as a Language.code.
+	Language string `json:"language"`
+
 	// Level The level a student should be at to start this course.
 	Level CourseCatalogEntryLevel `json:"level"`
 
@@ -733,6 +812,9 @@ type CourseCatalogEntry struct {
 
 	// Summary Short description of the course.
 	Summary string `json:"summary"`
+
+	// ThumbnailUrl The course's thumbnail: the latest published version's in GET /catalog/courses, the live draft's in GET /courses. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the course.
 	Title string `json:"title"`
@@ -770,6 +852,15 @@ type CourseDetail struct {
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the course is written in, as a Language.code.
+	Language string `json:"language"`
+
 	// Level The level a student should be at to start this course.
 	Level CourseDetailLevel `json:"level"`
 
@@ -781,6 +872,9 @@ type CourseDetail struct {
 
 	// Summary Short description of the course.
 	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the course.
 	Title string `json:"title"`
@@ -807,6 +901,9 @@ type CourseEnrollment struct {
 
 	// CourseId The enrolled course.
 	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CourseThumbnailUrl The course's thumbnail, as of the pinned version. Absent when that version had none.
+	CourseThumbnailUrl *string `json:"course_thumbnail_url,omitempty"`
 
 	// CourseTitle The course's title, as of the pinned version.
 	CourseTitle string `json:"course_title"`
@@ -854,7 +951,7 @@ type CourseOutlineItem struct {
 }
 
 // CourseVersion An immutable, permanent snapshot of a course's title, summary,
-// level, and checkpoints at the moment it was published. Students
+// level, language, and checkpoints at the moment it was published. Students
 // and the catalog only ever read the latest CourseVersion, never
 // the live draft.
 type CourseVersion struct {
@@ -864,6 +961,12 @@ type CourseVersion struct {
 	// CourseId The course this version belongs to.
 	CourseId openapi_types.UUID `json:"course_id"`
 
+	// InstrumentIdsSnapshot The instrument_ids at the moment of publishing; empty means every instrument.
+	InstrumentIdsSnapshot []openapi_types.UUID `json:"instrument_ids_snapshot"`
+
+	// LanguageSnapshot The course's language at the moment of publishing, as a Language.code.
+	LanguageSnapshot string `json:"language_snapshot"`
+
 	// LevelSnapshot The course's level at the moment of publishing.
 	LevelSnapshot CourseVersionLevelSnapshot `json:"level_snapshot"`
 
@@ -872,6 +975,9 @@ type CourseVersion struct {
 
 	// SummarySnapshot The course's summary at the moment of publishing.
 	SummarySnapshot string `json:"summary_snapshot"`
+
+	// ThumbnailUrlSnapshot The thumbnail_url at the moment of publishing; absent when there was none.
+	ThumbnailUrlSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
 
 	// TitleSnapshot The course's title at the moment of publishing.
 	TitleSnapshot string `json:"title_snapshot"`
@@ -952,6 +1058,12 @@ type CreateContentNodeRequest struct {
 	// PromptNode, or attach it via ExpandedContent, on either type.
 	ContentType CreateContentNodeRequestContentType `json:"content_type"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// LanguageCodes One or more Language.code values this content node is available
 	// in. A single-element array containing "any" marks the content as
 	// language-agnostic; "any" cannot be combined with other language
@@ -979,6 +1091,9 @@ type CreateContentNodeRequest struct {
 	// document's block-level content nested beneath it.
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
 
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
 }
@@ -1004,11 +1119,23 @@ type CreateCourseRequest struct {
 		Title *string `json:"title,omitempty"`
 	} `json:"checkpoints"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the course is written in, as a Language.code other than "any". A course is not localized: its title, summary and checkpoint titles are all in this language.
+	Language string `json:"language"`
+
 	// Level The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
 	Level CreateCourseRequestLevel `json:"level"`
 
 	// Summary Short description of the course shown in the catalog.
 	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the course.
 	Title string `json:"title"`
@@ -1280,6 +1407,12 @@ type CreateInstrumentRequestFamily string
 
 // CreateLearningPathRequest Payload for creating a learning path.
 type CreateLearningPathRequest struct {
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// Items Ordered list of content nodes that make up this path. At least one item is required.
 	Items []struct {
 		// ContentNodeId The ID of the content node at this position. Must exist in the system.
@@ -1289,9 +1422,18 @@ type CreateLearningPathRequest struct {
 		SectionLabel *string `json:"section_label,omitempty"`
 	} `json:"items"`
 
+	// Level The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+	Level CreateLearningPathRequestLevel `json:"level"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Human-readable name for this learning path, displayed to teachers and admins.
 	Title string `json:"title"`
 }
+
+// CreateLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+type CreateLearningPathRequestLevel string
 
 // CreateMediaUploadUrlRequest Payload requesting a presigned URL to upload a content-authoring media
 // asset (exercise/prompt image or audio, or an addition to the shared
@@ -1301,7 +1443,7 @@ type CreateMediaUploadUrlRequest struct {
 	ContentType CreateMediaUploadUrlRequestContentType `json:"content_type"`
 
 	// ExerciseId The exercise this upload belongs to. Required when purpose is
-	// exercise_asset; must be absent when purpose is library_asset.
+	// exercise_asset; must be absent otherwise.
 	ExerciseId *openapi_types.UUID `json:"exercise_id,omitempty"`
 
 	// FileName The original file name, used to derive the stored object's file
@@ -1311,7 +1453,9 @@ type CreateMediaUploadUrlRequest struct {
 	// Purpose What the uploaded object is for. exercise_asset requires
 	// exercise_id and stores the object under that exercise's prefix.
 	// library_asset stores the object under the shared, predefined
-	// image-picker library's prefix.
+	// image-picker library's prefix. thumbnail stores an image shown for
+	// a course, learning path or content node in lists and cards; its
+	// content_type must be image.
 	Purpose CreateMediaUploadUrlRequestPurpose `json:"purpose"`
 }
 
@@ -1321,7 +1465,9 @@ type CreateMediaUploadUrlRequestContentType string
 // CreateMediaUploadUrlRequestPurpose What the uploaded object is for. exercise_asset requires
 // exercise_id and stores the object under that exercise's prefix.
 // library_asset stores the object under the shared, predefined
-// image-picker library's prefix.
+// image-picker library's prefix. thumbnail stores an image shown for
+// a course, learning path or content node in lists and cards; its
+// content_type must be image.
 type CreateMediaUploadUrlRequestPurpose string
 
 // CreateSkillRequest Payload for creating a new skill node. There is no update or delete
@@ -1913,6 +2059,12 @@ type Instrument struct {
 // positions[].key. A single Diagram cannot mix families.
 type InstrumentFamily string
 
+// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+// empty list means it suits every instrument (for example, music
+// theory). Every id must reference an existing instrument, and none
+// may repeat.
+type InstrumentIds = []openapi_types.UUID
+
 // Language A language MotifPath content or a user's locale preference can be
 // tagged with. Includes the literal code "any", which marks content as
 // language-agnostic (e.g. an image with no spoken or written words)
@@ -1933,11 +2085,20 @@ type LearningPath struct {
 	// CreatedAt Timestamp at which this learning path was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// Items Ordered content nodes, sorted by position ascending.
 	Items []LearningPathItem `json:"items"`
 
 	// LearningPathId Stable identifier for this learning path.
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+	// Level The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
+	Level *LearningPathLevel `json:"level,omitempty"`
 
 	// Teacher A reference to another MotifPath user, as it appears in any response
 	// that points at a user (ADR-035). display_name is read from the
@@ -1947,9 +2108,18 @@ type LearningPath struct {
 	// receive.
 	Teacher UserRef `json:"teacher"`
 
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Human-readable name for this learning path.
 	Title string `json:"title"`
+
+	// UpdatedAt Timestamp at which this learning path was last created or replaced.
+	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// LearningPathLevel The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
+type LearningPathLevel string
 
 // LearningPathItem A single content node within a learning path at a given position.
 type LearningPathItem struct {
@@ -2337,11 +2507,23 @@ type ReplaceCourseRequest struct {
 		Title *string `json:"title,omitempty"`
 	} `json:"checkpoints"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the course is written in, as a Language.code other than "any". A course is not localized: its title, summary and checkpoint titles are all in this language.
+	Language string `json:"language"`
+
 	// Level The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
 	Level ReplaceCourseRequestLevel `json:"level"`
 
 	// Summary Short description of the course shown in the catalog.
 	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the course.
 	Title string `json:"title"`
@@ -2355,6 +2537,12 @@ type ReplaceCourseRequestLevel string
 // change to any single item (add, remove, reorder, relabel) is
 // expressed by resending the complete desired items array.
 type ReplaceLearningPathRequest struct {
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// Items Ordered list of content nodes that make up this path. At least one item is required.
 	Items []struct {
 		// ContentNodeId The ID of the content node at this position. Must exist in the system.
@@ -2364,9 +2552,18 @@ type ReplaceLearningPathRequest struct {
 		SectionLabel *string `json:"section_label,omitempty"`
 	} `json:"items"`
 
+	// Level The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+	Level ReplaceLearningPathRequestLevel `json:"level"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Human-readable name for this learning path, displayed to teachers and admins.
 	Title string `json:"title"`
 }
+
+// ReplaceLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+type ReplaceLearningPathRequestLevel string
 
 // SetCurrentPathRequest Payload for switching the caller's current course or path. Exactly one of course_enrollment_id or student_path_id must be given.
 type SetCurrentPathRequest struct {
@@ -2550,6 +2747,12 @@ type UpdateContentNodeRequest struct {
 	// need doesn't exist yet.
 	Classification ClassificationInput `json:"classification"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// LanguageCodes One or more Language.code values this content node is available
 	// in, replacing its current set. A single-element array containing
 	// "any" marks the content as language-agnostic; "any" cannot be
@@ -2575,6 +2778,9 @@ type UpdateContentNodeRequest struct {
 	// content may). Always has type "doc" at the root, with the
 	// document's block-level content nested beneath it.
 	RichContent *PromptDocument `json:"rich_content,omitempty"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Human-readable title of the content node, displayed to students.
 	Title string `json:"title"`
@@ -2888,6 +3094,13 @@ type ListCatalogCoursesParams struct {
 
 	// ConceptIds Restricts the results to courses classified with at least one of these concepts.
 	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+
+	// Language Restricts the results to courses written in this language
+	// (a Language.code other than "any").
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
 
 // ListCatalogCoursesParamsLevels defines parameters for ListCatalogCourses.
@@ -2921,6 +3134,9 @@ type ListContentNodesParams struct {
 
 	// DifficultyLevel When given, only content nodes at this difficulty level are returned.
 	DifficultyLevel *ListContentNodesParamsDifficultyLevel `form:"difficulty_level,omitempty" json:"difficulty_level,omitempty"`
+
+	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
 
 // ListContentNodesParamsContentType defines parameters for ListContentNodes.
@@ -2954,6 +3170,13 @@ type ListCoursesParams struct {
 
 	// Status Restricts the results to courses in this status.
 	Status *ListCoursesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+
+	// Language Restricts the results to courses written in this language
+	// (a Language.code other than "any").
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
 
 // ListCoursesParamsLevels defines parameters for ListCourses.
@@ -3031,7 +3254,31 @@ type ListLearningPathsParams struct {
 
 	// Offset Number of matching items to skip before this page (ADR-031).
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// CreatedBy Restricts the results to learning paths created by this user.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// Levels Restricts the results to learning paths at any of these levels.
+	Levels *[]ListLearningPathsParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
+
+	// SkillIds Restricts the results to learning paths with a content node classified with at least one of these skills.
+	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to learning paths with a content node classified with at least one of these concepts.
+	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+
+	// Sort title orders by title, then id. updated orders by updated_at, most recent first, then id.
+	Sort *ListLearningPathsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
+
+// ListLearningPathsParamsLevels defines parameters for ListLearningPaths.
+type ListLearningPathsParamsLevels string
+
+// ListLearningPathsParamsSort defines parameters for ListLearningPaths.
+type ListLearningPathsParamsSort string
 
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
@@ -3204,6 +3451,9 @@ type ServerInterface interface {
 	// Get a course's latest published version, as students see it
 	// (GET /courses/{course_id}/published)
 	GetPublishedCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
+	// Reactivate a retired course
+	// (POST /courses/{course_id}/reactivate)
+	ReactivateCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
 	// Retire a course
 	// (POST /courses/{course_id}/retire)
 	RetireCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID)
@@ -3492,6 +3742,12 @@ func (_ Unimplemented) PublishCourse(w http.ResponseWriter, r *http.Request, cou
 // Get a course's latest published version, as students see it
 // (GET /courses/{course_id}/published)
 func (_ Unimplemented) GetPublishedCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Reactivate a retired course
+// (POST /courses/{course_id}/reactivate)
+func (_ Unimplemented) ReactivateCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3793,6 +4049,22 @@ func (siw *ServerInterfaceWrapper) ListCatalogCourses(w http.ResponseWriter, r *
 	err = runtime.BindQueryParameter("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
 		return
 	}
 
@@ -4120,6 +4392,14 @@ func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *ht
 	err = runtime.BindQueryParameter("form", true, false, "difficulty_level", r.URL.Query(), &params.DifficultyLevel)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "difficulty_level", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
 		return
 	}
 
@@ -4591,6 +4871,22 @@ func (siw *ServerInterfaceWrapper) ListCourses(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListCourses(w, r, params)
 	}))
@@ -4770,6 +5066,37 @@ func (siw *ServerInterfaceWrapper) GetPublishedCourse(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetPublishedCourse(w, r, courseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReactivateCourse operation middleware
+func (siw *ServerInterfaceWrapper) ReactivateCourse(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "course_id" -------------
+	var courseId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "course_id", chi.URLParam(r, "course_id"), &courseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "course_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReactivateCourse(w, r, courseId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5333,6 +5660,54 @@ func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *h
 	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "levels" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "levels", r.URL.Query(), &params.Levels)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "levels", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", r.URL.Query(), &params.Sort)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
 		return
 	}
 
@@ -6034,6 +6409,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/courses/{course_id}/published", wrapper.GetPublishedCourse)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/courses/{course_id}/reactivate", wrapper.ReactivateCourse)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/courses/{course_id}/retire", wrapper.RetireCourse)
@@ -7378,6 +7756,59 @@ func (response GetPublishedCourse401JSONResponse) VisitGetPublishedCourseRespons
 type GetPublishedCourse404JSONResponse NotFoundError
 
 func (response GetPublishedCourse404JSONResponse) VisitGetPublishedCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReactivateCourseRequestObject struct {
+	CourseId openapi_types.UUID `json:"course_id"`
+}
+
+type ReactivateCourseResponseObject interface {
+	VisitReactivateCourseResponse(w http.ResponseWriter) error
+}
+
+type ReactivateCourse200JSONResponse Course
+
+func (response ReactivateCourse200JSONResponse) VisitReactivateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReactivateCourse400JSONResponse ValidationError
+
+func (response ReactivateCourse400JSONResponse) VisitReactivateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReactivateCourse401JSONResponse UnauthorizedError
+
+func (response ReactivateCourse401JSONResponse) VisitReactivateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReactivateCourse403JSONResponse ForbiddenError
+
+func (response ReactivateCourse403JSONResponse) VisitReactivateCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReactivateCourse404JSONResponse NotFoundError
+
+func (response ReactivateCourse404JSONResponse) VisitReactivateCourseResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -9007,6 +9438,9 @@ type StrictServerInterface interface {
 	// Get a course's latest published version, as students see it
 	// (GET /courses/{course_id}/published)
 	GetPublishedCourse(ctx context.Context, request GetPublishedCourseRequestObject) (GetPublishedCourseResponseObject, error)
+	// Reactivate a retired course
+	// (POST /courses/{course_id}/reactivate)
+	ReactivateCourse(ctx context.Context, request ReactivateCourseRequestObject) (ReactivateCourseResponseObject, error)
 	// Retire a course
 	// (POST /courses/{course_id}/retire)
 	RetireCourse(ctx context.Context, request RetireCourseRequestObject) (RetireCourseResponseObject, error)
@@ -9948,6 +10382,32 @@ func (sh *strictHandler) GetPublishedCourse(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetPublishedCourseResponseObject); ok {
 		if err := validResponse.VisitGetPublishedCourseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReactivateCourse operation middleware
+func (sh *strictHandler) ReactivateCourse(w http.ResponseWriter, r *http.Request, courseId openapi_types.UUID) {
+	var request ReactivateCourseRequestObject
+
+	request.CourseId = courseId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReactivateCourse(ctx, request.(ReactivateCourseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReactivateCourse")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReactivateCourseResponseObject); ok {
+		if err := validResponse.VisitReactivateCourseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -24,6 +24,9 @@ type ContentNodeConcept func(*sql.Selector)
 // ContentNodeExercise is the predicate function for contentnodeexercise builders.
 type ContentNodeExercise func(*sql.Selector)
 
+// ContentNodeInstrument is the predicate function for contentnodeinstrument builders.
+type ContentNodeInstrument func(*sql.Selector)
+
 // ContentNodeLanguage is the predicate function for contentnodelanguage builders.
 type ContentNodeLanguage func(*sql.Selector)
 
@@ -41,6 +44,9 @@ type CourseCheckpoint func(*sql.Selector)
 
 // CourseEnrollment is the predicate function for courseenrollment builders.
 type CourseEnrollment func(*sql.Selector)
+
+// CourseInstrument is the predicate function for courseinstrument builders.
+type CourseInstrument func(*sql.Selector)
 
 // CourseVersion is the predicate function for courseversion builders.
 type CourseVersion func(*sql.Selector)
@@ -83,6 +89,9 @@ type Language func(*sql.Selector)
 
 // LearningPath is the predicate function for learningpath builders.
 type LearningPath func(*sql.Selector)
+
+// LearningPathInstrument is the predicate function for learningpathinstrument builders.
+type LearningPathInstrument func(*sql.Selector)
 
 // LearningPathItem is the predicate function for learningpathitem builders.
 type LearningPathItem func(*sql.Selector)

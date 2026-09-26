@@ -18,12 +18,14 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodelanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/coursecheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseenrollment"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
@@ -38,6 +40,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -63,12 +66,14 @@ const (
 	TypeContentNode             = "ContentNode"
 	TypeContentNodeConcept      = "ContentNodeConcept"
 	TypeContentNodeExercise     = "ContentNodeExercise"
+	TypeContentNodeInstrument   = "ContentNodeInstrument"
 	TypeContentNodeLanguage     = "ContentNodeLanguage"
 	TypeContentNodeSkill        = "ContentNodeSkill"
 	TypeContentNodeVersion      = "ContentNodeVersion"
 	TypeCourse                  = "Course"
 	TypeCourseCheckpoint        = "CourseCheckpoint"
 	TypeCourseEnrollment        = "CourseEnrollment"
+	TypeCourseInstrument        = "CourseInstrument"
 	TypeCourseVersion           = "CourseVersion"
 	TypeCourseVersionCheckpoint = "CourseVersionCheckpoint"
 	TypeDiagram                 = "Diagram"
@@ -83,6 +88,7 @@ const (
 	TypeInstrument              = "Instrument"
 	TypeLanguage                = "Language"
 	TypeLearningPath            = "LearningPath"
+	TypeLearningPathInstrument  = "LearningPathInstrument"
 	TypeLearningPathItem        = "LearningPathItem"
 	TypePosition                = "Position"
 	TypeSkill                   = "Skill"
@@ -2690,45 +2696,52 @@ func (m *ConceptMutation) ResetEdge(name string) error {
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.
 type ContentNodeMutation struct {
 	config
-	op                            Op
-	typ                           string
-	id                            *uuid.UUID
-	teacher_id                    *uuid.UUID
-	title                         *string
-	content_type                  *contentnode.ContentType
-	media_url                     *string
-	rich_content                  *string
-	difficulty_level              *contentnode.DifficultyLevel
-	review_state                  *contentnode.ReviewState
-	created_at                    *time.Time
-	clearedFields                 map[string]struct{}
-	path_exercises                map[uuid.UUID]struct{}
-	removedpath_exercises         map[uuid.UUID]struct{}
-	clearedpath_exercises         bool
-	languages                     map[uuid.UUID]struct{}
-	removedlanguages              map[uuid.UUID]struct{}
-	clearedlanguages              bool
-	skills                        map[uuid.UUID]struct{}
-	removedskills                 map[uuid.UUID]struct{}
-	clearedskills                 bool
-	concepts                      map[uuid.UUID]struct{}
-	removedconcepts               map[uuid.UUID]struct{}
-	clearedconcepts               bool
-	content_node_exercises        map[int]struct{}
-	removedcontent_node_exercises map[int]struct{}
-	clearedcontent_node_exercises bool
-	content_node_languages        map[int]struct{}
-	removedcontent_node_languages map[int]struct{}
-	clearedcontent_node_languages bool
-	content_node_skills           map[int]struct{}
-	removedcontent_node_skills    map[int]struct{}
-	clearedcontent_node_skills    bool
-	content_node_concepts         map[int]struct{}
-	removedcontent_node_concepts  map[int]struct{}
-	clearedcontent_node_concepts  bool
-	done                          bool
-	oldValue                      func(context.Context) (*ContentNode, error)
-	predicates                    []predicate.ContentNode
+	op                              Op
+	typ                             string
+	id                              *uuid.UUID
+	teacher_id                      *uuid.UUID
+	title                           *string
+	content_type                    *contentnode.ContentType
+	media_url                       *string
+	rich_content                    *string
+	difficulty_level                *contentnode.DifficultyLevel
+	review_state                    *contentnode.ReviewState
+	thumbnail_url                   *string
+	created_at                      *time.Time
+	clearedFields                   map[string]struct{}
+	path_exercises                  map[uuid.UUID]struct{}
+	removedpath_exercises           map[uuid.UUID]struct{}
+	clearedpath_exercises           bool
+	languages                       map[uuid.UUID]struct{}
+	removedlanguages                map[uuid.UUID]struct{}
+	clearedlanguages                bool
+	skills                          map[uuid.UUID]struct{}
+	removedskills                   map[uuid.UUID]struct{}
+	clearedskills                   bool
+	concepts                        map[uuid.UUID]struct{}
+	removedconcepts                 map[uuid.UUID]struct{}
+	clearedconcepts                 bool
+	instruments                     map[uuid.UUID]struct{}
+	removedinstruments              map[uuid.UUID]struct{}
+	clearedinstruments              bool
+	content_node_exercises          map[int]struct{}
+	removedcontent_node_exercises   map[int]struct{}
+	clearedcontent_node_exercises   bool
+	content_node_languages          map[int]struct{}
+	removedcontent_node_languages   map[int]struct{}
+	clearedcontent_node_languages   bool
+	content_node_skills             map[int]struct{}
+	removedcontent_node_skills      map[int]struct{}
+	clearedcontent_node_skills      bool
+	content_node_concepts           map[int]struct{}
+	removedcontent_node_concepts    map[int]struct{}
+	clearedcontent_node_concepts    bool
+	content_node_instruments        map[int]struct{}
+	removedcontent_node_instruments map[int]struct{}
+	clearedcontent_node_instruments bool
+	done                            bool
+	oldValue                        func(context.Context) (*ContentNode, error)
+	predicates                      []predicate.ContentNode
 }
 
 var _ ent.Mutation = (*ContentNodeMutation)(nil)
@@ -3113,6 +3126,55 @@ func (m *ContentNodeMutation) ResetReviewState() {
 	m.review_state = nil
 }
 
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *ContentNodeMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *ContentNodeMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the ContentNode entity.
+// If the ContentNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *ContentNodeMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[contentnode.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *ContentNodeMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[contentnode.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *ContentNodeMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, contentnode.FieldThumbnailURL)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ContentNodeMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -3365,6 +3427,60 @@ func (m *ContentNodeMutation) ResetConcepts() {
 	m.removedconcepts = nil
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *ContentNodeMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *ContentNodeMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *ContentNodeMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *ContentNodeMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *ContentNodeMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *ContentNodeMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *ContentNodeMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
+}
+
 // AddContentNodeExerciseIDs adds the "content_node_exercises" edge to the ContentNodeExercise entity by ids.
 func (m *ContentNodeMutation) AddContentNodeExerciseIDs(ids ...int) {
 	if m.content_node_exercises == nil {
@@ -3581,6 +3697,60 @@ func (m *ContentNodeMutation) ResetContentNodeConcepts() {
 	m.removedcontent_node_concepts = nil
 }
 
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by ids.
+func (m *ContentNodeMutation) AddContentNodeInstrumentIDs(ids ...int) {
+	if m.content_node_instruments == nil {
+		m.content_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeInstruments clears the "content_node_instruments" edge to the ContentNodeInstrument entity.
+func (m *ContentNodeMutation) ClearContentNodeInstruments() {
+	m.clearedcontent_node_instruments = true
+}
+
+// ContentNodeInstrumentsCleared reports if the "content_node_instruments" edge to the ContentNodeInstrument entity was cleared.
+func (m *ContentNodeMutation) ContentNodeInstrumentsCleared() bool {
+	return m.clearedcontent_node_instruments
+}
+
+// RemoveContentNodeInstrumentIDs removes the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (m *ContentNodeMutation) RemoveContentNodeInstrumentIDs(ids ...int) {
+	if m.removedcontent_node_instruments == nil {
+		m.removedcontent_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_instruments, ids[i])
+		m.removedcontent_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeInstruments returns the removed IDs of the "content_node_instruments" edge to the ContentNodeInstrument entity.
+func (m *ContentNodeMutation) RemovedContentNodeInstrumentsIDs() (ids []int) {
+	for id := range m.removedcontent_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeInstrumentsIDs returns the "content_node_instruments" edge IDs in the mutation.
+func (m *ContentNodeMutation) ContentNodeInstrumentsIDs() (ids []int) {
+	for id := range m.content_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeInstruments resets all changes to the "content_node_instruments" edge.
+func (m *ContentNodeMutation) ResetContentNodeInstruments() {
+	m.content_node_instruments = nil
+	m.clearedcontent_node_instruments = false
+	m.removedcontent_node_instruments = nil
+}
+
 // Where appends a list predicates to the ContentNodeMutation builder.
 func (m *ContentNodeMutation) Where(ps ...predicate.ContentNode) {
 	m.predicates = append(m.predicates, ps...)
@@ -3615,7 +3785,7 @@ func (m *ContentNodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.teacher_id != nil {
 		fields = append(fields, contentnode.FieldTeacherID)
 	}
@@ -3636,6 +3806,9 @@ func (m *ContentNodeMutation) Fields() []string {
 	}
 	if m.review_state != nil {
 		fields = append(fields, contentnode.FieldReviewState)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, contentnode.FieldThumbnailURL)
 	}
 	if m.created_at != nil {
 		fields = append(fields, contentnode.FieldCreatedAt)
@@ -3662,6 +3835,8 @@ func (m *ContentNodeMutation) Field(name string) (ent.Value, bool) {
 		return m.DifficultyLevel()
 	case contentnode.FieldReviewState:
 		return m.ReviewState()
+	case contentnode.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case contentnode.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -3687,6 +3862,8 @@ func (m *ContentNodeMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldDifficultyLevel(ctx)
 	case contentnode.FieldReviewState:
 		return m.OldReviewState(ctx)
+	case contentnode.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case contentnode.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -3747,6 +3924,13 @@ func (m *ContentNodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetReviewState(v)
 		return nil
+	case contentnode.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
+		return nil
 	case contentnode.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -3790,6 +3974,9 @@ func (m *ContentNodeMutation) ClearedFields() []string {
 	if m.FieldCleared(contentnode.FieldRichContent) {
 		fields = append(fields, contentnode.FieldRichContent)
 	}
+	if m.FieldCleared(contentnode.FieldThumbnailURL) {
+		fields = append(fields, contentnode.FieldThumbnailURL)
+	}
 	return fields
 }
 
@@ -3809,6 +3996,9 @@ func (m *ContentNodeMutation) ClearField(name string) error {
 		return nil
 	case contentnode.FieldRichContent:
 		m.ClearRichContent()
+		return nil
+	case contentnode.FieldThumbnailURL:
+		m.ClearThumbnailURL()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode nullable field %s", name)
@@ -3839,6 +4029,9 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 	case contentnode.FieldReviewState:
 		m.ResetReviewState()
 		return nil
+	case contentnode.FieldThumbnailURL:
+		m.ResetThumbnailURL()
+		return nil
 	case contentnode.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
@@ -3848,7 +4041,7 @@ func (m *ContentNodeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ContentNodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.path_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
@@ -3861,6 +4054,9 @@ func (m *ContentNodeMutation) AddedEdges() []string {
 	if m.concepts != nil {
 		edges = append(edges, contentnode.EdgeConcepts)
 	}
+	if m.instruments != nil {
+		edges = append(edges, contentnode.EdgeInstruments)
+	}
 	if m.content_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
@@ -3872,6 +4068,9 @@ func (m *ContentNodeMutation) AddedEdges() []string {
 	}
 	if m.content_node_concepts != nil {
 		edges = append(edges, contentnode.EdgeContentNodeConcepts)
+	}
+	if m.content_node_instruments != nil {
+		edges = append(edges, contentnode.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -3904,6 +4103,12 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.content_node_exercises))
 		for id := range m.content_node_exercises {
@@ -3928,13 +4133,19 @@ func (m *ContentNodeMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeContentNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.content_node_instruments))
+		for id := range m.content_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ContentNodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.removedpath_exercises != nil {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
@@ -3947,6 +4158,9 @@ func (m *ContentNodeMutation) RemovedEdges() []string {
 	if m.removedconcepts != nil {
 		edges = append(edges, contentnode.EdgeConcepts)
 	}
+	if m.removedinstruments != nil {
+		edges = append(edges, contentnode.EdgeInstruments)
+	}
 	if m.removedcontent_node_exercises != nil {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
@@ -3958,6 +4172,9 @@ func (m *ContentNodeMutation) RemovedEdges() []string {
 	}
 	if m.removedcontent_node_concepts != nil {
 		edges = append(edges, contentnode.EdgeContentNodeConcepts)
+	}
+	if m.removedcontent_node_instruments != nil {
+		edges = append(edges, contentnode.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -3990,6 +4207,12 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case contentnode.EdgeContentNodeExercises:
 		ids := make([]ent.Value, 0, len(m.removedcontent_node_exercises))
 		for id := range m.removedcontent_node_exercises {
@@ -4014,13 +4237,19 @@ func (m *ContentNodeMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case contentnode.EdgeContentNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_instruments))
+		for id := range m.removedcontent_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ContentNodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.clearedpath_exercises {
 		edges = append(edges, contentnode.EdgePathExercises)
 	}
@@ -4033,6 +4262,9 @@ func (m *ContentNodeMutation) ClearedEdges() []string {
 	if m.clearedconcepts {
 		edges = append(edges, contentnode.EdgeConcepts)
 	}
+	if m.clearedinstruments {
+		edges = append(edges, contentnode.EdgeInstruments)
+	}
 	if m.clearedcontent_node_exercises {
 		edges = append(edges, contentnode.EdgeContentNodeExercises)
 	}
@@ -4044,6 +4276,9 @@ func (m *ContentNodeMutation) ClearedEdges() []string {
 	}
 	if m.clearedcontent_node_concepts {
 		edges = append(edges, contentnode.EdgeContentNodeConcepts)
+	}
+	if m.clearedcontent_node_instruments {
+		edges = append(edges, contentnode.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -4060,6 +4295,8 @@ func (m *ContentNodeMutation) EdgeCleared(name string) bool {
 		return m.clearedskills
 	case contentnode.EdgeConcepts:
 		return m.clearedconcepts
+	case contentnode.EdgeInstruments:
+		return m.clearedinstruments
 	case contentnode.EdgeContentNodeExercises:
 		return m.clearedcontent_node_exercises
 	case contentnode.EdgeContentNodeLanguages:
@@ -4068,6 +4305,8 @@ func (m *ContentNodeMutation) EdgeCleared(name string) bool {
 		return m.clearedcontent_node_skills
 	case contentnode.EdgeContentNodeConcepts:
 		return m.clearedcontent_node_concepts
+	case contentnode.EdgeContentNodeInstruments:
+		return m.clearedcontent_node_instruments
 	}
 	return false
 }
@@ -4096,6 +4335,9 @@ func (m *ContentNodeMutation) ResetEdge(name string) error {
 	case contentnode.EdgeConcepts:
 		m.ResetConcepts()
 		return nil
+	case contentnode.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
 	case contentnode.EdgeContentNodeExercises:
 		m.ResetContentNodeExercises()
 		return nil
@@ -4107,6 +4349,9 @@ func (m *ContentNodeMutation) ResetEdge(name string) error {
 		return nil
 	case contentnode.EdgeContentNodeConcepts:
 		m.ResetContentNodeConcepts()
+		return nil
+	case contentnode.EdgeContentNodeInstruments:
+		m.ResetContentNodeInstruments()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNode edge %s", name)
@@ -5180,6 +5425,540 @@ func (m *ContentNodeExerciseMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ContentNodeExercise edge %s", name)
 }
 
+// ContentNodeInstrumentMutation represents an operation that mutates the ContentNodeInstrument nodes in the graph.
+type ContentNodeInstrumentMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	linked_at           *time.Time
+	clearedFields       map[string]struct{}
+	content_node        *uuid.UUID
+	clearedcontent_node bool
+	instrument          *uuid.UUID
+	clearedinstrument   bool
+	done                bool
+	oldValue            func(context.Context) (*ContentNodeInstrument, error)
+	predicates          []predicate.ContentNodeInstrument
+}
+
+var _ ent.Mutation = (*ContentNodeInstrumentMutation)(nil)
+
+// contentnodeinstrumentOption allows management of the mutation configuration using functional options.
+type contentnodeinstrumentOption func(*ContentNodeInstrumentMutation)
+
+// newContentNodeInstrumentMutation creates new mutation for the ContentNodeInstrument entity.
+func newContentNodeInstrumentMutation(c config, op Op, opts ...contentnodeinstrumentOption) *ContentNodeInstrumentMutation {
+	m := &ContentNodeInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeContentNodeInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withContentNodeInstrumentID sets the ID field of the mutation.
+func withContentNodeInstrumentID(id int) contentnodeinstrumentOption {
+	return func(m *ContentNodeInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ContentNodeInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*ContentNodeInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ContentNodeInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withContentNodeInstrument sets the old ContentNodeInstrument of the mutation.
+func withContentNodeInstrument(node *ContentNodeInstrument) contentnodeinstrumentOption {
+	return func(m *ContentNodeInstrumentMutation) {
+		m.oldValue = func(context.Context) (*ContentNodeInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ContentNodeInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ContentNodeInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ContentNodeInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ContentNodeInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ContentNodeInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetContentNodeID sets the "content_node_id" field.
+func (m *ContentNodeInstrumentMutation) SetContentNodeID(u uuid.UUID) {
+	m.content_node = &u
+}
+
+// ContentNodeID returns the value of the "content_node_id" field in the mutation.
+func (m *ContentNodeInstrumentMutation) ContentNodeID() (r uuid.UUID, exists bool) {
+	v := m.content_node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentNodeID returns the old "content_node_id" field's value of the ContentNodeInstrument entity.
+// If the ContentNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeInstrumentMutation) OldContentNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentNodeID: %w", err)
+	}
+	return oldValue.ContentNodeID, nil
+}
+
+// ResetContentNodeID resets all changes to the "content_node_id" field.
+func (m *ContentNodeInstrumentMutation) ResetContentNodeID() {
+	m.content_node = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *ContentNodeInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *ContentNodeInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the ContentNodeInstrument entity.
+// If the ContentNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *ContentNodeInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ContentNodeInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ContentNodeInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ContentNodeInstrument entity.
+// If the ContentNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ContentNodeInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearContentNode clears the "content_node" edge to the ContentNode entity.
+func (m *ContentNodeInstrumentMutation) ClearContentNode() {
+	m.clearedcontent_node = true
+	m.clearedFields[contentnodeinstrument.FieldContentNodeID] = struct{}{}
+}
+
+// ContentNodeCleared reports if the "content_node" edge to the ContentNode entity was cleared.
+func (m *ContentNodeInstrumentMutation) ContentNodeCleared() bool {
+	return m.clearedcontent_node
+}
+
+// ContentNodeIDs returns the "content_node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ContentNodeID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeInstrumentMutation) ContentNodeIDs() (ids []uuid.UUID) {
+	if id := m.content_node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetContentNode resets all changes to the "content_node" edge.
+func (m *ContentNodeInstrumentMutation) ResetContentNode() {
+	m.content_node = nil
+	m.clearedcontent_node = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *ContentNodeInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[contentnodeinstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *ContentNodeInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *ContentNodeInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *ContentNodeInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the ContentNodeInstrumentMutation builder.
+func (m *ContentNodeInstrumentMutation) Where(ps ...predicate.ContentNodeInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ContentNodeInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ContentNodeInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ContentNodeInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ContentNodeInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ContentNodeInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ContentNodeInstrument).
+func (m *ContentNodeInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ContentNodeInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.content_node != nil {
+		fields = append(fields, contentnodeinstrument.FieldContentNodeID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, contentnodeinstrument.FieldInstrumentID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, contentnodeinstrument.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ContentNodeInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case contentnodeinstrument.FieldContentNodeID:
+		return m.ContentNodeID()
+	case contentnodeinstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	case contentnodeinstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ContentNodeInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case contentnodeinstrument.FieldContentNodeID:
+		return m.OldContentNodeID(ctx)
+	case contentnodeinstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case contentnodeinstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ContentNodeInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case contentnodeinstrument.FieldContentNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentNodeID(v)
+		return nil
+	case contentnodeinstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case contentnodeinstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ContentNodeInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ContentNodeInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ContentNodeInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ContentNodeInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ContentNodeInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ContentNodeInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ContentNodeInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ContentNodeInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ContentNodeInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case contentnodeinstrument.FieldContentNodeID:
+		m.ResetContentNodeID()
+		return nil
+	case contentnodeinstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case contentnodeinstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ContentNodeInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.content_node != nil {
+		edges = append(edges, contentnodeinstrument.EdgeContentNode)
+	}
+	if m.instrument != nil {
+		edges = append(edges, contentnodeinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ContentNodeInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case contentnodeinstrument.EdgeContentNode:
+		if id := m.content_node; id != nil {
+			return []ent.Value{*id}
+		}
+	case contentnodeinstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ContentNodeInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ContentNodeInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ContentNodeInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedcontent_node {
+		edges = append(edges, contentnodeinstrument.EdgeContentNode)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, contentnodeinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ContentNodeInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case contentnodeinstrument.EdgeContentNode:
+		return m.clearedcontent_node
+	case contentnodeinstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ContentNodeInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case contentnodeinstrument.EdgeContentNode:
+		m.ClearContentNode()
+		return nil
+	case contentnodeinstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ContentNodeInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case contentnodeinstrument.EdgeContentNode:
+		m.ResetContentNode()
+		return nil
+	case contentnodeinstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ContentNodeInstrument edge %s", name)
+}
+
 // ContentNodeLanguageMutation represents an operation that mutates the ContentNodeLanguage nodes in the graph.
 type ContentNodeLanguageMutation struct {
 	config
@@ -6251,24 +7030,27 @@ func (m *ContentNodeSkillMutation) ResetEdge(name string) error {
 // ContentNodeVersionMutation represents an operation that mutates the ContentNodeVersion nodes in the graph.
 type ContentNodeVersionMutation struct {
 	config
-	op                      Op
-	typ                     string
-	id                      *uuid.UUID
-	content_node_id         *uuid.UUID
-	version_number          *int
-	addversion_number       *int
-	title                   *string
-	content_type            *contentnodeversion.ContentType
-	media_url               *string
-	rich_content            *string
-	classification_snapshot *string
-	languages_snapshot      *string
-	published_by            *uuid.UUID
-	published_at            *time.Time
-	clearedFields           map[string]struct{}
-	done                    bool
-	oldValue                func(context.Context) (*ContentNodeVersion, error)
-	predicates              []predicate.ContentNodeVersion
+	op                            Op
+	typ                           string
+	id                            *uuid.UUID
+	content_node_id               *uuid.UUID
+	version_number                *int
+	addversion_number             *int
+	title                         *string
+	content_type                  *contentnodeversion.ContentType
+	media_url                     *string
+	rich_content                  *string
+	classification_snapshot       *string
+	languages_snapshot            *string
+	instrument_ids_snapshot       *[]string
+	appendinstrument_ids_snapshot []string
+	thumbnail_url_snapshot        *string
+	published_by                  *uuid.UUID
+	published_at                  *time.Time
+	clearedFields                 map[string]struct{}
+	done                          bool
+	oldValue                      func(context.Context) (*ContentNodeVersion, error)
+	predicates                    []predicate.ContentNodeVersion
 }
 
 var _ ent.Mutation = (*ContentNodeVersionMutation)(nil)
@@ -6735,6 +7517,120 @@ func (m *ContentNodeVersionMutation) ResetLanguagesSnapshot() {
 	delete(m.clearedFields, contentnodeversion.FieldLanguagesSnapshot)
 }
 
+// SetInstrumentIdsSnapshot sets the "instrument_ids_snapshot" field.
+func (m *ContentNodeVersionMutation) SetInstrumentIdsSnapshot(s []string) {
+	m.instrument_ids_snapshot = &s
+	m.appendinstrument_ids_snapshot = nil
+}
+
+// InstrumentIdsSnapshot returns the value of the "instrument_ids_snapshot" field in the mutation.
+func (m *ContentNodeVersionMutation) InstrumentIdsSnapshot() (r []string, exists bool) {
+	v := m.instrument_ids_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentIdsSnapshot returns the old "instrument_ids_snapshot" field's value of the ContentNodeVersion entity.
+// If the ContentNodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeVersionMutation) OldInstrumentIdsSnapshot(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentIdsSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentIdsSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentIdsSnapshot: %w", err)
+	}
+	return oldValue.InstrumentIdsSnapshot, nil
+}
+
+// AppendInstrumentIdsSnapshot adds s to the "instrument_ids_snapshot" field.
+func (m *ContentNodeVersionMutation) AppendInstrumentIdsSnapshot(s []string) {
+	m.appendinstrument_ids_snapshot = append(m.appendinstrument_ids_snapshot, s...)
+}
+
+// AppendedInstrumentIdsSnapshot returns the list of values that were appended to the "instrument_ids_snapshot" field in this mutation.
+func (m *ContentNodeVersionMutation) AppendedInstrumentIdsSnapshot() ([]string, bool) {
+	if len(m.appendinstrument_ids_snapshot) == 0 {
+		return nil, false
+	}
+	return m.appendinstrument_ids_snapshot, true
+}
+
+// ClearInstrumentIdsSnapshot clears the value of the "instrument_ids_snapshot" field.
+func (m *ContentNodeVersionMutation) ClearInstrumentIdsSnapshot() {
+	m.instrument_ids_snapshot = nil
+	m.appendinstrument_ids_snapshot = nil
+	m.clearedFields[contentnodeversion.FieldInstrumentIdsSnapshot] = struct{}{}
+}
+
+// InstrumentIdsSnapshotCleared returns if the "instrument_ids_snapshot" field was cleared in this mutation.
+func (m *ContentNodeVersionMutation) InstrumentIdsSnapshotCleared() bool {
+	_, ok := m.clearedFields[contentnodeversion.FieldInstrumentIdsSnapshot]
+	return ok
+}
+
+// ResetInstrumentIdsSnapshot resets all changes to the "instrument_ids_snapshot" field.
+func (m *ContentNodeVersionMutation) ResetInstrumentIdsSnapshot() {
+	m.instrument_ids_snapshot = nil
+	m.appendinstrument_ids_snapshot = nil
+	delete(m.clearedFields, contentnodeversion.FieldInstrumentIdsSnapshot)
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) SetThumbnailURLSnapshot(s string) {
+	m.thumbnail_url_snapshot = &s
+}
+
+// ThumbnailURLSnapshot returns the value of the "thumbnail_url_snapshot" field in the mutation.
+func (m *ContentNodeVersionMutation) ThumbnailURLSnapshot() (r string, exists bool) {
+	v := m.thumbnail_url_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURLSnapshot returns the old "thumbnail_url_snapshot" field's value of the ContentNodeVersion entity.
+// If the ContentNodeVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ContentNodeVersionMutation) OldThumbnailURLSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURLSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURLSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURLSnapshot: %w", err)
+	}
+	return oldValue.ThumbnailURLSnapshot, nil
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) ClearThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	m.clearedFields[contentnodeversion.FieldThumbnailURLSnapshot] = struct{}{}
+}
+
+// ThumbnailURLSnapshotCleared returns if the "thumbnail_url_snapshot" field was cleared in this mutation.
+func (m *ContentNodeVersionMutation) ThumbnailURLSnapshotCleared() bool {
+	_, ok := m.clearedFields[contentnodeversion.FieldThumbnailURLSnapshot]
+	return ok
+}
+
+// ResetThumbnailURLSnapshot resets all changes to the "thumbnail_url_snapshot" field.
+func (m *ContentNodeVersionMutation) ResetThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	delete(m.clearedFields, contentnodeversion.FieldThumbnailURLSnapshot)
+}
+
 // SetPublishedBy sets the "published_by" field.
 func (m *ContentNodeVersionMutation) SetPublishedBy(u uuid.UUID) {
 	m.published_by = &u
@@ -6841,7 +7737,7 @@ func (m *ContentNodeVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ContentNodeVersionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 12)
 	if m.content_node_id != nil {
 		fields = append(fields, contentnodeversion.FieldContentNodeID)
 	}
@@ -6865,6 +7761,12 @@ func (m *ContentNodeVersionMutation) Fields() []string {
 	}
 	if m.languages_snapshot != nil {
 		fields = append(fields, contentnodeversion.FieldLanguagesSnapshot)
+	}
+	if m.instrument_ids_snapshot != nil {
+		fields = append(fields, contentnodeversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.thumbnail_url_snapshot != nil {
+		fields = append(fields, contentnodeversion.FieldThumbnailURLSnapshot)
 	}
 	if m.published_by != nil {
 		fields = append(fields, contentnodeversion.FieldPublishedBy)
@@ -6896,6 +7798,10 @@ func (m *ContentNodeVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.ClassificationSnapshot()
 	case contentnodeversion.FieldLanguagesSnapshot:
 		return m.LanguagesSnapshot()
+	case contentnodeversion.FieldInstrumentIdsSnapshot:
+		return m.InstrumentIdsSnapshot()
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		return m.ThumbnailURLSnapshot()
 	case contentnodeversion.FieldPublishedBy:
 		return m.PublishedBy()
 	case contentnodeversion.FieldPublishedAt:
@@ -6925,6 +7831,10 @@ func (m *ContentNodeVersionMutation) OldField(ctx context.Context, name string) 
 		return m.OldClassificationSnapshot(ctx)
 	case contentnodeversion.FieldLanguagesSnapshot:
 		return m.OldLanguagesSnapshot(ctx)
+	case contentnodeversion.FieldInstrumentIdsSnapshot:
+		return m.OldInstrumentIdsSnapshot(ctx)
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		return m.OldThumbnailURLSnapshot(ctx)
 	case contentnodeversion.FieldPublishedBy:
 		return m.OldPublishedBy(ctx)
 	case contentnodeversion.FieldPublishedAt:
@@ -6993,6 +7903,20 @@ func (m *ContentNodeVersionMutation) SetField(name string, value ent.Value) erro
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLanguagesSnapshot(v)
+		return nil
+	case contentnodeversion.FieldInstrumentIdsSnapshot:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentIdsSnapshot(v)
+		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURLSnapshot(v)
 		return nil
 	case contentnodeversion.FieldPublishedBy:
 		v, ok := value.(uuid.UUID)
@@ -7065,6 +7989,12 @@ func (m *ContentNodeVersionMutation) ClearedFields() []string {
 	if m.FieldCleared(contentnodeversion.FieldLanguagesSnapshot) {
 		fields = append(fields, contentnodeversion.FieldLanguagesSnapshot)
 	}
+	if m.FieldCleared(contentnodeversion.FieldInstrumentIdsSnapshot) {
+		fields = append(fields, contentnodeversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.FieldCleared(contentnodeversion.FieldThumbnailURLSnapshot) {
+		fields = append(fields, contentnodeversion.FieldThumbnailURLSnapshot)
+	}
 	return fields
 }
 
@@ -7090,6 +8020,12 @@ func (m *ContentNodeVersionMutation) ClearField(name string) error {
 		return nil
 	case contentnodeversion.FieldLanguagesSnapshot:
 		m.ClearLanguagesSnapshot()
+		return nil
+	case contentnodeversion.FieldInstrumentIdsSnapshot:
+		m.ClearInstrumentIdsSnapshot()
+		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		m.ClearThumbnailURLSnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown ContentNodeVersion nullable field %s", name)
@@ -7122,6 +8058,12 @@ func (m *ContentNodeVersionMutation) ResetField(name string) error {
 		return nil
 	case contentnodeversion.FieldLanguagesSnapshot:
 		m.ResetLanguagesSnapshot()
+		return nil
+	case contentnodeversion.FieldInstrumentIdsSnapshot:
+		m.ResetInstrumentIdsSnapshot()
+		return nil
+	case contentnodeversion.FieldThumbnailURLSnapshot:
+		m.ResetThumbnailURLSnapshot()
 		return nil
 	case contentnodeversion.FieldPublishedBy:
 		m.ResetPublishedBy()
@@ -7184,19 +8126,27 @@ func (m *ContentNodeVersionMutation) ResetEdge(name string) error {
 // CourseMutation represents an operation that mutates the Course nodes in the graph.
 type CourseMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	title         *string
-	summary       *string
-	level         *course.Level
-	status        *course.Status
-	created_by    *uuid.UUID
-	created_at    *time.Time
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Course, error)
-	predicates    []predicate.Course
+	op                        Op
+	typ                       string
+	id                        *uuid.UUID
+	title                     *string
+	summary                   *string
+	level                     *course.Level
+	language                  *string
+	status                    *course.Status
+	thumbnail_url             *string
+	created_by                *uuid.UUID
+	created_at                *time.Time
+	clearedFields             map[string]struct{}
+	instruments               map[uuid.UUID]struct{}
+	removedinstruments        map[uuid.UUID]struct{}
+	clearedinstruments        bool
+	course_instruments        map[int]struct{}
+	removedcourse_instruments map[int]struct{}
+	clearedcourse_instruments bool
+	done                      bool
+	oldValue                  func(context.Context) (*Course, error)
+	predicates                []predicate.Course
 }
 
 var _ ent.Mutation = (*CourseMutation)(nil)
@@ -7411,6 +8361,42 @@ func (m *CourseMutation) ResetLevel() {
 	m.level = nil
 }
 
+// SetLanguage sets the "language" field.
+func (m *CourseMutation) SetLanguage(s string) {
+	m.language = &s
+}
+
+// Language returns the value of the "language" field in the mutation.
+func (m *CourseMutation) Language() (r string, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguage returns the old "language" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldLanguage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguage: %w", err)
+	}
+	return oldValue.Language, nil
+}
+
+// ResetLanguage resets all changes to the "language" field.
+func (m *CourseMutation) ResetLanguage() {
+	m.language = nil
+}
+
 // SetStatus sets the "status" field.
 func (m *CourseMutation) SetStatus(c course.Status) {
 	m.status = &c
@@ -7445,6 +8431,55 @@ func (m *CourseMutation) OldStatus(ctx context.Context) (v course.Status, err er
 // ResetStatus resets all changes to the "status" field.
 func (m *CourseMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *CourseMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *CourseMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *CourseMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[course.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *CourseMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[course.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *CourseMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, course.FieldThumbnailURL)
 }
 
 // SetCreatedBy sets the "created_by" field.
@@ -7519,6 +8554,114 @@ func (m *CourseMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *CourseMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *CourseMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *CourseMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *CourseMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *CourseMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *CourseMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *CourseMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by ids.
+func (m *CourseMutation) AddCourseInstrumentIDs(ids ...int) {
+	if m.course_instruments == nil {
+		m.course_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.course_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCourseInstruments clears the "course_instruments" edge to the CourseInstrument entity.
+func (m *CourseMutation) ClearCourseInstruments() {
+	m.clearedcourse_instruments = true
+}
+
+// CourseInstrumentsCleared reports if the "course_instruments" edge to the CourseInstrument entity was cleared.
+func (m *CourseMutation) CourseInstrumentsCleared() bool {
+	return m.clearedcourse_instruments
+}
+
+// RemoveCourseInstrumentIDs removes the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (m *CourseMutation) RemoveCourseInstrumentIDs(ids ...int) {
+	if m.removedcourse_instruments == nil {
+		m.removedcourse_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.course_instruments, ids[i])
+		m.removedcourse_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCourseInstruments returns the removed IDs of the "course_instruments" edge to the CourseInstrument entity.
+func (m *CourseMutation) RemovedCourseInstrumentsIDs() (ids []int) {
+	for id := range m.removedcourse_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CourseInstrumentsIDs returns the "course_instruments" edge IDs in the mutation.
+func (m *CourseMutation) CourseInstrumentsIDs() (ids []int) {
+	for id := range m.course_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCourseInstruments resets all changes to the "course_instruments" edge.
+func (m *CourseMutation) ResetCourseInstruments() {
+	m.course_instruments = nil
+	m.clearedcourse_instruments = false
+	m.removedcourse_instruments = nil
+}
+
 // Where appends a list predicates to the CourseMutation builder.
 func (m *CourseMutation) Where(ps ...predicate.Course) {
 	m.predicates = append(m.predicates, ps...)
@@ -7553,7 +8696,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.title != nil {
 		fields = append(fields, course.FieldTitle)
 	}
@@ -7563,8 +8706,14 @@ func (m *CourseMutation) Fields() []string {
 	if m.level != nil {
 		fields = append(fields, course.FieldLevel)
 	}
+	if m.language != nil {
+		fields = append(fields, course.FieldLanguage)
+	}
 	if m.status != nil {
 		fields = append(fields, course.FieldStatus)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, course.FieldThumbnailURL)
 	}
 	if m.created_by != nil {
 		fields = append(fields, course.FieldCreatedBy)
@@ -7586,8 +8735,12 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.Summary()
 	case course.FieldLevel:
 		return m.Level()
+	case course.FieldLanguage:
+		return m.Language()
 	case course.FieldStatus:
 		return m.Status()
+	case course.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case course.FieldCreatedBy:
 		return m.CreatedBy()
 	case course.FieldCreatedAt:
@@ -7607,8 +8760,12 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldSummary(ctx)
 	case course.FieldLevel:
 		return m.OldLevel(ctx)
+	case course.FieldLanguage:
+		return m.OldLanguage(ctx)
 	case course.FieldStatus:
 		return m.OldStatus(ctx)
+	case course.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case course.FieldCreatedBy:
 		return m.OldCreatedBy(ctx)
 	case course.FieldCreatedAt:
@@ -7643,12 +8800,26 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLevel(v)
 		return nil
+	case course.FieldLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguage(v)
+		return nil
 	case course.FieldStatus:
 		v, ok := value.(course.Status)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case course.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
 		return nil
 	case course.FieldCreatedBy:
 		v, ok := value.(uuid.UUID)
@@ -7693,7 +8864,11 @@ func (m *CourseMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *CourseMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(course.FieldThumbnailURL) {
+		fields = append(fields, course.FieldThumbnailURL)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -7706,6 +8881,11 @@ func (m *CourseMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *CourseMutation) ClearField(name string) error {
+	switch name {
+	case course.FieldThumbnailURL:
+		m.ClearThumbnailURL()
+		return nil
+	}
 	return fmt.Errorf("unknown Course nullable field %s", name)
 }
 
@@ -7722,8 +8902,14 @@ func (m *CourseMutation) ResetField(name string) error {
 	case course.FieldLevel:
 		m.ResetLevel()
 		return nil
+	case course.FieldLanguage:
+		m.ResetLanguage()
+		return nil
 	case course.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case course.FieldThumbnailURL:
+		m.ResetThumbnailURL()
 		return nil
 	case course.FieldCreatedBy:
 		m.ResetCreatedBy()
@@ -7737,49 +8923,111 @@ func (m *CourseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CourseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.instruments != nil {
+		edges = append(edges, course.EdgeInstruments)
+	}
+	if m.course_instruments != nil {
+		edges = append(edges, course.EdgeCourseInstruments)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *CourseMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case course.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case course.EdgeCourseInstruments:
+		ids := make([]ent.Value, 0, len(m.course_instruments))
+		for id := range m.course_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CourseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.removedinstruments != nil {
+		edges = append(edges, course.EdgeInstruments)
+	}
+	if m.removedcourse_instruments != nil {
+		edges = append(edges, course.EdgeCourseInstruments)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *CourseMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case course.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case course.EdgeCourseInstruments:
+		ids := make([]ent.Value, 0, len(m.removedcourse_instruments))
+		for id := range m.removedcourse_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CourseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.clearedinstruments {
+		edges = append(edges, course.EdgeInstruments)
+	}
+	if m.clearedcourse_instruments {
+		edges = append(edges, course.EdgeCourseInstruments)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *CourseMutation) EdgeCleared(name string) bool {
+	switch name {
+	case course.EdgeInstruments:
+		return m.clearedinstruments
+	case course.EdgeCourseInstruments:
+		return m.clearedcourse_instruments
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *CourseMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Course unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *CourseMutation) ResetEdge(name string) error {
+	switch name {
+	case course.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
+	case course.EdgeCourseInstruments:
+		m.ResetCourseInstruments()
+		return nil
+	}
 	return fmt.Errorf("unknown Course edge %s", name)
 }
 
@@ -8344,6 +9592,7 @@ type CourseEnrollmentMutation struct {
 	student_id                        *uuid.UUID
 	course_id                         *uuid.UUID
 	course_title                      *string
+	course_thumbnail_url              *string
 	course_version_number             *int
 	addcourse_version_number          *int
 	status                            *courseenrollment.Status
@@ -8567,6 +9816,55 @@ func (m *CourseEnrollmentMutation) OldCourseTitle(ctx context.Context) (v string
 // ResetCourseTitle resets all changes to the "course_title" field.
 func (m *CourseEnrollmentMutation) ResetCourseTitle() {
 	m.course_title = nil
+}
+
+// SetCourseThumbnailURL sets the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) SetCourseThumbnailURL(s string) {
+	m.course_thumbnail_url = &s
+}
+
+// CourseThumbnailURL returns the value of the "course_thumbnail_url" field in the mutation.
+func (m *CourseEnrollmentMutation) CourseThumbnailURL() (r string, exists bool) {
+	v := m.course_thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseThumbnailURL returns the old "course_thumbnail_url" field's value of the CourseEnrollment entity.
+// If the CourseEnrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseEnrollmentMutation) OldCourseThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseThumbnailURL: %w", err)
+	}
+	return oldValue.CourseThumbnailURL, nil
+}
+
+// ClearCourseThumbnailURL clears the value of the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) ClearCourseThumbnailURL() {
+	m.course_thumbnail_url = nil
+	m.clearedFields[courseenrollment.FieldCourseThumbnailURL] = struct{}{}
+}
+
+// CourseThumbnailURLCleared returns if the "course_thumbnail_url" field was cleared in this mutation.
+func (m *CourseEnrollmentMutation) CourseThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[courseenrollment.FieldCourseThumbnailURL]
+	return ok
+}
+
+// ResetCourseThumbnailURL resets all changes to the "course_thumbnail_url" field.
+func (m *CourseEnrollmentMutation) ResetCourseThumbnailURL() {
+	m.course_thumbnail_url = nil
+	delete(m.clearedFields, courseenrollment.FieldCourseThumbnailURL)
 }
 
 // SetCourseVersionNumber sets the "course_version_number" field.
@@ -8850,7 +10148,7 @@ func (m *CourseEnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseEnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.student_id != nil {
 		fields = append(fields, courseenrollment.FieldStudentID)
 	}
@@ -8859,6 +10157,9 @@ func (m *CourseEnrollmentMutation) Fields() []string {
 	}
 	if m.course_title != nil {
 		fields = append(fields, courseenrollment.FieldCourseTitle)
+	}
+	if m.course_thumbnail_url != nil {
+		fields = append(fields, courseenrollment.FieldCourseThumbnailURL)
 	}
 	if m.course_version_number != nil {
 		fields = append(fields, courseenrollment.FieldCourseVersionNumber)
@@ -8889,6 +10190,8 @@ func (m *CourseEnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.CourseID()
 	case courseenrollment.FieldCourseTitle:
 		return m.CourseTitle()
+	case courseenrollment.FieldCourseThumbnailURL:
+		return m.CourseThumbnailURL()
 	case courseenrollment.FieldCourseVersionNumber:
 		return m.CourseVersionNumber()
 	case courseenrollment.FieldStatus:
@@ -8914,6 +10217,8 @@ func (m *CourseEnrollmentMutation) OldField(ctx context.Context, name string) (e
 		return m.OldCourseID(ctx)
 	case courseenrollment.FieldCourseTitle:
 		return m.OldCourseTitle(ctx)
+	case courseenrollment.FieldCourseThumbnailURL:
+		return m.OldCourseThumbnailURL(ctx)
 	case courseenrollment.FieldCourseVersionNumber:
 		return m.OldCourseVersionNumber(ctx)
 	case courseenrollment.FieldStatus:
@@ -8953,6 +10258,13 @@ func (m *CourseEnrollmentMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCourseTitle(v)
+		return nil
+	case courseenrollment.FieldCourseThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseThumbnailURL(v)
 		return nil
 	case courseenrollment.FieldCourseVersionNumber:
 		v, ok := value.(int)
@@ -9046,6 +10358,9 @@ func (m *CourseEnrollmentMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *CourseEnrollmentMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(courseenrollment.FieldCourseThumbnailURL) {
+		fields = append(fields, courseenrollment.FieldCourseThumbnailURL)
+	}
 	if m.FieldCleared(courseenrollment.FieldActiveCheckpointStudentPathID) {
 		fields = append(fields, courseenrollment.FieldActiveCheckpointStudentPathID)
 	}
@@ -9066,6 +10381,9 @@ func (m *CourseEnrollmentMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *CourseEnrollmentMutation) ClearField(name string) error {
 	switch name {
+	case courseenrollment.FieldCourseThumbnailURL:
+		m.ClearCourseThumbnailURL()
+		return nil
 	case courseenrollment.FieldActiveCheckpointStudentPathID:
 		m.ClearActiveCheckpointStudentPathID()
 		return nil
@@ -9088,6 +10406,9 @@ func (m *CourseEnrollmentMutation) ResetField(name string) error {
 		return nil
 	case courseenrollment.FieldCourseTitle:
 		m.ResetCourseTitle()
+		return nil
+	case courseenrollment.FieldCourseThumbnailURL:
+		m.ResetCourseThumbnailURL()
 		return nil
 	case courseenrollment.FieldCourseVersionNumber:
 		m.ResetCourseVersionNumber()
@@ -9156,6 +10477,540 @@ func (m *CourseEnrollmentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown CourseEnrollment edge %s", name)
 }
 
+// CourseInstrumentMutation represents an operation that mutates the CourseInstrument nodes in the graph.
+type CourseInstrumentMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	linked_at         *time.Time
+	clearedFields     map[string]struct{}
+	course            *uuid.UUID
+	clearedcourse     bool
+	instrument        *uuid.UUID
+	clearedinstrument bool
+	done              bool
+	oldValue          func(context.Context) (*CourseInstrument, error)
+	predicates        []predicate.CourseInstrument
+}
+
+var _ ent.Mutation = (*CourseInstrumentMutation)(nil)
+
+// courseinstrumentOption allows management of the mutation configuration using functional options.
+type courseinstrumentOption func(*CourseInstrumentMutation)
+
+// newCourseInstrumentMutation creates new mutation for the CourseInstrument entity.
+func newCourseInstrumentMutation(c config, op Op, opts ...courseinstrumentOption) *CourseInstrumentMutation {
+	m := &CourseInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCourseInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCourseInstrumentID sets the ID field of the mutation.
+func withCourseInstrumentID(id int) courseinstrumentOption {
+	return func(m *CourseInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CourseInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*CourseInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CourseInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCourseInstrument sets the old CourseInstrument of the mutation.
+func withCourseInstrument(node *CourseInstrument) courseinstrumentOption {
+	return func(m *CourseInstrumentMutation) {
+		m.oldValue = func(context.Context) (*CourseInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CourseInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CourseInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CourseInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CourseInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CourseInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *CourseInstrumentMutation) SetCourseID(u uuid.UUID) {
+	m.course = &u
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *CourseInstrumentMutation) CourseID() (r uuid.UUID, exists bool) {
+	v := m.course
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the CourseInstrument entity.
+// If the CourseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseInstrumentMutation) OldCourseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *CourseInstrumentMutation) ResetCourseID() {
+	m.course = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *CourseInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *CourseInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the CourseInstrument entity.
+// If the CourseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *CourseInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *CourseInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *CourseInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the CourseInstrument entity.
+// If the CourseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *CourseInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearCourse clears the "course" edge to the Course entity.
+func (m *CourseInstrumentMutation) ClearCourse() {
+	m.clearedcourse = true
+	m.clearedFields[courseinstrument.FieldCourseID] = struct{}{}
+}
+
+// CourseCleared reports if the "course" edge to the Course entity was cleared.
+func (m *CourseInstrumentMutation) CourseCleared() bool {
+	return m.clearedcourse
+}
+
+// CourseIDs returns the "course" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CourseID instead. It exists only for internal usage by the builders.
+func (m *CourseInstrumentMutation) CourseIDs() (ids []uuid.UUID) {
+	if id := m.course; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCourse resets all changes to the "course" edge.
+func (m *CourseInstrumentMutation) ResetCourse() {
+	m.course = nil
+	m.clearedcourse = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *CourseInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[courseinstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *CourseInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *CourseInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *CourseInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the CourseInstrumentMutation builder.
+func (m *CourseInstrumentMutation) Where(ps ...predicate.CourseInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CourseInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CourseInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CourseInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CourseInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CourseInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CourseInstrument).
+func (m *CourseInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CourseInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.course != nil {
+		fields = append(fields, courseinstrument.FieldCourseID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, courseinstrument.FieldInstrumentID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, courseinstrument.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CourseInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case courseinstrument.FieldCourseID:
+		return m.CourseID()
+	case courseinstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	case courseinstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CourseInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case courseinstrument.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case courseinstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case courseinstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown CourseInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case courseinstrument.FieldCourseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case courseinstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case courseinstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CourseInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CourseInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown CourseInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CourseInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CourseInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CourseInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown CourseInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CourseInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case courseinstrument.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case courseinstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case courseinstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CourseInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.course != nil {
+		edges = append(edges, courseinstrument.EdgeCourse)
+	}
+	if m.instrument != nil {
+		edges = append(edges, courseinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CourseInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case courseinstrument.EdgeCourse:
+		if id := m.course; id != nil {
+			return []ent.Value{*id}
+		}
+	case courseinstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CourseInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CourseInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CourseInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedcourse {
+		edges = append(edges, courseinstrument.EdgeCourse)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, courseinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CourseInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case courseinstrument.EdgeCourse:
+		return m.clearedcourse
+	case courseinstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CourseInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case courseinstrument.EdgeCourse:
+		m.ClearCourse()
+		return nil
+	case courseinstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CourseInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case courseinstrument.EdgeCourse:
+		m.ResetCourse()
+		return nil
+	case courseinstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseInstrument edge %s", name)
+}
+
 // CourseVersionMutation represents an operation that mutates the CourseVersion nodes in the graph.
 type CourseVersionMutation struct {
 	config
@@ -9168,6 +11023,10 @@ type CourseVersionMutation struct {
 	title_snapshot                *string
 	summary_snapshot              *string
 	level_snapshot                *courseversion.LevelSnapshot
+	language_snapshot             *string
+	instrument_ids_snapshot       *[]string
+	appendinstrument_ids_snapshot []string
+	thumbnail_url_snapshot        *string
 	available_for_new_enrollments *bool
 	published_at                  *time.Time
 	clearedFields                 map[string]struct{}
@@ -9480,6 +11339,156 @@ func (m *CourseVersionMutation) ResetLevelSnapshot() {
 	m.level_snapshot = nil
 }
 
+// SetLanguageSnapshot sets the "language_snapshot" field.
+func (m *CourseVersionMutation) SetLanguageSnapshot(s string) {
+	m.language_snapshot = &s
+}
+
+// LanguageSnapshot returns the value of the "language_snapshot" field in the mutation.
+func (m *CourseVersionMutation) LanguageSnapshot() (r string, exists bool) {
+	v := m.language_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguageSnapshot returns the old "language_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldLanguageSnapshot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguageSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguageSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguageSnapshot: %w", err)
+	}
+	return oldValue.LanguageSnapshot, nil
+}
+
+// ResetLanguageSnapshot resets all changes to the "language_snapshot" field.
+func (m *CourseVersionMutation) ResetLanguageSnapshot() {
+	m.language_snapshot = nil
+}
+
+// SetInstrumentIdsSnapshot sets the "instrument_ids_snapshot" field.
+func (m *CourseVersionMutation) SetInstrumentIdsSnapshot(s []string) {
+	m.instrument_ids_snapshot = &s
+	m.appendinstrument_ids_snapshot = nil
+}
+
+// InstrumentIdsSnapshot returns the value of the "instrument_ids_snapshot" field in the mutation.
+func (m *CourseVersionMutation) InstrumentIdsSnapshot() (r []string, exists bool) {
+	v := m.instrument_ids_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentIdsSnapshot returns the old "instrument_ids_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldInstrumentIdsSnapshot(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentIdsSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentIdsSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentIdsSnapshot: %w", err)
+	}
+	return oldValue.InstrumentIdsSnapshot, nil
+}
+
+// AppendInstrumentIdsSnapshot adds s to the "instrument_ids_snapshot" field.
+func (m *CourseVersionMutation) AppendInstrumentIdsSnapshot(s []string) {
+	m.appendinstrument_ids_snapshot = append(m.appendinstrument_ids_snapshot, s...)
+}
+
+// AppendedInstrumentIdsSnapshot returns the list of values that were appended to the "instrument_ids_snapshot" field in this mutation.
+func (m *CourseVersionMutation) AppendedInstrumentIdsSnapshot() ([]string, bool) {
+	if len(m.appendinstrument_ids_snapshot) == 0 {
+		return nil, false
+	}
+	return m.appendinstrument_ids_snapshot, true
+}
+
+// ClearInstrumentIdsSnapshot clears the value of the "instrument_ids_snapshot" field.
+func (m *CourseVersionMutation) ClearInstrumentIdsSnapshot() {
+	m.instrument_ids_snapshot = nil
+	m.appendinstrument_ids_snapshot = nil
+	m.clearedFields[courseversion.FieldInstrumentIdsSnapshot] = struct{}{}
+}
+
+// InstrumentIdsSnapshotCleared returns if the "instrument_ids_snapshot" field was cleared in this mutation.
+func (m *CourseVersionMutation) InstrumentIdsSnapshotCleared() bool {
+	_, ok := m.clearedFields[courseversion.FieldInstrumentIdsSnapshot]
+	return ok
+}
+
+// ResetInstrumentIdsSnapshot resets all changes to the "instrument_ids_snapshot" field.
+func (m *CourseVersionMutation) ResetInstrumentIdsSnapshot() {
+	m.instrument_ids_snapshot = nil
+	m.appendinstrument_ids_snapshot = nil
+	delete(m.clearedFields, courseversion.FieldInstrumentIdsSnapshot)
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) SetThumbnailURLSnapshot(s string) {
+	m.thumbnail_url_snapshot = &s
+}
+
+// ThumbnailURLSnapshot returns the value of the "thumbnail_url_snapshot" field in the mutation.
+func (m *CourseVersionMutation) ThumbnailURLSnapshot() (r string, exists bool) {
+	v := m.thumbnail_url_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURLSnapshot returns the old "thumbnail_url_snapshot" field's value of the CourseVersion entity.
+// If the CourseVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseVersionMutation) OldThumbnailURLSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURLSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURLSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURLSnapshot: %w", err)
+	}
+	return oldValue.ThumbnailURLSnapshot, nil
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) ClearThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	m.clearedFields[courseversion.FieldThumbnailURLSnapshot] = struct{}{}
+}
+
+// ThumbnailURLSnapshotCleared returns if the "thumbnail_url_snapshot" field was cleared in this mutation.
+func (m *CourseVersionMutation) ThumbnailURLSnapshotCleared() bool {
+	_, ok := m.clearedFields[courseversion.FieldThumbnailURLSnapshot]
+	return ok
+}
+
+// ResetThumbnailURLSnapshot resets all changes to the "thumbnail_url_snapshot" field.
+func (m *CourseVersionMutation) ResetThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	delete(m.clearedFields, courseversion.FieldThumbnailURLSnapshot)
+}
+
 // SetAvailableForNewEnrollments sets the "available_for_new_enrollments" field.
 func (m *CourseVersionMutation) SetAvailableForNewEnrollments(b bool) {
 	m.available_for_new_enrollments = &b
@@ -9586,7 +11595,7 @@ func (m *CourseVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseVersionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 10)
 	if m.course_id != nil {
 		fields = append(fields, courseversion.FieldCourseID)
 	}
@@ -9601,6 +11610,15 @@ func (m *CourseVersionMutation) Fields() []string {
 	}
 	if m.level_snapshot != nil {
 		fields = append(fields, courseversion.FieldLevelSnapshot)
+	}
+	if m.language_snapshot != nil {
+		fields = append(fields, courseversion.FieldLanguageSnapshot)
+	}
+	if m.instrument_ids_snapshot != nil {
+		fields = append(fields, courseversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.thumbnail_url_snapshot != nil {
+		fields = append(fields, courseversion.FieldThumbnailURLSnapshot)
 	}
 	if m.available_for_new_enrollments != nil {
 		fields = append(fields, courseversion.FieldAvailableForNewEnrollments)
@@ -9626,6 +11644,12 @@ func (m *CourseVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.SummarySnapshot()
 	case courseversion.FieldLevelSnapshot:
 		return m.LevelSnapshot()
+	case courseversion.FieldLanguageSnapshot:
+		return m.LanguageSnapshot()
+	case courseversion.FieldInstrumentIdsSnapshot:
+		return m.InstrumentIdsSnapshot()
+	case courseversion.FieldThumbnailURLSnapshot:
+		return m.ThumbnailURLSnapshot()
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.AvailableForNewEnrollments()
 	case courseversion.FieldPublishedAt:
@@ -9649,6 +11673,12 @@ func (m *CourseVersionMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldSummarySnapshot(ctx)
 	case courseversion.FieldLevelSnapshot:
 		return m.OldLevelSnapshot(ctx)
+	case courseversion.FieldLanguageSnapshot:
+		return m.OldLanguageSnapshot(ctx)
+	case courseversion.FieldInstrumentIdsSnapshot:
+		return m.OldInstrumentIdsSnapshot(ctx)
+	case courseversion.FieldThumbnailURLSnapshot:
+		return m.OldThumbnailURLSnapshot(ctx)
 	case courseversion.FieldAvailableForNewEnrollments:
 		return m.OldAvailableForNewEnrollments(ctx)
 	case courseversion.FieldPublishedAt:
@@ -9696,6 +11726,27 @@ func (m *CourseVersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLevelSnapshot(v)
+		return nil
+	case courseversion.FieldLanguageSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguageSnapshot(v)
+		return nil
+	case courseversion.FieldInstrumentIdsSnapshot:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentIdsSnapshot(v)
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURLSnapshot(v)
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		v, ok := value.(bool)
@@ -9755,7 +11806,14 @@ func (m *CourseVersionMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *CourseVersionMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(courseversion.FieldInstrumentIdsSnapshot) {
+		fields = append(fields, courseversion.FieldInstrumentIdsSnapshot)
+	}
+	if m.FieldCleared(courseversion.FieldThumbnailURLSnapshot) {
+		fields = append(fields, courseversion.FieldThumbnailURLSnapshot)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -9768,6 +11826,14 @@ func (m *CourseVersionMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *CourseVersionMutation) ClearField(name string) error {
+	switch name {
+	case courseversion.FieldInstrumentIdsSnapshot:
+		m.ClearInstrumentIdsSnapshot()
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		m.ClearThumbnailURLSnapshot()
+		return nil
+	}
 	return fmt.Errorf("unknown CourseVersion nullable field %s", name)
 }
 
@@ -9789,6 +11855,15 @@ func (m *CourseVersionMutation) ResetField(name string) error {
 		return nil
 	case courseversion.FieldLevelSnapshot:
 		m.ResetLevelSnapshot()
+		return nil
+	case courseversion.FieldLanguageSnapshot:
+		m.ResetLanguageSnapshot()
+		return nil
+	case courseversion.FieldInstrumentIdsSnapshot:
+		m.ResetInstrumentIdsSnapshot()
+		return nil
+	case courseversion.FieldThumbnailURLSnapshot:
+		m.ResetThumbnailURLSnapshot()
 		return nil
 	case courseversion.FieldAvailableForNewEnrollments:
 		m.ResetAvailableForNewEnrollments()
@@ -18792,24 +20867,42 @@ func (m *ExpandedContentMutation) ResetEdge(name string) error {
 // InstrumentMutation represents an operation that mutates the Instrument nodes in the graph.
 type InstrumentMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	names             *map[string]string
-	family            *instrument.Family
-	string_count      *int
-	addstring_count   *int
-	tuning            *[]string
-	appendtuning      []string
-	key_range_lowest  *string
-	key_range_highest *string
-	clearedFields     map[string]struct{}
-	diagrams          map[uuid.UUID]struct{}
-	removeddiagrams   map[uuid.UUID]struct{}
-	cleareddiagrams   bool
-	done              bool
-	oldValue          func(context.Context) (*Instrument, error)
-	predicates        []predicate.Instrument
+	op                               Op
+	typ                              string
+	id                               *uuid.UUID
+	names                            *map[string]string
+	family                           *instrument.Family
+	string_count                     *int
+	addstring_count                  *int
+	tuning                           *[]string
+	appendtuning                     []string
+	key_range_lowest                 *string
+	key_range_highest                *string
+	clearedFields                    map[string]struct{}
+	diagrams                         map[uuid.UUID]struct{}
+	removeddiagrams                  map[uuid.UUID]struct{}
+	cleareddiagrams                  bool
+	courses                          map[uuid.UUID]struct{}
+	removedcourses                   map[uuid.UUID]struct{}
+	clearedcourses                   bool
+	learning_paths                   map[uuid.UUID]struct{}
+	removedlearning_paths            map[uuid.UUID]struct{}
+	clearedlearning_paths            bool
+	content_nodes                    map[uuid.UUID]struct{}
+	removedcontent_nodes             map[uuid.UUID]struct{}
+	clearedcontent_nodes             bool
+	course_instruments               map[int]struct{}
+	removedcourse_instruments        map[int]struct{}
+	clearedcourse_instruments        bool
+	learning_path_instruments        map[int]struct{}
+	removedlearning_path_instruments map[int]struct{}
+	clearedlearning_path_instruments bool
+	content_node_instruments         map[int]struct{}
+	removedcontent_node_instruments  map[int]struct{}
+	clearedcontent_node_instruments  bool
+	done                             bool
+	oldValue                         func(context.Context) (*Instrument, error)
+	predicates                       []predicate.Instrument
 }
 
 var _ ent.Mutation = (*InstrumentMutation)(nil)
@@ -19275,6 +21368,330 @@ func (m *InstrumentMutation) ResetDiagrams() {
 	m.removeddiagrams = nil
 }
 
+// AddCourseIDs adds the "courses" edge to the Course entity by ids.
+func (m *InstrumentMutation) AddCourseIDs(ids ...uuid.UUID) {
+	if m.courses == nil {
+		m.courses = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.courses[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCourses clears the "courses" edge to the Course entity.
+func (m *InstrumentMutation) ClearCourses() {
+	m.clearedcourses = true
+}
+
+// CoursesCleared reports if the "courses" edge to the Course entity was cleared.
+func (m *InstrumentMutation) CoursesCleared() bool {
+	return m.clearedcourses
+}
+
+// RemoveCourseIDs removes the "courses" edge to the Course entity by IDs.
+func (m *InstrumentMutation) RemoveCourseIDs(ids ...uuid.UUID) {
+	if m.removedcourses == nil {
+		m.removedcourses = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.courses, ids[i])
+		m.removedcourses[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCourses returns the removed IDs of the "courses" edge to the Course entity.
+func (m *InstrumentMutation) RemovedCoursesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcourses {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CoursesIDs returns the "courses" edge IDs in the mutation.
+func (m *InstrumentMutation) CoursesIDs() (ids []uuid.UUID) {
+	for id := range m.courses {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCourses resets all changes to the "courses" edge.
+func (m *InstrumentMutation) ResetCourses() {
+	m.courses = nil
+	m.clearedcourses = false
+	m.removedcourses = nil
+}
+
+// AddLearningPathIDs adds the "learning_paths" edge to the LearningPath entity by ids.
+func (m *InstrumentMutation) AddLearningPathIDs(ids ...uuid.UUID) {
+	if m.learning_paths == nil {
+		m.learning_paths = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.learning_paths[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLearningPaths clears the "learning_paths" edge to the LearningPath entity.
+func (m *InstrumentMutation) ClearLearningPaths() {
+	m.clearedlearning_paths = true
+}
+
+// LearningPathsCleared reports if the "learning_paths" edge to the LearningPath entity was cleared.
+func (m *InstrumentMutation) LearningPathsCleared() bool {
+	return m.clearedlearning_paths
+}
+
+// RemoveLearningPathIDs removes the "learning_paths" edge to the LearningPath entity by IDs.
+func (m *InstrumentMutation) RemoveLearningPathIDs(ids ...uuid.UUID) {
+	if m.removedlearning_paths == nil {
+		m.removedlearning_paths = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.learning_paths, ids[i])
+		m.removedlearning_paths[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLearningPaths returns the removed IDs of the "learning_paths" edge to the LearningPath entity.
+func (m *InstrumentMutation) RemovedLearningPathsIDs() (ids []uuid.UUID) {
+	for id := range m.removedlearning_paths {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LearningPathsIDs returns the "learning_paths" edge IDs in the mutation.
+func (m *InstrumentMutation) LearningPathsIDs() (ids []uuid.UUID) {
+	for id := range m.learning_paths {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLearningPaths resets all changes to the "learning_paths" edge.
+func (m *InstrumentMutation) ResetLearningPaths() {
+	m.learning_paths = nil
+	m.clearedlearning_paths = false
+	m.removedlearning_paths = nil
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
+func (m *InstrumentMutation) AddContentNodeIDs(ids ...uuid.UUID) {
+	if m.content_nodes == nil {
+		m.content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
+func (m *InstrumentMutation) ClearContentNodes() {
+	m.clearedcontent_nodes = true
+}
+
+// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
+func (m *InstrumentMutation) ContentNodesCleared() bool {
+	return m.clearedcontent_nodes
+}
+
+// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
+func (m *InstrumentMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedcontent_nodes == nil {
+		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.content_nodes, ids[i])
+		m.removedcontent_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
+func (m *InstrumentMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedcontent_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
+func (m *InstrumentMutation) ContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodes resets all changes to the "content_nodes" edge.
+func (m *InstrumentMutation) ResetContentNodes() {
+	m.content_nodes = nil
+	m.clearedcontent_nodes = false
+	m.removedcontent_nodes = nil
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by ids.
+func (m *InstrumentMutation) AddCourseInstrumentIDs(ids ...int) {
+	if m.course_instruments == nil {
+		m.course_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.course_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCourseInstruments clears the "course_instruments" edge to the CourseInstrument entity.
+func (m *InstrumentMutation) ClearCourseInstruments() {
+	m.clearedcourse_instruments = true
+}
+
+// CourseInstrumentsCleared reports if the "course_instruments" edge to the CourseInstrument entity was cleared.
+func (m *InstrumentMutation) CourseInstrumentsCleared() bool {
+	return m.clearedcourse_instruments
+}
+
+// RemoveCourseInstrumentIDs removes the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveCourseInstrumentIDs(ids ...int) {
+	if m.removedcourse_instruments == nil {
+		m.removedcourse_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.course_instruments, ids[i])
+		m.removedcourse_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCourseInstruments returns the removed IDs of the "course_instruments" edge to the CourseInstrument entity.
+func (m *InstrumentMutation) RemovedCourseInstrumentsIDs() (ids []int) {
+	for id := range m.removedcourse_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CourseInstrumentsIDs returns the "course_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) CourseInstrumentsIDs() (ids []int) {
+	for id := range m.course_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCourseInstruments resets all changes to the "course_instruments" edge.
+func (m *InstrumentMutation) ResetCourseInstruments() {
+	m.course_instruments = nil
+	m.clearedcourse_instruments = false
+	m.removedcourse_instruments = nil
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by ids.
+func (m *InstrumentMutation) AddLearningPathInstrumentIDs(ids ...int) {
+	if m.learning_path_instruments == nil {
+		m.learning_path_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.learning_path_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLearningPathInstruments clears the "learning_path_instruments" edge to the LearningPathInstrument entity.
+func (m *InstrumentMutation) ClearLearningPathInstruments() {
+	m.clearedlearning_path_instruments = true
+}
+
+// LearningPathInstrumentsCleared reports if the "learning_path_instruments" edge to the LearningPathInstrument entity was cleared.
+func (m *InstrumentMutation) LearningPathInstrumentsCleared() bool {
+	return m.clearedlearning_path_instruments
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveLearningPathInstrumentIDs(ids ...int) {
+	if m.removedlearning_path_instruments == nil {
+		m.removedlearning_path_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.learning_path_instruments, ids[i])
+		m.removedlearning_path_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLearningPathInstruments returns the removed IDs of the "learning_path_instruments" edge to the LearningPathInstrument entity.
+func (m *InstrumentMutation) RemovedLearningPathInstrumentsIDs() (ids []int) {
+	for id := range m.removedlearning_path_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LearningPathInstrumentsIDs returns the "learning_path_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) LearningPathInstrumentsIDs() (ids []int) {
+	for id := range m.learning_path_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLearningPathInstruments resets all changes to the "learning_path_instruments" edge.
+func (m *InstrumentMutation) ResetLearningPathInstruments() {
+	m.learning_path_instruments = nil
+	m.clearedlearning_path_instruments = false
+	m.removedlearning_path_instruments = nil
+}
+
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by ids.
+func (m *InstrumentMutation) AddContentNodeInstrumentIDs(ids ...int) {
+	if m.content_node_instruments == nil {
+		m.content_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeInstruments clears the "content_node_instruments" edge to the ContentNodeInstrument entity.
+func (m *InstrumentMutation) ClearContentNodeInstruments() {
+	m.clearedcontent_node_instruments = true
+}
+
+// ContentNodeInstrumentsCleared reports if the "content_node_instruments" edge to the ContentNodeInstrument entity was cleared.
+func (m *InstrumentMutation) ContentNodeInstrumentsCleared() bool {
+	return m.clearedcontent_node_instruments
+}
+
+// RemoveContentNodeInstrumentIDs removes the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveContentNodeInstrumentIDs(ids ...int) {
+	if m.removedcontent_node_instruments == nil {
+		m.removedcontent_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_instruments, ids[i])
+		m.removedcontent_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeInstruments returns the removed IDs of the "content_node_instruments" edge to the ContentNodeInstrument entity.
+func (m *InstrumentMutation) RemovedContentNodeInstrumentsIDs() (ids []int) {
+	for id := range m.removedcontent_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeInstrumentsIDs returns the "content_node_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) ContentNodeInstrumentsIDs() (ids []int) {
+	for id := range m.content_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeInstruments resets all changes to the "content_node_instruments" edge.
+func (m *InstrumentMutation) ResetContentNodeInstruments() {
+	m.content_node_instruments = nil
+	m.clearedcontent_node_instruments = false
+	m.removedcontent_node_instruments = nil
+}
+
 // Where appends a list predicates to the InstrumentMutation builder.
 func (m *InstrumentMutation) Where(ps ...predicate.Instrument) {
 	m.predicates = append(m.predicates, ps...)
@@ -19535,9 +21952,27 @@ func (m *InstrumentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *InstrumentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 7)
 	if m.diagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.courses != nil {
+		edges = append(edges, instrument.EdgeCourses)
+	}
+	if m.learning_paths != nil {
+		edges = append(edges, instrument.EdgeLearningPaths)
+	}
+	if m.content_nodes != nil {
+		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.course_instruments != nil {
+		edges = append(edges, instrument.EdgeCourseInstruments)
+	}
+	if m.learning_path_instruments != nil {
+		edges = append(edges, instrument.EdgeLearningPathInstruments)
+	}
+	if m.content_node_instruments != nil {
+		edges = append(edges, instrument.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -19552,15 +21987,69 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeCourses:
+		ids := make([]ent.Value, 0, len(m.courses))
+		for id := range m.courses {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeLearningPaths:
+		ids := make([]ent.Value, 0, len(m.learning_paths))
+		for id := range m.learning_paths {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.content_nodes))
+		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeCourseInstruments:
+		ids := make([]ent.Value, 0, len(m.course_instruments))
+		for id := range m.course_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeLearningPathInstruments:
+		ids := make([]ent.Value, 0, len(m.learning_path_instruments))
+		for id := range m.learning_path_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeContentNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.content_node_instruments))
+		for id := range m.content_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *InstrumentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 7)
 	if m.removeddiagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.removedcourses != nil {
+		edges = append(edges, instrument.EdgeCourses)
+	}
+	if m.removedlearning_paths != nil {
+		edges = append(edges, instrument.EdgeLearningPaths)
+	}
+	if m.removedcontent_nodes != nil {
+		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.removedcourse_instruments != nil {
+		edges = append(edges, instrument.EdgeCourseInstruments)
+	}
+	if m.removedlearning_path_instruments != nil {
+		edges = append(edges, instrument.EdgeLearningPathInstruments)
+	}
+	if m.removedcontent_node_instruments != nil {
+		edges = append(edges, instrument.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -19575,15 +22064,69 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeCourses:
+		ids := make([]ent.Value, 0, len(m.removedcourses))
+		for id := range m.removedcourses {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeLearningPaths:
+		ids := make([]ent.Value, 0, len(m.removedlearning_paths))
+		for id := range m.removedlearning_paths {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
+		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeCourseInstruments:
+		ids := make([]ent.Value, 0, len(m.removedcourse_instruments))
+		for id := range m.removedcourse_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeLearningPathInstruments:
+		ids := make([]ent.Value, 0, len(m.removedlearning_path_instruments))
+		for id := range m.removedlearning_path_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeContentNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_instruments))
+		for id := range m.removedcontent_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *InstrumentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 7)
 	if m.cleareddiagrams {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.clearedcourses {
+		edges = append(edges, instrument.EdgeCourses)
+	}
+	if m.clearedlearning_paths {
+		edges = append(edges, instrument.EdgeLearningPaths)
+	}
+	if m.clearedcontent_nodes {
+		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.clearedcourse_instruments {
+		edges = append(edges, instrument.EdgeCourseInstruments)
+	}
+	if m.clearedlearning_path_instruments {
+		edges = append(edges, instrument.EdgeLearningPathInstruments)
+	}
+	if m.clearedcontent_node_instruments {
+		edges = append(edges, instrument.EdgeContentNodeInstruments)
 	}
 	return edges
 }
@@ -19594,6 +22137,18 @@ func (m *InstrumentMutation) EdgeCleared(name string) bool {
 	switch name {
 	case instrument.EdgeDiagrams:
 		return m.cleareddiagrams
+	case instrument.EdgeCourses:
+		return m.clearedcourses
+	case instrument.EdgeLearningPaths:
+		return m.clearedlearning_paths
+	case instrument.EdgeContentNodes:
+		return m.clearedcontent_nodes
+	case instrument.EdgeCourseInstruments:
+		return m.clearedcourse_instruments
+	case instrument.EdgeLearningPathInstruments:
+		return m.clearedlearning_path_instruments
+	case instrument.EdgeContentNodeInstruments:
+		return m.clearedcontent_node_instruments
 	}
 	return false
 }
@@ -19612,6 +22167,24 @@ func (m *InstrumentMutation) ResetEdge(name string) error {
 	switch name {
 	case instrument.EdgeDiagrams:
 		m.ResetDiagrams()
+		return nil
+	case instrument.EdgeCourses:
+		m.ResetCourses()
+		return nil
+	case instrument.EdgeLearningPaths:
+		m.ResetLearningPaths()
+		return nil
+	case instrument.EdgeContentNodes:
+		m.ResetContentNodes()
+		return nil
+	case instrument.EdgeCourseInstruments:
+		m.ResetCourseInstruments()
+		return nil
+	case instrument.EdgeLearningPathInstruments:
+		m.ResetLearningPathInstruments()
+		return nil
+	case instrument.EdgeContentNodeInstruments:
+		m.ResetContentNodeInstruments()
 		return nil
 	}
 	return fmt.Errorf("unknown Instrument edge %s", name)
@@ -20348,16 +22921,25 @@ func (m *LanguageMutation) ResetEdge(name string) error {
 // LearningPathMutation represents an operation that mutates the LearningPath nodes in the graph.
 type LearningPathMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	teacher_id    *uuid.UUID
-	title         *string
-	created_at    *time.Time
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*LearningPath, error)
-	predicates    []predicate.LearningPath
+	op                               Op
+	typ                              string
+	id                               *uuid.UUID
+	teacher_id                       *uuid.UUID
+	title                            *string
+	level                            *learningpath.Level
+	updated_at                       *time.Time
+	thumbnail_url                    *string
+	created_at                       *time.Time
+	clearedFields                    map[string]struct{}
+	instruments                      map[uuid.UUID]struct{}
+	removedinstruments               map[uuid.UUID]struct{}
+	clearedinstruments               bool
+	learning_path_instruments        map[int]struct{}
+	removedlearning_path_instruments map[int]struct{}
+	clearedlearning_path_instruments bool
+	done                             bool
+	oldValue                         func(context.Context) (*LearningPath, error)
+	predicates                       []predicate.LearningPath
 }
 
 var _ ent.Mutation = (*LearningPathMutation)(nil)
@@ -20536,6 +23118,140 @@ func (m *LearningPathMutation) ResetTitle() {
 	m.title = nil
 }
 
+// SetLevel sets the "level" field.
+func (m *LearningPathMutation) SetLevel(l learningpath.Level) {
+	m.level = &l
+}
+
+// Level returns the value of the "level" field in the mutation.
+func (m *LearningPathMutation) Level() (r learningpath.Level, exists bool) {
+	v := m.level
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevel returns the old "level" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldLevel(ctx context.Context) (v *learningpath.Level, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevel: %w", err)
+	}
+	return oldValue.Level, nil
+}
+
+// ClearLevel clears the value of the "level" field.
+func (m *LearningPathMutation) ClearLevel() {
+	m.level = nil
+	m.clearedFields[learningpath.FieldLevel] = struct{}{}
+}
+
+// LevelCleared returns if the "level" field was cleared in this mutation.
+func (m *LearningPathMutation) LevelCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldLevel]
+	return ok
+}
+
+// ResetLevel resets all changes to the "level" field.
+func (m *LearningPathMutation) ResetLevel() {
+	m.level = nil
+	delete(m.clearedFields, learningpath.FieldLevel)
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *LearningPathMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *LearningPathMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *LearningPathMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetThumbnailURL sets the "thumbnail_url" field.
+func (m *LearningPathMutation) SetThumbnailURL(s string) {
+	m.thumbnail_url = &s
+}
+
+// ThumbnailURL returns the value of the "thumbnail_url" field in the mutation.
+func (m *LearningPathMutation) ThumbnailURL() (r string, exists bool) {
+	v := m.thumbnail_url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURL returns the old "thumbnail_url" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldThumbnailURL(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURL: %w", err)
+	}
+	return oldValue.ThumbnailURL, nil
+}
+
+// ClearThumbnailURL clears the value of the "thumbnail_url" field.
+func (m *LearningPathMutation) ClearThumbnailURL() {
+	m.thumbnail_url = nil
+	m.clearedFields[learningpath.FieldThumbnailURL] = struct{}{}
+}
+
+// ThumbnailURLCleared returns if the "thumbnail_url" field was cleared in this mutation.
+func (m *LearningPathMutation) ThumbnailURLCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldThumbnailURL]
+	return ok
+}
+
+// ResetThumbnailURL resets all changes to the "thumbnail_url" field.
+func (m *LearningPathMutation) ResetThumbnailURL() {
+	m.thumbnail_url = nil
+	delete(m.clearedFields, learningpath.FieldThumbnailURL)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *LearningPathMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -20572,6 +23288,114 @@ func (m *LearningPathMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *LearningPathMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *LearningPathMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *LearningPathMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *LearningPathMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *LearningPathMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *LearningPathMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *LearningPathMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by ids.
+func (m *LearningPathMutation) AddLearningPathInstrumentIDs(ids ...int) {
+	if m.learning_path_instruments == nil {
+		m.learning_path_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.learning_path_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLearningPathInstruments clears the "learning_path_instruments" edge to the LearningPathInstrument entity.
+func (m *LearningPathMutation) ClearLearningPathInstruments() {
+	m.clearedlearning_path_instruments = true
+}
+
+// LearningPathInstrumentsCleared reports if the "learning_path_instruments" edge to the LearningPathInstrument entity was cleared.
+func (m *LearningPathMutation) LearningPathInstrumentsCleared() bool {
+	return m.clearedlearning_path_instruments
+}
+
+// RemoveLearningPathInstrumentIDs removes the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (m *LearningPathMutation) RemoveLearningPathInstrumentIDs(ids ...int) {
+	if m.removedlearning_path_instruments == nil {
+		m.removedlearning_path_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.learning_path_instruments, ids[i])
+		m.removedlearning_path_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLearningPathInstruments returns the removed IDs of the "learning_path_instruments" edge to the LearningPathInstrument entity.
+func (m *LearningPathMutation) RemovedLearningPathInstrumentsIDs() (ids []int) {
+	for id := range m.removedlearning_path_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LearningPathInstrumentsIDs returns the "learning_path_instruments" edge IDs in the mutation.
+func (m *LearningPathMutation) LearningPathInstrumentsIDs() (ids []int) {
+	for id := range m.learning_path_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLearningPathInstruments resets all changes to the "learning_path_instruments" edge.
+func (m *LearningPathMutation) ResetLearningPathInstruments() {
+	m.learning_path_instruments = nil
+	m.clearedlearning_path_instruments = false
+	m.removedlearning_path_instruments = nil
+}
+
 // Where appends a list predicates to the LearningPathMutation builder.
 func (m *LearningPathMutation) Where(ps ...predicate.LearningPath) {
 	m.predicates = append(m.predicates, ps...)
@@ -20606,12 +23430,21 @@ func (m *LearningPathMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LearningPathMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 6)
 	if m.teacher_id != nil {
 		fields = append(fields, learningpath.FieldTeacherID)
 	}
 	if m.title != nil {
 		fields = append(fields, learningpath.FieldTitle)
+	}
+	if m.level != nil {
+		fields = append(fields, learningpath.FieldLevel)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, learningpath.FieldUpdatedAt)
+	}
+	if m.thumbnail_url != nil {
+		fields = append(fields, learningpath.FieldThumbnailURL)
 	}
 	if m.created_at != nil {
 		fields = append(fields, learningpath.FieldCreatedAt)
@@ -20628,6 +23461,12 @@ func (m *LearningPathMutation) Field(name string) (ent.Value, bool) {
 		return m.TeacherID()
 	case learningpath.FieldTitle:
 		return m.Title()
+	case learningpath.FieldLevel:
+		return m.Level()
+	case learningpath.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case learningpath.FieldThumbnailURL:
+		return m.ThumbnailURL()
 	case learningpath.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -20643,6 +23482,12 @@ func (m *LearningPathMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldTeacherID(ctx)
 	case learningpath.FieldTitle:
 		return m.OldTitle(ctx)
+	case learningpath.FieldLevel:
+		return m.OldLevel(ctx)
+	case learningpath.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case learningpath.FieldThumbnailURL:
+		return m.OldThumbnailURL(ctx)
 	case learningpath.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -20667,6 +23512,27 @@ func (m *LearningPathMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTitle(v)
+		return nil
+	case learningpath.FieldLevel:
+		v, ok := value.(learningpath.Level)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevel(v)
+		return nil
+	case learningpath.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case learningpath.FieldThumbnailURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURL(v)
 		return nil
 	case learningpath.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -20704,7 +23570,14 @@ func (m *LearningPathMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *LearningPathMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(learningpath.FieldLevel) {
+		fields = append(fields, learningpath.FieldLevel)
+	}
+	if m.FieldCleared(learningpath.FieldThumbnailURL) {
+		fields = append(fields, learningpath.FieldThumbnailURL)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -20717,6 +23590,14 @@ func (m *LearningPathMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *LearningPathMutation) ClearField(name string) error {
+	switch name {
+	case learningpath.FieldLevel:
+		m.ClearLevel()
+		return nil
+	case learningpath.FieldThumbnailURL:
+		m.ClearThumbnailURL()
+		return nil
+	}
 	return fmt.Errorf("unknown LearningPath nullable field %s", name)
 }
 
@@ -20730,6 +23611,15 @@ func (m *LearningPathMutation) ResetField(name string) error {
 	case learningpath.FieldTitle:
 		m.ResetTitle()
 		return nil
+	case learningpath.FieldLevel:
+		m.ResetLevel()
+		return nil
+	case learningpath.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case learningpath.FieldThumbnailURL:
+		m.ResetThumbnailURL()
+		return nil
 	case learningpath.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
@@ -20739,50 +23629,646 @@ func (m *LearningPathMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *LearningPathMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.instruments != nil {
+		edges = append(edges, learningpath.EdgeInstruments)
+	}
+	if m.learning_path_instruments != nil {
+		edges = append(edges, learningpath.EdgeLearningPathInstruments)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *LearningPathMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case learningpath.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case learningpath.EdgeLearningPathInstruments:
+		ids := make([]ent.Value, 0, len(m.learning_path_instruments))
+		for id := range m.learning_path_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *LearningPathMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.removedinstruments != nil {
+		edges = append(edges, learningpath.EdgeInstruments)
+	}
+	if m.removedlearning_path_instruments != nil {
+		edges = append(edges, learningpath.EdgeLearningPathInstruments)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *LearningPathMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case learningpath.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case learningpath.EdgeLearningPathInstruments:
+		ids := make([]ent.Value, 0, len(m.removedlearning_path_instruments))
+		for id := range m.removedlearning_path_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *LearningPathMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.clearedinstruments {
+		edges = append(edges, learningpath.EdgeInstruments)
+	}
+	if m.clearedlearning_path_instruments {
+		edges = append(edges, learningpath.EdgeLearningPathInstruments)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *LearningPathMutation) EdgeCleared(name string) bool {
+	switch name {
+	case learningpath.EdgeInstruments:
+		return m.clearedinstruments
+	case learningpath.EdgeLearningPathInstruments:
+		return m.clearedlearning_path_instruments
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *LearningPathMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown LearningPath unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *LearningPathMutation) ResetEdge(name string) error {
+	switch name {
+	case learningpath.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
+	case learningpath.EdgeLearningPathInstruments:
+		m.ResetLearningPathInstruments()
+		return nil
+	}
 	return fmt.Errorf("unknown LearningPath edge %s", name)
+}
+
+// LearningPathInstrumentMutation represents an operation that mutates the LearningPathInstrument nodes in the graph.
+type LearningPathInstrumentMutation struct {
+	config
+	op                   Op
+	typ                  string
+	id                   *int
+	linked_at            *time.Time
+	clearedFields        map[string]struct{}
+	learning_path        *uuid.UUID
+	clearedlearning_path bool
+	instrument           *uuid.UUID
+	clearedinstrument    bool
+	done                 bool
+	oldValue             func(context.Context) (*LearningPathInstrument, error)
+	predicates           []predicate.LearningPathInstrument
+}
+
+var _ ent.Mutation = (*LearningPathInstrumentMutation)(nil)
+
+// learningpathinstrumentOption allows management of the mutation configuration using functional options.
+type learningpathinstrumentOption func(*LearningPathInstrumentMutation)
+
+// newLearningPathInstrumentMutation creates new mutation for the LearningPathInstrument entity.
+func newLearningPathInstrumentMutation(c config, op Op, opts ...learningpathinstrumentOption) *LearningPathInstrumentMutation {
+	m := &LearningPathInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeLearningPathInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withLearningPathInstrumentID sets the ID field of the mutation.
+func withLearningPathInstrumentID(id int) learningpathinstrumentOption {
+	return func(m *LearningPathInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *LearningPathInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*LearningPathInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().LearningPathInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withLearningPathInstrument sets the old LearningPathInstrument of the mutation.
+func withLearningPathInstrument(node *LearningPathInstrument) learningpathinstrumentOption {
+	return func(m *LearningPathInstrumentMutation) {
+		m.oldValue = func(context.Context) (*LearningPathInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m LearningPathInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m LearningPathInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *LearningPathInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *LearningPathInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().LearningPathInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetLearningPathID sets the "learning_path_id" field.
+func (m *LearningPathInstrumentMutation) SetLearningPathID(u uuid.UUID) {
+	m.learning_path = &u
+}
+
+// LearningPathID returns the value of the "learning_path_id" field in the mutation.
+func (m *LearningPathInstrumentMutation) LearningPathID() (r uuid.UUID, exists bool) {
+	v := m.learning_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLearningPathID returns the old "learning_path_id" field's value of the LearningPathInstrument entity.
+// If the LearningPathInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathInstrumentMutation) OldLearningPathID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLearningPathID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLearningPathID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLearningPathID: %w", err)
+	}
+	return oldValue.LearningPathID, nil
+}
+
+// ResetLearningPathID resets all changes to the "learning_path_id" field.
+func (m *LearningPathInstrumentMutation) ResetLearningPathID() {
+	m.learning_path = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *LearningPathInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *LearningPathInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the LearningPathInstrument entity.
+// If the LearningPathInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *LearningPathInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *LearningPathInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *LearningPathInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the LearningPathInstrument entity.
+// If the LearningPathInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *LearningPathInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearLearningPath clears the "learning_path" edge to the LearningPath entity.
+func (m *LearningPathInstrumentMutation) ClearLearningPath() {
+	m.clearedlearning_path = true
+	m.clearedFields[learningpathinstrument.FieldLearningPathID] = struct{}{}
+}
+
+// LearningPathCleared reports if the "learning_path" edge to the LearningPath entity was cleared.
+func (m *LearningPathInstrumentMutation) LearningPathCleared() bool {
+	return m.clearedlearning_path
+}
+
+// LearningPathIDs returns the "learning_path" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LearningPathID instead. It exists only for internal usage by the builders.
+func (m *LearningPathInstrumentMutation) LearningPathIDs() (ids []uuid.UUID) {
+	if id := m.learning_path; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLearningPath resets all changes to the "learning_path" edge.
+func (m *LearningPathInstrumentMutation) ResetLearningPath() {
+	m.learning_path = nil
+	m.clearedlearning_path = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *LearningPathInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[learningpathinstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *LearningPathInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *LearningPathInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *LearningPathInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the LearningPathInstrumentMutation builder.
+func (m *LearningPathInstrumentMutation) Where(ps ...predicate.LearningPathInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the LearningPathInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *LearningPathInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.LearningPathInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *LearningPathInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *LearningPathInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (LearningPathInstrument).
+func (m *LearningPathInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *LearningPathInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.learning_path != nil {
+		fields = append(fields, learningpathinstrument.FieldLearningPathID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, learningpathinstrument.FieldInstrumentID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, learningpathinstrument.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *LearningPathInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case learningpathinstrument.FieldLearningPathID:
+		return m.LearningPathID()
+	case learningpathinstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	case learningpathinstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *LearningPathInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case learningpathinstrument.FieldLearningPathID:
+		return m.OldLearningPathID(ctx)
+	case learningpathinstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case learningpathinstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown LearningPathInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LearningPathInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case learningpathinstrument.FieldLearningPathID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLearningPathID(v)
+		return nil
+	case learningpathinstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case learningpathinstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LearningPathInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *LearningPathInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *LearningPathInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LearningPathInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown LearningPathInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *LearningPathInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *LearningPathInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *LearningPathInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown LearningPathInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *LearningPathInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case learningpathinstrument.FieldLearningPathID:
+		m.ResetLearningPathID()
+		return nil
+	case learningpathinstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case learningpathinstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown LearningPathInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *LearningPathInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.learning_path != nil {
+		edges = append(edges, learningpathinstrument.EdgeLearningPath)
+	}
+	if m.instrument != nil {
+		edges = append(edges, learningpathinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *LearningPathInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case learningpathinstrument.EdgeLearningPath:
+		if id := m.learning_path; id != nil {
+			return []ent.Value{*id}
+		}
+	case learningpathinstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *LearningPathInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *LearningPathInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *LearningPathInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedlearning_path {
+		edges = append(edges, learningpathinstrument.EdgeLearningPath)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, learningpathinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *LearningPathInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case learningpathinstrument.EdgeLearningPath:
+		return m.clearedlearning_path
+	case learningpathinstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *LearningPathInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case learningpathinstrument.EdgeLearningPath:
+		m.ClearLearningPath()
+		return nil
+	case learningpathinstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown LearningPathInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *LearningPathInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case learningpathinstrument.EdgeLearningPath:
+		m.ResetLearningPath()
+		return nil
+	case learningpathinstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown LearningPathInstrument edge %s", name)
 }
 
 // LearningPathItemMutation represents an operation that mutates the LearningPathItem nodes in the graph.

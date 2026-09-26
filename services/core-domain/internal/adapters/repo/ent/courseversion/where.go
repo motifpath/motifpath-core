@@ -75,6 +75,16 @@ func SummarySnapshot(v string) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldEQ(FieldSummarySnapshot, v))
 }
 
+// LanguageSnapshot applies equality check predicate on the "language_snapshot" field. It's identical to LanguageSnapshotEQ.
+func LanguageSnapshot(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldLanguageSnapshot, v))
+}
+
+// ThumbnailURLSnapshot applies equality check predicate on the "thumbnail_url_snapshot" field. It's identical to ThumbnailURLSnapshotEQ.
+func ThumbnailURLSnapshot(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
 // AvailableForNewEnrollments applies equality check predicate on the "available_for_new_enrollments" field. It's identical to AvailableForNewEnrollmentsEQ.
 func AvailableForNewEnrollments(v bool) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldEQ(FieldAvailableForNewEnrollments, v))
@@ -313,6 +323,156 @@ func LevelSnapshotIn(vs ...LevelSnapshot) predicate.CourseVersion {
 // LevelSnapshotNotIn applies the NotIn predicate on the "level_snapshot" field.
 func LevelSnapshotNotIn(vs ...LevelSnapshot) predicate.CourseVersion {
 	return predicate.CourseVersion(sql.FieldNotIn(FieldLevelSnapshot, vs...))
+}
+
+// LanguageSnapshotEQ applies the EQ predicate on the "language_snapshot" field.
+func LanguageSnapshotEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotNEQ applies the NEQ predicate on the "language_snapshot" field.
+func LanguageSnapshotNEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNEQ(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotIn applies the In predicate on the "language_snapshot" field.
+func LanguageSnapshotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIn(FieldLanguageSnapshot, vs...))
+}
+
+// LanguageSnapshotNotIn applies the NotIn predicate on the "language_snapshot" field.
+func LanguageSnapshotNotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotIn(FieldLanguageSnapshot, vs...))
+}
+
+// LanguageSnapshotGT applies the GT predicate on the "language_snapshot" field.
+func LanguageSnapshotGT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGT(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotGTE applies the GTE predicate on the "language_snapshot" field.
+func LanguageSnapshotGTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGTE(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotLT applies the LT predicate on the "language_snapshot" field.
+func LanguageSnapshotLT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLT(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotLTE applies the LTE predicate on the "language_snapshot" field.
+func LanguageSnapshotLTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLTE(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotContains applies the Contains predicate on the "language_snapshot" field.
+func LanguageSnapshotContains(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContains(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotHasPrefix applies the HasPrefix predicate on the "language_snapshot" field.
+func LanguageSnapshotHasPrefix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasPrefix(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotHasSuffix applies the HasSuffix predicate on the "language_snapshot" field.
+func LanguageSnapshotHasSuffix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasSuffix(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotEqualFold applies the EqualFold predicate on the "language_snapshot" field.
+func LanguageSnapshotEqualFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEqualFold(FieldLanguageSnapshot, v))
+}
+
+// LanguageSnapshotContainsFold applies the ContainsFold predicate on the "language_snapshot" field.
+func LanguageSnapshotContainsFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContainsFold(FieldLanguageSnapshot, v))
+}
+
+// InstrumentIdsSnapshotIsNil applies the IsNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotIsNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIsNull(FieldInstrumentIdsSnapshot))
+}
+
+// InstrumentIdsSnapshotNotNil applies the NotNil predicate on the "instrument_ids_snapshot" field.
+func InstrumentIdsSnapshotNotNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotNull(FieldInstrumentIdsSnapshot))
+}
+
+// ThumbnailURLSnapshotEQ applies the EQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotNEQ applies the NEQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNEQ(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIn applies the In predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotNotIn applies the NotIn predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotIn(vs ...string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotGT applies the GT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotGTE applies the GTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldGTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLT applies the LT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLT(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLTE applies the LTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLTE(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldLTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContains applies the Contains predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContains(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContains(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasPrefix applies the HasPrefix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasPrefix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasPrefix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasSuffix applies the HasSuffix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasSuffix(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldHasSuffix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIsNil applies the IsNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIsNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldIsNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotNotNil applies the NotNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotNil() predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldNotNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotEqualFold applies the EqualFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEqualFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldEqualFold(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContainsFold applies the ContainsFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContainsFold(v string) predicate.CourseVersion {
+	return predicate.CourseVersion(sql.FieldContainsFold(FieldThumbnailURLSnapshot, v))
 }
 
 // AvailableForNewEnrollmentsEQ applies the EQ predicate on the "available_for_new_enrollments" field.

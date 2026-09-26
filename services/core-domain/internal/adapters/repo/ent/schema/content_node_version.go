@@ -60,6 +60,20 @@ func (ContentNodeVersion) Fields() []ent.Field {
 			Nillable().
 			Immutable(),
 
+		// instrument_ids_snapshot is the instruments the node was for when
+		// published; NULL (a version published before instruments were
+		// recorded) or empty means every instrument.
+		field.JSON("instrument_ids_snapshot", []string{}).
+			Optional().
+			Immutable(),
+
+		// thumbnail_url_snapshot is the thumbnail when this version was
+		// published; NULL = none.
+		field.String("thumbnail_url_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
 		field.UUID("published_by", uuid.UUID{}).
 			Immutable(),
 

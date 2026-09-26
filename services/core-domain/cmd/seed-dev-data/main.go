@@ -83,6 +83,7 @@ func run() error {
 
 	userRepo := repo.NewEntUserRepository(entClient)
 	nodeRepo := repo.NewEntContentNodeRepository(entClient)
+	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 	expandedRepo := repo.NewEntExpandedContentRepository(entClient)
 	pathRepo := repo.NewEntLearningPathRepository(entClient)
 	studentPathRepo := repo.NewEntStudentPathRepository(entClient)
@@ -99,8 +100,8 @@ func run() error {
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, newID, now)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, newID, now, rand.Shuffle)
@@ -227,7 +228,7 @@ func seedPathAndProgress(
 		if err != nil {
 			return nil, err
 		}
-		node, err := contentService.CreateContentNode(ctx, teacher, spec.title, domain.ContentTypeVideo, []string{skillID}, []string{conceptID}, spec.difficulty, []string{"en"}, &seedVideoURL, nil)
+		node, err := contentService.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: spec.title, ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: spec.difficulty, Languages: []string{"en"}, MediaURL: &seedVideoURL, RichContent: nil})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
@@ -236,7 +237,7 @@ func seedPathAndProgress(
 		nodeIDs = append(nodeIDs, node.ID)
 	}
 
-	path, err := pathService.CreateLearningPath(ctx, teacher, "Blues Guitar Foundations", items)
+	path, err := pathService.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Blues Guitar Foundations", Items: items})
 	if err != nil {
 		return nil, fmt.Errorf("create learning path: %w", err)
 	}

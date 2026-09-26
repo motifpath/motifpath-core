@@ -31,6 +31,12 @@ func (CourseEnrollment) Fields() []ent.Field {
 		field.String("course_title").
 			Immutable(),
 
+		// course_thumbnail_url is the pinned version's thumbnail, copied at
+		// enrollment like course_title; NULL = none.
+		field.String("course_thumbnail_url").
+			Optional().
+			Nillable(),
+
 		field.Int("course_version_number").
 			Immutable(),
 

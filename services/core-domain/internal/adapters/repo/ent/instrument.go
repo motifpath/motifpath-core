@@ -40,9 +40,21 @@ type Instrument struct {
 type InstrumentEdges struct {
 	// Diagrams holds the value of the diagrams edge.
 	Diagrams []*Diagram `json:"diagrams,omitempty"`
+	// Courses holds the value of the courses edge.
+	Courses []*Course `json:"courses,omitempty"`
+	// LearningPaths holds the value of the learning_paths edge.
+	LearningPaths []*LearningPath `json:"learning_paths,omitempty"`
+	// ContentNodes holds the value of the content_nodes edge.
+	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
+	// CourseInstruments holds the value of the course_instruments edge.
+	CourseInstruments []*CourseInstrument `json:"course_instruments,omitempty"`
+	// LearningPathInstruments holds the value of the learning_path_instruments edge.
+	LearningPathInstruments []*LearningPathInstrument `json:"learning_path_instruments,omitempty"`
+	// ContentNodeInstruments holds the value of the content_node_instruments edge.
+	ContentNodeInstruments []*ContentNodeInstrument `json:"content_node_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [7]bool
 }
 
 // DiagramsOrErr returns the Diagrams value or an error if the edge
@@ -52,6 +64,60 @@ func (e InstrumentEdges) DiagramsOrErr() ([]*Diagram, error) {
 		return e.Diagrams, nil
 	}
 	return nil, &NotLoadedError{edge: "diagrams"}
+}
+
+// CoursesOrErr returns the Courses value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) CoursesOrErr() ([]*Course, error) {
+	if e.loadedTypes[1] {
+		return e.Courses, nil
+	}
+	return nil, &NotLoadedError{edge: "courses"}
+}
+
+// LearningPathsOrErr returns the LearningPaths value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) LearningPathsOrErr() ([]*LearningPath, error) {
+	if e.loadedTypes[2] {
+		return e.LearningPaths, nil
+	}
+	return nil, &NotLoadedError{edge: "learning_paths"}
+}
+
+// ContentNodesOrErr returns the ContentNodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) ContentNodesOrErr() ([]*ContentNode, error) {
+	if e.loadedTypes[3] {
+		return e.ContentNodes, nil
+	}
+	return nil, &NotLoadedError{edge: "content_nodes"}
+}
+
+// CourseInstrumentsOrErr returns the CourseInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
+	if e.loadedTypes[4] {
+		return e.CourseInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "course_instruments"}
+}
+
+// LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
+	if e.loadedTypes[5] {
+		return e.LearningPathInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "learning_path_instruments"}
+}
+
+// ContentNodeInstrumentsOrErr returns the ContentNodeInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) ContentNodeInstrumentsOrErr() ([]*ContentNodeInstrument, error) {
+	if e.loadedTypes[6] {
+		return e.ContentNodeInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "content_node_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -147,6 +213,36 @@ func (_m *Instrument) Value(name string) (ent.Value, error) {
 // QueryDiagrams queries the "diagrams" edge of the Instrument entity.
 func (_m *Instrument) QueryDiagrams() *DiagramQuery {
 	return NewInstrumentClient(_m.config).QueryDiagrams(_m)
+}
+
+// QueryCourses queries the "courses" edge of the Instrument entity.
+func (_m *Instrument) QueryCourses() *CourseQuery {
+	return NewInstrumentClient(_m.config).QueryCourses(_m)
+}
+
+// QueryLearningPaths queries the "learning_paths" edge of the Instrument entity.
+func (_m *Instrument) QueryLearningPaths() *LearningPathQuery {
+	return NewInstrumentClient(_m.config).QueryLearningPaths(_m)
+}
+
+// QueryContentNodes queries the "content_nodes" edge of the Instrument entity.
+func (_m *Instrument) QueryContentNodes() *ContentNodeQuery {
+	return NewInstrumentClient(_m.config).QueryContentNodes(_m)
+}
+
+// QueryCourseInstruments queries the "course_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryCourseInstruments() *CourseInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryCourseInstruments(_m)
+}
+
+// QueryLearningPathInstruments queries the "learning_path_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryLearningPathInstruments() *LearningPathInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryLearningPathInstruments(_m)
+}
+
+// QueryContentNodeInstruments queries the "content_node_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryContentNodeInstruments() *ContentNodeInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryContentNodeInstruments(_m)
 }
 
 // Update returns a builder for updating this Instrument.

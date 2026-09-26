@@ -10,8 +10,14 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeinstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 )
 
 // InstrumentCreate is the builder for creating a Instrument entity.
@@ -108,6 +114,96 @@ func (_c *InstrumentCreate) AddDiagrams(v ...*Diagram) *InstrumentCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddDiagramIDs(ids...)
+}
+
+// AddCourseIDs adds the "courses" edge to the Course entity by IDs.
+func (_c *InstrumentCreate) AddCourseIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddCourseIDs(ids...)
+	return _c
+}
+
+// AddCourses adds the "courses" edges to the Course entity.
+func (_c *InstrumentCreate) AddCourses(v ...*Course) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCourseIDs(ids...)
+}
+
+// AddLearningPathIDs adds the "learning_paths" edge to the LearningPath entity by IDs.
+func (_c *InstrumentCreate) AddLearningPathIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddLearningPathIDs(ids...)
+	return _c
+}
+
+// AddLearningPaths adds the "learning_paths" edges to the LearningPath entity.
+func (_c *InstrumentCreate) AddLearningPaths(v ...*LearningPath) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLearningPathIDs(ids...)
+}
+
+// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by IDs.
+func (_c *InstrumentCreate) AddContentNodeIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddContentNodeIDs(ids...)
+	return _c
+}
+
+// AddContentNodes adds the "content_nodes" edges to the ContentNode entity.
+func (_c *InstrumentCreate) AddContentNodes(v ...*ContentNode) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeIDs(ids...)
+}
+
+// AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by IDs.
+func (_c *InstrumentCreate) AddCourseInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddCourseInstrumentIDs(ids...)
+	return _c
+}
+
+// AddCourseInstruments adds the "course_instruments" edges to the CourseInstrument entity.
+func (_c *InstrumentCreate) AddCourseInstruments(v ...*CourseInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCourseInstrumentIDs(ids...)
+}
+
+// AddLearningPathInstrumentIDs adds the "learning_path_instruments" edge to the LearningPathInstrument entity by IDs.
+func (_c *InstrumentCreate) AddLearningPathInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddLearningPathInstrumentIDs(ids...)
+	return _c
+}
+
+// AddLearningPathInstruments adds the "learning_path_instruments" edges to the LearningPathInstrument entity.
+func (_c *InstrumentCreate) AddLearningPathInstruments(v ...*LearningPathInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddLearningPathInstrumentIDs(ids...)
+}
+
+// AddContentNodeInstrumentIDs adds the "content_node_instruments" edge to the ContentNodeInstrument entity by IDs.
+func (_c *InstrumentCreate) AddContentNodeInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddContentNodeInstrumentIDs(ids...)
+	return _c
+}
+
+// AddContentNodeInstruments adds the "content_node_instruments" edges to the ContentNodeInstrument entity.
+func (_c *InstrumentCreate) AddContentNodeInstruments(v ...*ContentNodeInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddContentNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the InstrumentMutation object of the builder.
@@ -232,6 +328,114 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CoursesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.CoursesTable,
+			Columns: instrument.CoursesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(course.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &CourseInstrumentCreate{config: _c.config, mutation: newCourseInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.LearningPathsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.LearningPathsTable,
+			Columns: instrument.LearningPathsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpath.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &LearningPathInstrumentCreate{config: _c.config, mutation: newLearningPathInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ContentNodesTable,
+			Columns: instrument.ContentNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ContentNodeInstrumentCreate{config: _c.config, mutation: newContentNodeInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CourseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.CourseInstrumentsTable,
+			Columns: []string{instrument.CourseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(courseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.LearningPathInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.LearningPathInstrumentsTable,
+			Columns: []string{instrument.LearningPathInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(learningpathinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ContentNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ContentNodeInstrumentsTable,
+			Columns: []string{instrument.ContentNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

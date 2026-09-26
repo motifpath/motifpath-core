@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
@@ -63,6 +64,16 @@ func TeacherID(v uuid.UUID) predicate.LearningPath {
 // Title applies equality check predicate on the "title" field. It's identical to TitleEQ.
 func Title(v string) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldTitle, v))
+}
+
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// ThumbnailURL applies equality check predicate on the "thumbnail_url" field. It's identical to ThumbnailURLEQ.
+func ThumbnailURL(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldThumbnailURL, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -175,6 +186,151 @@ func TitleContainsFold(v string) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldContainsFold(FieldTitle, v))
 }
 
+// LevelEQ applies the EQ predicate on the "level" field.
+func LevelEQ(v Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldLevel, v))
+}
+
+// LevelNEQ applies the NEQ predicate on the "level" field.
+func LevelNEQ(v Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldLevel, v))
+}
+
+// LevelIn applies the In predicate on the "level" field.
+func LevelIn(vs ...Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldLevel, vs...))
+}
+
+// LevelNotIn applies the NotIn predicate on the "level" field.
+func LevelNotIn(vs ...Level) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldLevel, vs...))
+}
+
+// LevelIsNil applies the IsNil predicate on the "level" field.
+func LevelIsNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIsNull(FieldLevel))
+}
+
+// LevelNotNil applies the NotNil predicate on the "level" field.
+func LevelNotNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotNull(FieldLevel))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// ThumbnailURLEQ applies the EQ predicate on the "thumbnail_url" field.
+func ThumbnailURLEQ(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLNEQ applies the NEQ predicate on the "thumbnail_url" field.
+func ThumbnailURLNEQ(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNEQ(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIn applies the In predicate on the "thumbnail_url" field.
+func ThumbnailURLIn(vs ...string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLNotIn applies the NotIn predicate on the "thumbnail_url" field.
+func ThumbnailURLNotIn(vs ...string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotIn(FieldThumbnailURL, vs...))
+}
+
+// ThumbnailURLGT applies the GT predicate on the "thumbnail_url" field.
+func ThumbnailURLGT(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLGTE applies the GTE predicate on the "thumbnail_url" field.
+func ThumbnailURLGTE(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldGTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLT applies the LT predicate on the "thumbnail_url" field.
+func ThumbnailURLLT(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLT(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLLTE applies the LTE predicate on the "thumbnail_url" field.
+func ThumbnailURLLTE(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldLTE(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContains applies the Contains predicate on the "thumbnail_url" field.
+func ThumbnailURLContains(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldContains(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasPrefix applies the HasPrefix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasPrefix(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldHasPrefix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLHasSuffix applies the HasSuffix predicate on the "thumbnail_url" field.
+func ThumbnailURLHasSuffix(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldHasSuffix(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLIsNil applies the IsNil predicate on the "thumbnail_url" field.
+func ThumbnailURLIsNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldIsNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLNotNil applies the NotNil predicate on the "thumbnail_url" field.
+func ThumbnailURLNotNil() predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldNotNull(FieldThumbnailURL))
+}
+
+// ThumbnailURLEqualFold applies the EqualFold predicate on the "thumbnail_url" field.
+func ThumbnailURLEqualFold(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldEqualFold(FieldThumbnailURL, v))
+}
+
+// ThumbnailURLContainsFold applies the ContainsFold predicate on the "thumbnail_url" field.
+func ThumbnailURLContainsFold(v string) predicate.LearningPath {
+	return predicate.LearningPath(sql.FieldContainsFold(FieldThumbnailURL, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldEQ(FieldCreatedAt, v))
@@ -213,6 +369,52 @@ func CreatedAtLT(v time.Time) predicate.LearningPath {
 // CreatedAtLTE applies the LTE predicate on the "created_at" field.
 func CreatedAtLTE(v time.Time) predicate.LearningPath {
 	return predicate.LearningPath(sql.FieldLTE(FieldCreatedAt, v))
+}
+
+// HasInstruments applies the HasEdge predicate on the "instruments" edge.
+func HasInstruments() predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInstrumentsWith applies the HasEdge predicate on the "instruments" edge with a given conditions (other predicates).
+func HasInstrumentsWith(preds ...predicate.Instrument) predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := newInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasLearningPathInstruments applies the HasEdge predicate on the "learning_path_instruments" edge.
+func HasLearningPathInstruments() predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, LearningPathInstrumentsTable, LearningPathInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLearningPathInstrumentsWith applies the HasEdge predicate on the "learning_path_instruments" edge with a given conditions (other predicates).
+func HasLearningPathInstrumentsWith(preds ...predicate.LearningPathInstrument) predicate.LearningPath {
+	return predicate.LearningPath(func(s *sql.Selector) {
+		step := newLearningPathInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

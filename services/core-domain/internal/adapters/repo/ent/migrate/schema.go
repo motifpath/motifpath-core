@@ -97,6 +97,7 @@ var (
 		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "difficulty_level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "review_state", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "overridden"}, Default: "pending"},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ContentNodesTable holds the schema information for the "content_nodes" table.
@@ -170,6 +171,40 @@ var (
 				Name:    "contentnodeexercise_content_node_id_exercise_id",
 				Unique:  true,
 				Columns: []*schema.Column{ContentNodeExercisesColumns[2], ContentNodeExercisesColumns[3]},
+			},
+		},
+	}
+	// ContentNodeInstrumentsColumns holds the columns for the "content_node_instruments" table.
+	ContentNodeInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "content_node_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// ContentNodeInstrumentsTable holds the schema information for the "content_node_instruments" table.
+	ContentNodeInstrumentsTable = &schema.Table{
+		Name:       "content_node_instruments",
+		Columns:    ContentNodeInstrumentsColumns,
+		PrimaryKey: []*schema.Column{ContentNodeInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "content_node_instruments_content_nodes_content_node",
+				Columns:    []*schema.Column{ContentNodeInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{ContentNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "content_node_instruments_instruments_instrument",
+				Columns:    []*schema.Column{ContentNodeInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "contentnodeinstrument_content_node_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{ContentNodeInstrumentsColumns[2], ContentNodeInstrumentsColumns[3]},
 			},
 		},
 	}
@@ -252,6 +287,8 @@ var (
 		{Name: "rich_content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "classification_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "languages_snapshot", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "instrument_ids_snapshot", Type: field.TypeJSON, Nullable: true},
+		{Name: "thumbnail_url_snapshot", Type: field.TypeString, Nullable: true},
 		{Name: "published_by", Type: field.TypeUUID},
 		{Name: "published_at", Type: field.TypeTime},
 	}
@@ -274,7 +311,9 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "summary", Type: field.TypeString},
 		{Name: "level", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "language", Type: field.TypeString, Default: "en"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published", "retired"}, Default: "draft"},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
 	}
@@ -311,6 +350,7 @@ var (
 		{Name: "student_id", Type: field.TypeUUID},
 		{Name: "course_id", Type: field.TypeUUID},
 		{Name: "course_title", Type: field.TypeString},
+		{Name: "course_thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "course_version_number", Type: field.TypeInt},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "completed", "abandoned"}, Default: "active"},
 		{Name: "active_checkpoint_student_path_id", Type: field.TypeUUID, Nullable: true},
@@ -323,6 +363,40 @@ var (
 		Columns:    CourseEnrollmentsColumns,
 		PrimaryKey: []*schema.Column{CourseEnrollmentsColumns[0]},
 	}
+	// CourseInstrumentsColumns holds the columns for the "course_instruments" table.
+	CourseInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "course_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// CourseInstrumentsTable holds the schema information for the "course_instruments" table.
+	CourseInstrumentsTable = &schema.Table{
+		Name:       "course_instruments",
+		Columns:    CourseInstrumentsColumns,
+		PrimaryKey: []*schema.Column{CourseInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "course_instruments_courses_course",
+				Columns:    []*schema.Column{CourseInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{CoursesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "course_instruments_instruments_instrument",
+				Columns:    []*schema.Column{CourseInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "courseinstrument_course_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{CourseInstrumentsColumns[2], CourseInstrumentsColumns[3]},
+			},
+		},
+	}
 	// CourseVersionsColumns holds the columns for the "course_versions" table.
 	CourseVersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -331,6 +405,9 @@ var (
 		{Name: "title_snapshot", Type: field.TypeString},
 		{Name: "summary_snapshot", Type: field.TypeString},
 		{Name: "level_snapshot", Type: field.TypeEnum, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "language_snapshot", Type: field.TypeString, Default: "en"},
+		{Name: "instrument_ids_snapshot", Type: field.TypeJSON, Nullable: true},
+		{Name: "thumbnail_url_snapshot", Type: field.TypeString, Nullable: true},
 		{Name: "available_for_new_enrollments", Type: field.TypeBool, Default: true},
 		{Name: "published_at", Type: field.TypeTime},
 	}
@@ -684,6 +761,9 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "teacher_id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString},
+		{Name: "level", Type: field.TypeEnum, Nullable: true, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// LearningPathsTable holds the schema information for the "learning_paths" table.
@@ -691,6 +771,40 @@ var (
 		Name:       "learning_paths",
 		Columns:    LearningPathsColumns,
 		PrimaryKey: []*schema.Column{LearningPathsColumns[0]},
+	}
+	// LearningPathInstrumentsColumns holds the columns for the "learning_path_instruments" table.
+	LearningPathInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "learning_path_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// LearningPathInstrumentsTable holds the schema information for the "learning_path_instruments" table.
+	LearningPathInstrumentsTable = &schema.Table{
+		Name:       "learning_path_instruments",
+		Columns:    LearningPathInstrumentsColumns,
+		PrimaryKey: []*schema.Column{LearningPathInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "learning_path_instruments_learning_paths_learning_path",
+				Columns:    []*schema.Column{LearningPathInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{LearningPathsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "learning_path_instruments_instruments_instrument",
+				Columns:    []*schema.Column{LearningPathInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "learningpathinstrument_learning_path_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{LearningPathInstrumentsColumns[2], LearningPathInstrumentsColumns[3]},
+			},
+		},
 	}
 	// LearningPathItemsColumns holds the columns for the "learning_path_items" table.
 	LearningPathItemsColumns = []*schema.Column{
@@ -852,12 +966,14 @@ var (
 		ContentNodesTable,
 		ContentNodeConceptsTable,
 		ContentNodeExercisesTable,
+		ContentNodeInstrumentsTable,
 		ContentNodeLanguagesTable,
 		ContentNodeSkillsTable,
 		ContentNodeVersionsTable,
 		CoursesTable,
 		CourseCheckpointsTable,
 		CourseEnrollmentsTable,
+		CourseInstrumentsTable,
 		CourseVersionsTable,
 		CourseVersionCheckpointsTable,
 		DiagramsTable,
@@ -872,6 +988,7 @@ var (
 		InstrumentsTable,
 		LanguagesTable,
 		LearningPathsTable,
+		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
 		SkillsTable,
@@ -890,10 +1007,14 @@ func init() {
 	ContentNodeConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
 	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
+	ContentNodeInstrumentsTable.ForeignKeys[0].RefTable = ContentNodesTable
+	ContentNodeInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	ContentNodeLanguagesTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
 	ContentNodeSkillsTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	CourseInstrumentsTable.ForeignKeys[0].RefTable = CoursesTable
+	CourseInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	DiagramsTable.ForeignKeys[0].RefTable = InstrumentsTable
 	DiagramConceptsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
@@ -906,6 +1027,8 @@ func init() {
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	LearningPathInstrumentsTable.ForeignKeys[0].RefTable = LearningPathsTable
+	LearningPathInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	PositionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	SkillsTable.ForeignKeys[0].RefTable = SkillsTable
 	UsersTable.ForeignKeys[0].RefTable = LanguagesTable
