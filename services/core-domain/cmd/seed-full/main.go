@@ -275,14 +275,14 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded instrument %q and diagram %q", "Guitar", diagram.Names["en"])
 
-	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", Items: []application.PathItemInput{
+	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", InstrumentIDs: []string{diagram.InstrumentID}, Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
 		{ContentNodeID: nodes["article-beginner"].ID},
 	}})
 	if err != nil {
 		return fmt.Errorf("create template A: %w", err)
 	}
-	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Improvisation Essentials", Items: []application.PathItemInput{
+	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelIntermediate, Title: "Improvisation Essentials", Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-intermediate"].ID},
 		{ContentNodeID: nodes["article-advanced"].ID},
 	}})
@@ -291,7 +291,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded 2 learning path templates: %q, %q", templateA.Title, templateB.Title)
 
-	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID)
+	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID, diagram.InstrumentID)
 	if err != nil {
 		return fmt.Errorf("seed courses: %w", err)
 	}
@@ -705,14 +705,18 @@ type seededCourses struct {
 	retired   domain.Course
 }
 
-func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *application.CourseService, templateAID, templateBID string) (seededCourses, error) {
+// seedThumbnailURL is a placeholder image for the seeded course that shows
+// thumbnails in the catalog; seeding uploads nothing to object storage.
+const seedThumbnailURL = "https://placehold.co/640x360/png?text=Fingerstyle+Foundations"
+
+func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *application.CourseService, templateAID, templateBID, guitarID string) (seededCourses, error) {
 
 	draft, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Draft Course — Never Published", Summary: "A course still being authored.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create draft course: %w", err)
 	}
 
-	published, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Fingerstyle Foundations", Summary: "Two checkpoints, from open position to improvisation.", Level: domain.DifficultyLevelBeginner, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}, {LearningPathID: templateBID}}})
+	published, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "en", Title: "Fingerstyle Foundations", Summary: "Two checkpoints, from open position to improvisation.", Level: domain.DifficultyLevelBeginner, InstrumentIDs: []string{guitarID}, ThumbnailURL: stringPtr(seedThumbnailURL), Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}, {LearningPathID: templateBID}}})
 	if err != nil {
 		return seededCourses{}, fmt.Errorf("create published course: %w", err)
 	}
@@ -737,6 +741,15 @@ func seedCourses(ctx context.Context, teacher, admin domain.User, courseSvc *app
 	}
 	if _, err := courseSvc.RetireCourse(ctx, admin, retired.ID); err != nil {
 		return seededCourses{}, fmt.Errorf("retire retired course: %w", err)
+	}
+
+	// A published course in Portuguese, for the catalog's language filter.
+	portuguese, err := courseSvc.CreateCourse(ctx, teacher, application.CourseInput{Language: "pt_BR", Title: "Violão: primeiros passos", Summary: "Da posição aberta à improvisação.", Level: domain.DifficultyLevelBeginner, InstrumentIDs: []string{guitarID}, Checkpoints: []application.CheckpointInput{{LearningPathID: templateAID}}})
+	if err != nil {
+		return seededCourses{}, fmt.Errorf("create Portuguese course: %w", err)
+	}
+	if _, err := courseSvc.PublishCourse(ctx, admin, portuguese.ID); err != nil {
+		return seededCourses{}, fmt.Errorf("publish Portuguese course: %w", err)
 	}
 
 	return seededCourses{draft: draft, published: published, single: single, retired: retired}, nil
@@ -1048,3 +1061,5 @@ func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID s
 	}
 	return nil
 }
+
+func stringPtr(s string) *string { return &s }
