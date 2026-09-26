@@ -36,6 +36,7 @@ func registerItemInstrumentSteps(sc *godog.ScenarioContext, w *world) {
 		return w.seedCourseFor(courseSlug, []uuid.UUID{}, "bob", pathSlug)
 	})
 	sc.Step(`^"([^"]+)" replaces course "([^"]+)" setting its instruments to ((?:"[^"]+"(?:, )?)+)$`, func(_, courseSlug, instruments string) error {
+		w.lastCourseSlug = courseSlug
 		return w.replaceCourseInstruments(courseSlug, instrumentIDsNamed(quotedValues(instruments)))
 	})
 

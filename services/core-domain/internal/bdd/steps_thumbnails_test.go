@@ -44,6 +44,12 @@ func registerThumbnailSteps(sc *godog.ScenarioContext, w *world) {
 		w.lastResp, w.lastErr = resp, err
 		return err
 	})
+	sc.Step(`^"([^"]+)" replaces course "([^"]+)" setting its thumbnail to "([^"]+)"$`, func(_, courseSlug, thumbnail string) error {
+		w.lastCourseSlug = courseSlug
+		resp, err := w.replaceCourseThumbnail(w.ctx(), courseSlug, &thumbnail)
+		w.lastResp, w.lastErr = resp, err
+		return err
+	})
 	sc.Step(`^course version (\d+) records the thumbnail "([^"]+)"$`, w.courseVersionRecordsThumbnail)
 	sc.Step(`^the course has no thumbnail$`, func() error {
 		resp, ok := w.lastResp.(generated.ReplaceCourse200JSONResponse)

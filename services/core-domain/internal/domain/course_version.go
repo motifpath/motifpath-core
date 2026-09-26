@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // CourseVersionCheckpoint is one checkpoint's identity as it existed at the
 // moment its CourseVersion was published: position, the LearningPath
@@ -79,9 +82,11 @@ func NewCourseVersionSnapshot(id string, course Course, versionNumber int, publi
 
 // HasUnpublishedChanges reports whether course's live draft differs from
 // latest — true when latest is nil (nothing has ever been published for
-// this course) or when title, summary, level, or checkpoint identity
-// (each checkpoint's learning_path_id, effective_title, and position, in
-// order) differs from latest's snapshot. False otherwise.
+// this course) or when anything the version records differs from latest's
+// snapshot: title, summary, level, language, instruments (as a set; none
+// and an empty list both mean every instrument), thumbnail, or checkpoint
+// identity (each checkpoint's learning_path_id, effective_title, and
+// position, in order). False otherwise.
 func HasUnpublishedChanges(course Course, latest *CourseVersion) bool {
 	if latest == nil {
 		return true
@@ -89,7 +94,12 @@ func HasUnpublishedChanges(course Course, latest *CourseVersion) bool {
 
 	if course.Title != latest.TitleSnapshot ||
 		course.Summary != latest.SummarySnapshot ||
-		course.Level != latest.LevelSnapshot {
+		course.Level != latest.LevelSnapshot ||
+		course.Language != latest.LanguageSnapshot {
+		return true
+	}
+	if !sameIDSet(course.InstrumentIDs, latest.InstrumentIDsSnapshot) ||
+		!sameOptionalString(course.ThumbnailURL, latest.ThumbnailURLSnapshot) {
 		return true
 	}
 
@@ -107,4 +117,24 @@ func HasUnpublishedChanges(course Course, latest *CourseVersion) bool {
 	}
 
 	return false
+}
+
+// sameIDSet reports whether a and b hold the same ids, in any order.
+func sameIDSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	sortedA, sortedB := slices.Clone(a), slices.Clone(b)
+	slices.Sort(sortedA)
+	slices.Sort(sortedB)
+	return slices.Equal(sortedA, sortedB)
+}
+
+// sameOptionalString reports whether a and b are both absent or hold the
+// same value.
+func sameOptionalString(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }

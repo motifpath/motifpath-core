@@ -131,6 +131,64 @@ func TestHasUnpublishedChanges(t *testing.T) {
 		assert.True(t, domain.HasUnpublishedChanges(course, &version))
 	})
 
+	t.Run("true when the language changed since the latest publish", func(t *testing.T) {
+		course := fingerstyleCourse()
+		course.Language = "en"
+		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+		course.Language = "pt_BR"
+
+		assert.True(t, domain.HasUnpublishedChanges(course, &version))
+	})
+
+	t.Run("true when the instruments changed since the latest publish", func(t *testing.T) {
+		course := fingerstyleCourse()
+		course.InstrumentIDs = []string{"guitar"}
+		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+		course.InstrumentIDs = []string{"guitar", "bass"}
+
+		assert.True(t, domain.HasUnpublishedChanges(course, &version))
+	})
+
+	t.Run("false when the same instruments come back in another order", func(t *testing.T) {
+		course := fingerstyleCourse()
+		course.InstrumentIDs = []string{"guitar", "bass"}
+		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+		course.InstrumentIDs = []string{"bass", "guitar"}
+
+		assert.False(t, domain.HasUnpublishedChanges(course, &version))
+	})
+
+	t.Run("false for every instrument, whether recorded as no list or an empty one", func(t *testing.T) {
+		course := fingerstyleCourse()
+		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+		version.InstrumentIDsSnapshot = nil
+		course.InstrumentIDs = []string{}
+
+		assert.False(t, domain.HasUnpublishedChanges(course, &version))
+	})
+
+	t.Run("true when a thumbnail was added, changed or removed since the latest publish", func(t *testing.T) {
+		first, second := "https://cdn.test/a.png", "https://cdn.test/b.png"
+		for _, change := range []struct{ before, after *string }{{nil, &first}, {&first, &second}, {&first, nil}} {
+			course := fingerstyleCourse()
+			course.ThumbnailURL = change.before
+			version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+			course.ThumbnailURL = change.after
+
+			assert.True(t, domain.HasUnpublishedChanges(course, &version))
+		}
+	})
+
+	t.Run("false when the thumbnail is the same url", func(t *testing.T) {
+		published, current := "https://cdn.test/a.png", "https://cdn.test/a.png"
+		course := fingerstyleCourse()
+		course.ThumbnailURL = &published
+		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
+		course.ThumbnailURL = &current
+
+		assert.False(t, domain.HasUnpublishedChanges(course, &version))
+	})
+
 	t.Run("true when a checkpoint's learning_path_id changed", func(t *testing.T) {
 		course := fingerstyleCourse()
 		version := domain.NewCourseVersionSnapshot("version-1", course, 1, publishedAt)
