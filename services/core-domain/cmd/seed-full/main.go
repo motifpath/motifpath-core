@@ -292,16 +292,21 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Printf("seeded video %q (image, rich-text and diagram cues) and article %q (paragraph pop-ups; 3 published versions plus unpublished edits)", lessons.video.Title, lessons.article.Title)
 
+	// Every template a course or standalone path is copied from holds videos
+	// only: the student lesson screen can't show an article yet, so an
+	// article item would leave its path — and a course's last checkpoint —
+	// impossible to finish. The seeded articles stay in the content library
+	// for authoring.
 	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", InstrumentIDs: []string{diagrams.guitar.ID}, Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
-		{ContentNodeID: nodes["article-beginner"].ID},
+		{ContentNodeID: nodes["video-beginner-rhythm"].ID},
 	}})
 	if err != nil {
 		return fmt.Errorf("create template A: %w", err)
 	}
 	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelIntermediate, Title: "Improvisation Essentials", Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-intermediate"].ID},
-		{ContentNodeID: nodes["article-advanced"].ID},
+		{ContentNodeID: nodes["video-advanced"].ID},
 	}})
 	if err != nil {
 		return fmt.Errorf("create template B: %w", err)
@@ -493,7 +498,7 @@ func seedStudents(ctx context.Context, identity *application.IdentityService) (m
 	return result, nil
 }
 
-// seedContentNodes creates one video and one article node at a spread of
+// seedContentNodes creates video and article nodes at a spread of
 // difficulty levels, keyed by a descriptive lookup key — every content
 // node created here is published immediately, since every downstream
 // consumer (learning path items, course checkpoints) needs a published
@@ -515,6 +520,8 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 		{"video-beginner", "Open position C major scale", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "Scales", "Major scale fingerings"},
 		{"article-beginner", "Reading a chord chart", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "Reading", "Chord chart notation"},
 		{"video-intermediate", "Call-and-response phrasing", domain.ContentTypeVideo, domain.DifficultyLevelIntermediate, "Improvisation", "Phrasing"},
+		{"video-beginner-rhythm", "A steady eighth-note strum", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "Rhythm", "Strumming patterns"},
+		{"video-advanced", "Phrasing over a blues turnaround", domain.ContentTypeVideo, domain.DifficultyLevelAdvanced, "Improvisation", "Blues turnarounds"},
 		{"article-advanced", "Modal interchange in blues turnarounds", domain.ContentTypeArticle, domain.DifficultyLevelAdvanced, "Harmony", "Modal interchange"},
 	}
 
@@ -848,15 +855,10 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 // below, and marking it completed in one context would silently mark it
 // completed in the other too, leaving nothing "current" to open there.
 //
-// The standalone path is built from video-beginner and video-intermediate
-// only — never an article — and both get timed cues plus their own
-// practice challenge. templateA/B (used by the synthetic students) always
-// put an article second, which the lesson screen has no view for yet; once
-// that article's predecessor is marked completed it becomes "current" and
-// opening it fails with "this lesson isn't available yet". Marking one item
-// of a two-video path completed never has that problem, and the node that
-// ends up completed, and the one that ends up current, both have something
-// to watch and practice instead of an empty lesson screen.
+// The standalone path is built from video-beginner and video-intermediate,
+// and both get timed cues plus their own practice challenge, so the node
+// that ends up completed and the one that ends up current both have
+// something to watch and practice instead of an empty lesson screen.
 //
 // Every exercise seeded anywhere (video-intermediate's own 5 plus
 // video-beginner's 2) also gets linked into video-intermediate's challenge,
