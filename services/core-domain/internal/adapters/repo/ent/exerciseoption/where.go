@@ -109,6 +109,16 @@ func DiagramPositionID(v uuid.UUID) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldDiagramPositionID, v))
 }
 
+// CellString applies equality check predicate on the "cell_string" field. It's identical to CellStringEQ.
+func CellString(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldCellString, v))
+}
+
+// CellFret applies equality check predicate on the "cell_fret" field. It's identical to CellFretEQ.
+func CellFret(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldCellFret, v))
+}
+
 // ExerciseIDEQ applies the EQ predicate on the "exercise_id" field.
 func ExerciseIDEQ(v uuid.UUID) predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldEQ(FieldExerciseID, v))
@@ -767,6 +777,106 @@ func DiagramPositionIDIsNil() predicate.ExerciseOption {
 // DiagramPositionIDNotNil applies the NotNil predicate on the "diagram_position_id" field.
 func DiagramPositionIDNotNil() predicate.ExerciseOption {
 	return predicate.ExerciseOption(sql.FieldNotNull(FieldDiagramPositionID))
+}
+
+// CellStringEQ applies the EQ predicate on the "cell_string" field.
+func CellStringEQ(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldCellString, v))
+}
+
+// CellStringNEQ applies the NEQ predicate on the "cell_string" field.
+func CellStringNEQ(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldCellString, v))
+}
+
+// CellStringIn applies the In predicate on the "cell_string" field.
+func CellStringIn(vs ...int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldCellString, vs...))
+}
+
+// CellStringNotIn applies the NotIn predicate on the "cell_string" field.
+func CellStringNotIn(vs ...int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldCellString, vs...))
+}
+
+// CellStringGT applies the GT predicate on the "cell_string" field.
+func CellStringGT(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldCellString, v))
+}
+
+// CellStringGTE applies the GTE predicate on the "cell_string" field.
+func CellStringGTE(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldCellString, v))
+}
+
+// CellStringLT applies the LT predicate on the "cell_string" field.
+func CellStringLT(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldCellString, v))
+}
+
+// CellStringLTE applies the LTE predicate on the "cell_string" field.
+func CellStringLTE(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldCellString, v))
+}
+
+// CellStringIsNil applies the IsNil predicate on the "cell_string" field.
+func CellStringIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldCellString))
+}
+
+// CellStringNotNil applies the NotNil predicate on the "cell_string" field.
+func CellStringNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldCellString))
+}
+
+// CellFretEQ applies the EQ predicate on the "cell_fret" field.
+func CellFretEQ(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldEQ(FieldCellFret, v))
+}
+
+// CellFretNEQ applies the NEQ predicate on the "cell_fret" field.
+func CellFretNEQ(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNEQ(FieldCellFret, v))
+}
+
+// CellFretIn applies the In predicate on the "cell_fret" field.
+func CellFretIn(vs ...int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIn(FieldCellFret, vs...))
+}
+
+// CellFretNotIn applies the NotIn predicate on the "cell_fret" field.
+func CellFretNotIn(vs ...int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotIn(FieldCellFret, vs...))
+}
+
+// CellFretGT applies the GT predicate on the "cell_fret" field.
+func CellFretGT(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGT(FieldCellFret, v))
+}
+
+// CellFretGTE applies the GTE predicate on the "cell_fret" field.
+func CellFretGTE(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldGTE(FieldCellFret, v))
+}
+
+// CellFretLT applies the LT predicate on the "cell_fret" field.
+func CellFretLT(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLT(FieldCellFret, v))
+}
+
+// CellFretLTE applies the LTE predicate on the "cell_fret" field.
+func CellFretLTE(v int) predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldLTE(FieldCellFret, v))
+}
+
+// CellFretIsNil applies the IsNil predicate on the "cell_fret" field.
+func CellFretIsNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldIsNull(FieldCellFret))
+}
+
+// CellFretNotNil applies the NotNil predicate on the "cell_fret" field.
+func CellFretNotNil() predicate.ExerciseOption {
+	return predicate.ExerciseOption(sql.FieldNotNull(FieldCellFret))
 }
 
 // HasExercise applies the HasEdge predicate on the "exercise" edge.

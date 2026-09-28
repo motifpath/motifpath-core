@@ -411,6 +411,38 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, got.Languages)
 }
 
+func TestEntExerciseRepository_DiagramCellOptionsRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	skill := seedSkill(t, ctx, client, "fretboard-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "roots-"+uuid.NewString())
+	diagramID, positionID := uuid.NewString(), uuid.NewString()
+	hidden := []string{positionID}
+	label := domain.DiagramLabelNote
+	ref := domain.DiagramRef{DiagramID: diagramID, Layers: domain.DiagramLayers{Label: &label, HiddenPositionIDs: &hidden}, CorrectPositionIDs: &[]string{positionID}}
+
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Find the root", Prompt: domain.NewPlainTextPrompt("Tap the root"),
+		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept},
+		DiagramRef: &ref,
+		Options: []domain.Option{
+			{ID: uuid.NewString(), IsCorrect: true, DiagramID: &diagramID, DiagramPositionID: &positionID, FretCell: &domain.FretCell{String: 6, Fret: 5}},
+			{ID: uuid.NewString(), IsCorrect: false, DiagramID: &diagramID, FretCell: &domain.FretCell{String: 1, Fret: 0}},
+		},
+		ChallengeIDs:   []string{},
+		ContentNodeIDs: []string{},
+		Languages:      []domain.Language{{Code: "any"}},
+		CreatedAt:      fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, exercise.Options, got.Options)
+	assert.Equal(t, exercise.DiagramRef, got.DiagramRef)
+}
+
 // TestEntExerciseRepository_Update_ReplacesLanguages confirms Update fully
 // replaces the exercise's language tags rather than merging with the old
 // set — the same complete-replacement contract Update already gives Options.

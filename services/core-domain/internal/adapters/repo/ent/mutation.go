@@ -18993,6 +18993,10 @@ type ExerciseOptionMutation struct {
 	diagram_ref         *string
 	diagram_id          *uuid.UUID
 	diagram_position_id *uuid.UUID
+	cell_string         *int
+	addcell_string      *int
+	cell_fret           *int
+	addcell_fret        *int
 	clearedFields       map[string]struct{}
 	exercise            *uuid.UUID
 	clearedexercise     bool
@@ -19800,6 +19804,146 @@ func (m *ExerciseOptionMutation) ResetDiagramPositionID() {
 	delete(m.clearedFields, exerciseoption.FieldDiagramPositionID)
 }
 
+// SetCellString sets the "cell_string" field.
+func (m *ExerciseOptionMutation) SetCellString(i int) {
+	m.cell_string = &i
+	m.addcell_string = nil
+}
+
+// CellString returns the value of the "cell_string" field in the mutation.
+func (m *ExerciseOptionMutation) CellString() (r int, exists bool) {
+	v := m.cell_string
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCellString returns the old "cell_string" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldCellString(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCellString is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCellString requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCellString: %w", err)
+	}
+	return oldValue.CellString, nil
+}
+
+// AddCellString adds i to the "cell_string" field.
+func (m *ExerciseOptionMutation) AddCellString(i int) {
+	if m.addcell_string != nil {
+		*m.addcell_string += i
+	} else {
+		m.addcell_string = &i
+	}
+}
+
+// AddedCellString returns the value that was added to the "cell_string" field in this mutation.
+func (m *ExerciseOptionMutation) AddedCellString() (r int, exists bool) {
+	v := m.addcell_string
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCellString clears the value of the "cell_string" field.
+func (m *ExerciseOptionMutation) ClearCellString() {
+	m.cell_string = nil
+	m.addcell_string = nil
+	m.clearedFields[exerciseoption.FieldCellString] = struct{}{}
+}
+
+// CellStringCleared returns if the "cell_string" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) CellStringCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldCellString]
+	return ok
+}
+
+// ResetCellString resets all changes to the "cell_string" field.
+func (m *ExerciseOptionMutation) ResetCellString() {
+	m.cell_string = nil
+	m.addcell_string = nil
+	delete(m.clearedFields, exerciseoption.FieldCellString)
+}
+
+// SetCellFret sets the "cell_fret" field.
+func (m *ExerciseOptionMutation) SetCellFret(i int) {
+	m.cell_fret = &i
+	m.addcell_fret = nil
+}
+
+// CellFret returns the value of the "cell_fret" field in the mutation.
+func (m *ExerciseOptionMutation) CellFret() (r int, exists bool) {
+	v := m.cell_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCellFret returns the old "cell_fret" field's value of the ExerciseOption entity.
+// If the ExerciseOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseOptionMutation) OldCellFret(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCellFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCellFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCellFret: %w", err)
+	}
+	return oldValue.CellFret, nil
+}
+
+// AddCellFret adds i to the "cell_fret" field.
+func (m *ExerciseOptionMutation) AddCellFret(i int) {
+	if m.addcell_fret != nil {
+		*m.addcell_fret += i
+	} else {
+		m.addcell_fret = &i
+	}
+}
+
+// AddedCellFret returns the value that was added to the "cell_fret" field in this mutation.
+func (m *ExerciseOptionMutation) AddedCellFret() (r int, exists bool) {
+	v := m.addcell_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCellFret clears the value of the "cell_fret" field.
+func (m *ExerciseOptionMutation) ClearCellFret() {
+	m.cell_fret = nil
+	m.addcell_fret = nil
+	m.clearedFields[exerciseoption.FieldCellFret] = struct{}{}
+}
+
+// CellFretCleared returns if the "cell_fret" field was cleared in this mutation.
+func (m *ExerciseOptionMutation) CellFretCleared() bool {
+	_, ok := m.clearedFields[exerciseoption.FieldCellFret]
+	return ok
+}
+
+// ResetCellFret resets all changes to the "cell_fret" field.
+func (m *ExerciseOptionMutation) ResetCellFret() {
+	m.cell_fret = nil
+	m.addcell_fret = nil
+	delete(m.clearedFields, exerciseoption.FieldCellFret)
+}
+
 // ClearExercise clears the "exercise" edge to the Exercise entity.
 func (m *ExerciseOptionMutation) ClearExercise() {
 	m.clearedexercise = true
@@ -19861,7 +20005,7 @@ func (m *ExerciseOptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseOptionMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 15)
 	if m.exercise != nil {
 		fields = append(fields, exerciseoption.FieldExerciseID)
 	}
@@ -19901,6 +20045,12 @@ func (m *ExerciseOptionMutation) Fields() []string {
 	if m.diagram_position_id != nil {
 		fields = append(fields, exerciseoption.FieldDiagramPositionID)
 	}
+	if m.cell_string != nil {
+		fields = append(fields, exerciseoption.FieldCellString)
+	}
+	if m.cell_fret != nil {
+		fields = append(fields, exerciseoption.FieldCellFret)
+	}
 	return fields
 }
 
@@ -19935,6 +20085,10 @@ func (m *ExerciseOptionMutation) Field(name string) (ent.Value, bool) {
 		return m.DiagramID()
 	case exerciseoption.FieldDiagramPositionID:
 		return m.DiagramPositionID()
+	case exerciseoption.FieldCellString:
+		return m.CellString()
+	case exerciseoption.FieldCellFret:
+		return m.CellFret()
 	}
 	return nil, false
 }
@@ -19970,6 +20124,10 @@ func (m *ExerciseOptionMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldDiagramID(ctx)
 	case exerciseoption.FieldDiagramPositionID:
 		return m.OldDiagramPositionID(ctx)
+	case exerciseoption.FieldCellString:
+		return m.OldCellString(ctx)
+	case exerciseoption.FieldCellFret:
+		return m.OldCellFret(ctx)
 	}
 	return nil, fmt.Errorf("unknown ExerciseOption field %s", name)
 }
@@ -20070,6 +20228,20 @@ func (m *ExerciseOptionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDiagramPositionID(v)
 		return nil
+	case exerciseoption.FieldCellString:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCellString(v)
+		return nil
+	case exerciseoption.FieldCellFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCellFret(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption field %s", name)
 }
@@ -20090,6 +20262,12 @@ func (m *ExerciseOptionMutation) AddedFields() []string {
 	if m.addregion_height != nil {
 		fields = append(fields, exerciseoption.FieldRegionHeight)
 	}
+	if m.addcell_string != nil {
+		fields = append(fields, exerciseoption.FieldCellString)
+	}
+	if m.addcell_fret != nil {
+		fields = append(fields, exerciseoption.FieldCellFret)
+	}
 	return fields
 }
 
@@ -20106,6 +20284,10 @@ func (m *ExerciseOptionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedRegionWidth()
 	case exerciseoption.FieldRegionHeight:
 		return m.AddedRegionHeight()
+	case exerciseoption.FieldCellString:
+		return m.AddedCellString()
+	case exerciseoption.FieldCellFret:
+		return m.AddedCellFret()
 	}
 	return nil, false
 }
@@ -20142,6 +20324,20 @@ func (m *ExerciseOptionMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddRegionHeight(v)
+		return nil
+	case exerciseoption.FieldCellString:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCellString(v)
+		return nil
+	case exerciseoption.FieldCellFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCellFret(v)
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption numeric field %s", name)
@@ -20183,6 +20379,12 @@ func (m *ExerciseOptionMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(exerciseoption.FieldDiagramPositionID) {
 		fields = append(fields, exerciseoption.FieldDiagramPositionID)
+	}
+	if m.FieldCleared(exerciseoption.FieldCellString) {
+		fields = append(fields, exerciseoption.FieldCellString)
+	}
+	if m.FieldCleared(exerciseoption.FieldCellFret) {
+		fields = append(fields, exerciseoption.FieldCellFret)
 	}
 	return fields
 }
@@ -20231,6 +20433,12 @@ func (m *ExerciseOptionMutation) ClearField(name string) error {
 	case exerciseoption.FieldDiagramPositionID:
 		m.ClearDiagramPositionID()
 		return nil
+	case exerciseoption.FieldCellString:
+		m.ClearCellString()
+		return nil
+	case exerciseoption.FieldCellFret:
+		m.ClearCellFret()
+		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption nullable field %s", name)
 }
@@ -20277,6 +20485,12 @@ func (m *ExerciseOptionMutation) ResetField(name string) error {
 		return nil
 	case exerciseoption.FieldDiagramPositionID:
 		m.ResetDiagramPositionID()
+		return nil
+	case exerciseoption.FieldCellString:
+		m.ResetCellString()
+		return nil
+	case exerciseoption.FieldCellFret:
+		m.ResetCellFret()
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseOption field %s", name)

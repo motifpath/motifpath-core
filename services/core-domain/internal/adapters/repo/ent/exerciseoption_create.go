@@ -187,6 +187,34 @@ func (_c *ExerciseOptionCreate) SetNillableDiagramPositionID(v *uuid.UUID) *Exer
 	return _c
 }
 
+// SetCellString sets the "cell_string" field.
+func (_c *ExerciseOptionCreate) SetCellString(v int) *ExerciseOptionCreate {
+	_c.mutation.SetCellString(v)
+	return _c
+}
+
+// SetNillableCellString sets the "cell_string" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableCellString(v *int) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetCellString(*v)
+	}
+	return _c
+}
+
+// SetCellFret sets the "cell_fret" field.
+func (_c *ExerciseOptionCreate) SetCellFret(v int) *ExerciseOptionCreate {
+	_c.mutation.SetCellFret(v)
+	return _c
+}
+
+// SetNillableCellFret sets the "cell_fret" field if the given value is not nil.
+func (_c *ExerciseOptionCreate) SetNillableCellFret(v *int) *ExerciseOptionCreate {
+	if v != nil {
+		_c.SetCellFret(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ExerciseOptionCreate) SetID(v uuid.UUID) *ExerciseOptionCreate {
 	_c.mutation.SetID(v)
@@ -345,6 +373,14 @@ func (_c *ExerciseOptionCreate) createSpec() (*ExerciseOption, *sqlgraph.CreateS
 	if value, ok := _c.mutation.DiagramPositionID(); ok {
 		_spec.SetField(exerciseoption.FieldDiagramPositionID, field.TypeUUID, value)
 		_node.DiagramPositionID = &value
+	}
+	if value, ok := _c.mutation.CellString(); ok {
+		_spec.SetField(exerciseoption.FieldCellString, field.TypeInt, value)
+		_node.CellString = &value
+	}
+	if value, ok := _c.mutation.CellFret(); ok {
+		_spec.SetField(exerciseoption.FieldCellFret, field.TypeInt, value)
+		_node.CellFret = &value
 	}
 	if nodes := _c.mutation.ExerciseIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
