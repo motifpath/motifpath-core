@@ -9,8 +9,9 @@ import (
 )
 
 func TestDiagramListFilter_Matches(t *testing.T) {
-	basic := domain.Diagram{ID: "b", Names: domain.LocalizedText{"en": "Scale", "pt_BR": "Escala"}, InstrumentID: "guitar", Kind: domain.DiagramKindBasic, CreatedBy: "admin", Skills: []domain.Skill{{ID: "s1"}}, Concepts: []domain.Concept{{ID: "c1"}}}
-	mine := domain.Diagram{ID: "m", InstrumentID: "guitar", Kind: domain.DiagramKindCustom, CreatedBy: "me", Skills: []domain.Skill{{ID: "s2"}}, Concepts: []domain.Concept{{ID: "c2"}}}
+	rootA := "A"
+	basic := domain.Diagram{ID: "b", Names: domain.LocalizedText{"en": "Scale", "pt_BR": "Escala Jônica"}, InstrumentID: "guitar", Kind: domain.DiagramKindBasic, CreatedBy: "admin", RootNote: &rootA, Skills: []domain.Skill{{ID: "s1"}}, Concepts: []domain.Concept{{ID: "c1"}}}
+	mine := domain.Diagram{ID: "m", Names: domain.LocalizedText{"en": "Box shape"}, InstrumentID: "guitar", Kind: domain.DiagramKindCustom, CreatedBy: "me", Skills: []domain.Skill{{ID: "s2"}}, Concepts: []domain.Concept{{ID: "c2"}}}
 	theirs := domain.Diagram{ID: "t", InstrumentID: "piano", Kind: domain.DiagramKindCustom, CreatedBy: "them"}
 
 	tests := []struct {
@@ -27,6 +28,11 @@ func TestDiagramListFilter_Matches(t *testing.T) {
 		{"ConceptID matches an exact linked concept", domain.DiagramListFilter{ConceptID: "c1"}, map[string]bool{"b": true, "m": false, "t": false}},
 		{"Language keeps diagrams named in that language", domain.DiagramListFilter{Language: "pt_BR"}, map[string]bool{"b": true, "m": false, "t": false}},
 		{"every set field must match", domain.DiagramListFilter{VisibleTo: "me", Kind: domain.DiagramKindCustom}, map[string]bool{"b": false, "m": true, "t": false}},
+		{"CreatedBy narrows within VisibleTo, never widens it", domain.DiagramListFilter{VisibleTo: "me", CreatedBy: "them"}, map[string]bool{"b": false, "m": false, "t": false}},
+		{"RootNote matches the recorded root exactly, never an unrecorded one", domain.DiagramListFilter{RootNote: "A"}, map[string]bool{"b": true, "m": false, "t": false}},
+		{"Name matches part of a name in any language, ignoring case and accents", domain.DiagramListFilter{Name: "JONICA"}, map[string]bool{"b": true, "m": false, "t": false}},
+		{"Name matches the English name too", domain.DiagramListFilter{Name: "box"}, map[string]bool{"b": false, "m": true, "t": false}},
+		{"Name never matches a diagram without names", domain.DiagramListFilter{Name: "x"}, map[string]bool{"b": false, "m": true, "t": false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
