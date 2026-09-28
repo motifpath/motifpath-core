@@ -238,7 +238,7 @@ func newWorld() *world {
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
 	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, newID, now, noShuffle)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, w.instruments, newID, now, noShuffle)
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
