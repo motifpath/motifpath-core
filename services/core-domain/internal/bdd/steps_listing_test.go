@@ -66,7 +66,7 @@ func registerListingSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" lists the course creators whose name matches "([^"]+)"$`, w.listsCourseCreatorsMatching)
 	sc.Step(`^no creators are returned$`, w.noCreatorsReturned)
 	sc.Step(`^an unauthenticated request attempts to list the course creators$`, w.unauthListsCourseCreators)
-	sc.Step(`^the creators returned are "([^"]+)"(?: and "([^"]+)")?, each with their display name$`, w.creatorsReturnedAre)
+	sc.Step(`^the creators returned are ((?:"[^"]+"(?:, | and )?)+), each with their display name$`, w.creatorsReturnedAre)
 	sc.Step(`^the creators returned do not include "([^"]+)"$`, w.creatorsReturnedExclude)
 
 	// ── Content node version history ─────────────────────────────────────
@@ -93,6 +93,7 @@ var (
 	limitClause    = regexp.MustCompile(`limit (-?\d+)`)
 	offsetClause   = regexp.MustCompile(`offset (-?\d+)`)
 	textClause     = regexp.MustCompile(`(?:matching )?text "([^"]*)"`)
+	quotedName     = regexp.MustCompile(`"([^"]+)"`)
 	typeClause     = regexp.MustCompile(`of type "([^"]+)"`)
 	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|instrument|text) ((?:"[^"]*"(?:, )?)+)`)
 	quotedListItem = regexp.MustCompile(`"([^"]*)"`)
@@ -787,14 +788,16 @@ func (w *world) courseCreatorsResponse() (generated.ListCourseCreators200JSONRes
 
 // creatorsReturnedAre asserts the response holds exactly the named creators,
 // in the order given, each carrying their current display name.
-func (w *world) creatorsReturnedAre(first, second string) error {
+// creatorsReturnedAre checks the creators list against a quoted, ordered
+// list of user names: "bob", "bob" and "carol", or "admin", "bob" and "carol".
+func (w *world) creatorsReturnedAre(list string) error {
 	resp, err := w.courseCreatorsResponse()
 	if err != nil {
 		return err
 	}
-	names := []string{first}
-	if second != "" {
-		names = append(names, second)
+	var names []string
+	for _, m := range quotedName.FindAllStringSubmatch(list, -1) {
+		names = append(names, m[1])
 	}
 	if len(resp) != len(names) {
 		return fmt.Errorf("expected %d creators, got %d: %#v", len(names), len(resp), resp)

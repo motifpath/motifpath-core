@@ -290,7 +290,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
 		generated.ReactivateCourse403JSONResponse,
-		generated.ListCourseCreators403JSONResponse:
+		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
