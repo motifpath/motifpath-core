@@ -291,6 +291,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 		return fmt.Errorf("seed diagram lessons: %w", err)
 	}
 	log.Printf("seeded video %q (image, rich-text and diagram cues) and article %q (paragraph pop-ups; 3 published versions plus unpublished edits)", lessons.video.Title, lessons.article.Title)
+	log.Printf("seeded video %q (a cue per way a student sees a diagram; in no path) — open it at /nodes/%s", lessons.scenarios.Title, lessons.scenarios.ID)
 
 	// Every template a course or standalone path is copied from holds videos
 	// only: the student lesson screen can't show an article yet, so an

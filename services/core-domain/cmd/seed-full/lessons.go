@@ -34,8 +34,9 @@ func intervalsRef(diagramID string) *domain.DiagramRef {
 
 // seededLessons is the content seedDiagramLessons creates.
 type seededLessons struct {
-	video   domain.ContentNode // cues of every kind: image, rich text, diagram
-	article domain.ContentNode // paragraph pop-ups of every kind, three published versions and unpublished edits
+	video     domain.ContentNode // cues of every kind: image, rich text, diagram
+	article   domain.ContentNode // paragraph pop-ups of every kind, three published versions and unpublished edits
+	scenarios domain.ContentNode // one diagram cue per way a student sees an embedded diagram
 }
 
 // seedDiagramLessons creates a guitar video and article that use the seeded
@@ -67,7 +68,11 @@ func seedDiagramLessons(ctx context.Context, teacher domain.User, content *appli
 	if err != nil {
 		return seededLessons{}, err
 	}
-	return seededLessons{video: video, article: article}, nil
+	scenarios, err := seedDiagramScenarioVideo(ctx, teacher, content, base, diagrams)
+	if err != nil {
+		return seededLessons{}, err
+	}
+	return seededLessons{video: video, article: article, scenarios: scenarios}, nil
 }
 
 // lessonExtra is one cue or pop-up: an image, a rich-text note or a diagram.
@@ -104,6 +109,68 @@ func seedDiagramVideo(ctx context.Context, teacher domain.User, content *applica
 		start, end, caption := cue.from, cue.to, cue.caption
 		if _, err := content.CreateExpandedContent(ctx, teacher, video.ID, cue.kind, cue.mediaURL, cue.rich, cue.diagram, nil, &start, &end, nil, nil, &caption); err != nil {
 			return domain.ContentNode{}, fmt.Errorf("create %s cue: %w", cue.kind, err)
+		}
+	}
+	return video, nil
+}
+
+// diagramCue is one timed cue of the diagram scenario video: a diagram, a
+// stack of diagrams, or a rich-text note with a diagram inline.
+type diagramCue struct {
+	diagram  *domain.DiagramRef
+	stack    *domain.DiagramStackRef
+	rich     *domain.PromptDocument
+	from, to int
+	caption  string
+}
+
+// noteWithDiagram builds a rich-text note whose diagram sits inline between
+// two paragraphs, the way an author embeds one in a prompt document.
+func noteWithDiagram(before string, ref domain.DiagramRef, after string) domain.PromptDocument {
+	doc := paragraphs(before, after)
+	diagram := domain.PromptNode{Type: domain.PromptNodeTypeDiagram, Attrs: &domain.PromptNodeAttrs{DiagramRef: &ref}}
+	doc.Content = []domain.PromptNode{doc.Content[0], diagram, doc.Content[1]}
+	return doc
+}
+
+// seedDiagramScenarioVideo creates and publishes a 30-second video whose cues
+// cover each way a student sees an embedded diagram: a single diagram, a
+// switch straight on to another one, a stack of two, a diagram inline in a
+// rich-text note, a diagram whose author hid its labels, and a diagram shown
+// through an interval subset. Like the other lessons it's in no learning
+// path, so it's opened by its lesson URL (logged by the seed).
+func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content *application.ContentService, input application.ContentNodeInput, diagrams seededDiagrams) (domain.ContentNode, error) {
+	input.Title, input.ContentType = "Reading diagrams in a lesson", domain.ContentTypeVideo
+	input.MediaURL = stringPtr("https://samplelib.com/preview/mp4/sample-30s.mp4")
+	input.ThumbnailURL = stringPtr("https://placehold.co/640x360/png?text=Reading+diagrams")
+	video, err := content.CreateContentNode(ctx, teacher, input)
+	if err != nil {
+		return domain.ContentNode{}, fmt.Errorf("create diagram scenario video: %w", err)
+	}
+	if _, err := content.PublishContentNode(ctx, teacher, video.ID); err != nil {
+		return domain.ContentNode{}, fmt.Errorf("publish diagram scenario video: %w", err)
+	}
+
+	pos1, pos2 := *intervalsRef(diagrams.pentatonicPos1.ID), *intervalsRef(diagrams.pentatonicPos2.ID)
+	rootsOnly := domain.DiagramRef{DiagramID: diagrams.pentatonicPos1.ID, Layers: domain.DiagramLayers{Intervals: true, Subset: &[]string{"R"}}}
+	cues := []diagramCue{
+		{diagram: &pos1, from: 0, to: 5, caption: "1 · One diagram: position 1"},
+		// Starts the second the previous cue ends: the diagram must switch in place.
+		{diagram: &pos2, from: 5, to: 10, caption: "2 · Straight on to the next diagram: position 2"},
+		{stack: &domain.DiagramStackRef{Stack: []domain.DiagramRef{pos1, pos2}}, from: 11, to: 15, caption: "3 · Two diagrams stacked: positions 1 and 2"},
+		{rich: docPtr(noteWithDiagram("Both boxes join into one long shape:", *intervalsRef(diagrams.pentatonicJoined.ID), "Slide between them on the G string.")),
+			from: 16, to: 20, caption: "4 · A diagram inside a rich-text note"},
+		{diagram: intervalsRef(diagrams.teacherLick.ID), from: 21, to: 25, caption: "5 · Labels hidden by the diagram's author"},
+		{diagram: &rootsOnly, from: 26, to: 30, caption: "6 · Only the roots of position 1"},
+	}
+	for _, cue := range cues {
+		kind := domain.ExpandedContentTypeDiagram
+		if cue.rich != nil {
+			kind = domain.ExpandedContentTypeRichText
+		}
+		start, end, caption := cue.from, cue.to, cue.caption
+		if _, err := content.CreateExpandedContent(ctx, teacher, video.ID, kind, nil, cue.rich, cue.diagram, cue.stack, &start, &end, nil, nil, &caption); err != nil {
+			return domain.ContentNode{}, fmt.Errorf("create %q cue: %w", caption, err)
 		}
 	}
 	return video, nil
