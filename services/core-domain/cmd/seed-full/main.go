@@ -286,6 +286,11 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	}
 	log.Println("seeded instruments Guitar, Bass and Piano; 6 basic diagram templates (regions, notes, custom labels, every shape and label display, a joined two-shape diagram, a bass scale) and 2 custom diagrams (one per teacher)")
 
+	if err := seedDiagramExercises(ctx, teacher, svc.exercise, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
+		return fmt.Errorf("seed diagram exercises: %w", err)
+	}
+	log.Println("seeded 2 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails), linked to the shared practice challenge")
+
 	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
 	if err != nil {
 		return fmt.Errorf("seed diagram lessons: %w", err)
