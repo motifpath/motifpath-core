@@ -736,7 +736,7 @@ type Course struct {
 	// receive.
 	CreatedBy UserRef `json:"created_by"`
 
-	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet).
+	// HasUnpublishedChanges True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet.
 	HasUnpublishedChanges bool `json:"has_unpublished_changes"`
 
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
@@ -789,7 +789,7 @@ type CourseCatalogEntry struct {
 	// receive.
 	CreatedBy UserRef `json:"created_by"`
 
-	// HasUnpublishedChanges True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
+	// HasUnpublishedChanges True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
 	HasUnpublishedChanges *bool `json:"has_unpublished_changes,omitempty"`
 
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
@@ -3208,9 +3208,20 @@ type ListDiagramsParams struct {
 	// custom means only their own custom diagrams.
 	Kind *ListDiagramsParamsKind `form:"kind,omitempty" json:"kind,omitempty"`
 
-	// CreatedBy Restricts the results to diagrams created by this user. A
-	// teacher may pass only their own user_id.
+	// CreatedBy Restricts the results to diagrams created by this user, among
+	// those the caller can see.
 	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// Name Restricts the results to diagrams with a name containing this
+	// text, in any of the diagram's languages, ignoring case and
+	// accents ("escala" matches "Escala Maior", "jonico" matches
+	// "Jônico").
+	Name *string `form:"name,omitempty" json:"name,omitempty"`
+
+	// RootNote Restricts the results to diagrams recorded with exactly this
+	// root note (e.g. "A", "F#", "Bb"), as spelled by their author. A
+	// diagram with no recorded root never matches.
+	RootNote *string `form:"root_note,omitempty" json:"root_note,omitempty"`
 
 	// InstrumentId When given, only diagrams authored against this instrument are returned.
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
@@ -3224,6 +3235,12 @@ type ListDiagramsParams struct {
 
 // ListDiagramsParamsKind defines parameters for ListDiagrams.
 type ListDiagramsParamsKind string
+
+// ListDiagramCreatorsParams defines parameters for ListDiagramCreators.
+type ListDiagramCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
 
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
@@ -3463,6 +3480,9 @@ type ServerInterface interface {
 	// Create a prebuilt diagram
 	// (POST /diagrams)
 	CreateDiagram(w http.ResponseWriter, r *http.Request)
+	// List the creators of the diagrams the caller can see
+	// (GET /diagrams/creators)
+	ListDiagramCreators(w http.ResponseWriter, r *http.Request, params ListDiagramCreatorsParams)
 	// Retrieve a diagram by ID
 	// (GET /diagrams/{diagram_id})
 	GetDiagram(w http.ResponseWriter, r *http.Request, diagramId openapi_types.UUID)
@@ -3766,6 +3786,12 @@ func (_ Unimplemented) ListDiagrams(w http.ResponseWriter, r *http.Request, para
 // Create a prebuilt diagram
 // (POST /diagrams)
 func (_ Unimplemented) CreateDiagram(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the diagrams the caller can see
+// (GET /diagrams/creators)
+func (_ Unimplemented) ListDiagramCreators(w http.ResponseWriter, r *http.Request, params ListDiagramCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5191,6 +5217,22 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// ------------- Optional query parameter "name" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "name", r.URL.Query(), &params.Name)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "root_note" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "root_note", r.URL.Query(), &params.RootNote)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "root_note", Err: err})
+		return
+	}
+
 	// ------------- Optional query parameter "instrument_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
@@ -5237,6 +5279,39 @@ func (siw *ServerInterfaceWrapper) CreateDiagram(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateDiagram(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDiagramCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListDiagramCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDiagramCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDiagramCreators(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6421,6 +6496,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/diagrams", wrapper.CreateDiagram)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/diagrams/creators", wrapper.ListDiagramCreators)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/diagrams/{diagram_id}", wrapper.GetDiagram)
@@ -7947,6 +8025,50 @@ func (response CreateDiagram403JSONResponse) VisitCreateDiagramResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListDiagramCreatorsRequestObject struct {
+	Params ListDiagramCreatorsParams
+}
+
+type ListDiagramCreatorsResponseObject interface {
+	VisitListDiagramCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListDiagramCreators200JSONResponse []UserRef
+
+func (response ListDiagramCreators200JSONResponse) VisitListDiagramCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagramCreators400JSONResponse ValidationError
+
+func (response ListDiagramCreators400JSONResponse) VisitListDiagramCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagramCreators401JSONResponse UnauthorizedError
+
+func (response ListDiagramCreators401JSONResponse) VisitListDiagramCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListDiagramCreators403JSONResponse ForbiddenError
+
+func (response ListDiagramCreators403JSONResponse) VisitListDiagramCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetDiagramRequestObject struct {
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 }
@@ -9450,6 +9572,9 @@ type StrictServerInterface interface {
 	// Create a prebuilt diagram
 	// (POST /diagrams)
 	CreateDiagram(ctx context.Context, request CreateDiagramRequestObject) (CreateDiagramResponseObject, error)
+	// List the creators of the diagrams the caller can see
+	// (GET /diagrams/creators)
+	ListDiagramCreators(ctx context.Context, request ListDiagramCreatorsRequestObject) (ListDiagramCreatorsResponseObject, error)
 	// Retrieve a diagram by ID
 	// (GET /diagrams/{diagram_id})
 	GetDiagram(ctx context.Context, request GetDiagramRequestObject) (GetDiagramResponseObject, error)
@@ -10491,6 +10616,32 @@ func (sh *strictHandler) CreateDiagram(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateDiagramResponseObject); ok {
 		if err := validResponse.VisitCreateDiagramResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListDiagramCreators operation middleware
+func (sh *strictHandler) ListDiagramCreators(w http.ResponseWriter, r *http.Request, params ListDiagramCreatorsParams) {
+	var request ListDiagramCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDiagramCreators(ctx, request.(ListDiagramCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDiagramCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDiagramCreatorsResponseObject); ok {
+		if err := validResponse.VisitListDiagramCreatorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
