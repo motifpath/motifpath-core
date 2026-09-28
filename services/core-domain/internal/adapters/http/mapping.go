@@ -321,6 +321,12 @@ func toOption(o domain.Option) generated.Option {
 		id := mustUUID(*o.DiagramPositionID)
 		option.DiagramPositionId = &id
 	}
+	if o.FretCell != nil {
+		option.FretCell = &struct {
+			Fret   int `json:"fret"`
+			String int `json:"string"`
+		}{Fret: o.FretCell.Fret, String: o.FretCell.String}
+	}
 	return option
 }
 
@@ -660,7 +666,10 @@ func toDomainDiagramKind(kind *generated.CreateDiagramRequestKind) domain.Diagra
 
 // diagramListFilter maps GET /diagrams' query parameters onto the domain
 // filter. Role scoping (VisibleTo) is the application layer's to set.
-func diagramListFilter(params generated.ListDiagramsParams) domain.DiagramListFilter {
+// diagramListFilter maps the list parameters onto a DiagramListFilter. A
+// name or root_note given but empty is refused here, since the filter can't
+// tell an empty search from none.
+func diagramListFilter(params generated.ListDiagramsParams) (domain.DiagramListFilter, error) {
 	filter := domain.DiagramListFilter{
 		InstrumentID: uuidPtrToString(params.InstrumentId),
 		SkillID:      uuidPtrToString(params.SkillId),
@@ -673,7 +682,19 @@ func diagramListFilter(params generated.ListDiagramsParams) domain.DiagramListFi
 	if params.Language != nil {
 		filter.Language = *params.Language
 	}
-	return filter
+	if params.Name != nil {
+		if *params.Name == "" {
+			return domain.DiagramListFilter{}, domain.NewValidationError("name", "must not be empty")
+		}
+		filter.Name = *params.Name
+	}
+	if params.RootNote != nil {
+		if *params.RootNote == "" {
+			return domain.DiagramListFilter{}, domain.NewValidationError("root_note", "must not be empty")
+		}
+		filter.RootNote = *params.RootNote
+	}
+	return filter, nil
 }
 
 func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {

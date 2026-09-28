@@ -36,7 +36,17 @@ func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises 
 }
 
 func newExerciseServiceWithDiagrams(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository, diagrams *fakeDiagramRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+}
+
+// exerciseInstruments is a 6-string fretted guitar and a keyboard piano, the
+// two families a diagram stimulus derives its options differently for.
+func exerciseInstruments() *fakeInstrumentRepository {
+	six := 6
+	instruments := newFakeInstrumentRepository()
+	instruments.byID["guitar"] = domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six}
+	instruments.byID["piano"] = domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard}
+	return instruments
 }
 
 func imageRecognitionOptions() []domain.Option {
@@ -396,47 +406,112 @@ func seedDiagram(t *testing.T, diagrams *fakeDiagramRepository, id, instrumentID
 func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 	rootPos := domain.Position{ID: "pos-root", Interval: "R", NoteName: "A"}
 	thirdPos := domain.Position{ID: "pos-third", Interval: "3", NoteName: "C#"}
-	fifthPos := domain.Position{ID: "pos-fifth", Interval: "5", NoteName: "E"}
 
-	t.Run("diagram_ref derives options from the diagram's positions", func(t *testing.T) {
+	fretted := func(id, interval string, str, fret int) domain.Position {
+		return domain.Position{ID: id, Interval: interval, NoteName: "A", String: &str, Fret: &fret}
+	}
+	// A minor pentatonic fragment: frets 5–8, so its answer window is frets 5–9.
+	pentatonic := []domain.Position{fretted("pos-6-5", "R", 6, 5), fretted("pos-4-7", "R", 4, 7), fretted("pos-6-8", "b3", 6, 8)}
+	create := func(t *testing.T, positions []domain.Position, ref domain.DiagramRef) (domain.Exercise, error) {
+		t.Helper()
 		diagrams := newFakeDiagramRepository()
-		seedDiagram(t, diagrams, "diagram-1", "guitar", []domain.Position{rootPos, thirdPos, fifthPos})
+		seedDiagram(t, diagrams, "diagram-1", "guitar", positions)
 		svc := newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams)
-
-		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"Name the root", domain.NewPlainTextPrompt("Which position is the root?"),
+		ref.DiagramID = "diagram-1"
+		return svc.CreateExercise(context.Background(), teacherCaller(),
+			"Find the roots", domain.NewPlainTextPrompt("Tap every root"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
-			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}}, nil,
-			nil, nil, nil, []string{"en"})
+			&ref, nil, nil, nil, nil, []string{"en"})
+	}
+	correctCells := func(exercise domain.Exercise) []domain.FretCell {
+		var cells []domain.FretCell
+		for _, opt := range exercise.Options {
+			if opt.IsCorrect {
+				cells = append(cells, *opt.FretCell)
+			}
+		}
+		return cells
+	}
+
+	t.Run("a fretted diagram_ref derives one option per answer cell, correct only at the marked positions", func(t *testing.T) {
+		exercise, err := create(t, pentatonic, domain.DiagramRef{CorrectPositionIDs: &[]string{"pos-6-5", "pos-4-7"}})
 
 		require.NoError(t, err)
-		require.Len(t, exercise.Options, 3)
-		correctCount := 0
+		require.Len(t, exercise.Options, 30)
+		assert.ElementsMatch(t, []domain.FretCell{{String: 6, Fret: 5}, {String: 4, Fret: 7}}, correctCells(exercise))
 		for _, opt := range exercise.Options {
 			require.NotNil(t, opt.DiagramID)
 			assert.Equal(t, "diagram-1", *opt.DiagramID)
-			require.NotNil(t, opt.DiagramPositionID)
-			if opt.IsCorrect {
-				correctCount++
-				assert.Equal(t, "pos-root", *opt.DiagramPositionID)
+			require.NotNil(t, opt.FretCell)
+			assert.NotEqual(t, 0, opt.FretCell.Fret, "the window doesn't reach the nut")
+			if *opt.FretCell == (domain.FretCell{String: 6, Fret: 8}) {
+				require.NotNil(t, opt.DiagramPositionID)
+				assert.Equal(t, "pos-6-8", *opt.DiagramPositionID)
+				assert.False(t, opt.IsCorrect)
+			}
+			if *opt.FretCell == (domain.FretCell{String: 1, Fret: 5}) {
+				assert.Nil(t, opt.DiagramPositionID, "an empty cell names no position")
 			}
 		}
-		assert.Equal(t, 1, correctCount)
 	})
 
-	t.Run("diagram_ref's layers.subset filters which positions become options", func(t *testing.T) {
+	t.Run("a hidden position is still a cell, and still correct when marked", func(t *testing.T) {
+		exercise, err := create(t, pentatonic, domain.DiagramRef{
+			Layers:             domain.DiagramLayers{HiddenPositionIDs: &[]string{"pos-6-5"}},
+			CorrectPositionIDs: &[]string{"pos-6-5"},
+		})
+
+		require.NoError(t, err)
+		require.Len(t, exercise.Options, 30)
+		assert.Equal(t, []domain.FretCell{{String: 6, Fret: 5}}, correctCells(exercise))
+	})
+
+	t.Run("open strings are cells when the window reaches the nut", func(t *testing.T) {
+		exercise, err := create(t, []domain.Position{fretted("pos-6-0", "R", 6, 0), fretted("pos-5-2", "5", 5, 2)},
+			domain.DiagramRef{CorrectPositionIDs: &[]string{"pos-6-0"}})
+
+		require.NoError(t, err)
+		require.Len(t, exercise.Options, 24)
+		assert.Equal(t, []domain.FretCell{{String: 6, Fret: 0}}, correctCells(exercise))
+	})
+
+	t.Run("older correct intervals become the matching drawn positions, stored as correct positions", func(t *testing.T) {
+		exercise, err := create(t, pentatonic, domain.DiagramRef{
+			Layers:           domain.DiagramLayers{HiddenPositionIDs: &[]string{"pos-4-7"}},
+			CorrectIntervals: &[]string{"R"},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.FretCell{{String: 6, Fret: 5}}, correctCells(exercise), "a hidden root isn't drawn, so wasn't correct before")
+		require.NotNil(t, exercise.DiagramRef.CorrectPositionIDs)
+		assert.Equal(t, []string{"pos-6-5"}, *exercise.DiagramRef.CorrectPositionIDs)
+		assert.Nil(t, exercise.DiagramRef.CorrectIntervals)
+	})
+
+	t.Run("a correct position that isn't the diagram's is rejected", func(t *testing.T) {
+		_, err := create(t, pentatonic, domain.DiagramRef{CorrectPositionIDs: &[]string{"pos-elsewhere"}})
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("a keyboard diagram keeps one option per position", func(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
-		seedDiagram(t, diagrams, "diagram-1", "guitar", []domain.Position{rootPos, thirdPos, fifthPos})
+		key := "A3"
+		seedDiagram(t, diagrams, "diagram-1", "piano", []domain.Position{{ID: "pos-a3", Interval: "R", NoteName: "A", Key: &key}})
 		svc := newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams)
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"Name the root", domain.NewPlainTextPrompt("Which position is the root?"),
+			"Find the root", domain.NewPlainTextPrompt("Tap the root"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
-			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true, Subset: &[]string{"R", "5"}}, CorrectIntervals: &[]string{"R"}}, nil,
+			&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &[]string{"pos-a3"}}, nil,
 			nil, nil, nil, []string{"en"})
 
 		require.NoError(t, err)
-		require.Len(t, exercise.Options, 2)
+		require.Len(t, exercise.Options, 1)
+		assert.True(t, exercise.Options[0].IsCorrect)
+		assert.Nil(t, exercise.Options[0].FretCell)
 	})
 
 	t.Run("diagram_stack_ref combines options from every entry sharing an instrument", func(t *testing.T) {
@@ -510,6 +585,77 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
 		assertHasField(t, valErr, "diagram_stack_ref")
+	})
+
+	t.Run("saving a diagram exercise again", func(t *testing.T) {
+		// A saved exercise's options are what students' answers name, so a save that
+		// leaves a choice in place must keep its option id.
+		setup := func(t *testing.T, instrumentID string, positions []domain.Position, correct []string) (*application.ExerciseService, domain.Exercise) {
+			t.Helper()
+			diagrams := newFakeDiagramRepository()
+			seedDiagram(t, diagrams, "diagram-1", instrumentID, positions)
+			seedDiagram(t, diagrams, "diagram-2", instrumentID, positions)
+			svc := newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams)
+			exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
+				"Find the roots", domain.NewPlainTextPrompt("Tap every root"),
+				domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
+				&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+			require.NoError(t, err)
+			return svc, exercise
+		}
+		update := func(t *testing.T, svc *application.ExerciseService, id, diagramID string, correct []string) domain.Exercise {
+			t.Helper()
+			updated, err := svc.UpdateExercise(context.Background(), teacherCaller(), id,
+				"Find every root", domain.NewPlainTextPrompt("Tap every root"),
+				[]string{"skill-1"}, []string{"concept-1"}, nil, nil,
+				&domain.DiagramRef{DiagramID: diagramID, CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+			require.NoError(t, err)
+			return updated
+		}
+		idsByCell := func(exercise domain.Exercise) map[domain.FretCell]string {
+			ids := map[domain.FretCell]string{}
+			for _, opt := range exercise.Options {
+				ids[*opt.FretCell] = opt.ID
+			}
+			return ids
+		}
+
+		t.Run("keeps every cell's option id", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-6-5"})
+
+			assert.Equal(t, idsByCell(created), idsByCell(updated))
+		})
+
+		t.Run("with other answers, keeps the ids and moves only which cells are correct", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-4-7"})
+
+			assert.Equal(t, idsByCell(created), idsByCell(updated))
+			assert.Equal(t, []domain.FretCell{{String: 4, Fret: 7}}, correctCells(updated))
+		})
+
+		t.Run("keeps a keyboard position's option id", func(t *testing.T) {
+			key := "A3"
+			svc, created := setup(t, "piano", []domain.Position{{ID: "pos-a3", Interval: "R", NoteName: "A", Key: &key}}, []string{"pos-a3"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-a3"})
+
+			require.Len(t, updated.Options, 1)
+			assert.Equal(t, created.Options[0].ID, updated.Options[0].ID)
+		})
+
+		t.Run("with another diagram, gives its options new ids", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-2", []string{"pos-6-5"})
+
+			for cell, id := range idsByCell(updated) {
+				assert.NotEqual(t, idsByCell(created)[cell], id)
+			}
+		})
 	})
 
 	t.Run("supplying options alongside a diagram_ref is rejected", func(t *testing.T) {
@@ -1035,7 +1181,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
 		require.NoError(t, err)
@@ -1054,7 +1200,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
 
@@ -1197,7 +1343,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
 		require.NoError(t, err)
@@ -1326,7 +1472,7 @@ func TestExerciseService_StartPracticeSession(t *testing.T) {
 		putWithSkill(exercises, "ex-1", "skill-1")
 		putWithSkill(exercises, "ex-2", "skill-1")
 		putWithSkill(exercises, "ex-3", "skill-1")
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
 

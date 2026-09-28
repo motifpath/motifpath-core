@@ -73,6 +73,16 @@ func (ExerciseOption) Fields() []ent.Field {
 		field.UUID("diagram_position_id", uuid.UUID{}).
 			Optional().
 			Nillable(),
+
+		// cell_string/cell_fret are server-derived and read-only too: the
+		// fretboard cell an option is when a fretted diagram stimulus's
+		// answers are cells. Set together or not at all.
+		field.Int("cell_string").
+			Optional().
+			Nillable(),
+		field.Int("cell_fret").
+			Optional().
+			Nillable(),
 	}
 }
 

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
@@ -18,6 +20,11 @@ import (
 func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)"$`, w.aDiagramExistsOn)
 	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)"$`, w.aDiagramExistsOn)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)"$`, w.aBasicDiagramCreatedBy)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with root note "([^"]+)"$`, w.aBasicDiagramWithRoot)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)" with no root note$`, w.aDiagramExistsOn)
+	sc.Step(`^a basic diagram "([^"]+)" exists on instrument "([^"]+)", named "([^"]+)" in English and "([^"]+)" in Portuguese, with root note "([^"]+)"$`, w.aBasicDiagramNamedWithRoot)
+	sc.Step(`^a custom diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)", named "([^"]+)" in English, with root note "([^"]+)"$`, w.aCustomDiagramNamedWithRoot)
 	sc.Step(`^a custom diagram "([^"]+)" exists on instrument "([^"]+)", created by "([^"]+)"$`, w.aCustomDiagramExistsOn)
 	sc.Step(`^(\d+) basic diagrams exist on instrument "([^"]+)"$`, w.bulkBasicDiagrams)
 	sc.Step(`^a diagram "([^"]+)" exists on instrument "([^"]+)" with positions:$`, w.aDiagramExistsOnWithPositions)
@@ -74,7 +81,11 @@ func registerDiagramSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" lists all diagrams$`, w.listsAllDiagrams)
 	sc.Step(`^"([^"]+)" lists diagrams of kind "([^"]+)"$`, w.listsDiagramsOfKind)
 	sc.Step(`^"([^"]+)" lists diagrams filtered by creator "([^"]+)"$`, w.listsDiagramsByCreator)
+	sc.Step(`^"([^"]+)" lists diagrams whose name contains "([^"]+)"$`, w.listsDiagramsNamed)
+	sc.Step(`^"([^"]+)" lists diagrams of kind "([^"]+)" whose name contains "([^"]+)" with root note "([^"]+)"$`, w.listsDiagramsOfKindNamedWithRoot)
 	sc.Step(`^"([^"]+)" lists diagrams with (.+)$`, w.listsDiagramsPaged)
+	sc.Step(`^"([^"]+)" lists the diagram creators$`, w.listsDiagramCreators)
+	sc.Step(`^"([^"]+)" lists the diagram creators matching "([^"]+)"$`, w.listsDiagramCreatorsMatching)
 	sc.Step(`^"([^"]+)" retrieves diagram "([^"]+)"$`, w.retrievesDiagram)
 	sc.Step(`^"([^"]+)" retrieves a diagram with an ID that does not exist$`, w.retrievesMissingDiagram)
 }
@@ -171,7 +182,34 @@ func (w *world) bulkBasicDiagrams(count int, instrumentName string) error {
 	return nil
 }
 
+// aBasicDiagramCreatedBy seeds a basic diagram owned by creator, an admin —
+// only admins make basic diagrams.
+func (w *world) aBasicDiagramCreatedBy(slug, instrumentName, creator string) error {
+	owner := w.ensureRegistered(creator, domain.RoleAdmin).String()
+	return w.seedOnePositionDiagram(slug, bothLanguages(slug), instrumentName, domain.DiagramKindBasic, owner)
+}
+
+func (w *world) aBasicDiagramWithRoot(slug, instrumentName, root string) error {
+	return w.seedDiagram(slug, bothLanguages(slug), instrumentName, domain.DiagramKindBasic, w.curatorID(), &root)
+}
+
+func (w *world) aBasicDiagramNamedWithRoot(slug, instrumentName, englishName, portugueseName, root string) error {
+	return w.seedDiagram(slug, map[string]string{"en": englishName, "pt_BR": portugueseName}, instrumentName, domain.DiagramKindBasic, w.curatorID(), &root)
+}
+
+func (w *world) aCustomDiagramNamedWithRoot(slug, instrumentName, creator, englishName, root string) error {
+	owner := w.ensureRegistered(creator, domain.RoleTeacher).String()
+	return w.seedDiagram(slug, map[string]string{"en": englishName}, instrumentName, domain.DiagramKindCustom, owner, &root)
+}
+
 func (w *world) seedOnePositionDiagram(slug string, names map[string]string, instrumentName string, kind domain.DiagramKind, owner string) error {
+	return w.seedDiagram(slug, names, instrumentName, kind, owner, nil)
+}
+
+// seedDiagram seeds a one-position diagram directly, shaped to match the
+// named instrument's family, with root as its recorded root note (nil for
+// none).
+func (w *world) seedDiagram(slug string, names map[string]string, instrumentName string, kind domain.DiagramKind, owner string, root *string) error {
 	instrument, err := w.ensureInstrumentSeeded(instrumentName)
 	if err != nil {
 		return err
@@ -185,7 +223,7 @@ func (w *world) seedOnePositionDiagram(slug string, names map[string]string, ins
 		position.Key = &key
 	}
 	skillID, conceptID := w.skillIDFor("seeded-skill"), w.conceptIDFor("seeded-concept")
-	diagram, err := domain.NewDiagram(diagramID(slug).String(), owner, instrument, names, offeredLanguages, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: kind}, fixedNow)
+	diagram, err := domain.NewDiagram(diagramID(slug).String(), owner, instrument, names, offeredLanguages, []domain.Position{position}, []string{skillID.String()}, []string{conceptID.String()}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval, Kind: kind, RootNote: root}, fixedNow)
 	if err != nil {
 		return fmt.Errorf("seeding diagram %q: %w", slug, err)
 	}
@@ -898,12 +936,68 @@ func (w *world) listsDiagramsByCreator(_, creator string) error {
 	return w.listDiagrams(generated.ListDiagramsParams{CreatedBy: &id})
 }
 
+// listsDiagramsPaged handles every "lists diagrams with …" phrasing: paging
+// ("limit 20 and offset 40", "no paging parameters"), a root note
+// (`root note "A"`), or a search parameter of a given length
+// ("name set to a value of 201 characters").
 func (w *world) listsDiagramsPaged(_, tail string) error {
+	if m := rootNoteClause.FindStringSubmatch(tail); m != nil {
+		return w.listDiagrams(generated.ListDiagramsParams{RootNote: &m[1]})
+	}
+	if m := parameterLengthClause.FindStringSubmatch(tail); m != nil {
+		n, err := strconv.Atoi(m[2])
+		if err != nil {
+			return err
+		}
+		value := strings.Repeat("a", n)
+		switch m[1] {
+		case "name":
+			return w.listDiagrams(generated.ListDiagramsParams{Name: &value})
+		case "root_note":
+			return w.listDiagrams(generated.ListDiagramsParams{RootNote: &value})
+		default:
+			return fmt.Errorf("unknown diagram list parameter %q", m[1])
+		}
+	}
 	limit, offset, err := pageParams(tail)
 	if err != nil {
 		return err
 	}
 	return w.listDiagrams(generated.ListDiagramsParams{Limit: limit, Offset: offset})
+}
+
+var (
+	rootNoteClause        = regexp.MustCompile(`^root note "([^"]+)"$`)
+	parameterLengthClause = regexp.MustCompile(`^(\w+) set to a value of (\d+) characters$`)
+)
+
+func (w *world) listsDiagramsNamed(_, name string) error {
+	return w.listDiagrams(generated.ListDiagramsParams{Name: &name})
+}
+
+func (w *world) listsDiagramsOfKindNamedWithRoot(_, kind, name, root string) error {
+	k := generated.ListDiagramsParamsKind(kind)
+	return w.listDiagrams(generated.ListDiagramsParams{Kind: &k, Name: &name, RootNote: &root})
+}
+
+func (w *world) listsDiagramCreators(string) error {
+	return w.listDiagramCreators(generated.ListDiagramCreatorsParams{})
+}
+
+func (w *world) listsDiagramCreatorsMatching(_, query string) error {
+	return w.listDiagramCreators(generated.ListDiagramCreatorsParams{Q: &query})
+}
+
+// listDiagramCreators stores a 200 as the course creators' response type, so
+// the shared "the creators returned …" steps read either list.
+func (w *world) listDiagramCreators(params generated.ListDiagramCreatorsParams) error {
+	resp, err := w.handler.ListDiagramCreators(w.ctx(), generated.ListDiagramCreatorsRequestObject{Params: params})
+	if creators, ok := resp.(generated.ListDiagramCreators200JSONResponse); ok {
+		w.lastResp, w.lastErr = generated.ListCourseCreators200JSONResponse(creators), err
+		return err
+	}
+	w.lastResp, w.lastErr = resp, err
+	return err
 }
 
 func (w *world) retrievesDiagram(_, slug string) error {

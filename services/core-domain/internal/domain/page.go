@@ -1,6 +1,11 @@
 package domain
 
-import "slices"
+import (
+	"slices"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/search"
+)
 
 const (
 	// DefaultPageLimit is the page size applied when a list request gives none.
@@ -139,6 +144,10 @@ type CourseListFilter struct {
 // VisibleTo, when set, is the role scoping a teacher's listing gets: only
 // basic diagrams, plus custom diagrams created by that user id, match.
 // Language, when set, keeps only diagrams with a name in that language.
+// Name, when set, keeps diagrams with a name in any language containing it,
+// ignoring case and accents (see ContainsLoosely). RootNote, when set, keeps
+// diagrams recorded with exactly that root; one with none never matches.
+// CreatedBy narrows within VisibleTo, never widening what a caller sees.
 //
 // Locale does not filter: it is the caller's language, which orders the
 // results by the name that caller sees (see LocalizedText.Resolve).
@@ -150,6 +159,8 @@ type DiagramListFilter struct {
 	CreatedBy    string
 	VisibleTo    string
 	Language     string
+	Name         string
+	RootNote     string
 	Locale       string
 }
 
@@ -183,6 +194,30 @@ func (f DiagramListFilter) matchesContent(d Diagram) bool {
 	if f.ConceptID != "" && !slices.Contains(d.ConceptIDs(), f.ConceptID) {
 		return false
 	}
+	if f.RootNote != "" && (d.RootNote == nil || *d.RootNote != f.RootNote) {
+		return false
+	}
+	if f.Name != "" && !f.matchesName(d) {
+		return false
+	}
 	_, named := d.Names[f.Language]
 	return f.Language == "" || named
+}
+
+// matchesName reports whether any of d's names contains f.Name loosely.
+func (f DiagramListFilter) matchesName(d Diagram) bool {
+	for _, name := range d.Names {
+		if ContainsLoosely(name, f.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsLoosely reports whether text contains query the way a person
+// searching reads it: ignoring case and accents, so "jonico" is found in
+// "Modo Jônico".
+func ContainsLoosely(text, query string) bool {
+	start, _ := search.New(language.Und, search.Loose).IndexString(text, query)
+	return start >= 0
 }

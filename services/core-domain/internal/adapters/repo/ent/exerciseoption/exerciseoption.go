@@ -41,6 +41,10 @@ const (
 	FieldDiagramID = "diagram_id"
 	// FieldDiagramPositionID holds the string denoting the diagram_position_id field in the database.
 	FieldDiagramPositionID = "diagram_position_id"
+	// FieldCellString holds the string denoting the cell_string field in the database.
+	FieldCellString = "cell_string"
+	// FieldCellFret holds the string denoting the cell_fret field in the database.
+	FieldCellFret = "cell_fret"
 	// EdgeExercise holds the string denoting the exercise edge name in mutations.
 	EdgeExercise = "exercise"
 	// Table holds the table name of the exerciseoption in the database.
@@ -70,6 +74,8 @@ var Columns = []string{
 	FieldDiagramRef,
 	FieldDiagramID,
 	FieldDiagramPositionID,
+	FieldCellString,
+	FieldCellFret,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -181,6 +187,16 @@ func ByDiagramID(opts ...sql.OrderTermOption) OrderOption {
 // ByDiagramPositionID orders the results by the diagram_position_id field.
 func ByDiagramPositionID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDiagramPositionID, opts...).ToFunc()
+}
+
+// ByCellString orders the results by the cell_string field.
+func ByCellString(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCellString, opts...).ToFunc()
+}
+
+// ByCellFret orders the results by the cell_fret field.
+func ByCellFret(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCellFret, opts...).ToFunc()
 }
 
 // ByExerciseField orders the results by exercise field.

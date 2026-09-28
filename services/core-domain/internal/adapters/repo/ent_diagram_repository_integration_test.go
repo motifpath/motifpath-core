@@ -151,11 +151,12 @@ func TestEntDiagramRepository_List(t *testing.T) {
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 	key := "A3"
 	admin, me, them := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	rootA := "A"
 
 	// Names are deliberately out of creation order, so the name ordering is
 	// observable.
 	basic := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindBasic, CreatedBy: admin, Names: domain.LocalizedText{"en": "C Basic"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindBasic, CreatedBy: admin, Names: domain.LocalizedText{"en": "C Basic"}, RootNote: &rootA, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptA}, CreatedAt: fixedAt,
 	}
@@ -165,7 +166,7 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		Skills:    []domain.Skill{skillB}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
 	theirs := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: them, Names: domain.LocalizedText{"en": "B Theirs", "pt_BR": "0 Deles"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: them, Names: domain.LocalizedText{"en": "B Theirs", "pt_BR": "0 Delés"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)}},
 		Skills:    []domain.Skill{skillA}, Concepts: []domain.Concept{conceptB}, CreatedAt: fixedAt,
 	}
@@ -189,6 +190,9 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		{name: "visibility combines with kind", filter: domain.DiagramListFilter{VisibleTo: me, Kind: domain.DiagramKindCustom}, want: []domain.Diagram{mine}},
 		{name: "filters combine with AND", filter: domain.DiagramListFilter{InstrumentID: guitar.ID, SkillID: skillB.ID}, want: []domain.Diagram{}},
 		{name: "by language: only diagrams named in it", filter: domain.DiagramListFilter{Language: "pt_BR"}, want: []domain.Diagram{theirs}},
+		{name: "by root note: only an exact recorded root", filter: domain.DiagramListFilter{RootNote: "A"}, want: []domain.Diagram{basic}},
+		{name: "by name: part of a name in any language, ignoring case and accents", filter: domain.DiagramListFilter{Name: "DELES"}, want: []domain.Diagram{theirs}},
+		{name: "by name: combines with visibility", filter: domain.DiagramListFilter{Name: "i", VisibleTo: me}, want: []domain.Diagram{mine, basic}},
 		{name: "ordered by the names a pt_BR reader sees", filter: domain.DiagramListFilter{Locale: "pt_BR"}, want: []domain.Diagram{theirs, mine, basic}},
 		{name: "a locale that is not a language code orders as English, never reaching the SQL", filter: domain.DiagramListFilter{Locale: "en'; DROP TABLE diagrams; --"}, want: []domain.Diagram{mine, theirs, basic}},
 	}
@@ -216,6 +220,29 @@ func TestEntDiagramRepository_List(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got.Items)
 		assert.Equal(t, 3, got.Total)
+	})
+
+	t.Run("a name search pages its own matches, with their total", func(t *testing.T) {
+		got, err := diagrams.List(ctx, domain.DiagramListFilter{Name: "i"}, domain.PageRequest{Limit: 1, Offset: 1})
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Diagram{theirs}, got.Items)
+		assert.Equal(t, 3, got.Total)
+	})
+
+	t.Run("creator ids are distinct and follow the filter", func(t *testing.T) {
+		extra := basic
+		extra.ID = uuid.NewString()
+		extra.Positions = []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(4), Fret: intPtr(7)}}
+		require.NoError(t, diagrams.Create(ctx, extra))
+
+		everyone, err := diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{admin, me, them}, everyone)
+
+		visibleToMe, err := diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{VisibleTo: me})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{admin, me}, visibleToMe)
 	})
 }
 

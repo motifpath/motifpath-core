@@ -77,6 +77,14 @@ func TestNewExercise_ImageRecognitionStimulus(t *testing.T) {
 		{ID: "opt-1", IsCorrect: true, DiagramID: strPtr("diagram-1"), DiagramPositionID: strPtr("pos-1")},
 	}
 	regionOptions := imageRecognitionRegionOptions()
+	byPositions := &domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &[]string{"pos-1"}}
+	noPositions := &domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &[]string{}}
+	noAnswers := &domain.DiagramRef{DiagramID: "diagram-1"}
+	// A cell a position occupies names it; an empty cell names only the diagram.
+	cellOptions := []domain.Option{
+		{ID: "opt-1", IsCorrect: true, DiagramID: strPtr("diagram-1"), DiagramPositionID: strPtr("pos-1"), FretCell: &domain.FretCell{String: 6, Fret: 5}},
+		{ID: "opt-2", IsCorrect: false, DiagramID: strPtr("diagram-1"), FretCell: &domain.FretCell{String: 5, Fret: 5}},
+	}
 
 	tests := []struct {
 		name            string
@@ -92,6 +100,10 @@ func TestNewExercise_ImageRecognitionStimulus(t *testing.T) {
 		{name: "none of the three is invalid", options: regionOptions, wantValid: false},
 		{name: "image_url and diagram_ref together is invalid", imageURL: &imageURL, diagramRef: diagramRef, options: regionOptions, wantValid: false},
 		{name: "diagram_ref and diagram_stack_ref together is invalid", diagramRef: diagramRef, diagramStackRef: diagramStackRef, options: derivedOptions, wantValid: false},
+		{name: "a diagram_ref with correct positions is valid", diagramRef: byPositions, options: cellOptions, wantValid: true},
+		{name: "a diagram_ref with an empty correct position list is invalid", diagramRef: noPositions, options: cellOptions, wantValid: false},
+		{name: "a diagram_ref with no answers at all is invalid", diagramRef: noAnswers, options: cellOptions, wantValid: false},
+		{name: "a cell option without a diagram is invalid", diagramRef: byPositions, options: []domain.Option{{ID: "opt-1", IsCorrect: true, FretCell: &domain.FretCell{String: 6, Fret: 5}}}, wantValid: false},
 	}
 
 	for _, tt := range tests {

@@ -677,6 +677,8 @@ var (
 		{Name: "diagram_ref", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "diagram_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "diagram_position_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "cell_string", Type: field.TypeInt, Nullable: true},
+		{Name: "cell_fret", Type: field.TypeInt, Nullable: true},
 		{Name: "exercise_id", Type: field.TypeUUID},
 	}
 	// ExerciseOptionsTable holds the schema information for the "exercise_options" table.
@@ -687,7 +689,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "exercise_options_exercises_options",
-				Columns:    []*schema.Column{ExerciseOptionsColumns[13]},
+				Columns:    []*schema.Column{ExerciseOptionsColumns[15]},
 				RefColumns: []*schema.Column{ExercisesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -696,7 +698,7 @@ var (
 			{
 				Name:    "exerciseoption_exercise_id",
 				Unique:  false,
-				Columns: []*schema.Column{ExerciseOptionsColumns[13]},
+				Columns: []*schema.Column{ExerciseOptionsColumns[15]},
 			},
 		},
 	}

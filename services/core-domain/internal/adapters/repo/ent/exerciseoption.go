@@ -44,6 +44,10 @@ type ExerciseOption struct {
 	DiagramID *uuid.UUID `json:"diagram_id,omitempty"`
 	// DiagramPositionID holds the value of the "diagram_position_id" field.
 	DiagramPositionID *uuid.UUID `json:"diagram_position_id,omitempty"`
+	// CellString holds the value of the "cell_string" field.
+	CellString *int `json:"cell_string,omitempty"`
+	// CellFret holds the value of the "cell_fret" field.
+	CellFret *int `json:"cell_fret,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ExerciseOptionQuery when eager-loading is set.
 	Edges        ExerciseOptionEdges `json:"edges"`
@@ -81,6 +85,8 @@ func (*ExerciseOption) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case exerciseoption.FieldRegionX, exerciseoption.FieldRegionY, exerciseoption.FieldRegionWidth, exerciseoption.FieldRegionHeight:
 			values[i] = new(sql.NullFloat64)
+		case exerciseoption.FieldCellString, exerciseoption.FieldCellFret:
+			values[i] = new(sql.NullInt64)
 		case exerciseoption.FieldLabel, exerciseoption.FieldImageURL, exerciseoption.FieldAudioURL, exerciseoption.FieldRegionShape, exerciseoption.FieldDiagramRef:
 			values[i] = new(sql.NullString)
 		case exerciseoption.FieldID, exerciseoption.FieldExerciseID:
@@ -195,6 +201,20 @@ func (_m *ExerciseOption) assignValues(columns []string, values []any) error {
 				_m.DiagramPositionID = new(uuid.UUID)
 				*_m.DiagramPositionID = *value.S.(*uuid.UUID)
 			}
+		case exerciseoption.FieldCellString:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field cell_string", values[i])
+			} else if value.Valid {
+				_m.CellString = new(int)
+				*_m.CellString = int(value.Int64)
+			}
+		case exerciseoption.FieldCellFret:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field cell_fret", values[i])
+			} else if value.Valid {
+				_m.CellFret = new(int)
+				*_m.CellFret = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -294,6 +314,16 @@ func (_m *ExerciseOption) String() string {
 	builder.WriteString(", ")
 	if v := _m.DiagramPositionID; v != nil {
 		builder.WriteString("diagram_position_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.CellString; v != nil {
+		builder.WriteString("cell_string=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.CellFret; v != nil {
+		builder.WriteString("cell_fret=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteByte(')')

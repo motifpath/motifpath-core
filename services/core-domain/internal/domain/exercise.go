@@ -169,6 +169,10 @@ type Option struct {
 	// construction — the application layer derives them.
 	DiagramID         *string
 	DiagramPositionID *string
+	// FretCell is the fretboard cell this option is, for a diagram
+	// stimulus whose answers are cells; DiagramPositionID is then set only
+	// when a position of the diagram occupies the cell. Server-derived.
+	FretCell *FretCell
 }
 
 // RemediationTarget is one piece of content recommended to a student who
@@ -485,8 +489,13 @@ func validateDiagramStimulusRef(ref DiagramRef) []FieldError {
 	if err := ValidateDiagramRef(ref); err != nil {
 		errs = append(errs, FieldError{Field: "diagram_ref", Reason: err.Error()})
 	}
-	if ref.CorrectIntervals == nil {
-		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_intervals is required when used as an image_recognition stimulus"})
+	switch {
+	case ref.CorrectPositionIDs != nil:
+		if len(*ref.CorrectPositionIDs) == 0 {
+			errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_position_ids must name at least one position"})
+		}
+	case ref.CorrectIntervals == nil:
+		errs = append(errs, FieldError{Field: "diagram_ref", Reason: "correct_position_ids is required when used as an image_recognition stimulus"})
 	}
 	return errs
 }
@@ -558,8 +567,10 @@ func optionShapeError(exerciseType ExerciseType, diagramDriven bool, opt Option)
 // diagram_position_id from the exercise's diagram stimulus.
 func imageRecognitionOptionShapeError(diagramDriven bool, opt Option) string {
 	if diagramDriven {
-		if opt.DiagramID == nil || *opt.DiagramID == "" || opt.DiagramPositionID == nil || *opt.DiagramPositionID == "" {
-			return "diagram-driven image_recognition options must carry diagram_id and diagram_position_id"
+		hasDiagram := opt.DiagramID != nil && *opt.DiagramID != ""
+		hasPosition := opt.DiagramPositionID != nil && *opt.DiagramPositionID != ""
+		if !hasDiagram || (opt.FretCell == nil && !hasPosition) {
+			return "diagram-driven image_recognition options must carry diagram_id and a fret_cell or diagram_position_id"
 		}
 		return ""
 	}

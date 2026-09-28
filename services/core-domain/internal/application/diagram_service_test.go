@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 type diagramFixture struct {
 	diagrams    *fakeDiagramRepository
 	instruments *fakeInstrumentRepository
+	users       *fakeUserRepository
 	svc         *application.DiagramService
 }
 
@@ -24,8 +26,16 @@ func newDiagramFixture() diagramFixture {
 	instruments.put(domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"}})
 	instruments.put(domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}})
 	diagrams := newFakeDiagramRepository()
-	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), newFakeLanguageRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
-	return diagramFixture{diagrams: diagrams, instruments: instruments, svc: svc}
+	users := newFakeUserRepository()
+	for _, u := range []domain.User{
+		{ID: adminCaller().ID, ClerkUserID: "clerk-admin", DisplayName: "Ana Admin"},
+		{ID: teacherCaller().ID, ClerkUserID: "clerk-teacher-1", DisplayName: "Bob Ferreira"},
+		{ID: otherTeacherCaller().ID, ClerkUserID: "clerk-teacher-2", DisplayName: "Carol Souza"},
+	} {
+		users.put(u)
+	}
+	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), newFakeLanguageRepository(), users, idSequence(), func() time.Time { return fixedCreatedAt })
+	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, svc: svc}
 }
 
 // names names a diagram name in both offered languages, which every kind of
@@ -496,13 +506,56 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 		assert.Equal(t, []string{mine.ID}, ids(got))
 	})
 
-	t.Run("a teacher cannot filter by another creator", func(t *testing.T) {
+	t.Run("a teacher filtering by another teacher gets none of that teacher's custom diagrams", func(t *testing.T) {
 		f := newDiagramFixture()
 		seedLibrary(t, f)
 
-		_, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{CreatedBy: otherTeacherCaller().ID}, page)
+		got, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{CreatedBy: otherTeacherCaller().ID}, page)
 
-		require.ErrorIs(t, err, domain.ErrForbidden)
+		require.NoError(t, err)
+		assert.Empty(t, ids(got))
+	})
+
+	t.Run("a teacher filtering by an admin gets the basic diagrams that admin created", func(t *testing.T) {
+		f := newDiagramFixture()
+		basic, _, _ := seedLibrary(t, f)
+
+		got, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{CreatedBy: adminCaller().ID}, page)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{basic.ID}, ids(got))
+	})
+
+	t.Run("name and root note narrow the list, ignoring case and accents in the name", func(t *testing.T) {
+		f := newDiagramFixture()
+		a, e := "A", "E"
+		mk := func(diagramNames map[string]string, root *string) domain.Diagram {
+			d, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", diagramNames, []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: domain.DiagramKindBasic, RootNote: root})
+			require.NoError(t, err)
+			return d
+		}
+		ionianA := mk(map[string]string{"en": "Ionian Mode", "pt_BR": "Modo Jônico"}, &a)
+		mk(map[string]string{"en": "Ionian Mode", "pt_BR": "Modo Jônico"}, &e)
+		mk(map[string]string{"en": "Dorian Mode", "pt_BR": "Modo Dórico"}, &a)
+
+		got, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{Name: "JONICO", RootNote: "A"}, page)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{ionianA.ID}, ids(got))
+	})
+
+	t.Run("an over-long name search or root note is a validation error", func(t *testing.T) {
+		f := newDiagramFixture()
+		for field, filter := range map[string]domain.DiagramListFilter{
+			"name":      {Name: strings.Repeat("a", 201)},
+			"root_note": {RootNote: "C##b"},
+		} {
+			_, err := f.svc.ListDiagrams(ctx, teacherCaller(), filter, page)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr, field)
+			assert.Equal(t, field, valErr.Fields[0].Field)
+		}
 	})
 
 	t.Run("an admin sees every diagram", func(t *testing.T) {
@@ -552,6 +605,55 @@ func TestDiagramService_ListDiagrams(t *testing.T) {
 		assert.Equal(t, "Mine", got.Items[0].Names["en"])
 		assert.Equal(t, "Theirs", got.Items[1].Names["en"])
 		assert.Equal(t, 3, got.Total)
+	})
+}
+
+func TestDiagramService_ListDiagramCreators(t *testing.T) {
+	ctx := context.Background()
+	creator := func(u domain.User, name string) application.Creator {
+		return application.Creator{UserID: u.ID, DisplayName: name}
+	}
+	admin, bob, carol := creator(adminCaller(), "Ana Admin"), creator(teacherCaller(), "Bob Ferreira"), creator(otherTeacherCaller(), "Carol Souza")
+
+	tests := []struct {
+		name      string
+		caller    domain.User
+		teacherHasOwn bool
+		query     string
+		want      []application.Creator
+	}{
+		{name: "a teacher gets the basic diagrams' creators and themselves", caller: teacherCaller(), teacherHasOwn: true, want: []application.Creator{admin, bob}},
+		{name: "a teacher without a custom diagram of their own is not listed", caller: teacherCaller(), want: []application.Creator{admin}},
+		{name: "an admin gets every creator, each once, in name order", caller: adminCaller(), teacherHasOwn: true, want: []application.Creator{admin, bob, carol}},
+		{name: "the query keeps creators whose name contains it, ignoring case and accents", caller: adminCaller(), teacherHasOwn: true, query: "FÉRR", want: []application.Creator{bob}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newDiagramFixture()
+			mk := func(owner domain.User, kind domain.DiagramKind) {
+				_, err := f.svc.CreateDiagram(ctx, owner, "guitar", names("D"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: kind})
+				require.NoError(t, err)
+			}
+			mk(adminCaller(), domain.DiagramKindBasic)
+			mk(adminCaller(), domain.DiagramKindBasic)
+			mk(otherTeacherCaller(), domain.DiagramKindCustom)
+			if tt.teacherHasOwn {
+				mk(teacherCaller(), domain.DiagramKindCustom)
+			}
+
+			got, err := f.svc.ListDiagramCreators(ctx, tt.caller, tt.query)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+
+	t.Run("a student cannot list diagram creators", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		_, err := f.svc.ListDiagramCreators(ctx, studentCaller(), "")
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
 

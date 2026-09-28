@@ -305,6 +305,60 @@ func (_u *ExerciseOptionUpdate) ClearDiagramPositionID() *ExerciseOptionUpdate {
 	return _u
 }
 
+// SetCellString sets the "cell_string" field.
+func (_u *ExerciseOptionUpdate) SetCellString(v int) *ExerciseOptionUpdate {
+	_u.mutation.ResetCellString()
+	_u.mutation.SetCellString(v)
+	return _u
+}
+
+// SetNillableCellString sets the "cell_string" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableCellString(v *int) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetCellString(*v)
+	}
+	return _u
+}
+
+// AddCellString adds value to the "cell_string" field.
+func (_u *ExerciseOptionUpdate) AddCellString(v int) *ExerciseOptionUpdate {
+	_u.mutation.AddCellString(v)
+	return _u
+}
+
+// ClearCellString clears the value of the "cell_string" field.
+func (_u *ExerciseOptionUpdate) ClearCellString() *ExerciseOptionUpdate {
+	_u.mutation.ClearCellString()
+	return _u
+}
+
+// SetCellFret sets the "cell_fret" field.
+func (_u *ExerciseOptionUpdate) SetCellFret(v int) *ExerciseOptionUpdate {
+	_u.mutation.ResetCellFret()
+	_u.mutation.SetCellFret(v)
+	return _u
+}
+
+// SetNillableCellFret sets the "cell_fret" field if the given value is not nil.
+func (_u *ExerciseOptionUpdate) SetNillableCellFret(v *int) *ExerciseOptionUpdate {
+	if v != nil {
+		_u.SetCellFret(*v)
+	}
+	return _u
+}
+
+// AddCellFret adds value to the "cell_fret" field.
+func (_u *ExerciseOptionUpdate) AddCellFret(v int) *ExerciseOptionUpdate {
+	_u.mutation.AddCellFret(v)
+	return _u
+}
+
+// ClearCellFret clears the value of the "cell_fret" field.
+func (_u *ExerciseOptionUpdate) ClearCellFret() *ExerciseOptionUpdate {
+	_u.mutation.ClearCellFret()
+	return _u
+}
+
 // SetExercise sets the "exercise" edge to the Exercise entity.
 func (_u *ExerciseOptionUpdate) SetExercise(v *Exercise) *ExerciseOptionUpdate {
 	return _u.SetExerciseID(v.ID)
@@ -453,6 +507,24 @@ func (_u *ExerciseOptionUpdate) sqlSave(ctx context.Context) (_node int, err err
 	}
 	if _u.mutation.DiagramPositionIDCleared() {
 		_spec.ClearField(exerciseoption.FieldDiagramPositionID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.CellString(); ok {
+		_spec.SetField(exerciseoption.FieldCellString, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCellString(); ok {
+		_spec.AddField(exerciseoption.FieldCellString, field.TypeInt, value)
+	}
+	if _u.mutation.CellStringCleared() {
+		_spec.ClearField(exerciseoption.FieldCellString, field.TypeInt)
+	}
+	if value, ok := _u.mutation.CellFret(); ok {
+		_spec.SetField(exerciseoption.FieldCellFret, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCellFret(); ok {
+		_spec.AddField(exerciseoption.FieldCellFret, field.TypeInt, value)
+	}
+	if _u.mutation.CellFretCleared() {
+		_spec.ClearField(exerciseoption.FieldCellFret, field.TypeInt)
 	}
 	if _u.mutation.ExerciseCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -779,6 +851,60 @@ func (_u *ExerciseOptionUpdateOne) ClearDiagramPositionID() *ExerciseOptionUpdat
 	return _u
 }
 
+// SetCellString sets the "cell_string" field.
+func (_u *ExerciseOptionUpdateOne) SetCellString(v int) *ExerciseOptionUpdateOne {
+	_u.mutation.ResetCellString()
+	_u.mutation.SetCellString(v)
+	return _u
+}
+
+// SetNillableCellString sets the "cell_string" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableCellString(v *int) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetCellString(*v)
+	}
+	return _u
+}
+
+// AddCellString adds value to the "cell_string" field.
+func (_u *ExerciseOptionUpdateOne) AddCellString(v int) *ExerciseOptionUpdateOne {
+	_u.mutation.AddCellString(v)
+	return _u
+}
+
+// ClearCellString clears the value of the "cell_string" field.
+func (_u *ExerciseOptionUpdateOne) ClearCellString() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearCellString()
+	return _u
+}
+
+// SetCellFret sets the "cell_fret" field.
+func (_u *ExerciseOptionUpdateOne) SetCellFret(v int) *ExerciseOptionUpdateOne {
+	_u.mutation.ResetCellFret()
+	_u.mutation.SetCellFret(v)
+	return _u
+}
+
+// SetNillableCellFret sets the "cell_fret" field if the given value is not nil.
+func (_u *ExerciseOptionUpdateOne) SetNillableCellFret(v *int) *ExerciseOptionUpdateOne {
+	if v != nil {
+		_u.SetCellFret(*v)
+	}
+	return _u
+}
+
+// AddCellFret adds value to the "cell_fret" field.
+func (_u *ExerciseOptionUpdateOne) AddCellFret(v int) *ExerciseOptionUpdateOne {
+	_u.mutation.AddCellFret(v)
+	return _u
+}
+
+// ClearCellFret clears the value of the "cell_fret" field.
+func (_u *ExerciseOptionUpdateOne) ClearCellFret() *ExerciseOptionUpdateOne {
+	_u.mutation.ClearCellFret()
+	return _u
+}
+
 // SetExercise sets the "exercise" edge to the Exercise entity.
 func (_u *ExerciseOptionUpdateOne) SetExercise(v *Exercise) *ExerciseOptionUpdateOne {
 	return _u.SetExerciseID(v.ID)
@@ -957,6 +1083,24 @@ func (_u *ExerciseOptionUpdateOne) sqlSave(ctx context.Context) (_node *Exercise
 	}
 	if _u.mutation.DiagramPositionIDCleared() {
 		_spec.ClearField(exerciseoption.FieldDiagramPositionID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.CellString(); ok {
+		_spec.SetField(exerciseoption.FieldCellString, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCellString(); ok {
+		_spec.AddField(exerciseoption.FieldCellString, field.TypeInt, value)
+	}
+	if _u.mutation.CellStringCleared() {
+		_spec.ClearField(exerciseoption.FieldCellString, field.TypeInt)
+	}
+	if value, ok := _u.mutation.CellFret(); ok {
+		_spec.SetField(exerciseoption.FieldCellFret, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCellFret(); ok {
+		_spec.AddField(exerciseoption.FieldCellFret, field.TypeInt, value)
+	}
+	if _u.mutation.CellFretCleared() {
+		_spec.ClearField(exerciseoption.FieldCellFret, field.TypeInt)
 	}
 	if _u.mutation.ExerciseCleared() {
 		edge := &sqlgraph.EdgeSpec{

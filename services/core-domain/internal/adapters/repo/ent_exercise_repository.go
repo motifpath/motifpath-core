@@ -166,6 +166,9 @@ func buildExerciseOptionCreate(tx *ent.Tx, exerciseID uuid.UUID, opt domain.Opti
 		}
 		optBuilder = optBuilder.SetDiagramPositionID(positionID)
 	}
+	if opt.FretCell != nil {
+		optBuilder = optBuilder.SetCellString(opt.FretCell.String).SetCellFret(opt.FretCell.Fret)
+	}
 	return optBuilder, nil
 }
 
@@ -712,6 +715,9 @@ func toDomainOption(row *ent.ExerciseOption) domain.Option {
 	if row.DiagramPositionID != nil {
 		id := row.DiagramPositionID.String()
 		opt.DiagramPositionID = &id
+	}
+	if row.CellString != nil && row.CellFret != nil {
+		opt.FretCell = &domain.FretCell{String: *row.CellString, Fret: *row.CellFret}
 	}
 	return opt
 }

@@ -238,7 +238,7 @@ func newWorld() *world {
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
 	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, newID, now, noShuffle)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, w.instruments, newID, now, noShuffle)
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
@@ -248,7 +248,7 @@ func newWorld() *world {
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, newFakeLanguageRepo(), newID)
-	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), newID, now)
+	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), w.users, newID, now)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, diagram, w.pgPinger, w.mongoPinger)
 	return w

@@ -1709,17 +1709,13 @@ func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagra
 		})
 	}
 
-	result, err := h.diagram.ListDiagrams(ctx, caller, diagramListFilter(request.Params), page)
+	filter, err := diagramListFilter(request.Params)
 	if err != nil {
-		kind, valErr := classify(err)
-		switch kind {
-		case errKindValidation:
-			return generated.ListDiagrams400JSONResponse(validationErrorResponse(valErr)), nil
-		case errKindForbidden:
-			return generated.ListDiagrams403JSONResponse(forbiddenError("students may not list diagrams, and a teacher may only filter by their own created_by")), nil
-		case errKindNotFound, errKindOther:
-			return nil, err
-		}
+		return listDiagramsFailure(err)
+	}
+	result, err := h.diagram.ListDiagrams(ctx, caller, filter, page)
+	if err != nil {
+		return listDiagramsFailure(err)
 	}
 
 	names, err := h.loadUserNames(ctx, diagramUserIDs(result.Items...))
@@ -1729,6 +1725,43 @@ func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagra
 	return generated.ListDiagrams200JSONResponse{
 		Items: toGeneratedDiagrams(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
+}
+
+// listDiagramsFailure turns a ListDiagrams failure into its response: 400
+// for a validation error, 403 for a caller who may not browse the library.
+func listDiagramsFailure(err error) (generated.ListDiagramsResponseObject, error) {
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.ListDiagrams400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindForbidden:
+		return generated.ListDiagrams403JSONResponse(forbiddenError("students may not list diagrams")), nil
+	case errKindNotFound, errKindOther:
+		return nil, err
+	}
+	return nil, err
+}
+
+// ListDiagramCreators returns the creators of the diagrams the caller can
+// see, optionally narrowed by name, in name order.
+func (h *Handler) ListDiagramCreators(ctx context.Context, request generated.ListDiagramCreatorsRequestObject) (generated.ListDiagramCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListDiagramCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.diagram.ListDiagramCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListDiagramCreators403JSONResponse(forbiddenError("students may not list diagram creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListDiagramCreators200JSONResponse(toUserRefs(creators)), nil
 }
 
 func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDiagramRequestObject) (generated.CreateDiagramResponseObject, error) {

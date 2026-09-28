@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -18,13 +19,21 @@ type DiagramService struct {
 	skills      ports.SkillRepository
 	concepts    ports.ConceptRepository
 	languages   ports.LanguageRepository
+	users       ports.UserRepository
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, languages ports.LanguageRepository, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, skills: skills, concepts: concepts, languages: languages, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, languages ports.LanguageRepository, users ports.UserRepository, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, skills: skills, concepts: concepts, languages: languages, users: users, newID: newID, now: now}
 }
+
+const (
+	// maxDiagramNameSearchLength bounds a diagram list's name search.
+	maxDiagramNameSearchLength = 200
+	// maxRootNoteFilterLength fits the longest note spelling, e.g. "C#" or "Bb", with room for a double accidental.
+	maxRootNoteFilterLength = 3
+)
 
 // DiagramUpdate carries the fields UpdateDiagram may replace. A nil field
 // leaves the current value untouched. Classification is replaced as a unit:
@@ -98,13 +107,20 @@ func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diag
 
 // ListDiagrams returns one page of the diagrams matching filter that caller
 // may discover, ordered by the name caller reads (their locale, then English,
-// then the first language a diagram is named in). Students may not list diagrams at all. A teacher sees every
-// basic diagram plus their own custom ones, and may pass only their own id
-// as filter.CreatedBy. An admin sees every diagram. filter.VisibleTo is set
-// here from caller's role; any value the caller supplied is overwritten.
+// then the first language a diagram is named in). Students may not list
+// diagrams at all. A teacher sees every basic diagram plus their own custom
+// ones, and an admin every diagram; the other filters, filter.CreatedBy
+// included, only narrow that. filter.VisibleTo is set here from caller's
+// role; any value the caller supplied is overwritten.
 func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	if filter.Kind != "" && !filter.Kind.Valid() {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
+	}
+	if utf8.RuneCountInString(filter.Name) > maxDiagramNameSearchLength {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("name", "must be at most 200 characters")
+	}
+	if utf8.RuneCountInString(filter.RootNote) > maxRootNoteFilterLength {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("root_note", "must be at most 3 characters")
 	}
 	if filter.Language != "" {
 		offered, err := offeredLanguages(ctx, s.languages)
@@ -116,22 +132,47 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 		}
 	}
 	filter.Locale = caller.Locale.Code
-	filter.VisibleTo = ""
+	visibleTo, err := diagramVisibility(caller)
+	if err != nil {
+		return domain.Page[domain.Diagram]{}, err
+	}
+	filter.VisibleTo = visibleTo
+	return s.diagrams.List(ctx, filter, page)
+}
+
+// ListDiagramCreators returns the distinct creators of the diagrams caller
+// may discover in ListDiagrams, so a picker can offer a complete creator
+// filter without paging: a teacher gets the creators of basic diagrams plus
+// themselves once they have a custom diagram, an admin every creator.
+// Students are refused. A non-empty nameQuery keeps only the creators whose
+// display name contains it; see namedCreators for matching and ordering.
+func (s *DiagramService) ListDiagramCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
+	visibleTo, err := diagramVisibility(caller)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := s.diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{VisibleTo: visibleTo})
+	if err != nil {
+		return nil, err
+	}
+	return namedCreators(ctx, s.users, ids, nameQuery)
+}
+
+// diagramVisibility returns the DiagramListFilter.VisibleTo scoping caller's
+// role gets in the library: their own id for a teacher, none for an admin.
+// Students never browse the library — they read embedded diagrams by id —
+// and any role this doesn't know is refused the same way.
+func diagramVisibility(caller domain.User) (string, error) {
 	switch caller.Role {
 	case domain.RoleTeacher:
-		if filter.CreatedBy != "" && filter.CreatedBy != caller.ID {
-			return domain.Page[domain.Diagram]{}, domain.ErrForbidden
-		}
-		filter.VisibleTo = caller.ID
+		return caller.ID, nil
 	case domain.RoleAdmin:
+		return "", nil
 	case domain.RoleStudent:
-		// Students never browse the library; they read embedded diagrams
-		// by id. Any role this switch doesn't know is refused the same way.
-		fallthrough
+		return "", domain.ErrForbidden
 	default:
-		return domain.Page[domain.Diagram]{}, domain.ErrForbidden
+		return "", domain.ErrForbidden
 	}
-	return s.diagrams.List(ctx, filter, page)
 }
 
 // UpdateDiagram applies update to an existing diagram. Only an admin may
