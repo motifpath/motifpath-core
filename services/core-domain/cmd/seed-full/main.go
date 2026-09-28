@@ -289,7 +289,7 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	if err := seedDiagramExercises(ctx, teacher, svc.exercise, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
 		return fmt.Errorf("seed diagram exercises: %w", err)
 	}
-	log.Println("seeded 2 diagram exercises (tap the roots on a diagram; pick the diagram with thumbnails), linked to the shared practice challenge")
+	log.Println("seeded 2 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails), linked to the shared practice challenge")
 
 	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
 	if err != nil {

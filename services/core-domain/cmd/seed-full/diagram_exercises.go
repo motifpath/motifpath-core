@@ -15,7 +15,8 @@ import (
 //   - image_recognition with a diagram stimulus: every marker is a choice
 //     (derived by the server), the roots are correct, and the labels are
 //     hidden so they don't give the answer away;
-//   - image_choice whose options are diagram thumbnails.
+//   - image_choice whose three options are diagram thumbnails (an odd
+//     count, so the last one sits alone on its row).
 func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
 	scalesID, err := classifier.skillID(ctx, "Scales")
 	if err != nil {
@@ -51,6 +52,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		[]string{chordsID}, []string{openChordsID}, nil, nil, nil, nil, []domain.Option{
 			{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(diagrams.eMajorChord.ID)},
 			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.cMajorOpen.ID)},
+			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.pentatonicPos1.ID)},
 		}, nil, nil, []string{"en"})
 	if err != nil {
 		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
