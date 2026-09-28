@@ -321,6 +321,12 @@ func toOption(o domain.Option) generated.Option {
 		id := mustUUID(*o.DiagramPositionID)
 		option.DiagramPositionId = &id
 	}
+	if o.FretCell != nil {
+		option.FretCell = &struct {
+			Fret   int `json:"fret"`
+			String int `json:"string"`
+		}{Fret: o.FretCell.Fret, String: o.FretCell.String}
+	}
 	return option
 }
 

@@ -240,3 +240,37 @@ func TestDiagramAnnotationMapping(t *testing.T) {
 		assert.Empty(t, empty)
 	})
 }
+
+func TestDiagramAnswerCellMapping(t *testing.T) {
+	diagramID, positionID := uuid.NewString(), uuid.NewString()
+
+	t.Run("a cell option carries its cell, and the position occupying it", func(t *testing.T) {
+		got := toOption(domain.Option{
+			ID: uuid.NewString(), IsCorrect: true, DiagramID: &diagramID, DiagramPositionID: &positionID,
+			FretCell: &domain.FretCell{String: 6, Fret: 0},
+		})
+
+		require.NotNil(t, got.FretCell)
+		assert.Equal(t, 6, got.FretCell.String)
+		assert.Equal(t, 0, got.FretCell.Fret)
+		require.NotNil(t, got.DiagramPositionId)
+		assert.Equal(t, positionID, got.DiagramPositionId.String())
+	})
+
+	t.Run("an option without a cell has none on the wire", func(t *testing.T) {
+		assert.Nil(t, toOption(domain.Option{ID: uuid.NewString()}).FretCell)
+	})
+
+	t.Run("a diagram ref's label, hidden and correct positions cross the wire both ways", func(t *testing.T) {
+		label := domain.DiagramLabelCustom
+		ref := domain.DiagramRef{
+			DiagramID:          diagramID,
+			Layers:             domain.DiagramLayers{Label: &label, HiddenPositionIDs: &[]string{positionID}},
+			CorrectPositionIDs: &[]string{positionID},
+		}
+
+		back := toDomainDiagramRefPtr(toGeneratedDiagramRefPtr(&ref))
+
+		assert.Equal(t, &ref, back)
+	})
+}
