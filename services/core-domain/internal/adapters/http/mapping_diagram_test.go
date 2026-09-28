@@ -94,19 +94,39 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 	t.Run("list parameters map onto the diagram filter", func(t *testing.T) {
 		instrument, skill, concept, creator := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 		kind := generated.Custom
+		name, root := "pentatonic", "A"
 
-		got := diagramListFilter(generated.ListDiagramsParams{
+		got, err := diagramListFilter(generated.ListDiagramsParams{
 			InstrumentId: &instrument, SkillId: &skill, ConceptId: &concept, CreatedBy: &creator, Kind: &kind,
+			Name: &name, RootNote: &root,
 		})
 
+		require.NoError(t, err)
 		assert.Equal(t, domain.DiagramListFilter{
 			InstrumentID: instrument.String(), SkillID: skill.String(), ConceptID: concept.String(),
-			CreatedBy: creator.String(), Kind: domain.DiagramKindCustom,
+			CreatedBy: creator.String(), Kind: domain.DiagramKindCustom, Name: "pentatonic", RootNote: "A",
 		}, got)
 	})
 
 	t.Run("absent list parameters leave the filter empty", func(t *testing.T) {
-		assert.Equal(t, domain.DiagramListFilter{}, diagramListFilter(generated.ListDiagramsParams{}))
+		got, err := diagramListFilter(generated.ListDiagramsParams{})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.DiagramListFilter{}, got)
+	})
+
+	t.Run("a name or root note given empty is a validation error, not a missing filter", func(t *testing.T) {
+		empty := ""
+		for field, params := range map[string]generated.ListDiagramsParams{
+			"name":      {Name: &empty},
+			"root_note": {RootNote: &empty},
+		} {
+			_, err := diagramListFilter(params)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr, field)
+			assert.Equal(t, field, valErr.Fields[0].Field)
+		}
 	})
 }
 
@@ -136,8 +156,9 @@ func TestDiagramLocalizationMapping(t *testing.T) {
 	t.Run("the language list parameter maps onto the filter", func(t *testing.T) {
 		language := "pt_BR"
 
-		got := diagramListFilter(generated.ListDiagramsParams{Language: &language})
+		got, err := diagramListFilter(generated.ListDiagramsParams{Language: &language})
 
+		require.NoError(t, err)
 		assert.Equal(t, "pt_BR", got.Language)
 	})
 }
