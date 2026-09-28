@@ -557,7 +557,8 @@ func (w *world) createsExerciseWithSkillsAndConcepts(name, exerciseType, title, 
 func diagramRefWithIntervalsLayer(diagramSlug string) generated.DiagramRef {
 	var ref generated.DiagramRef
 	ref.DiagramId = diagramID(diagramSlug)
-	ref.Layers.Intervals = true
+	intervals := true
+	ref.Layers.Intervals = &intervals
 	return ref
 }
 
