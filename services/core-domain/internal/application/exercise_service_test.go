@@ -587,6 +587,77 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 		assertHasField(t, valErr, "diagram_stack_ref")
 	})
 
+	t.Run("saving a diagram exercise again", func(t *testing.T) {
+		// A saved exercise's options are what students' answers name, so a save that
+		// leaves a choice in place must keep its option id.
+		setup := func(t *testing.T, instrumentID string, positions []domain.Position, correct []string) (*application.ExerciseService, domain.Exercise) {
+			t.Helper()
+			diagrams := newFakeDiagramRepository()
+			seedDiagram(t, diagrams, "diagram-1", instrumentID, positions)
+			seedDiagram(t, diagrams, "diagram-2", instrumentID, positions)
+			svc := newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams)
+			exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
+				"Find the roots", domain.NewPlainTextPrompt("Tap every root"),
+				domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
+				&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+			require.NoError(t, err)
+			return svc, exercise
+		}
+		update := func(t *testing.T, svc *application.ExerciseService, id, diagramID string, correct []string) domain.Exercise {
+			t.Helper()
+			updated, err := svc.UpdateExercise(context.Background(), teacherCaller(), id,
+				"Find every root", domain.NewPlainTextPrompt("Tap every root"),
+				[]string{"skill-1"}, []string{"concept-1"}, nil, nil,
+				&domain.DiagramRef{DiagramID: diagramID, CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+			require.NoError(t, err)
+			return updated
+		}
+		idsByCell := func(exercise domain.Exercise) map[domain.FretCell]string {
+			ids := map[domain.FretCell]string{}
+			for _, opt := range exercise.Options {
+				ids[*opt.FretCell] = opt.ID
+			}
+			return ids
+		}
+
+		t.Run("keeps every cell's option id", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-6-5"})
+
+			assert.Equal(t, idsByCell(created), idsByCell(updated))
+		})
+
+		t.Run("with other answers, keeps the ids and moves only which cells are correct", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-4-7"})
+
+			assert.Equal(t, idsByCell(created), idsByCell(updated))
+			assert.Equal(t, []domain.FretCell{{String: 4, Fret: 7}}, correctCells(updated))
+		})
+
+		t.Run("keeps a keyboard position's option id", func(t *testing.T) {
+			key := "A3"
+			svc, created := setup(t, "piano", []domain.Position{{ID: "pos-a3", Interval: "R", NoteName: "A", Key: &key}}, []string{"pos-a3"})
+
+			updated := update(t, svc, created.ID, "diagram-1", []string{"pos-a3"})
+
+			require.Len(t, updated.Options, 1)
+			assert.Equal(t, created.Options[0].ID, updated.Options[0].ID)
+		})
+
+		t.Run("with another diagram, gives its options new ids", func(t *testing.T) {
+			svc, created := setup(t, "guitar", pentatonic, []string{"pos-6-5"})
+
+			updated := update(t, svc, created.ID, "diagram-2", []string{"pos-6-5"})
+
+			for cell, id := range idsByCell(updated) {
+				assert.NotEqual(t, idsByCell(created)[cell], id)
+			}
+		})
+	})
+
 	t.Run("supplying options alongside a diagram_ref is rejected", func(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
 		seedDiagram(t, diagrams, "diagram-1", "guitar", []domain.Position{rootPos})

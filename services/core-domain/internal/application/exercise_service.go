@@ -56,7 +56,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	options, diagramRef, err := s.resolveDiagramOptions(ctx, exerciseType, diagramRef, diagramStackRef, options)
+	options, diagramRef, err := s.resolveDiagramOptions(ctx, exerciseType, diagramRef, diagramStackRef, options, nil)
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -118,8 +118,11 @@ func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targ
 // Returns options and diagramRef unchanged when neither diagramRef nor
 // diagramStackRef is given. A stack's entries must all reference diagrams on
 // the same instrument; that requires a repository round trip, so is checked
-// here rather than in the domain layer.
-func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option) ([]domain.Option, *domain.DiagramRef, error) {
+// here rather than in the domain layer. previous is the exercise's options
+// before an update (nil on create): a single diagram's option that stands for
+// the same choice as one of them keeps its id, since students' recorded
+// answers name options by id.
+func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options, previous []domain.Option) ([]domain.Option, *domain.DiagramRef, error) {
 	if exerciseType != domain.ExerciseTypeImageRecognition || (diagramRef == nil && diagramStackRef == nil) {
 		return options, diagramRef, nil
 	}
@@ -133,7 +136,7 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 	}
 
 	if diagramRef != nil {
-		ref, derived, err := s.optionsFromStimulus(ctx, resolved[0].diagram, resolved[0].ref)
+		ref, derived, err := s.optionsFromStimulus(ctx, resolved[0].diagram, resolved[0].ref, previous)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -152,8 +155,9 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 // converted to the drawn positions with those intervals, and the returned
 // ref stores the positions instead). On a fretted instrument every cell of
 // the diagram's answer window is an option, correct where a correct
-// position sits; on any other, each position is one.
-func (s *ExerciseService) optionsFromStimulus(ctx context.Context, diagram domain.Diagram, ref domain.DiagramRef) (domain.DiagramRef, []domain.Option, error) {
+// position sits; on any other, each position is one. An option standing for
+// the same cell or position of this diagram as one of previous keeps its id.
+func (s *ExerciseService) optionsFromStimulus(ctx context.Context, diagram domain.Diagram, ref domain.DiagramRef, previous []domain.Option) (domain.DiagramRef, []domain.Option, error) {
 	ref, correct, err := correctPositions(diagram, ref)
 	if err != nil {
 		return ref, nil, err
@@ -162,10 +166,43 @@ func (s *ExerciseService) optionsFromStimulus(ctx context.Context, diagram domai
 	if err != nil {
 		return ref, nil, err
 	}
+	ids := previousOptionIDs(diagram.ID, previous)
 	if instrument.Family != domain.InstrumentFamilyFretted || instrument.StringCount == nil {
-		return ref, s.positionOptions(diagram, correct), nil
+		return ref, s.positionOptions(diagram, correct, ids), nil
 	}
-	return ref, s.cellOptions(diagram, *instrument.StringCount, correct), nil
+	return ref, s.cellOptions(diagram, *instrument.StringCount, correct, ids), nil
+}
+
+// previousIDs are the ids of an exercise's earlier options of one diagram,
+// by the choice each stood for: a fretboard cell, or a position.
+type previousIDs struct {
+	byCell     map[domain.FretCell]string
+	byPosition map[string]string
+}
+
+// previousOptionIDs indexes the options of previous derived from diagramID.
+func previousOptionIDs(diagramID string, previous []domain.Option) previousIDs {
+	ids := previousIDs{byCell: map[domain.FretCell]string{}, byPosition: map[string]string{}}
+	for _, opt := range previous {
+		if opt.DiagramID == nil || *opt.DiagramID != diagramID {
+			continue
+		}
+		switch {
+		case opt.FretCell != nil:
+			ids.byCell[*opt.FretCell] = opt.ID
+		case opt.DiagramPositionID != nil:
+			ids.byPosition[*opt.DiagramPositionID] = opt.ID
+		}
+	}
+	return ids
+}
+
+// idOr returns id when it names an earlier option, else a new one.
+func (s *ExerciseService) idOr(id string, ok bool) string {
+	if ok {
+		return id
+	}
+	return s.newID()
 }
 
 // correctPositions returns ref with any older correct_intervals converted to
@@ -192,19 +229,20 @@ func correctPositions(diagram domain.Diagram, ref domain.DiagramRef) (domain.Dia
 
 // positionOptions is one option per position of diagram, for an instrument
 // with no answer cells.
-func (s *ExerciseService) positionOptions(diagram domain.Diagram, correct map[string]bool) []domain.Option {
+func (s *ExerciseService) positionOptions(diagram domain.Diagram, correct map[string]bool, previous previousIDs) []domain.Option {
 	diagramID := diagram.ID
 	options := make([]domain.Option, 0, len(diagram.Positions))
 	for _, pos := range diagram.Positions {
 		positionID := pos.ID
-		options = append(options, domain.Option{ID: s.newID(), IsCorrect: correct[pos.ID], DiagramID: &diagramID, DiagramPositionID: &positionID})
+		id, reused := previous.byPosition[pos.ID]
+		options = append(options, domain.Option{ID: s.idOr(id, reused), IsCorrect: correct[pos.ID], DiagramID: &diagramID, DiagramPositionID: &positionID})
 	}
 	return options
 }
 
 // cellOptions is one option per cell of diagram's answer window, naming the
 // position that occupies it, if any, and correct where that position is.
-func (s *ExerciseService) cellOptions(diagram domain.Diagram, stringCount int, correct map[string]bool) []domain.Option {
+func (s *ExerciseService) cellOptions(diagram domain.Diagram, stringCount int, correct map[string]bool, previous previousIDs) []domain.Option {
 	occupant := map[domain.FretCell]string{}
 	for _, pos := range diagram.Positions {
 		if pos.String != nil && pos.Fret != nil {
@@ -215,7 +253,8 @@ func (s *ExerciseService) cellOptions(diagram domain.Diagram, stringCount int, c
 	cells := domain.FrettedAnswerCells(diagram.Positions, diagram.Regions, stringCount)
 	options := make([]domain.Option, 0, len(cells))
 	for _, cell := range cells {
-		option := domain.Option{ID: s.newID(), DiagramID: &diagramID, FretCell: &cell}
+		id, reused := previous.byCell[cell]
+		option := domain.Option{ID: s.idOr(id, reused), DiagramID: &diagramID, FretCell: &cell}
 		if positionID, ok := occupant[cell]; ok {
 			option.DiagramPositionID = &positionID
 			option.IsCorrect = correct[positionID]
@@ -321,7 +360,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	options, diagramRef, err = s.resolveDiagramOptions(ctx, existing.ExerciseType, diagramRef, diagramStackRef, options)
+	options, diagramRef, err = s.resolveDiagramOptions(ctx, existing.ExerciseType, diagramRef, diagramStackRef, options, existing.Options)
 	if err != nil {
 		return domain.Exercise{}, err
 	}
