@@ -1660,6 +1660,20 @@ func (f *fakeDiagramRepo) List(_ context.Context, filter domain.DiagramListFilte
 	return paginate(matched, page), nil
 }
 
+func (f *fakeDiagramRepo) ListCreatorIDs(_ context.Context, filter domain.DiagramListFilter) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, d := range f.byID {
+		if filter.Matches(d) && !seen[d.CreatedBy] {
+			seen[d.CreatedBy] = true
+			ids = append(ids, d.CreatedBy)
+		}
+	}
+	return ids, nil
+}
+
 func (f *fakeDiagramRepo) Update(_ context.Context, d domain.Diagram) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -95,11 +95,10 @@ func (r *EntDiagramRepository) GetByID(ctx context.Context, id string) (domain.D
 }
 
 func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
-	predicates, err := diagramListPredicates(filter)
+	query, err := r.filteredQuery(ctx, filter)
 	if err != nil {
 		return domain.Page[domain.Diagram]{}, err
 	}
-	query := r.client.Diagram.Query().Where(predicates...)
 
 	total, err := query.Clone().Count(ctx)
 	if err != nil {
@@ -118,6 +117,57 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 		items[i] = toDomainDiagram(row)
 	}
 	return domain.Page[domain.Diagram]{Items: items, Total: total}, nil
+}
+
+// ListCreatorIDs returns the distinct created_by of every diagram matching
+// filter, using the same predicates as List.
+func (r *EntDiagramRepository) ListCreatorIDs(ctx context.Context, filter domain.DiagramListFilter) ([]string, error) {
+	query, err := r.filteredQuery(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		CreatedBy uuid.UUID `json:"created_by"`
+	}
+	if err := query.Unique(true).Select(diagram.FieldCreatedBy).Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.CreatedBy.String()
+	}
+	return ids, nil
+}
+
+// filteredQuery selects the diagrams matching filter. Every field but Name
+// is a SQL predicate. Name is matched here, in Go, over the rows the other
+// predicates leave — the same case- and accent-blind matching as
+// domain.ContainsLoosely, which a plain SQL comparison can't express — and
+// the query is then narrowed to those ids, so ordering and paging stay in
+// SQL. The library is small enough for that pass to stay cheap.
+func (r *EntDiagramRepository) filteredQuery(ctx context.Context, filter domain.DiagramListFilter) (*ent.DiagramQuery, error) {
+	predicates, err := diagramListPredicates(filter)
+	if err != nil {
+		return nil, err
+	}
+	query := r.client.Diagram.Query().Where(predicates...)
+	if filter.Name == "" {
+		return query, nil
+	}
+	candidates, err := query.Clone().Select(diagram.FieldID, diagram.FieldNames).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	matched := []uuid.UUID{}
+	for _, c := range candidates {
+		for _, name := range c.Names {
+			if domain.ContainsLoosely(name, filter.Name) {
+				matched = append(matched, c.ID)
+				break
+			}
+		}
+	}
+	return query.Where(diagram.IDIn(matched...)), nil
 }
 
 // byResolvedName orders diagrams by the name a reader of locale sees — the
@@ -162,6 +212,9 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 		{filter.InstrumentID, diagram.InstrumentID},
 		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(skill.ID(id)) }},
 		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(concept.ID(id)) }},
+	}
+	if filter.RootNote != "" {
+		predicates = append(predicates, diagram.RootNoteEQ(filter.RootNote))
 	}
 	if filter.Language != "" {
 		language := filter.Language

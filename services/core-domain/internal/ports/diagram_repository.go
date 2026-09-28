@@ -18,6 +18,10 @@ type DiagramRepository interface {
 	// name then id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error)
 
+	// ListCreatorIDs returns the distinct creator user ids of every diagram
+	// matching filter, using the same predicates as List, in no set order.
+	ListCreatorIDs(ctx context.Context, filter domain.DiagramListFilter) ([]string, error)
+
 	// Update replaces the diagram's name, positions and classification. It
 	// returns domain.ErrNotFound if no diagram exists with the given id.
 	// InstrumentID, Kind and CreatedBy are never changed.

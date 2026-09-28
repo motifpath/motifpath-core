@@ -213,7 +213,7 @@ func wireServices(res resources) (services, seedDeps) {
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
 		instrument:  application.NewInstrumentService(instrumentRepo, languageRepo, newID),
-		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, newID, now),
+		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now),
 	}
 
 	return svc, seedDeps{
