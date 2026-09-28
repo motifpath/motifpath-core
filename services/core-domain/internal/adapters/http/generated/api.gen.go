@@ -235,6 +235,15 @@ const (
 	Star   DiagramPositionShape = "star"
 )
 
+// Defines values for DiagramRefLayersLabel.
+const (
+	DiagramRefLayersLabelCustom      DiagramRefLayersLabel = "custom"
+	DiagramRefLayersLabelInterval    DiagramRefLayersLabel = "interval"
+	DiagramRefLayersLabelLessThannil DiagramRefLayersLabel = "<nil>"
+	DiagramRefLayersLabelNone        DiagramRefLayersLabel = "none"
+	DiagramRefLayersLabelNote        DiagramRefLayersLabel = "note"
+)
+
 // Defines values for DiagramRefPlaybackDirection.
 const (
 	AsAuthored DiagramRefPlaybackDirection = "as_authored"
@@ -370,9 +379,9 @@ const (
 
 // Defines values for UpdateDiagramRequestLabelDisplay.
 const (
-	Hidden   UpdateDiagramRequestLabelDisplay = "hidden"
-	Interval UpdateDiagramRequestLabelDisplay = "interval"
-	Note     UpdateDiagramRequestLabelDisplay = "note"
+	UpdateDiagramRequestLabelDisplayHidden   UpdateDiagramRequestLabelDisplay = "hidden"
+	UpdateDiagramRequestLabelDisplayInterval UpdateDiagramRequestLabelDisplay = "interval"
+	UpdateDiagramRequestLabelDisplayNote     UpdateDiagramRequestLabelDisplay = "note"
 )
 
 // Defines values for UpdateExpandedContentRequestContentType.
@@ -1708,29 +1717,59 @@ type DiagramPositionShape string
 // of the diagram itself. The same Diagram can be pointed at by any
 // number of DiagramRefs with different configs.
 type DiagramRef struct {
-	// CorrectIntervals Which interval value(s) among this diagram's currently-visible
-	// positions (after layers.subset filtering) are correct answers.
-	// Meaningful, and required, only when this diagram_ref is an
-	// Exercise's image_recognition stimulus (see Exercise.diagram_ref)
-	// — ignored when used inline via a PromptNode, attached via
-	// ExpandedContent, or as an image_choice Option's own diagram_ref.
+	// CorrectIntervals Deprecated in favour of correct_position_ids. When a stimulus
+	// gives this without correct_position_ids, the server converts it
+	// once, at save, to the drawn positions (after
+	// layers.hidden_position_ids and layers.subset) whose interval is
+	// listed, and stores correct_position_ids instead.
+	// Deprecated:
 	CorrectIntervals *[]string `json:"correct_intervals"`
+
+	// CorrectPositionIds The positions of this diagram that are correct answers, drawn
+	// or hidden — at least one, each a position of the diagram.
+	// Meaningful, and required (unless the deprecated
+	// correct_intervals is given instead), only when this diagram_ref
+	// is an Exercise's image_recognition stimulus (see
+	// Exercise.diagram_ref) — ignored when used inline via a
+	// PromptNode, attached via ExpandedContent, or as an image_choice
+	// Option's own diagram_ref.
+	CorrectPositionIds *[]openapi_types.UUID `json:"correct_position_ids"`
 
 	// DiagramId The diagram this ref points at. Must reference an existing diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 
 	// Layers Which optional layers are shown, decorating the diagram's base positions.
 	Layers struct {
-		// Intervals Whether to show each visible position's interval label.
-		Intervals bool `json:"intervals"`
+		// HiddenPositionIds Positions of the diagram this usage doesn't draw. Ids that
+		// aren't positions of the diagram are ignored. A hidden
+		// position of an image_recognition stimulus is still an answer
+		// cell, and can still be a correct one (see
+		// correct_position_ids). Null hides none.
+		HiddenPositionIds *[]openapi_types.UUID `json:"hidden_position_ids"`
+
+		// Intervals Deprecated in favour of label, and read only when label is
+		// absent: false shows no marker text.
+		// Deprecated:
+		Intervals *bool `json:"intervals,omitempty"`
+
+		// Label What each drawn marker shows: its interval, its note name,
+		// its custom label (custom — falling back, for a position
+		// without one, to what the diagram's own label_display shows),
+		// or nothing (none). Null or absent keeps the older rule:
+		// intervals false means none, anything else the diagram's own
+		// label_display.
+		Label *DiagramRefLayersLabel `json:"label"`
 
 		// ShapeOverlay Identifier of a shape overlay style (e.g. a box outline) to
 		// draw around the currently-visible positions. Null shows no
 		// overlay.
 		ShapeOverlay *string `json:"shape_overlay"`
 
-		// Subset Interval names to show; positions with any other interval
-		// are hidden. Null shows every position.
+		// Subset Deprecated in favour of hidden_position_ids, and still
+		// honoured: interval names to draw; positions with any other
+		// interval are hidden. Null draws every position. A position
+		// is drawn only if it passes both.
+		// Deprecated:
 		Subset *[]string `json:"subset"`
 	} `json:"layers"`
 
@@ -1760,6 +1799,14 @@ type DiagramRef struct {
 		RootColor *string `json:"root_color"`
 	} `json:"styling"`
 }
+
+// DiagramRefLayersLabel What each drawn marker shows: its interval, its note name,
+// its custom label (custom — falling back, for a position
+// without one, to what the diagram's own label_display shows),
+// or nothing (none). Null or absent keeps the older rule:
+// intervals false means none, anything else the diagram's own
+// label_display.
+type DiagramRefLayersLabel string
 
 // DiagramRefPlaybackDirection Order to step through sequence_index values in.
 type DiagramRefPlaybackDirection string
@@ -1886,8 +1933,8 @@ type Exercise struct {
 
 	// Options The exercise's selectable answer choices. When diagram_ref or
 	// diagram_stack_ref is present, these are derived automatically
-	// from the diagram's positions (see Option.diagram_position_id)
-	// rather than authored directly.
+	// from the diagram (see Option.fret_cell and
+	// Option.diagram_position_id) rather than authored directly.
 	Options []Option `json:"options"`
 
 	// Prompt A structured rich-text document, authored with MotifPath's
@@ -2206,14 +2253,37 @@ type Option struct {
 	DiagramId *openapi_types.UUID `json:"diagram_id,omitempty"`
 
 	// DiagramPositionId Which position (DiagramPosition.position_id) within diagram_id
-	// this option represents. Server-derived and read-only, present
-	// under the same condition as diagram_id.
+	// occupies this option's cell. Server-derived and read-only;
+	// absent on a cell no position of the diagram occupies.
 	DiagramPositionId *openapi_types.UUID `json:"diagram_position_id,omitempty"`
 
 	// DiagramRef A usage of one Diagram — its render config, never a stored variant
 	// of the diagram itself. The same Diagram can be pointed at by any
 	// number of DiagramRefs with different configs.
 	DiagramRef *DiagramRef `json:"diagram_ref,omitempty"`
+
+	// FretCell The fretboard cell this option is, for an image_recognition
+	// exercise whose stimulus is a single fretted diagram_ref.
+	// Server-derived and read-only. The server derives one option per
+	// cell of the answer window:
+	//
+	// Over ALL the diagram's positions (hidden ones included) and its
+	// regions, low = max(lowest fret − 1, 0) and high = low +
+	// max(highest fret + 1 − low, 3); with none, low = 0 and high = 3.
+	// The cells are every string 1..string_count at every fret
+	// low+1..high, plus fret 0 (the open string) on every string when
+	// low is 0.
+	//
+	// A cell is correct exactly when the position occupying it (see
+	// diagram_position_id) is one of the stimulus's
+	// correct_position_ids; every other cell is a wrong answer.
+	FretCell *struct {
+		// Fret Fret number; 0 is the open string.
+		Fret int `json:"fret"`
+
+		// String String number, 1 being the highest-pitched string.
+		String int `json:"string"`
+	} `json:"fret_cell,omitempty"`
 
 	// ImageUrl The image shown for this option. For image_choice options,
 	// required unless diagram_ref is given instead; absent otherwise.
