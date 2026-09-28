@@ -3,13 +3,8 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sort"
 	"time"
 
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
-	"golang.org/x/text/search"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -138,10 +133,7 @@ func (s *CourseService) ListCatalogCourses(ctx context.Context, filter domain.Co
 
 // CourseCreator is a user who created at least one course, with their
 // current display name.
-type CourseCreator struct {
-	UserID      string
-	DisplayName string
-}
+type CourseCreator = Creator
 
 // ListCourseCreators returns the distinct creators of the courses in the
 // caller's authoring list (ListCourses), so an authoring screen can offer a
@@ -170,46 +162,13 @@ func (s *CourseService) ListCatalogCreators(ctx context.Context, nameQuery strin
 }
 
 // creatorsNamed returns the distinct creators of the courses matching
-// filter, with their current display names, keeping only those whose name
-// contains nameQuery when it is non-empty. Matching and ordering both ignore
-// case and accents, the way a person reads a list of names; equal names fall
-// back to user id.
+// filter, named and ordered by namedCreators.
 func (s *CourseService) creatorsNamed(ctx context.Context, filter domain.CourseListFilter, nameQuery string) ([]CourseCreator, error) {
 	ids, err := s.courses.ListCreatorIDs(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	creators := []CourseCreator{}
-	if len(ids) == 0 {
-		return creators, nil
-	}
-	names, err := s.users.GetDisplayNames(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	matcher := search.New(language.Und, search.Loose)
-	for _, id := range ids {
-		name, ok := names[id]
-		if !ok {
-			return nil, fmt.Errorf("display name for course creator %s: %w", id, domain.ErrNotFound)
-		}
-		if nameQuery != "" {
-			if start, _ := matcher.IndexString(name, nameQuery); start < 0 {
-				continue
-			}
-		}
-		creators = append(creators, CourseCreator{UserID: id, DisplayName: name})
-	}
-
-	collator := collate.New(language.Und)
-	sort.Slice(creators, func(i, j int) bool {
-		if c := collator.CompareString(creators[i].DisplayName, creators[j].DisplayName); c != 0 {
-			return c < 0
-		}
-		return creators[i].UserID < creators[j].UserID
-	})
-	return creators, nil
+	return namedCreators(ctx, s.users, ids, nameQuery)
 }
 
 // ReplaceCourse replaces the given course's title, summary, level, and
