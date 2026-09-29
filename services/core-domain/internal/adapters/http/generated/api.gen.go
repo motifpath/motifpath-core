@@ -100,6 +100,15 @@ const (
 	CourseDetailStatusRetired   CourseDetailStatus = "retired"
 )
 
+// Defines values for CourseEnrollmentCourseLevel.
+const (
+	CourseEnrollmentCourseLevelAdvanced          CourseEnrollmentCourseLevel = "advanced"
+	CourseEnrollmentCourseLevelBeginner          CourseEnrollmentCourseLevel = "beginner"
+	CourseEnrollmentCourseLevelEarlyIntermediate CourseEnrollmentCourseLevel = "early_intermediate"
+	CourseEnrollmentCourseLevelExpert            CourseEnrollmentCourseLevel = "expert"
+	CourseEnrollmentCourseLevelIntermediate      CourseEnrollmentCourseLevel = "intermediate"
+)
+
 // Defines values for CourseEnrollmentStatus.
 const (
 	CourseEnrollmentStatusAbandoned CourseEnrollmentStatus = "abandoned"
@@ -822,6 +831,9 @@ type CourseStatus string
 // learning_path_id. Returned by GET /catalog/courses to every
 // caller and by GET /courses to teachers and admins.
 type CourseCatalogEntry struct {
+	// CheckpointCount Number of checkpoints in the course version shown: the latest published version in GET /catalog/courses, or the live draft in GET /courses.
+	CheckpointCount int `json:"checkpoint_count"`
+
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
 
@@ -844,6 +856,9 @@ type CourseCatalogEntry struct {
 
 	// Language The language the course is written in, as a Language.code.
 	Language string `json:"language"`
+
+	// LessonCount Number of content nodes across the learning paths in the course version shown. This is a lesson count, not an estimated duration: videos do not yet carry authoritative duration metadata.
+	LessonCount int `json:"lesson_count"`
 
 	// Level The level a student should be at to start this course.
 	Level CourseCatalogEntryLevel `json:"level"`
@@ -885,16 +900,26 @@ type CourseCheckpoint struct {
 	Title *string `json:"title,omitempty"`
 }
 
-// CourseDetail A single course's detail. For a student, this is always the
-// latest published version's snapshot, rendered as an outline. For
-// a teacher or admin, this is the live draft with its checkpoints'
-// full outlines resolved.
+// CourseDetail A single published course's learner-facing detail. It is always the
+// latest published version's snapshot, rendered as an outline, so
+// unpublished draft edits never change what a prospective learner sees.
 type CourseDetail struct {
+	// CheckpointCount Number of checkpoints in this published course version.
+	CheckpointCount int `json:"checkpoint_count"`
+
 	// Checkpoints The course's checkpoints, sorted by position ascending.
 	Checkpoints []CourseOutlineCheckpoint `json:"checkpoints"`
 
 	// CourseId Stable identifier for this course.
 	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
 
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
 	// empty list means it suits every instrument (for example, music
@@ -904,6 +929,9 @@ type CourseDetail struct {
 
 	// Language The language the course is written in, as a Language.code.
 	Language string `json:"language"`
+
+	// LessonCount Number of content nodes across this published course version's checkpoint learning paths. This is not an estimated duration.
+	LessonCount int `json:"lesson_count"`
 
 	// Level The level a student should be at to start this course.
 	Level CourseDetailLevel `json:"level"`
@@ -940,11 +968,28 @@ type CourseEnrollment struct {
 	// ActiveCheckpointStudentPathId The StudentPath for the checkpoint the student is currently working through. Null once the enrollment is completed or abandoned.
 	ActiveCheckpointStudentPathId *openapi_types.UUID `json:"active_checkpoint_student_path_id"`
 
+	// CheckpointCount Number of checkpoints in the pinned course version.
+	CheckpointCount int `json:"checkpoint_count"`
+
+	// CourseCreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CourseCreatedBy UserRef `json:"course_created_by"`
+
 	// CourseEnrollmentId Stable identifier for this enrollment.
 	CourseEnrollmentId openapi_types.UUID `json:"course_enrollment_id"`
 
 	// CourseId The enrolled course.
 	CourseId openapi_types.UUID `json:"course_id"`
+
+	// CourseLevel The course's level, as of the pinned version.
+	CourseLevel CourseEnrollmentCourseLevel `json:"course_level"`
+
+	// CourseSummary The course's summary, as of the pinned version.
+	CourseSummary string `json:"course_summary"`
 
 	// CourseThumbnailUrl The course's thumbnail, as of the pinned version. Absent when that version had none.
 	CourseThumbnailUrl *string `json:"course_thumbnail_url,omitempty"`
@@ -969,6 +1014,9 @@ type CourseEnrollment struct {
 	// receive.
 	Student UserRef `json:"student"`
 }
+
+// CourseEnrollmentCourseLevel The course's level, as of the pinned version.
+type CourseEnrollmentCourseLevel string
 
 // CourseEnrollmentStatus active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
 type CourseEnrollmentStatus string
