@@ -1,9 +1,11 @@
 package domain
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
-// DiagramPlaybackDirection is the order sequenced positions step through
-// during playback.
+// DiagramPlaybackDirection is the order a diagram's sequence steps play in.
 type DiagramPlaybackDirection string
 
 const (
@@ -65,12 +67,18 @@ type DiagramStyling struct {
 	IntervalColor *string `json:"interval_color"`
 }
 
-// DiagramPlayback is the sequenced playback config for a DiagramRef. It only
-// affects positions with a non-nil SequenceIndex. See DiagramLayers' doc
+// DiagramPlayback is how one usage plays its Diagram's sequence. A diagram
+// with no sequence never plays, whatever this says. See DiagramLayers' doc
 // comment for why this type carries json tags.
 type DiagramPlayback struct {
 	Direction DiagramPlaybackDirection `json:"direction"`
-	StepMs    int                      `json:"step_ms"`
+	// TempoBPM overrides the diagram's tempo; nil uses it.
+	TempoBPM *int `json:"tempo_bpm"`
+	// VoiceID overrides the instrument's default voice; nil uses it. It
+	// must name a voice of the diagram's instrument family, which needs a
+	// repository round trip, so that is an application-layer concern.
+	VoiceID *string `json:"voice_id"`
+	Loop    bool    `json:"loop"`
 }
 
 // DiagramRef is one usage of a Diagram — its render config, never a stored
@@ -81,9 +89,9 @@ type DiagramRef struct {
 	DiagramID string `json:"diagram_id"`
 	// RootOverride, when non-nil, transposes the diagram to this root note.
 	// Nil uses the diagram's own authored root.
-	RootOverride *string        `json:"root_override"`
-	Layers       DiagramLayers  `json:"layers"`
-	Styling      *DiagramStyling `json:"styling"`
+	RootOverride *string          `json:"root_override"`
+	Layers       DiagramLayers    `json:"layers"`
+	Styling      *DiagramStyling  `json:"styling"`
 	Playback     *DiagramPlayback `json:"playback"`
 	// CorrectPositionIDs names the diagram's positions, drawn or hidden,
 	// that are correct answers. Meaningful, and required (unless the older
@@ -107,7 +115,8 @@ type DiagramStackRef struct {
 // ValidateDiagramRef checks ref's own structural invariants: it needs a
 // diagram_id (whether that id refers to an existing Diagram requires a
 // repository round trip, so is an application-layer concern), and any
-// playback config must name a valid direction and a positive step_ms.
+// playback config must name a valid direction, a tempo within the allowed
+// range and a non-empty voice id when it overrides them.
 func ValidateDiagramRef(ref DiagramRef) error {
 	if ref.DiagramID == "" {
 		return NewValidationError("diagram_id", "must not be empty")
@@ -116,16 +125,27 @@ func ValidateDiagramRef(ref DiagramRef) error {
 		return NewValidationError("layers", "label must be one of: interval, note, custom, none")
 	}
 	if ref.Playback != nil {
-		switch ref.Playback.Direction {
-		case DiagramPlaybackDirectionAsAuthored, DiagramPlaybackDirectionReversed:
-		default:
-			return NewValidationError("playback", "direction must be one of: as_authored, reversed")
-		}
-		if ref.Playback.StepMs < 1 {
-			return NewValidationError("playback", "step_ms must be at least 1")
+		if reason := playbackProblem(*ref.Playback); reason != "" {
+			return NewValidationError("playback", reason)
 		}
 	}
 	return nil
+}
+
+// playbackProblem returns why p is invalid, or "" if it is valid.
+func playbackProblem(p DiagramPlayback) string {
+	switch p.Direction {
+	case DiagramPlaybackDirectionAsAuthored, DiagramPlaybackDirectionReversed:
+	default:
+		return "direction must be one of: as_authored, reversed"
+	}
+	if p.TempoBPM != nil && (*p.TempoBPM < MinTempoBPM || *p.TempoBPM > MaxTempoBPM) {
+		return fmt.Sprintf("tempo_bpm must be between %d and %d", MinTempoBPM, MaxTempoBPM)
+	}
+	if p.VoiceID != nil && *p.VoiceID == "" {
+		return "voice_id must not be empty"
+	}
+	return ""
 }
 
 // ValidateDiagramStackRef checks that stack has at least two entries and

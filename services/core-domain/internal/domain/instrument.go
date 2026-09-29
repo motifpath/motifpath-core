@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // InstrumentFamily decides which coordinate shape every Diagram authored
 // against an Instrument uses. Guitar and bass share the fretted shape;
 // piano is keyboard. A genuinely new coordinate shape is a new family value,
@@ -33,8 +35,13 @@ type Instrument struct {
 	Names       LocalizedText
 	Family      InstrumentFamily
 	StringCount *int
-	Tuning      []string
-	KeyRange    *KeyRange
+	// Tuning is each string's open pitch in scientific pitch notation
+	// (e.g. "E2"), lowest string first.
+	Tuning   []string
+	KeyRange *KeyRange
+	// DefaultVoiceID is the Voice that plays this instrument's diagrams
+	// unless a usage picks another; always a voice of Family.
+	DefaultVoiceID string
 }
 
 // MaxInstrumentNameLength is the longest an instrument's name may be, in
@@ -44,10 +51,12 @@ const MaxInstrumentNameLength = 200
 // NewInstrument validates and constructs an Instrument, stopping at the
 // first violated invariant. names must cover exactly languages — every
 // language MotifPath offers (never LanguageCodeAny). A fretted instrument needs a positive
-// stringCount and a tuning with exactly one entry per string, and no
-// keyRange; a keyboard instrument needs a keyRange with both ends named, and
-// neither stringCount nor tuning.
-func NewInstrument(id string, names map[string]string, languages []string, family InstrumentFamily, stringCount *int, tuning []string, keyRange *KeyRange) (Instrument, error) {
+// stringCount and a tuning with exactly one pitch, octave included, per
+// string, and no keyRange; a keyboard instrument needs a keyRange with both
+// ends named, and neither stringCount nor tuning. defaultVoice must be a
+// voice of family. Whether it exists needs a repository round trip, so that
+// stays an application-layer concern.
+func NewInstrument(id string, names map[string]string, languages []string, family InstrumentFamily, stringCount *int, tuning []string, keyRange *KeyRange, defaultVoice Voice) (Instrument, error) {
 	localized, err := NewLocalizedText("names", names, MaxInstrumentNameLength, languages)
 	if err != nil {
 		return Instrument{}, err
@@ -73,7 +82,20 @@ func NewInstrument(id string, names map[string]string, languages []string, famil
 		StringCount: stringCount,
 		Tuning:      tuning,
 		KeyRange:    keyRange,
-	}, nil
+	}.WithDefaultVoice(defaultVoice)
+}
+
+// WithDefaultVoice returns a copy of i played by voice unless a usage picks
+// another, or an error if voice is missing or plays another family.
+func (i Instrument) WithDefaultVoice(voice Voice) (Instrument, error) {
+	if voice.ID == "" {
+		return Instrument{}, NewValidationError("default_voice_id", "is required")
+	}
+	if voice.Family != i.Family {
+		return Instrument{}, NewValidationError("default_voice_id", "must be a voice of the instrument's family")
+	}
+	i.DefaultVoiceID = voice.ID
+	return i, nil
 }
 
 func validateFrettedShape(stringCount *int, tuning []string, keyRange *KeyRange) error {
@@ -85,6 +107,11 @@ func validateFrettedShape(stringCount *int, tuning []string, keyRange *KeyRange)
 	}
 	if len(tuning) != *stringCount {
 		return NewValidationError("tuning", "must have exactly one entry per string")
+	}
+	for i, pitch := range tuning {
+		if _, ok := ParsePitch(pitch); !ok {
+			return NewValidationError("tuning", fmt.Sprintf("entry %d %q is not a pitch with its octave (e.g. E2)", i, pitch))
+		}
 	}
 	if keyRange != nil {
 		return NewValidationError("key_range", "must be absent for a fretted instrument")
