@@ -48,6 +48,35 @@ func NewExerciseService(
 	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, voices: voices, newID: newID, now: now, shuffle: shuffle}
 }
 
+// diagramRefRepos are the repositories a diagram reference is checked
+// against.
+func (s *ExerciseService) diagramRefRepos() diagramRefRepos {
+	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
+}
+
+// checkEmbeddedVoices checks the voice of every diagram embedded in the
+// prompt, in an option's thumbnail or in a remediation's content, reported
+// under the field it came from.
+func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain.PromptDocument, options []domain.Option, remediationTargets []domain.RemediationTarget) error {
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "prompt", prompt.EmbeddedDiagramRefs()); err != nil {
+		return err
+	}
+	var thumbnails []domain.DiagramRef
+	for _, option := range options {
+		if option.DiagramRef != nil {
+			thumbnails = append(thumbnails, *option.DiagramRef)
+		}
+	}
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "options", thumbnails); err != nil {
+		return err
+	}
+	var remediation []domain.DiagramRef
+	for _, target := range remediationTargets {
+		remediation = append(remediation, embeddedRefs(target.RichContent)...)
+	}
+	return checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "remediation_targets", remediation)
+}
+
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
 func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
@@ -66,6 +95,9 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 
 	exercise, err := domain.NewExercise(s.newID(), title, prompt, exerciseType, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets, languages, s.now())
 	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
@@ -133,7 +165,7 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 		return nil, nil, domain.NewValidationError("options", "must be omitted when diagram_ref or diagram_stack_ref is given")
 	}
 
-	resolved, err := resolveDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef)
+	resolved, err := resolveDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -370,6 +402,9 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 
 	updated, err := existing.Update(title, prompt, skillIDs, conceptIDs, imageURL, audioURL, diagramRef, diagramStackRef, options, estimatedDurationSeconds, remediationTargets, languages)
 	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {

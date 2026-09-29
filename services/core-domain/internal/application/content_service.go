@@ -25,6 +25,12 @@ type ContentService struct {
 	voices      ports.VoiceRepository
 }
 
+// diagramRefRepos are the repositories a diagram reference is checked
+// against.
+func (s *ContentService) diagramRefRepos() diagramRefRepos {
+	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
+}
+
 func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, newID func() string, now func() time.Time) *ContentService {
 	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices}
 }
@@ -141,6 +147,9 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
+		return domain.ContentNode{}, err
+	}
 	if err := s.nodes.Create(ctx, node); err != nil {
 		return domain.ContentNode{}, err
 	}
@@ -195,6 +204,9 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
+		return domain.ContentNode{}, err
+	}
 
 	if err := s.nodes.Update(ctx, updated); err != nil {
 		return domain.ContentNode{}, err
@@ -236,7 +248,10 @@ func (s *ContentService) CreateExpandedContent(
 	if err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef); err != nil {
+	if err := checkDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 	if err := s.expanded.Create(ctx, item); err != nil {
@@ -297,7 +312,10 @@ func (s *ContentService) UpdateExpandedContent(
 	if err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef); err != nil {
+	if err := checkDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 

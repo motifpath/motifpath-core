@@ -40,7 +40,7 @@ func resolveDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *
 		return nil, err
 	}
 	if diagramRef != nil {
-		if err := checkPlaybackVoice(ctx, repos, resolved[0]); err != nil {
+		if err := checkPlaybackVoice(ctx, repos, "diagram_ref", resolved[0]); err != nil {
 			return nil, err
 		}
 	}
@@ -54,17 +54,17 @@ type diagramRefRepos struct {
 	voices      ports.VoiceRepository
 }
 
-// checkPlaybackVoice returns a validation error on "diagram_ref" when
-// resolved's playback picks a voice that doesn't exist or doesn't play its
-// diagram's instrument family.
-func checkPlaybackVoice(ctx context.Context, repos diagramRefRepos, resolved diagramRefWithDiagram) error {
+// checkPlaybackVoice returns a validation error on field when resolved's
+// playback picks a voice that doesn't exist or doesn't play its diagram's
+// instrument family.
+func checkPlaybackVoice(ctx context.Context, repos diagramRefRepos, field string, resolved diagramRefWithDiagram) error {
 	playback := resolved.ref.Playback
 	if playback == nil || playback.VoiceID == nil {
 		return nil
 	}
 	voice, err := repos.voices.GetByID(ctx, *playback.VoiceID)
 	if errors.Is(err, domain.ErrNotFound) {
-		return domain.NewValidationError("diagram_ref", "playback.voice_id references a voice that does not exist: "+*playback.VoiceID)
+		return domain.NewValidationError(field, "playback.voice_id references a voice that does not exist: "+*playback.VoiceID)
 	}
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func checkPlaybackVoice(ctx context.Context, repos diagramRefRepos, resolved dia
 		return err
 	}
 	if voice.Family != instrument.Family {
-		return domain.NewValidationError("diagram_ref", "playback.voice_id must be a voice of the diagram's instrument family")
+		return domain.NewValidationError(field, "playback.voice_id must be a voice of the diagram's instrument family")
 	}
 	return nil
 }
@@ -124,4 +124,35 @@ func resolveDiagrams(ctx context.Context, diagrams ports.DiagramRepository, diag
 func checkDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) error {
 	_, err := resolveDiagramRefs(ctx, repos, diagramRef, diagramStackRef)
 	return err
+}
+
+// checkEmbeddedPlaybackVoices applies checkPlaybackVoice to every diagram
+// embedded in a document or an option, reporting under field. An embed that
+// picks no voice isn't resolved at all, so its diagram need not exist; one
+// that picks a voice needs its diagram, to know which family plays it.
+func checkEmbeddedPlaybackVoices(ctx context.Context, repos diagramRefRepos, field string, refs []domain.DiagramRef) error {
+	for _, ref := range refs {
+		if ref.Playback == nil || ref.Playback.VoiceID == nil {
+			continue
+		}
+		diagram, err := repos.diagrams.GetByID(ctx, ref.DiagramID)
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.NewValidationError(field, "embeds a diagram that does not exist, playing with a voice: "+ref.DiagramID)
+		}
+		if err != nil {
+			return err
+		}
+		if err := checkPlaybackVoice(ctx, repos, field, diagramRefWithDiagram{ref: ref, diagram: diagram}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// embeddedRefs is every diagram embedded in doc, or none for no document.
+func embeddedRefs(doc *domain.PromptDocument) []domain.DiagramRef {
+	if doc == nil {
+		return nil
+	}
+	return doc.EmbeddedDiagramRefs()
 }
