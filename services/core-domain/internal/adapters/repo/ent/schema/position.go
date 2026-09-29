@@ -43,10 +43,6 @@ func (Position) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
-		field.Int("sequence_index").
-			Optional().
-			Nillable(),
-
 		field.Int("string_number").
 			Optional().
 			Nillable(),

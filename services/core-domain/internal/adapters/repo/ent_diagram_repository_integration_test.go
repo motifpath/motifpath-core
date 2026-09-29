@@ -18,14 +18,14 @@ func intPtr(n int) *int { return &n }
 func frettedInstrument() domain.Instrument {
 	return domain.Instrument{
 		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "6-string guitar", "pt_BR": "Violão de 6 cordas"}, Family: domain.InstrumentFamilyFretted,
-		StringCount: intPtr(6), Tuning: []string{"E", "A", "D", "G", "B", "E"},
+		StringCount: intPtr(6), Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: "acoustic-guitar",
 	}
 }
 
 func keyboardInstrument() domain.Instrument {
 	return domain.Instrument{
 		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
-		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"},
+		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: "piano",
 	}
 }
 
@@ -56,24 +56,50 @@ func TestEntInstrumentRepository_CreateGetAndList(t *testing.T) {
 	assert.ElementsMatch(t, []domain.Instrument{guitar, piano}, all)
 }
 
-func TestEntInstrumentRepository_UpdateNames(t *testing.T) {
+func TestEntInstrumentRepository_Update(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()
 	repo := NewEntInstrumentRepository(client)
 	guitar := frettedInstrument()
 	require.NoError(t, repo.Create(ctx, guitar))
+	require.NoError(t, client.Voice.Create().SetID("electric-guitar").SetNames(map[string]string{"en": "Electric guitar"}).SetFamily("fretted").SetPitches([]int{40}).SetAttribution("test").Exec(ctx))
 
-	renamed := domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}
-	require.NoError(t, repo.UpdateNames(ctx, guitar.ID, renamed))
+	updated := guitar
+	updated.Names = domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}
+	updated.DefaultVoiceID = "electric-guitar"
+	require.NoError(t, repo.Update(ctx, updated))
 
 	got, err := repo.GetByID(ctx, guitar.ID)
 	require.NoError(t, err)
-	assert.Equal(t, renamed, got.Names)
-	assert.Equal(t, guitar.Family, got.Family)
-	assert.Equal(t, guitar.Tuning, got.Tuning)
+	assert.Equal(t, updated, got)
 
-	require.ErrorIs(t, repo.UpdateNames(ctx, uuid.NewString(), renamed), domain.ErrNotFound)
-	require.ErrorIs(t, repo.UpdateNames(ctx, "not-a-uuid", renamed), domain.ErrNotFound)
+	missing := updated
+	missing.ID = uuid.NewString()
+	require.ErrorIs(t, repo.Update(ctx, missing), domain.ErrNotFound)
+	missing.ID = "not-a-uuid"
+	require.ErrorIs(t, repo.Update(ctx, missing), domain.ErrNotFound)
+}
+
+func TestEntVoiceRepository(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntVoiceRepository(client)
+
+	all, err := repo.List(ctx)
+	require.NoError(t, err)
+	require.Len(t, all, 2)
+	assert.Equal(t, "acoustic-guitar", all[0].ID, "voices are listed in id order")
+	assert.Equal(t, "piano", all[1].ID)
+
+	guitar, err := repo.GetByID(ctx, "acoustic-guitar")
+	require.NoError(t, err)
+	assert.Equal(t, domain.InstrumentFamilyFretted, guitar.Family)
+	assert.Equal(t, domain.LocalizedText{"en": "Acoustic guitar", "pt_BR": "Violão"}, guitar.Names)
+	assert.NotEmpty(t, guitar.Pitches)
+	assert.NotEmpty(t, guitar.Attribution)
+
+	_, err = repo.GetByID(ctx, "banjo")
+	require.ErrorIs(t, err, domain.ErrNotFound)
 }
 
 func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
@@ -86,14 +112,23 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 	skill := seedSkill(t, ctx, client, "minor-pentatonic-"+uuid.NewString())
 	concept := seedConcept(t, ctx, client, "scale-construction-"+uuid.NewString())
 
+	minor := domain.DiagramModeMinor
 	// Deliberately not in id order: the repository must return positions in
 	// the order the author listed them, not in primary-key order.
 	d := domain.Diagram{
 		ID: uuid.NewString(), InstrumentID: guitar.ID, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Position 1"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
-			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(0)},
+			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
-			{ID: "88888888-0000-4000-8000-000000000003", Interval: "4", NoteName: "D", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(5), SequenceIndex: intPtr(1)},
+			{ID: "88888888-0000-4000-8000-000000000003", Interval: "4", NoteName: "D", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(5)},
+		},
+		Mode: &minor, TempoBPM: intPtr(90), TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8},
+		// A position may sound in several steps, a step may sound several
+		// positions, and a step with none is a rest.
+		Sequence: []domain.SequenceStep{
+			{PositionIDs: []string{"ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 1, Den: 8}, Strum: domain.StrumNone},
+			{PositionIDs: []string{"88888888-0000-4000-8000-000000000003", "ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 3, Den: 8}, Strum: domain.StrumDown},
+			{PositionIDs: []string{}, Value: domain.NoteValue{Num: 1, Den: 12}, Strum: domain.StrumNone},
 		},
 		Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, CreatedAt: fixedAt,
 	}

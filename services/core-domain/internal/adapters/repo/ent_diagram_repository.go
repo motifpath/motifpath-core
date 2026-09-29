@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -64,6 +65,11 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
+		SetNillableMode(entMode(d.Mode)).
+		SetNillableTempoBpm(d.TempoBPM).
+		SetTimeSignatureBeats(d.TimeSignature.Beats).
+		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
+		SetSequence(entSequence(d.Sequence)).
 		SetCreatedAt(d.CreatedAt).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
@@ -262,11 +268,26 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	if !exists {
 		return rollback(tx, domain.ErrNotFound)
 	}
-	if _, err := tx.Diagram.UpdateOneID(id).
+	update := tx.Diagram.UpdateOneID(id).
 		SetNames(d.Names).
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
+		SetTimeSignatureBeats(d.TimeSignature.Beats).
+		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
+		SetSequence(entSequence(d.Sequence))
+	// Unlike root note and color, mode and tempo can be cleared.
+	if d.Mode != nil {
+		update.SetMode(*entMode(d.Mode))
+	} else {
+		update.ClearMode()
+	}
+	if d.TempoBPM != nil {
+		update.SetTempoBpm(*d.TempoBPM)
+	} else {
+		update.ClearTempoBpm()
+	}
+	if _, err := update.
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
@@ -315,7 +336,6 @@ func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, posit
 			SetNoteName(p.NoteName).
 			SetShape(position.Shape(p.Shape)).
 			SetNillableColor(p.Color).
-			SetNillableSequenceIndex(p.SequenceIndex).
 			SetNillableStringNumber(p.String).
 			SetNillableFret(p.Fret).
 			SetNillableKey(p.Key)
@@ -373,17 +393,16 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 	positions := make([]domain.Position, len(row.Edges.Positions))
 	for i, p := range row.Edges.Positions {
 		positions[i] = domain.Position{
-			ID:            p.ID.String(),
-			Interval:      p.Interval,
-			NoteName:      p.NoteName,
-			Shape:         domain.PositionShape(p.Shape),
-			Color:         p.Color,
-			SequenceIndex: p.SequenceIndex,
-			String:        p.StringNumber,
-			Fret:          p.Fret,
-			Key:           p.Key,
-			CustomLabel:   localizedTextOrNil(p.CustomLabel),
-			Note:          localizedTextOrNil(p.Note),
+			ID:          p.ID.String(),
+			Interval:    p.Interval,
+			NoteName:    p.NoteName,
+			Shape:       domain.PositionShape(p.Shape),
+			Color:       p.Color,
+			String:      p.StringNumber,
+			Fret:        p.Fret,
+			Key:         p.Key,
+			CustomLabel: localizedTextOrNil(p.CustomLabel),
+			Note:        localizedTextOrNil(p.Note),
 		}
 	}
 	var regions []domain.Region
@@ -411,10 +430,65 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		Color:        row.Color,
 		Positions:    positions,
 		Regions:      regions,
-		Skills:       domainSkillsFromEdges(row.Edges.Skills),
-		Concepts:     domainConceptsFromEdges(row.Edges.Concepts),
-		CreatedAt:    row.CreatedAt,
+		Mode:         domainMode(row.Mode),
+		TimeSignature: domain.TimeSignature{
+			Beats: row.TimeSignatureBeats, BeatValue: row.TimeSignatureBeatValue,
+		},
+		Sequence:  domainSequence(row.Sequence),
+		TempoBPM:  row.TempoBpm,
+		Skills:    domainSkillsFromEdges(row.Edges.Skills),
+		Concepts:  domainConceptsFromEdges(row.Edges.Concepts),
+		CreatedAt: row.CreatedAt,
 	}
+}
+
+func entMode(mode *domain.DiagramMode) *diagram.Mode {
+	if mode == nil {
+		return nil
+	}
+	m := diagram.Mode(*mode)
+	return &m
+}
+
+func domainMode(mode *diagram.Mode) *domain.DiagramMode {
+	if mode == nil {
+		return nil
+	}
+	m := domain.DiagramMode(*mode)
+	return &m
+}
+
+// entSequence is steps as stored; no steps is an empty list, never NULL.
+func entSequence(steps []domain.SequenceStep) []schema.SequenceStep {
+	out := make([]schema.SequenceStep, len(steps))
+	for i, s := range steps {
+		out[i] = schema.SequenceStep{
+			PositionIDs: s.PositionIDs,
+			Value:       schema.NoteValue{Num: s.Value.Num, Den: s.Value.Den},
+			Strum:       string(s.Strum),
+		}
+		if out[i].PositionIDs == nil {
+			out[i].PositionIDs = []string{}
+		}
+	}
+	return out
+}
+
+// domainSequence is stored steps as the domain holds them: nil for none, a
+// rest's positions as an empty list.
+func domainSequence(steps []schema.SequenceStep) []domain.SequenceStep {
+	if len(steps) == 0 {
+		return nil
+	}
+	out := make([]domain.SequenceStep, len(steps))
+	for i, s := range steps {
+		out[i] = domain.SequenceStep{
+			PositionIDs: s.PositionIDs,
+			Value:       domain.NoteValue{Num: s.Value.Num, Den: s.Value.Den},
+			Strum:       domain.Strum(s.Strum),
+		}
+	}
+	return out
 }
 
 // localizedTextOrNil is text as a domain.LocalizedText, keeping an absent

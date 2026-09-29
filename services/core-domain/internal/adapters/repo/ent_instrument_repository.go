@@ -28,7 +28,8 @@ func (r *EntInstrumentRepository) Create(ctx context.Context, i domain.Instrumen
 		SetID(id).
 		SetNames(i.Names).
 		SetFamily(instrument.Family(i.Family)).
-		SetNillableStringCount(i.StringCount)
+		SetNillableStringCount(i.StringCount).
+		SetDefaultVoiceID(i.DefaultVoiceID)
 	if len(i.Tuning) > 0 {
 		builder = builder.SetTuning(i.Tuning)
 	}
@@ -66,12 +67,12 @@ func (r *EntInstrumentRepository) List(ctx context.Context) ([]domain.Instrument
 	return result, nil
 }
 
-func (r *EntInstrumentRepository) UpdateNames(ctx context.Context, id string, names domain.LocalizedText) error {
-	parsed, err := uuid.Parse(id)
+func (r *EntInstrumentRepository) Update(ctx context.Context, i domain.Instrument) error {
+	parsed, err := uuid.Parse(i.ID)
 	if err != nil {
 		return domain.ErrNotFound
 	}
-	err = r.client.Instrument.UpdateOneID(parsed).SetNames(names).Exec(ctx)
+	err = r.client.Instrument.UpdateOneID(parsed).SetNames(i.Names).SetDefaultVoiceID(i.DefaultVoiceID).Exec(ctx)
 	if ent.IsNotFound(err) {
 		return domain.ErrNotFound
 	}
@@ -80,11 +81,12 @@ func (r *EntInstrumentRepository) UpdateNames(ctx context.Context, id string, na
 
 func toDomainInstrument(row *ent.Instrument) domain.Instrument {
 	i := domain.Instrument{
-		ID:          row.ID.String(),
-		Names:       domain.LocalizedText(row.Names),
-		Family:      domain.InstrumentFamily(row.Family),
-		StringCount: row.StringCount,
-		Tuning:      row.Tuning,
+		ID:             row.ID.String(),
+		Names:          domain.LocalizedText(row.Names),
+		Family:         domain.InstrumentFamily(row.Family),
+		StringCount:    row.StringCount,
+		Tuning:         row.Tuning,
+		DefaultVoiceID: row.DefaultVoiceID,
 	}
 	if row.KeyRangeLowest != nil && row.KeyRangeHighest != nil {
 		i.KeyRange = &domain.KeyRange{Lowest: *row.KeyRangeLowest, Highest: *row.KeyRangeHighest}

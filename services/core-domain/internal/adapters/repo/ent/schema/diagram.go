@@ -55,10 +55,46 @@ func (Diagram) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		// mode with root_note names the key; NULL = no key.
+		field.Enum("mode").
+			Values("major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian").
+			Optional().
+			Nillable(),
+
+		// tempo_bpm is the default tempo the sequence plays at; NULL exactly
+		// when the sequence is empty.
+		field.Int("tempo_bpm").
+			Optional().
+			Nillable(),
+
+		field.Int("time_signature_beats").
+			Default(4),
+
+		field.Int("time_signature_beat_value").
+			Default(4),
+
+		// sequence is the playback steps, in order, each naming positions of
+		// this diagram by id; empty = the diagram doesn't play.
+		field.JSON("sequence", []SequenceStep{}).
+			Default([]SequenceStep{}),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
 	}
+}
+
+// SequenceStep is one stored step of a Diagram's sequence.
+type SequenceStep struct {
+	PositionIDs []string  `json:"position_ids"`
+	Value       NoteValue `json:"value"`
+	Strum       string    `json:"strum"`
+}
+
+// NoteValue is a stored step length, as a fraction of a whole note.
+type NoteValue struct {
+	Num int `json:"num"`
+	Den int `json:"den"`
 }
 
 func (Diagram) Edges() []ent.Edge {

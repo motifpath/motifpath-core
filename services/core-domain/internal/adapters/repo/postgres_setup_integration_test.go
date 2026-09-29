@@ -37,7 +37,20 @@ func setupPostgres(t *testing.T) *ent.Client {
 
 	require.NoError(t, client.Schema.Create(context.Background()))
 	seedLanguages(t, client)
+	seedVoices(t, client)
 	return client
+}
+
+// seedVoices inserts the acoustic-guitar and piano voices the Atlas migration
+// provides with the platform, for the same reason seedLanguages exists:
+// every instrument needs a default voice to reference.
+func seedVoices(t *testing.T, client *ent.Client) {
+	t.Helper()
+	ctx := context.Background()
+	require.NoError(t, client.Voice.Create().SetID("acoustic-guitar").SetNames(map[string]string{"en": "Acoustic guitar", "pt_BR": "Violão"}).
+		SetFamily("fretted").SetPitches([]int{40, 43, 46}).SetAttribution("tonejs-instruments, CC-BY 3.0").Exec(ctx))
+	require.NoError(t, client.Voice.Create().SetID("piano").SetNames(map[string]string{"en": "Piano", "pt_BR": "Piano"}).
+		SetFamily("keyboard").SetPitches([]int{21, 24, 27}).SetAttribution("tonejs-instruments, CC-BY 3.0").Exec(ctx))
 }
 
 // seedLanguages inserts the en/pt_BR/any system rows the Atlas migration
