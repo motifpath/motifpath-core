@@ -10,13 +10,16 @@ import (
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
-// seedDiagramExercises creates the two exercises a student answers on a
-// prebuilt diagram, and links both into challengeID:
+// seedDiagramExercises creates the three exercises a student answers on a
+// prebuilt diagram, and links them into challengeID:
 //   - image_recognition with a diagram stimulus: every marker is a choice
 //     (derived by the server), the roots are correct, and the labels are
 //     hidden so they don't give the answer away;
 //   - image_choice whose three options are diagram thumbnails (an odd
-//     count, so the last one sits alone on its row).
+//     count, so the last one sits alone on its row);
+//   - image_recognition on the E major chord that offers Play: its sequence
+//     plays reversed and loops, and the open high E sounds though it isn't
+//     drawn (it stays an empty answer cell). The major third is correct.
 func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
 	scalesID, err := classifier.skillID(ctx, "Scales")
 	if err != nil {
@@ -58,10 +61,47 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
 	}
 
-	for _, exercise := range []domain.Exercise{tapRoots, pickChord} {
+	listen, err := seedListeningExercise(ctx, teacher, exerciseSvc, diagrams.eMajorChord, chordsID, openChordsID)
+	if err != nil {
+		return err
+	}
+
+	for _, exercise := range []domain.Exercise{tapRoots, pickChord, listen} {
 		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challengeID, exercise.ID); err != nil {
 			return fmt.Errorf("link exercise %q to challenge: %w", exercise.Title, err)
 		}
 	}
 	return nil
+}
+
+// seedListeningExercise asks for the E major chord's major third on a
+// diagram the student can hear: labels off, the chord's sequence reversed
+// and looping, and the open high E hidden but still sounding.
+func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, eMajor domain.Diagram, skillID, conceptID string) (domain.Exercise, error) {
+	var third, highE string
+	for _, p := range eMajor.Positions {
+		switch {
+		case p.Interval == "3":
+			third = p.ID
+		case p.String != nil && *p.String == 1:
+			highE = p.ID
+		}
+	}
+	if third == "" || highE == "" {
+		return domain.Exercise{}, fmt.Errorf("E major chord has no major third or high E position")
+	}
+
+	title := "Listen to the E major chord, then tap its major third"
+	stimulus := &domain.DiagramRef{
+		DiagramID:          eMajor.ID,
+		Layers:             domain.DiagramLayers{Intervals: false, HiddenPositionIDs: &[]string{highE}},
+		Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, Loop: true},
+		CorrectPositionIDs: &[]string{third},
+	}
+	exercise, err := exerciseSvc.CreateExercise(ctx, teacher, title, domain.NewPlainTextPrompt(title), domain.ExerciseTypeImageRecognition,
+		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"})
+	if err != nil {
+		return domain.Exercise{}, fmt.Errorf("create exercise %q: %w", title, err)
+	}
+	return exercise, nil
 }

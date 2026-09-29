@@ -290,14 +290,18 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	if err := seedDiagramExercises(ctx, teacher, svc.exercise, classifier, diagrams, videoIntermediateChallenge.ID); err != nil {
 		return fmt.Errorf("seed diagram exercises: %w", err)
 	}
-	log.Println("seeded 2 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails), linked to the shared practice challenge")
+	log.Println("seeded 3 diagram exercises (tap the roots on a diagram; pick the diagram from 3 thumbnails; hear the E major chord and tap its third), linked to the shared practice challenge")
 
 	lessons, err := seedDiagramLessons(ctx, teacher, svc.content, classifier, diagrams)
 	if err != nil {
 		return fmt.Errorf("seed diagram lessons: %w", err)
 	}
 	log.Printf("seeded video %q (image, rich-text and diagram cues) and article %q (paragraph pop-ups; 3 published versions plus unpublished edits)", lessons.video.Title, lessons.article.Title)
-	log.Printf("seeded video %q (a cue per way a student sees a diagram; in no path) — open it at /nodes/%s", lessons.scenarios.Title, lessons.scenarios.ID)
+	log.Printf("seeded video %q (a cue per way a student sees a diagram; in no path, so no student can open it yet)", lessons.scenarios.Title)
+	if err := seedPlayableCue(ctx, teacher, svc.content, nodes["video-intermediate"].ID, diagrams); err != nil {
+		return fmt.Errorf("seed playable diagram cue: %w", err)
+	}
+	log.Println("seeded a diagram cue that offers Play (the blues lick, 0:11-0:25) on video-intermediate, the admin's current lesson")
 
 	// Every template a course or standalone path is copied from holds videos
 	// only: the student lesson screen can't show an article yet, so an
@@ -515,6 +519,9 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 	// resolve to anything, so a node seeded with it can never actually play.
 	// Matches the sample host cmd/seed-lesson-content already relies on.
 	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
+	// video-intermediate, the admin's current lesson, runs 30 s, so its playable diagram cue fits
+	// after its image cues.
+	longSeedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-30s.mp4"
 	type spec struct {
 		key         string
 		title       string
@@ -544,9 +551,12 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 		}
 		var mediaURL *string
 		var richContent *domain.PromptDocument
-		if s.contentType == domain.ContentTypeVideo {
+		switch {
+		case s.key == "video-intermediate":
+			mediaURL = &longSeedVideoURL
+		case s.contentType == domain.ContentTypeVideo:
 			mediaURL = &seedVideoURL
-		} else {
+		default:
 			doc := domain.NewPlainTextPrompt("Seed placeholder body for " + s.title + ".")
 			richContent = &doc
 		}
