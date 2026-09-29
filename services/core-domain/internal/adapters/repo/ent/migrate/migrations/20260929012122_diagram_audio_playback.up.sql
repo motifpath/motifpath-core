@@ -25,18 +25,7 @@ ALTER TABLE "instruments" ADD CONSTRAINT "instruments_fretted_tuning_has_octaves
 ALTER TABLE "instruments" DROP CONSTRAINT "instruments_fretted_tuning_has_octaves";
 -- modify "diagrams" table: a diagram's key, meter, tempo and playback steps
 ALTER TABLE "diagrams" ADD COLUMN "mode" character varying NULL, ADD COLUMN "tempo_bpm" bigint NULL, ADD COLUMN "time_signature_beats" bigint NOT NULL DEFAULT 4, ADD COLUMN "time_signature_beat_value" bigint NOT NULL DEFAULT 4, ADD COLUMN "sequence" jsonb NOT NULL DEFAULT '[]';
--- positions sharing a sequence index become one step, in index order, each an eighth note at 90 BPM
-UPDATE "diagrams" SET "sequence" = s."steps", "tempo_bpm" = 90
-  FROM (
-    SELECT "diagram_id", jsonb_agg(jsonb_build_object('position_ids', "ids", 'value', '{"num": 1, "den": 8}'::jsonb, 'strum', 'none') ORDER BY "sequence_index") AS "steps"
-    FROM (
-      SELECT "diagram_id", "sequence_index", jsonb_agg("id"::text ORDER BY "ordinal") AS "ids"
-      FROM "positions" WHERE "sequence_index" IS NOT NULL
-      GROUP BY "diagram_id", "sequence_index"
-    ) AS "indexed"
-    GROUP BY "diagram_id"
-  ) AS s
-  WHERE "diagrams"."id" = s."diagram_id";
+-- no diagram plays yet: its old sequence indices were the order the editor's positions were clicked in, not a sequence an author chose
 ALTER TABLE "diagrams" ALTER COLUMN "sequence" DROP DEFAULT;
 -- modify "positions" table
 ALTER TABLE "positions" DROP COLUMN "sequence_index";

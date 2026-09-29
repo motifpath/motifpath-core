@@ -374,7 +374,9 @@ func TestLearningPathLevelMigration(t *testing.T) {
 
 // TestDiagramAudioPlaybackMigration covers the platform's voices being
 // provided, every instrument getting its family's voice and octaves on its
-// tuning, and each diagram's sequence indices becoming playback steps.
+// tuning, and every diagram starting with no playback: its sequence indices
+// were the order the editor's positions were clicked in, not a sequence an
+// author chose, so none of them becomes playback steps.
 func TestDiagramAudioPlaybackMigration(t *testing.T) {
 	ctx := context.Background()
 	const (
@@ -397,18 +399,16 @@ func TestDiagramAudioPlaybackMigration(t *testing.T) {
 		mustExec(t, ctx, db, `INSERT INTO diagrams (id, names, created_at, instrument_id, kind, created_by, label_display) VALUES
 			('`+lick+`', '{"en": "Lick"}', now(), '`+guitar+`', 'basic', '`+admin+`', 'interval'),
 			('`+shape+`', '{"en": "Shape"}', now(), '`+guitar+`', 'basic', '`+admin+`', 'interval')`)
-		// The lick's positions sound at indices 0, 1 (two together), 2, and one
-		// never sounds; the indices aren't contiguous or in position order.
+		// Every position of the lick carries a sequence index, as the diagram
+		// editor gives each one; the shape carries none.
 		mustExec(t, ctx, db, `INSERT INTO positions (id, ordinal, interval, note_name, sequence_index, string_number, fret, diagram_id) VALUES
-			('33333333-0000-0000-0000-000000000001', 0, 'R', 'A', 5, 6, 5, '`+lick+`'),
-			('33333333-0000-0000-0000-000000000002', 1, 'b3', 'C', 0, 6, 8, '`+lick+`'),
+			('33333333-0000-0000-0000-000000000001', 0, 'R', 'A', 0, 6, 5, '`+lick+`'),
+			('33333333-0000-0000-0000-000000000002', 1, 'b3', 'C', 1, 6, 8, '`+lick+`'),
 			('33333333-0000-0000-0000-000000000003', 2, '4', 'D', 2, 5, 5, '`+lick+`'),
-			('33333333-0000-0000-0000-000000000004', 3, '5', 'E', 2, 5, 7, '`+lick+`'),
-			('33333333-0000-0000-0000-000000000005', 4, 'b7', 'G', NULL, 4, 5, '`+lick+`'),
 			('33333333-0000-0000-0000-000000000006', 0, 'R', 'A', NULL, 6, 5, '`+shape+`')`)
 	}
 
-	t.Run("voices, default voices, octave tunings and sequences are migrated", func(t *testing.T) {
+	t.Run("voices, default voices and octave tunings are migrated, and no diagram plays", func(t *testing.T) {
 		db, files, target := migrateUpTo(t, ctx, "_diagram_audio_playback.up.sql")
 		seed(t, db)
 
@@ -444,16 +444,12 @@ func TestDiagramAudioPlaybackMigration(t *testing.T) {
 		var tempo sql.NullInt64
 		var beats, beatValue int
 		require.NoError(t, db.QueryRowContext(ctx, `SELECT sequence::text, tempo_bpm, time_signature_beats, time_signature_beat_value FROM diagrams WHERE id = '`+lick+`'`).Scan(&sequence, &tempo, &beats, &beatValue))
-		assert.JSONEq(t, `[
-			{"position_ids": ["33333333-0000-0000-0000-000000000002"], "value": {"num": 1, "den": 8}, "strum": "none"},
-			{"position_ids": ["33333333-0000-0000-0000-000000000003", "33333333-0000-0000-0000-000000000004"], "value": {"num": 1, "den": 8}, "strum": "none"},
-			{"position_ids": ["33333333-0000-0000-0000-000000000001"], "value": {"num": 1, "den": 8}, "strum": "none"}
-		]`, sequence, "positions sharing an index become one step, in index order, each an eighth note")
-		assert.Equal(t, sql.NullInt64{Int64: 90, Valid: true}, tempo)
+		assert.JSONEq(t, `[]`, sequence, "sequence indices don't become playback steps")
+		assert.False(t, tempo.Valid, "a diagram without steps has no tempo")
 		assert.Equal(t, [2]int{4, 4}, [2]int{beats, beatValue})
 
 		require.NoError(t, db.QueryRowContext(ctx, `SELECT sequence::text, tempo_bpm FROM diagrams WHERE id = '`+shape+`'`).Scan(&sequence, &tempo))
-		assert.JSONEq(t, `[]`, sequence, "a diagram without sequence indices doesn't play")
+		assert.JSONEq(t, `[]`, sequence)
 		assert.False(t, tempo.Valid)
 
 		var sequenceIndexColumns int
