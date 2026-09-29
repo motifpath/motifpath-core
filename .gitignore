@@ -7,6 +7,9 @@ build/
 *.tsbuildinfo
 .bundled/
 
+# Rendered voice samples and the recordings they come from (scripts/voice-samples.sh)
+.voice-samples/
+
 # Environment
 .env
 .env.local
