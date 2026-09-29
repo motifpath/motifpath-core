@@ -45,6 +45,7 @@ type world struct {
 	skills            *fakeSkillRepo
 	concepts          *fakeConceptRepo
 	instruments       *fakeInstrumentRepo
+	voices            *fakeVoiceRepo
 	diagrams          *fakeDiagramRepo
 	pgPinger          *fakePinger
 	mongoPinger       *fakePinger
@@ -100,6 +101,11 @@ type world struct {
 	// creating its copy, so later steps can check the copy against it and
 	// that the source itself did not change.
 	copySource generated.Diagram
+
+	// pendingDiagram is a create request a "creates a diagram ... at N BPM"
+	// step started, which the "the sequence:" step after it completes and
+	// sends.
+	pendingDiagram *generated.CreateDiagramRequest
 
 	// multiResp is lastResp's repeated-call counterpart, for a "does X
 	// twice" or "does X and Y" step (repeated list calls, two generated
@@ -217,6 +223,7 @@ func newWorld() *world {
 		skills:            skills,
 		concepts:          concepts,
 		instruments:       newFakeInstrumentRepo(),
+		voices:            newFakeVoiceRepo(),
 		diagrams:          newFakeDiagramRepo(skills, concepts),
 		pgPinger:          &fakePinger{},
 		mongoPinger:       &fakePinger{},
@@ -236,9 +243,9 @@ func newWorld() *world {
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, w.voices, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, w.instruments, newID, now, noShuffle)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, w.instruments, w.voices, newID, now, noShuffle)
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
@@ -247,10 +254,11 @@ func newWorld() *world {
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
-	instrument := application.NewInstrumentService(w.instruments, newFakeLanguageRepo(), newID)
+	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), newID)
+	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), w.users, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 

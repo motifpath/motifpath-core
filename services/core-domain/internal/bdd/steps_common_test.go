@@ -409,6 +409,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListConcepts401JSONResponse,
 		generated.CreateConcept401JSONResponse,
 		generated.ListInstruments401JSONResponse,
+		generated.ListVoices401JSONResponse,
 		generated.CreateInstrument401JSONResponse,
 		generated.UpdateInstrument401JSONResponse,
 		generated.ListDiagrams401JSONResponse,

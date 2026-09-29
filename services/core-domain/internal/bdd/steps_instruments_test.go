@@ -45,7 +45,7 @@ func (w *world) aFrettedInstrumentExists(name string) error {
 	six := 6
 	w.instruments.put(domain.Instrument{
 		ID: instrumentID(name).String(), Names: domain.LocalizedText{"en": name}, Family: domain.InstrumentFamilyFretted,
-		StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"},
+		StringCount: &six, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: defaultVoiceOf[domain.InstrumentFamilyFretted],
 	})
 	return nil
 }
@@ -53,7 +53,7 @@ func (w *world) aFrettedInstrumentExists(name string) error {
 func (w *world) aKeyboardInstrumentExists(name string) error {
 	w.instruments.put(domain.Instrument{
 		ID: instrumentID(name).String(), Names: domain.LocalizedText{"en": name}, Family: domain.InstrumentFamilyKeyboard,
-		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"},
+		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: defaultVoiceOf[domain.InstrumentFamilyKeyboard],
 	})
 	return nil
 }
@@ -80,7 +80,14 @@ func bilingual(english, portuguese string) map[string]string {
 	return map[string]string{"en": english, "pt_BR": portuguese}
 }
 
+// createFrettedInstrument creates a fretted instrument played by the
+// family's default voice, which a scenario that isn't about voices never
+// names.
 func (w *world) createFrettedInstrument(names map[string]string, stringCount, tuning string) error {
+	return w.createFrettedInstrumentWithVoice(names, stringCount, tuning, defaultVoiceOf[domain.InstrumentFamilyFretted])
+}
+
+func (w *world) createFrettedInstrumentWithVoice(names map[string]string, stringCount, tuning, voice string) error {
 	count, err := strconv.Atoi(stringCount)
 	if err != nil {
 		return fmt.Errorf("string count %q is not a number: %w", stringCount, err)
@@ -88,7 +95,7 @@ func (w *world) createFrettedInstrument(names map[string]string, stringCount, tu
 	notes := splitCommaList(tuning)
 	return w.createInstrument(generated.CreateInstrumentRequest{
 		Names: names, Family: generated.CreateInstrumentRequestFamily(domain.InstrumentFamilyFretted),
-		StringCount: &count, Tuning: &notes,
+		StringCount: &count, Tuning: &notes, DefaultVoiceId: voice,
 	})
 }
 
@@ -107,13 +114,17 @@ func (w *world) createsFrettedInstrumentWithThreeNames(_, lang1, name1, lang2, n
 func (w *world) createsKeyboardInstrument(_, english, portuguese, lowest, highest string) error {
 	return w.createInstrument(generated.CreateInstrumentRequest{
 		Names: bilingual(english, portuguese), Family: generated.CreateInstrumentRequestFamily(domain.InstrumentFamilyKeyboard),
-		KeyRange: keyRangeBody(lowest, highest),
+		KeyRange: keyRangeBody(lowest, highest), DefaultVoiceId: defaultVoiceOf[domain.InstrumentFamilyKeyboard],
 	})
 }
 
 func (w *world) renameInstrument(id uuid.UUID, names map[string]string) error {
+	return w.updateInstrument(id, generated.UpdateInstrumentRequest{Names: names})
+}
+
+func (w *world) updateInstrument(id uuid.UUID, body generated.UpdateInstrumentRequest) error {
 	resp, err := w.handler.UpdateInstrument(w.ctx(), generated.UpdateInstrumentRequestObject{
-		InstrumentId: id, Body: &generated.UpdateInstrumentRequest{Names: names},
+		InstrumentId: id, Body: &body,
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
@@ -149,14 +160,15 @@ func (w *world) submitsFrettedInstrumentWithoutTuning(string) error {
 	count := 6
 	return w.createInstrument(generated.CreateInstrumentRequest{
 		Names: bilingual("No tuning", "Sem afinação"), Family: generated.CreateInstrumentRequestFamily(domain.InstrumentFamilyFretted), StringCount: &count,
+		DefaultVoiceId: defaultVoiceOf[domain.InstrumentFamilyFretted],
 	})
 }
 
 func (w *world) submitsKeyboardInstrumentWithTuning(string) error {
-	tuning := []string{"E", "A", "D", "G", "B", "E"}
+	tuning := []string{"E2", "A2", "D3", "G3", "B3", "E4"}
 	return w.createInstrument(generated.CreateInstrumentRequest{
 		Names: bilingual("Tuned keyboard", "Teclado afinado"), Family: generated.CreateInstrumentRequestFamily(domain.InstrumentFamilyKeyboard),
-		KeyRange: keyRangeBody("A0", "C8"), Tuning: &tuning,
+		KeyRange: keyRangeBody("A0", "C8"), Tuning: &tuning, DefaultVoiceId: defaultVoiceOf[domain.InstrumentFamilyKeyboard],
 	})
 }
 
