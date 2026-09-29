@@ -22,10 +22,11 @@ type ContentService struct {
 	newID       func() string
 	now         func() time.Time
 	instruments ports.InstrumentRepository
+	voices      ports.VoiceRepository
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices}
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -235,7 +236,7 @@ func (s *ContentService) CreateExpandedContent(
 	if err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkDiagramRefsExist(ctx, s.diagrams, diagramRef, diagramStackRef); err != nil {
+	if err := checkDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 	if err := s.expanded.Create(ctx, item); err != nil {
@@ -296,7 +297,7 @@ func (s *ContentService) UpdateExpandedContent(
 	if err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkDiagramRefsExist(ctx, s.diagrams, diagramRef, diagramStackRef); err != nil {
+	if err := checkDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 

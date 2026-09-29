@@ -28,7 +28,7 @@ func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *f
 }
 
 func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, skills, concepts, versions, diagrams, seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewContentService(nodes, expanded, skills, concepts, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // seededSkillRepository/seededConceptRepository return fakes pre-populated
@@ -748,6 +748,65 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
 		assertHasField(t, valErr, "diagram_ref")
+	})
+
+	t.Run("a diagram plays with its own voice, tempo and looping", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		playback := &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true}
+
+		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil,
+			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: playback}, nil,
+			intPtr(150), intPtr(165), nil, nil, nil)
+
+		require.NoError(t, err)
+		require.NotNil(t, item.DiagramRef)
+		assert.Equal(t, playback, item.DiagramRef.Playback)
+	})
+
+	for _, tt := range []struct{ name, voiceID string }{
+		{name: "a voice of another instrument family", voiceID: "piano"},
+		{name: "a voice that does not exist", voiceID: "banjo"},
+	} {
+		t.Run("a diagram playing with "+tt.name+" is rejected", func(t *testing.T) {
+			nodes := newFakeContentNodeRepository()
+			nodes.put(videoNode("node-1"))
+			diagrams := newFakeDiagramRepository()
+			seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+			svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+			_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+				domain.ExpandedContentTypeDiagram, nil, nil,
+				&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr(tt.voiceID)}}, nil,
+				intPtr(150), intPtr(165), nil, nil, nil)
+
+			var valErr *domain.ValidationError
+			require.True(t, errors.As(err, &valErr))
+			assertHasField(t, valErr, "diagram_ref")
+		})
+	}
+
+	t.Run("a stack entry's playback is ignored, since a stack doesn't play", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(articleNode("node-1"))
+		diagrams := newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		seedContentDiagram(t, diagrams, "diagram-2", "guitar")
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+
+		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeDiagram, nil, nil, nil,
+			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")}},
+				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}},
+			}},
+			nil, nil, intPtr(3), intPtr(8000), nil)
+
+		require.NoError(t, err)
 	})
 
 	t.Run("creating a diagram item that also carries a media URL is rejected", func(t *testing.T) {

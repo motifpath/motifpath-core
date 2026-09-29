@@ -3,8 +3,8 @@ package application_test
 import (
 	"context"
 	"sort"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -1423,15 +1423,15 @@ func (f *fakeInstrumentRepository) List(_ context.Context) ([]domain.Instrument,
 	return result, nil
 }
 
-func (f *fakeInstrumentRepository) UpdateNames(_ context.Context, id string, names domain.LocalizedText) error {
+func (f *fakeInstrumentRepository) Update(_ context.Context, instrument domain.Instrument) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	instrument, ok := f.byID[id]
+	current, ok := f.byID[instrument.ID]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	instrument.Names = names
-	f.byID[id] = instrument
+	current.Names, current.DefaultVoiceID = instrument.Names, instrument.DefaultVoiceID
+	f.byID[instrument.ID] = current
 	return nil
 }
 
@@ -1439,6 +1439,39 @@ func (f *fakeInstrumentRepository) put(instrument domain.Instrument) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.byID[instrument.ID] = instrument
+}
+
+// fakeVoiceRepository is an in-memory ports.VoiceRepository holding the
+// platform's voices: two fretted, one keyboard. acoustic-guitar's pitches
+// are stored out of order, so a test can tell that callers sort them.
+type fakeVoiceRepository struct {
+	byID map[string]domain.Voice
+}
+
+func newFakeVoiceRepository() *fakeVoiceRepository {
+	names := func(name string) domain.LocalizedText { return domain.LocalizedText{"en": name, "pt_BR": name} }
+	return &fakeVoiceRepository{byID: map[string]domain.Voice{
+		"piano":           {ID: "piano", Names: names("Piano"), Family: domain.InstrumentFamilyKeyboard, Pitches: []int{21, 24}, Attribution: "CC-BY 3.0"},
+		"acoustic-guitar": {ID: "acoustic-guitar", Names: names("Acoustic guitar"), Family: domain.InstrumentFamilyFretted, Pitches: []int{43, 40}, Attribution: "CC-BY 3.0"},
+		"electric-guitar": {ID: "electric-guitar", Names: names("Electric guitar"), Family: domain.InstrumentFamilyFretted, Pitches: []int{40}, Attribution: "CC-BY 3.0"},
+	}}
+}
+
+func (f *fakeVoiceRepository) GetByID(_ context.Context, id string) (domain.Voice, error) {
+	voice, ok := f.byID[id]
+	if !ok {
+		return domain.Voice{}, domain.ErrNotFound
+	}
+	return voice, nil
+}
+
+func (f *fakeVoiceRepository) List(_ context.Context) ([]domain.Voice, error) {
+	result := make([]domain.Voice, 0, len(f.byID))
+	for _, voice := range f.byID {
+		result = append(result, voice)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
 }
 
 // fakeDiagramRepository is a minimal in-memory ports.DiagramRepository.

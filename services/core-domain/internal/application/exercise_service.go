@@ -22,8 +22,10 @@ type ExerciseService struct {
 	// instruments tells a diagram stimulus's family and string count, which
 	// decide whether its answers are fretboard cells.
 	instruments ports.InstrumentRepository
-	newID       func() string
-	now        func() time.Time
+	// voices checks the voice a diagram stimulus plays with.
+	voices ports.VoiceRepository
+	newID  func() string
+	now    func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
 	// math/rand.Shuffle's signature — injected so tests can supply a
 	// deterministic permutation instead of a real random one.
@@ -38,11 +40,12 @@ func NewExerciseService(
 	concepts ports.ConceptRepository,
 	diagrams ports.DiagramRepository,
 	instruments ports.InstrumentRepository,
+	voices ports.VoiceRepository,
 	newID func() string,
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, voices: voices, newID: newID, now: now, shuffle: shuffle}
 }
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
@@ -130,7 +133,7 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 		return nil, nil, domain.NewValidationError("options", "must be omitted when diagram_ref or diagram_stack_ref is given")
 	}
 
-	resolved, err := resolveDiagramRefs(ctx, s.diagrams, diagramRef, diagramStackRef)
+	resolved, err := resolveDiagramRefs(ctx, diagramRefRepos{s.diagrams, s.instruments, s.voices}, diagramRef, diagramStackRef)
 	if err != nil {
 		return nil, nil, err
 	}

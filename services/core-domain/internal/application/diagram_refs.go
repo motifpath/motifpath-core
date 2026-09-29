@@ -31,7 +31,57 @@ type diagramRefWithDiagram struct {
 // diagramRef/diagramStackRef's own structural validity (e.g. having a
 // diagram_id at all) is already checked by the domain layer before this
 // runs. At most one of diagramRef/diagramStackRef is ever non-nil.
-func resolveDiagramRefs(ctx context.Context, diagrams ports.DiagramRepository, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) ([]diagramRefWithDiagram, error) {
+// A lone diagramRef whose playback picks a voice must pick an existing voice
+// of its diagram's instrument family, reported under "diagram_ref". A stack
+// doesn't play, so its entries' playback is never checked.
+func resolveDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) ([]diagramRefWithDiagram, error) {
+	resolved, err := resolveDiagrams(ctx, repos.diagrams, diagramRef, diagramStackRef)
+	if err != nil {
+		return nil, err
+	}
+	if diagramRef != nil {
+		if err := checkPlaybackVoice(ctx, repos, resolved[0]); err != nil {
+			return nil, err
+		}
+	}
+	return resolved, nil
+}
+
+// diagramRefRepos are the repositories resolving a diagram reference reads.
+type diagramRefRepos struct {
+	diagrams    ports.DiagramRepository
+	instruments ports.InstrumentRepository
+	voices      ports.VoiceRepository
+}
+
+// checkPlaybackVoice returns a validation error on "diagram_ref" when
+// resolved's playback picks a voice that doesn't exist or doesn't play its
+// diagram's instrument family.
+func checkPlaybackVoice(ctx context.Context, repos diagramRefRepos, resolved diagramRefWithDiagram) error {
+	playback := resolved.ref.Playback
+	if playback == nil || playback.VoiceID == nil {
+		return nil
+	}
+	voice, err := repos.voices.GetByID(ctx, *playback.VoiceID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.NewValidationError("diagram_ref", "playback.voice_id references a voice that does not exist: "+*playback.VoiceID)
+	}
+	if err != nil {
+		return err
+	}
+	instrument, err := repos.instruments.GetByID(ctx, resolved.diagram.InstrumentID)
+	if err != nil {
+		return err
+	}
+	if voice.Family != instrument.Family {
+		return domain.NewValidationError("diagram_ref", "playback.voice_id must be a voice of the diagram's instrument family")
+	}
+	return nil
+}
+
+// resolveDiagrams fetches the Diagrams diagramRef or diagramStackRef names,
+// checking that they exist and that a stack's share one instrument.
+func resolveDiagrams(ctx context.Context, diagrams ports.DiagramRepository, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) ([]diagramRefWithDiagram, error) {
 	refs := []domain.DiagramRef{}
 	if diagramRef != nil {
 		refs = append(refs, *diagramRef)
@@ -69,9 +119,9 @@ func resolveDiagramRefs(ctx context.Context, diagrams ports.DiagramRepository, d
 	return resolved, nil
 }
 
-// checkDiagramRefsExist is resolveDiagramRefs for a caller that only needs
-// the existence/same-instrument check, not the resolved Diagrams themselves.
-func checkDiagramRefsExist(ctx context.Context, diagrams ports.DiagramRepository, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) error {
-	_, err := resolveDiagramRefs(ctx, diagrams, diagramRef, diagramStackRef)
+// checkDiagramRefs is resolveDiagramRefs for a caller that only needs its
+// checks, not the resolved Diagrams themselves.
+func checkDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) error {
+	_, err := resolveDiagramRefs(ctx, repos, diagramRef, diagramStackRef)
 	return err
 }
