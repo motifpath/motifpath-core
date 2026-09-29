@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/oapi-codegen/nullable"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
@@ -599,6 +600,10 @@ func toDomainDiagramRef(ref generated.DiagramRef) domain.DiagramRef {
 	if err := json.Unmarshal(data, &out); err != nil {
 		panic(err)
 	}
+	// A playback that doesn't say which way to play goes as authored.
+	if out.Playback != nil && out.Playback.Direction == "" {
+		out.Playback.Direction = domain.DiagramPlaybackDirectionAsAuthored
+	}
 	return out
 }
 
@@ -628,11 +633,12 @@ func toDomainDiagramStackRefPtr(stack *generated.DiagramStackRef) *domain.Diagra
 
 func toGeneratedInstrument(i domain.Instrument) generated.Instrument {
 	instrument := generated.Instrument{
-		InstrumentId: mustUUID(i.ID),
-		Names:        generated.LocalizedNames(i.Names),
-		Languages:    i.Names.Languages(),
-		Family:       generated.InstrumentFamily(i.Family),
-		StringCount:  i.StringCount,
+		InstrumentId:   mustUUID(i.ID),
+		Names:          generated.LocalizedNames(i.Names),
+		Languages:      i.Names.Languages(),
+		Family:         generated.InstrumentFamily(i.Family),
+		StringCount:    i.StringCount,
+		DefaultVoiceId: i.DefaultVoiceID,
 	}
 	if len(i.Tuning) > 0 {
 		tuning := i.Tuning
@@ -703,15 +709,14 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		id := mustUUID(p.ID)
 		shape := generated.DiagramPositionShape(p.Shape)
 		positions[i] = generated.DiagramPosition{
-			PositionId:    &id,
-			Interval:      generated.DiagramPositionInterval(p.Interval),
-			NoteName:      p.NoteName,
-			Shape:         &shape,
-			Color:         p.Color,
-			SequenceIndex: p.SequenceIndex,
-			String:        p.String,
-			Fret:          p.Fret,
-			Key:           p.Key,
+			PositionId: &id,
+			Interval:   generated.DiagramPositionInterval(p.Interval),
+			NoteName:   p.NoteName,
+			Shape:      &shape,
+			Color:      p.Color,
+			String:     p.String,
+			Fret:       p.Fret,
+			Key:        p.Key,
 		}
 		if p.CustomLabel != nil {
 			label := generated.LocalizedMarkerLabel(p.CustomLabel)
@@ -738,8 +743,134 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 			Skills:   toGeneratedSkills(d.Skills),
 			Concepts: toGeneratedConcepts(d.Concepts),
 		},
-		CreatedAt: d.CreatedAt,
+		Mode:          toGeneratedMode(d.Mode),
+		TempoBpm:      d.TempoBPM,
+		TimeSignature: generated.TimeSignature{Beats: d.TimeSignature.Beats, BeatValue: generated.TimeSignatureBeatValue(d.TimeSignature.BeatValue)},
+		Sequence:      toGeneratedSequence(d.Sequence),
+		CreatedAt:     d.CreatedAt,
 	}
+}
+
+// toDiagramUpdate converts an update request's body: every field it leaves
+// out keeps the diagram's current value.
+func toDiagramUpdate(body *generated.UpdateDiagramRequest) application.DiagramUpdate {
+	update := application.DiagramUpdate{
+		RootNote: body.RootNote, Color: body.Color, Regions: toDomainRegions(body.Regions),
+		Mode:     toUpdateNullable(body.Mode, func(m generated.DiagramMode) domain.DiagramMode { return domain.DiagramMode(m) }),
+		TempoBPM: toUpdateNullable(body.TempoBpm, func(t int) int { return t }),
+		Sequence: toDomainSequence(body.Sequence),
+	}
+	if body.Names != nil {
+		update.Names = *body.Names
+	}
+	if body.Positions != nil {
+		update.Positions = toDomainPositions(*body.Positions)
+	}
+	if body.Classification != nil {
+		update.SkillIDs = uuidsToStrings(body.Classification.SkillIds)
+		update.ConceptIDs = uuidsToStrings(body.Classification.ConceptIds)
+	}
+	if body.LabelDisplay != nil {
+		labelDisplay := domain.LabelDisplay(*body.LabelDisplay)
+		update.LabelDisplay = &labelDisplay
+	}
+	if body.TimeSignature != nil {
+		signature := toDomainTimeSignature(body.TimeSignature)
+		update.TimeSignature = &signature
+	}
+	return update
+}
+
+// toUpdateNullable converts a request field that may be left out, null or
+// set, keeping which of the three it is.
+func toUpdateNullable[T, D comparable](field nullable.Nullable[T], convert func(T) D) application.Nullable[D] {
+	switch {
+	case !field.IsSpecified():
+		return application.Nullable[D]{}
+	case field.IsNull():
+		return application.Nullable[D]{Set: true}
+	default:
+		value := convert(field.MustGet())
+		return application.Nullable[D]{Set: true, Value: &value}
+	}
+}
+
+func toGeneratedMode(mode *domain.DiagramMode) *generated.DiagramMode {
+	if mode == nil {
+		return nil
+	}
+	m := generated.DiagramMode(*mode)
+	return &m
+}
+
+func toDomainMode(mode *generated.DiagramMode) *domain.DiagramMode {
+	if mode == nil {
+		return nil
+	}
+	m := domain.DiagramMode(*mode)
+	return &m
+}
+
+// toGeneratedSequence renders steps, always as a list: a diagram that
+// doesn't play has an empty sequence, never a null one.
+func toGeneratedSequence(steps []domain.SequenceStep) []generated.SequenceStep {
+	out := make([]generated.SequenceStep, len(steps))
+	for i, s := range steps {
+		ids := make([]uuid.UUID, len(s.PositionIDs))
+		for j, id := range s.PositionIDs {
+			ids[j] = mustUUID(id)
+		}
+		strum := generated.SequenceStepStrum(s.Strum)
+		out[i] = generated.SequenceStep{PositionIds: ids, Value: generated.NoteValue{Num: s.Value.Num, Den: s.Value.Den}, Strum: &strum}
+	}
+	return out
+}
+
+// toDomainSequence converts a request's steps, keeping an omitted sequence
+// nil and an empty one empty — they mean different things on an update. A
+// step without a strum is left for the domain to default.
+func toDomainSequence(steps *[]generated.SequenceStep) []domain.SequenceStep {
+	if steps == nil {
+		return nil
+	}
+	out := make([]domain.SequenceStep, len(*steps))
+	for i, s := range *steps {
+		ids := make([]string, len(s.PositionIds))
+		for j, id := range s.PositionIds {
+			ids[j] = id.String()
+		}
+		out[i] = domain.SequenceStep{PositionIDs: ids, Value: domain.NoteValue{Num: s.Value.Num, Den: s.Value.Den}}
+		if s.Strum != nil {
+			out[i].Strum = domain.Strum(*s.Strum)
+		}
+	}
+	return out
+}
+
+func toDomainTimeSignature(signature *generated.TimeSignature) domain.TimeSignature {
+	if signature == nil {
+		return domain.TimeSignature{}
+	}
+	return domain.TimeSignature{Beats: signature.Beats, BeatValue: int(signature.BeatValue)}
+}
+
+func toGeneratedVoices(voices []application.PlayableVoice) []generated.Voice {
+	out := make([]generated.Voice, len(voices))
+	for i, v := range voices {
+		samples := make([]generated.VoiceSample, len(v.Samples))
+		for j, sample := range v.Samples {
+			samples[j] = generated.VoiceSample{Pitch: sample.Pitch, Url: sample.URL}
+		}
+		out[i] = generated.Voice{
+			VoiceId:     v.Voice.ID,
+			Names:       generated.LocalizedNames(v.Voice.Names),
+			Languages:   v.Voice.Names.Languages(),
+			Family:      generated.VoiceFamily(v.Voice.Family),
+			Samples:     samples,
+			Attribution: v.Voice.Attribution,
+		}
+	}
+	return out
 }
 
 func toGeneratedDiagrams(diagrams []domain.Diagram, names userNames) []generated.Diagram {
@@ -754,13 +885,12 @@ func toDomainPositions(positions []generated.DiagramPosition) []domain.Position 
 	result := make([]domain.Position, len(positions))
 	for i, p := range positions {
 		result[i] = domain.Position{
-			Interval:      string(p.Interval),
-			NoteName:      p.NoteName,
-			SequenceIndex: p.SequenceIndex,
-			String:        p.String,
-			Fret:          p.Fret,
-			Key:           p.Key,
-			Color:         p.Color,
+			Interval: string(p.Interval),
+			NoteName: p.NoteName,
+			String:   p.String,
+			Fret:     p.Fret,
+			Key:      p.Key,
+			Color:    p.Color,
 		}
 		if p.Shape != nil {
 			result[i].Shape = domain.PositionShape(*p.Shape)

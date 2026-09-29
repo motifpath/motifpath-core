@@ -48,6 +48,7 @@ type Handler struct {
 	course           *application.CourseService
 	courseEnrollment *application.CourseEnrollmentService
 	instrument       *application.InstrumentService
+	voice            *application.VoiceService
 	diagram          *application.DiagramService
 
 	// pingers back the readiness probe only; the health probes never touch
@@ -71,6 +72,7 @@ func NewHandler(
 	course *application.CourseService,
 	courseEnrollment *application.CourseEnrollmentService,
 	instrument *application.InstrumentService,
+	voice *application.VoiceService,
 	diagram *application.DiagramService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
@@ -88,6 +90,7 @@ func NewHandler(
 		course:                course,
 		courseEnrollment:      courseEnrollment,
 		instrument:            instrument,
+		voice:                 voice,
 		diagram:               diagram,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
@@ -1656,7 +1659,7 @@ func (h *Handler) CreateInstrument(ctx context.Context, request generated.Create
 	if body.KeyRange != nil {
 		keyRange = &domain.KeyRange{Lowest: body.KeyRange.Lowest, Highest: body.KeyRange.Highest}
 	}
-	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange)
+	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange, body.DefaultVoiceId)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1678,7 +1681,7 @@ func (h *Handler) UpdateInstrument(ctx context.Context, request generated.Update
 		return generated.UpdateInstrument401JSONResponse(unauthorizedError()), nil
 	}
 
-	instrument, err := h.instrument.UpdateInstrumentNames(ctx, caller, request.InstrumentId.String(), request.Body.Names)
+	instrument, err := h.instrument.UpdateInstrument(ctx, caller, request.InstrumentId.String(), request.Body.Names, request.Body.DefaultVoiceId)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1694,6 +1697,19 @@ func (h *Handler) UpdateInstrument(ctx context.Context, request generated.Update
 	}
 
 	return generated.UpdateInstrument200JSONResponse(toGeneratedInstrument(instrument)), nil
+}
+
+func (h *Handler) ListVoices(ctx context.Context, _ generated.ListVoicesRequestObject) (generated.ListVoicesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListVoices401JSONResponse(unauthorizedError()), nil
+	}
+
+	voices, err := h.voice.ListVoices(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return generated.ListVoices200JSONResponse(toGeneratedVoices(voices)), nil
 }
 
 func (h *Handler) ListDiagrams(ctx context.Context, request generated.ListDiagramsRequestObject) (generated.ListDiagramsResponseObject, error) {
@@ -1773,7 +1789,10 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 	body := request.Body
 	diagram, err := h.diagram.CreateDiagram(ctx, caller, body.InstrumentId.String(), body.Names, toDomainPositions(body.Positions),
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
-		domain.DiagramOptions{RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind), Regions: toDomainRegions(body.Regions)})
+		domain.DiagramOptions{
+			RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind), Regions: toDomainRegions(body.Regions),
+			Mode: toDomainMode(body.Mode), TempoBPM: body.TempoBpm, TimeSignature: toDomainTimeSignature(body.TimeSignature), Sequence: toDomainSequence(body.Sequence),
+		})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1819,23 +1838,7 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 		return generated.UpdateDiagram401JSONResponse(unauthorizedError()), nil
 	}
 
-	body := request.Body
-	update := application.DiagramUpdate{RootNote: body.RootNote, Color: body.Color, Regions: toDomainRegions(body.Regions)}
-	if body.Names != nil {
-		update.Names = *body.Names
-	}
-	if body.Positions != nil {
-		update.Positions = toDomainPositions(*body.Positions)
-	}
-	if body.Classification != nil {
-		update.SkillIDs = uuidsToStrings(body.Classification.SkillIds)
-		update.ConceptIDs = uuidsToStrings(body.Classification.ConceptIds)
-	}
-	if body.LabelDisplay != nil {
-		labelDisplay := domain.LabelDisplay(*body.LabelDisplay)
-		update.LabelDisplay = &labelDisplay
-	}
-
+	update := toDiagramUpdate(request.Body)
 	diagram, err := h.diagram.UpdateDiagram(ctx, caller, request.DiagramId.String(), update)
 	if err != nil {
 		kind, valErr := classify(err)

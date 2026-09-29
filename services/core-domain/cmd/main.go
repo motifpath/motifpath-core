@@ -250,6 +250,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	skillRepo := repo.NewEntSkillRepository(entClient)
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	voiceRepo := repo.NewEntVoiceRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
 	completionReader := repo.NewMongoCompletionStateReader(mongoClient.Database(cfg.mongoDatabase))
 	learningGraphPinger := repo.NewPostgresPinger(sqlDB)
@@ -258,9 +259,9 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	now := func() time.Time { return time.Now().UTC() }
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, newID, now, mathrand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now, mathrand.Shuffle)
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
@@ -268,11 +269,14 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
-	instrumentService := application.NewInstrumentService(instrumentRepo, languageRepo, newID)
+	instrumentService := application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, newID)
+	// Voice samples are served from the same public media address as
+	// uploaded media.
+	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
-		courseService, courseEnrollmentService, instrumentService, diagramService, learningGraphPinger, completionReader), nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go
