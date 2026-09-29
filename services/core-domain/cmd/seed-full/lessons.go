@@ -152,6 +152,9 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 	}
 
 	pos1, pos2 := *intervalsRef(diagrams.pentatonicPos1.ID), *intervalsRef(diagrams.pentatonicPos2.ID)
+	// The lick has a rhythm (a triplet turn at 80 BPM); this cue offers Play, as authored, once through.
+	lickWithPlay := *intervalsRef(diagrams.teacherLick.ID)
+	lickWithPlay.Playback = &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
 	rootsOnly := domain.DiagramRef{DiagramID: diagrams.pentatonicPos1.ID, Layers: domain.DiagramLayers{Intervals: true, Subset: &[]string{"R"}}}
 	cues := []diagramCue{
 		{diagram: &pos1, from: 0, to: 5, caption: "1 · One diagram: position 1"},
@@ -160,7 +163,7 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 		{stack: &domain.DiagramStackRef{Stack: []domain.DiagramRef{pos1, pos2}}, from: 11, to: 15, caption: "3 · Two diagrams stacked: positions 1 and 2"},
 		{rich: docPtr(noteWithDiagram("Both boxes join into one long shape:", *intervalsRef(diagrams.pentatonicJoined.ID), "Slide between them on the G string.")),
 			from: 16, to: 20, caption: "4 · A diagram inside a rich-text note"},
-		{diagram: intervalsRef(diagrams.teacherLick.ID), from: 21, to: 25, caption: "5 · Labels hidden by the diagram's author"},
+		{diagram: &lickWithPlay, from: 21, to: 25, caption: "5 · Labels hidden by the diagram's author; press Play to hear the lick"},
 		{diagram: &rootsOnly, from: 26, to: 30, caption: "6 · Only the roots of position 1"},
 	}
 	for _, cue := range cues {
@@ -174,6 +177,20 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 		}
 	}
 	return video, nil
+}
+
+// seedPlayableCue adds a diagram cue that offers Play to nodeID, a lesson on
+// real students' paths (the admin's current one included), so the player can
+// be tried where a student meets it: the blues lick, played as authored once
+// through, from 0:11 to 0:25 — after the node's image cues.
+func seedPlayableCue(ctx context.Context, teacher domain.User, content *application.ContentService, nodeID string, diagrams seededDiagrams) error {
+	ref := *intervalsRef(diagrams.teacherLick.ID)
+	ref.Playback = &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
+	start, end, caption := 11, 25, "Press Play to hear the lick"
+	if _, err := content.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeDiagram, nil, nil, &ref, nil, &start, &end, nil, nil, &caption); err != nil {
+		return fmt.Errorf("create playable diagram cue: %w", err)
+	}
+	return nil
 }
 
 // seedDiagramArticle creates an article with an image, a rich-text and a
