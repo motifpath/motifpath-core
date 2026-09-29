@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
@@ -18,6 +19,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
@@ -91,6 +93,107 @@ func (_u *DiagramUpdate) SetNillableColor(v *string) *DiagramUpdate {
 // ClearColor clears the value of the "color" field.
 func (_u *DiagramUpdate) ClearColor() *DiagramUpdate {
 	_u.mutation.ClearColor()
+	return _u
+}
+
+// SetMode sets the "mode" field.
+func (_u *DiagramUpdate) SetMode(v diagram.Mode) *DiagramUpdate {
+	_u.mutation.SetMode(v)
+	return _u
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableMode(v *diagram.Mode) *DiagramUpdate {
+	if v != nil {
+		_u.SetMode(*v)
+	}
+	return _u
+}
+
+// ClearMode clears the value of the "mode" field.
+func (_u *DiagramUpdate) ClearMode() *DiagramUpdate {
+	_u.mutation.ClearMode()
+	return _u
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (_u *DiagramUpdate) SetTempoBpm(v int) *DiagramUpdate {
+	_u.mutation.ResetTempoBpm()
+	_u.mutation.SetTempoBpm(v)
+	return _u
+}
+
+// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableTempoBpm(v *int) *DiagramUpdate {
+	if v != nil {
+		_u.SetTempoBpm(*v)
+	}
+	return _u
+}
+
+// AddTempoBpm adds value to the "tempo_bpm" field.
+func (_u *DiagramUpdate) AddTempoBpm(v int) *DiagramUpdate {
+	_u.mutation.AddTempoBpm(v)
+	return _u
+}
+
+// ClearTempoBpm clears the value of the "tempo_bpm" field.
+func (_u *DiagramUpdate) ClearTempoBpm() *DiagramUpdate {
+	_u.mutation.ClearTempoBpm()
+	return _u
+}
+
+// SetTimeSignatureBeats sets the "time_signature_beats" field.
+func (_u *DiagramUpdate) SetTimeSignatureBeats(v int) *DiagramUpdate {
+	_u.mutation.ResetTimeSignatureBeats()
+	_u.mutation.SetTimeSignatureBeats(v)
+	return _u
+}
+
+// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableTimeSignatureBeats(v *int) *DiagramUpdate {
+	if v != nil {
+		_u.SetTimeSignatureBeats(*v)
+	}
+	return _u
+}
+
+// AddTimeSignatureBeats adds value to the "time_signature_beats" field.
+func (_u *DiagramUpdate) AddTimeSignatureBeats(v int) *DiagramUpdate {
+	_u.mutation.AddTimeSignatureBeats(v)
+	return _u
+}
+
+// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
+func (_u *DiagramUpdate) SetTimeSignatureBeatValue(v int) *DiagramUpdate {
+	_u.mutation.ResetTimeSignatureBeatValue()
+	_u.mutation.SetTimeSignatureBeatValue(v)
+	return _u
+}
+
+// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableTimeSignatureBeatValue(v *int) *DiagramUpdate {
+	if v != nil {
+		_u.SetTimeSignatureBeatValue(*v)
+	}
+	return _u
+}
+
+// AddTimeSignatureBeatValue adds value to the "time_signature_beat_value" field.
+func (_u *DiagramUpdate) AddTimeSignatureBeatValue(v int) *DiagramUpdate {
+	_u.mutation.AddTimeSignatureBeatValue(v)
+	return _u
+}
+
+// SetSequence sets the "sequence" field.
+func (_u *DiagramUpdate) SetSequence(v []schema.SequenceStep) *DiagramUpdate {
+	_u.mutation.SetSequence(v)
+	return _u
+}
+
+// AppendSequence appends value to the "sequence" field.
+func (_u *DiagramUpdate) AppendSequence(v []schema.SequenceStep) *DiagramUpdate {
+	_u.mutation.AppendSequence(v)
 	return _u
 }
 
@@ -349,6 +452,11 @@ func (_u *DiagramUpdate) check() error {
 			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Mode(); ok {
+		if err := diagram.ModeValidator(v); err != nil {
+			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "Diagram.mode": %w`, err)}
+		}
+	}
 	if _u.mutation.InstrumentCleared() && len(_u.mutation.InstrumentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Diagram.instrument"`)
 	}
@@ -384,6 +492,41 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(diagram.FieldColor, field.TypeString)
+	}
+	if value, ok := _u.mutation.Mode(); ok {
+		_spec.SetField(diagram.FieldMode, field.TypeEnum, value)
+	}
+	if _u.mutation.ModeCleared() {
+		_spec.ClearField(diagram.FieldMode, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.TempoBpm(); ok {
+		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTempoBpm(); ok {
+		_spec.AddField(diagram.FieldTempoBpm, field.TypeInt, value)
+	}
+	if _u.mutation.TempoBpmCleared() {
+		_spec.ClearField(diagram.FieldTempoBpm, field.TypeInt)
+	}
+	if value, ok := _u.mutation.TimeSignatureBeats(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimeSignatureBeats(); ok {
+		_spec.AddField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.TimeSignatureBeatValue(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimeSignatureBeatValue(); ok {
+		_spec.AddField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Sequence(); ok {
+		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedSequence(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, diagram.FieldSequence, value)
+		})
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -759,6 +902,107 @@ func (_u *DiagramUpdateOne) ClearColor() *DiagramUpdateOne {
 	return _u
 }
 
+// SetMode sets the "mode" field.
+func (_u *DiagramUpdateOne) SetMode(v diagram.Mode) *DiagramUpdateOne {
+	_u.mutation.SetMode(v)
+	return _u
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableMode(v *diagram.Mode) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetMode(*v)
+	}
+	return _u
+}
+
+// ClearMode clears the value of the "mode" field.
+func (_u *DiagramUpdateOne) ClearMode() *DiagramUpdateOne {
+	_u.mutation.ClearMode()
+	return _u
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (_u *DiagramUpdateOne) SetTempoBpm(v int) *DiagramUpdateOne {
+	_u.mutation.ResetTempoBpm()
+	_u.mutation.SetTempoBpm(v)
+	return _u
+}
+
+// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableTempoBpm(v *int) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetTempoBpm(*v)
+	}
+	return _u
+}
+
+// AddTempoBpm adds value to the "tempo_bpm" field.
+func (_u *DiagramUpdateOne) AddTempoBpm(v int) *DiagramUpdateOne {
+	_u.mutation.AddTempoBpm(v)
+	return _u
+}
+
+// ClearTempoBpm clears the value of the "tempo_bpm" field.
+func (_u *DiagramUpdateOne) ClearTempoBpm() *DiagramUpdateOne {
+	_u.mutation.ClearTempoBpm()
+	return _u
+}
+
+// SetTimeSignatureBeats sets the "time_signature_beats" field.
+func (_u *DiagramUpdateOne) SetTimeSignatureBeats(v int) *DiagramUpdateOne {
+	_u.mutation.ResetTimeSignatureBeats()
+	_u.mutation.SetTimeSignatureBeats(v)
+	return _u
+}
+
+// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableTimeSignatureBeats(v *int) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetTimeSignatureBeats(*v)
+	}
+	return _u
+}
+
+// AddTimeSignatureBeats adds value to the "time_signature_beats" field.
+func (_u *DiagramUpdateOne) AddTimeSignatureBeats(v int) *DiagramUpdateOne {
+	_u.mutation.AddTimeSignatureBeats(v)
+	return _u
+}
+
+// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
+func (_u *DiagramUpdateOne) SetTimeSignatureBeatValue(v int) *DiagramUpdateOne {
+	_u.mutation.ResetTimeSignatureBeatValue()
+	_u.mutation.SetTimeSignatureBeatValue(v)
+	return _u
+}
+
+// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableTimeSignatureBeatValue(v *int) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetTimeSignatureBeatValue(*v)
+	}
+	return _u
+}
+
+// AddTimeSignatureBeatValue adds value to the "time_signature_beat_value" field.
+func (_u *DiagramUpdateOne) AddTimeSignatureBeatValue(v int) *DiagramUpdateOne {
+	_u.mutation.AddTimeSignatureBeatValue(v)
+	return _u
+}
+
+// SetSequence sets the "sequence" field.
+func (_u *DiagramUpdateOne) SetSequence(v []schema.SequenceStep) *DiagramUpdateOne {
+	_u.mutation.SetSequence(v)
+	return _u
+}
+
+// AppendSequence appends value to the "sequence" field.
+func (_u *DiagramUpdateOne) AppendSequence(v []schema.SequenceStep) *DiagramUpdateOne {
+	_u.mutation.AppendSequence(v)
+	return _u
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdateOne) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddPositionIDs(ids...)
@@ -1027,6 +1271,11 @@ func (_u *DiagramUpdateOne) check() error {
 			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Mode(); ok {
+		if err := diagram.ModeValidator(v); err != nil {
+			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "Diagram.mode": %w`, err)}
+		}
+	}
 	if _u.mutation.InstrumentCleared() && len(_u.mutation.InstrumentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Diagram.instrument"`)
 	}
@@ -1079,6 +1328,41 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 	}
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(diagram.FieldColor, field.TypeString)
+	}
+	if value, ok := _u.mutation.Mode(); ok {
+		_spec.SetField(diagram.FieldMode, field.TypeEnum, value)
+	}
+	if _u.mutation.ModeCleared() {
+		_spec.ClearField(diagram.FieldMode, field.TypeEnum)
+	}
+	if value, ok := _u.mutation.TempoBpm(); ok {
+		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTempoBpm(); ok {
+		_spec.AddField(diagram.FieldTempoBpm, field.TypeInt, value)
+	}
+	if _u.mutation.TempoBpmCleared() {
+		_spec.ClearField(diagram.FieldTempoBpm, field.TypeInt)
+	}
+	if value, ok := _u.mutation.TimeSignatureBeats(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimeSignatureBeats(); ok {
+		_spec.AddField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.TimeSignatureBeatValue(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedTimeSignatureBeatValue(); ok {
+		_spec.AddField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Sequence(); ok {
+		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedSequence(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, diagram.FieldSequence, value)
+		})
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

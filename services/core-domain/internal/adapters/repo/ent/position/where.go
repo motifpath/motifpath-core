@@ -79,11 +79,6 @@ func Color(v string) predicate.Position {
 	return predicate.Position(sql.FieldEQ(FieldColor, v))
 }
 
-// SequenceIndex applies equality check predicate on the "sequence_index" field. It's identical to SequenceIndexEQ.
-func SequenceIndex(v int) predicate.Position {
-	return predicate.Position(sql.FieldEQ(FieldSequenceIndex, v))
-}
-
 // StringNumber applies equality check predicate on the "string_number" field. It's identical to StringNumberEQ.
 func StringNumber(v int) predicate.Position {
 	return predicate.Position(sql.FieldEQ(FieldStringNumber, v))
@@ -382,56 +377,6 @@ func ColorEqualFold(v string) predicate.Position {
 // ColorContainsFold applies the ContainsFold predicate on the "color" field.
 func ColorContainsFold(v string) predicate.Position {
 	return predicate.Position(sql.FieldContainsFold(FieldColor, v))
-}
-
-// SequenceIndexEQ applies the EQ predicate on the "sequence_index" field.
-func SequenceIndexEQ(v int) predicate.Position {
-	return predicate.Position(sql.FieldEQ(FieldSequenceIndex, v))
-}
-
-// SequenceIndexNEQ applies the NEQ predicate on the "sequence_index" field.
-func SequenceIndexNEQ(v int) predicate.Position {
-	return predicate.Position(sql.FieldNEQ(FieldSequenceIndex, v))
-}
-
-// SequenceIndexIn applies the In predicate on the "sequence_index" field.
-func SequenceIndexIn(vs ...int) predicate.Position {
-	return predicate.Position(sql.FieldIn(FieldSequenceIndex, vs...))
-}
-
-// SequenceIndexNotIn applies the NotIn predicate on the "sequence_index" field.
-func SequenceIndexNotIn(vs ...int) predicate.Position {
-	return predicate.Position(sql.FieldNotIn(FieldSequenceIndex, vs...))
-}
-
-// SequenceIndexGT applies the GT predicate on the "sequence_index" field.
-func SequenceIndexGT(v int) predicate.Position {
-	return predicate.Position(sql.FieldGT(FieldSequenceIndex, v))
-}
-
-// SequenceIndexGTE applies the GTE predicate on the "sequence_index" field.
-func SequenceIndexGTE(v int) predicate.Position {
-	return predicate.Position(sql.FieldGTE(FieldSequenceIndex, v))
-}
-
-// SequenceIndexLT applies the LT predicate on the "sequence_index" field.
-func SequenceIndexLT(v int) predicate.Position {
-	return predicate.Position(sql.FieldLT(FieldSequenceIndex, v))
-}
-
-// SequenceIndexLTE applies the LTE predicate on the "sequence_index" field.
-func SequenceIndexLTE(v int) predicate.Position {
-	return predicate.Position(sql.FieldLTE(FieldSequenceIndex, v))
-}
-
-// SequenceIndexIsNil applies the IsNil predicate on the "sequence_index" field.
-func SequenceIndexIsNil() predicate.Position {
-	return predicate.Position(sql.FieldIsNull(FieldSequenceIndex))
-}
-
-// SequenceIndexNotNil applies the NotNil predicate on the "sequence_index" field.
-func SequenceIndexNotNil() predicate.Position {
-	return predicate.Position(sql.FieldNotNull(FieldSequenceIndex))
 }
 
 // StringNumberEQ applies the EQ predicate on the "string_number" field.

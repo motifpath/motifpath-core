@@ -69,6 +69,11 @@ func KeyRangeHighest(v string) predicate.Instrument {
 	return predicate.Instrument(sql.FieldEQ(FieldKeyRangeHighest, v))
 }
 
+// DefaultVoiceID applies equality check predicate on the "default_voice_id" field. It's identical to DefaultVoiceIDEQ.
+func DefaultVoiceID(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEQ(FieldDefaultVoiceID, v))
+}
+
 // FamilyEQ applies the EQ predicate on the "family" field.
 func FamilyEQ(v Family) predicate.Instrument {
 	return predicate.Instrument(sql.FieldEQ(FieldFamily, v))
@@ -297,6 +302,94 @@ func KeyRangeHighestEqualFold(v string) predicate.Instrument {
 // KeyRangeHighestContainsFold applies the ContainsFold predicate on the "key_range_highest" field.
 func KeyRangeHighestContainsFold(v string) predicate.Instrument {
 	return predicate.Instrument(sql.FieldContainsFold(FieldKeyRangeHighest, v))
+}
+
+// DefaultVoiceIDEQ applies the EQ predicate on the "default_voice_id" field.
+func DefaultVoiceIDEQ(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEQ(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDNEQ applies the NEQ predicate on the "default_voice_id" field.
+func DefaultVoiceIDNEQ(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldNEQ(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDIn applies the In predicate on the "default_voice_id" field.
+func DefaultVoiceIDIn(vs ...string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldIn(FieldDefaultVoiceID, vs...))
+}
+
+// DefaultVoiceIDNotIn applies the NotIn predicate on the "default_voice_id" field.
+func DefaultVoiceIDNotIn(vs ...string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldNotIn(FieldDefaultVoiceID, vs...))
+}
+
+// DefaultVoiceIDGT applies the GT predicate on the "default_voice_id" field.
+func DefaultVoiceIDGT(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldGT(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDGTE applies the GTE predicate on the "default_voice_id" field.
+func DefaultVoiceIDGTE(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldGTE(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDLT applies the LT predicate on the "default_voice_id" field.
+func DefaultVoiceIDLT(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldLT(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDLTE applies the LTE predicate on the "default_voice_id" field.
+func DefaultVoiceIDLTE(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldLTE(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDContains applies the Contains predicate on the "default_voice_id" field.
+func DefaultVoiceIDContains(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldContains(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDHasPrefix applies the HasPrefix predicate on the "default_voice_id" field.
+func DefaultVoiceIDHasPrefix(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldHasPrefix(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDHasSuffix applies the HasSuffix predicate on the "default_voice_id" field.
+func DefaultVoiceIDHasSuffix(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldHasSuffix(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDEqualFold applies the EqualFold predicate on the "default_voice_id" field.
+func DefaultVoiceIDEqualFold(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEqualFold(FieldDefaultVoiceID, v))
+}
+
+// DefaultVoiceIDContainsFold applies the ContainsFold predicate on the "default_voice_id" field.
+func DefaultVoiceIDContainsFold(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldContainsFold(FieldDefaultVoiceID, v))
+}
+
+// HasDefaultVoice applies the HasEdge predicate on the "default_voice" edge.
+func HasDefaultVoice() predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, DefaultVoiceTable, DefaultVoiceColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDefaultVoiceWith applies the HasEdge predicate on the "default_voice" edge with a given conditions (other predicates).
+func HasDefaultVoiceWith(preds ...predicate.Voice) predicate.Instrument {
+	return predicate.Instrument(func(s *sql.Selector) {
+		step := newDefaultVoiceStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // HasDiagrams applies the HasEdge predicate on the "diagrams" edge.

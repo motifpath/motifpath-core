@@ -21,6 +21,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 // InstrumentUpdate is the builder for updating Instrument entities.
@@ -125,6 +126,25 @@ func (_u *InstrumentUpdate) SetNillableKeyRangeHighest(v *string) *InstrumentUpd
 func (_u *InstrumentUpdate) ClearKeyRangeHighest() *InstrumentUpdate {
 	_u.mutation.ClearKeyRangeHighest()
 	return _u
+}
+
+// SetDefaultVoiceID sets the "default_voice_id" field.
+func (_u *InstrumentUpdate) SetDefaultVoiceID(v string) *InstrumentUpdate {
+	_u.mutation.SetDefaultVoiceID(v)
+	return _u
+}
+
+// SetNillableDefaultVoiceID sets the "default_voice_id" field if the given value is not nil.
+func (_u *InstrumentUpdate) SetNillableDefaultVoiceID(v *string) *InstrumentUpdate {
+	if v != nil {
+		_u.SetDefaultVoiceID(*v)
+	}
+	return _u
+}
+
+// SetDefaultVoice sets the "default_voice" edge to the Voice entity.
+func (_u *InstrumentUpdate) SetDefaultVoice(v *Voice) *InstrumentUpdate {
+	return _u.SetDefaultVoiceID(v.ID)
 }
 
 // AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
@@ -235,6 +255,12 @@ func (_u *InstrumentUpdate) AddContentNodeInstruments(v ...*ContentNodeInstrumen
 // Mutation returns the InstrumentMutation object of the builder.
 func (_u *InstrumentUpdate) Mutation() *InstrumentMutation {
 	return _u.mutation
+}
+
+// ClearDefaultVoice clears the "default_voice" edge to the Voice entity.
+func (_u *InstrumentUpdate) ClearDefaultVoice() *InstrumentUpdate {
+	_u.mutation.ClearDefaultVoice()
+	return _u
 }
 
 // ClearDiagrams clears all "diagrams" edges to the Diagram entity.
@@ -411,7 +437,18 @@ func (_u *InstrumentUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *InstrumentUpdate) check() error {
+	if _u.mutation.DefaultVoiceCleared() && len(_u.mutation.DefaultVoiceIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Instrument.default_voice"`)
+	}
+	return nil
+}
+
 func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(instrument.Table, instrument.Columns, sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -454,6 +491,35 @@ func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if _u.mutation.KeyRangeHighestCleared() {
 		_spec.ClearField(instrument.FieldKeyRangeHighest, field.TypeString)
+	}
+	if _u.mutation.DefaultVoiceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   instrument.DefaultVoiceTable,
+			Columns: []string{instrument.DefaultVoiceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(voice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DefaultVoiceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   instrument.DefaultVoiceTable,
+			Columns: []string{instrument.DefaultVoiceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(voice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.DiagramsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -917,6 +983,25 @@ func (_u *InstrumentUpdateOne) ClearKeyRangeHighest() *InstrumentUpdateOne {
 	return _u
 }
 
+// SetDefaultVoiceID sets the "default_voice_id" field.
+func (_u *InstrumentUpdateOne) SetDefaultVoiceID(v string) *InstrumentUpdateOne {
+	_u.mutation.SetDefaultVoiceID(v)
+	return _u
+}
+
+// SetNillableDefaultVoiceID sets the "default_voice_id" field if the given value is not nil.
+func (_u *InstrumentUpdateOne) SetNillableDefaultVoiceID(v *string) *InstrumentUpdateOne {
+	if v != nil {
+		_u.SetDefaultVoiceID(*v)
+	}
+	return _u
+}
+
+// SetDefaultVoice sets the "default_voice" edge to the Voice entity.
+func (_u *InstrumentUpdateOne) SetDefaultVoice(v *Voice) *InstrumentUpdateOne {
+	return _u.SetDefaultVoiceID(v.ID)
+}
+
 // AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
 func (_u *InstrumentUpdateOne) AddDiagramIDs(ids ...uuid.UUID) *InstrumentUpdateOne {
 	_u.mutation.AddDiagramIDs(ids...)
@@ -1025,6 +1110,12 @@ func (_u *InstrumentUpdateOne) AddContentNodeInstruments(v ...*ContentNodeInstru
 // Mutation returns the InstrumentMutation object of the builder.
 func (_u *InstrumentUpdateOne) Mutation() *InstrumentMutation {
 	return _u.mutation
+}
+
+// ClearDefaultVoice clears the "default_voice" edge to the Voice entity.
+func (_u *InstrumentUpdateOne) ClearDefaultVoice() *InstrumentUpdateOne {
+	_u.mutation.ClearDefaultVoice()
+	return _u
 }
 
 // ClearDiagrams clears all "diagrams" edges to the Diagram entity.
@@ -1214,7 +1305,18 @@ func (_u *InstrumentUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *InstrumentUpdateOne) check() error {
+	if _u.mutation.DefaultVoiceCleared() && len(_u.mutation.DefaultVoiceIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Instrument.default_voice"`)
+	}
+	return nil
+}
+
 func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(instrument.Table, instrument.Columns, sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -1274,6 +1376,35 @@ func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, 
 	}
 	if _u.mutation.KeyRangeHighestCleared() {
 		_spec.ClearField(instrument.FieldKeyRangeHighest, field.TypeString)
+	}
+	if _u.mutation.DefaultVoiceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   instrument.DefaultVoiceTable,
+			Columns: []string{instrument.DefaultVoiceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(voice.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DefaultVoiceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   instrument.DefaultVoiceTable,
+			Columns: []string{instrument.DefaultVoiceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(voice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.DiagramsCleared() {
 		edge := &sqlgraph.EdgeSpec{

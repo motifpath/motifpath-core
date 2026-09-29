@@ -126,33 +126,6 @@ func (_u *PositionUpdate) ClearColor() *PositionUpdate {
 	return _u
 }
 
-// SetSequenceIndex sets the "sequence_index" field.
-func (_u *PositionUpdate) SetSequenceIndex(v int) *PositionUpdate {
-	_u.mutation.ResetSequenceIndex()
-	_u.mutation.SetSequenceIndex(v)
-	return _u
-}
-
-// SetNillableSequenceIndex sets the "sequence_index" field if the given value is not nil.
-func (_u *PositionUpdate) SetNillableSequenceIndex(v *int) *PositionUpdate {
-	if v != nil {
-		_u.SetSequenceIndex(*v)
-	}
-	return _u
-}
-
-// AddSequenceIndex adds value to the "sequence_index" field.
-func (_u *PositionUpdate) AddSequenceIndex(v int) *PositionUpdate {
-	_u.mutation.AddSequenceIndex(v)
-	return _u
-}
-
-// ClearSequenceIndex clears the value of the "sequence_index" field.
-func (_u *PositionUpdate) ClearSequenceIndex() *PositionUpdate {
-	_u.mutation.ClearSequenceIndex()
-	return _u
-}
-
 // SetStringNumber sets the "string_number" field.
 func (_u *PositionUpdate) SetStringNumber(v int) *PositionUpdate {
 	_u.mutation.ResetStringNumber()
@@ -340,15 +313,6 @@ func (_u *PositionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(position.FieldColor, field.TypeString)
 	}
-	if value, ok := _u.mutation.SequenceIndex(); ok {
-		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedSequenceIndex(); ok {
-		_spec.AddField(position.FieldSequenceIndex, field.TypeInt, value)
-	}
-	if _u.mutation.SequenceIndexCleared() {
-		_spec.ClearField(position.FieldSequenceIndex, field.TypeInt)
-	}
 	if value, ok := _u.mutation.StringNumber(); ok {
 		_spec.SetField(position.FieldStringNumber, field.TypeInt, value)
 	}
@@ -528,33 +492,6 @@ func (_u *PositionUpdateOne) SetNillableColor(v *string) *PositionUpdateOne {
 // ClearColor clears the value of the "color" field.
 func (_u *PositionUpdateOne) ClearColor() *PositionUpdateOne {
 	_u.mutation.ClearColor()
-	return _u
-}
-
-// SetSequenceIndex sets the "sequence_index" field.
-func (_u *PositionUpdateOne) SetSequenceIndex(v int) *PositionUpdateOne {
-	_u.mutation.ResetSequenceIndex()
-	_u.mutation.SetSequenceIndex(v)
-	return _u
-}
-
-// SetNillableSequenceIndex sets the "sequence_index" field if the given value is not nil.
-func (_u *PositionUpdateOne) SetNillableSequenceIndex(v *int) *PositionUpdateOne {
-	if v != nil {
-		_u.SetSequenceIndex(*v)
-	}
-	return _u
-}
-
-// AddSequenceIndex adds value to the "sequence_index" field.
-func (_u *PositionUpdateOne) AddSequenceIndex(v int) *PositionUpdateOne {
-	_u.mutation.AddSequenceIndex(v)
-	return _u
-}
-
-// ClearSequenceIndex clears the value of the "sequence_index" field.
-func (_u *PositionUpdateOne) ClearSequenceIndex() *PositionUpdateOne {
-	_u.mutation.ClearSequenceIndex()
 	return _u
 }
 
@@ -774,15 +711,6 @@ func (_u *PositionUpdateOne) sqlSave(ctx context.Context) (_node *Position, err 
 	}
 	if _u.mutation.ColorCleared() {
 		_spec.ClearField(position.FieldColor, field.TypeString)
-	}
-	if value, ok := _u.mutation.SequenceIndex(); ok {
-		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedSequenceIndex(); ok {
-		_spec.AddField(position.FieldSequenceIndex, field.TypeInt, value)
-	}
-	if _u.mutation.SequenceIndexCleared() {
-		_spec.ClearField(position.FieldSequenceIndex, field.TypeInt)
 	}
 	if value, ok := _u.mutation.StringNumber(); ok {
 		_spec.SetField(position.FieldStringNumber, field.TypeInt, value)

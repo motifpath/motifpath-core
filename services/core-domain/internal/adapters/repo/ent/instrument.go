@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 // Instrument is the model entity for the Instrument schema.
@@ -30,6 +31,8 @@ type Instrument struct {
 	KeyRangeLowest *string `json:"key_range_lowest,omitempty"`
 	// KeyRangeHighest holds the value of the "key_range_highest" field.
 	KeyRangeHighest *string `json:"key_range_highest,omitempty"`
+	// DefaultVoiceID holds the value of the "default_voice_id" field.
+	DefaultVoiceID string `json:"default_voice_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the InstrumentQuery when eager-loading is set.
 	Edges        InstrumentEdges `json:"edges"`
@@ -38,6 +41,8 @@ type Instrument struct {
 
 // InstrumentEdges holds the relations/edges for other nodes in the graph.
 type InstrumentEdges struct {
+	// DefaultVoice holds the value of the default_voice edge.
+	DefaultVoice *Voice `json:"default_voice,omitempty"`
 	// Diagrams holds the value of the diagrams edge.
 	Diagrams []*Diagram `json:"diagrams,omitempty"`
 	// Courses holds the value of the courses edge.
@@ -54,13 +59,24 @@ type InstrumentEdges struct {
 	ContentNodeInstruments []*ContentNodeInstrument `json:"content_node_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [8]bool
+}
+
+// DefaultVoiceOrErr returns the DefaultVoice value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e InstrumentEdges) DefaultVoiceOrErr() (*Voice, error) {
+	if e.DefaultVoice != nil {
+		return e.DefaultVoice, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: voice.Label}
+	}
+	return nil, &NotLoadedError{edge: "default_voice"}
 }
 
 // DiagramsOrErr returns the Diagrams value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) DiagramsOrErr() ([]*Diagram, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Diagrams, nil
 	}
 	return nil, &NotLoadedError{edge: "diagrams"}
@@ -69,7 +85,7 @@ func (e InstrumentEdges) DiagramsOrErr() ([]*Diagram, error) {
 // CoursesOrErr returns the Courses value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) CoursesOrErr() ([]*Course, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Courses, nil
 	}
 	return nil, &NotLoadedError{edge: "courses"}
@@ -78,7 +94,7 @@ func (e InstrumentEdges) CoursesOrErr() ([]*Course, error) {
 // LearningPathsOrErr returns the LearningPaths value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) LearningPathsOrErr() ([]*LearningPath, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.LearningPaths, nil
 	}
 	return nil, &NotLoadedError{edge: "learning_paths"}
@@ -87,7 +103,7 @@ func (e InstrumentEdges) LearningPathsOrErr() ([]*LearningPath, error) {
 // ContentNodesOrErr returns the ContentNodes value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) ContentNodesOrErr() ([]*ContentNode, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.ContentNodes, nil
 	}
 	return nil, &NotLoadedError{edge: "content_nodes"}
@@ -96,7 +112,7 @@ func (e InstrumentEdges) ContentNodesOrErr() ([]*ContentNode, error) {
 // CourseInstrumentsOrErr returns the CourseInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.CourseInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "course_instruments"}
@@ -105,7 +121,7 @@ func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
 // LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.LearningPathInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "learning_path_instruments"}
@@ -114,7 +130,7 @@ func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrume
 // ContentNodeInstrumentsOrErr returns the ContentNodeInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) ContentNodeInstrumentsOrErr() ([]*ContentNodeInstrument, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ContentNodeInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_instruments"}
@@ -129,7 +145,7 @@ func (*Instrument) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instrument.FieldStringCount:
 			values[i] = new(sql.NullInt64)
-		case instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest:
+		case instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest, instrument.FieldDefaultVoiceID:
 			values[i] = new(sql.NullString)
 		case instrument.FieldID:
 			values[i] = new(uuid.UUID)
@@ -197,6 +213,12 @@ func (_m *Instrument) assignValues(columns []string, values []any) error {
 				_m.KeyRangeHighest = new(string)
 				*_m.KeyRangeHighest = value.String
 			}
+		case instrument.FieldDefaultVoiceID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field default_voice_id", values[i])
+			} else if value.Valid {
+				_m.DefaultVoiceID = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -208,6 +230,11 @@ func (_m *Instrument) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Instrument) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryDefaultVoice queries the "default_voice" edge of the Instrument entity.
+func (_m *Instrument) QueryDefaultVoice() *VoiceQuery {
+	return NewInstrumentClient(_m.config).QueryDefaultVoice(_m)
 }
 
 // QueryDiagrams queries the "diagrams" edge of the Instrument entity.
@@ -291,6 +318,9 @@ func (_m *Instrument) String() string {
 		builder.WriteString("key_range_highest=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("default_voice_id=")
+	builder.WriteString(_m.DefaultVoiceID)
 	builder.WriteByte(')')
 	return builder.String()
 }

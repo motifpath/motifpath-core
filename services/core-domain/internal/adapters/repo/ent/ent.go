@@ -49,6 +49,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -146,6 +147,7 @@ func checkColumn(t, c string) error {
 			studentpath.Table:             studentpath.ValidColumn,
 			studentpathitem.Table:         studentpathitem.ValidColumn,
 			user.Table:                    user.ValidColumn,
+			voice.Table:                   voice.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)
