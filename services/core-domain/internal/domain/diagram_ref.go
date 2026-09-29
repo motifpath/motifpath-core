@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 )
@@ -79,6 +80,21 @@ type DiagramPlayback struct {
 	// repository round trip, so that is an application-layer concern.
 	VoiceID *string `json:"voice_id"`
 	Loop    bool    `json:"loop"`
+}
+
+// UnmarshalJSON decodes a playback, giving one that names no direction the
+// authored order — the same default wherever the ref comes from.
+func (p *DiagramPlayback) UnmarshalJSON(data []byte) error {
+	type plain DiagramPlayback
+	decoded := plain{Direction: DiagramPlaybackDirectionAsAuthored}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	if decoded.Direction == "" {
+		decoded.Direction = DiagramPlaybackDirectionAsAuthored
+	}
+	*p = DiagramPlayback(decoded)
+	return nil
 }
 
 // DiagramRef is one usage of a Diagram — its render config, never a stored
@@ -212,4 +228,21 @@ func FrettedAnswerCells(positions []Position, regions []Region, stringCount int)
 		}
 	}
 	return cells
+}
+
+// EmbeddedDiagramRefs returns every single diagram embedded anywhere in d,
+// in document order. Embedded stacks are left out: a stack doesn't play.
+func (d PromptDocument) EmbeddedDiagramRefs() []DiagramRef {
+	var refs []DiagramRef
+	var walk func(nodes []PromptNode)
+	walk = func(nodes []PromptNode) {
+		for _, node := range nodes {
+			if node.Type == PromptNodeTypeDiagram && node.Attrs != nil && node.Attrs.DiagramRef != nil {
+				refs = append(refs, *node.Attrs.DiagramRef)
+			}
+			walk(node.Content)
+		}
+	}
+	walk(d.Content)
+	return refs
 }

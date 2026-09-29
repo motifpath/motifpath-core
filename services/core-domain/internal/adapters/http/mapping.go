@@ -600,10 +600,6 @@ func toDomainDiagramRef(ref generated.DiagramRef) domain.DiagramRef {
 	if err := json.Unmarshal(data, &out); err != nil {
 		panic(err)
 	}
-	// A playback that doesn't say which way to play goes as authored.
-	if out.Playback != nil && out.Playback.Direction == "" {
-		out.Playback.Direction = domain.DiagramPlaybackDirectionAsAuthored
-	}
 	return out
 }
 

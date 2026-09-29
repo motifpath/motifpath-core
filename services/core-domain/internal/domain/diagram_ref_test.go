@@ -139,6 +139,22 @@ func TestDiagramPlayback_StoredBeforeTempoAndVoice(t *testing.T) {
 	require.NoError(t, domain.ValidateDiagramRef(ref))
 }
 
+// TestDiagramPlayback_WithoutDirection pins that a playback naming no
+// direction plays as authored, wherever the ref arrives from — a usage's own
+// field or a diagram embedded in a document.
+func TestDiagramPlayback_WithoutDirection(t *testing.T) {
+	var doc domain.PromptDocument
+
+	err := json.Unmarshal([]byte(`{"type":"doc","content":[{"type":"diagram","attrs":{"diagramRef":{"diagram_id":"diagram-1","layers":{},"playback":{"tempo_bpm":60}}}}]}`), &doc)
+
+	require.NoError(t, err)
+	ref := doc.Content[0].Attrs.DiagramRef
+	require.NotNil(t, ref)
+	require.NotNil(t, ref.Playback)
+	assert.Equal(t, domain.DiagramPlaybackDirectionAsAuthored, ref.Playback.Direction)
+	require.NoError(t, domain.ValidateDiagramRef(*ref))
+}
+
 func TestNewDiagramStackRef(t *testing.T) {
 	validRef := func(id string) domain.DiagramRef {
 		return domain.DiagramRef{DiagramID: id, Layers: validDiagramLayers()}
