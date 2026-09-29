@@ -88,7 +88,7 @@ func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc
 		}
 	}
 	if third == "" || highE == "" {
-		return domain.Exercise{}, fmt.Errorf("E major chord has no major third or high E position")
+		return domain.Exercise{}, fmt.Errorf("the E major chord has no major third or high E position")
 	}
 
 	title := "Listen to the E major chord, then tap its major third"
