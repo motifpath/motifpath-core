@@ -141,6 +141,24 @@ Both services send CORS headers for the origins in `CORS_ALLOWED_ORIGINS`
 so `motifpath-web` works against a local build with no extra configuration.
 Deployed environments set this explicitly.
 
+### Voice samples (diagram playback)
+
+`GET /voices` lists each voice's samples at
+`{MEDIA_PUBLIC_BASE_URL}/audio/voices/{voice_id}/{midi}.mp3`. The voices and
+their pitches come from the migrations; the audio files don't, so a diagram
+stays silent wherever they haven't been uploaded.
+
+- **Local:** `make db:reset` runs `scripts/voice-samples.sh`, which renders the
+  samples into `.voice-samples/` (gitignored) and uploads them to local MinIO.
+  Rendering needs ffmpeg, which devbox doesn't provide — run it once inside
+  `nix --extra-experimental-features 'nix-command flakes' shell nixpkgs#ffmpeg-headless`
+  (or any shell with ffmpeg). Later runs upload from the cache without it.
+- **Deployed environments:** before (or with) the first deploy that includes
+  a new voice or new pitches, render locally as above and copy the files to
+  the environment's media bucket under the same path, with long-lived caching
+  since a sample never changes:
+  `aws s3 sync .voice-samples/ s3://<media-bucket>/audio/voices/ --exclude '.originals/*' --cache-control 'public, max-age=31536000, immutable'`
+
 ## Commands
 
 ```bash
