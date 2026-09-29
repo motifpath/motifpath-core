@@ -37,8 +37,35 @@ midi_of() {
   echo $(((octave + 1) * 12 + base))
 }
 
+# download UPSTREAM DIR fetches every tonejs-instruments recording of
+# UPSTREAM into DIR. The recordings land in a staging folder first and only
+# replace DIR, marked complete, once every one of them has arrived, so an
+# interrupted download is retried on the next run instead of being cached.
+download() {
+  local upstream="$1" dir="$2" staging="$2.partial" listing urls
+  echo "   downloading $upstream recordings"
+  rm -rf "$staging"
+  mkdir -p "$staging"
+  if ! listing="$(curl -fsS "https://api.github.com/repos/nbrosowsky/tonejs-instruments/contents/samples/$upstream")"; then
+    echo "   couldn't list the $upstream recordings; will retry on the next run" >&2
+    rm -rf "$staging"
+    return 1
+  fi
+  urls="$(grep -o '"download_url": *"[^"]*\.mp3"' <<<"$listing" | sed -E 's/.*"(https[^"]+)"/\1/')"
+  if [ -z "$urls" ] || ! (cd "$staging" && xargs -P 8 -n 1 curl -fsSO <<<"$urls"); then
+    echo "   couldn't download every $upstream recording; will retry on the next run" >&2
+    rm -rf "$staging"
+    return 1
+  fi
+  touch "$staging/.complete"
+  rm -rf "$dir"
+  mv "$staging" "$dir"
+}
+
 # render VOICE PITCHES... writes CACHE_DIR/VOICE/PITCH.mp3 for every pitch
-# not rendered yet.
+# not rendered yet, and fails if any of them couldn't be. It runs as the
+# left side of `||`, where bash ignores `set -e`, so every failure is checked
+# explicitly.
 render() {
   local voice="$1"; shift
   local upstream="${UPSTREAM[$voice]:-}" originals="$CACHE_DIR/.originals/$voice"
@@ -46,7 +73,7 @@ render() {
     echo "   no recordings known for voice '$voice'; skipping it" >&2
     return 0
   fi
-  mkdir -p "$CACHE_DIR/$voice" "$originals"
+  mkdir -p "$CACHE_DIR/$voice"
 
   local missing=()
   for pitch in "$@"; do
@@ -60,11 +87,8 @@ render() {
     return 1
   fi
 
-  if [ -z "$(ls -A "$originals")" ]; then
-    echo "   downloading $upstream recordings"
-    curl -fsS "https://api.github.com/repos/nbrosowsky/tonejs-instruments/contents/samples/$upstream" \
-      | grep -o '"download_url": *"[^"]*\.mp3"' | sed -E 's/.*"(https[^"]+)"/\1/' \
-      | (cd "$originals" && xargs -P 8 -n 1 curl -fsSO)
+  if [ ! -f "$originals/.complete" ]; then
+    download "$upstream" "$originals" || return 1
   fi
 
   # Every recording by pitch, to find the nearest one to each target.
@@ -75,8 +99,12 @@ render() {
     midi="$(midi_of "$name")"
     [ -n "$midi" ] && recording[$midi]="$file"
   done
+  if [ "${#recording[@]}" -eq 0 ]; then
+    echo "   no $upstream recordings to render '$voice' from" >&2
+    return 1
+  fi
 
-  local pitch nearest distance best shift
+  local pitch nearest distance best shift output partial rendered=0 failed=0
   for pitch in "${missing[@]}"; do
     best=""
     for midi in "${!recording[@]}"; do
@@ -84,11 +112,21 @@ render() {
       if [ -z "$best" ] || [ "$distance" -lt "$best" ]; then best="$distance" nearest="$midi"; fi
     done
     shift=$((pitch - nearest))
-    "$FFMPEG" -v error -y -i "${recording[$nearest]}" \
+    # Rendered under a temporary name, so a failed or interrupted render never
+    # leaves a broken file that later runs would take as done.
+    output="$CACHE_DIR/$voice/$pitch.mp3" partial="$CACHE_DIR/$voice/$pitch.partial.mp3"
+    if "$FFMPEG" -v error -y -i "${recording[$nearest]}" \
       -af "aresample=44100,asetrate=44100*pow(2\,${shift}/12),aresample=44100,atrim=0:3,afade=t=out:st=2.4:d=0.6" \
-      -ac 1 -b:a 96k "$CACHE_DIR/$voice/$pitch.mp3"
+      -ac 1 -b:a 96k "$partial" && mv "$partial" "$output"; then
+      rendered=$((rendered + 1))
+    else
+      rm -f "$partial"
+      echo "   failed to render sample $pitch of '$voice'" >&2
+      failed=$((failed + 1))
+    fi
   done
-  echo "   rendered ${#missing[@]} sample(s) of '$voice'"
+  echo "   rendered $rendered sample(s) of '$voice'"
+  [ "$failed" -eq 0 ]
 }
 
 echo "==> Rendering voice samples"
@@ -106,7 +144,7 @@ docker compose run --rm --no-deps -v "$(pwd)/$CACHE_DIR:/samples:ro" --entrypoin
   mc alias set local http://minio:9000 motifpath motifpath >/dev/null &&
   mc mb --ignore-existing local/$BUCKET >/dev/null &&
   mc anonymous set download local/$BUCKET >/dev/null &&
-  mc mirror --overwrite --exclude '.originals/*' /samples local/$BUCKET/audio/voices
+  mc mirror --overwrite --exclude '.originals/*' --exclude '*.partial.mp3' /samples local/$BUCKET/audio/voices
 " >/dev/null
 echo "==> voice samples done"
 exit "$failed"
