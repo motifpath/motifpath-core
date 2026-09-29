@@ -76,6 +76,21 @@ func Color(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldColor, v))
 }
 
+// TempoBpm applies equality check predicate on the "tempo_bpm" field. It's identical to TempoBpmEQ.
+func TempoBpm(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTempoBpm, v))
+}
+
+// TimeSignatureBeats applies equality check predicate on the "time_signature_beats" field. It's identical to TimeSignatureBeatsEQ.
+func TimeSignatureBeats(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatValue applies equality check predicate on the "time_signature_beat_value" field. It's identical to TimeSignatureBeatValueEQ.
+func TimeSignatureBeatValue(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeatValue, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldCreatedAt, v))
@@ -329,6 +344,166 @@ func ColorEqualFold(v string) predicate.Diagram {
 // ColorContainsFold applies the ContainsFold predicate on the "color" field.
 func ColorContainsFold(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldContainsFold(FieldColor, v))
+}
+
+// ModeEQ applies the EQ predicate on the "mode" field.
+func ModeEQ(v Mode) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldMode, v))
+}
+
+// ModeNEQ applies the NEQ predicate on the "mode" field.
+func ModeNEQ(v Mode) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldMode, v))
+}
+
+// ModeIn applies the In predicate on the "mode" field.
+func ModeIn(vs ...Mode) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldMode, vs...))
+}
+
+// ModeNotIn applies the NotIn predicate on the "mode" field.
+func ModeNotIn(vs ...Mode) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldMode, vs...))
+}
+
+// ModeIsNil applies the IsNil predicate on the "mode" field.
+func ModeIsNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldIsNull(FieldMode))
+}
+
+// ModeNotNil applies the NotNil predicate on the "mode" field.
+func ModeNotNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotNull(FieldMode))
+}
+
+// TempoBpmEQ applies the EQ predicate on the "tempo_bpm" field.
+func TempoBpmEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTempoBpm, v))
+}
+
+// TempoBpmNEQ applies the NEQ predicate on the "tempo_bpm" field.
+func TempoBpmNEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldTempoBpm, v))
+}
+
+// TempoBpmIn applies the In predicate on the "tempo_bpm" field.
+func TempoBpmIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldTempoBpm, vs...))
+}
+
+// TempoBpmNotIn applies the NotIn predicate on the "tempo_bpm" field.
+func TempoBpmNotIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldTempoBpm, vs...))
+}
+
+// TempoBpmGT applies the GT predicate on the "tempo_bpm" field.
+func TempoBpmGT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldTempoBpm, v))
+}
+
+// TempoBpmGTE applies the GTE predicate on the "tempo_bpm" field.
+func TempoBpmGTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldTempoBpm, v))
+}
+
+// TempoBpmLT applies the LT predicate on the "tempo_bpm" field.
+func TempoBpmLT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldTempoBpm, v))
+}
+
+// TempoBpmLTE applies the LTE predicate on the "tempo_bpm" field.
+func TempoBpmLTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldTempoBpm, v))
+}
+
+// TempoBpmIsNil applies the IsNil predicate on the "tempo_bpm" field.
+func TempoBpmIsNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldIsNull(FieldTempoBpm))
+}
+
+// TempoBpmNotNil applies the NotNil predicate on the "tempo_bpm" field.
+func TempoBpmNotNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotNull(FieldTempoBpm))
+}
+
+// TimeSignatureBeatsEQ applies the EQ predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatsNEQ applies the NEQ predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsNEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatsIn applies the In predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldTimeSignatureBeats, vs...))
+}
+
+// TimeSignatureBeatsNotIn applies the NotIn predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsNotIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldTimeSignatureBeats, vs...))
+}
+
+// TimeSignatureBeatsGT applies the GT predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsGT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatsGTE applies the GTE predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsGTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatsLT applies the LT predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsLT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatsLTE applies the LTE predicate on the "time_signature_beats" field.
+func TimeSignatureBeatsLTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldTimeSignatureBeats, v))
+}
+
+// TimeSignatureBeatValueEQ applies the EQ predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeatValue, v))
+}
+
+// TimeSignatureBeatValueNEQ applies the NEQ predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueNEQ(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldTimeSignatureBeatValue, v))
+}
+
+// TimeSignatureBeatValueIn applies the In predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldTimeSignatureBeatValue, vs...))
+}
+
+// TimeSignatureBeatValueNotIn applies the NotIn predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueNotIn(vs ...int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldTimeSignatureBeatValue, vs...))
+}
+
+// TimeSignatureBeatValueGT applies the GT predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueGT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldTimeSignatureBeatValue, v))
+}
+
+// TimeSignatureBeatValueGTE applies the GTE predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueGTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldTimeSignatureBeatValue, v))
+}
+
+// TimeSignatureBeatValueLT applies the LT predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueLT(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldTimeSignatureBeatValue, v))
+}
+
+// TimeSignatureBeatValueLTE applies the LTE predicate on the "time_signature_beat_value" field.
+func TimeSignatureBeatValueLTE(v int) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldTimeSignatureBeatValue, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

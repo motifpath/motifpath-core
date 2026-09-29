@@ -27,6 +27,10 @@ const (
 	FieldKeyRangeLowest = "key_range_lowest"
 	// FieldKeyRangeHighest holds the string denoting the key_range_highest field in the database.
 	FieldKeyRangeHighest = "key_range_highest"
+	// FieldDefaultVoiceID holds the string denoting the default_voice_id field in the database.
+	FieldDefaultVoiceID = "default_voice_id"
+	// EdgeDefaultVoice holds the string denoting the default_voice edge name in mutations.
+	EdgeDefaultVoice = "default_voice"
 	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
 	EdgeDiagrams = "diagrams"
 	// EdgeCourses holds the string denoting the courses edge name in mutations.
@@ -43,6 +47,13 @@ const (
 	EdgeContentNodeInstruments = "content_node_instruments"
 	// Table holds the table name of the instrument in the database.
 	Table = "instruments"
+	// DefaultVoiceTable is the table that holds the default_voice relation/edge.
+	DefaultVoiceTable = "instruments"
+	// DefaultVoiceInverseTable is the table name for the Voice entity.
+	// It exists in this package in order to avoid circular dependency with the "voice" package.
+	DefaultVoiceInverseTable = "voices"
+	// DefaultVoiceColumn is the table column denoting the default_voice relation/edge.
+	DefaultVoiceColumn = "default_voice_id"
 	// DiagramsTable is the table that holds the diagrams relation/edge.
 	DiagramsTable = "diagrams"
 	// DiagramsInverseTable is the table name for the Diagram entity.
@@ -97,6 +108,7 @@ var Columns = []string{
 	FieldTuning,
 	FieldKeyRangeLowest,
 	FieldKeyRangeHighest,
+	FieldDefaultVoiceID,
 }
 
 var (
@@ -175,6 +187,18 @@ func ByKeyRangeLowest(opts ...sql.OrderTermOption) OrderOption {
 // ByKeyRangeHighest orders the results by the key_range_highest field.
 func ByKeyRangeHighest(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKeyRangeHighest, opts...).ToFunc()
+}
+
+// ByDefaultVoiceID orders the results by the default_voice_id field.
+func ByDefaultVoiceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDefaultVoiceID, opts...).ToFunc()
+}
+
+// ByDefaultVoiceField orders the results by default_voice field.
+func ByDefaultVoiceField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDefaultVoiceStep(), sql.OrderByField(field, opts...))
+	}
 }
 
 // ByDiagramsCount orders the results by diagrams count.
@@ -273,6 +297,13 @@ func ByContentNodeInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderO
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newContentNodeInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newDefaultVoiceStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DefaultVoiceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, DefaultVoiceTable, DefaultVoiceColumn),
+	)
 }
 func newDiagramsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

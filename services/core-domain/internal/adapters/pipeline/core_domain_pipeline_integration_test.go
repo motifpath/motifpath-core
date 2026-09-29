@@ -79,7 +79,7 @@ func setupPipeline(t *testing.T) *pipeline {
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 
 	return &pipeline{
-		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, instrumentRepo, newID, now),
+		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
 		path:        application.NewLearningPathService(nodes, paths, courseVersions, instrumentRepo, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),

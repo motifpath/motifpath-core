@@ -15,9 +15,8 @@ import (
 // instrument-tagging tests reference.
 func seededInstrumentRepository() *fakeInstrumentRepository {
 	instruments := newFakeInstrumentRepository()
-	for _, id := range []string{"guitar", "piano"} {
-		instruments.byID[id] = domain.Instrument{ID: id, Names: domain.LocalizedText{"en": id}}
-	}
+	instruments.byID["guitar"] = domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "guitar"}, Family: domain.InstrumentFamilyFretted, DefaultVoiceID: "acoustic-guitar"}
+	instruments.byID["piano"] = domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "piano"}, Family: domain.InstrumentFamilyKeyboard, DefaultVoiceID: "piano"}
 	return instruments
 }
 

@@ -45,11 +45,13 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 const (
@@ -98,6 +100,7 @@ const (
 	TypeStudentPath             = "StudentPath"
 	TypeStudentPathItem         = "StudentPathItem"
 	TypeUser                    = "User"
+	TypeVoice                   = "Voice"
 )
 
 // ChallengeMutation represents an operation that mutates the Challenge nodes in the graph.
@@ -12458,40 +12461,49 @@ func (m *CourseVersionCheckpointMutation) ResetEdge(name string) error {
 // DiagramMutation represents an operation that mutates the Diagram nodes in the graph.
 type DiagramMutation struct {
 	config
-	op                      Op
-	typ                     string
-	id                      *uuid.UUID
-	names                   *map[string]string
-	kind                    *diagram.Kind
-	created_by              *uuid.UUID
-	root_note               *string
-	label_display           *diagram.LabelDisplay
-	color                   *string
-	created_at              *time.Time
-	clearedFields           map[string]struct{}
-	instrument              *uuid.UUID
-	clearedinstrument       bool
-	positions               map[uuid.UUID]struct{}
-	removedpositions        map[uuid.UUID]struct{}
-	clearedpositions        bool
-	regions                 map[uuid.UUID]struct{}
-	removedregions          map[uuid.UUID]struct{}
-	clearedregions          bool
-	skills                  map[uuid.UUID]struct{}
-	removedskills           map[uuid.UUID]struct{}
-	clearedskills           bool
-	concepts                map[uuid.UUID]struct{}
-	removedconcepts         map[uuid.UUID]struct{}
-	clearedconcepts         bool
-	diagram_skills          map[int]struct{}
-	removeddiagram_skills   map[int]struct{}
-	cleareddiagram_skills   bool
-	diagram_concepts        map[int]struct{}
-	removeddiagram_concepts map[int]struct{}
-	cleareddiagram_concepts bool
-	done                    bool
-	oldValue                func(context.Context) (*Diagram, error)
-	predicates              []predicate.Diagram
+	op                           Op
+	typ                          string
+	id                           *uuid.UUID
+	names                        *map[string]string
+	kind                         *diagram.Kind
+	created_by                   *uuid.UUID
+	root_note                    *string
+	label_display                *diagram.LabelDisplay
+	color                        *string
+	mode                         *diagram.Mode
+	tempo_bpm                    *int
+	addtempo_bpm                 *int
+	time_signature_beats         *int
+	addtime_signature_beats      *int
+	time_signature_beat_value    *int
+	addtime_signature_beat_value *int
+	sequence                     *[]schema.SequenceStep
+	appendsequence               []schema.SequenceStep
+	created_at                   *time.Time
+	clearedFields                map[string]struct{}
+	instrument                   *uuid.UUID
+	clearedinstrument            bool
+	positions                    map[uuid.UUID]struct{}
+	removedpositions             map[uuid.UUID]struct{}
+	clearedpositions             bool
+	regions                      map[uuid.UUID]struct{}
+	removedregions               map[uuid.UUID]struct{}
+	clearedregions               bool
+	skills                       map[uuid.UUID]struct{}
+	removedskills                map[uuid.UUID]struct{}
+	clearedskills                bool
+	concepts                     map[uuid.UUID]struct{}
+	removedconcepts              map[uuid.UUID]struct{}
+	clearedconcepts              bool
+	diagram_skills               map[int]struct{}
+	removeddiagram_skills        map[int]struct{}
+	cleareddiagram_skills        bool
+	diagram_concepts             map[int]struct{}
+	removeddiagram_concepts      map[int]struct{}
+	cleareddiagram_concepts      bool
+	done                         bool
+	oldValue                     func(context.Context) (*Diagram, error)
+	predicates                   []predicate.Diagram
 }
 
 var _ ent.Mutation = (*DiagramMutation)(nil)
@@ -12874,6 +12886,288 @@ func (m *DiagramMutation) ColorCleared() bool {
 func (m *DiagramMutation) ResetColor() {
 	m.color = nil
 	delete(m.clearedFields, diagram.FieldColor)
+}
+
+// SetMode sets the "mode" field.
+func (m *DiagramMutation) SetMode(d diagram.Mode) {
+	m.mode = &d
+}
+
+// Mode returns the value of the "mode" field in the mutation.
+func (m *DiagramMutation) Mode() (r diagram.Mode, exists bool) {
+	v := m.mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMode returns the old "mode" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldMode(ctx context.Context) (v *diagram.Mode, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMode: %w", err)
+	}
+	return oldValue.Mode, nil
+}
+
+// ClearMode clears the value of the "mode" field.
+func (m *DiagramMutation) ClearMode() {
+	m.mode = nil
+	m.clearedFields[diagram.FieldMode] = struct{}{}
+}
+
+// ModeCleared returns if the "mode" field was cleared in this mutation.
+func (m *DiagramMutation) ModeCleared() bool {
+	_, ok := m.clearedFields[diagram.FieldMode]
+	return ok
+}
+
+// ResetMode resets all changes to the "mode" field.
+func (m *DiagramMutation) ResetMode() {
+	m.mode = nil
+	delete(m.clearedFields, diagram.FieldMode)
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (m *DiagramMutation) SetTempoBpm(i int) {
+	m.tempo_bpm = &i
+	m.addtempo_bpm = nil
+}
+
+// TempoBpm returns the value of the "tempo_bpm" field in the mutation.
+func (m *DiagramMutation) TempoBpm() (r int, exists bool) {
+	v := m.tempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTempoBpm returns the old "tempo_bpm" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldTempoBpm(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTempoBpm is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTempoBpm requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTempoBpm: %w", err)
+	}
+	return oldValue.TempoBpm, nil
+}
+
+// AddTempoBpm adds i to the "tempo_bpm" field.
+func (m *DiagramMutation) AddTempoBpm(i int) {
+	if m.addtempo_bpm != nil {
+		*m.addtempo_bpm += i
+	} else {
+		m.addtempo_bpm = &i
+	}
+}
+
+// AddedTempoBpm returns the value that was added to the "tempo_bpm" field in this mutation.
+func (m *DiagramMutation) AddedTempoBpm() (r int, exists bool) {
+	v := m.addtempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearTempoBpm clears the value of the "tempo_bpm" field.
+func (m *DiagramMutation) ClearTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	m.clearedFields[diagram.FieldTempoBpm] = struct{}{}
+}
+
+// TempoBpmCleared returns if the "tempo_bpm" field was cleared in this mutation.
+func (m *DiagramMutation) TempoBpmCleared() bool {
+	_, ok := m.clearedFields[diagram.FieldTempoBpm]
+	return ok
+}
+
+// ResetTempoBpm resets all changes to the "tempo_bpm" field.
+func (m *DiagramMutation) ResetTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	delete(m.clearedFields, diagram.FieldTempoBpm)
+}
+
+// SetTimeSignatureBeats sets the "time_signature_beats" field.
+func (m *DiagramMutation) SetTimeSignatureBeats(i int) {
+	m.time_signature_beats = &i
+	m.addtime_signature_beats = nil
+}
+
+// TimeSignatureBeats returns the value of the "time_signature_beats" field in the mutation.
+func (m *DiagramMutation) TimeSignatureBeats() (r int, exists bool) {
+	v := m.time_signature_beats
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeSignatureBeats returns the old "time_signature_beats" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldTimeSignatureBeats(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeSignatureBeats is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeSignatureBeats requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeSignatureBeats: %w", err)
+	}
+	return oldValue.TimeSignatureBeats, nil
+}
+
+// AddTimeSignatureBeats adds i to the "time_signature_beats" field.
+func (m *DiagramMutation) AddTimeSignatureBeats(i int) {
+	if m.addtime_signature_beats != nil {
+		*m.addtime_signature_beats += i
+	} else {
+		m.addtime_signature_beats = &i
+	}
+}
+
+// AddedTimeSignatureBeats returns the value that was added to the "time_signature_beats" field in this mutation.
+func (m *DiagramMutation) AddedTimeSignatureBeats() (r int, exists bool) {
+	v := m.addtime_signature_beats
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTimeSignatureBeats resets all changes to the "time_signature_beats" field.
+func (m *DiagramMutation) ResetTimeSignatureBeats() {
+	m.time_signature_beats = nil
+	m.addtime_signature_beats = nil
+}
+
+// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
+func (m *DiagramMutation) SetTimeSignatureBeatValue(i int) {
+	m.time_signature_beat_value = &i
+	m.addtime_signature_beat_value = nil
+}
+
+// TimeSignatureBeatValue returns the value of the "time_signature_beat_value" field in the mutation.
+func (m *DiagramMutation) TimeSignatureBeatValue() (r int, exists bool) {
+	v := m.time_signature_beat_value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeSignatureBeatValue returns the old "time_signature_beat_value" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldTimeSignatureBeatValue(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeSignatureBeatValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeSignatureBeatValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeSignatureBeatValue: %w", err)
+	}
+	return oldValue.TimeSignatureBeatValue, nil
+}
+
+// AddTimeSignatureBeatValue adds i to the "time_signature_beat_value" field.
+func (m *DiagramMutation) AddTimeSignatureBeatValue(i int) {
+	if m.addtime_signature_beat_value != nil {
+		*m.addtime_signature_beat_value += i
+	} else {
+		m.addtime_signature_beat_value = &i
+	}
+}
+
+// AddedTimeSignatureBeatValue returns the value that was added to the "time_signature_beat_value" field in this mutation.
+func (m *DiagramMutation) AddedTimeSignatureBeatValue() (r int, exists bool) {
+	v := m.addtime_signature_beat_value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTimeSignatureBeatValue resets all changes to the "time_signature_beat_value" field.
+func (m *DiagramMutation) ResetTimeSignatureBeatValue() {
+	m.time_signature_beat_value = nil
+	m.addtime_signature_beat_value = nil
+}
+
+// SetSequence sets the "sequence" field.
+func (m *DiagramMutation) SetSequence(ss []schema.SequenceStep) {
+	m.sequence = &ss
+	m.appendsequence = nil
+}
+
+// Sequence returns the value of the "sequence" field in the mutation.
+func (m *DiagramMutation) Sequence() (r []schema.SequenceStep, exists bool) {
+	v := m.sequence
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSequence returns the old "sequence" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldSequence(ctx context.Context) (v []schema.SequenceStep, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSequence requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
+	}
+	return oldValue.Sequence, nil
+}
+
+// AppendSequence adds ss to the "sequence" field.
+func (m *DiagramMutation) AppendSequence(ss []schema.SequenceStep) {
+	m.appendsequence = append(m.appendsequence, ss...)
+}
+
+// AppendedSequence returns the list of values that were appended to the "sequence" field in this mutation.
+func (m *DiagramMutation) AppendedSequence() ([]schema.SequenceStep, bool) {
+	if len(m.appendsequence) == 0 {
+		return nil, false
+	}
+	return m.appendsequence, true
+}
+
+// ResetSequence resets all changes to the "sequence" field.
+func (m *DiagramMutation) ResetSequence() {
+	m.sequence = nil
+	m.appendsequence = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -13297,7 +13591,7 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 13)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
@@ -13318,6 +13612,21 @@ func (m *DiagramMutation) Fields() []string {
 	}
 	if m.color != nil {
 		fields = append(fields, diagram.FieldColor)
+	}
+	if m.mode != nil {
+		fields = append(fields, diagram.FieldMode)
+	}
+	if m.tempo_bpm != nil {
+		fields = append(fields, diagram.FieldTempoBpm)
+	}
+	if m.time_signature_beats != nil {
+		fields = append(fields, diagram.FieldTimeSignatureBeats)
+	}
+	if m.time_signature_beat_value != nil {
+		fields = append(fields, diagram.FieldTimeSignatureBeatValue)
+	}
+	if m.sequence != nil {
+		fields = append(fields, diagram.FieldSequence)
 	}
 	if m.created_at != nil {
 		fields = append(fields, diagram.FieldCreatedAt)
@@ -13344,6 +13653,16 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.LabelDisplay()
 	case diagram.FieldColor:
 		return m.Color()
+	case diagram.FieldMode:
+		return m.Mode()
+	case diagram.FieldTempoBpm:
+		return m.TempoBpm()
+	case diagram.FieldTimeSignatureBeats:
+		return m.TimeSignatureBeats()
+	case diagram.FieldTimeSignatureBeatValue:
+		return m.TimeSignatureBeatValue()
+	case diagram.FieldSequence:
+		return m.Sequence()
 	case diagram.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -13369,6 +13688,16 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldLabelDisplay(ctx)
 	case diagram.FieldColor:
 		return m.OldColor(ctx)
+	case diagram.FieldMode:
+		return m.OldMode(ctx)
+	case diagram.FieldTempoBpm:
+		return m.OldTempoBpm(ctx)
+	case diagram.FieldTimeSignatureBeats:
+		return m.OldTimeSignatureBeats(ctx)
+	case diagram.FieldTimeSignatureBeatValue:
+		return m.OldTimeSignatureBeatValue(ctx)
+	case diagram.FieldSequence:
+		return m.OldSequence(ctx)
 	case diagram.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -13429,6 +13758,41 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetColor(v)
 		return nil
+	case diagram.FieldMode:
+		v, ok := value.(diagram.Mode)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMode(v)
+		return nil
+	case diagram.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTempoBpm(v)
+		return nil
+	case diagram.FieldTimeSignatureBeats:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeSignatureBeats(v)
+		return nil
+	case diagram.FieldTimeSignatureBeatValue:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeSignatureBeatValue(v)
+		return nil
+	case diagram.FieldSequence:
+		v, ok := value.([]schema.SequenceStep)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSequence(v)
+		return nil
 	case diagram.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -13443,13 +13807,31 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *DiagramMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addtempo_bpm != nil {
+		fields = append(fields, diagram.FieldTempoBpm)
+	}
+	if m.addtime_signature_beats != nil {
+		fields = append(fields, diagram.FieldTimeSignatureBeats)
+	}
+	if m.addtime_signature_beat_value != nil {
+		fields = append(fields, diagram.FieldTimeSignatureBeatValue)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *DiagramMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case diagram.FieldTempoBpm:
+		return m.AddedTempoBpm()
+	case diagram.FieldTimeSignatureBeats:
+		return m.AddedTimeSignatureBeats()
+	case diagram.FieldTimeSignatureBeatValue:
+		return m.AddedTimeSignatureBeatValue()
+	}
 	return nil, false
 }
 
@@ -13458,6 +13840,27 @@ func (m *DiagramMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *DiagramMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case diagram.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTempoBpm(v)
+		return nil
+	case diagram.FieldTimeSignatureBeats:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimeSignatureBeats(v)
+		return nil
+	case diagram.FieldTimeSignatureBeatValue:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTimeSignatureBeatValue(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Diagram numeric field %s", name)
 }
@@ -13471,6 +13874,12 @@ func (m *DiagramMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(diagram.FieldColor) {
 		fields = append(fields, diagram.FieldColor)
+	}
+	if m.FieldCleared(diagram.FieldMode) {
+		fields = append(fields, diagram.FieldMode)
+	}
+	if m.FieldCleared(diagram.FieldTempoBpm) {
+		fields = append(fields, diagram.FieldTempoBpm)
 	}
 	return fields
 }
@@ -13491,6 +13900,12 @@ func (m *DiagramMutation) ClearField(name string) error {
 		return nil
 	case diagram.FieldColor:
 		m.ClearColor()
+		return nil
+	case diagram.FieldMode:
+		m.ClearMode()
+		return nil
+	case diagram.FieldTempoBpm:
+		m.ClearTempoBpm()
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram nullable field %s", name)
@@ -13520,6 +13935,21 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldColor:
 		m.ResetColor()
+		return nil
+	case diagram.FieldMode:
+		m.ResetMode()
+		return nil
+	case diagram.FieldTempoBpm:
+		m.ResetTempoBpm()
+		return nil
+	case diagram.FieldTimeSignatureBeats:
+		m.ResetTimeSignatureBeats()
+		return nil
+	case diagram.FieldTimeSignatureBeatValue:
+		m.ResetTimeSignatureBeatValue()
+		return nil
+	case diagram.FieldSequence:
+		m.ResetSequence()
 		return nil
 	case diagram.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -22358,6 +22788,8 @@ type InstrumentMutation struct {
 	key_range_lowest                 *string
 	key_range_highest                *string
 	clearedFields                    map[string]struct{}
+	default_voice                    *string
+	cleareddefault_voice             bool
 	diagrams                         map[uuid.UUID]struct{}
 	removeddiagrams                  map[uuid.UUID]struct{}
 	cleareddiagrams                  bool
@@ -22793,6 +23225,69 @@ func (m *InstrumentMutation) ResetKeyRangeHighest() {
 	delete(m.clearedFields, instrument.FieldKeyRangeHighest)
 }
 
+// SetDefaultVoiceID sets the "default_voice_id" field.
+func (m *InstrumentMutation) SetDefaultVoiceID(s string) {
+	m.default_voice = &s
+}
+
+// DefaultVoiceID returns the value of the "default_voice_id" field in the mutation.
+func (m *InstrumentMutation) DefaultVoiceID() (r string, exists bool) {
+	v := m.default_voice
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultVoiceID returns the old "default_voice_id" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldDefaultVoiceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultVoiceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultVoiceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultVoiceID: %w", err)
+	}
+	return oldValue.DefaultVoiceID, nil
+}
+
+// ResetDefaultVoiceID resets all changes to the "default_voice_id" field.
+func (m *InstrumentMutation) ResetDefaultVoiceID() {
+	m.default_voice = nil
+}
+
+// ClearDefaultVoice clears the "default_voice" edge to the Voice entity.
+func (m *InstrumentMutation) ClearDefaultVoice() {
+	m.cleareddefault_voice = true
+	m.clearedFields[instrument.FieldDefaultVoiceID] = struct{}{}
+}
+
+// DefaultVoiceCleared reports if the "default_voice" edge to the Voice entity was cleared.
+func (m *InstrumentMutation) DefaultVoiceCleared() bool {
+	return m.cleareddefault_voice
+}
+
+// DefaultVoiceIDs returns the "default_voice" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DefaultVoiceID instead. It exists only for internal usage by the builders.
+func (m *InstrumentMutation) DefaultVoiceIDs() (ids []string) {
+	if id := m.default_voice; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDefaultVoice resets all changes to the "default_voice" edge.
+func (m *InstrumentMutation) ResetDefaultVoice() {
+	m.default_voice = nil
+	m.cleareddefault_voice = false
+}
+
 // AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
 func (m *InstrumentMutation) AddDiagramIDs(ids ...uuid.UUID) {
 	if m.diagrams == nil {
@@ -23205,7 +23700,7 @@ func (m *InstrumentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstrumentMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.names != nil {
 		fields = append(fields, instrument.FieldNames)
 	}
@@ -23223,6 +23718,9 @@ func (m *InstrumentMutation) Fields() []string {
 	}
 	if m.key_range_highest != nil {
 		fields = append(fields, instrument.FieldKeyRangeHighest)
+	}
+	if m.default_voice != nil {
+		fields = append(fields, instrument.FieldDefaultVoiceID)
 	}
 	return fields
 }
@@ -23244,6 +23742,8 @@ func (m *InstrumentMutation) Field(name string) (ent.Value, bool) {
 		return m.KeyRangeLowest()
 	case instrument.FieldKeyRangeHighest:
 		return m.KeyRangeHighest()
+	case instrument.FieldDefaultVoiceID:
+		return m.DefaultVoiceID()
 	}
 	return nil, false
 }
@@ -23265,6 +23765,8 @@ func (m *InstrumentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldKeyRangeLowest(ctx)
 	case instrument.FieldKeyRangeHighest:
 		return m.OldKeyRangeHighest(ctx)
+	case instrument.FieldDefaultVoiceID:
+		return m.OldDefaultVoiceID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Instrument field %s", name)
 }
@@ -23315,6 +23817,13 @@ func (m *InstrumentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetKeyRangeHighest(v)
+		return nil
+	case instrument.FieldDefaultVoiceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultVoiceID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Instrument field %s", name)
@@ -23425,13 +23934,19 @@ func (m *InstrumentMutation) ResetField(name string) error {
 	case instrument.FieldKeyRangeHighest:
 		m.ResetKeyRangeHighest()
 		return nil
+	case instrument.FieldDefaultVoiceID:
+		m.ResetDefaultVoiceID()
+		return nil
 	}
 	return fmt.Errorf("unknown Instrument field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *InstrumentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
+	if m.default_voice != nil {
+		edges = append(edges, instrument.EdgeDefaultVoice)
+	}
 	if m.diagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
 	}
@@ -23460,6 +23975,10 @@ func (m *InstrumentMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case instrument.EdgeDefaultVoice:
+		if id := m.default_voice; id != nil {
+			return []ent.Value{*id}
+		}
 	case instrument.EdgeDiagrams:
 		ids := make([]ent.Value, 0, len(m.diagrams))
 		for id := range m.diagrams {
@@ -23508,7 +24027,7 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *InstrumentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
 	if m.removeddiagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
 	}
@@ -23585,7 +24104,10 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *InstrumentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
+	if m.cleareddefault_voice {
+		edges = append(edges, instrument.EdgeDefaultVoice)
+	}
 	if m.cleareddiagrams {
 		edges = append(edges, instrument.EdgeDiagrams)
 	}
@@ -23614,6 +24136,8 @@ func (m *InstrumentMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *InstrumentMutation) EdgeCleared(name string) bool {
 	switch name {
+	case instrument.EdgeDefaultVoice:
+		return m.cleareddefault_voice
 	case instrument.EdgeDiagrams:
 		return m.cleareddiagrams
 	case instrument.EdgeCourses:
@@ -23636,6 +24160,9 @@ func (m *InstrumentMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *InstrumentMutation) ClearEdge(name string) error {
 	switch name {
+	case instrument.EdgeDefaultVoice:
+		m.ClearDefaultVoice()
+		return nil
 	}
 	return fmt.Errorf("unknown Instrument unique edge %s", name)
 }
@@ -23644,6 +24171,9 @@ func (m *InstrumentMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *InstrumentMutation) ResetEdge(name string) error {
 	switch name {
+	case instrument.EdgeDefaultVoice:
+		m.ResetDefaultVoice()
+		return nil
 	case instrument.EdgeDiagrams:
 		m.ResetDiagrams()
 		return nil
@@ -26305,30 +26835,28 @@ func (m *LearningPathItemMutation) ResetEdge(name string) error {
 // PositionMutation represents an operation that mutates the Position nodes in the graph.
 type PositionMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	ordinal           *int
-	addordinal        *int
-	interval          *string
-	note_name         *string
-	shape             *position.Shape
-	color             *string
-	sequence_index    *int
-	addsequence_index *int
-	string_number     *int
-	addstring_number  *int
-	fret              *int
-	addfret           *int
-	key               *string
-	custom_label      *map[string]string
-	note              *map[string]string
-	clearedFields     map[string]struct{}
-	diagram           *uuid.UUID
-	cleareddiagram    bool
-	done              bool
-	oldValue          func(context.Context) (*Position, error)
-	predicates        []predicate.Position
+	op               Op
+	typ              string
+	id               *uuid.UUID
+	ordinal          *int
+	addordinal       *int
+	interval         *string
+	note_name        *string
+	shape            *position.Shape
+	color            *string
+	string_number    *int
+	addstring_number *int
+	fret             *int
+	addfret          *int
+	key              *string
+	custom_label     *map[string]string
+	note             *map[string]string
+	clearedFields    map[string]struct{}
+	diagram          *uuid.UUID
+	cleareddiagram   bool
+	done             bool
+	oldValue         func(context.Context) (*Position, error)
+	predicates       []predicate.Position
 }
 
 var _ ent.Mutation = (*PositionMutation)(nil)
@@ -26684,76 +27212,6 @@ func (m *PositionMutation) ResetColor() {
 	delete(m.clearedFields, position.FieldColor)
 }
 
-// SetSequenceIndex sets the "sequence_index" field.
-func (m *PositionMutation) SetSequenceIndex(i int) {
-	m.sequence_index = &i
-	m.addsequence_index = nil
-}
-
-// SequenceIndex returns the value of the "sequence_index" field in the mutation.
-func (m *PositionMutation) SequenceIndex() (r int, exists bool) {
-	v := m.sequence_index
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSequenceIndex returns the old "sequence_index" field's value of the Position entity.
-// If the Position object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PositionMutation) OldSequenceIndex(ctx context.Context) (v *int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSequenceIndex is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSequenceIndex requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSequenceIndex: %w", err)
-	}
-	return oldValue.SequenceIndex, nil
-}
-
-// AddSequenceIndex adds i to the "sequence_index" field.
-func (m *PositionMutation) AddSequenceIndex(i int) {
-	if m.addsequence_index != nil {
-		*m.addsequence_index += i
-	} else {
-		m.addsequence_index = &i
-	}
-}
-
-// AddedSequenceIndex returns the value that was added to the "sequence_index" field in this mutation.
-func (m *PositionMutation) AddedSequenceIndex() (r int, exists bool) {
-	v := m.addsequence_index
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearSequenceIndex clears the value of the "sequence_index" field.
-func (m *PositionMutation) ClearSequenceIndex() {
-	m.sequence_index = nil
-	m.addsequence_index = nil
-	m.clearedFields[position.FieldSequenceIndex] = struct{}{}
-}
-
-// SequenceIndexCleared returns if the "sequence_index" field was cleared in this mutation.
-func (m *PositionMutation) SequenceIndexCleared() bool {
-	_, ok := m.clearedFields[position.FieldSequenceIndex]
-	return ok
-}
-
-// ResetSequenceIndex resets all changes to the "sequence_index" field.
-func (m *PositionMutation) ResetSequenceIndex() {
-	m.sequence_index = nil
-	m.addsequence_index = nil
-	delete(m.clearedFields, position.FieldSequenceIndex)
-}
-
 // SetStringNumber sets the "string_number" field.
 func (m *PositionMutation) SetStringNumber(i int) {
 	m.string_number = &i
@@ -27102,7 +27560,7 @@ func (m *PositionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PositionMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 11)
 	if m.diagram != nil {
 		fields = append(fields, position.FieldDiagramID)
 	}
@@ -27120,9 +27578,6 @@ func (m *PositionMutation) Fields() []string {
 	}
 	if m.color != nil {
 		fields = append(fields, position.FieldColor)
-	}
-	if m.sequence_index != nil {
-		fields = append(fields, position.FieldSequenceIndex)
 	}
 	if m.string_number != nil {
 		fields = append(fields, position.FieldStringNumber)
@@ -27159,8 +27614,6 @@ func (m *PositionMutation) Field(name string) (ent.Value, bool) {
 		return m.Shape()
 	case position.FieldColor:
 		return m.Color()
-	case position.FieldSequenceIndex:
-		return m.SequenceIndex()
 	case position.FieldStringNumber:
 		return m.StringNumber()
 	case position.FieldFret:
@@ -27192,8 +27645,6 @@ func (m *PositionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldShape(ctx)
 	case position.FieldColor:
 		return m.OldColor(ctx)
-	case position.FieldSequenceIndex:
-		return m.OldSequenceIndex(ctx)
 	case position.FieldStringNumber:
 		return m.OldStringNumber(ctx)
 	case position.FieldFret:
@@ -27255,13 +27706,6 @@ func (m *PositionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetColor(v)
 		return nil
-	case position.FieldSequenceIndex:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSequenceIndex(v)
-		return nil
 	case position.FieldStringNumber:
 		v, ok := value.(int)
 		if !ok {
@@ -27308,9 +27752,6 @@ func (m *PositionMutation) AddedFields() []string {
 	if m.addordinal != nil {
 		fields = append(fields, position.FieldOrdinal)
 	}
-	if m.addsequence_index != nil {
-		fields = append(fields, position.FieldSequenceIndex)
-	}
 	if m.addstring_number != nil {
 		fields = append(fields, position.FieldStringNumber)
 	}
@@ -27327,8 +27768,6 @@ func (m *PositionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case position.FieldOrdinal:
 		return m.AddedOrdinal()
-	case position.FieldSequenceIndex:
-		return m.AddedSequenceIndex()
 	case position.FieldStringNumber:
 		return m.AddedStringNumber()
 	case position.FieldFret:
@@ -27348,13 +27787,6 @@ func (m *PositionMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddOrdinal(v)
-		return nil
-	case position.FieldSequenceIndex:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSequenceIndex(v)
 		return nil
 	case position.FieldStringNumber:
 		v, ok := value.(int)
@@ -27380,9 +27812,6 @@ func (m *PositionMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(position.FieldColor) {
 		fields = append(fields, position.FieldColor)
-	}
-	if m.FieldCleared(position.FieldSequenceIndex) {
-		fields = append(fields, position.FieldSequenceIndex)
 	}
 	if m.FieldCleared(position.FieldStringNumber) {
 		fields = append(fields, position.FieldStringNumber)
@@ -27415,9 +27844,6 @@ func (m *PositionMutation) ClearField(name string) error {
 	switch name {
 	case position.FieldColor:
 		m.ClearColor()
-		return nil
-	case position.FieldSequenceIndex:
-		m.ClearSequenceIndex()
 		return nil
 	case position.FieldStringNumber:
 		m.ClearStringNumber()
@@ -27459,9 +27885,6 @@ func (m *PositionMutation) ResetField(name string) error {
 		return nil
 	case position.FieldColor:
 		m.ResetColor()
-		return nil
-	case position.FieldSequenceIndex:
-		m.ResetSequenceIndex()
 		return nil
 	case position.FieldStringNumber:
 		m.ResetStringNumber()
@@ -31095,4 +31518,607 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
+}
+
+// VoiceMutation represents an operation that mutates the Voice nodes in the graph.
+type VoiceMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *string
+	names              *map[string]string
+	family             *voice.Family
+	pitches            *[]int
+	appendpitches      []int
+	attribution        *string
+	clearedFields      map[string]struct{}
+	instruments        map[uuid.UUID]struct{}
+	removedinstruments map[uuid.UUID]struct{}
+	clearedinstruments bool
+	done               bool
+	oldValue           func(context.Context) (*Voice, error)
+	predicates         []predicate.Voice
+}
+
+var _ ent.Mutation = (*VoiceMutation)(nil)
+
+// voiceOption allows management of the mutation configuration using functional options.
+type voiceOption func(*VoiceMutation)
+
+// newVoiceMutation creates new mutation for the Voice entity.
+func newVoiceMutation(c config, op Op, opts ...voiceOption) *VoiceMutation {
+	m := &VoiceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeVoice,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withVoiceID sets the ID field of the mutation.
+func withVoiceID(id string) voiceOption {
+	return func(m *VoiceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Voice
+		)
+		m.oldValue = func(ctx context.Context) (*Voice, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Voice.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withVoice sets the old Voice of the mutation.
+func withVoice(node *Voice) voiceOption {
+	return func(m *VoiceMutation) {
+		m.oldValue = func(context.Context) (*Voice, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m VoiceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m VoiceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Voice entities.
+func (m *VoiceMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *VoiceMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *VoiceMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Voice.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetNames sets the "names" field.
+func (m *VoiceMutation) SetNames(value map[string]string) {
+	m.names = &value
+}
+
+// Names returns the value of the "names" field in the mutation.
+func (m *VoiceMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNames returns the old "names" field's value of the Voice entity.
+// If the Voice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VoiceMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
+	}
+	return oldValue.Names, nil
+}
+
+// ResetNames resets all changes to the "names" field.
+func (m *VoiceMutation) ResetNames() {
+	m.names = nil
+}
+
+// SetFamily sets the "family" field.
+func (m *VoiceMutation) SetFamily(v voice.Family) {
+	m.family = &v
+}
+
+// Family returns the value of the "family" field in the mutation.
+func (m *VoiceMutation) Family() (r voice.Family, exists bool) {
+	v := m.family
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFamily returns the old "family" field's value of the Voice entity.
+// If the Voice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VoiceMutation) OldFamily(ctx context.Context) (v voice.Family, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFamily: %w", err)
+	}
+	return oldValue.Family, nil
+}
+
+// ResetFamily resets all changes to the "family" field.
+func (m *VoiceMutation) ResetFamily() {
+	m.family = nil
+}
+
+// SetPitches sets the "pitches" field.
+func (m *VoiceMutation) SetPitches(i []int) {
+	m.pitches = &i
+	m.appendpitches = nil
+}
+
+// Pitches returns the value of the "pitches" field in the mutation.
+func (m *VoiceMutation) Pitches() (r []int, exists bool) {
+	v := m.pitches
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPitches returns the old "pitches" field's value of the Voice entity.
+// If the Voice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VoiceMutation) OldPitches(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPitches is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPitches requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPitches: %w", err)
+	}
+	return oldValue.Pitches, nil
+}
+
+// AppendPitches adds i to the "pitches" field.
+func (m *VoiceMutation) AppendPitches(i []int) {
+	m.appendpitches = append(m.appendpitches, i...)
+}
+
+// AppendedPitches returns the list of values that were appended to the "pitches" field in this mutation.
+func (m *VoiceMutation) AppendedPitches() ([]int, bool) {
+	if len(m.appendpitches) == 0 {
+		return nil, false
+	}
+	return m.appendpitches, true
+}
+
+// ResetPitches resets all changes to the "pitches" field.
+func (m *VoiceMutation) ResetPitches() {
+	m.pitches = nil
+	m.appendpitches = nil
+}
+
+// SetAttribution sets the "attribution" field.
+func (m *VoiceMutation) SetAttribution(s string) {
+	m.attribution = &s
+}
+
+// Attribution returns the value of the "attribution" field in the mutation.
+func (m *VoiceMutation) Attribution() (r string, exists bool) {
+	v := m.attribution
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAttribution returns the old "attribution" field's value of the Voice entity.
+// If the Voice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VoiceMutation) OldAttribution(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAttribution is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAttribution requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAttribution: %w", err)
+	}
+	return oldValue.Attribution, nil
+}
+
+// ResetAttribution resets all changes to the "attribution" field.
+func (m *VoiceMutation) ResetAttribution() {
+	m.attribution = nil
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *VoiceMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *VoiceMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *VoiceMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *VoiceMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *VoiceMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *VoiceMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *VoiceMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
+}
+
+// Where appends a list predicates to the VoiceMutation builder.
+func (m *VoiceMutation) Where(ps ...predicate.Voice) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the VoiceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *VoiceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Voice, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *VoiceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *VoiceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Voice).
+func (m *VoiceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *VoiceMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.names != nil {
+		fields = append(fields, voice.FieldNames)
+	}
+	if m.family != nil {
+		fields = append(fields, voice.FieldFamily)
+	}
+	if m.pitches != nil {
+		fields = append(fields, voice.FieldPitches)
+	}
+	if m.attribution != nil {
+		fields = append(fields, voice.FieldAttribution)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *VoiceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case voice.FieldNames:
+		return m.Names()
+	case voice.FieldFamily:
+		return m.Family()
+	case voice.FieldPitches:
+		return m.Pitches()
+	case voice.FieldAttribution:
+		return m.Attribution()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *VoiceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case voice.FieldNames:
+		return m.OldNames(ctx)
+	case voice.FieldFamily:
+		return m.OldFamily(ctx)
+	case voice.FieldPitches:
+		return m.OldPitches(ctx)
+	case voice.FieldAttribution:
+		return m.OldAttribution(ctx)
+	}
+	return nil, fmt.Errorf("unknown Voice field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VoiceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case voice.FieldNames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNames(v)
+		return nil
+	case voice.FieldFamily:
+		v, ok := value.(voice.Family)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFamily(v)
+		return nil
+	case voice.FieldPitches:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPitches(v)
+		return nil
+	case voice.FieldAttribution:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAttribution(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Voice field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *VoiceMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *VoiceMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VoiceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Voice numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *VoiceMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *VoiceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *VoiceMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Voice nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *VoiceMutation) ResetField(name string) error {
+	switch name {
+	case voice.FieldNames:
+		m.ResetNames()
+		return nil
+	case voice.FieldFamily:
+		m.ResetFamily()
+		return nil
+	case voice.FieldPitches:
+		m.ResetPitches()
+		return nil
+	case voice.FieldAttribution:
+		m.ResetAttribution()
+		return nil
+	}
+	return fmt.Errorf("unknown Voice field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *VoiceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.instruments != nil {
+		edges = append(edges, voice.EdgeInstruments)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *VoiceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case voice.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *VoiceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedinstruments != nil {
+		edges = append(edges, voice.EdgeInstruments)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *VoiceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case voice.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *VoiceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedinstruments {
+		edges = append(edges, voice.EdgeInstruments)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *VoiceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case voice.EdgeInstruments:
+		return m.clearedinstruments
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *VoiceMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Voice unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *VoiceMutation) ResetEdge(name string) error {
+	switch name {
+	case voice.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
+	}
+	return fmt.Errorf("unknown Voice edge %s", name)
 }

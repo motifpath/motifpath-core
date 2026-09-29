@@ -18,6 +18,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
@@ -91,6 +92,68 @@ func (_c *DiagramCreate) SetNillableColor(v *string) *DiagramCreate {
 	if v != nil {
 		_c.SetColor(*v)
 	}
+	return _c
+}
+
+// SetMode sets the "mode" field.
+func (_c *DiagramCreate) SetMode(v diagram.Mode) *DiagramCreate {
+	_c.mutation.SetMode(v)
+	return _c
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableMode(v *diagram.Mode) *DiagramCreate {
+	if v != nil {
+		_c.SetMode(*v)
+	}
+	return _c
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (_c *DiagramCreate) SetTempoBpm(v int) *DiagramCreate {
+	_c.mutation.SetTempoBpm(v)
+	return _c
+}
+
+// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableTempoBpm(v *int) *DiagramCreate {
+	if v != nil {
+		_c.SetTempoBpm(*v)
+	}
+	return _c
+}
+
+// SetTimeSignatureBeats sets the "time_signature_beats" field.
+func (_c *DiagramCreate) SetTimeSignatureBeats(v int) *DiagramCreate {
+	_c.mutation.SetTimeSignatureBeats(v)
+	return _c
+}
+
+// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableTimeSignatureBeats(v *int) *DiagramCreate {
+	if v != nil {
+		_c.SetTimeSignatureBeats(*v)
+	}
+	return _c
+}
+
+// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
+func (_c *DiagramCreate) SetTimeSignatureBeatValue(v int) *DiagramCreate {
+	_c.mutation.SetTimeSignatureBeatValue(v)
+	return _c
+}
+
+// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableTimeSignatureBeatValue(v *int) *DiagramCreate {
+	if v != nil {
+		_c.SetTimeSignatureBeatValue(*v)
+	}
+	return _c
+}
+
+// SetSequence sets the "sequence" field.
+func (_c *DiagramCreate) SetSequence(v []schema.SequenceStep) *DiagramCreate {
+	_c.mutation.SetSequence(v)
 	return _c
 }
 
@@ -256,6 +319,18 @@ func (_c *DiagramCreate) defaults() {
 		v := diagram.DefaultLabelDisplay
 		_c.mutation.SetLabelDisplay(v)
 	}
+	if _, ok := _c.mutation.TimeSignatureBeats(); !ok {
+		v := diagram.DefaultTimeSignatureBeats
+		_c.mutation.SetTimeSignatureBeats(v)
+	}
+	if _, ok := _c.mutation.TimeSignatureBeatValue(); !ok {
+		v := diagram.DefaultTimeSignatureBeatValue
+		_c.mutation.SetTimeSignatureBeatValue(v)
+	}
+	if _, ok := _c.mutation.Sequence(); !ok {
+		v := diagram.DefaultSequence
+		_c.mutation.SetSequence(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := diagram.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -292,6 +367,20 @@ func (_c *DiagramCreate) check() error {
 		if err := diagram.LabelDisplayValidator(v); err != nil {
 			return &ValidationError{Name: "label_display", err: fmt.Errorf(`ent: validator failed for field "Diagram.label_display": %w`, err)}
 		}
+	}
+	if v, ok := _c.mutation.Mode(); ok {
+		if err := diagram.ModeValidator(v); err != nil {
+			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "Diagram.mode": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.TimeSignatureBeats(); !ok {
+		return &ValidationError{Name: "time_signature_beats", err: errors.New(`ent: missing required field "Diagram.time_signature_beats"`)}
+	}
+	if _, ok := _c.mutation.TimeSignatureBeatValue(); !ok {
+		return &ValidationError{Name: "time_signature_beat_value", err: errors.New(`ent: missing required field "Diagram.time_signature_beat_value"`)}
+	}
+	if _, ok := _c.mutation.Sequence(); !ok {
+		return &ValidationError{Name: "sequence", err: errors.New(`ent: missing required field "Diagram.sequence"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Diagram.created_at"`)}
@@ -357,6 +446,26 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Color(); ok {
 		_spec.SetField(diagram.FieldColor, field.TypeString, value)
 		_node.Color = &value
+	}
+	if value, ok := _c.mutation.Mode(); ok {
+		_spec.SetField(diagram.FieldMode, field.TypeEnum, value)
+		_node.Mode = &value
+	}
+	if value, ok := _c.mutation.TempoBpm(); ok {
+		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
+		_node.TempoBpm = &value
+	}
+	if value, ok := _c.mutation.TimeSignatureBeats(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
+		_node.TimeSignatureBeats = value
+	}
+	if value, ok := _c.mutation.TimeSignatureBeatValue(); ok {
+		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
+		_node.TimeSignatureBeatValue = value
+	}
+	if value, ok := _c.mutation.Sequence(); ok {
+		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
+		_node.Sequence = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(diagram.FieldCreatedAt, field.TypeTime, value)

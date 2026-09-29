@@ -1571,16 +1571,59 @@ func (f *fakeInstrumentRepo) List(_ context.Context) ([]domain.Instrument, error
 	return result, nil
 }
 
-func (f *fakeInstrumentRepo) UpdateNames(_ context.Context, id string, names domain.LocalizedText) error {
+func (f *fakeInstrumentRepo) Update(_ context.Context, i domain.Instrument) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	instrument, ok := f.byID[id]
+	instrument, ok := f.byID[i.ID]
 	if !ok {
 		return domain.ErrNotFound
 	}
-	instrument.Names = names
-	f.byID[id] = instrument
+	instrument.Names, instrument.DefaultVoiceID = i.Names, i.DefaultVoiceID
+	f.byID[i.ID] = instrument
 	return nil
+}
+
+// fakeVoiceRepo is an in-memory ports.VoiceRepository, starting with the
+// voices the platform's migrations provide.
+type fakeVoiceRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.Voice
+}
+
+func newFakeVoiceRepo() *fakeVoiceRepo {
+	f := &fakeVoiceRepo{byID: map[string]domain.Voice{}}
+	f.put(domain.Voice{ID: "acoustic-guitar", Names: domain.LocalizedText{"en": "Acoustic guitar", "pt_BR": "Violão"}, Family: domain.InstrumentFamilyFretted,
+		Pitches: []int{46, 40, 43}, Attribution: "Acoustic guitar samples from tonejs-instruments, CC BY 3.0"})
+	f.put(domain.Voice{ID: "piano", Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
+		Pitches: []int{21, 24, 27}, Attribution: "Piano samples from tonejs-instruments, CC BY 3.0"})
+	return f
+}
+
+func (f *fakeVoiceRepo) GetByID(_ context.Context, id string) (domain.Voice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v, ok := f.byID[id]
+	if !ok {
+		return domain.Voice{}, domain.ErrNotFound
+	}
+	return v, nil
+}
+
+func (f *fakeVoiceRepo) List(_ context.Context) ([]domain.Voice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.Voice, 0, len(f.byID))
+	for _, v := range f.byID {
+		result = append(result, v)
+	}
+	sort.Slice(result, func(a, b int) bool { return result[a].ID < result[b].ID })
+	return result, nil
+}
+
+func (f *fakeVoiceRepo) put(v domain.Voice) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[v.ID] = v
 }
 
 func (f *fakeInstrumentRepo) put(i domain.Instrument) {

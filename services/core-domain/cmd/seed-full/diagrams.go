@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -21,11 +23,11 @@ type seededDiagrams struct {
 	pentatonicPos2   domain.Diagram // overlaps position 1 on six cells: overlay and merge it onto position 1
 	pentatonicJoined domain.Diagram // two shapes joined into one, each shown as its own captioned region
 	cMajorOpen       domain.Diagram // note-name labels, square markers, open strings (fret 0)
-	eMajorChord      domain.Diagram // custom marker labels (finger numbers), a string-bounded region
+	eMajorChord      domain.Diagram // custom marker labels (finger numbers), a string-bounded region, strummed then picked
 	bassEMajor       domain.Diagram // a template for another fretted instrument
 
 	// Custom diagrams, each owned by the teacher who made it.
-	teacherLick     domain.Diagram // English only, labels hidden, per-marker colours, a playback order
+	teacherLick     domain.Diagram // English only, labels hidden, per-marker colours, played with a rhythm
 	otherTeacherArp domain.Diagram // another teacher's: read-only for the main seed teacher
 }
 
@@ -104,19 +106,25 @@ func joinedCells() []fretted {
 	return cells
 }
 
+// The voices the platform provides with its migrations.
+const (
+	acousticGuitarVoice = "acoustic-guitar"
+	pianoVoice          = "piano"
+)
+
 // seedInstruments creates the guitar, bass and piano Instruments.
 func seedInstruments(ctx context.Context, teacher domain.User, instrumentSvc *application.InstrumentService) (guitar, bass, piano domain.Instrument, err error) {
 	six, four := 6, 4
 	if guitar, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
-		&six, []string{"E", "A", "D", "G", "B", "E"}, nil); err != nil {
+		&six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, acousticGuitarVoice); err != nil {
 		return guitar, bass, piano, fmt.Errorf("create guitar: %w", err)
 	}
 	if bass, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Bass", "pt_BR": "Contrabaixo"}, domain.InstrumentFamilyFretted,
-		&four, []string{"E", "A", "D", "G"}, nil); err != nil {
+		&four, []string{"E1", "A1", "D2", "G2"}, nil, acousticGuitarVoice); err != nil {
 		return guitar, bass, piano, fmt.Errorf("create bass: %w", err)
 	}
 	if piano, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard,
-		nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}); err != nil {
+		nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice); err != nil {
 		return guitar, bass, piano, fmt.Errorf("create piano: %w", err)
 	}
 	return guitar, bass, piano, nil
@@ -138,20 +146,64 @@ func basicOptions(root string, labels domain.LabelDisplay, color *string, region
 	return domain.DiagramOptions{RootNote: &root, LabelDisplay: labels, Color: color, Kind: domain.DiagramKindBasic, Regions: regions}
 }
 
-// bluesLick is a lick played in order: each marker has its own colour and a
-// place in the playback sequence, and the diagram hides its labels so the
-// shape alone shows. Its one note is in English only, like the diagram.
-func bluesLick() []domain.Position {
-	lick := frettedPositions([]fretted{
+// bluesLick is a lick in A minor: each marker has its own colour, and the
+// diagram hides its labels so the shape alone shows. It plays with a rhythm
+// — a quarter, two eighths, a triplet that turns back on the fourth, and a
+// long root. Its one note is in English only, like the diagram.
+func bluesLick() ([]domain.Position, domain.DiagramOptions) {
+	lick := withPositionIDs(frettedPositions([]fretted{
 		{2, 8, "b7", "G", nil, domain.LocalizedText{"en": "Bend this one up a whole step."}},
 		{2, 5, "5", "E", nil, nil}, {3, 7, "4", "D", nil, nil}, {3, 5, "b3", "C", nil, nil}, {4, 7, "R", "A", nil, nil},
-	}, domain.PositionShapeDot)
+	}, domain.PositionShapeDot))
 	for i, color := range []string{"#EC4899", "#F59E0B", "#22C55E", "#06B6D4", "#EF4444"} {
-		index := i
-		lick[i].SequenceIndex = &index
 		lick[i].Color = stringPtr(color)
 	}
-	return lick
+	root, minor, tempo := "A", domain.DiagramModeMinor, 80
+	triplet := domain.NoteValue{Num: 1, Den: 12}
+	return lick, domain.DiagramOptions{
+		RootNote: &root, Mode: &minor, LabelDisplay: domain.LabelDisplayHidden, Kind: domain.DiagramKindCustom, TempoBPM: &tempo,
+		Sequence: []domain.SequenceStep{
+			playStep(domain.NoteValue{Num: 1, Den: 4}, lick[0]),
+			playStep(domain.NoteValue{Num: 1, Den: 8}, lick[1]),
+			playStep(domain.NoteValue{Num: 1, Den: 8}, lick[2]),
+			playStep(triplet, lick[3]), playStep(triplet, lick[2]), playStep(triplet, lick[3]),
+			playStep(domain.NoteValue{Num: 1, Den: 2}, lick[4]),
+		},
+	}
+}
+
+// eMajorChordSequence strums the whole chord down, picks it string by
+// string from the low E, then strums it back up.
+func eMajorChordSequence(chord []domain.Position) (*int, []domain.SequenceStep) {
+	tempo := 90
+	eighth := domain.NoteValue{Num: 1, Den: 8}
+	all := playStep(domain.NoteValue{Num: 1, Den: 2}, chord...)
+	all.Strum = domain.StrumDown
+	sequence := []domain.SequenceStep{all}
+	for _, p := range chord {
+		sequence = append(sequence, playStep(eighth, p))
+	}
+	up := playStep(domain.NoteValue{Num: 1, Den: 4}, chord...)
+	up.Strum = domain.StrumUp
+	return &tempo, append(sequence, up)
+}
+
+// playStep is a sequence step sounding positions together for value.
+func playStep(value domain.NoteValue, positions ...domain.Position) domain.SequenceStep {
+	ids := make([]string, len(positions))
+	for i, p := range positions {
+		ids[i] = p.ID
+	}
+	return domain.SequenceStep{PositionIDs: ids, Value: value}
+}
+
+// withPositionIDs gives every position an id up front, so a sequence can
+// name them before the diagram is created.
+func withPositionIDs(positions []domain.Position) []domain.Position {
+	for i := range positions {
+		positions[i].ID = uuid.NewString()
+	}
+	return positions
 }
 
 // seedInstrumentsAndDiagrams creates the guitar, bass and piano Instruments
@@ -170,7 +222,20 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 	}
 
 	blue, green, amber, violet := stringPtr("#3B82F6"), stringPtr("#22C55E"), stringPtr("#F59E0B"), stringPtr("#8B5CF6")
-	lickRoot, arpeggioRoot := "A", "G"
+	arpeggioRoot := "G"
+	lick, lickOptions := bluesLick()
+	eMajor := withPositionIDs(frettedPositions([]fretted{
+		{6, 0, "R", "E", nil, nil},
+		{5, 2, "5", "B", both("2", "2"), nil},
+		{4, 2, "R", "E", both("3", "3"), nil},
+		{3, 1, "3", "G#", both("1", "1"), both("The major third: it makes the chord major.", "A terça maior: é ela que torna o acorde maior.")},
+		{2, 0, "5", "B", nil, nil},
+		{1, 0, "R", "E", nil, nil},
+	}, domain.PositionShapeDot))
+	eMajorOptions := basicOptions("E", domain.LabelDisplayInterval, violet, fretBand(0, 2, "Fretted notes", "Notas presas", violet, 3, 5))
+	major := domain.DiagramModeMajor
+	eMajorOptions.Mode = &major
+	eMajorOptions.TempoBPM, eMajorOptions.Sequence = eMajorChordSequence(eMajor)
 	specs := []diagramSpec{
 		{&seeded.pentatonicPos1, curator, seeded.guitar,
 			map[string]string{"en": "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor de Lá — Posição 1"},
@@ -196,15 +261,7 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 			basicOptions("C", domain.LabelDisplayNote, amber)},
 		{&seeded.eMajorChord, curator, seeded.guitar,
 			map[string]string{"en": "E Major Chord — Open Shape", "pt_BR": "Acorde de Mi maior — Forma aberta"},
-			frettedPositions([]fretted{
-				{6, 0, "R", "E", nil, nil},
-				{5, 2, "5", "B", both("2", "2"), nil},
-				{4, 2, "R", "E", both("3", "3"), nil},
-				{3, 1, "3", "G#", both("1", "1"), both("The major third: it makes the chord major.", "A terça maior: é ela que torna o acorde maior.")},
-				{2, 0, "5", "B", nil, nil},
-				{1, 0, "R", "E", nil, nil},
-			}, domain.PositionShapeDot), "Chords", "Open chord shapes",
-			basicOptions("E", domain.LabelDisplayInterval, violet, fretBand(0, 2, "Fretted notes", "Notas presas", violet, 3, 5))},
+			eMajor, "Chords", "Open chord shapes", eMajorOptions},
 		{&seeded.bassEMajor, curator, seeded.bass,
 			map[string]string{"en": "E Major Scale — Bass, Open Position", "pt_BR": "Escala de Mi maior — Baixo, posição aberta"},
 			frettedPositions([]fretted{
@@ -213,8 +270,7 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 				{2, 1, "7", "D#", nil, nil}, {2, 2, "R", "E", nil, nil},
 			}, domain.PositionShapeDot), "Scales", "Major scale fingerings",
 			basicOptions("E", domain.LabelDisplayInterval, blue)},
-		{&seeded.teacherLick, teacher, seeded.guitar, map[string]string{"en": "Blues Lick in A"}, bluesLick(), "Improvisation", "Phrasing",
-			domain.DiagramOptions{RootNote: &lickRoot, LabelDisplay: domain.LabelDisplayHidden, Kind: domain.DiagramKindCustom}},
+		{&seeded.teacherLick, teacher, seeded.guitar, map[string]string{"en": "Blues Lick in A"}, lick, "Improvisation", "Phrasing", lickOptions},
 		{&seeded.otherTeacherArp, otherTeacher, seeded.guitar,
 			map[string]string{"en": "G Major Arpeggio — Open", "pt_BR": "Arpejo de Sol maior — Aberto"},
 			frettedPositions([]fretted{

@@ -22,6 +22,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 // InstrumentQuery is the builder for querying Instrument entities.
@@ -31,6 +32,7 @@ type InstrumentQuery struct {
 	order                       []instrument.OrderOption
 	inters                      []Interceptor
 	predicates                  []predicate.Instrument
+	withDefaultVoice            *VoiceQuery
 	withDiagrams                *DiagramQuery
 	withCourses                 *CourseQuery
 	withLearningPaths           *LearningPathQuery
@@ -72,6 +74,28 @@ func (_q *InstrumentQuery) Unique(unique bool) *InstrumentQuery {
 func (_q *InstrumentQuery) Order(o ...instrument.OrderOption) *InstrumentQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryDefaultVoice chains the current query on the "default_voice" edge.
+func (_q *InstrumentQuery) QueryDefaultVoice() *VoiceQuery {
+	query := (&VoiceClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, selector),
+			sqlgraph.To(voice.Table, voice.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, instrument.DefaultVoiceTable, instrument.DefaultVoiceColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryDiagrams chains the current query on the "diagrams" edge.
@@ -420,6 +444,7 @@ func (_q *InstrumentQuery) Clone() *InstrumentQuery {
 		order:                       append([]instrument.OrderOption{}, _q.order...),
 		inters:                      append([]Interceptor{}, _q.inters...),
 		predicates:                  append([]predicate.Instrument{}, _q.predicates...),
+		withDefaultVoice:            _q.withDefaultVoice.Clone(),
 		withDiagrams:                _q.withDiagrams.Clone(),
 		withCourses:                 _q.withCourses.Clone(),
 		withLearningPaths:           _q.withLearningPaths.Clone(),
@@ -431,6 +456,17 @@ func (_q *InstrumentQuery) Clone() *InstrumentQuery {
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithDefaultVoice tells the query-builder to eager-load the nodes that are connected to
+// the "default_voice" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InstrumentQuery) WithDefaultVoice(opts ...func(*VoiceQuery)) *InstrumentQuery {
+	query := (&VoiceClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDefaultVoice = query
+	return _q
 }
 
 // WithDiagrams tells the query-builder to eager-load the nodes that are connected to
@@ -588,7 +624,8 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 	var (
 		nodes       = []*Instrument{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
+			_q.withDefaultVoice != nil,
 			_q.withDiagrams != nil,
 			_q.withCourses != nil,
 			_q.withLearningPaths != nil,
@@ -615,6 +652,12 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
+	}
+	if query := _q.withDefaultVoice; query != nil {
+		if err := _q.loadDefaultVoice(ctx, query, nodes, nil,
+			func(n *Instrument, e *Voice) { n.Edges.DefaultVoice = e }); err != nil {
+			return nil, err
+		}
 	}
 	if query := _q.withDiagrams; query != nil {
 		if err := _q.loadDiagrams(ctx, query, nodes,
@@ -674,6 +717,35 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 	return nodes, nil
 }
 
+func (_q *InstrumentQuery) loadDefaultVoice(ctx context.Context, query *VoiceQuery, nodes []*Instrument, init func(*Instrument), assign func(*Instrument, *Voice)) error {
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*Instrument)
+	for i := range nodes {
+		fk := nodes[i].DefaultVoiceID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(voice.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "default_voice_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 func (_q *InstrumentQuery) loadDiagrams(ctx context.Context, query *DiagramQuery, nodes []*Instrument, init func(*Instrument), assign func(*Instrument, *Diagram)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[uuid.UUID]*Instrument)
@@ -1002,6 +1074,9 @@ func (_q *InstrumentQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != instrument.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withDefaultVoice != nil {
+			_spec.Node.AddColumnOnce(instrument.FieldDefaultVoiceID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

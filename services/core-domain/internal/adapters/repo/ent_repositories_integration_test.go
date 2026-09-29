@@ -48,7 +48,7 @@ func seedDiagram(t *testing.T, ctx context.Context, client *ent.Client, instrume
 	strings := 6
 	instrument := domain.Instrument{
 		ID: uuid.NewString(), Names: domain.LocalizedText{"en": instrumentName}, Family: domain.InstrumentFamilyFretted,
-		StringCount: &strings, Tuning: []string{"E", "A", "D", "G", "B", "E"},
+		StringCount: &strings, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: "acoustic-guitar",
 	}
 	require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, instrument))
 

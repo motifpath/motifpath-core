@@ -454,6 +454,11 @@ var (
 		{Name: "root_note", Type: field.TypeString, Nullable: true},
 		{Name: "label_display", Type: field.TypeEnum, Enums: []string{"interval", "note", "hidden"}, Default: "interval"},
 		{Name: "color", Type: field.TypeString, Nullable: true},
+		{Name: "mode", Type: field.TypeEnum, Nullable: true, Enums: []string{"major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"}},
+		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
+		{Name: "time_signature_beats", Type: field.TypeInt, Default: 4},
+		{Name: "time_signature_beat_value", Type: field.TypeInt, Default: 4},
+		{Name: "sequence", Type: field.TypeJSON},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "instrument_id", Type: field.TypeUUID},
 	}
@@ -465,7 +470,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[8]},
+				Columns:    []*schema.Column{DiagramsColumns[13]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -774,12 +779,21 @@ var (
 		{Name: "tuning", Type: field.TypeJSON, Nullable: true},
 		{Name: "key_range_lowest", Type: field.TypeString, Nullable: true},
 		{Name: "key_range_highest", Type: field.TypeString, Nullable: true},
+		{Name: "default_voice_id", Type: field.TypeString},
 	}
 	// InstrumentsTable holds the schema information for the "instruments" table.
 	InstrumentsTable = &schema.Table{
 		Name:       "instruments",
 		Columns:    InstrumentsColumns,
 		PrimaryKey: []*schema.Column{InstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "instruments_voices_default_voice",
+				Columns:    []*schema.Column{InstrumentsColumns[7]},
+				RefColumns: []*schema.Column{VoicesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// LanguagesColumns holds the columns for the "languages" table.
 	LanguagesColumns = []*schema.Column{
@@ -872,7 +886,6 @@ var (
 		{Name: "note_name", Type: field.TypeString},
 		{Name: "shape", Type: field.TypeEnum, Enums: []string{"dot", "square", "star"}, Default: "dot"},
 		{Name: "color", Type: field.TypeString, Nullable: true},
-		{Name: "sequence_index", Type: field.TypeInt, Nullable: true},
 		{Name: "string_number", Type: field.TypeInt, Nullable: true},
 		{Name: "fret", Type: field.TypeInt, Nullable: true},
 		{Name: "key", Type: field.TypeString, Nullable: true},
@@ -888,7 +901,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "positions_diagrams_positions",
-				Columns:    []*schema.Column{PositionsColumns[12]},
+				Columns:    []*schema.Column{PositionsColumns[11]},
 				RefColumns: []*schema.Column{DiagramsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -897,7 +910,7 @@ var (
 			{
 				Name:    "position_diagram_id_ordinal",
 				Unique:  true,
-				Columns: []*schema.Column{PositionsColumns[12], PositionsColumns[1]},
+				Columns: []*schema.Column{PositionsColumns[11], PositionsColumns[1]},
 			},
 		},
 	}
@@ -997,6 +1010,20 @@ var (
 			},
 		},
 	}
+	// VoicesColumns holds the columns for the "voices" table.
+	VoicesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "names", Type: field.TypeJSON},
+		{Name: "family", Type: field.TypeEnum, Enums: []string{"fretted", "keyboard"}},
+		{Name: "pitches", Type: field.TypeJSON},
+		{Name: "attribution", Type: field.TypeString},
+	}
+	// VoicesTable holds the schema information for the "voices" table.
+	VoicesTable = &schema.Table{
+		Name:       "voices",
+		Columns:    VoicesColumns,
+		PrimaryKey: []*schema.Column{VoicesColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ChallengesTable,
@@ -1036,6 +1063,7 @@ var (
 		StudentPathsTable,
 		StudentPathItemsTable,
 		UsersTable,
+		VoicesTable,
 	}
 )
 
@@ -1068,6 +1096,7 @@ func init() {
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	InstrumentsTable.ForeignKeys[0].RefTable = VoicesTable
 	LearningPathInstrumentsTable.ForeignKeys[0].RefTable = LearningPathsTable
 	LearningPathInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	PositionsTable.ForeignKeys[0].RefTable = DiagramsTable

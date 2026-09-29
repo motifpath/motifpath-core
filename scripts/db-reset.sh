@@ -81,4 +81,8 @@ echo "==> Running seed-full"
   DATABASE_URL="$DATABASE_URL" MONGO_URI="$MONGO_URI" MONGO_DATABASE="$MONGO_DATABASE" \
   go run ./cmd/seed-full )
 
+# Diagrams only play once their voices' samples are in MinIO. A missing
+# ffmpeg leaves them silent but doesn't fail the reset.
+scripts/voice-samples.sh || echo "WARNING: some voice samples are missing; diagrams using them won't play until scripts/voice-samples.sh succeeds." >&2
+
 echo "==> db-reset done"

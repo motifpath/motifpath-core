@@ -31,8 +31,6 @@ type Position struct {
 	Shape position.Shape `json:"shape,omitempty"`
 	// Color holds the value of the "color" field.
 	Color *string `json:"color,omitempty"`
-	// SequenceIndex holds the value of the "sequence_index" field.
-	SequenceIndex *int `json:"sequence_index,omitempty"`
 	// StringNumber holds the value of the "string_number" field.
 	StringNumber *int `json:"string_number,omitempty"`
 	// Fret holds the value of the "fret" field.
@@ -76,7 +74,7 @@ func (*Position) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case position.FieldCustomLabel, position.FieldNote:
 			values[i] = new([]byte)
-		case position.FieldOrdinal, position.FieldSequenceIndex, position.FieldStringNumber, position.FieldFret:
+		case position.FieldOrdinal, position.FieldStringNumber, position.FieldFret:
 			values[i] = new(sql.NullInt64)
 		case position.FieldInterval, position.FieldNoteName, position.FieldShape, position.FieldColor, position.FieldKey:
 			values[i] = new(sql.NullString)
@@ -139,13 +137,6 @@ func (_m *Position) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Color = new(string)
 				*_m.Color = value.String
-			}
-		case position.FieldSequenceIndex:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field sequence_index", values[i])
-			} else if value.Valid {
-				_m.SequenceIndex = new(int)
-				*_m.SequenceIndex = int(value.Int64)
 			}
 		case position.FieldStringNumber:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -243,11 +234,6 @@ func (_m *Position) String() string {
 	if v := _m.Color; v != nil {
 		builder.WriteString("color=")
 		builder.WriteString(*v)
-	}
-	builder.WriteString(", ")
-	if v := _m.SequenceIndex; v != nil {
-		builder.WriteString("sequence_index=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
 	if v := _m.StringNumber; v != nil {

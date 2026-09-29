@@ -32,11 +32,11 @@ func mustInstrument(t *testing.T, family domain.InstrumentFamily) domain.Instrum
 	t.Helper()
 	switch family {
 	case domain.InstrumentFamilyFretted:
-		i, err := domain.NewInstrument("guitar", map[string]string{"en": "Guitar"}, []string{"en"}, family, intPtr(6), []string{"E", "A", "D", "G", "B", "E"}, nil)
+		i, err := domain.NewInstrument("guitar", map[string]string{"en": "Guitar"}, []string{"en"}, family, intPtr(6), []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, guitarVoice)
 		require.NoError(t, err)
 		return i
 	case domain.InstrumentFamilyKeyboard:
-		i, err := domain.NewInstrument("piano", map[string]string{"en": "Piano"}, []string{"en"}, family, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"})
+		i, err := domain.NewInstrument("piano", map[string]string{"en": "Piano"}, []string{"en"}, family, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice)
 		require.NoError(t, err)
 		return i
 	}
@@ -87,8 +87,6 @@ func TestNewDiagram_PositionFamilyInvariant(t *testing.T) {
 			positions: []domain.Position{fretted("p1", "", "A", 6, 5)}, wantField: "positions"},
 		{name: "position without a note name", family: domain.InstrumentFamilyFretted,
 			positions: []domain.Position{fretted("p1", "R", "", 6, 5)}, wantField: "positions"},
-		{name: "position with a negative sequence index", family: domain.InstrumentFamilyFretted,
-			positions: []domain.Position{{ID: "p1", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5), SequenceIndex: intPtr(-1)}}, wantField: "positions"},
 		{name: "duplicate position ids", family: domain.InstrumentFamilyFretted,
 			positions: []domain.Position{fretted("p1", "R", "A", 6, 5), fretted("p1", "b3", "C", 6, 8)}, wantField: "positions"},
 		{name: "no positions at all", family: domain.InstrumentFamilyFretted, positions: nil, wantField: "positions"},

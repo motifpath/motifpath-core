@@ -73,20 +73,6 @@ func (_c *PositionCreate) SetNillableColor(v *string) *PositionCreate {
 	return _c
 }
 
-// SetSequenceIndex sets the "sequence_index" field.
-func (_c *PositionCreate) SetSequenceIndex(v int) *PositionCreate {
-	_c.mutation.SetSequenceIndex(v)
-	return _c
-}
-
-// SetNillableSequenceIndex sets the "sequence_index" field if the given value is not nil.
-func (_c *PositionCreate) SetNillableSequenceIndex(v *int) *PositionCreate {
-	if v != nil {
-		_c.SetSequenceIndex(*v)
-	}
-	return _c
-}
-
 // SetStringNumber sets the "string_number" field.
 func (_c *PositionCreate) SetStringNumber(v int) *PositionCreate {
 	_c.mutation.SetStringNumber(v)
@@ -284,10 +270,6 @@ func (_c *PositionCreate) createSpec() (*Position, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Color(); ok {
 		_spec.SetField(position.FieldColor, field.TypeString, value)
 		_node.Color = &value
-	}
-	if value, ok := _c.mutation.SequenceIndex(); ok {
-		_spec.SetField(position.FieldSequenceIndex, field.TypeInt, value)
-		_node.SequenceIndex = &value
 	}
 	if value, ok := _c.mutation.StringNumber(); ok {
 		_spec.SetField(position.FieldStringNumber, field.TypeInt, value)

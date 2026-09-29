@@ -86,6 +86,8 @@ type Tx struct {
 	StudentPathItem *StudentPathItemClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// Voice is the client for interacting with the Voice builders.
+	Voice *VoiceClient
 
 	// lazily loaded.
 	client     *Client
@@ -254,6 +256,7 @@ func (tx *Tx) init() {
 	tx.StudentPath = NewStudentPathClient(tx.config)
 	tx.StudentPathItem = NewStudentPathItemClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.Voice = NewVoiceClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

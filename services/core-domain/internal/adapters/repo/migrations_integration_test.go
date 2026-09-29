@@ -371,3 +371,100 @@ func TestLearningPathLevelMigration(t *testing.T) {
 	assert.False(t, level.Valid, "an existing path has no level recorded")
 	assert.True(t, updatedAt.Equal(createdAt), "an existing path was last updated when it was created")
 }
+
+// TestDiagramAudioPlaybackMigration covers the platform's voices being
+// provided, every instrument getting its family's voice and octaves on its
+// tuning, and every diagram starting with no playback: its sequence indices
+// were the order the editor's positions were clicked in, not a sequence an
+// author chose, so none of them becomes playback steps.
+func TestDiagramAudioPlaybackMigration(t *testing.T) {
+	ctx := context.Background()
+	const (
+		admin  = "aaaaaaaa-0000-0000-0000-000000000001"
+		guitar = "11111111-1111-1111-1111-111111111111"
+		bass   = "11111111-1111-1111-1111-111111111112"
+		piano  = "11111111-1111-1111-1111-111111111113"
+		lick   = "22222222-2222-2222-2222-222222222221"
+		shape  = "22222222-2222-2222-2222-222222222222"
+	)
+	seed := func(t *testing.T, db *sql.DB) {
+		t.Helper()
+		mustExec(t, ctx, db, `INSERT INTO users (id, clerk_user_id, role, registered_at, locale_id, display_name)
+			SELECT '`+admin+`', 'clerk-admin', 'admin', now(), id, 'Admin' FROM languages WHERE code = 'en'`)
+		mustExec(t, ctx, db, `INSERT INTO instruments (id, names, family, string_count, tuning) VALUES
+			('`+guitar+`', '{"en": "Guitar"}', 'fretted', 6, '["E", "A", "D", "G", "B", "E"]'),
+			('`+bass+`', '{"en": "Bass"}', 'fretted', 4, '["E", "A", "D", "G"]')`)
+		mustExec(t, ctx, db, `INSERT INTO instruments (id, names, family, key_range_lowest, key_range_highest) VALUES
+			('`+piano+`', '{"en": "Piano"}', 'keyboard', 'A0', 'C8')`)
+		mustExec(t, ctx, db, `INSERT INTO diagrams (id, names, created_at, instrument_id, kind, created_by, label_display) VALUES
+			('`+lick+`', '{"en": "Lick"}', now(), '`+guitar+`', 'basic', '`+admin+`', 'interval'),
+			('`+shape+`', '{"en": "Shape"}', now(), '`+guitar+`', 'basic', '`+admin+`', 'interval')`)
+		// Every position of the lick carries a sequence index, as the diagram
+		// editor gives each one; the shape carries none.
+		mustExec(t, ctx, db, `INSERT INTO positions (id, ordinal, interval, note_name, sequence_index, string_number, fret, diagram_id) VALUES
+			('33333333-0000-0000-0000-000000000001', 0, 'R', 'A', 0, 6, 5, '`+lick+`'),
+			('33333333-0000-0000-0000-000000000002', 1, 'b3', 'C', 1, 6, 8, '`+lick+`'),
+			('33333333-0000-0000-0000-000000000003', 2, '4', 'D', 2, 5, 5, '`+lick+`'),
+			('33333333-0000-0000-0000-000000000006', 0, 'R', 'A', NULL, 6, 5, '`+shape+`')`)
+	}
+
+	t.Run("voices, default voices and octave tunings are migrated, and no diagram plays", func(t *testing.T) {
+		db, files, target := migrateUpTo(t, ctx, "_diagram_audio_playback.up.sql")
+		seed(t, db)
+
+		_, err := execMigrationFile(ctx, db, files[target])
+		require.NoError(t, err)
+
+		var voices string
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT string_agg(id || ':' || family, ',' ORDER BY id) FROM voices`).Scan(&voices))
+		assert.Equal(t, "acoustic-guitar:fretted,piano:keyboard", voices)
+		var guitarPitches, pianoPitches string
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT pitches::text FROM voices WHERE id = 'acoustic-guitar'`).Scan(&guitarPitches))
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT pitches::text FROM voices WHERE id = 'piano'`).Scan(&pianoPitches))
+		assert.JSONEq(t, `[40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 88]`, guitarPitches, "guitar is sampled every 3 semitones from MIDI 40 to 88")
+		assert.JSONEq(t, `[21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105, 108]`, pianoPitches, "piano is sampled every 3 semitones from MIDI 21 to 108")
+
+		instruments := map[string]struct{ voice, tuning string }{}
+		rows, err := db.QueryContext(ctx, `SELECT id, default_voice_id, coalesce(tuning::text, '') FROM instruments`)
+		require.NoError(t, err)
+		for rows.Next() {
+			var id, voice, tuning string
+			require.NoError(t, rows.Scan(&id, &voice, &tuning))
+			instruments[id] = struct{ voice, tuning string }{voice, tuning}
+		}
+		require.NoError(t, rows.Err())
+		assert.Equal(t, "acoustic-guitar", instruments[guitar].voice)
+		assert.JSONEq(t, `["E2", "A2", "D3", "G3", "B3", "E4"]`, instruments[guitar].tuning)
+		assert.Equal(t, "acoustic-guitar", instruments[bass].voice)
+		assert.JSONEq(t, `["E1", "A1", "D2", "G2"]`, instruments[bass].tuning)
+		assert.Equal(t, "piano", instruments[piano].voice)
+		assert.Empty(t, instruments[piano].tuning)
+
+		var sequence string
+		var tempo sql.NullInt64
+		var beats, beatValue int
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT sequence::text, tempo_bpm, time_signature_beats, time_signature_beat_value FROM diagrams WHERE id = '`+lick+`'`).Scan(&sequence, &tempo, &beats, &beatValue))
+		assert.JSONEq(t, `[]`, sequence, "sequence indices don't become playback steps")
+		assert.False(t, tempo.Valid, "a diagram without steps has no tempo")
+		assert.Equal(t, [2]int{4, 4}, [2]int{beats, beatValue})
+
+		require.NoError(t, db.QueryRowContext(ctx, `SELECT sequence::text, tempo_bpm FROM diagrams WHERE id = '`+shape+`'`).Scan(&sequence, &tempo))
+		assert.JSONEq(t, `[]`, sequence)
+		assert.False(t, tempo.Valid)
+
+		var sequenceIndexColumns int
+		require.NoError(t, db.QueryRowContext(ctx,
+			`SELECT count(*) FROM information_schema.columns WHERE table_name = 'positions' AND column_name = 'sequence_index'`).Scan(&sequenceIndexColumns))
+		assert.Zero(t, sequenceIndexColumns, "the sequence_index column should be gone")
+	})
+
+	t.Run("a tuning the migration can't place in octaves fails it", func(t *testing.T) {
+		db, files, target := migrateUpTo(t, ctx, "_diagram_audio_playback.up.sql")
+		mustExec(t, ctx, db, `INSERT INTO instruments (id, names, family, string_count, tuning) VALUES
+			('`+guitar+`', '{"en": "Open G"}', 'fretted', 6, '["D", "G", "D", "G", "B", "D"]')`)
+
+		_, err := execMigrationFile(ctx, db, files[target])
+
+		require.Error(t, err)
+	})
+}

@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 )
 
 const (
@@ -30,6 +31,16 @@ const (
 	FieldLabelDisplay = "label_display"
 	// FieldColor holds the string denoting the color field in the database.
 	FieldColor = "color"
+	// FieldMode holds the string denoting the mode field in the database.
+	FieldMode = "mode"
+	// FieldTempoBpm holds the string denoting the tempo_bpm field in the database.
+	FieldTempoBpm = "tempo_bpm"
+	// FieldTimeSignatureBeats holds the string denoting the time_signature_beats field in the database.
+	FieldTimeSignatureBeats = "time_signature_beats"
+	// FieldTimeSignatureBeatValue holds the string denoting the time_signature_beat_value field in the database.
+	FieldTimeSignatureBeatValue = "time_signature_beat_value"
+	// FieldSequence holds the string denoting the sequence field in the database.
+	FieldSequence = "sequence"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInstrument holds the string denoting the instrument edge name in mutations.
@@ -105,6 +116,11 @@ var Columns = []string{
 	FieldRootNote,
 	FieldLabelDisplay,
 	FieldColor,
+	FieldMode,
+	FieldTempoBpm,
+	FieldTimeSignatureBeats,
+	FieldTimeSignatureBeatValue,
+	FieldSequence,
 	FieldCreatedAt,
 }
 
@@ -128,6 +144,12 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultTimeSignatureBeats holds the default value on creation for the "time_signature_beats" field.
+	DefaultTimeSignatureBeats int
+	// DefaultTimeSignatureBeatValue holds the default value on creation for the "time_signature_beat_value" field.
+	DefaultTimeSignatureBeatValue int
+	// DefaultSequence holds the default value on creation for the "sequence" field.
+	DefaultSequence []schema.SequenceStep
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -184,6 +206,34 @@ func LabelDisplayValidator(ld LabelDisplay) error {
 	}
 }
 
+// Mode defines the type for the "mode" enum field.
+type Mode string
+
+// Mode values.
+const (
+	ModeMajor      Mode = "major"
+	ModeMinor      Mode = "minor"
+	ModeDorian     Mode = "dorian"
+	ModePhrygian   Mode = "phrygian"
+	ModeLydian     Mode = "lydian"
+	ModeMixolydian Mode = "mixolydian"
+	ModeLocrian    Mode = "locrian"
+)
+
+func (m Mode) String() string {
+	return string(m)
+}
+
+// ModeValidator is a validator for the "mode" field enum values. It is called by the builders before save.
+func ModeValidator(m Mode) error {
+	switch m {
+	case ModeMajor, ModeMinor, ModeDorian, ModePhrygian, ModeLydian, ModeMixolydian, ModeLocrian:
+		return nil
+	default:
+		return fmt.Errorf("diagram: invalid enum value for mode field: %q", m)
+	}
+}
+
 // OrderOption defines the ordering options for the Diagram queries.
 type OrderOption func(*sql.Selector)
 
@@ -220,6 +270,26 @@ func ByLabelDisplay(opts ...sql.OrderTermOption) OrderOption {
 // ByColor orders the results by the color field.
 func ByColor(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldColor, opts...).ToFunc()
+}
+
+// ByMode orders the results by the mode field.
+func ByMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMode, opts...).ToFunc()
+}
+
+// ByTempoBpm orders the results by the tempo_bpm field.
+func ByTempoBpm(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTempoBpm, opts...).ToFunc()
+}
+
+// ByTimeSignatureBeats orders the results by the time_signature_beats field.
+func ByTimeSignatureBeats(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimeSignatureBeats, opts...).ToFunc()
+}
+
+// ByTimeSignatureBeatValue orders the results by the time_signature_beat_value field.
+func ByTimeSignatureBeatValue(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimeSignatureBeatValue, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

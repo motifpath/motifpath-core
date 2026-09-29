@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 )
 
 // Diagram is the model entity for the Diagram schema.
@@ -34,6 +35,16 @@ type Diagram struct {
 	LabelDisplay diagram.LabelDisplay `json:"label_display,omitempty"`
 	// Color holds the value of the "color" field.
 	Color *string `json:"color,omitempty"`
+	// Mode holds the value of the "mode" field.
+	Mode *diagram.Mode `json:"mode,omitempty"`
+	// TempoBpm holds the value of the "tempo_bpm" field.
+	TempoBpm *int `json:"tempo_bpm,omitempty"`
+	// TimeSignatureBeats holds the value of the "time_signature_beats" field.
+	TimeSignatureBeats int `json:"time_signature_beats,omitempty"`
+	// TimeSignatureBeatValue holds the value of the "time_signature_beat_value" field.
+	TimeSignatureBeatValue int `json:"time_signature_beat_value,omitempty"`
+	// Sequence holds the value of the "sequence" field.
+	Sequence []schema.SequenceStep `json:"sequence,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -133,9 +144,11 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case diagram.FieldNames:
+		case diagram.FieldNames, diagram.FieldSequence:
 			values[i] = new([]byte)
-		case diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor:
+		case diagram.FieldTempoBpm, diagram.FieldTimeSignatureBeats, diagram.FieldTimeSignatureBeatValue:
+			values[i] = new(sql.NullInt64)
+		case diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor, diagram.FieldMode:
 			values[i] = new(sql.NullString)
 		case diagram.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -207,6 +220,40 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Color = new(string)
 				*_m.Color = value.String
+			}
+		case diagram.FieldMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mode", values[i])
+			} else if value.Valid {
+				_m.Mode = new(diagram.Mode)
+				*_m.Mode = diagram.Mode(value.String)
+			}
+		case diagram.FieldTempoBpm:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field tempo_bpm", values[i])
+			} else if value.Valid {
+				_m.TempoBpm = new(int)
+				*_m.TempoBpm = int(value.Int64)
+			}
+		case diagram.FieldTimeSignatureBeats:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field time_signature_beats", values[i])
+			} else if value.Valid {
+				_m.TimeSignatureBeats = int(value.Int64)
+			}
+		case diagram.FieldTimeSignatureBeatValue:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field time_signature_beat_value", values[i])
+			} else if value.Valid {
+				_m.TimeSignatureBeatValue = int(value.Int64)
+			}
+		case diagram.FieldSequence:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field sequence", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Sequence); err != nil {
+					return fmt.Errorf("unmarshal field sequence: %w", err)
+				}
 			}
 		case diagram.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -309,6 +356,25 @@ func (_m *Diagram) String() string {
 		builder.WriteString("color=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	if v := _m.Mode; v != nil {
+		builder.WriteString("mode=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.TempoBpm; v != nil {
+		builder.WriteString("tempo_bpm=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("time_signature_beats=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TimeSignatureBeats))
+	builder.WriteString(", ")
+	builder.WriteString("time_signature_beat_value=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TimeSignatureBeatValue))
+	builder.WriteString(", ")
+	builder.WriteString("sequence=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Sequence))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

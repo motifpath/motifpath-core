@@ -27,8 +27,6 @@ const (
 	FieldShape = "shape"
 	// FieldColor holds the string denoting the color field in the database.
 	FieldColor = "color"
-	// FieldSequenceIndex holds the string denoting the sequence_index field in the database.
-	FieldSequenceIndex = "sequence_index"
 	// FieldStringNumber holds the string denoting the string_number field in the database.
 	FieldStringNumber = "string_number"
 	// FieldFret holds the string denoting the fret field in the database.
@@ -61,7 +59,6 @@ var Columns = []string{
 	FieldNoteName,
 	FieldShape,
 	FieldColor,
-	FieldSequenceIndex,
 	FieldStringNumber,
 	FieldFret,
 	FieldKey,
@@ -147,11 +144,6 @@ func ByShape(opts ...sql.OrderTermOption) OrderOption {
 // ByColor orders the results by the color field.
 func ByColor(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldColor, opts...).ToFunc()
-}
-
-// BySequenceIndex orders the results by the sequence_index field.
-func BySequenceIndex(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSequenceIndex, opts...).ToFunc()
 }
 
 // ByStringNumber orders the results by the string_number field.

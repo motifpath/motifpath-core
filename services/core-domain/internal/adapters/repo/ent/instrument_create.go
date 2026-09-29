@@ -18,6 +18,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
 )
 
 // InstrumentCreate is the builder for creating a Instrument entity.
@@ -87,6 +88,12 @@ func (_c *InstrumentCreate) SetNillableKeyRangeHighest(v *string) *InstrumentCre
 	return _c
 }
 
+// SetDefaultVoiceID sets the "default_voice_id" field.
+func (_c *InstrumentCreate) SetDefaultVoiceID(v string) *InstrumentCreate {
+	_c.mutation.SetDefaultVoiceID(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *InstrumentCreate) SetID(v uuid.UUID) *InstrumentCreate {
 	_c.mutation.SetID(v)
@@ -99,6 +106,11 @@ func (_c *InstrumentCreate) SetNillableID(v *uuid.UUID) *InstrumentCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// SetDefaultVoice sets the "default_voice" edge to the Voice entity.
+func (_c *InstrumentCreate) SetDefaultVoice(v *Voice) *InstrumentCreate {
+	return _c.SetDefaultVoiceID(v.ID)
 }
 
 // AddDiagramIDs adds the "diagrams" edge to the Diagram entity by IDs.
@@ -260,6 +272,12 @@ func (_c *InstrumentCreate) check() error {
 			return &ValidationError{Name: "family", err: fmt.Errorf(`ent: validator failed for field "Instrument.family": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.DefaultVoiceID(); !ok {
+		return &ValidationError{Name: "default_voice_id", err: errors.New(`ent: missing required field "Instrument.default_voice_id"`)}
+	}
+	if len(_c.mutation.DefaultVoiceIDs()) == 0 {
+		return &ValidationError{Name: "default_voice", err: errors.New(`ent: missing required edge "Instrument.default_voice"`)}
+	}
 	return nil
 }
 
@@ -318,6 +336,23 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.KeyRangeHighest(); ok {
 		_spec.SetField(instrument.FieldKeyRangeHighest, field.TypeString, value)
 		_node.KeyRangeHighest = &value
+	}
+	if nodes := _c.mutation.DefaultVoiceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   instrument.DefaultVoiceTable,
+			Columns: []string{instrument.DefaultVoiceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(voice.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.DefaultVoiceID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.DiagramsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

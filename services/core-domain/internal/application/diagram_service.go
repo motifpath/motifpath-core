@@ -55,6 +55,23 @@ type DiagramUpdate struct {
 	RootNote     *string
 	LabelDisplay *domain.LabelDisplay
 	Color        *string
+	// Mode replaces the mode when Set; a nil Value clears it.
+	Mode Nullable[domain.DiagramMode]
+	// TempoBPM replaces the tempo when Set; a nil Value clears it, which is
+	// only valid when the resulting sequence is empty.
+	TempoBPM      Nullable[int]
+	TimeSignature *domain.TimeSignature
+	// Sequence replaces every step when non-nil — an empty, non-nil slice
+	// removes the playback; nil keeps the current steps.
+	Sequence []domain.SequenceStep
+}
+
+// Nullable is an update field with three states: left out (Set false)
+// keeps the current value, Set with a nil Value clears it, and Set with a
+// Value replaces it.
+type Nullable[T any] struct {
+	Set   bool
+	Value *T
 }
 
 // CreateDiagram creates a diagram against an existing instrument, owned by
@@ -237,11 +254,15 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	return updated, nil
 }
 
-// updatedDiagramOptions returns current's options with update's non-nil
-// root note, label display and color applied. Kind always stays current's;
-// regions are current's too, for the caller to replace.
+// updatedDiagramOptions returns current's options with update's given root
+// note, label display, color, mode, tempo, time signature and sequence
+// applied. Kind always stays current's; regions are current's too, for the
+// caller to replace.
 func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.DiagramOptions {
-	opts := domain.DiagramOptions{RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind, Regions: current.Regions}
+	opts := domain.DiagramOptions{
+		RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind, Regions: current.Regions,
+		Mode: current.Mode, TempoBPM: current.TempoBPM, TimeSignature: current.TimeSignature, Sequence: current.Sequence,
+	}
 	if update.RootNote != nil {
 		opts.RootNote = update.RootNote
 	}
@@ -250,6 +271,18 @@ func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.
 	}
 	if update.Color != nil {
 		opts.Color = update.Color
+	}
+	if update.Mode.Set {
+		opts.Mode = update.Mode.Value
+	}
+	if update.TempoBPM.Set {
+		opts.TempoBPM = update.TempoBPM.Value
+	}
+	if update.TimeSignature != nil {
+		opts.TimeSignature = *update.TimeSignature
+	}
+	if update.Sequence != nil {
+		opts.Sequence = update.Sequence
 	}
 	return opts
 }

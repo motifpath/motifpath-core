@@ -192,8 +192,20 @@ func init() {
 	courseversioncheckpoint.DefaultID = courseversioncheckpointDescID.Default.(func() uuid.UUID)
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
+	// diagramDescTimeSignatureBeats is the schema descriptor for time_signature_beats field.
+	diagramDescTimeSignatureBeats := diagramFields[10].Descriptor()
+	// diagram.DefaultTimeSignatureBeats holds the default value on creation for the time_signature_beats field.
+	diagram.DefaultTimeSignatureBeats = diagramDescTimeSignatureBeats.Default.(int)
+	// diagramDescTimeSignatureBeatValue is the schema descriptor for time_signature_beat_value field.
+	diagramDescTimeSignatureBeatValue := diagramFields[11].Descriptor()
+	// diagram.DefaultTimeSignatureBeatValue holds the default value on creation for the time_signature_beat_value field.
+	diagram.DefaultTimeSignatureBeatValue = diagramDescTimeSignatureBeatValue.Default.(int)
+	// diagramDescSequence is the schema descriptor for sequence field.
+	diagramDescSequence := diagramFields[12].Descriptor()
+	// diagram.DefaultSequence holds the default value on creation for the sequence field.
+	diagram.DefaultSequence = diagramDescSequence.Default.([]schema.SequenceStep)
 	// diagramDescCreatedAt is the schema descriptor for created_at field.
-	diagramDescCreatedAt := diagramFields[8].Descriptor()
+	diagramDescCreatedAt := diagramFields[13].Descriptor()
 	// diagram.DefaultCreatedAt holds the default value on creation for the created_at field.
 	diagram.DefaultCreatedAt = diagramDescCreatedAt.Default.(func() time.Time)
 	// diagramDescID is the schema descriptor for id field.

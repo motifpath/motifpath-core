@@ -25,20 +25,17 @@ func (s PositionShape) Valid() bool {
 }
 
 // Position is one marked location in a Diagram: a note at a physical spot on
-// the diagram's instrument. Interval, NoteName, SequenceIndex and Shape
-// apply to every instrument family. String and Fret (fretted) and Key
+// the diagram's instrument. Interval, NoteName and Shape apply to every
+// instrument family. String and Fret (fretted) and Key
 // (keyboard) are mutually exclusive: which group is populated follows the
 // parent Diagram's Instrument.Family, and a Diagram never mixes the two.
 type Position struct {
 	ID       string
 	Interval string
 	NoteName string
-	// SequenceIndex is this position's place in an authored playback
-	// sequence; nil means it is not part of any sequence.
-	SequenceIndex *int
-	String        *int
-	Fret          *int
-	Key           *string
+	String   *int
+	Fret     *int
+	Key      *string
 	// Shape is normalized to PositionShapeDot by NewDiagram when left as
 	// the zero value, so a caller that doesn't care about it may omit it.
 	Shape PositionShape
@@ -141,7 +138,18 @@ type Diagram struct {
 	Positions []Position
 	// Regions are drawn in order, later ones on top; nil when there are
 	// none.
-	Regions   []Region
+	Regions []Region
+	// Mode with RootNote names the key of the diagram's material; nil means
+	// it has no key. Never set without RootNote.
+	Mode *DiagramMode
+	// TimeSignature is the meter Sequence is written in.
+	TimeSignature TimeSignature
+	// Sequence is the diagram's playback, in order; nil means it doesn't
+	// play.
+	Sequence []SequenceStep
+	// TempoBPM is the default tempo Sequence plays at; nil exactly when
+	// Sequence is empty.
+	TempoBPM  *int
 	Skills    []Skill
 	Concepts  []Concept
 	CreatedAt time.Time
@@ -202,6 +210,16 @@ type DiagramOptions struct {
 	// Regions are the diagram's highlighted areas, in drawing order; nil
 	// means none.
 	Regions []Region
+	// Mode names the key together with RootNote; nil means no key.
+	Mode *DiagramMode
+	// TimeSignature defaults to DefaultTimeSignature when left as the zero
+	// value.
+	TimeSignature TimeSignature
+	// Sequence is the playback steps, in order; nil means no playback.
+	Sequence []SequenceStep
+	// TempoBPM is required when Sequence has steps and must be nil when it
+	// has none.
+	TempoBPM *int
 }
 
 // The longest each piece of diagram text may be, in characters, in any one
@@ -234,9 +252,11 @@ func diagramNames(names map[string]string, languages []string, kind DiagramKind)
 // opts.Color, when set, must be #RRGGBB. Every other piece of text — a
 // position's CustomLabel and Note, a region's Description — must be written
 // in exactly the languages names is, so the diagram reads completely in each
-// of them. Regions follow the instrument's family like positions do. Whether skillIDs/conceptIDs
-// reference existing rows needs a repository round trip, so that stays an
-// application-layer concern.
+// of them. Regions follow the instrument's family like positions do. A mode
+// needs a root note; every sequence step may only name positions of this
+// diagram, and a tempo is given exactly when there are steps. Whether
+// skillIDs/conceptIDs reference existing rows needs a repository round trip,
+// so that stays an application-layer concern.
 func NewDiagram(id, createdBy string, instrument Instrument, names map[string]string, languages []string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
 	rootNote, labelDisplay, color, kind := opts.RootNote, opts.LabelDisplay, opts.Color, opts.Kind
 	if createdBy == "" {
@@ -269,13 +289,45 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 	if err != nil {
 		return Diagram{}, err
 	}
-	if len(skillIDs) == 0 {
-		return Diagram{}, NewValidationError("skill_ids", "must contain at least one skill")
+	timeSignature, sequence, err := keyAndPlayback(opts, positions)
+	if err != nil {
+		return Diagram{}, err
 	}
-	if len(conceptIDs) == 0 {
-		return Diagram{}, NewValidationError("concept_ids", "must contain at least one concept")
+	skills, concepts, err := diagramClassification(skillIDs, conceptIDs)
+	if err != nil {
+		return Diagram{}, err
 	}
 
+	return Diagram{
+		ID:            id,
+		InstrumentID:  instrument.ID,
+		Names:         localizedNames,
+		Kind:          kind,
+		CreatedBy:     createdBy,
+		RootNote:      rootNote,
+		LabelDisplay:  labelDisplay,
+		Color:         color,
+		Positions:     positions,
+		Regions:       regions,
+		Mode:          opts.Mode,
+		TimeSignature: timeSignature,
+		Sequence:      sequence,
+		TempoBPM:      opts.TempoBPM,
+		Skills:        skills,
+		Concepts:      concepts,
+		CreatedAt:     now,
+	}, nil
+}
+
+// diagramClassification is a diagram's skills and concepts, carrying only
+// their ids, or an error when it has none of either.
+func diagramClassification(skillIDs, conceptIDs []string) ([]Skill, []Concept, error) {
+	if len(skillIDs) == 0 {
+		return nil, nil, NewValidationError("skill_ids", "must contain at least one skill")
+	}
+	if len(conceptIDs) == 0 {
+		return nil, nil, NewValidationError("concept_ids", "must contain at least one concept")
+	}
 	skills := make([]Skill, len(skillIDs))
 	for i, sid := range skillIDs {
 		skills[i] = Skill{ID: sid}
@@ -284,22 +336,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 	for i, cid := range conceptIDs {
 		concepts[i] = Concept{ID: cid}
 	}
-
-	return Diagram{
-		ID:           id,
-		InstrumentID: instrument.ID,
-		Names:        localizedNames,
-		Kind:         kind,
-		CreatedBy:    createdBy,
-		RootNote:     rootNote,
-		LabelDisplay: labelDisplay,
-		Color:        color,
-		Positions:    positions,
-		Regions:      regions,
-		Skills:       skills,
-		Concepts:     concepts,
-		CreatedAt:    now,
-	}, nil
+	return skills, concepts, nil
 }
 
 // normalizePositionShapes returns a copy of positions with PositionShapeDot
@@ -347,9 +384,6 @@ func positionProblem(instrument Instrument, p Position) string {
 	}
 	if !noteNamePattern.MatchString(p.NoteName) {
 		return fmt.Sprintf("has note_name %q, which is not a letter name (A-G with up to two sharps or flats)", p.NoteName)
-	}
-	if p.SequenceIndex != nil && *p.SequenceIndex < 0 {
-		return "has a negative sequence_index"
 	}
 	if !p.Shape.Valid() {
 		return "has an unrecognised shape"
@@ -543,8 +577,6 @@ func keyPitch(key string) (int, bool) {
 	if match == nil {
 		return 0, false
 	}
-	letterSemitones := map[string]int{"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
-	accidentalSemitones := map[string]int{"": 0, "#": 1, "##": 2, "b": -1, "bb": -2}
 	octave := int(match[3][0] - '0')
 	return octave*12 + letterSemitones[match[1]] + accidentalSemitones[match[2]], true
 }

@@ -116,3 +116,6 @@ type StudentPathItem func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
+
+// Voice is the predicate function for voice builders.
+type Voice func(*sql.Selector)

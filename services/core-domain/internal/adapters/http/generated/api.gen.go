@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/nullable"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -201,31 +202,42 @@ const (
 	DiagramLabelDisplayNote     DiagramLabelDisplay = "note"
 )
 
+// Defines values for DiagramMode.
+const (
+	Dorian     DiagramMode = "dorian"
+	Locrian    DiagramMode = "locrian"
+	Lydian     DiagramMode = "lydian"
+	Major      DiagramMode = "major"
+	Minor      DiagramMode = "minor"
+	Mixolydian DiagramMode = "mixolydian"
+	Phrygian   DiagramMode = "phrygian"
+)
+
 // Defines values for DiagramPositionInterval.
 const (
-	B13    DiagramPositionInterval = "b13"
-	B2     DiagramPositionInterval = "b2"
-	B3     DiagramPositionInterval = "b3"
-	B5     DiagramPositionInterval = "b5"
-	B6     DiagramPositionInterval = "b6"
-	B7     DiagramPositionInterval = "b7"
-	B9     DiagramPositionInterval = "b9"
-	Bb7    DiagramPositionInterval = "bb7"
-	Hash11 DiagramPositionInterval = "#11"
-	Hash2  DiagramPositionInterval = "#2"
-	Hash4  DiagramPositionInterval = "#4"
-	Hash5  DiagramPositionInterval = "#5"
-	Hash9  DiagramPositionInterval = "#9"
-	N11    DiagramPositionInterval = "11"
-	N13    DiagramPositionInterval = "13"
-	N2     DiagramPositionInterval = "2"
-	N3     DiagramPositionInterval = "3"
-	N4     DiagramPositionInterval = "4"
-	N5     DiagramPositionInterval = "5"
-	N6     DiagramPositionInterval = "6"
-	N7     DiagramPositionInterval = "7"
-	N9     DiagramPositionInterval = "9"
-	R      DiagramPositionInterval = "R"
+	DiagramPositionIntervalB13    DiagramPositionInterval = "b13"
+	DiagramPositionIntervalB2     DiagramPositionInterval = "b2"
+	DiagramPositionIntervalB3     DiagramPositionInterval = "b3"
+	DiagramPositionIntervalB5     DiagramPositionInterval = "b5"
+	DiagramPositionIntervalB6     DiagramPositionInterval = "b6"
+	DiagramPositionIntervalB7     DiagramPositionInterval = "b7"
+	DiagramPositionIntervalB9     DiagramPositionInterval = "b9"
+	DiagramPositionIntervalBb7    DiagramPositionInterval = "bb7"
+	DiagramPositionIntervalHash11 DiagramPositionInterval = "#11"
+	DiagramPositionIntervalHash2  DiagramPositionInterval = "#2"
+	DiagramPositionIntervalHash4  DiagramPositionInterval = "#4"
+	DiagramPositionIntervalHash5  DiagramPositionInterval = "#5"
+	DiagramPositionIntervalHash9  DiagramPositionInterval = "#9"
+	DiagramPositionIntervalN11    DiagramPositionInterval = "11"
+	DiagramPositionIntervalN13    DiagramPositionInterval = "13"
+	DiagramPositionIntervalN2     DiagramPositionInterval = "2"
+	DiagramPositionIntervalN3     DiagramPositionInterval = "3"
+	DiagramPositionIntervalN4     DiagramPositionInterval = "4"
+	DiagramPositionIntervalN5     DiagramPositionInterval = "5"
+	DiagramPositionIntervalN6     DiagramPositionInterval = "6"
+	DiagramPositionIntervalN7     DiagramPositionInterval = "7"
+	DiagramPositionIntervalN9     DiagramPositionInterval = "9"
+	DiagramPositionIntervalR      DiagramPositionInterval = "R"
 )
 
 // Defines values for DiagramPositionShape.
@@ -363,6 +375,13 @@ const (
 	ReplaceLearningPathRequestLevelIntermediate      ReplaceLearningPathRequestLevel = "intermediate"
 )
 
+// Defines values for SequenceStepStrum.
+const (
+	SequenceStepStrumDown SequenceStepStrum = "down"
+	SequenceStepStrumNone SequenceStepStrum = "none"
+	SequenceStepStrumUp   SequenceStepStrum = "up"
+)
+
 // Defines values for StudentPathItemContentType.
 const (
 	StudentPathItemContentTypeArticle StudentPathItemContentType = "article"
@@ -377,11 +396,21 @@ const (
 	StudentPathItemStatusNotStarted StudentPathItemStatus = "not_started"
 )
 
+// Defines values for TimeSignatureBeatValue.
+const (
+	TimeSignatureBeatValueN1  TimeSignatureBeatValue = 1
+	TimeSignatureBeatValueN16 TimeSignatureBeatValue = 16
+	TimeSignatureBeatValueN2  TimeSignatureBeatValue = 2
+	TimeSignatureBeatValueN32 TimeSignatureBeatValue = 32
+	TimeSignatureBeatValueN4  TimeSignatureBeatValue = 4
+	TimeSignatureBeatValueN8  TimeSignatureBeatValue = 8
+)
+
 // Defines values for UpdateDiagramRequestLabelDisplay.
 const (
-	UpdateDiagramRequestLabelDisplayHidden   UpdateDiagramRequestLabelDisplay = "hidden"
-	UpdateDiagramRequestLabelDisplayInterval UpdateDiagramRequestLabelDisplay = "interval"
-	UpdateDiagramRequestLabelDisplayNote     UpdateDiagramRequestLabelDisplay = "note"
+	Hidden   UpdateDiagramRequestLabelDisplay = "hidden"
+	Interval UpdateDiagramRequestLabelDisplay = "interval"
+	Note     UpdateDiagramRequestLabelDisplay = "note"
 )
 
 // Defines values for UpdateExpandedContentRequestContentType.
@@ -397,6 +426,12 @@ const (
 	UserProfileRoleAdmin   UserProfileRole = "admin"
 	UserProfileRoleStudent UserProfileRole = "student"
 	UserProfileRoleTeacher UserProfileRole = "teacher"
+)
+
+// Defines values for VoiceFamily.
+const (
+	Fretted  VoiceFamily = "fretted"
+	Keyboard VoiceFamily = "keyboard"
 )
 
 // Defines values for ListCatalogCoursesParamsLevels.
@@ -1156,7 +1191,8 @@ type CreateCourseRequestLevel string
 // CreateDiagramRequest Payload for creating a new diagram. Every position's string/fret vs.
 // key, and every region's coordinates, must match the referenced
 // instrument's family — the API rejects a request that mixes shapes or
-// supplies the wrong shape for the instrument. Every per-language text
+// supplies the wrong shape for the instrument. Every sequence step may
+// only name positions of this request. Every per-language text
 // (positions' custom_label and note, regions' description) must be
 // keyed by exactly the languages of names.
 type CreateDiagramRequest struct {
@@ -1186,6 +1222,10 @@ type CreateDiagramRequest struct {
 	// Omitted defaults to interval.
 	LabelDisplay *CreateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
 
+	// Mode The mode of the diagram's key. Requires root_note. Null (or
+	// omitted) records no key.
+	Mode *DiagramMode `json:"mode"`
+
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
 	// always words in some language. Clients display the name for the
@@ -1205,6 +1245,24 @@ type CreateDiagramRequest struct {
 	// RootNote The root note this diagram is authored against (e.g. "A"). Null
 	// (or omitted) leaves it unrecorded.
 	RootNote *string `json:"root_note"`
+
+	// Sequence The diagram's playback steps, in order. Every position_id a step
+	// names must be the position_id of one of this request's
+	// positions, so a position that plays must be given its
+	// position_id by the client. Omitted means no playback.
+	Sequence *[]SequenceStep `json:"sequence,omitempty"`
+
+	// TempoBpm The sequence's default tempo in beats per minute. Required when
+	// sequence is non-empty; must be null or omitted when it is empty.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+	// and a beat_value of 4 or more, the meter is compound and the pulse
+	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+	TimeSignature *TimeSignature `json:"time_signature,omitempty"`
 }
 
 // CreateDiagramRequestKind Whether the new diagram is a curated basic template or the
@@ -1385,6 +1443,10 @@ type CreateExpandedContentRequestContentType string
 // changing family or string/key shape after Diagrams exist against it
 // is a deliberately open question.
 type CreateInstrumentRequest struct {
+	// DefaultVoiceId The Voice that plays this instrument's diagrams by default. Must
+	// be an existing voice of the same family.
+	DefaultVoiceId string `json:"default_voice_id"`
+
 	// Family Which coordinate shape Diagrams against this instrument will use.
 	Family CreateInstrumentRequestFamily `json:"family"`
 
@@ -1406,9 +1468,11 @@ type CreateInstrumentRequest struct {
 	// StringCount Required when family is fretted; must be absent when family is keyboard.
 	StringCount *int `json:"string_count,omitempty"`
 
-	// Tuning Required when family is fretted, with length equal to
-	// string_count; must be absent when family is keyboard.
-	Tuning *[]string `json:"tuning,omitempty"`
+	// Tuning Open-string pitch per string, with its octave, lowest string
+	// first (e.g. ["E2", "A2", "D3", "G3", "B3", "E4"]). Required when
+	// family is fretted, with length equal to string_count; must be
+	// absent when family is keyboard.
+	Tuning *[]Pitch `json:"tuning,omitempty"`
 }
 
 // CreateInstrumentRequestFamily Which coordinate shape Diagrams against this instrument will use.
@@ -1545,6 +1609,15 @@ type Diagram struct {
 	// the keys of names, sorted.
 	Languages []string `json:"languages"`
 
+	// Mode The mode of the key this diagram's material belongs to — with
+	// root_note it names the key (A + minor is A minor). It describes
+	// the key, not the exact scale: an A minor pentatonic box is
+	// minor. Null means the diagram has no key (e.g. a chromatic run
+	// or a lone chord shape). Never null unless root_note is also
+	// recorded. A key signature is derived from root_note and mode;
+	// it is never stored.
+	Mode *DiagramMode `json:"mode"`
+
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
 	// always words in some language. Clients display the name for the
@@ -1567,6 +1640,25 @@ type Diagram struct {
 	// to the root of the diagram it came from. Null for a diagram with
 	// no recorded root (e.g. created before this field existed).
 	RootNote *string `json:"root_note"`
+
+	// Sequence The diagram's playback, as an ordered list of steps: which
+	// positions sound, together or in turn, and for how long. A
+	// position may sound in any number of steps. Empty means the
+	// diagram has no playback.
+	Sequence []SequenceStep `json:"sequence"`
+
+	// TempoBpm The default tempo the sequence plays at, in beats per minute,
+	// where one beat is the time signature's pulse. Null exactly when
+	// sequence is empty.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+	// and a beat_value of 4 or more, the meter is compound and the pulse
+	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+	TimeSignature TimeSignature `json:"time_signature"`
 }
 
 // DiagramKind basic diagrams are curated templates: every teacher can find and
@@ -1609,9 +1701,14 @@ type DiagramClassificationInput struct {
 	SkillIds []openapi_types.UUID `json:"skill_ids"`
 }
 
+// DiagramMode The mode of a key. With a root note it names the key and determines
+// its key signature: the signature of the major key the mode belongs
+// to (A minor and D dorian both have C major's signature).
+type DiagramMode string
+
 // DiagramPosition One marked location in a Diagram — a note the diagram shows, at a
-// specific physical location on its instrument. interval, note_name,
-// and sequence_index are shared by every instrument family; string/
+// specific physical location on its instrument. interval and
+// note_name are shared by every instrument family; string/
 // fret vs. key depend on the parent Diagram's Instrument.family and
 // are mutually exclusive, mirroring how Option's per-type fields
 // (region, image_url, audio_url) already work in this spec.
@@ -1668,12 +1765,6 @@ type DiagramPosition struct {
 	// present in a response; optional in a create/update request —
 	// omitted values are assigned by the server.
 	PositionId *openapi_types.UUID `json:"position_id,omitempty"`
-
-	// SequenceIndex This position's order in an authored playback sequence (e.g. a
-	// scale run). Null means this position is not part of any defined
-	// sequence — playback (see DiagramRef) skips it regardless of
-	// playback config.
-	SequenceIndex *int `json:"sequence_index"`
 
 	// Shape Which marker shape this position renders as (standard fretboard-
 	// diagram terminology — a round marker is a "dot", not a
@@ -1773,15 +1864,29 @@ type DiagramRef struct {
 		Subset *[]string `json:"subset"`
 	} `json:"layers"`
 
-	// Playback Sequenced playback config. Only affects positions with a
-	// non-null sequence_index; null means this usage does not play
-	// back.
+	// Playback How this usage plays the diagram's sequence. Null means this
+	// usage offers no Play control. A diagram with an empty sequence
+	// never plays, whatever this says. Positions this usage hides
+	// still sound when played, but are never drawn. Ignored for an
+	// entry of a DiagramStackRef — a stack doesn't play.
 	Playback *struct {
-		// Direction Order to step through sequence_index values in.
-		Direction DiagramRefPlaybackDirection `json:"direction"`
+		// Direction as_authored plays the steps in order; reversed plays them
+		// last to first, each step keeping its own value and strum.
+		Direction *DiagramRefPlaybackDirection `json:"direction,omitempty"`
 
-		// StepMs Milliseconds between each position during playback.
-		StepMs int `json:"step_ms"`
+		// Loop Whether playback starts over after the last step.
+		Loop *bool `json:"loop,omitempty"`
+
+		// TempoBpm Overrides the diagram's tempo for this usage. Null (or
+		// omitted) uses the diagram's own tempo. A student can still
+		// change the tempo while playing; that choice is never saved.
+		TempoBpm *int `json:"tempo_bpm"`
+
+		// VoiceId Overrides the instrument's default voice for this usage.
+		// Must be an existing voice of the diagram's instrument
+		// family. Null (or omitted) uses the instrument's default
+		// voice.
+		VoiceId *string `json:"voice_id"`
 	} `json:"playback"`
 
 	// RootOverride Transposes the diagram to this root note (e.g. "C"). Null uses
@@ -1808,7 +1913,8 @@ type DiagramRef struct {
 // label_display.
 type DiagramRefLayersLabel string
 
-// DiagramRefPlaybackDirection Order to step through sequence_index values in.
+// DiagramRefPlaybackDirection as_authored plays the steps in order; reversed plays them
+// last to first, each step keeping its own value and strum.
 type DiagramRefPlaybackDirection string
 
 // DiagramRegion A highlighted area of a Diagram, drawn as a translucent band behind
@@ -2060,6 +2166,11 @@ type HealthStatusStatus string
 // coordinate shape is a new family value plus new coordinate fields,
 // not a breaking change to existing instruments or diagrams.
 type Instrument struct {
+	// DefaultVoiceId The Voice (sampled sound) that plays this instrument's diagrams
+	// unless a usage chooses another. Always a voice of the same
+	// family as this instrument.
+	DefaultVoiceId string `json:"default_voice_id"`
+
 	// Family Which coordinate shape Diagrams authored against this
 	// instrument use. fretted diagrams populate
 	// positions[].string/positions[].fret; keyboard diagrams populate
@@ -2093,11 +2204,13 @@ type Instrument struct {
 	// absent when family is keyboard.
 	StringCount *int `json:"string_count,omitempty"`
 
-	// Tuning Open-string note name per string, lowest string first (e.g.
-	// ["E", "A", "D", "G", "B", "E"] for standard guitar tuning).
-	// Present only when family is fretted, with length equal to
-	// string_count; absent when family is keyboard.
-	Tuning *[]string `json:"tuning,omitempty"`
+	// Tuning Open-string pitch per string, with its octave, lowest string
+	// first (e.g. ["E2", "A2", "D3", "G3", "B3", "E4"] for standard
+	// guitar tuning). A fretted position sounds its string's open
+	// pitch raised by its fret number in semitones (string 1 is the
+	// last entry). Present only when family is fretted, with length
+	// equal to string_count; absent when family is keyboard.
+	Tuning *[]Pitch `json:"tuning,omitempty"`
 }
 
 // InstrumentFamily Which coordinate shape Diagrams authored against this
@@ -2228,6 +2341,18 @@ type MediaUploadUrl struct {
 type NotFoundError struct {
 	// Message Human-readable description of what was not found.
 	Message string `json:"message"`
+}
+
+// NoteValue A length as a fraction of a whole note: 1/4 is a quarter note, 3/8 a
+// dotted quarter, 1/16 a sixteenth. Tuplets are plain fractions too: n
+// notes in the time of m notes of 1/d are each m/(n×d), so an
+// eighth-note triplet is 1/12 and a sixteenth-note sextuplet 1/24.
+type NoteValue struct {
+	// Den Denominator of the fraction.
+	Den int `json:"den"`
+
+	// Num Numerator of the fraction.
+	Num int `json:"num"`
 }
 
 // Option One selectable answer choice within an exercise. An exercise's
@@ -2412,6 +2537,10 @@ type PagedLearningPaths struct {
 	// Total Number of items matching the filters across all pages.
 	Total int `json:"total"`
 }
+
+// Pitch A pitch in scientific pitch notation: a note name with its octave,
+// where C4 is middle C (e.g. "E2", "F#3", "Bb4").
+type Pitch = string
 
 // PracticeSession A generated, skill-targeted set of exercises for self-directed
 // practice, returned by GET /practice-sessions. Not a stored resource —
@@ -2635,6 +2764,36 @@ type ReplaceLearningPathRequest struct {
 // ReplaceLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 type ReplaceLearningPathRequestLevel string
 
+// SequenceStep One step of a diagram's playback. Its positions start together (or
+// strummed), sound for the step's value, and the next step starts
+// when this one ends. A step with no positions is a rest.
+type SequenceStep struct {
+	// PositionIds The positions that sound in this step, each a position of the
+	// diagram and each at most once per step. Empty makes the step a
+	// rest.
+	PositionIds []openapi_types.UUID `json:"position_ids"`
+
+	// Strum How a step's positions start: none starts them together; down
+	// starts the lowest pitch first and up the highest first, a few
+	// milliseconds apart, as a pick crossing the strings. The first
+	// note starts on the beat. Has no effect on a step with fewer than
+	// two positions.
+	Strum *SequenceStepStrum `json:"strum,omitempty"`
+
+	// Value A length as a fraction of a whole note: 1/4 is a quarter note, 3/8 a
+	// dotted quarter, 1/16 a sixteenth. Tuplets are plain fractions too: n
+	// notes in the time of m notes of 1/d are each m/(n×d), so an
+	// eighth-note triplet is 1/12 and a sixteenth-note sextuplet 1/24.
+	Value NoteValue `json:"value"`
+}
+
+// SequenceStepStrum How a step's positions start: none starts them together; down
+// starts the lowest pitch first and up the highest first, a few
+// milliseconds apart, as a pick crossing the strings. The first
+// note starts on the beat. Has no effect on a step with fewer than
+// two positions.
+type SequenceStepStrum string
+
 // SetCurrentPathRequest Payload for switching the caller's current course or path. Exactly one of course_enrollment_id or student_path_id must be given.
 type SetCurrentPathRequest struct {
 	// CourseEnrollmentId An active CourseEnrollment already belonging to the caller, to make current.
@@ -2768,6 +2927,23 @@ type StudentPathView struct {
 	Title string `json:"title"`
 }
 
+// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+// and a beat_value of 4 or more, the meter is compound and the pulse
+// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+type TimeSignature struct {
+	// BeatValue The lower number — the note value of one written beat.
+	BeatValue TimeSignatureBeatValue `json:"beat_value"`
+
+	// Beats The upper number — beats per bar.
+	Beats int `json:"beats"`
+}
+
+// TimeSignatureBeatValue The lower number — the note value of one written beat.
+type TimeSignatureBeatValue int
+
 // UnauthorizedError Returned when the Bearer token is missing or invalid.
 type UnauthorizedError struct {
 	// Message Human-readable reason for the rejection.
@@ -2857,7 +3033,12 @@ type UpdateContentNodeRequest struct {
 }
 
 // UpdateDiagramRequest Payload for replacing an existing diagram's names, positions,
-// regions, classification, root_note, label_display, or color. Every
+// regions, classification, root_note, mode, label_display, color,
+// tempo_bpm, time_signature, or sequence. The rules of a diagram are
+// checked on the result of the update: every sequence step must still
+// name only positions of the diagram (a position that plays can't be
+// removed without also resending the sequence), a mode needs a root
+// note, and tempo_bpm is set exactly when the sequence is non-empty. Every
 // per-language text on the diagram — names, positions' custom_label
 // and note, regions' description — must cover exactly the same
 // languages once the update is applied. instrument_id is not
@@ -2887,6 +3068,10 @@ type UpdateDiagramRequest struct {
 	// unchanged.
 	LabelDisplay *UpdateDiagramRequestLabelDisplay `json:"label_display,omitempty"`
 
+	// Mode The mode of the diagram's key, replacing the current value. Null
+	// clears it. Omitted leaves it unchanged.
+	Mode nullable.Nullable[DiagramMode] `json:"mode"`
+
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
 	// always words in some language. Clients display the name for the
@@ -2908,6 +3093,24 @@ type UpdateDiagramRequest struct {
 	// unchanged; there is currently no way to clear an already-set
 	// root note back to unrecorded via this request.
 	RootNote *string `json:"root_note,omitempty"`
+
+	// Sequence The diagram's full list of playback steps, replacing the current
+	// one; an empty list removes the playback. Omitted leaves the
+	// sequence unchanged.
+	Sequence *[]SequenceStep `json:"sequence,omitempty"`
+
+	// TempoBpm The sequence's default tempo, replacing the current value. Null
+	// clears it, which is only valid when the resulting sequence is
+	// empty. Omitted leaves it unchanged.
+	TempoBpm nullable.Nullable[int] `json:"tempo_bpm"`
+
+	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+	// and a beat_value of 4 or more, the meter is compound and the pulse
+	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+	TimeSignature *TimeSignature `json:"time_signature,omitempty"`
 }
 
 // UpdateDiagramRequestLabelDisplay Which of a position's interval or note_name its marker shows by
@@ -3052,8 +3255,14 @@ type UpdateExpandedContentRequest struct {
 // requires diagram_ref or diagram_stack_ref instead.
 type UpdateExpandedContentRequestContentType string
 
-// UpdateInstrumentRequest Payload for replacing an instrument's names.
+// UpdateInstrumentRequest Payload for replacing an instrument's names and, optionally, its
+// default voice.
 type UpdateInstrumentRequest struct {
+	// DefaultVoiceId The voice that plays this instrument's diagrams by default,
+	// replacing the current one. Must be an existing voice of the
+	// instrument's family. Omitted leaves it unchanged.
+	DefaultVoiceId *string `json:"default_voice_id,omitempty"`
+
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
 	// always words in some language. Clients display the name for the
@@ -3131,6 +3340,47 @@ type ValidationError struct {
 
 	// Message Human-readable summary of the validation failure.
 	Message string `json:"message"`
+}
+
+// Voice A sampled sound (timbre) that diagrams can be played with, e.g.
+// acoustic guitar or piano. Voices are provided by the platform; there
+// is no endpoint to create or change one. A voice plays diagrams of
+// instruments of its family only.
+type Voice struct {
+	// Attribution The credit the samples' license requires, shown on the
+	// platform's credits page.
+	Attribution string `json:"attribution"`
+
+	// Family The instrument family whose diagrams this voice can play.
+	Family VoiceFamily `json:"family"`
+
+	// Languages The Language.code of every language this voice has a name in — the keys of names, sorted.
+	Languages []string `json:"languages"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// Samples The voice's recordings, in ascending pitch. A note is played from
+	// the recording nearest in pitch, re-pitched to match.
+	Samples []VoiceSample `json:"samples"`
+
+	// VoiceId Stable identifier for this voice (e.g. "acoustic-guitar").
+	VoiceId string `json:"voice_id"`
+}
+
+// VoiceFamily The instrument family whose diagrams this voice can play.
+type VoiceFamily string
+
+// VoiceSample One recording of a voice, at one pitch.
+type VoiceSample struct {
+	// Pitch The recorded pitch as a MIDI note number (60 is middle C).
+	Pitch int `json:"pitch"`
+
+	// Url Where the recording can be downloaded. Immutable — the file at this URL never changes.
+	Url string `json:"url"`
 }
 
 // Limit defines model for Limit.
@@ -3589,7 +3839,7 @@ type ServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(w http.ResponseWriter, r *http.Request)
-	// Replace an instrument's names
+	// Replace an instrument's names and default voice
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID)
 	// List learning paths for authoring
@@ -3655,6 +3905,9 @@ type ServerInterface interface {
 	// Set the authenticated user's locale preference
 	// (PATCH /users/me)
 	UpdateMyLocale(w http.ResponseWriter, r *http.Request)
+	// List the voices diagrams can be played with
+	// (GET /voices)
+	ListVoices(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -3937,7 +4190,7 @@ func (_ Unimplemented) CreateInstrument(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Replace an instrument's names
+// Replace an instrument's names and default voice
 // (PATCH /instruments/{instrument_id})
 func (_ Unimplemented) UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -4066,6 +4319,12 @@ func (_ Unimplemented) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 // Set the authenticated user's locale preference
 // (PATCH /users/me)
 func (_ Unimplemented) UpdateMyLocale(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the voices diagrams can be played with
+// (GET /voices)
+func (_ Unimplemented) ListVoices(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -6355,6 +6614,26 @@ func (siw *ServerInterfaceWrapper) UpdateMyLocale(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// ListVoices operation middleware
+func (siw *ServerInterfaceWrapper) ListVoices(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListVoices(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -6671,6 +6950,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/users/me", wrapper.UpdateMyLocale)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/voices", wrapper.ListVoices)
 	})
 
 	return r
@@ -9541,6 +9823,40 @@ func (response UpdateMyLocale404JSONResponse) VisitUpdateMyLocaleResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListVoicesRequestObject struct {
+}
+
+type ListVoicesResponseObject interface {
+	VisitListVoicesResponse(w http.ResponseWriter) error
+}
+
+type ListVoices200JSONResponse []Voice
+
+func (response ListVoices200JSONResponse) VisitListVoicesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListVoices400JSONResponse ValidationError
+
+func (response ListVoices400JSONResponse) VisitListVoicesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListVoices401JSONResponse UnauthorizedError
+
+func (response ListVoices401JSONResponse) VisitListVoicesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Browse the published course catalog
@@ -9681,7 +9997,7 @@ type StrictServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(ctx context.Context, request CreateInstrumentRequestObject) (CreateInstrumentResponseObject, error)
-	// Replace an instrument's names
+	// Replace an instrument's names and default voice
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(ctx context.Context, request UpdateInstrumentRequestObject) (UpdateInstrumentResponseObject, error)
 	// List learning paths for authoring
@@ -9747,6 +10063,9 @@ type StrictServerInterface interface {
 	// Set the authenticated user's locale preference
 	// (PATCH /users/me)
 	UpdateMyLocale(ctx context.Context, request UpdateMyLocaleRequestObject) (UpdateMyLocaleResponseObject, error)
+	// List the voices diagrams can be played with
+	// (GET /voices)
+	ListVoices(ctx context.Context, request ListVoicesRequestObject) (ListVoicesResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -11667,6 +11986,30 @@ func (sh *strictHandler) UpdateMyLocale(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateMyLocaleResponseObject); ok {
 		if err := validResponse.VisitUpdateMyLocaleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListVoices operation middleware
+func (sh *strictHandler) ListVoices(w http.ResponseWriter, r *http.Request) {
+	var request ListVoicesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListVoices(ctx, request.(ListVoicesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListVoices")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListVoicesResponseObject); ok {
+		if err := validResponse.VisitListVoicesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

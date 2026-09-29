@@ -188,6 +188,7 @@ func wireServices(res resources) (services, seedDeps) {
 	conceptRepo := repo.NewEntConceptRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
+	voiceRepo := repo.NewEntVoiceRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
@@ -203,16 +204,16 @@ func wireServices(res resources) (services, seedDeps) {
 
 	svc := services{
 		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
-		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, newID, now),
+		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now),
 		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now),
 		studentPath: studentPathService,
 		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
-		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, newID, now, rand.Shuffle),
+		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now, rand.Shuffle),
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
-		instrument:  application.NewInstrumentService(instrumentRepo, languageRepo, newID),
+		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now),
 	}
 

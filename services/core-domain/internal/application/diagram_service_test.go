@@ -23,8 +23,8 @@ type diagramFixture struct {
 func newDiagramFixture() diagramFixture {
 	six := 6
 	instruments := newFakeInstrumentRepository()
-	instruments.put(domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E", "A", "D", "G", "B", "E"}})
-	instruments.put(domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}})
+	instruments.put(domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: guitarTuning, DefaultVoiceID: "acoustic-guitar"})
+	instruments.put(domain.Instrument{ID: "piano", Names: domain.LocalizedText{"en": "Piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: "piano"})
 	diagrams := newFakeDiagramRepository()
 	users := newFakeUserRepository()
 	for _, u := range []domain.User{
@@ -616,11 +616,11 @@ func TestDiagramService_ListDiagramCreators(t *testing.T) {
 	admin, bob, carol := creator(adminCaller(), "Ana Admin"), creator(teacherCaller(), "Bob Ferreira"), creator(otherTeacherCaller(), "Carol Souza")
 
 	tests := []struct {
-		name      string
-		caller    domain.User
+		name          string
+		caller        domain.User
 		teacherHasOwn bool
-		query     string
-		want      []application.Creator
+		query         string
+		want          []application.Creator
 	}{
 		{name: "a teacher gets the basic diagrams' creators and themselves", caller: teacherCaller(), teacherHasOwn: true, want: []application.Creator{admin, bob}},
 		{name: "a teacher without a custom diagram of their own is not listed", caller: teacherCaller(), want: []application.Creator{admin}},
@@ -827,5 +827,124 @@ func TestDiagramService_Annotations(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
 		assert.Equal(t, "regions", valErr.Fields[0].Field)
+	})
+}
+
+func TestDiagramService_Playback(t *testing.T) {
+	ctx := context.Background()
+	eighth := domain.NoteValue{Num: 1, Den: 8}
+	minor := domain.DiagramModeMinor
+	positionWithID := func(id string, str, fret int) domain.Position {
+		p := frettedPos(str, fret)
+		p.ID = id
+		return p
+	}
+	lick := []domain.SequenceStep{
+		{PositionIDs: []string{"p1"}, Value: eighth},
+		{PositionIDs: []string{"p1", "p2"}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumDown},
+	}
+	create := func(t *testing.T, f diagramFixture) domain.Diagram {
+		t.Helper()
+		root, tempo := "A", 90
+		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Lick"), []domain.Position{positionWithID("p1", 6, 5), positionWithID("p2", 6, 8)}, []string{"skill-1"}, []string{"concept-1"},
+			domain.DiagramOptions{RootNote: &root, Mode: &minor, TempoBPM: &tempo, TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8}, Sequence: lick})
+		require.NoError(t, err)
+		return d
+	}
+	requireRejected := func(t *testing.T, f diagramFixture, err error, field string, before domain.Diagram) {
+		t.Helper()
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, field, valErr.Fields[0].Field)
+		stored, getErr := f.diagrams.GetByID(ctx, before.ID)
+		require.NoError(t, getErr)
+		assert.Equal(t, before, stored)
+	}
+
+	t.Run("a diagram is created with its key, meter, tempo and sequence", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		got := create(t, f)
+
+		assert.Equal(t, &minor, got.Mode)
+		assert.Equal(t, domain.TimeSignature{Beats: 6, BeatValue: 8}, got.TimeSignature)
+		require.NotNil(t, got.TempoBPM)
+		assert.Equal(t, 90, *got.TempoBPM)
+		require.Len(t, got.Sequence, 2)
+		assert.Equal(t, domain.StrumNone, got.Sequence[0].Strum)
+		stored, err := f.diagrams.GetByID(ctx, got.ID)
+		require.NoError(t, err)
+		assert.Equal(t, got, stored)
+	})
+
+	t.Run("an update that leaves the playback out keeps it", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names("Renamed")})
+
+		require.NoError(t, err)
+		assert.Equal(t, d.Mode, got.Mode)
+		assert.Equal(t, d.TempoBPM, got.TempoBPM)
+		assert.Equal(t, d.TimeSignature, got.TimeSignature)
+		assert.Equal(t, d.Sequence, got.Sequence)
+	})
+
+	t.Run("an update replaces the sequence, tempo and time signature", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+		tempo := 120
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{
+			Sequence:      []domain.SequenceStep{{PositionIDs: []string{"p2"}, Value: eighth}},
+			TempoBPM:      application.Nullable[int]{Set: true, Value: &tempo},
+			TimeSignature: &domain.TimeSignature{Beats: 3, BeatValue: 4},
+		})
+
+		require.NoError(t, err)
+		require.Len(t, got.Sequence, 1)
+		assert.Equal(t, []string{"p2"}, got.Sequence[0].PositionIDs)
+		assert.Equal(t, 120, *got.TempoBPM)
+		assert.Equal(t, domain.TimeSignature{Beats: 3, BeatValue: 4}, got.TimeSignature)
+	})
+
+	t.Run("an empty sequence with the tempo cleared removes the playback", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}, TempoBPM: application.Nullable[int]{Set: true}})
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Sequence)
+		assert.Nil(t, got.TempoBPM)
+	})
+
+	t.Run("a mode set to null clears the key", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Mode: application.Nullable[domain.DiagramMode]{Set: true}})
+
+		require.NoError(t, err)
+		assert.Nil(t, got.Mode)
+		assert.Equal(t, "A", *got.RootNote)
+	})
+
+	t.Run("emptying the sequence while keeping the tempo is rejected", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}})
+
+		requireRejected(t, f, err, "tempo_bpm", d)
+	})
+
+	t.Run("removing a position that plays without resending the sequence is rejected", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f)
+
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Positions: []domain.Position{positionWithID("p1", 6, 5)}})
+
+		requireRejected(t, f, err, "sequence", d)
 	})
 }

@@ -44,11 +44,20 @@ func (Instrument) Fields() []ent.Field {
 		field.String("key_range_highest").
 			Optional().
 			Nillable(),
+
+		// default_voice_id is the Voice that plays this instrument's
+		// diagrams unless a usage picks another.
+		field.String("default_voice_id"),
 	}
 }
 
 func (Instrument) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("default_voice", Voice.Type).
+			Unique().
+			Required().
+			Field("default_voice_id"),
+
 		edge.From("diagrams", Diagram.Type).
 			Ref("instrument"),
 

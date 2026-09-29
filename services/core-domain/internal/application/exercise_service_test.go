@@ -36,7 +36,7 @@ func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises 
 }
 
 func newExerciseServiceWithDiagrams(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository, diagrams *fakeDiagramRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 }
 
 // exerciseInstruments is a 6-string fretted guitar and a keyboard piano, the
@@ -453,6 +453,29 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 				assert.Nil(t, opt.DiagramPositionID, "an empty cell names no position")
 			}
 		}
+	})
+
+	t.Run("a stimulus that plays the hidden notes with a fretted voice is accepted", func(t *testing.T) {
+		exercise, err := create(t, pentatonic, domain.DiagramRef{
+			Layers:             domain.DiagramLayers{HiddenPositionIDs: &[]string{"pos-6-5"}},
+			CorrectPositionIDs: &[]string{"pos-6-5"},
+			Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("acoustic-guitar")},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, exercise.DiagramRef.Playback)
+		assert.Equal(t, "acoustic-guitar", *exercise.DiagramRef.Playback.VoiceID)
+	})
+
+	t.Run("a stimulus that plays with a keyboard voice is rejected as diagram_ref", func(t *testing.T) {
+		_, err := create(t, pentatonic, domain.DiagramRef{
+			CorrectPositionIDs: &[]string{"pos-6-5"},
+			Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")},
+		})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "diagram_ref", valErr.Fields[0].Field)
 	})
 
 	t.Run("a hidden position is still a cell, and still correct when marked", func(t *testing.T) {
@@ -1181,7 +1204,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
 		require.NoError(t, err)
@@ -1200,7 +1223,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
 
@@ -1343,7 +1366,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
 		require.NoError(t, err)
@@ -1472,7 +1495,7 @@ func TestExerciseService_StartPracticeSession(t *testing.T) {
 		putWithSkill(exercises, "ex-1", "skill-1")
 		putWithSkill(exercises, "ex-2", "skill-1")
 		putWithSkill(exercises, "ex-3", "skill-1")
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
 

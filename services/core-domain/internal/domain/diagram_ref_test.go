@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,8 +17,6 @@ func validDiagramLayers() domain.DiagramLayers {
 }
 
 func TestNewDiagramRef(t *testing.T) {
-	stepMs := 500
-
 	tests := []struct {
 		name       string
 		diagramID  string
@@ -55,20 +54,54 @@ func TestNewDiagramRef(t *testing.T) {
 			layers:    domain.DiagramLayers{HiddenPositionIDs: &[]string{"p-1"}},
 		},
 		{
+			name:      "playback with its own tempo, voice and looping",
+			diagramID: "diagram-1",
+			layers:    validDiagramLayers(),
+			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true},
+		},
+		{
+			name:      "playback at the boundary tempos",
+			diagramID: "diagram-1",
+			layers:    validDiagramLayers(),
+			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(20)},
+		},
+		{
+			name:      "playback at the fastest tempo",
+			diagramID: "diagram-1",
+			layers:    validDiagramLayers(),
+			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(300)},
+		},
+		{
 			name:       "playback with invalid direction",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: "sideways", StepMs: stepMs},
+			playback:   &domain.DiagramPlayback{Direction: "sideways"},
 			wantField:  "playback",
 			wantErrMsg: "direction",
 		},
 		{
-			name:       "playback with non-positive step_ms",
+			name:       "playback slower than 20 BPM",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, StepMs: 0},
+			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(19)},
 			wantField:  "playback",
-			wantErrMsg: "step_ms",
+			wantErrMsg: "tempo_bpm",
+		},
+		{
+			name:       "playback faster than 300 BPM",
+			diagramID:  "diagram-1",
+			layers:     validDiagramLayers(),
+			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(301)},
+			wantField:  "playback",
+			wantErrMsg: "tempo_bpm",
+		},
+		{
+			name:       "playback with an empty voice id",
+			diagramID:  "diagram-1",
+			layers:     validDiagramLayers(),
+			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("")},
+			wantField:  "playback",
+			wantErrMsg: "voice_id",
 		},
 	}
 
@@ -90,6 +123,36 @@ func TestNewDiagramRef(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestDiagramPlayback_StoredBeforeTempoAndVoice pins that a playback saved
+// before it had a tempo, voice and loop — when it carried step_ms instead —
+// still loads: step_ms is dropped and the new fields read as unset.
+func TestDiagramPlayback_StoredBeforeTempoAndVoice(t *testing.T) {
+	var ref domain.DiagramRef
+
+	err := json.Unmarshal([]byte(`{"diagram_id":"diagram-1","layers":{},"playback":{"direction":"reversed","step_ms":500}}`), &ref)
+
+	require.NoError(t, err)
+	require.NotNil(t, ref.Playback)
+	assert.Equal(t, domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed}, *ref.Playback)
+	require.NoError(t, domain.ValidateDiagramRef(ref))
+}
+
+// TestDiagramPlayback_WithoutDirection pins that a playback naming no
+// direction plays as authored, wherever the ref arrives from — a usage's own
+// field or a diagram embedded in a document.
+func TestDiagramPlayback_WithoutDirection(t *testing.T) {
+	var doc domain.PromptDocument
+
+	err := json.Unmarshal([]byte(`{"type":"doc","content":[{"type":"diagram","attrs":{"diagramRef":{"diagram_id":"diagram-1","layers":{},"playback":{"tempo_bpm":60}}}}]}`), &doc)
+
+	require.NoError(t, err)
+	ref := doc.Content[0].Attrs.DiagramRef
+	require.NotNil(t, ref)
+	require.NotNil(t, ref.Playback)
+	assert.Equal(t, domain.DiagramPlaybackDirectionAsAuthored, ref.Playback.Direction)
+	require.NoError(t, domain.ValidateDiagramRef(*ref))
 }
 
 func TestNewDiagramStackRef(t *testing.T) {
