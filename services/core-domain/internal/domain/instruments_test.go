@@ -22,7 +22,7 @@ func TestInstrumentIDs(t *testing.T) {
 		return domain.NewLearningPath("path-1", "teacher-1", domain.LearningPathFields{
 			Title: "Open Chords", Level: domain.DifficultyLevelBeginner, InstrumentIDs: ids,
 			Items: []domain.NewLearningPathItem{{Node: domain.ContentNode{ID: "node-1", Title: "One", ContentType: domain.ContentTypeVideo}}},
-		}, at)
+		}, nil, at)
 	}
 	node := func(ids []string) (domain.ContentNode, error) {
 		media := "https://cdn.motifpath.io/v.mp4"

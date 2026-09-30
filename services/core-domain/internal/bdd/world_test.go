@@ -89,6 +89,15 @@ type world struct {
 	// assertions type-switch on it, same as every other feature file's
 	// steps already do.
 	lastResp any
+	// lastPathSlug is the learning path the scenario last published,
+	// unpublished or replaced by slug, so a later status check reads it.
+	lastPathSlug string
+	// lastEnroller is the persona who last enrolled in a path, the "her" of
+	// the enrollment outcome steps.
+	lastEnroller string
+	// sharedLessonPath is the standalone path whose first lesson a course
+	// also holds, for the "completed that lesson in the course" step.
+	sharedLessonPath string
 	lastErr  error
 
 	// lastPromptSent holds whichever prompt document the most recent
@@ -249,7 +258,7 @@ func newWorld() *world {
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.instruments, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.instruments, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
@@ -258,7 +267,7 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), w.users, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 

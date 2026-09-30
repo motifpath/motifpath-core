@@ -3,6 +3,7 @@
 package studentpath
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -30,6 +31,14 @@ const (
 	FieldSourceCourseEnrollmentID = "source_course_enrollment_id"
 	// FieldCourseCheckpointPosition holds the string denoting the course_checkpoint_position field in the database.
 	FieldCourseCheckpointPosition = "course_checkpoint_position"
+	// FieldSummarySnapshot holds the string denoting the summary_snapshot field in the database.
+	FieldSummarySnapshot = "summary_snapshot"
+	// FieldLevelSnapshot holds the string denoting the level_snapshot field in the database.
+	FieldLevelSnapshot = "level_snapshot"
+	// FieldThumbnailURLSnapshot holds the string denoting the thumbnail_url_snapshot field in the database.
+	FieldThumbnailURLSnapshot = "thumbnail_url_snapshot"
+	// FieldCreatedBySnapshot holds the string denoting the created_by_snapshot field in the database.
+	FieldCreatedBySnapshot = "created_by_snapshot"
 	// Table holds the table name of the studentpath in the database.
 	Table = "student_paths"
 )
@@ -45,6 +54,10 @@ var Columns = []string{
 	FieldArchivedAt,
 	FieldSourceCourseEnrollmentID,
 	FieldCourseCheckpointPosition,
+	FieldSummarySnapshot,
+	FieldLevelSnapshot,
+	FieldThumbnailURLSnapshot,
+	FieldCreatedBySnapshot,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -63,6 +76,32 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// LevelSnapshot defines the type for the "level_snapshot" enum field.
+type LevelSnapshot string
+
+// LevelSnapshot values.
+const (
+	LevelSnapshotBeginner          LevelSnapshot = "beginner"
+	LevelSnapshotEarlyIntermediate LevelSnapshot = "early_intermediate"
+	LevelSnapshotIntermediate      LevelSnapshot = "intermediate"
+	LevelSnapshotAdvanced          LevelSnapshot = "advanced"
+	LevelSnapshotExpert            LevelSnapshot = "expert"
+)
+
+func (ls LevelSnapshot) String() string {
+	return string(ls)
+}
+
+// LevelSnapshotValidator is a validator for the "level_snapshot" field enum values. It is called by the builders before save.
+func LevelSnapshotValidator(ls LevelSnapshot) error {
+	switch ls {
+	case LevelSnapshotBeginner, LevelSnapshotEarlyIntermediate, LevelSnapshotIntermediate, LevelSnapshotAdvanced, LevelSnapshotExpert:
+		return nil
+	default:
+		return fmt.Errorf("studentpath: invalid enum value for level_snapshot field: %q", ls)
+	}
+}
 
 // OrderOption defines the ordering options for the StudentPath queries.
 type OrderOption func(*sql.Selector)
@@ -110,4 +149,24 @@ func BySourceCourseEnrollmentID(opts ...sql.OrderTermOption) OrderOption {
 // ByCourseCheckpointPosition orders the results by the course_checkpoint_position field.
 func ByCourseCheckpointPosition(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCourseCheckpointPosition, opts...).ToFunc()
+}
+
+// BySummarySnapshot orders the results by the summary_snapshot field.
+func BySummarySnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSummarySnapshot, opts...).ToFunc()
+}
+
+// ByLevelSnapshot orders the results by the level_snapshot field.
+func ByLevelSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLevelSnapshot, opts...).ToFunc()
+}
+
+// ByThumbnailURLSnapshot orders the results by the thumbnail_url_snapshot field.
+func ByThumbnailURLSnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThumbnailURLSnapshot, opts...).ToFunc()
+}
+
+// ByCreatedBySnapshot orders the results by the created_by_snapshot field.
+func ByCreatedBySnapshot(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBySnapshot, opts...).ToFunc()
 }

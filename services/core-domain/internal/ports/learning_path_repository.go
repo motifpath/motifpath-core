@@ -22,11 +22,19 @@ type LearningPathRepository interface {
 	// by title then id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error)
 
+	// ListCreatorIDs returns the distinct creator user ids of every path
+	// matching filter, in no particular order.
+	ListCreatorIDs(ctx context.Context, filter domain.LearningPathFilter) ([]string, error)
+
 	// Replace replaces path's title and items wholesale — its current items
 	// are deleted and path.Items inserted in their place, in one
 	// transaction. Returns domain.ErrNotFound if no path exists with the
 	// given id.
 	Replace(ctx context.Context, path domain.LearningPath) error
+
+	// UpdateStatus sets the path's publishing status and nothing else.
+	// Returns domain.ErrNotFound if no path exists with the given id.
+	UpdateStatus(ctx context.Context, id string, status domain.LearningPathStatus) error
 
 	// Delete permanently removes the learning path with the given id and
 	// all of its items, in one transaction. Never touches any StudentPath

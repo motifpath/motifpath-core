@@ -404,6 +404,9 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 		LearningPathId: mustUUID(p.ID),
 		Teacher:        names.ref(p.TeacherID),
 		Title:          p.Title,
+		Summary:        p.Summary,
+		Language:       p.Language,
+		Status:         generated.LearningPathStatus(p.Status),
 		Items:          items,
 		CreatedAt:      p.CreatedAt,
 		UpdatedAt:      p.UpdatedAt,
@@ -438,7 +441,28 @@ func learningPathListFilter(params generated.ListLearningPathsParams) domain.Lea
 	if params.Sort != nil {
 		filter.Sort = domain.LearningPathSort(*params.Sort)
 	}
+	if params.Language != nil {
+		filter.Language = *params.Language
+	}
+	if params.Status != nil {
+		filter.Status = domain.LearningPathStatus(*params.Status)
+	}
 	return filter
+}
+
+// toNotPublishableError is the 409 body listing everything that keeps a path
+// from being published.
+func toNotPublishableError(refusal *domain.LearningPathNotPublishableError, message string) generated.LearningPathNotPublishableError {
+	missing := make([]generated.LearningPathNotPublishableErrorMissing, len(refusal.Missing))
+	for i, m := range refusal.Missing {
+		missing[i] = generated.LearningPathNotPublishableErrorMissing(m)
+	}
+	body := generated.LearningPathNotPublishableError{Message: message, Missing: missing}
+	if len(refusal.UnpublishedContentNodeIDs) > 0 {
+		ids := toUUIDs(refusal.UnpublishedContentNodeIDs)
+		body.UnpublishedContentNodeIds = &ids
+	}
+	return body
 }
 
 func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.LearningPath {
@@ -449,7 +473,10 @@ func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.L
 	return result
 }
 
-func toStudentPath(sp domain.StudentPath, names userNames) generated.StudentPath {
+// toStudentPath renders sp with the presentation it recorded when copied,
+// its lesson count and completed, how many of those lessons its student
+// has completed.
+func toStudentPath(sp domain.StudentPath, names userNames, completed int) generated.StudentPath {
 	result := generated.StudentPath{
 		StudentPathId:            mustUUID(sp.ID),
 		Student:                  names.ref(sp.StudentID),
@@ -459,10 +486,22 @@ func toStudentPath(sp domain.StudentPath, names userNames) generated.StudentPath
 		AssignedAt:               sp.AssignedAt,
 		ArchivedAt:               sp.ArchivedAt,
 		CourseCheckpointPosition: sp.CourseCheckpointPosition,
+		Summary:                  sp.SummarySnapshot,
+		ThumbnailUrl:             sp.ThumbnailURLSnapshot,
+		LessonCount:              len(sp.Items),
+		CompletedCount:           completed,
 	}
 	if sp.SourceCourseEnrollmentID != nil {
 		id := mustUUID(*sp.SourceCourseEnrollmentID)
 		result.SourceCourseEnrollmentId = &id
+	}
+	if sp.LevelSnapshot != nil {
+		level := generated.StudentPathLevel(*sp.LevelSnapshot)
+		result.Level = &level
+	}
+	if sp.CreatedBySnapshot != nil {
+		creator := names.ref(*sp.CreatedBySnapshot)
+		result.CreatedBy = &creator
 	}
 	return result
 }

@@ -55,15 +55,16 @@ func (r *EntStudentPathRepository) Create(ctx context.Context, path domain.Stude
 		SetAssignedAt(path.AssignedAt).
 		SetNillableArchivedAt(path.ArchivedAt).
 		SetNillableCourseCheckpointPosition(path.CourseCheckpointPosition)
-
-	if path.SourceCourseEnrollmentID != nil {
-		enrollmentID, err := uuid.Parse(*path.SourceCourseEnrollmentID)
-		if err != nil {
-			return rollback(tx, err)
-		}
-		create = create.SetSourceCourseEnrollmentID(enrollmentID)
+	create, err = withOptionalFields(create, path)
+	if err != nil {
+		return rollback(tx, err)
 	}
 	if _, err := create.Save(ctx); err != nil {
+		// The only unique constraint a new copy can break is the one active
+		// standalone copy per student and template.
+		if ent.IsConstraintError(err) {
+			return rollback(tx, domain.ErrAlreadyExists)
+		}
 		return rollback(tx, err)
 	}
 
@@ -78,6 +79,33 @@ func (r *EntStudentPathRepository) Create(ctx context.Context, path domain.Stude
 	}
 
 	return tx.Commit()
+}
+
+// withOptionalFields sets a copy's course enrollment, when it is a course
+// checkpoint, and the template presentation it recorded — split out to keep
+// Create's own cognitive complexity down.
+func withOptionalFields(create *ent.StudentPathCreate, path domain.StudentPath) (*ent.StudentPathCreate, error) {
+	if path.SourceCourseEnrollmentID != nil {
+		enrollmentID, err := uuid.Parse(*path.SourceCourseEnrollmentID)
+		if err != nil {
+			return nil, err
+		}
+		create = create.SetSourceCourseEnrollmentID(enrollmentID)
+	}
+	create = create.
+		SetNillableSummarySnapshot(path.SummarySnapshot).
+		SetNillableThumbnailURLSnapshot(path.ThumbnailURLSnapshot)
+	if path.LevelSnapshot != nil {
+		create = create.SetLevelSnapshot(studentpath.LevelSnapshot(*path.LevelSnapshot))
+	}
+	if path.CreatedBySnapshot != nil {
+		creator, err := uuid.Parse(*path.CreatedBySnapshot)
+		if err != nil {
+			return nil, err
+		}
+		create = create.SetCreatedBySnapshot(creator)
+	}
+	return create, nil
 }
 
 // studentPathItemBuilders resolves items into the ent create builders
@@ -128,6 +156,32 @@ func (r *EntStudentPathRepository) GetByID(ctx context.Context, id string) (doma
 	}
 
 	return toDomainStudentPath(row, itemRows), nil
+}
+
+func (r *EntStudentPathRepository) FindActiveStandalone(ctx context.Context, studentID, templateID string) (domain.StudentPath, error) {
+	student, err := uuid.Parse(studentID)
+	if err != nil {
+		return domain.StudentPath{}, domain.ErrNotFound
+	}
+	template, err := uuid.Parse(templateID)
+	if err != nil {
+		return domain.StudentPath{}, domain.ErrNotFound
+	}
+	found, err := r.listWithItems(ctx, r.client.StudentPath.Query().
+		Where(
+			studentpath.StudentID(student),
+			studentpath.SourceTemplateID(template),
+			studentpath.ArchivedAtIsNil(),
+			studentpath.SourceCourseEnrollmentIDIsNil(),
+		).
+		Limit(1))
+	if err != nil {
+		return domain.StudentPath{}, err
+	}
+	if len(found) == 0 {
+		return domain.StudentPath{}, domain.ErrNotFound
+	}
+	return found[0], nil
 }
 
 func (r *EntStudentPathRepository) ListActiveStandaloneByStudentID(ctx context.Context, studentID string) ([]domain.StudentPath, error) {
@@ -215,6 +269,16 @@ func toDomainStudentPath(row *ent.StudentPath, itemRows []*ent.StudentPathItem) 
 		s := row.SourceCourseEnrollmentID.String()
 		sourceCourseEnrollmentID = &s
 	}
+	var levelSnapshot *domain.DifficultyLevel
+	if row.LevelSnapshot != nil {
+		l := domain.DifficultyLevel(*row.LevelSnapshot)
+		levelSnapshot = &l
+	}
+	var createdBySnapshot *string
+	if row.CreatedBySnapshot != nil {
+		c := row.CreatedBySnapshot.String()
+		createdBySnapshot = &c
+	}
 
 	return domain.StudentPath{
 		ID:                       row.ID.String(),
@@ -226,6 +290,10 @@ func toDomainStudentPath(row *ent.StudentPath, itemRows []*ent.StudentPathItem) 
 		ArchivedAt:               row.ArchivedAt,
 		SourceCourseEnrollmentID: sourceCourseEnrollmentID,
 		CourseCheckpointPosition: row.CourseCheckpointPosition,
+		SummarySnapshot:          row.SummarySnapshot,
+		LevelSnapshot:            levelSnapshot,
+		ThumbnailURLSnapshot:     row.ThumbnailURLSnapshot,
+		CreatedBySnapshot:        createdBySnapshot,
 		Items:                    items,
 	}
 }

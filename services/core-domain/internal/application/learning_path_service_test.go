@@ -18,7 +18,11 @@ func newLearningPathService(nodes *fakeContentNodeRepository, paths *fakeLearnin
 }
 
 func newLearningPathServiceWithVersions(nodes *fakeContentNodeRepository, paths *fakeLearningPathRepository, courseVersions *fakeCourseVersionRepository) *application.LearningPathService {
-	return application.NewLearningPathService(nodes, paths, courseVersions, seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return newLearningPathServiceWith(nodes, paths, courseVersions, newFakeContentNodeVersionRepository())
+}
+
+func newLearningPathServiceWith(nodes *fakeContentNodeRepository, paths *fakeLearningPathRepository, courseVersions *fakeCourseVersionRepository, versions *fakeContentNodeVersionRepository) *application.LearningPathService {
+	return application.NewLearningPathService(nodes, paths, courseVersions, versions, newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // pathItems builds an unlabelled PathItemInput slice from content node ids,
@@ -511,7 +515,7 @@ func TestLearningPathService_LevelAndLastUpdate(t *testing.T) {
 	t.Run("replacing a path records the replace time and keeps the creation time", func(t *testing.T) {
 		later := fixedCreatedAt.Add(48 * time.Hour)
 		clock := []time.Time{fixedCreatedAt, later}
-		svc := application.NewLearningPathService(nodes, newFakeLearningPathRepository(), newFakeCourseVersionRepository(), seededInstrumentRepository(), idSequence(), func() time.Time {
+		svc := application.NewLearningPathService(nodes, newFakeLearningPathRepository(), newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time {
 			now := clock[0]
 			clock = clock[1:]
 			return now

@@ -16,7 +16,15 @@ type StudentPath struct {
 	ArchivedAt               *time.Time
 	SourceCourseEnrollmentID *string
 	CourseCheckpointPosition *int
-	Items                    []StudentPathItemRecord
+	// The template's presentation as it was when this copy was made, so a
+	// learner's card never depends on a template that may since have been
+	// edited or deleted. Nil when the template had none, or the copy
+	// predates these snapshots.
+	SummarySnapshot      *string
+	LevelSnapshot        *DifficultyLevel
+	ThumbnailURLSnapshot *string
+	CreatedBySnapshot    *string
+	Items                []StudentPathItemRecord
 }
 
 // StudentPathItemRecord is one content node copied into a StudentPath at
@@ -52,14 +60,19 @@ func NewStudentPathFromTemplate(id, studentID string, template LearningPath, ass
 		}
 	}
 
+	creator := template.TeacherID
 	return StudentPath{
-		ID:               id,
-		StudentID:        studentID,
-		SourceTemplateID: template.ID,
-		Title:            template.Title,
-		AssignedBy:       assignedBy,
-		AssignedAt:       assignedAt,
-		Items:            items,
+		ID:                   id,
+		StudentID:            studentID,
+		SourceTemplateID:     template.ID,
+		Title:                template.Title,
+		AssignedBy:           assignedBy,
+		AssignedAt:           assignedAt,
+		SummarySnapshot:      template.Summary,
+		LevelSnapshot:        template.Level,
+		ThumbnailURLSnapshot: template.ThumbnailURL,
+		CreatedBySnapshot:    &creator,
+		Items:                items,
 	}, nil
 }
 

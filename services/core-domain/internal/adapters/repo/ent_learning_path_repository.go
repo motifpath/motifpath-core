@@ -52,6 +52,9 @@ func (r *EntLearningPathRepository) Create(ctx context.Context, path domain.Lear
 		SetID(id).
 		SetTeacherID(teacherID).
 		SetTitle(path.Title).
+		SetNillableSummary(path.Summary).
+		SetNillableLanguage(path.Language).
+		SetStatus(entStatus(path.Status)).
 		SetNillableLevel(entLevel(path.Level)).
 		SetCreatedAt(path.CreatedAt).
 		SetUpdatedAt(path.UpdatedAt).
@@ -113,17 +116,26 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 		return domain.LearningPath{}, err
 	}
 
+	return toDomainLearningPath(pathRow, items), nil
+}
+
+// toDomainLearningPath maps a stored path row, with its instruments edge
+// loaded, and its already-built items onto the domain's LearningPath.
+func toDomainLearningPath(pathRow *ent.LearningPath, items []domain.LearningPathItem) domain.LearningPath {
 	return domain.LearningPath{
 		ID:            pathRow.ID.String(),
 		TeacherID:     pathRow.TeacherID.String(),
 		Title:         pathRow.Title,
+		Summary:       pathRow.Summary,
+		Language:      pathRow.Language,
+		Status:        domain.LearningPathStatus(pathRow.Status),
 		Level:         domainLevel(pathRow.Level),
 		InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
 		ThumbnailURL:  pathRow.ThumbnailURL,
 		Items:         items,
 		CreatedAt:     pathRow.CreatedAt,
 		UpdatedAt:     pathRow.UpdatedAt,
-	}, nil
+	}
 }
 
 func (r *EntLearningPathRepository) CountItems(ctx context.Context, ids []string) (map[string]int, error) {
@@ -211,19 +223,31 @@ func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.Lear
 		if err != nil {
 			return domain.Page[domain.LearningPath]{}, err
 		}
-		result[i] = domain.LearningPath{
-			ID:            pathRow.ID.String(),
-			TeacherID:     pathRow.TeacherID.String(),
-			Title:         pathRow.Title,
-			Level:         domainLevel(pathRow.Level),
-			InstrumentIDs: instrumentIDsOf(pathRow.Edges.Instruments),
-			ThumbnailURL:  pathRow.ThumbnailURL,
-			Items:         items,
-			CreatedAt:     pathRow.CreatedAt,
-			UpdatedAt:     pathRow.UpdatedAt,
-		}
+		result[i] = toDomainLearningPath(pathRow, items)
 	}
 	return domain.Page[domain.LearningPath]{Items: result, Total: total}, nil
+}
+
+func (r *EntLearningPathRepository) ListCreatorIDs(ctx context.Context, filter domain.LearningPathFilter) ([]string, error) {
+	predicates, err := learningPathListPredicates(filter)
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		TeacherID uuid.UUID `json:"teacher_id"`
+	}
+	if err := r.client.LearningPath.Query().
+		Where(predicates...).
+		Unique(true).
+		Select(learningpath.FieldTeacherID).
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.TeacherID.String()
+	}
+	return ids, nil
 }
 
 // contentNodesForItems batch-fetches the content nodes referenced by
@@ -285,16 +309,14 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 
 	update := tx.LearningPath.UpdateOneID(id).
 		SetTitle(path.Title).
+		SetNillableSummary(path.Summary).
+		SetNillableLanguage(path.Language).
 		SetNillableLevel(entLevel(path.Level)).
 		SetUpdatedAt(path.UpdatedAt).
 		SetNillableThumbnailURL(path.ThumbnailURL).
 		ClearInstruments().
 		AddInstrumentIDs(instrumentIDs...)
-	// A replace without a thumbnail removes the stored one.
-	if path.ThumbnailURL == nil {
-		update = update.ClearThumbnailURL()
-	}
-	if _, err := update.Save(ctx); err != nil {
+	if _, err := clearOmittedFields(update, path).Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return rollback(tx, domain.ErrNotFound)
 		}
@@ -327,6 +349,36 @@ func (r *EntLearningPathRepository) Replace(ctx context.Context, path domain.Lea
 	}
 
 	return tx.Commit()
+}
+
+func (r *EntLearningPathRepository) UpdateStatus(ctx context.Context, id string, status domain.LearningPathStatus) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNotFound
+	}
+	if err := r.client.LearningPath.UpdateOneID(parsed).SetStatus(entStatus(status)).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+// clearOmittedFields removes the stored thumbnail, summary and language a
+// replace leaves out — a replace states the whole path. The status is never
+// touched by a replace.
+func clearOmittedFields(update *ent.LearningPathUpdateOne, path domain.LearningPath) *ent.LearningPathUpdateOne {
+	if path.ThumbnailURL == nil {
+		update = update.ClearThumbnailURL()
+	}
+	if path.Summary == nil {
+		update = update.ClearSummary()
+	}
+	if path.Language == nil {
+		update = update.ClearLanguage()
+	}
+	return update
 }
 
 // Delete removes id's LearningPath row together with all of its
@@ -386,6 +438,15 @@ func domainLevel(level *learningpath.Level) *domain.DifficultyLevel {
 	return &l
 }
 
+// entStatus is a domain path status as ent's; a path built without one is a
+// draft, the status every new path starts in.
+func entStatus(status domain.LearningPathStatus) learningpath.Status {
+	if status == "" {
+		return learningpath.StatusDraft
+	}
+	return learningpath.Status(status)
+}
+
 // entLevel is a domain path level as ent's, nil when none is recorded.
 func entLevel(level *domain.DifficultyLevel) *learningpath.Level {
 	if level == nil {
@@ -398,10 +459,7 @@ func entLevel(level *domain.DifficultyLevel) *learningpath.Level {
 // learningPathListPredicates translates filter into ent predicates, one per
 // set field.
 func learningPathListPredicates(filter domain.LearningPathFilter) ([]predicate.LearningPath, error) {
-	var predicates []predicate.LearningPath
-	if filter.Query != "" {
-		predicates = append(predicates, learningpath.TitleContainsFold(filter.Query))
-	}
+	predicates := learningPathTextPredicates(filter)
 	if filter.CreatedBy != "" {
 		teacher, err := uuid.Parse(filter.CreatedBy)
 		if err != nil {
@@ -431,6 +489,26 @@ func learningPathListPredicates(filter domain.LearningPathFilter) ([]predicate.L
 		predicates = append(predicates, classified)
 	}
 	return predicates, nil
+}
+
+// learningPathTextPredicates translates the filter's text, language and
+// status fields — the ones that need no id parsing. Text matches the title
+// or the summary.
+func learningPathTextPredicates(filter domain.LearningPathFilter) []predicate.LearningPath {
+	var predicates []predicate.LearningPath
+	if filter.Query != "" {
+		predicates = append(predicates, learningpath.Or(
+			learningpath.TitleContainsFold(filter.Query),
+			learningpath.SummaryContainsFold(filter.Query),
+		))
+	}
+	if filter.Language != "" {
+		predicates = append(predicates, learningpath.LanguageEQ(filter.Language))
+	}
+	if filter.Status != "" {
+		predicates = append(predicates, learningpath.StatusEQ(learningpath.Status(filter.Status)))
+	}
+	return predicates
 }
 
 // pathForInstrument matches a path for instrumentID, or for every

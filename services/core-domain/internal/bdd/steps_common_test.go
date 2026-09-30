@@ -40,6 +40,13 @@ func registerCommonSteps(sc *godog.ScenarioContext, w *world) {
 
 func (w *world) responseIncludes(slug string) error {
 	switch resp := w.lastResp.(type) {
+	case generated.ListCatalogPaths200JSONResponse:
+		for _, p := range resp.Items {
+			if p.LearningPathId == pathID(slug) {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected the path catalog to include %q, got %+v", slug, resp.Items)
 	case generated.ListContentNodeChallenges200JSONResponse:
 		want := challengeID(slug)
 		for _, c := range resp {
@@ -117,6 +124,13 @@ func (w *world) responseIncludesTwo(slugA, slugB string) error {
 
 func (w *world) responseDoesNotInclude(slug string) error {
 	switch resp := w.lastResp.(type) {
+	case generated.ListCatalogPaths200JSONResponse:
+		for _, p := range resp.Items {
+			if p.LearningPathId == pathID(slug) {
+				return fmt.Errorf("expected the path catalog not to include %q, got %+v", slug, resp.Items)
+			}
+		}
+		return nil
 	case generated.ListExercises200JSONResponse:
 		want := exerciseID(slug)
 		for _, e := range resp.Items {
@@ -290,7 +304,9 @@ func (w *world) requestRefusedForbidden() error {
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
 		generated.ReactivateCourse403JSONResponse,
-		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse:
+		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse,
+		generated.PublishLearningPath403JSONResponse,
+		generated.UnpublishLearningPath403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -340,7 +356,11 @@ func (w *world) requestRefusedNotFound() error {
 		generated.ReactivateCourse404JSONResponse,
 		generated.CreateCourseEnrollment404JSONResponse,
 		generated.AbandonCourseEnrollment404JSONResponse,
-		generated.SetCurrentPath404JSONResponse:
+		generated.SetCurrentPath404JSONResponse,
+		generated.PublishLearningPath404JSONResponse,
+		generated.UnpublishLearningPath404JSONResponse,
+		generated.GetCatalogPath404JSONResponse,
+		generated.EnrollInLearningPath404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -355,7 +375,12 @@ func (w *world) requestRefusedConflict() error {
 		generated.ArchiveStandaloneStudentPath409JSONResponse,
 		generated.DeleteLearningPath409JSONResponse,
 		generated.CreateCourseEnrollment409JSONResponse,
-		generated.AbandonCourseEnrollment409JSONResponse:
+		generated.AbandonCourseEnrollment409JSONResponse,
+		generated.AssignLearningPath409JSONResponse,
+		generated.PublishCourse409JSONResponse,
+		generated.PublishLearningPath409JSONResponse,
+		generated.UnpublishLearningPath409JSONResponse,
+		generated.ReplaceLearningPath409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -365,6 +390,10 @@ func (w *world) requestRefusedConflict() error {
 func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
+		generated.PublishLearningPath401JSONResponse,
+		generated.ListCatalogPaths401JSONResponse,
+		generated.ListCatalogPathCreators401JSONResponse,
+		generated.EnrollInLearningPath401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
 		generated.ListCourseCreators401JSONResponse,
 		generated.ListCatalogCreators401JSONResponse,
@@ -459,6 +488,10 @@ func (w *world) validationErrors() ([]struct {
 }, error) {
 	switch resp := w.lastResp.(type) {
 	case generated.RegisterUser400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListCatalogPaths400JSONResponse:
+		return resp.Errors, nil
+	case generated.EnrollInLearningPath400JSONResponse:
 		return resp.Errors, nil
 	case generated.StartPracticeSession400JSONResponse:
 		return resp.Errors, nil

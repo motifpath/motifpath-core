@@ -89,6 +89,12 @@ type LearningPathFilter struct {
 	// InstrumentID keeps paths for that instrument and paths for every
 	// instrument (no instruments listed).
 	InstrumentID string
+	// Language keeps paths written in that language; a path with no
+	// language recorded never matches.
+	Language string
+	// Status keeps paths with that publishing status; empty keeps every
+	// status.
+	Status LearningPathStatus
 	// Sort orders the results; the zero value orders by title.
 	Sort LearningPathSort
 }

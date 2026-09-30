@@ -938,7 +938,7 @@ func TestEntLearningPathRepository_CreateAndGet(t *testing.T) {
 
 	sectionLabel := "Open chords"
 	path := domain.LearningPath{
-		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Week 1",
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Week 1", Status: domain.LearningPathStatusDraft,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType, SectionLabel: &sectionLabel},
 			{Position: 2, ContentNodeID: node2.ID, Title: node2.Title, ContentType: node2.ContentType},
@@ -984,7 +984,7 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	node3 := seedContentNode(t, ctx, nodeRepo)
 
 	pathA := domain.LearningPath{
-		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path A",
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path A", Status: domain.LearningPathStatusDraft,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType},
 			{Position: 2, ContentNodeID: node2.ID, Title: node2.Title, ContentType: node2.ContentType},
@@ -993,7 +993,7 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	}
 	require.NoError(t, repo.Create(ctx, pathA))
 	pathB := domain.LearningPath{
-		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path B",
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Path B", Status: domain.LearningPathStatusDraft,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: node3.ID, Title: node3.Title, ContentType: node3.ContentType},
 		},

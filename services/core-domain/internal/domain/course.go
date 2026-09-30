@@ -164,3 +164,20 @@ func courseLanguageProblem(language string, languages []string) string {
 	}
 	return ""
 }
+
+// CourseNotPublishableError refuses publishing a course while any of its
+// checkpoints uses a learning path that is still a draft: every path a
+// published course uses must itself be published, so no learner ever copies
+// an unfinished path when a checkpoint unlocks.
+type CourseNotPublishableError struct {
+	// DraftLearningPathIDs are the draft paths, in checkpoint order.
+	DraftLearningPathIDs []string
+}
+
+func (e *CourseNotPublishableError) Error() string {
+	return fmt.Sprintf("course is not publishable: draft learning paths %v", e.DraftLearningPathIDs)
+}
+
+func (e *CourseNotPublishableError) Unwrap() error {
+	return ErrConflict
+}

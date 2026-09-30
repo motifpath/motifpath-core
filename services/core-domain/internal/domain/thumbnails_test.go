@@ -22,7 +22,7 @@ func TestThumbnails(t *testing.T) {
 		return domain.NewLearningPath("path-1", "teacher-1", domain.LearningPathFields{
 			Title: "Open Chords", Level: domain.DifficultyLevelBeginner, ThumbnailURL: thumbnail,
 			Items: []domain.NewLearningPathItem{{Node: domain.ContentNode{ID: "node-1", Title: "One", ContentType: domain.ContentTypeVideo}}},
-		}, at)
+		}, nil, at)
 	}
 	media := "https://cdn.motifpath.io/v.mp4"
 	nodeFields := func(thumbnail *string) domain.ContentNodeFields {

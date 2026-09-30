@@ -265,7 +265,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	skillService := application.NewSkillService(skillRepo, newID)
 	conceptService := application.NewConceptService(conceptRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
@@ -275,7 +275,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil
 }
 

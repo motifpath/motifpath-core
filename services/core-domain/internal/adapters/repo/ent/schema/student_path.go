@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
 )
 
@@ -55,5 +57,42 @@ func (StudentPath) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Immutable(),
+
+		// The template's presentation as it was when this copy was made, so
+		// a learner's card never depends on a template that may since have
+		// been edited or deleted. NULL when the template had none, or the
+		// copy predates these columns.
+		field.String("summary_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
+		field.Enum("level_snapshot").
+			Values("beginner", "early_intermediate", "intermediate", "advanced", "expert").
+			Optional().
+			Nillable().
+			Immutable(),
+
+		field.String("thumbnail_url_snapshot").
+			Optional().
+			Nillable().
+			Immutable(),
+
+		field.UUID("created_by_snapshot", uuid.UUID{}).
+			Optional().
+			Nillable().
+			Immutable(),
+	}
+}
+
+func (StudentPath) Indexes() []ent.Index {
+	return []ent.Index{
+		// A learner holds at most one active standalone copy of a template:
+		// starting the same path again reuses that copy, and a newer version
+		// means archiving it first. Course checkpoint copies are part of
+		// their enrollment and don't count.
+		index.Fields("student_id", "source_template_id").
+			Unique().
+			Annotations(entsql.IndexWhere("archived_at IS NULL AND source_course_enrollment_id IS NULL")),
 	}
 }

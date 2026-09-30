@@ -24935,6 +24935,9 @@ type LearningPathMutation struct {
 	id                               *uuid.UUID
 	teacher_id                       *uuid.UUID
 	title                            *string
+	summary                          *string
+	language                         *string
+	status                           *learningpath.Status
 	level                            *learningpath.Level
 	updated_at                       *time.Time
 	thumbnail_url                    *string
@@ -25125,6 +25128,140 @@ func (m *LearningPathMutation) OldTitle(ctx context.Context) (v string, err erro
 // ResetTitle resets all changes to the "title" field.
 func (m *LearningPathMutation) ResetTitle() {
 	m.title = nil
+}
+
+// SetSummary sets the "summary" field.
+func (m *LearningPathMutation) SetSummary(s string) {
+	m.summary = &s
+}
+
+// Summary returns the value of the "summary" field in the mutation.
+func (m *LearningPathMutation) Summary() (r string, exists bool) {
+	v := m.summary
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSummary returns the old "summary" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldSummary(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSummary is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSummary requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSummary: %w", err)
+	}
+	return oldValue.Summary, nil
+}
+
+// ClearSummary clears the value of the "summary" field.
+func (m *LearningPathMutation) ClearSummary() {
+	m.summary = nil
+	m.clearedFields[learningpath.FieldSummary] = struct{}{}
+}
+
+// SummaryCleared returns if the "summary" field was cleared in this mutation.
+func (m *LearningPathMutation) SummaryCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldSummary]
+	return ok
+}
+
+// ResetSummary resets all changes to the "summary" field.
+func (m *LearningPathMutation) ResetSummary() {
+	m.summary = nil
+	delete(m.clearedFields, learningpath.FieldSummary)
+}
+
+// SetLanguage sets the "language" field.
+func (m *LearningPathMutation) SetLanguage(s string) {
+	m.language = &s
+}
+
+// Language returns the value of the "language" field in the mutation.
+func (m *LearningPathMutation) Language() (r string, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguage returns the old "language" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldLanguage(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguage: %w", err)
+	}
+	return oldValue.Language, nil
+}
+
+// ClearLanguage clears the value of the "language" field.
+func (m *LearningPathMutation) ClearLanguage() {
+	m.language = nil
+	m.clearedFields[learningpath.FieldLanguage] = struct{}{}
+}
+
+// LanguageCleared returns if the "language" field was cleared in this mutation.
+func (m *LearningPathMutation) LanguageCleared() bool {
+	_, ok := m.clearedFields[learningpath.FieldLanguage]
+	return ok
+}
+
+// ResetLanguage resets all changes to the "language" field.
+func (m *LearningPathMutation) ResetLanguage() {
+	m.language = nil
+	delete(m.clearedFields, learningpath.FieldLanguage)
+}
+
+// SetStatus sets the "status" field.
+func (m *LearningPathMutation) SetStatus(l learningpath.Status) {
+	m.status = &l
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *LearningPathMutation) Status() (r learningpath.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the LearningPath entity.
+// If the LearningPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LearningPathMutation) OldStatus(ctx context.Context) (v learningpath.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *LearningPathMutation) ResetStatus() {
+	m.status = nil
 }
 
 // SetLevel sets the "level" field.
@@ -25439,12 +25576,21 @@ func (m *LearningPathMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LearningPathMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 9)
 	if m.teacher_id != nil {
 		fields = append(fields, learningpath.FieldTeacherID)
 	}
 	if m.title != nil {
 		fields = append(fields, learningpath.FieldTitle)
+	}
+	if m.summary != nil {
+		fields = append(fields, learningpath.FieldSummary)
+	}
+	if m.language != nil {
+		fields = append(fields, learningpath.FieldLanguage)
+	}
+	if m.status != nil {
+		fields = append(fields, learningpath.FieldStatus)
 	}
 	if m.level != nil {
 		fields = append(fields, learningpath.FieldLevel)
@@ -25470,6 +25616,12 @@ func (m *LearningPathMutation) Field(name string) (ent.Value, bool) {
 		return m.TeacherID()
 	case learningpath.FieldTitle:
 		return m.Title()
+	case learningpath.FieldSummary:
+		return m.Summary()
+	case learningpath.FieldLanguage:
+		return m.Language()
+	case learningpath.FieldStatus:
+		return m.Status()
 	case learningpath.FieldLevel:
 		return m.Level()
 	case learningpath.FieldUpdatedAt:
@@ -25491,6 +25643,12 @@ func (m *LearningPathMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldTeacherID(ctx)
 	case learningpath.FieldTitle:
 		return m.OldTitle(ctx)
+	case learningpath.FieldSummary:
+		return m.OldSummary(ctx)
+	case learningpath.FieldLanguage:
+		return m.OldLanguage(ctx)
+	case learningpath.FieldStatus:
+		return m.OldStatus(ctx)
 	case learningpath.FieldLevel:
 		return m.OldLevel(ctx)
 	case learningpath.FieldUpdatedAt:
@@ -25521,6 +25679,27 @@ func (m *LearningPathMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTitle(v)
+		return nil
+	case learningpath.FieldSummary:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSummary(v)
+		return nil
+	case learningpath.FieldLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguage(v)
+		return nil
+	case learningpath.FieldStatus:
+		v, ok := value.(learningpath.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	case learningpath.FieldLevel:
 		v, ok := value.(learningpath.Level)
@@ -25580,6 +25759,12 @@ func (m *LearningPathMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *LearningPathMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(learningpath.FieldSummary) {
+		fields = append(fields, learningpath.FieldSummary)
+	}
+	if m.FieldCleared(learningpath.FieldLanguage) {
+		fields = append(fields, learningpath.FieldLanguage)
+	}
 	if m.FieldCleared(learningpath.FieldLevel) {
 		fields = append(fields, learningpath.FieldLevel)
 	}
@@ -25600,6 +25785,12 @@ func (m *LearningPathMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *LearningPathMutation) ClearField(name string) error {
 	switch name {
+	case learningpath.FieldSummary:
+		m.ClearSummary()
+		return nil
+	case learningpath.FieldLanguage:
+		m.ClearLanguage()
+		return nil
 	case learningpath.FieldLevel:
 		m.ClearLevel()
 		return nil
@@ -25619,6 +25810,15 @@ func (m *LearningPathMutation) ResetField(name string) error {
 		return nil
 	case learningpath.FieldTitle:
 		m.ResetTitle()
+		return nil
+	case learningpath.FieldSummary:
+		m.ResetSummary()
+		return nil
+	case learningpath.FieldLanguage:
+		m.ResetLanguage()
+		return nil
+	case learningpath.FieldStatus:
+		m.ResetStatus()
 		return nil
 	case learningpath.FieldLevel:
 		m.ResetLevel()
@@ -29520,6 +29720,10 @@ type StudentPathMutation struct {
 	source_course_enrollment_id   *uuid.UUID
 	course_checkpoint_position    *int
 	addcourse_checkpoint_position *int
+	summary_snapshot              *string
+	level_snapshot                *studentpath.LevelSnapshot
+	thumbnail_url_snapshot        *string
+	created_by_snapshot           *uuid.UUID
 	clearedFields                 map[string]struct{}
 	done                          bool
 	oldValue                      func(context.Context) (*StudentPath, error)
@@ -29978,6 +30182,202 @@ func (m *StudentPathMutation) ResetCourseCheckpointPosition() {
 	delete(m.clearedFields, studentpath.FieldCourseCheckpointPosition)
 }
 
+// SetSummarySnapshot sets the "summary_snapshot" field.
+func (m *StudentPathMutation) SetSummarySnapshot(s string) {
+	m.summary_snapshot = &s
+}
+
+// SummarySnapshot returns the value of the "summary_snapshot" field in the mutation.
+func (m *StudentPathMutation) SummarySnapshot() (r string, exists bool) {
+	v := m.summary_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSummarySnapshot returns the old "summary_snapshot" field's value of the StudentPath entity.
+// If the StudentPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentPathMutation) OldSummarySnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSummarySnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSummarySnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSummarySnapshot: %w", err)
+	}
+	return oldValue.SummarySnapshot, nil
+}
+
+// ClearSummarySnapshot clears the value of the "summary_snapshot" field.
+func (m *StudentPathMutation) ClearSummarySnapshot() {
+	m.summary_snapshot = nil
+	m.clearedFields[studentpath.FieldSummarySnapshot] = struct{}{}
+}
+
+// SummarySnapshotCleared returns if the "summary_snapshot" field was cleared in this mutation.
+func (m *StudentPathMutation) SummarySnapshotCleared() bool {
+	_, ok := m.clearedFields[studentpath.FieldSummarySnapshot]
+	return ok
+}
+
+// ResetSummarySnapshot resets all changes to the "summary_snapshot" field.
+func (m *StudentPathMutation) ResetSummarySnapshot() {
+	m.summary_snapshot = nil
+	delete(m.clearedFields, studentpath.FieldSummarySnapshot)
+}
+
+// SetLevelSnapshot sets the "level_snapshot" field.
+func (m *StudentPathMutation) SetLevelSnapshot(ss studentpath.LevelSnapshot) {
+	m.level_snapshot = &ss
+}
+
+// LevelSnapshot returns the value of the "level_snapshot" field in the mutation.
+func (m *StudentPathMutation) LevelSnapshot() (r studentpath.LevelSnapshot, exists bool) {
+	v := m.level_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevelSnapshot returns the old "level_snapshot" field's value of the StudentPath entity.
+// If the StudentPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentPathMutation) OldLevelSnapshot(ctx context.Context) (v *studentpath.LevelSnapshot, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevelSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevelSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevelSnapshot: %w", err)
+	}
+	return oldValue.LevelSnapshot, nil
+}
+
+// ClearLevelSnapshot clears the value of the "level_snapshot" field.
+func (m *StudentPathMutation) ClearLevelSnapshot() {
+	m.level_snapshot = nil
+	m.clearedFields[studentpath.FieldLevelSnapshot] = struct{}{}
+}
+
+// LevelSnapshotCleared returns if the "level_snapshot" field was cleared in this mutation.
+func (m *StudentPathMutation) LevelSnapshotCleared() bool {
+	_, ok := m.clearedFields[studentpath.FieldLevelSnapshot]
+	return ok
+}
+
+// ResetLevelSnapshot resets all changes to the "level_snapshot" field.
+func (m *StudentPathMutation) ResetLevelSnapshot() {
+	m.level_snapshot = nil
+	delete(m.clearedFields, studentpath.FieldLevelSnapshot)
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (m *StudentPathMutation) SetThumbnailURLSnapshot(s string) {
+	m.thumbnail_url_snapshot = &s
+}
+
+// ThumbnailURLSnapshot returns the value of the "thumbnail_url_snapshot" field in the mutation.
+func (m *StudentPathMutation) ThumbnailURLSnapshot() (r string, exists bool) {
+	v := m.thumbnail_url_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldThumbnailURLSnapshot returns the old "thumbnail_url_snapshot" field's value of the StudentPath entity.
+// If the StudentPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentPathMutation) OldThumbnailURLSnapshot(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldThumbnailURLSnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldThumbnailURLSnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldThumbnailURLSnapshot: %w", err)
+	}
+	return oldValue.ThumbnailURLSnapshot, nil
+}
+
+// ClearThumbnailURLSnapshot clears the value of the "thumbnail_url_snapshot" field.
+func (m *StudentPathMutation) ClearThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	m.clearedFields[studentpath.FieldThumbnailURLSnapshot] = struct{}{}
+}
+
+// ThumbnailURLSnapshotCleared returns if the "thumbnail_url_snapshot" field was cleared in this mutation.
+func (m *StudentPathMutation) ThumbnailURLSnapshotCleared() bool {
+	_, ok := m.clearedFields[studentpath.FieldThumbnailURLSnapshot]
+	return ok
+}
+
+// ResetThumbnailURLSnapshot resets all changes to the "thumbnail_url_snapshot" field.
+func (m *StudentPathMutation) ResetThumbnailURLSnapshot() {
+	m.thumbnail_url_snapshot = nil
+	delete(m.clearedFields, studentpath.FieldThumbnailURLSnapshot)
+}
+
+// SetCreatedBySnapshot sets the "created_by_snapshot" field.
+func (m *StudentPathMutation) SetCreatedBySnapshot(u uuid.UUID) {
+	m.created_by_snapshot = &u
+}
+
+// CreatedBySnapshot returns the value of the "created_by_snapshot" field in the mutation.
+func (m *StudentPathMutation) CreatedBySnapshot() (r uuid.UUID, exists bool) {
+	v := m.created_by_snapshot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedBySnapshot returns the old "created_by_snapshot" field's value of the StudentPath entity.
+// If the StudentPath object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentPathMutation) OldCreatedBySnapshot(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedBySnapshot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedBySnapshot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedBySnapshot: %w", err)
+	}
+	return oldValue.CreatedBySnapshot, nil
+}
+
+// ClearCreatedBySnapshot clears the value of the "created_by_snapshot" field.
+func (m *StudentPathMutation) ClearCreatedBySnapshot() {
+	m.created_by_snapshot = nil
+	m.clearedFields[studentpath.FieldCreatedBySnapshot] = struct{}{}
+}
+
+// CreatedBySnapshotCleared returns if the "created_by_snapshot" field was cleared in this mutation.
+func (m *StudentPathMutation) CreatedBySnapshotCleared() bool {
+	_, ok := m.clearedFields[studentpath.FieldCreatedBySnapshot]
+	return ok
+}
+
+// ResetCreatedBySnapshot resets all changes to the "created_by_snapshot" field.
+func (m *StudentPathMutation) ResetCreatedBySnapshot() {
+	m.created_by_snapshot = nil
+	delete(m.clearedFields, studentpath.FieldCreatedBySnapshot)
+}
+
 // Where appends a list predicates to the StudentPathMutation builder.
 func (m *StudentPathMutation) Where(ps ...predicate.StudentPath) {
 	m.predicates = append(m.predicates, ps...)
@@ -30012,7 +30412,7 @@ func (m *StudentPathMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StudentPathMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 12)
 	if m.student_id != nil {
 		fields = append(fields, studentpath.FieldStudentID)
 	}
@@ -30036,6 +30436,18 @@ func (m *StudentPathMutation) Fields() []string {
 	}
 	if m.course_checkpoint_position != nil {
 		fields = append(fields, studentpath.FieldCourseCheckpointPosition)
+	}
+	if m.summary_snapshot != nil {
+		fields = append(fields, studentpath.FieldSummarySnapshot)
+	}
+	if m.level_snapshot != nil {
+		fields = append(fields, studentpath.FieldLevelSnapshot)
+	}
+	if m.thumbnail_url_snapshot != nil {
+		fields = append(fields, studentpath.FieldThumbnailURLSnapshot)
+	}
+	if m.created_by_snapshot != nil {
+		fields = append(fields, studentpath.FieldCreatedBySnapshot)
 	}
 	return fields
 }
@@ -30061,6 +30473,14 @@ func (m *StudentPathMutation) Field(name string) (ent.Value, bool) {
 		return m.SourceCourseEnrollmentID()
 	case studentpath.FieldCourseCheckpointPosition:
 		return m.CourseCheckpointPosition()
+	case studentpath.FieldSummarySnapshot:
+		return m.SummarySnapshot()
+	case studentpath.FieldLevelSnapshot:
+		return m.LevelSnapshot()
+	case studentpath.FieldThumbnailURLSnapshot:
+		return m.ThumbnailURLSnapshot()
+	case studentpath.FieldCreatedBySnapshot:
+		return m.CreatedBySnapshot()
 	}
 	return nil, false
 }
@@ -30086,6 +30506,14 @@ func (m *StudentPathMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldSourceCourseEnrollmentID(ctx)
 	case studentpath.FieldCourseCheckpointPosition:
 		return m.OldCourseCheckpointPosition(ctx)
+	case studentpath.FieldSummarySnapshot:
+		return m.OldSummarySnapshot(ctx)
+	case studentpath.FieldLevelSnapshot:
+		return m.OldLevelSnapshot(ctx)
+	case studentpath.FieldThumbnailURLSnapshot:
+		return m.OldThumbnailURLSnapshot(ctx)
+	case studentpath.FieldCreatedBySnapshot:
+		return m.OldCreatedBySnapshot(ctx)
 	}
 	return nil, fmt.Errorf("unknown StudentPath field %s", name)
 }
@@ -30151,6 +30579,34 @@ func (m *StudentPathMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCourseCheckpointPosition(v)
 		return nil
+	case studentpath.FieldSummarySnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSummarySnapshot(v)
+		return nil
+	case studentpath.FieldLevelSnapshot:
+		v, ok := value.(studentpath.LevelSnapshot)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevelSnapshot(v)
+		return nil
+	case studentpath.FieldThumbnailURLSnapshot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetThumbnailURLSnapshot(v)
+		return nil
+	case studentpath.FieldCreatedBySnapshot:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedBySnapshot(v)
+		return nil
 	}
 	return fmt.Errorf("unknown StudentPath field %s", name)
 }
@@ -30205,6 +30661,18 @@ func (m *StudentPathMutation) ClearedFields() []string {
 	if m.FieldCleared(studentpath.FieldCourseCheckpointPosition) {
 		fields = append(fields, studentpath.FieldCourseCheckpointPosition)
 	}
+	if m.FieldCleared(studentpath.FieldSummarySnapshot) {
+		fields = append(fields, studentpath.FieldSummarySnapshot)
+	}
+	if m.FieldCleared(studentpath.FieldLevelSnapshot) {
+		fields = append(fields, studentpath.FieldLevelSnapshot)
+	}
+	if m.FieldCleared(studentpath.FieldThumbnailURLSnapshot) {
+		fields = append(fields, studentpath.FieldThumbnailURLSnapshot)
+	}
+	if m.FieldCleared(studentpath.FieldCreatedBySnapshot) {
+		fields = append(fields, studentpath.FieldCreatedBySnapshot)
+	}
 	return fields
 }
 
@@ -30227,6 +30695,18 @@ func (m *StudentPathMutation) ClearField(name string) error {
 		return nil
 	case studentpath.FieldCourseCheckpointPosition:
 		m.ClearCourseCheckpointPosition()
+		return nil
+	case studentpath.FieldSummarySnapshot:
+		m.ClearSummarySnapshot()
+		return nil
+	case studentpath.FieldLevelSnapshot:
+		m.ClearLevelSnapshot()
+		return nil
+	case studentpath.FieldThumbnailURLSnapshot:
+		m.ClearThumbnailURLSnapshot()
+		return nil
+	case studentpath.FieldCreatedBySnapshot:
+		m.ClearCreatedBySnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown StudentPath nullable field %s", name)
@@ -30259,6 +30739,18 @@ func (m *StudentPathMutation) ResetField(name string) error {
 		return nil
 	case studentpath.FieldCourseCheckpointPosition:
 		m.ResetCourseCheckpointPosition()
+		return nil
+	case studentpath.FieldSummarySnapshot:
+		m.ResetSummarySnapshot()
+		return nil
+	case studentpath.FieldLevelSnapshot:
+		m.ResetLevelSnapshot()
+		return nil
+	case studentpath.FieldThumbnailURLSnapshot:
+		m.ResetThumbnailURLSnapshot()
+		return nil
+	case studentpath.FieldCreatedBySnapshot:
+		m.ResetCreatedBySnapshot()
 		return nil
 	}
 	return fmt.Errorf("unknown StudentPath field %s", name)

@@ -45,6 +45,60 @@ func (_u *LearningPathUpdate) SetNillableTitle(v *string) *LearningPathUpdate {
 	return _u
 }
 
+// SetSummary sets the "summary" field.
+func (_u *LearningPathUpdate) SetSummary(v string) *LearningPathUpdate {
+	_u.mutation.SetSummary(v)
+	return _u
+}
+
+// SetNillableSummary sets the "summary" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableSummary(v *string) *LearningPathUpdate {
+	if v != nil {
+		_u.SetSummary(*v)
+	}
+	return _u
+}
+
+// ClearSummary clears the value of the "summary" field.
+func (_u *LearningPathUpdate) ClearSummary() *LearningPathUpdate {
+	_u.mutation.ClearSummary()
+	return _u
+}
+
+// SetLanguage sets the "language" field.
+func (_u *LearningPathUpdate) SetLanguage(v string) *LearningPathUpdate {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableLanguage(v *string) *LearningPathUpdate {
+	if v != nil {
+		_u.SetLanguage(*v)
+	}
+	return _u
+}
+
+// ClearLanguage clears the value of the "language" field.
+func (_u *LearningPathUpdate) ClearLanguage() *LearningPathUpdate {
+	_u.mutation.ClearLanguage()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *LearningPathUpdate) SetStatus(v learningpath.Status) *LearningPathUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *LearningPathUpdate) SetNillableStatus(v *learningpath.Status) *LearningPathUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
 // SetLevel sets the "level" field.
 func (_u *LearningPathUpdate) SetLevel(v learningpath.Level) *LearningPathUpdate {
 	_u.mutation.SetLevel(v)
@@ -205,6 +259,11 @@ func (_u *LearningPathUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *LearningPathUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := learningpath.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "LearningPath.status": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Level(); ok {
 		if err := learningpath.LevelValidator(v); err != nil {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
@@ -227,6 +286,21 @@ func (_u *LearningPathUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Summary(); ok {
+		_spec.SetField(learningpath.FieldSummary, field.TypeString, value)
+	}
+	if _u.mutation.SummaryCleared() {
+		_spec.ClearField(learningpath.FieldSummary, field.TypeString)
+	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(learningpath.FieldLanguage, field.TypeString, value)
+	}
+	if _u.mutation.LanguageCleared() {
+		_spec.ClearField(learningpath.FieldLanguage, field.TypeString)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(learningpath.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)
@@ -375,6 +449,60 @@ func (_u *LearningPathUpdateOne) SetTitle(v string) *LearningPathUpdateOne {
 func (_u *LearningPathUpdateOne) SetNillableTitle(v *string) *LearningPathUpdateOne {
 	if v != nil {
 		_u.SetTitle(*v)
+	}
+	return _u
+}
+
+// SetSummary sets the "summary" field.
+func (_u *LearningPathUpdateOne) SetSummary(v string) *LearningPathUpdateOne {
+	_u.mutation.SetSummary(v)
+	return _u
+}
+
+// SetNillableSummary sets the "summary" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableSummary(v *string) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetSummary(*v)
+	}
+	return _u
+}
+
+// ClearSummary clears the value of the "summary" field.
+func (_u *LearningPathUpdateOne) ClearSummary() *LearningPathUpdateOne {
+	_u.mutation.ClearSummary()
+	return _u
+}
+
+// SetLanguage sets the "language" field.
+func (_u *LearningPathUpdateOne) SetLanguage(v string) *LearningPathUpdateOne {
+	_u.mutation.SetLanguage(v)
+	return _u
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableLanguage(v *string) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetLanguage(*v)
+	}
+	return _u
+}
+
+// ClearLanguage clears the value of the "language" field.
+func (_u *LearningPathUpdateOne) ClearLanguage() *LearningPathUpdateOne {
+	_u.mutation.ClearLanguage()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *LearningPathUpdateOne) SetStatus(v learningpath.Status) *LearningPathUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *LearningPathUpdateOne) SetNillableStatus(v *learningpath.Status) *LearningPathUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -552,6 +680,11 @@ func (_u *LearningPathUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *LearningPathUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := learningpath.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "LearningPath.status": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Level(); ok {
 		if err := learningpath.LevelValidator(v); err != nil {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "LearningPath.level": %w`, err)}
@@ -591,6 +724,21 @@ func (_u *LearningPathUpdateOne) sqlSave(ctx context.Context) (_node *LearningPa
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Summary(); ok {
+		_spec.SetField(learningpath.FieldSummary, field.TypeString, value)
+	}
+	if _u.mutation.SummaryCleared() {
+		_spec.ClearField(learningpath.FieldSummary, field.TypeString)
+	}
+	if value, ok := _u.mutation.Language(); ok {
+		_spec.SetField(learningpath.FieldLanguage, field.TypeString, value)
+	}
+	if _u.mutation.LanguageCleared() {
+		_spec.ClearField(learningpath.FieldLanguage, field.TypeString)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(learningpath.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)

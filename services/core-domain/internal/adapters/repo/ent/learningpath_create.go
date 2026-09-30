@@ -35,6 +35,48 @@ func (_c *LearningPathCreate) SetTitle(v string) *LearningPathCreate {
 	return _c
 }
 
+// SetSummary sets the "summary" field.
+func (_c *LearningPathCreate) SetSummary(v string) *LearningPathCreate {
+	_c.mutation.SetSummary(v)
+	return _c
+}
+
+// SetNillableSummary sets the "summary" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableSummary(v *string) *LearningPathCreate {
+	if v != nil {
+		_c.SetSummary(*v)
+	}
+	return _c
+}
+
+// SetLanguage sets the "language" field.
+func (_c *LearningPathCreate) SetLanguage(v string) *LearningPathCreate {
+	_c.mutation.SetLanguage(v)
+	return _c
+}
+
+// SetNillableLanguage sets the "language" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableLanguage(v *string) *LearningPathCreate {
+	if v != nil {
+		_c.SetLanguage(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *LearningPathCreate) SetStatus(v learningpath.Status) *LearningPathCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *LearningPathCreate) SetNillableStatus(v *learningpath.Status) *LearningPathCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
 // SetLevel sets the "level" field.
 func (_c *LearningPathCreate) SetLevel(v learningpath.Level) *LearningPathCreate {
 	_c.mutation.SetLevel(v)
@@ -170,6 +212,10 @@ func (_c *LearningPathCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *LearningPathCreate) defaults() {
+	if _, ok := _c.mutation.Status(); !ok {
+		v := learningpath.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		v := learningpath.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
@@ -191,6 +237,14 @@ func (_c *LearningPathCreate) check() error {
 	}
 	if _, ok := _c.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "LearningPath.title"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "LearningPath.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := learningpath.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "LearningPath.status": %w`, err)}
+		}
 	}
 	if v, ok := _c.mutation.Level(); ok {
 		if err := learningpath.LevelValidator(v); err != nil {
@@ -245,6 +299,18 @@ func (_c *LearningPathCreate) createSpec() (*LearningPath, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.Title(); ok {
 		_spec.SetField(learningpath.FieldTitle, field.TypeString, value)
 		_node.Title = value
+	}
+	if value, ok := _c.mutation.Summary(); ok {
+		_spec.SetField(learningpath.FieldSummary, field.TypeString, value)
+		_node.Summary = &value
+	}
+	if value, ok := _c.mutation.Language(); ok {
+		_spec.SetField(learningpath.FieldLanguage, field.TypeString, value)
+		_node.Language = &value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(learningpath.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if value, ok := _c.mutation.Level(); ok {
 		_spec.SetField(learningpath.FieldLevel, field.TypeEnum, value)

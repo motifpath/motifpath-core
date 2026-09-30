@@ -735,9 +735,17 @@ func (f *fakeLearningPathRepo) CountItems(_ context.Context, ids []string) (map[
 	return counts, nil
 }
 
+// put seeds p directly. A seeded path with no status is published: a step
+// that says a path exists means one ready to be assigned, enrolled in or
+// used by a published course, just as its items' content nodes are seeded
+// already published. Steps that need a draft set it explicitly; paths created
+// through the API are drafts like any other.
 func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if p.Status == "" {
+		p.Status = domain.LearningPathStatusPublished
+	}
 	f.byID[p.ID] = p
 }
 
@@ -764,7 +772,13 @@ func (f *fakeLearningPathRepo) List(_ context.Context, filter domain.LearningPat
 
 // matches states the repository's learning path filter rules in memory.
 func (f *fakeLearningPathRepo) matches(p domain.LearningPath, filter domain.LearningPathFilter) bool {
-	if !containsFold(p.Title, filter.Query) {
+	if !containsFold(p.Title, filter.Query) && (p.Summary == nil || !containsFold(*p.Summary, filter.Query)) {
+		return false
+	}
+	if filter.Status != "" && p.Status != filter.Status {
+		return false
+	}
+	if filter.Language != "" && (p.Language == nil || *p.Language != filter.Language) {
 		return false
 	}
 	if filter.CreatedBy != "" && p.TeacherID != filter.CreatedBy {
@@ -802,6 +816,32 @@ func (f *fakeLearningPathRepo) Replace(_ context.Context, p domain.LearningPath)
 		return domain.ErrNotFound
 	}
 	f.byID[p.ID] = p
+	return nil
+}
+
+func (f *fakeLearningPathRepo) ListCreatorIDs(_ context.Context, filter domain.LearningPathFilter) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, p := range f.byID {
+		if f.matches(p, filter) && !seen[p.TeacherID] {
+			seen[p.TeacherID] = true
+			ids = append(ids, p.TeacherID)
+		}
+	}
+	return ids, nil
+}
+
+func (f *fakeLearningPathRepo) UpdateStatus(_ context.Context, id string, status domain.LearningPathStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	p.Status = status
+	f.byID[id] = p
 	return nil
 }
 
@@ -1138,11 +1178,44 @@ func newFakeStudentPathRepo() *fakeStudentPathRepo {
 	return &fakeStudentPathRepo{byID: map[string]domain.StudentPath{}}
 }
 
+// Create refuses a second active standalone copy of a template for the same
+// student, the way the store's unique index does.
 func (f *fakeStudentPathRepo) Create(_ context.Context, p domain.StudentPath) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if p.SourceCourseEnrollmentID == nil && p.ArchivedAt == nil {
+		if _, ok := f.activeStandaloneLocked(p.StudentID, p.SourceTemplateID); ok {
+			return domain.ErrAlreadyExists
+		}
+	}
 	f.byID[p.ID] = p
 	return nil
+}
+
+// put overwrites an existing copy in place, the way an edit to a student's
+// own copy would.
+func (f *fakeStudentPathRepo) put(p domain.StudentPath) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[p.ID] = p
+}
+
+func (f *fakeStudentPathRepo) FindActiveStandalone(_ context.Context, studentID, templateID string) (domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p, ok := f.activeStandaloneLocked(studentID, templateID); ok {
+		return p, nil
+	}
+	return domain.StudentPath{}, domain.ErrNotFound
+}
+
+func (f *fakeStudentPathRepo) activeStandaloneLocked(studentID, templateID string) (domain.StudentPath, bool) {
+	for _, p := range f.byID {
+		if p.StudentID == studentID && p.SourceTemplateID == templateID && p.ArchivedAt == nil && p.SourceCourseEnrollmentID == nil {
+			return p, true
+		}
+	}
+	return domain.StudentPath{}, false
 }
 
 func (f *fakeStudentPathRepo) GetByID(_ context.Context, id string) (domain.StudentPath, error) {

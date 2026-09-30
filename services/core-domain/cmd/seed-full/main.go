@@ -205,7 +205,7 @@ func wireServices(res resources) (services, seedDeps) {
 	svc := services{
 		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
 		content:     application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now),
-		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now),
+		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, instrumentRepo, newID, now),
 		studentPath: studentPathService,
 		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
@@ -308,21 +308,10 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	// article item would leave its path — and a course's last checkpoint —
 	// impossible to finish. The seeded articles stay in the content library
 	// for authoring.
-	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", InstrumentIDs: []string{diagrams.guitar.ID}, Items: []application.PathItemInput{
-		{ContentNodeID: nodes["video-beginner"].ID},
-		{ContentNodeID: nodes["video-beginner-rhythm"].ID},
-	}})
+	templateA, templateB, err := seedPathTemplates(ctx, svc, deps, teacher, nodes, diagrams.guitar.ID)
 	if err != nil {
-		return fmt.Errorf("create template A: %w", err)
+		return err
 	}
-	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelIntermediate, Title: "Improvisation Essentials", Items: []application.PathItemInput{
-		{ContentNodeID: nodes["video-intermediate"].ID},
-		{ContentNodeID: nodes["video-advanced"].ID},
-	}})
-	if err != nil {
-		return fmt.Errorf("create template B: %w", err)
-	}
-	log.Printf("seeded 2 learning path templates: %q, %q", templateA.Title, templateB.Title)
 
 	courses, err := seedCourses(ctx, teacher, deps.synthAdmin, svc.course, templateA.ID, templateB.ID, diagrams.guitar.ID)
 	if err != nil {
@@ -832,7 +821,7 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	if err != nil {
 		return fmt.Errorf("resolve template A: %w", err)
 	}
-	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, carlaCtx.ID, templateA.ID); err != nil {
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, carlaCtx.ID, templateA.ID); err != nil {
 		return fmt.Errorf("assign standalone path to carla: %w", err)
 	}
 
@@ -841,7 +830,7 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	if err != nil {
 		return fmt.Errorf("resolve template B: %w", err)
 	}
-	brunoStandalone, err := svc.studentPath.AssignLearningPath(ctx, teacher, brunoCtx.ID, templateB.ID)
+	brunoStandalone, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, brunoCtx.ID, templateB.ID)
 	if err != nil {
 		return fmt.Errorf("assign standalone path to bruno: %w", err)
 	}
@@ -902,14 +891,17 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 		return fmt.Errorf("link every exercise to video-intermediate's challenge: %w", err)
 	}
 
-	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Items: []application.PathItemInput{
+	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Summary: seedStr("A short path to try the lesson and practice screens."), Language: seedStr("en"), Items: []application.PathItemInput{
 		{ContentNodeID: nodes["video-beginner"].ID},
 		{ContentNodeID: nodes["video-intermediate"].ID},
 	}})
 	if err != nil {
 		return fmt.Errorf("create admin's standalone path: %w", err)
 	}
-	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
+	if _, err := svc.path.PublishLearningPath(ctx, deps.synthAdmin, adminPath.ID); err != nil {
+		return fmt.Errorf("publish admin's standalone path: %w", err)
+	}
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
 		return fmt.Errorf("assign standalone path to admin: %w", err)
 	}
 	return seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
@@ -1044,3 +1036,34 @@ func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID s
 }
 
 func stringPtr(s string) *string { return &s }
+
+func seedStr(s string) *string { return &s }
+
+// seedPathTemplates creates and publishes the two learning path templates
+// the courses and standalone paths are copied from.
+func seedPathTemplates(ctx context.Context, svc services, deps seedDeps, teacher domain.User, nodes map[string]domain.ContentNode, guitarID string) (domain.LearningPath, domain.LearningPath, error) {
+	templateA, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Open Position Foundations", Summary: seedStr("Your first open chords and a steady strumming hand."), Language: seedStr("en"), InstrumentIDs: []string{guitarID}, Items: []application.PathItemInput{
+		{ContentNodeID: nodes["video-beginner"].ID},
+		{ContentNodeID: nodes["video-beginner-rhythm"].ID},
+	}})
+	if err != nil {
+		return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("create template A: %w", err)
+	}
+	templateB, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelIntermediate, Title: "Improvisation Essentials", Summary: seedStr("Scales, phrasing and call-and-response to start soloing."), Language: seedStr("en"), Items: []application.PathItemInput{
+		{ContentNodeID: nodes["video-intermediate"].ID},
+		{ContentNodeID: nodes["video-advanced"].ID},
+	}})
+	if err != nil {
+		return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("create template B: %w", err)
+	}
+	// Both templates are published: courses publish only with published
+	// paths, staff assign only published paths, and the path catalog lists
+	// them.
+	for _, template := range []domain.LearningPath{templateA, templateB} {
+		if _, err := svc.path.PublishLearningPath(ctx, deps.synthAdmin, template.ID); err != nil {
+			return domain.LearningPath{}, domain.LearningPath{}, fmt.Errorf("publish template %q: %w", template.Title, err)
+		}
+	}
+	log.Printf("seeded 2 published learning path templates: %q, %q", templateA.Title, templateB.Title)
+	return templateA, templateB, nil
+}

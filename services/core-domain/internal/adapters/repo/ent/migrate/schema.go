@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -812,6 +813,9 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "teacher_id", Type: field.TypeUUID},
 		{Name: "title", Type: field.TypeString},
+		{Name: "summary", Type: field.TypeString, Nullable: true},
+		{Name: "language", Type: field.TypeString, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published"}, Default: "draft"},
 		{Name: "level", Type: field.TypeEnum, Nullable: true, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
@@ -958,12 +962,26 @@ var (
 		{Name: "archived_at", Type: field.TypeTime, Nullable: true},
 		{Name: "source_course_enrollment_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "course_checkpoint_position", Type: field.TypeInt, Nullable: true},
+		{Name: "summary_snapshot", Type: field.TypeString, Nullable: true},
+		{Name: "level_snapshot", Type: field.TypeEnum, Nullable: true, Enums: []string{"beginner", "early_intermediate", "intermediate", "advanced", "expert"}},
+		{Name: "thumbnail_url_snapshot", Type: field.TypeString, Nullable: true},
+		{Name: "created_by_snapshot", Type: field.TypeUUID, Nullable: true},
 	}
 	// StudentPathsTable holds the schema information for the "student_paths" table.
 	StudentPathsTable = &schema.Table{
 		Name:       "student_paths",
 		Columns:    StudentPathsColumns,
 		PrimaryKey: []*schema.Column{StudentPathsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "studentpath_student_id_source_template_id",
+				Unique:  true,
+				Columns: []*schema.Column{StudentPathsColumns[1], StudentPathsColumns[2]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "archived_at IS NULL AND source_course_enrollment_id IS NULL",
+				},
+			},
+		},
 	}
 	// StudentPathItemsColumns holds the columns for the "student_path_items" table.
 	StudentPathItemsColumns = []*schema.Column{

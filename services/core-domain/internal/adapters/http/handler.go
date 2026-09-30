@@ -44,6 +44,7 @@ type Handler struct {
 	concept          *application.ConceptService
 	media            *application.MediaService
 	path             *application.LearningPathService
+	pathCatalog      *application.PathCatalogService
 	studentPath      *application.StudentPathService
 	course           *application.CourseService
 	courseEnrollment *application.CourseEnrollmentService
@@ -68,6 +69,7 @@ func NewHandler(
 	concept *application.ConceptService,
 	media *application.MediaService,
 	path *application.LearningPathService,
+	pathCatalog *application.PathCatalogService,
 	studentPath *application.StudentPathService,
 	course *application.CourseService,
 	courseEnrollment *application.CourseEnrollmentService,
@@ -86,6 +88,7 @@ func NewHandler(
 		concept:               concept,
 		media:                 media,
 		path:                  path,
+		pathCatalog:           pathCatalog,
 		studentPath:           studentPath,
 		course:                course,
 		courseEnrollment:      courseEnrollment,
@@ -713,7 +716,7 @@ func (h *Handler) CreateLearningPath(ctx context.Context, request generated.Crea
 		}
 	}
 
-	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
+	path, err := h.path.CreateLearningPath(ctx, caller, application.LearningPathInput{Title: request.Body.Title, Summary: request.Body.Summary, Language: request.Body.Language, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -807,7 +810,10 @@ func (h *Handler) ReplaceLearningPath(ctx context.Context, request generated.Rep
 		}
 	}
 
-	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
+	path, err := h.path.ReplaceLearningPath(ctx, caller, request.LearningPathId.String(), application.LearningPathInput{Title: request.Body.Title, Summary: request.Body.Summary, Language: request.Body.Language, Level: domain.DifficultyLevel(request.Body.Level), InstrumentIDs: uuidsToStrings(request.Body.InstrumentIds), ThumbnailURL: request.Body.ThumbnailUrl, Items: pathItems})
+	if refusal := (*domain.LearningPathNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.ReplaceLearningPath409JSONResponse(toNotPublishableError(refusal, "the path is published and this change would leave it unpublishable")), nil
+	}
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -843,7 +849,7 @@ func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.Dele
 		case errors.Is(err, domain.ErrNotFound):
 			return generated.DeleteLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
 		case errors.Is(err, domain.ErrConflict):
-			return generated.DeleteLearningPath409JSONResponse(conflictError("this learning path is referenced by a checkpoint of at least one published course version")), nil
+			return generated.DeleteLearningPath409JSONResponse(conflictError("this learning path is published, or is referenced by a checkpoint of at least one published course version")), nil
 		default:
 			return nil, err
 		}
@@ -852,13 +858,68 @@ func (h *Handler) DeleteLearningPath(ctx context.Context, request generated.Dele
 	return generated.DeleteLearningPath204Response{}, nil
 }
 
+func (h *Handler) PublishLearningPath(ctx context.Context, request generated.PublishLearningPathRequestObject) (generated.PublishLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.PublishLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	path, err := h.path.PublishLearningPath(ctx, caller, request.LearningPathId.String())
+	if refusal := (*domain.LearningPathNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.PublishLearningPath409JSONResponse(toNotPublishableError(refusal, "the path is not complete enough to publish")), nil
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.PublishLearningPath403JSONResponse(forbiddenError("only admins may publish a learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.PublishLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.PublishLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
+func (h *Handler) UnpublishLearningPath(ctx context.Context, request generated.UnpublishLearningPathRequestObject) (generated.UnpublishLearningPathResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UnpublishLearningPath401JSONResponse(unauthorizedError()), nil
+	}
+
+	path, err := h.path.UnpublishLearningPath(ctx, caller, request.LearningPathId.String())
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrForbidden):
+			return generated.UnpublishLearningPath403JSONResponse(forbiddenError("only admins may unpublish a learning path")), nil
+		case errors.Is(err, domain.ErrNotFound):
+			return generated.UnpublishLearningPath404JSONResponse(notFoundError("no learning path exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.UnpublishLearningPath409JSONResponse(conflictError("a checkpoint of at least one published course version uses this path")), nil
+		default:
+			return nil, err
+		}
+	}
+
+	names, err := h.loadUserNames(ctx, learningPathUserIDs(path))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UnpublishLearningPath200JSONResponse(toLearningPath(path, names)), nil
+}
+
 func (h *Handler) AssignLearningPath(ctx context.Context, request generated.AssignLearningPathRequestObject) (generated.AssignLearningPathResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
 		return generated.AssignLearningPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	sp, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
+	sp, created, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -869,15 +930,21 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		case errKindNotFound:
 			return generated.AssignLearningPath404JSONResponse(notFoundError("the student_id or learning_path_id does not exist, the student's role is not student, or one of the path's content nodes has never been published")), nil
 		case errKindOther:
+			if errors.Is(err, domain.ErrConflict) {
+				return generated.AssignLearningPath409JSONResponse(conflictError("the learning path is a draft; only published paths can be assigned")), nil
+			}
 			return nil, err
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
 	if err != nil {
 		return nil, err
 	}
-	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp, names)), nil
+	if !created {
+		return generated.AssignLearningPath200JSONResponse(cards[0]), nil
+	}
+	return generated.AssignLearningPath201JSONResponse(cards[0]), nil
 }
 
 func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
@@ -918,11 +985,11 @@ func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request gene
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
 	if err != nil {
 		return nil, err
 	}
-	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp, names)), nil
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(cards[0]), nil
 }
 
 func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
@@ -984,15 +1051,11 @@ func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyS
 		return nil, err
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(paths...))
+	cards, err := h.studentPathCards(ctx, caller.ID, paths...)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]generated.StudentPath, len(paths))
-	for i, sp := range paths {
-		items[i] = toStudentPath(sp, names)
-	}
-	return generated.ListMyStandalonePaths200JSONResponse(items), nil
+	return generated.ListMyStandalonePaths200JSONResponse(cards), nil
 }
 
 func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {
@@ -1269,6 +1332,12 @@ func (h *Handler) PublishCourse(ctx context.Context, request generated.PublishCo
 	}
 
 	version, err := h.course.PublishCourse(ctx, caller, request.CourseId.String())
+	if refusal := (*domain.CourseNotPublishableError)(nil); errors.As(err, &refusal) {
+		return generated.PublishCourse409JSONResponse(generated.CourseNotPublishableError{
+			Message:              "at least one checkpoint's learning path is a draft",
+			DraftLearningPathIds: toUUIDs(refusal.DraftLearningPathIDs),
+		}), nil
+	}
 	if err != nil {
 		kind, _ := classify(err)
 		switch kind {

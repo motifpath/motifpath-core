@@ -315,16 +315,49 @@ const (
 	LearningPathLevelIntermediate      LearningPathLevel = "intermediate"
 )
 
+// Defines values for LearningPathStatus.
+const (
+	LearningPathStatusDraft     LearningPathStatus = "draft"
+	LearningPathStatusPublished LearningPathStatus = "published"
+)
+
 // Defines values for LearningPathItemContentType.
 const (
 	LearningPathItemContentTypeArticle LearningPathItemContentType = "article"
 	LearningPathItemContentTypeVideo   LearningPathItemContentType = "video"
 )
 
+// Defines values for LearningPathNotPublishableErrorMissing.
+const (
+	LearningPathNotPublishableErrorMissingItems              LearningPathNotPublishableErrorMissing = "items"
+	LearningPathNotPublishableErrorMissingLanguage           LearningPathNotPublishableErrorMissing = "language"
+	LearningPathNotPublishableErrorMissingLevel              LearningPathNotPublishableErrorMissing = "level"
+	LearningPathNotPublishableErrorMissingSummary            LearningPathNotPublishableErrorMissing = "summary"
+	LearningPathNotPublishableErrorMissingUnpublishedContent LearningPathNotPublishableErrorMissing = "unpublished_content"
+)
+
 // Defines values for OptionRegionShape.
 const (
 	Circle    OptionRegionShape = "circle"
 	Rectangle OptionRegionShape = "rectangle"
+)
+
+// Defines values for PathCatalogEntryLevel.
+const (
+	PathCatalogEntryLevelAdvanced          PathCatalogEntryLevel = "advanced"
+	PathCatalogEntryLevelBeginner          PathCatalogEntryLevel = "beginner"
+	PathCatalogEntryLevelEarlyIntermediate PathCatalogEntryLevel = "early_intermediate"
+	PathCatalogEntryLevelExpert            PathCatalogEntryLevel = "expert"
+	PathCatalogEntryLevelIntermediate      PathCatalogEntryLevel = "intermediate"
+)
+
+// Defines values for PathDetailLevel.
+const (
+	PathDetailLevelAdvanced          PathDetailLevel = "advanced"
+	PathDetailLevelBeginner          PathDetailLevel = "beginner"
+	PathDetailLevelEarlyIntermediate PathDetailLevel = "early_intermediate"
+	PathDetailLevelExpert            PathDetailLevel = "expert"
+	PathDetailLevelIntermediate      PathDetailLevel = "intermediate"
 )
 
 // Defines values for PromptDocumentType.
@@ -391,6 +424,15 @@ const (
 	SequenceStepStrumUp   SequenceStepStrum = "up"
 )
 
+// Defines values for StudentPathLevel.
+const (
+	StudentPathLevelAdvanced          StudentPathLevel = "advanced"
+	StudentPathLevelBeginner          StudentPathLevel = "beginner"
+	StudentPathLevelEarlyIntermediate StudentPathLevel = "early_intermediate"
+	StudentPathLevelExpert            StudentPathLevel = "expert"
+	StudentPathLevelIntermediate      StudentPathLevel = "intermediate"
+)
+
 // Defines values for StudentPathItemContentType.
 const (
 	StudentPathItemContentTypeArticle StudentPathItemContentType = "article"
@@ -452,6 +494,15 @@ const (
 	ListCatalogCoursesParamsLevelsIntermediate      ListCatalogCoursesParamsLevels = "intermediate"
 )
 
+// Defines values for ListCatalogPathsParamsLevels.
+const (
+	ListCatalogPathsParamsLevelsAdvanced          ListCatalogPathsParamsLevels = "advanced"
+	ListCatalogPathsParamsLevelsBeginner          ListCatalogPathsParamsLevels = "beginner"
+	ListCatalogPathsParamsLevelsEarlyIntermediate ListCatalogPathsParamsLevels = "early_intermediate"
+	ListCatalogPathsParamsLevelsExpert            ListCatalogPathsParamsLevels = "expert"
+	ListCatalogPathsParamsLevelsIntermediate      ListCatalogPathsParamsLevels = "intermediate"
+)
+
 // Defines values for ListContentNodesParamsContentType.
 const (
 	Article ListContentNodesParamsContentType = "article"
@@ -500,11 +551,11 @@ const (
 
 // Defines values for ListLearningPathsParamsLevels.
 const (
-	Advanced          ListLearningPathsParamsLevels = "advanced"
-	Beginner          ListLearningPathsParamsLevels = "beginner"
-	EarlyIntermediate ListLearningPathsParamsLevels = "early_intermediate"
-	Expert            ListLearningPathsParamsLevels = "expert"
-	Intermediate      ListLearningPathsParamsLevels = "intermediate"
+	ListLearningPathsParamsLevelsAdvanced          ListLearningPathsParamsLevels = "advanced"
+	ListLearningPathsParamsLevelsBeginner          ListLearningPathsParamsLevels = "beginner"
+	ListLearningPathsParamsLevelsEarlyIntermediate ListLearningPathsParamsLevels = "early_intermediate"
+	ListLearningPathsParamsLevelsExpert            ListLearningPathsParamsLevels = "expert"
+	ListLearningPathsParamsLevelsIntermediate      ListLearningPathsParamsLevels = "intermediate"
 )
 
 // Defines values for ListLearningPathsParamsSort.
@@ -513,9 +564,15 @@ const (
 	Updated ListLearningPathsParamsSort = "updated"
 )
 
+// Defines values for ListLearningPathsParamsStatus.
+const (
+	ListLearningPathsParamsStatusDraft     ListLearningPathsParamsStatus = "draft"
+	ListLearningPathsParamsStatusPublished ListLearningPathsParamsStatus = "published"
+)
+
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
 type AssignLearningPathRequest struct {
-	// LearningPathId The ID of the learning path to assign. Must exist in the system.
+	// LearningPathId The ID of the learning path to assign. Must exist in the system and be published.
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
 
@@ -1021,6 +1078,15 @@ type CourseEnrollmentCourseLevel string
 // CourseEnrollmentStatus active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
 type CourseEnrollmentStatus string
 
+// CourseNotPublishableError Returned when a course can't be published because a checkpoint uses a learning path that is still a draft.
+type CourseNotPublishableError struct {
+	// DraftLearningPathIds The checkpoints' learning paths that are still drafts, in checkpoint order.
+	DraftLearningPathIds []openapi_types.UUID `json:"draft_learning_path_ids"`
+
+	// Message Human-readable reason for the refusal.
+	Message string `json:"message"`
+}
+
 // CourseOutlineCheckpoint A checkpoint as shown to a prospective or enrolled student — title and item outline, never lesson content.
 type CourseOutlineCheckpoint struct {
 	// Items The checkpoint's items, in order, as a title-only outline.
@@ -1033,9 +1099,9 @@ type CourseOutlineCheckpoint struct {
 	Title string `json:"title"`
 }
 
-// CourseOutlineItem One content node's title within a checkpoint's outline.
+// CourseOutlineItem One content node's title within a course checkpoint's or a path's outline.
 type CourseOutlineItem struct {
-	// SectionLabel Optional label grouping this item with its immediate neighbors under a named section, carried through from the underlying learning path.
+	// SectionLabel Optional label grouping this item with its immediate neighbors under a named section, carried through from the learning path.
 	SectionLabel *string `json:"section_label,omitempty"`
 
 	// Title Title of the content node.
@@ -1204,7 +1270,7 @@ type CreateCourseEnrollmentRequest struct {
 // CreateCourseRequest Payload for creating a course as a draft.
 type CreateCourseRequest struct {
 	Checkpoints []struct {
-		// LearningPathId The learning path template at this checkpoint. Must exist in the system.
+		// LearningPathId The learning path template at this checkpoint. Must exist in the system. It may be a draft while the course is being built, but the course can't be published until it is published.
 		LearningPathId openapi_types.UUID `json:"learning_path_id"`
 
 		// Title Optional override shown for this checkpoint instead of the learning path's own title (e.g. "Stage 1: Open chords").
@@ -1543,8 +1609,14 @@ type CreateLearningPathRequest struct {
 		SectionLabel *string `json:"section_label,omitempty"`
 	} `json:"items"`
 
+	// Language The language the path is written in, as a Language.code other than "any". Optional while the path is a draft; omitting it removes the current one. Required to publish.
+	Language *string `json:"language,omitempty"`
+
 	// Level The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 	Level CreateLearningPathRequestLevel `json:"level"`
+
+	// Summary Short description of the path shown in the path catalog. Optional while the path is a draft; omitting it removes the current one. Required to publish.
+	Summary *string `json:"summary,omitempty"`
 
 	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
 	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
@@ -2022,6 +2094,12 @@ type DiagramStackRef struct {
 	Stack []DiagramRef `json:"stack"`
 }
 
+// EnrollInLearningPathRequest Payload for enrolling the caller in a published learning path.
+type EnrollInLearningPathRequest struct {
+	// LearningPathId The ID of the published learning path to enroll in.
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+}
+
 // Exercise A reusable, standalone practice item classified by Skill/Concept
 // tree references and independent of any single challenge. The
 // exercise_id is the value the SPA supplies in exercise-family
@@ -2302,11 +2380,20 @@ type LearningPath struct {
 	// Items Ordered content nodes, sorted by position ascending.
 	Items []LearningPathItem `json:"items"`
 
+	// Language The language the path is written in, as a Language.code other than "any". Absent until an author gives it one.
+	Language *string `json:"language,omitempty"`
+
 	// LearningPathId Stable identifier for this learning path.
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 
 	// Level The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
 	Level *LearningPathLevel `json:"level,omitempty"`
+
+	// Status draft — only teachers and admins see it. published — listed in the path catalog, where any user can enroll.
+	Status LearningPathStatus `json:"status"`
+
+	// Summary Short description of the path shown in the path catalog. Absent until an author gives it one.
+	Summary *string `json:"summary,omitempty"`
 
 	// Teacher A reference to another MotifPath user, as it appears in any response
 	// that points at a user (ADR-035). display_name is read from the
@@ -2329,6 +2416,9 @@ type LearningPath struct {
 // LearningPathLevel The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
 type LearningPathLevel string
 
+// LearningPathStatus draft — only teachers and admins see it. published — listed in the path catalog, where any user can enroll.
+type LearningPathStatus string
+
 // LearningPathItem A single content node within a learning path at a given position.
 type LearningPathItem struct {
 	// ContentNodeId The ID of the content node at this position.
@@ -2349,6 +2439,21 @@ type LearningPathItem struct {
 
 // LearningPathItemContentType Media format of the content node, denormalised for display.
 type LearningPathItemContentType string
+
+// LearningPathNotPublishableError Returned when a learning path can't be published, or a published one can't be changed, because the result would be incomplete.
+type LearningPathNotPublishableError struct {
+	// Message Human-readable reason for the refusal.
+	Message string `json:"message"`
+
+	// Missing Everything that stops the path from being published. summary, language and level — the field is absent. items — the path has no items. unpublished_content — at least one item's content node has never been published.
+	Missing []LearningPathNotPublishableErrorMissing `json:"missing"`
+
+	// UnpublishedContentNodeIds The items' content nodes that have never been published. Present only when missing includes unpublished_content.
+	UnpublishedContentNodeIds *[]openapi_types.UUID `json:"unpublished_content_node_ids,omitempty"`
+}
+
+// LearningPathNotPublishableErrorMissing defines model for LearningPathNotPublishableError.Missing.
+type LearningPathNotPublishableErrorMissing string
 
 // LocalizedCaption A caption in one or more languages, keyed by Language.code (never
 // "any").
@@ -2586,6 +2691,105 @@ type PagedLearningPaths struct {
 	Total int `json:"total"`
 }
 
+// PagedPathCatalog defines model for PagedPathCatalog.
+type PagedPathCatalog struct {
+	Items []PathCatalogEntry `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PathCatalogEntry A published learning path as it appears in the path catalog — enough to browse and pick one, never authoring detail such as an item's content_node_id.
+type PathCatalogEntry struct {
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Language The language the path is written in, as a Language.code.
+	Language string `json:"language"`
+
+	// LearningPathId Stable identifier for this learning path.
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+	// LessonCount Number of items in the path. This is a lesson count, not an estimated duration.
+	LessonCount int `json:"lesson_count"`
+
+	// Level The level a learner should be at to follow this path.
+	Level PathCatalogEntryLevel `json:"level"`
+
+	// Summary Short description of the path.
+	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
+	// Title Human-readable name for this learning path.
+	Title string `json:"title"`
+}
+
+// PathCatalogEntryLevel The level a learner should be at to follow this path.
+type PathCatalogEntryLevel string
+
+// PathDetail A single published learning path's learner-facing detail, rendered as an outline of its items' titles, never lesson content.
+type PathDetail struct {
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef `json:"created_by"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Items The path's items, in order, as a title-only outline.
+	Items []CourseOutlineItem `json:"items"`
+
+	// Language The language the path is written in, as a Language.code.
+	Language string `json:"language"`
+
+	// LearningPathId Stable identifier for this learning path.
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+
+	// LessonCount Number of items in the path. This is a lesson count, not an estimated duration.
+	LessonCount int `json:"lesson_count"`
+
+	// Level The level a learner should be at to follow this path.
+	Level PathDetailLevel `json:"level"`
+
+	// Summary Short description of the path.
+	Summary string `json:"summary"`
+
+	// ThumbnailUrl An image shown for this item in lists and cards. Absent when it has none.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
+	// Title Human-readable name for this learning path.
+	Title string `json:"title"`
+}
+
+// PathDetailLevel The level a learner should be at to follow this path.
+type PathDetailLevel string
+
 // Pitch A pitch in scientific pitch notation: a note name with its octave,
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
@@ -2656,10 +2860,13 @@ type PromptMarkType string
 // under text and any inline marks under marks. attrs holds
 // type-specific attributes (e.g. heading's level, paragraph/heading's
 // text alignment, image's src and alt, audio/video's src, diagram's
-// diagram_ref or diagram_stack_ref (the same shapes DiagramRef/
-// DiagramStackRef carry elsewhere in this spec), table cell's colspan,
-// rowspan, backgroundColor, and borderColor) and is validated by the
-// authoring editor, not by this schema.
+// diagramRef or diagramStackRef, table cell's colspan, rowspan,
+// backgroundColor, and borderColor) and is validated by the authoring
+// editor, not by this schema. attrs keys are camelCase (the rich-text
+// editor's convention), so a diagram node's keys are diagramRef and
+// diagramStackRef — not diagram_ref/diagram_stack_ref. Their values
+// are the DiagramRef/DiagramStackRef shapes defined elsewhere in this
+// spec, whose own fields stay snake_case (diagram_id, layers, …).
 type PromptNode struct {
 	// Attrs Type-specific attributes for this node. Absent when the node
 	// type has none set.
@@ -2747,7 +2954,7 @@ type RemediationTarget struct {
 // ReplaceCourseRequest Payload for replacing a course's draft wholesale.
 type ReplaceCourseRequest struct {
 	Checkpoints []struct {
-		// LearningPathId The learning path template at this checkpoint. Must exist in the system.
+		// LearningPathId The learning path template at this checkpoint. Must exist in the system. It may be a draft while the course is being built, but the course can't be published until it is published.
 		LearningPathId openapi_types.UUID `json:"learning_path_id"`
 
 		// Title Optional override shown for this checkpoint instead of the learning path's own title.
@@ -2799,8 +3006,14 @@ type ReplaceLearningPathRequest struct {
 		SectionLabel *string `json:"section_label,omitempty"`
 	} `json:"items"`
 
+	// Language The language the path is written in, as a Language.code other than "any". Optional while the path is a draft; omitting it removes the current one. Required to publish.
+	Language *string `json:"language,omitempty"`
+
 	// Level The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 	Level ReplaceLearningPathRequestLevel `json:"level"`
+
+	// Summary Short description of the path shown in the path catalog. Optional while the path is a draft; omitting it removes the current one. Required to publish.
+	Summary *string `json:"summary,omitempty"`
 
 	// ThumbnailUrl An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
 	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
@@ -2887,8 +3100,25 @@ type StudentPath struct {
 	// receive.
 	AssignedBy UserRef `json:"assigned_by"`
 
+	// CompletedCount Number of this path's items whose content node the student has completed, here or in any other path.
+	CompletedCount int `json:"completed_count"`
+
 	// CourseCheckpointPosition 1-based position of this checkpoint within its course, or null for a standalone path. Set together with source_course_enrollment_id.
 	CourseCheckpointPosition *int `json:"course_checkpoint_position"`
+
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy *UserRef `json:"created_by,omitempty"`
+
+	// LessonCount Number of items in this path.
+	LessonCount int `json:"lesson_count"`
+
+	// Level The template's level when this path was copied. Absent when the template had none, or the path was copied before levels were recorded on copies.
+	Level *StudentPathLevel `json:"level,omitempty"`
 
 	// SourceCourseEnrollmentId The CourseEnrollment this StudentPath is a checkpoint of, or null when it is a standalone path (staff-assigned directly, not via a course). Set together with course_checkpoint_position.
 	SourceCourseEnrollmentId *openapi_types.UUID `json:"source_course_enrollment_id"`
@@ -2907,9 +3137,18 @@ type StudentPath struct {
 	// StudentPathId Stable identifier for this StudentPath.
 	StudentPathId openapi_types.UUID `json:"student_path_id"`
 
+	// Summary The template's summary when this path was copied. Absent when the template had none, or the path was copied before summaries were recorded.
+	Summary *string `json:"summary,omitempty"`
+
+	// ThumbnailUrl The template's thumbnail when this path was copied. Absent when it had none, or the path was copied before thumbnails were recorded on copies.
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
 	// Title Title of the path, copied from the template at assign time and independently editable afterwards.
 	Title string `json:"title"`
 }
+
+// StudentPathLevel The template's level when this path was copied. Absent when the template had none, or the path was copied before levels were recorded on copies.
+type StudentPathLevel string
 
 // StudentPathItem A content node in the student's learning path with their current progress state.
 type StudentPathItem struct {
@@ -3480,6 +3719,46 @@ type ListCatalogCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// ListCatalogPathCreatorsParams defines parameters for ListCatalogPathCreators.
+type ListCatalogPathCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
+// ListCatalogPathsParams defines parameters for ListCatalogPaths.
+type ListCatalogPathsParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Levels Restricts the results to paths at any of these levels.
+	Levels *[]ListCatalogPathsParamsLevels `form:"levels,omitempty" json:"levels,omitempty"`
+
+	// CreatedBy Restricts the results to paths created by this user.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
+	// SkillIds Restricts the results to paths with a content node classified with at least one of these skills.
+	SkillIds *[]openapi_types.UUID `form:"skill_ids,omitempty" json:"skill_ids,omitempty"`
+
+	// ConceptIds Restricts the results to paths with a content node classified with at least one of these concepts.
+	ConceptIds *[]openapi_types.UUID `form:"concept_ids,omitempty" json:"concept_ids,omitempty"`
+
+	// Language Restricts the results to paths written in this language
+	// (a Language.code other than "any").
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+}
+
+// ListCatalogPathsParamsLevels defines parameters for ListCatalogPaths.
+type ListCatalogPathsParamsLevels string
+
 // ListContentNodesParams defines parameters for ListContentNodes.
 type ListContentNodesParams struct {
 	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
@@ -3657,6 +3936,13 @@ type ListLearningPathsParams struct {
 
 	// InstrumentId Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids).
 	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+
+	// Language Restricts the results to learning paths written in this
+	// language (a Language.code other than "any").
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// Status Restricts the results to learning paths with this publishing status.
+	Status *ListLearningPathsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
 // ListLearningPathsParamsLevels defines parameters for ListLearningPaths.
@@ -3664,6 +3950,9 @@ type ListLearningPathsParamsLevels string
 
 // ListLearningPathsParamsSort defines parameters for ListLearningPaths.
 type ListLearningPathsParamsSort string
+
+// ListLearningPathsParamsStatus defines parameters for ListLearningPaths.
+type ListLearningPathsParamsStatus string
 
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
@@ -3738,6 +4027,9 @@ type CreateCourseEnrollmentJSONRequestBody = CreateCourseEnrollmentRequest
 // SetCurrentPathJSONRequestBody defines body for SetCurrentPath for application/json ContentType.
 type SetCurrentPathJSONRequestBody = SetCurrentPathRequest
 
+// EnrollInLearningPathJSONRequestBody defines body for EnrollInLearningPath for application/json ContentType.
+type EnrollInLearningPathJSONRequestBody = EnrollInLearningPathRequest
+
 // AssignLearningPathJSONRequestBody defines body for AssignLearningPath for application/json ContentType.
 type AssignLearningPathJSONRequestBody = AssignLearningPathRequest
 
@@ -3755,6 +4047,15 @@ type ServerInterface interface {
 	// List the creators of the published courses
 	// (GET /catalog/creators)
 	ListCatalogCreators(w http.ResponseWriter, r *http.Request, params ListCatalogCreatorsParams)
+	// List the creators of the published paths
+	// (GET /catalog/path-creators)
+	ListCatalogPathCreators(w http.ResponseWriter, r *http.Request, params ListCatalogPathCreatorsParams)
+	// Browse the published path catalog
+	// (GET /catalog/paths)
+	ListCatalogPaths(w http.ResponseWriter, r *http.Request, params ListCatalogPathsParams)
+	// Get a published path as learners see it
+	// (GET /catalog/paths/{learning_path_id})
+	GetCatalogPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID)
@@ -3905,6 +4206,12 @@ type ServerInterface interface {
 	// Replace a learning path's title and items
 	// (PUT /learning-paths/{learning_path_id})
 	ReplaceLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// Publish a learning path to the path catalog
+	// (POST /learning-paths/{learning_path_id}/publish)
+	PublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
+	// Remove a learning path from the path catalog
+	// (POST /learning-paths/{learning_path_id}/unpublish)
+	UnpublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
@@ -3941,6 +4248,9 @@ type ServerInterface interface {
 	// List the authenticated student's standalone paths
 	// (GET /students/me/student-paths)
 	ListMyStandalonePaths(w http.ResponseWriter, r *http.Request)
+	// Self-enroll the authenticated user in a published path
+	// (POST /students/me/student-paths)
+	EnrollInLearningPath(w http.ResponseWriter, r *http.Request)
 	// Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(w http.ResponseWriter, r *http.Request, studentId openapi_types.UUID)
@@ -3971,6 +4281,24 @@ func (_ Unimplemented) ListCatalogCourses(w http.ResponseWriter, r *http.Request
 // List the creators of the published courses
 // (GET /catalog/creators)
 func (_ Unimplemented) ListCatalogCreators(w http.ResponseWriter, r *http.Request, params ListCatalogCreatorsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the published paths
+// (GET /catalog/path-creators)
+func (_ Unimplemented) ListCatalogPathCreators(w http.ResponseWriter, r *http.Request, params ListCatalogPathCreatorsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Browse the published path catalog
+// (GET /catalog/paths)
+func (_ Unimplemented) ListCatalogPaths(w http.ResponseWriter, r *http.Request, params ListCatalogPathsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a published path as learners see it
+// (GET /catalog/paths/{learning_path_id})
+func (_ Unimplemented) GetCatalogPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4274,6 +4602,18 @@ func (_ Unimplemented) ReplaceLearningPath(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Publish a learning path to the path catalog
+// (POST /learning-paths/{learning_path_id}/publish)
+func (_ Unimplemented) PublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Remove a learning path from the path catalog
+// (POST /learning-paths/{learning_path_id}/unpublish)
+func (_ Unimplemented) UnpublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Request a presigned URL to upload a content-authoring media asset
 // (POST /media/upload-url)
 func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
@@ -4343,6 +4683,12 @@ func (_ Unimplemented) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *ht
 // List the authenticated student's standalone paths
 // (GET /students/me/student-paths)
 func (_ Unimplemented) ListMyStandalonePaths(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Self-enroll the authenticated user in a published path
+// (POST /students/me/student-paths)
+func (_ Unimplemented) EnrollInLearningPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4506,6 +4852,167 @@ func (siw *ServerInterfaceWrapper) ListCatalogCreators(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListCatalogCreators(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCatalogPathCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListCatalogPathCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCatalogPathCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCatalogPathCreators(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCatalogPaths operation middleware
+func (siw *ServerInterfaceWrapper) ListCatalogPaths(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCatalogPathsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "levels" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "levels", r.URL.Query(), &params.Levels)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "levels", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "skill_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "skill_ids", r.URL.Query(), &params.SkillIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_ids" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_ids", r.URL.Query(), &params.ConceptIds)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_ids", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCatalogPaths(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCatalogPath operation middleware
+func (siw *ServerInterfaceWrapper) GetCatalogPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learning_path_id" -------------
+	var learningPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learning_path_id", chi.URLParam(r, "learning_path_id"), &learningPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learning_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCatalogPath(w, r, learningPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6163,6 +6670,22 @@ func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *h
 		return
 	}
 
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListLearningPaths(w, r, params)
 	}))
@@ -6278,6 +6801,68 @@ func (siw *ServerInterfaceWrapper) ReplaceLearningPath(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReplaceLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishLearningPath operation middleware
+func (siw *ServerInterfaceWrapper) PublishLearningPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learning_path_id" -------------
+	var learningPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learning_path_id", chi.URLParam(r, "learning_path_id"), &learningPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learning_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishLearningPath(w, r, learningPathId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnpublishLearningPath operation middleware
+func (siw *ServerInterfaceWrapper) UnpublishLearningPath(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "learning_path_id" -------------
+	var learningPathId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "learning_path_id", chi.URLParam(r, "learning_path_id"), &learningPathId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "learning_path_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnpublishLearningPath(w, r, learningPathId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6571,6 +7156,26 @@ func (siw *ServerInterfaceWrapper) ListMyStandalonePaths(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// EnrollInLearningPath operation middleware
+func (siw *ServerInterfaceWrapper) EnrollInLearningPath(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EnrollInLearningPath(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AssignLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) AssignLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -6802,6 +7407,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/catalog/creators", wrapper.ListCatalogCreators)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/path-creators", wrapper.ListCatalogPathCreators)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/paths", wrapper.ListCatalogPaths)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/catalog/paths/{learning_path_id}", wrapper.GetCatalogPath)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/challenges/{challenge_id}", wrapper.GetChallenge)
 	})
 	r.Group(func(r chi.Router) {
@@ -6952,6 +7566,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Put(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.ReplaceLearningPath)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/learning-paths/{learning_path_id}/publish", wrapper.PublishLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/learning-paths/{learning_path_id}/unpublish", wrapper.UnpublishLearningPath)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/media/upload-url", wrapper.CreateMediaUploadUrl)
 	})
 	r.Group(func(r chi.Router) {
@@ -6986,6 +7606,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/student-paths", wrapper.ListMyStandalonePaths)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/student-paths", wrapper.EnrollInLearningPath)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/{student_id}/student-paths", wrapper.AssignLearningPath)
@@ -7063,6 +7686,120 @@ type ListCatalogCreators401JSONResponse UnauthorizedError
 func (response ListCatalogCreators401JSONResponse) VisitListCatalogCreatorsResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPathCreatorsRequestObject struct {
+	Params ListCatalogPathCreatorsParams
+}
+
+type ListCatalogPathCreatorsResponseObject interface {
+	VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListCatalogPathCreators200JSONResponse []UserRef
+
+func (response ListCatalogPathCreators200JSONResponse) VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPathCreators400JSONResponse ValidationError
+
+func (response ListCatalogPathCreators400JSONResponse) VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPathCreators401JSONResponse UnauthorizedError
+
+func (response ListCatalogPathCreators401JSONResponse) VisitListCatalogPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPathsRequestObject struct {
+	Params ListCatalogPathsParams
+}
+
+type ListCatalogPathsResponseObject interface {
+	VisitListCatalogPathsResponse(w http.ResponseWriter) error
+}
+
+type ListCatalogPaths200JSONResponse PagedPathCatalog
+
+func (response ListCatalogPaths200JSONResponse) VisitListCatalogPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPaths400JSONResponse ValidationError
+
+func (response ListCatalogPaths400JSONResponse) VisitListCatalogPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListCatalogPaths401JSONResponse UnauthorizedError
+
+func (response ListCatalogPaths401JSONResponse) VisitListCatalogPathsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCatalogPathRequestObject struct {
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+}
+
+type GetCatalogPathResponseObject interface {
+	VisitGetCatalogPathResponse(w http.ResponseWriter) error
+}
+
+type GetCatalogPath200JSONResponse PathDetail
+
+func (response GetCatalogPath200JSONResponse) VisitGetCatalogPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCatalogPath400JSONResponse ValidationError
+
+func (response GetCatalogPath400JSONResponse) VisitGetCatalogPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCatalogPath401JSONResponse UnauthorizedError
+
+func (response GetCatalogPath401JSONResponse) VisitGetCatalogPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCatalogPath404JSONResponse NotFoundError
+
+func (response GetCatalogPath404JSONResponse) VisitGetCatalogPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -8205,6 +8942,15 @@ func (response PublishCourse404JSONResponse) VisitPublishCourseResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
+type PublishCourse409JSONResponse CourseNotPublishableError
+
+func (response PublishCourse409JSONResponse) VisitPublishCourseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetPublishedCourseRequestObject struct {
 	CourseId openapi_types.UUID `json:"course_id"`
 }
@@ -9244,6 +9990,139 @@ func (response ReplaceLearningPath404JSONResponse) VisitReplaceLearningPathRespo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ReplaceLearningPath409JSONResponse LearningPathNotPublishableError
+
+func (response ReplaceLearningPath409JSONResponse) VisitReplaceLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPathRequestObject struct {
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+}
+
+type PublishLearningPathResponseObject interface {
+	VisitPublishLearningPathResponse(w http.ResponseWriter) error
+}
+
+type PublishLearningPath200JSONResponse LearningPath
+
+func (response PublishLearningPath200JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPath400JSONResponse ValidationError
+
+func (response PublishLearningPath400JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPath401JSONResponse UnauthorizedError
+
+func (response PublishLearningPath401JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPath403JSONResponse ForbiddenError
+
+func (response PublishLearningPath403JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPath404JSONResponse NotFoundError
+
+func (response PublishLearningPath404JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishLearningPath409JSONResponse LearningPathNotPublishableError
+
+func (response PublishLearningPath409JSONResponse) VisitPublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPathRequestObject struct {
+	LearningPathId openapi_types.UUID `json:"learning_path_id"`
+}
+
+type UnpublishLearningPathResponseObject interface {
+	VisitUnpublishLearningPathResponse(w http.ResponseWriter) error
+}
+
+type UnpublishLearningPath200JSONResponse LearningPath
+
+func (response UnpublishLearningPath200JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPath400JSONResponse ValidationError
+
+func (response UnpublishLearningPath400JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPath401JSONResponse UnauthorizedError
+
+func (response UnpublishLearningPath401JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPath403JSONResponse ForbiddenError
+
+func (response UnpublishLearningPath403JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPath404JSONResponse NotFoundError
+
+func (response UnpublishLearningPath404JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UnpublishLearningPath409JSONResponse ConflictError
+
+func (response UnpublishLearningPath409JSONResponse) VisitUnpublishLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type CreateMediaUploadUrlRequestObject struct {
 	Body *CreateMediaUploadUrlJSONRequestBody
 }
@@ -9695,6 +10574,59 @@ func (response ListMyStandalonePaths401JSONResponse) VisitListMyStandalonePathsR
 	return json.NewEncoder(w).Encode(response)
 }
 
+type EnrollInLearningPathRequestObject struct {
+	Body *EnrollInLearningPathJSONRequestBody
+}
+
+type EnrollInLearningPathResponseObject interface {
+	VisitEnrollInLearningPathResponse(w http.ResponseWriter) error
+}
+
+type EnrollInLearningPath200JSONResponse StudentPath
+
+func (response EnrollInLearningPath200JSONResponse) VisitEnrollInLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type EnrollInLearningPath201JSONResponse StudentPath
+
+func (response EnrollInLearningPath201JSONResponse) VisitEnrollInLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type EnrollInLearningPath400JSONResponse ValidationError
+
+func (response EnrollInLearningPath400JSONResponse) VisitEnrollInLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type EnrollInLearningPath401JSONResponse UnauthorizedError
+
+func (response EnrollInLearningPath401JSONResponse) VisitEnrollInLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type EnrollInLearningPath404JSONResponse NotFoundError
+
+func (response EnrollInLearningPath404JSONResponse) VisitEnrollInLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type AssignLearningPathRequestObject struct {
 	StudentId openapi_types.UUID `json:"student_id"`
 	Body      *AssignLearningPathJSONRequestBody
@@ -9702,6 +10634,15 @@ type AssignLearningPathRequestObject struct {
 
 type AssignLearningPathResponseObject interface {
 	VisitAssignLearningPathResponse(w http.ResponseWriter) error
+}
+
+type AssignLearningPath200JSONResponse StudentPath
+
+func (response AssignLearningPath200JSONResponse) VisitAssignLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
 }
 
 type AssignLearningPath201JSONResponse StudentPath
@@ -9745,6 +10686,15 @@ type AssignLearningPath404JSONResponse NotFoundError
 func (response AssignLearningPath404JSONResponse) VisitAssignLearningPathResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AssignLearningPath409JSONResponse ConflictError
+
+func (response AssignLearningPath409JSONResponse) VisitAssignLearningPathResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -9913,6 +10863,15 @@ type StrictServerInterface interface {
 	// List the creators of the published courses
 	// (GET /catalog/creators)
 	ListCatalogCreators(ctx context.Context, request ListCatalogCreatorsRequestObject) (ListCatalogCreatorsResponseObject, error)
+	// List the creators of the published paths
+	// (GET /catalog/path-creators)
+	ListCatalogPathCreators(ctx context.Context, request ListCatalogPathCreatorsRequestObject) (ListCatalogPathCreatorsResponseObject, error)
+	// Browse the published path catalog
+	// (GET /catalog/paths)
+	ListCatalogPaths(ctx context.Context, request ListCatalogPathsRequestObject) (ListCatalogPathsResponseObject, error)
+	// Get a published path as learners see it
+	// (GET /catalog/paths/{learning_path_id})
+	GetCatalogPath(ctx context.Context, request GetCatalogPathRequestObject) (GetCatalogPathResponseObject, error)
 	// Get a challenge by ID
 	// (GET /challenges/{challenge_id})
 	GetChallenge(ctx context.Context, request GetChallengeRequestObject) (GetChallengeResponseObject, error)
@@ -10063,6 +11022,12 @@ type StrictServerInterface interface {
 	// Replace a learning path's title and items
 	// (PUT /learning-paths/{learning_path_id})
 	ReplaceLearningPath(ctx context.Context, request ReplaceLearningPathRequestObject) (ReplaceLearningPathResponseObject, error)
+	// Publish a learning path to the path catalog
+	// (POST /learning-paths/{learning_path_id}/publish)
+	PublishLearningPath(ctx context.Context, request PublishLearningPathRequestObject) (PublishLearningPathResponseObject, error)
+	// Remove a learning path from the path catalog
+	// (POST /learning-paths/{learning_path_id}/unpublish)
+	UnpublishLearningPath(ctx context.Context, request UnpublishLearningPathRequestObject) (UnpublishLearningPathResponseObject, error)
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
@@ -10099,6 +11064,9 @@ type StrictServerInterface interface {
 	// List the authenticated student's standalone paths
 	// (GET /students/me/student-paths)
 	ListMyStandalonePaths(ctx context.Context, request ListMyStandalonePathsRequestObject) (ListMyStandalonePathsResponseObject, error)
+	// Self-enroll the authenticated user in a published path
+	// (POST /students/me/student-paths)
+	EnrollInLearningPath(ctx context.Context, request EnrollInLearningPathRequestObject) (EnrollInLearningPathResponseObject, error)
 	// Assign a learning path to a student
 	// (POST /students/{student_id}/student-paths)
 	AssignLearningPath(ctx context.Context, request AssignLearningPathRequestObject) (AssignLearningPathResponseObject, error)
@@ -10190,6 +11158,84 @@ func (sh *strictHandler) ListCatalogCreators(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListCatalogCreatorsResponseObject); ok {
 		if err := validResponse.VisitListCatalogCreatorsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCatalogPathCreators operation middleware
+func (sh *strictHandler) ListCatalogPathCreators(w http.ResponseWriter, r *http.Request, params ListCatalogPathCreatorsParams) {
+	var request ListCatalogPathCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCatalogPathCreators(ctx, request.(ListCatalogPathCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCatalogPathCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCatalogPathCreatorsResponseObject); ok {
+		if err := validResponse.VisitListCatalogPathCreatorsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCatalogPaths operation middleware
+func (sh *strictHandler) ListCatalogPaths(w http.ResponseWriter, r *http.Request, params ListCatalogPathsParams) {
+	var request ListCatalogPathsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCatalogPaths(ctx, request.(ListCatalogPathsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCatalogPaths")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCatalogPathsResponseObject); ok {
+		if err := validResponse.VisitListCatalogPathsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCatalogPath operation middleware
+func (sh *strictHandler) GetCatalogPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	var request GetCatalogPathRequestObject
+
+	request.LearningPathId = learningPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCatalogPath(ctx, request.(GetCatalogPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCatalogPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCatalogPathResponseObject); ok {
+		if err := validResponse.VisitGetCatalogPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11600,6 +12646,58 @@ func (sh *strictHandler) ReplaceLearningPath(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// PublishLearningPath operation middleware
+func (sh *strictHandler) PublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	var request PublishLearningPathRequestObject
+
+	request.LearningPathId = learningPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishLearningPath(ctx, request.(PublishLearningPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishLearningPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishLearningPathResponseObject); ok {
+		if err := validResponse.VisitPublishLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UnpublishLearningPath operation middleware
+func (sh *strictHandler) UnpublishLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID) {
+	var request UnpublishLearningPathRequestObject
+
+	request.LearningPathId = learningPathId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UnpublishLearningPath(ctx, request.(UnpublishLearningPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UnpublishLearningPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnpublishLearningPathResponseObject); ok {
+		if err := validResponse.VisitUnpublishLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateMediaUploadUrl operation middleware
 func (sh *strictHandler) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
 	var request CreateMediaUploadUrlRequestObject
@@ -11915,6 +13013,37 @@ func (sh *strictHandler) ListMyStandalonePaths(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListMyStandalonePathsResponseObject); ok {
 		if err := validResponse.VisitListMyStandalonePathsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// EnrollInLearningPath operation middleware
+func (sh *strictHandler) EnrollInLearningPath(w http.ResponseWriter, r *http.Request) {
+	var request EnrollInLearningPathRequestObject
+
+	var body EnrollInLearningPathJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.EnrollInLearningPath(ctx, request.(EnrollInLearningPathRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "EnrollInLearningPath")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(EnrollInLearningPathResponseObject); ok {
+		if err := validResponse.VisitEnrollInLearningPathResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

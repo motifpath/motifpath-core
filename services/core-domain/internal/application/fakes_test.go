@@ -708,6 +708,12 @@ func (f *fakeLearningPathRepository) List(_ context.Context, filter domain.Learn
 		if !containsFold(path.Title, filter.Query) {
 			continue
 		}
+		if filter.Status != "" && path.Status != filter.Status {
+			continue
+		}
+		if filter.Language != "" && (path.Language == nil || *path.Language != filter.Language) {
+			continue
+		}
 		result = append(result, path)
 	}
 	sort.Slice(result, func(i, j int) bool {
@@ -726,6 +732,34 @@ func (f *fakeLearningPathRepository) Replace(_ context.Context, path domain.Lear
 		return domain.ErrNotFound
 	}
 	f.byID[path.ID] = path
+	return nil
+}
+
+func (f *fakeLearningPathRepository) ListCreatorIDs(ctx context.Context, filter domain.LearningPathFilter) ([]string, error) {
+	page, err := f.List(ctx, filter, domain.PageRequest{Limit: len(f.byID) + 1})
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, p := range page.Items {
+		if !seen[p.TeacherID] {
+			seen[p.TeacherID] = true
+			ids = append(ids, p.TeacherID)
+		}
+	}
+	return ids, nil
+}
+
+func (f *fakeLearningPathRepository) UpdateStatus(_ context.Context, id string, status domain.LearningPathStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	path, ok := f.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	path.Status = status
+	f.byID[id] = path
 	return nil
 }
 
@@ -970,11 +1004,29 @@ func newFakeStudentPathRepository() *fakeStudentPathRepository {
 	return &fakeStudentPathRepository{byID: map[string]domain.StudentPath{}}
 }
 
+func (f *fakeStudentPathRepository) FindActiveStandalone(_ context.Context, studentID, templateID string) (domain.StudentPath, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, path := range f.byID {
+		if path.StudentID == studentID && path.SourceTemplateID == templateID && path.ArchivedAt == nil && path.SourceCourseEnrollmentID == nil {
+			return path, nil
+		}
+	}
+	return domain.StudentPath{}, domain.ErrNotFound
+}
+
 func (f *fakeStudentPathRepository) Create(_ context.Context, path domain.StudentPath) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createErr != nil {
 		return f.createErr
+	}
+	if path.SourceCourseEnrollmentID == nil && path.ArchivedAt == nil {
+		for _, existing := range f.byID {
+			if existing.StudentID == path.StudentID && existing.SourceTemplateID == path.SourceTemplateID && existing.ArchivedAt == nil && existing.SourceCourseEnrollmentID == nil {
+				return domain.ErrAlreadyExists
+			}
+		}
 	}
 	f.byID[path.ID] = path
 	return nil

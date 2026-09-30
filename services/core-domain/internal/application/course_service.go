@@ -235,6 +235,9 @@ func (s *CourseService) PublishCourse(ctx context.Context, caller domain.User, i
 	if err != nil {
 		return domain.CourseVersion{}, err
 	}
+	if err := s.checkCheckpointPathsPublished(ctx, course); err != nil {
+		return domain.CourseVersion{}, err
+	}
 
 	nextVersionNumber := 1
 	if latest, err := s.versions.GetLatestByCourseID(ctx, id); err == nil {
@@ -255,6 +258,27 @@ func (s *CourseService) PublishCourse(ctx context.Context, caller domain.User, i
 	}
 
 	return version, nil
+}
+
+// checkCheckpointPathsPublished returns a *domain.CourseNotPublishableError
+// naming, in checkpoint order, every checkpoint path that isn't published —
+// a path that no longer exists included, since a version can't be built on
+// it either.
+func (s *CourseService) checkCheckpointPathsPublished(ctx context.Context, course domain.Course) error {
+	var drafts []string
+	for _, checkpoint := range course.Checkpoints {
+		path, err := s.paths.GetByID(ctx, checkpoint.LearningPathID)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+		if err != nil || path.Status != domain.LearningPathStatusPublished {
+			drafts = append(drafts, checkpoint.LearningPathID)
+		}
+	}
+	if len(drafts) > 0 {
+		return &domain.CourseNotPublishableError{DraftLearningPathIDs: drafts}
+	}
+	return nil
 }
 
 // RetireCourse removes course from the catalog for new enrollment only. This
