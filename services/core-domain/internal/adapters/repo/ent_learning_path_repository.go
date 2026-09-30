@@ -126,6 +126,35 @@ func (r *EntLearningPathRepository) GetByID(ctx context.Context, id string) (dom
 	}, nil
 }
 
+func (r *EntLearningPathRepository) CountItems(ctx context.Context, ids []string) (map[string]int, error) {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	counts := map[string]int{}
+	if len(parsed) == 0 {
+		return counts, nil
+	}
+
+	var rows []struct {
+		LearningPathID uuid.UUID `json:"learning_path_id"`
+		Count          int       `json:"count"`
+	}
+	if err := r.client.LearningPathItem.Query().
+		Where(learningpathitem.LearningPathIDIn(parsed...)).
+		GroupBy(learningpathitem.FieldLearningPathID).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.LearningPathID.String()] = row.Count
+	}
+	return counts, nil
+}
+
 // List returns every learning path with its items, batching the item and
 // content-node lookups into one query each across all paths — instead of
 // GetByID's per-path 1 (items) + 1 (nodes) round trips repeated per path.

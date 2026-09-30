@@ -411,19 +411,32 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 	}, nil
 }
 
-// CountLessons resolves the current content-node count for every checkpoint
-// learning path. Repeated path ids are intentionally counted repeatedly:
-// each occurrence is a distinct checkpoint in the learner's course scope.
-func (s *CourseService) CountLessons(ctx context.Context, learningPathIDs []string) (int, error) {
-	count := 0
-	for _, learningPathID := range learningPathIDs {
-		path, err := s.paths.GetByID(ctx, learningPathID)
-		if err != nil {
-			return 0, err
-		}
-		count += len(path.Items)
+// CountLessons resolves each course's current content-node count from its
+// checkpoint learning path ids, keyed by course id, in one lookup for the
+// whole set so a catalog page costs the same however many courses it holds.
+// Repeated path ids are intentionally counted repeatedly: each occurrence is
+// a distinct checkpoint in the learner's course scope. A path that no longer
+// exists contributes no lessons rather than failing: deletion is only refused
+// for paths a published version uses, so a draft checkpoint can outlive its
+// path, and one stale draft must not break every course listed beside it.
+func (s *CourseService) CountLessons(ctx context.Context, learningPathIDs map[string][]string) (map[string]int, error) {
+	var allIDs []string
+	for _, ids := range learningPathIDs {
+		allIDs = append(allIDs, ids...)
 	}
-	return count, nil
+	itemCounts, err := s.paths.CountItems(ctx, allIDs)
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int, len(learningPathIDs))
+	for courseID, ids := range learningPathIDs {
+		total := 0
+		for _, id := range ids {
+			total += itemCounts[id]
+		}
+		counts[courseID] = total
+	}
+	return counts, nil
 }
 
 // resolveCheckpoints turns checkpoints into the resolved

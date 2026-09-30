@@ -1016,6 +1016,40 @@ func TestEntLearningPathRepository_List(t *testing.T) {
 	assert.Equal(t, pathB, byID[pathB.ID])
 }
 
+// TestEntLearningPathRepository_CountItems confirms CountItems returns every
+// path's item count in one lookup and simply omits an id with no items —
+// an empty path or one that matches no path at all — never an error for it.
+func TestEntLearningPathRepository_CountItems(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	nodeRepo := NewEntContentNodeRepository(client)
+	repo := NewEntLearningPathRepository(client)
+
+	empty, err := repo.CountItems(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+
+	node1 := seedContentNode(t, ctx, nodeRepo)
+	node2 := seedContentNode(t, ctx, nodeRepo)
+	twoItems := domain.LearningPath{
+		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Two items",
+		Items: []domain.LearningPathItem{
+			{Position: 1, ContentNodeID: node1.ID, Title: node1.Title, ContentType: node1.ContentType},
+			{Position: 2, ContentNodeID: node2.ID, Title: node2.Title, ContentType: node2.ContentType},
+		},
+		CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, twoItems))
+	noItems := domain.LearningPath{ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "No items", CreatedAt: fixedAt}
+	require.NoError(t, repo.Create(ctx, noItems))
+	missing := uuid.NewString()
+
+	counts, err := repo.CountItems(ctx, []string{twoItems.ID, noItems.ID, missing, "not-a-uuid"})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int{twoItems.ID: 2}, counts)
+}
+
 // TestEntLearningPathRepository_Delete confirms Delete removes both the
 // LearningPath row and its LearningPathItem rows, and returns
 // domain.ErrNotFound for an id that doesn't exist — never a bare SQL

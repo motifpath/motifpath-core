@@ -723,6 +723,18 @@ func (f *fakeLearningPathRepo) GetByID(_ context.Context, id string) (domain.Lea
 	return p, nil
 }
 
+func (f *fakeLearningPathRepo) CountItems(_ context.Context, ids []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	counts := map[string]int{}
+	for _, id := range ids {
+		if p, ok := f.byID[id]; ok {
+			counts[id] = len(p.Items)
+		}
+	}
+	return counts, nil
+}
+
 func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

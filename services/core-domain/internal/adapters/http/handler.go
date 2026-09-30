@@ -1079,20 +1079,23 @@ func (h *Handler) catalogEntries(ctx context.Context, courses []domain.Course, v
 		return nil, err
 	}
 
-	for i, course := range courses {
-		learningPathIDs := courseLearningPathIDs(course.Checkpoints)
+	learningPathIDs := make(map[string][]string, len(courses))
+	for _, course := range courses {
+		learningPathIDs[course.ID] = courseLearningPathIDs(course.Checkpoints)
 		if view == learnerCatalogView {
 			latest, ok := latestByCourse[course.ID]
 			if !ok {
 				return nil, domain.ErrNotFound
 			}
-			learningPathIDs = courseVersionLearningPathIDs(latest.Checkpoints)
+			learningPathIDs[course.ID] = courseVersionLearningPathIDs(latest.Checkpoints)
 		}
-		lessonCount, err := h.course.CountLessons(ctx, learningPathIDs)
-		if err != nil {
-			return nil, err
-		}
-		entries[i].LessonCount = lessonCount
+	}
+	lessonCounts, err := h.course.CountLessons(ctx, learningPathIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i, course := range courses {
+		entries[i].LessonCount = lessonCounts[course.ID]
 	}
 
 	return entries, nil

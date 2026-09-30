@@ -651,9 +651,10 @@ func (f *fakeExpandedContentRepository) Delete(_ context.Context, id string) err
 
 // fakeLearningPathRepository is a minimal in-memory ports.LearningPathRepository.
 type fakeLearningPathRepository struct {
-	mu        sync.Mutex
-	byID      map[string]domain.LearningPath
-	createErr error
+	mu              sync.Mutex
+	byID            map[string]domain.LearningPath
+	createErr       error
+	countItemsCalls int
 }
 
 func newFakeLearningPathRepository() *fakeLearningPathRepository {
@@ -678,6 +679,19 @@ func (f *fakeLearningPathRepository) GetByID(_ context.Context, id string) (doma
 		return domain.LearningPath{}, domain.ErrNotFound
 	}
 	return path, nil
+}
+
+func (f *fakeLearningPathRepository) CountItems(_ context.Context, ids []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.countItemsCalls++
+	counts := map[string]int{}
+	for _, id := range ids {
+		if path, ok := f.byID[id]; ok {
+			counts[id] = len(path.Items)
+		}
+	}
+	return counts, nil
 }
 
 func (f *fakeLearningPathRepository) put(path domain.LearningPath) {
