@@ -17,13 +17,14 @@ type LearningPathService struct {
 	courseVersions ports.CourseVersionRepository
 	versions       ports.ContentNodeVersionRepository
 	languages      ports.LanguageRepository
+	users          ports.UserRepository
 	newID          func() string
 	now            func() time.Time
 	instruments    ports.InstrumentRepository
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, newID: newID, now: now, instruments: instruments}
+func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, users ports.UserRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, users: users, newID: newID, now: now, instruments: instruments}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -113,6 +114,22 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("status", "must be one of: draft, published")
 	}
 	return s.paths.List(ctx, filter, page)
+}
+
+// ListLearningPathCreators returns every user who created at least one path
+// in the library, whatever its status, each once, ordered by name as a
+// person reads names; nameQuery, when non-empty, keeps those whose name
+// contains it. The library is shared, so teachers and admins get the same
+// list; students are refused, as they are from the library itself.
+func (s *LearningPathService) ListLearningPathCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	ids, err := s.paths.ListCreatorIDs(ctx, domain.LearningPathFilter{})
+	if err != nil {
+		return nil, err
+	}
+	return namedCreators(ctx, s.users, ids, nameQuery)
 }
 
 // ReplaceLearningPath replaces the given path's title and items wholesale —

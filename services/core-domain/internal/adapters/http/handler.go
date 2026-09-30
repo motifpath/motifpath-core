@@ -1182,6 +1182,24 @@ func (h *Handler) ListCourseCreators(ctx context.Context, request generated.List
 	return generated.ListCourseCreators200JSONResponse(toUserRefs(creators)), nil
 }
 
+// ListLearningPathCreators returns the creators of every path in the
+// authoring library, optionally narrowed by name, in name order.
+func (h *Handler) ListLearningPathCreators(ctx context.Context, request generated.ListLearningPathCreatorsRequestObject) (generated.ListLearningPathCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListLearningPathCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	creators, err := h.path.ListLearningPathCreators(ctx, caller, searchQuery(request.Params.Q))
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListLearningPathCreators403JSONResponse(forbiddenError("the authoring creator list is for teachers and admins")), nil
+		}
+		return nil, err
+	}
+	return generated.ListLearningPathCreators200JSONResponse(toUserRefs(creators)), nil
+}
+
 // ListCatalogCreators returns the creators of the published courses, the
 // same for every caller, optionally narrowed by name, in name order.
 func (h *Handler) ListCatalogCreators(ctx context.Context, request generated.ListCatalogCreatorsRequestObject) (generated.ListCatalogCreatorsResponseObject, error) {

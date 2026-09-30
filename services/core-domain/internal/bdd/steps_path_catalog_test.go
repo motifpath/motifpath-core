@@ -165,6 +165,15 @@ func registerPathCatalogSteps(sc *godog.ScenarioContext, w *world) {
 		return nil
 	})
 	sc.Step(`^the creators returned are ((?:"[^"]+"(?:, | and )?)+), in that order$`, w.creatorsReturnedAre)
+
+	// ── Library creators (authoring) ────────────────────────────────────────
+	sc.Step(`^"([^"]+)" lists the creators of the learning path library$`, func(string) error { return w.listLibraryPathCreators(nil) })
+	sc.Step(`^"([^"]+)" lists the creators of the learning path library matching "([^"]+)"$`, func(_, q string) error { return w.listLibraryPathCreators(&q) })
+	sc.Step(`^an unauthenticated request attempts to list the creators of the learning path library$`, func() error {
+		resp, err := w.handler.ListLearningPathCreators(context.Background(), generated.ListLearningPathCreatorsRequestObject{})
+		w.lastResp, w.lastErr = resp, err
+		return nil
+	})
 }
 
 // putPublishedPathEdited seeds a complete published path, then applies edit.
@@ -326,6 +335,18 @@ func (w *world) detailListsLessonsWithSections(first, second, third string) erro
 			return fmt.Errorf("expected lesson %d to be %q with a section, got %#v", i+1, want[i], item)
 		}
 	}
+	return nil
+}
+
+// listLibraryPathCreators lists the authoring library's creators, storing a
+// successful response as the course creators' type like listPathCreators.
+func (w *world) listLibraryPathCreators(q *string) error {
+	resp, err := w.handler.ListLearningPathCreators(w.ctx(), generated.ListLearningPathCreatorsRequestObject{Params: generated.ListLearningPathCreatorsParams{Q: q}})
+	if creators, ok := resp.(generated.ListLearningPathCreators200JSONResponse); ok {
+		w.lastResp, w.lastErr = generated.ListCourseCreators200JSONResponse(creators), err
+		return nil
+	}
+	w.lastResp, w.lastErr = resp, err
 	return nil
 }
 
