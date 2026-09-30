@@ -53,14 +53,6 @@ func studentPathUserIDs(paths ...domain.StudentPath) []string {
 	return ids
 }
 
-func courseEnrollmentUserIDs(enrollments ...domain.CourseEnrollment) []string {
-	ids := make([]string, len(enrollments))
-	for i, e := range enrollments {
-		ids[i] = e.StudentID
-	}
-	return ids
-}
-
 func diagramUserIDs(diagrams ...domain.Diagram) []string {
 	ids := make([]string, len(diagrams))
 	for i, d := range diagrams {

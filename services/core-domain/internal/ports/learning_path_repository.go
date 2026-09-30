@@ -13,6 +13,11 @@ type LearningPathRepository interface {
 	// GetByID returns domain.ErrNotFound if no path exists with the given id.
 	GetByID(ctx context.Context, id string) (domain.LearningPath, error)
 
+	// CountItems returns the item count of every path in ids in one
+	// round-trip, keyed by path id. An id with no items — an empty path, or
+	// one that matches no path at all — is simply absent, never an error.
+	CountItems(ctx context.Context, ids []string) (map[string]int, error)
+
 	// List returns one page of the learning paths matching filter, ordered
 	// by title then id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error)

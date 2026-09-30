@@ -169,6 +169,34 @@ func (r *EntCourseRepository) List(ctx context.Context, filter domain.CourseList
 
 // ListCreatorIDs returns the distinct created_by of every course matching
 // filter, using the same predicates as List.
+func (r *EntCourseRepository) GetCreatorIDs(ctx context.Context, ids []string) (map[string]string, error) {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	creators := map[string]string{}
+	if len(parsed) == 0 {
+		return creators, nil
+	}
+
+	var rows []struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedBy uuid.UUID `json:"created_by"`
+	}
+	if err := r.client.Course.Query().
+		Where(course.IDIn(parsed...)).
+		Select(course.FieldID, course.FieldCreatedBy).
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		creators[row.ID.String()] = row.CreatedBy.String()
+	}
+	return creators, nil
+}
+
 func (r *EntCourseRepository) ListCreatorIDs(ctx context.Context, filter domain.CourseListFilter) ([]string, error) {
 	predicates, err := courseListPredicates(filter)
 	if err != nil {

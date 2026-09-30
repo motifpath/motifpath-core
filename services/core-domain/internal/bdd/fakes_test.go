@@ -723,6 +723,18 @@ func (f *fakeLearningPathRepo) GetByID(_ context.Context, id string) (domain.Lea
 	return p, nil
 }
 
+func (f *fakeLearningPathRepo) CountItems(_ context.Context, ids []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	counts := map[string]int{}
+	for _, id := range ids {
+		if p, ok := f.byID[id]; ok {
+			counts[id] = len(p.Items)
+		}
+	}
+	return counts, nil
+}
+
 func (f *fakeLearningPathRepo) put(p domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -824,6 +836,18 @@ func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
 	defer f.mu.Unlock()
 	f.byID[c.ID] = c
 	return nil
+}
+
+func (f *fakeCourseRepo) GetCreatorIDs(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	creators := map[string]string{}
+	for _, id := range ids {
+		if c, ok := f.byID[id]; ok {
+			creators[id] = c.CreatedBy
+		}
+	}
+	return creators, nil
 }
 
 func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, error) {
@@ -1057,6 +1081,17 @@ func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID 
 		}
 	}
 	return latest, nil
+}
+
+func (f *fakeCourseVersionRepo) GetByCourseIDAndVersionNumber(_ context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, version := range f.byCourse[courseID] {
+		if version.VersionNumber == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.CourseVersion{}, domain.ErrNotFound
 }
 
 func (f *fakeCourseVersionRepo) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {

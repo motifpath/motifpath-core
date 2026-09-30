@@ -383,3 +383,28 @@ func TestEntCourseRepository_Language(t *testing.T) {
 		assert.Equal(t, []string{portuguese.ID}, courseIDs(page))
 	})
 }
+
+// TestEntCourseRepository_GetCreatorIDs confirms GetCreatorIDs reads each
+// course's creator from the course row alone: it still answers for a course
+// whose draft checkpoint references a since-deleted learning path — which
+// GetByID cannot resolve — and simply omits an unknown id.
+func TestEntCourseRepository_GetCreatorIDs(t *testing.T) {
+	f := newCourseListFixture(t)
+	bob, carol := uuid.NewString(), uuid.NewString()
+	kept := f.pathWith(nil, nil)
+	doomed := f.pathWith(nil, nil)
+	healthy := f.draft("Fingerstyle Journey", "", domain.DifficultyLevelBeginner, bob, kept)
+	stale := f.draft("Strumming Basics", "", domain.DifficultyLevelBeginner, carol, doomed)
+	require.NoError(t, f.paths.Delete(f.ctx, doomed.ID))
+	_, err := f.courses.GetByID(f.ctx, stale.ID)
+	require.Error(t, err, "the stale draft's checkpoint no longer resolves")
+
+	got, err := f.courses.GetCreatorIDs(f.ctx, []string{healthy.ID, stale.ID, uuid.NewString(), "not-a-uuid"})
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{healthy.ID: bob, stale.ID: carol}, got)
+
+	empty, err := f.courses.GetCreatorIDs(f.ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+}

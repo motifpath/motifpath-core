@@ -17,6 +17,11 @@ type CourseVersionRepository interface {
 	// Returns domain.ErrNotFound if the course has never been published.
 	GetLatestByCourseID(ctx context.Context, courseID string) (domain.CourseVersion, error)
 
+	// GetByCourseIDAndVersionNumber returns the exact immutable snapshot a
+	// student enrolled under, with checkpoint snapshots ordered by position.
+	// Returns domain.ErrNotFound if that course version does not exist.
+	GetByCourseIDAndVersionNumber(ctx context.Context, courseID string, versionNumber int) (domain.CourseVersion, error)
+
 	// GetLatestByCourseIDs is GetLatestByCourseID batched across several
 	// courses in one round-trip — for a catalog listing that needs every
 	// course's latest version rather than looping GetLatestByCourseID once

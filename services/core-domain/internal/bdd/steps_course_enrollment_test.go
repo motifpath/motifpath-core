@@ -18,6 +18,7 @@ import (
 
 func registerCourseEnrollmentSteps(sc *godog.ScenarioContext, w *world) {
 	// ── Seeding an existing enrollment ──────────────────────────────────
+	sc.Step(`^a course "([^"]+)" exists, published at level "([^"]+)", created by "([^"]+)", with checkpoints "([^"]+)", "([^"]+)"$`, w.courseExistsPublishedAtLevelCreatedByWithCheckpoints)
 	sc.Step(`^"([^"]+)" is enrolled in "([^"]+)" as her current course$`, w.studentEnrolledInCourseSetup)
 	sc.Step(`^"([^"]+)" is enrolled in "([^"]+)"$`, w.studentEnrolledInCourseSetup)
 	sc.Step(`^"([^"]+)" is already enrolled in "([^"]+)" as her current course$`, w.studentEnrolledInCourseSetup)
@@ -30,6 +31,7 @@ func registerCourseEnrollmentSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^checkpoint (\d+) is the last checkpoint of "([^"]+)"$`, func(int, string) error { return nil })
 	sc.Step(`^"([^"]+)"'s latest published version is closed to new enrollments$`, w.courseVersionClosedToEnrollments)
 	sc.Step(`^"([^"]+)" has no current course or path$`, w.hasNoCurrentCourseOrPath)
+	sc.Step(`^the course "([^"]+)" is republished with a new summary and level "([^"]+)"$`, w.courseRepublishedWithSummaryAndLevel)
 
 	// ── Self-enrolling ───────────────────────────────────────────────────
 	sc.Step(`^"([^"]+)" enrolls in course "([^"]+)"$`, w.enrollsInCourse)
@@ -59,10 +61,63 @@ func registerCourseEnrollmentSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response includes the active "([^"]+)" enrollment with its current checkpoint and progress$`, w.responseIncludesActiveEnrollmentWithProgress)
 	sc.Step(`^the response includes no other active enrollment$`, w.responseIncludesNoOtherActiveEnrollment)
 	sc.Step(`^the response includes both the completed "([^"]+)" enrollment and the active "([^"]+)" enrollment$`, w.responseIncludesCompletedAndActive)
+	sc.Step(`^the enrollment in "([^"]+)" includes its pinned summary, level, and creator "([^"]+)"$`, w.enrollmentIncludesPinnedPresentation)
+	sc.Step(`^the enrollment in "([^"]+)" reports (\d+) checkpoints$`, w.enrollmentReportsCheckpointCount)
+	sc.Step(`^the enrollment in "([^"]+)" still shows its original pinned summary and level "([^"]+)"$`, w.enrollmentStillShowsPinnedSummaryAndLevel)
 
 	// ── Abandoning ───────────────────────────────────────────────────────
 	sc.Step(`^"([^"]+)" abandons her "([^"]+)" enrollment$`, w.abandonsEnrollment)
 	sc.Step(`^"([^"]+)" attempts to abandon her "([^"]+)" enrollment$`, w.attemptsAbandonEnrollment)
+}
+
+func (w *world) courseExistsPublishedAtLevelCreatedByWithCheckpoints(slug, level, creator, firstPath, secondPath string) error {
+	_, err := w.seedCourseFrom(courseSeed{
+		slug: slug, title: slug, creator: creator, level: generated.CreateCourseRequestLevel(level),
+		pathSlugs: []string{firstPath, secondPath}, publish: true,
+	})
+	return err
+}
+
+func (w *world) courseRepublishedWithSummaryAndLevel(courseSlug, level string) error {
+	courseID, ok := w.courseIDBySlug[courseSlug]
+	if !ok {
+		return fmt.Errorf("no course was seeded for slug %q", courseSlug)
+	}
+	course, err := w.courses.GetByID(context.Background(), courseID.String())
+	if err != nil {
+		return err
+	}
+	checkpoints := make([]courseCheckpointBody, len(course.Checkpoints))
+	for i, checkpoint := range course.Checkpoints {
+		checkpoints[i] = courseCheckpointBody{LearningPathId: uuid.MustParse(checkpoint.LearningPathID), Title: checkpoint.Title}
+	}
+
+	teacherCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub("bob"))
+	updated, err := w.handler.ReplaceCourse(teacherCtx, generated.ReplaceCourseRequestObject{
+		CourseId: courseID,
+		Body: &generated.ReplaceCourseRequest{
+			Language: "en", Title: course.Title, Summary: "Republished course summary.",
+			Level: generated.ReplaceCourseRequestLevel(level), Checkpoints: checkpoints,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if _, ok := updated.(generated.ReplaceCourse200JSONResponse); !ok {
+		return fmt.Errorf("setup: expected course replacement to succeed, got %#v", updated)
+	}
+
+	adminName := "pb-68-republish-admin"
+	w.ensureRegistered(adminName, domain.RoleAdmin)
+	adminCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(adminName))
+	published, err := w.handler.PublishCourse(adminCtx, generated.PublishCourseRequestObject{CourseId: courseID})
+	if err != nil {
+		return err
+	}
+	if _, ok := published.(generated.PublishCourse201JSONResponse); !ok {
+		return fmt.Errorf("setup: expected course republish to succeed, got %#v", published)
+	}
+	return nil
 }
 
 func courseEnrollKey(name, courseSlug string) string { return name + "|" + courseSlug }
@@ -594,6 +649,61 @@ func (w *world) responseIncludesCompletedAndActive(completedSlug, activeSlug str
 	}
 	if !sawActive {
 		return fmt.Errorf("expected an active enrollment for %q", activeSlug)
+	}
+	return nil
+}
+
+func (w *world) enrollmentForCourse(courseSlug string) (generated.CourseEnrollment, error) {
+	resp, ok := w.lastResp.(generated.ListMyCourseEnrollments200JSONResponse)
+	if !ok {
+		return generated.CourseEnrollment{}, fmt.Errorf("expected a course enrollment list response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	courseID, ok := w.courseIDBySlug[courseSlug]
+	if !ok {
+		return generated.CourseEnrollment{}, fmt.Errorf("no course was seeded for slug %q", courseSlug)
+	}
+	for _, enrollment := range resp {
+		if enrollment.CourseId == courseID {
+			return enrollment, nil
+		}
+	}
+	return generated.CourseEnrollment{}, fmt.Errorf("expected an enrollment for %q", courseSlug)
+}
+
+func (w *world) enrollmentIncludesPinnedPresentation(courseSlug, creator string) error {
+	enrollment, err := w.enrollmentForCourse(courseSlug)
+	if err != nil {
+		return err
+	}
+	courseID := w.courseIDBySlug[courseSlug]
+	version, err := w.courseVersions.GetByCourseIDAndVersionNumber(context.Background(), courseID.String(), enrollment.CourseVersionNumber)
+	if err != nil {
+		return err
+	}
+	if enrollment.CourseSummary != version.SummarySnapshot || enrollment.CourseLevel != generated.CourseEnrollmentCourseLevel(version.LevelSnapshot) {
+		return fmt.Errorf("expected %q to show its pinned summary %q and level %q, got %q and %q", courseSlug, version.SummarySnapshot, version.LevelSnapshot, enrollment.CourseSummary, enrollment.CourseLevel)
+	}
+	return w.expectUserRef(courseSlug+"'s course creator", enrollment.CourseCreatedBy, creator, w.nameClaim(creator))
+}
+
+func (w *world) enrollmentReportsCheckpointCount(courseSlug string, checkpoints int) error {
+	enrollment, err := w.enrollmentForCourse(courseSlug)
+	if err != nil {
+		return err
+	}
+	if enrollment.CheckpointCount != checkpoints {
+		return fmt.Errorf("expected %q to report %d checkpoints, got %d", courseSlug, checkpoints, enrollment.CheckpointCount)
+	}
+	return nil
+}
+
+func (w *world) enrollmentStillShowsPinnedSummaryAndLevel(courseSlug, level string) error {
+	enrollment, err := w.enrollmentForCourse(courseSlug)
+	if err != nil {
+		return err
+	}
+	if enrollment.CourseSummary != "Seeded for testing" || enrollment.CourseLevel != generated.CourseEnrollmentCourseLevel(level) {
+		return fmt.Errorf("expected %q to preserve summary %q and level %q, got %q and %q", courseSlug, "Seeded for testing", level, enrollment.CourseSummary, enrollment.CourseLevel)
 	}
 	return nil
 }

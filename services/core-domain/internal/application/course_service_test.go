@@ -797,7 +797,10 @@ func TestCourseService_GetPublishedCourse(t *testing.T) {
 		assert.Equal(t, "Fingerstyle Journey", detail.Title)
 		assert.Equal(t, "From first chords to a repertoire.", detail.Summary)
 		assert.Equal(t, domain.DifficultyLevelBeginner, detail.Level)
+		assert.Equal(t, "teacher-1", detail.CreatedBy)
 		assert.Equal(t, domain.CourseStatusPublished, detail.Status)
+		assert.Equal(t, 2, detail.CheckpointCount)
+		assert.Equal(t, 1, detail.LessonCount)
 		require.Len(t, detail.Checkpoints, 2)
 		assert.Equal(t, 1, detail.Checkpoints[0].Position)
 		assert.Equal(t, "Open Chords", detail.Checkpoints[0].Title)
@@ -844,6 +847,59 @@ func TestCourseService_GetPublishedCourse(t *testing.T) {
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
+}
+
+func TestCourseService_CountLessons(t *testing.T) {
+	tests := []struct {
+		name            string
+		learningPathIDs map[string][]string
+		want            map[string]int
+	}{
+		{
+			name:            "sums every checkpoint path's lessons per course",
+			learningPathIDs: map[string][]string{"course-1": {"path-01", "path-02"}, "course-2": {"path-02"}},
+			want:            map[string]int{"course-1": 5, "course-2": 3},
+		},
+		{
+			name:            "a path used by two checkpoints counts once per checkpoint",
+			learningPathIDs: map[string][]string{"course-1": {"path-01", "path-01"}},
+			want:            map[string]int{"course-1": 4},
+		},
+		{
+			name:            "a checkpoint whose path no longer exists contributes no lessons",
+			learningPathIDs: map[string][]string{"course-1": {"path-01", "deleted-path"}},
+			want:            map[string]int{"course-1": 2},
+		},
+		{
+			name:            "a course with no checkpoints counts zero lessons",
+			learningPathIDs: map[string][]string{"course-1": nil},
+			want:            map[string]int{"course-1": 0},
+		},
+		{
+			name:            "no courses resolves to an empty map",
+			learningPathIDs: map[string][]string{},
+			want:            map[string]int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			paths := newFakeLearningPathRepository()
+			paths.put(domain.LearningPath{ID: "path-01", Items: []domain.LearningPathItem{
+				{Position: 1, ContentNodeID: "node-1"}, {Position: 2, ContentNodeID: "node-2"},
+			}})
+			paths.put(domain.LearningPath{ID: "path-02", Items: []domain.LearningPathItem{
+				{Position: 1, ContentNodeID: "node-1"}, {Position: 2, ContentNodeID: "node-2"}, {Position: 3, ContentNodeID: "node-3"},
+			}})
+			svc := newCourseService(paths, newFakeCourseRepository())
+
+			got, err := svc.CountLessons(context.Background(), tt.learningPathIDs)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+			assert.LessOrEqual(t, paths.countItemsCalls, 1, "a whole page of courses resolves in at most one lookup")
+		})
+	}
 }
 
 func TestCourseService_ReactivateCourse(t *testing.T) {

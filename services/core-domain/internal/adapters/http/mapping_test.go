@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
+	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -18,11 +19,13 @@ func TestToCourseCatalogEntry(t *testing.T) {
 	live := domain.Course{
 		ID: "6c0e2d6a-1f3b-4c58-8f3e-3b9e5a0f2222", CreatedBy: creator,
 		Title: "Edited Title", Summary: "Edited summary.", Level: domain.DifficultyLevelExpert,
-		Status: domain.CourseStatusPublished,
+		Status:      domain.CourseStatusPublished,
+		Checkpoints: []domain.CourseCheckpoint{{Position: 1, LearningPathID: uuid.NewString()}, {Position: 2, LearningPathID: uuid.NewString()}, {Position: 3, LearningPathID: uuid.NewString()}},
 	}
 	version := domain.CourseVersion{
 		CourseID: live.ID, VersionNumber: 1, PublishedAt: publishedAt,
 		TitleSnapshot: "Published Title", SummarySnapshot: "Published summary.", LevelSnapshot: domain.DifficultyLevelBeginner,
+		Checkpoints: []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: uuid.NewString()}, {Position: 2, LearningPathID: uuid.NewString()}},
 	}
 	names := userNames{creator: "Ana Souza"}
 	t.Run("the learner catalog shows the latest published version's title, summary and level", func(t *testing.T) {
@@ -31,6 +34,7 @@ func TestToCourseCatalogEntry(t *testing.T) {
 		assert.Equal(t, "Published Title", entry.Title)
 		assert.Equal(t, "Published summary.", entry.Summary)
 		assert.EqualValues(t, domain.DifficultyLevelBeginner, entry.Level)
+		assert.Equal(t, 2, entry.CheckpointCount)
 		assert.Nil(t, entry.HasUnpublishedChanges)
 	})
 
@@ -39,6 +43,7 @@ func TestToCourseCatalogEntry(t *testing.T) {
 
 		assert.Equal(t, "Edited Title", entry.Title)
 		assert.EqualValues(t, domain.DifficultyLevelExpert, entry.Level)
+		assert.Equal(t, 3, entry.CheckpointCount)
 		require.NotNil(t, entry.HasUnpublishedChanges)
 		assert.True(t, *entry.HasUnpublishedChanges)
 	})
@@ -54,6 +59,38 @@ func TestToCourseCatalogEntry(t *testing.T) {
 
 		assert.Nil(t, entry.PublishedAt)
 	})
+}
+
+func TestToCourseEnrollment_Presentation(t *testing.T) {
+	studentID, creatorID := uuid.New(), uuid.New()
+	entry := toCourseEnrollment(
+		domain.CourseEnrollment{ID: uuid.NewString(), StudentID: studentID.String(), CourseID: uuid.NewString(), Status: domain.CourseEnrollmentStatusActive},
+		application.CourseEnrollmentPresentation{
+			CourseSummary:   "Build foundational skills.",
+			CourseLevel:     domain.DifficultyLevelEarlyIntermediate,
+			CourseCreatedBy: creatorID.String(),
+			CheckpointCount: 4,
+		},
+		userNames{studentID.String(): "Alice Martins", creatorID.String(): "Bob Ferreira"},
+	)
+
+	assert.Equal(t, "Build foundational skills.", entry.CourseSummary)
+	assert.EqualValues(t, domain.DifficultyLevelEarlyIntermediate, entry.CourseLevel)
+	assert.Equal(t, generated.UserRef{UserId: creatorID, DisplayName: "Bob Ferreira"}, entry.CourseCreatedBy)
+	assert.Equal(t, 4, entry.CheckpointCount)
+}
+
+func TestToCourseDetail_Presentation(t *testing.T) {
+	creatorID := uuid.New()
+	entry := toCourseDetail(uuid.NewString(), application.PublishedCourseView{
+		CreatedBy:       creatorID.String(),
+		CheckpointCount: 3,
+		LessonCount:     8,
+	}, userNames{creatorID.String(): "Ana Souza"})
+
+	assert.Equal(t, generated.UserRef{UserId: creatorID, DisplayName: "Ana Souza"}, entry.CreatedBy)
+	assert.Equal(t, 3, entry.CheckpointCount)
+	assert.Equal(t, 8, entry.LessonCount)
 }
 
 // TestUserRefMapping covers every response field that points at a user:
@@ -117,7 +154,7 @@ func TestUserRefMapping(t *testing.T) {
 		{
 			name: "course enrollment student",
 			got: func() generated.UserRef {
-				return toCourseEnrollment(domain.CourseEnrollment{ID: uuid.NewString(), StudentID: studentID.String(), CourseID: courseID, Status: domain.CourseEnrollmentStatusActive}, names).Student
+				return toCourseEnrollment(domain.CourseEnrollment{ID: uuid.NewString(), StudentID: studentID.String(), CourseID: courseID, Status: domain.CourseEnrollmentStatusActive}, application.CourseEnrollmentPresentation{CourseCreatedBy: teacherID.String()}, names).Student
 			},
 			want: student,
 		},

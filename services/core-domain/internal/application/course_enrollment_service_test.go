@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -252,6 +253,89 @@ func TestCourseEnrollmentService_CreateCourseEnrollment(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEqual(t, first.ID, second.ID)
 	})
+}
+
+func TestCourseEnrollmentService_PresentationsFor(t *testing.T) {
+	tests := []struct {
+		name string
+		// draftUnresolvable makes loading a course's live draft fail, as it
+		// does once a draft checkpoint's learning path has been deleted.
+		draftUnresolvable bool
+		enrollments       []domain.CourseEnrollment
+		want              []application.CourseEnrollmentPresentation
+	}{
+		{
+			name:        "presents the pinned version, not the latest one",
+			enrollments: []domain.CourseEnrollment{{CourseID: "course-1", CourseVersionNumber: 1}},
+			want: []application.CourseEnrollmentPresentation{
+				{CourseSummary: "Start with the essentials.", CourseLevel: domain.DifficultyLevelBeginner, CourseCreatedBy: "teacher-1", CheckpointCount: 2},
+			},
+		},
+		{
+			name:              "still presents an enrollment whose course draft no longer resolves",
+			draftUnresolvable: true,
+			enrollments:       []domain.CourseEnrollment{{CourseID: "course-1", CourseVersionNumber: 2}},
+			want: []application.CourseEnrollmentPresentation{
+				{CourseSummary: "A later rewrite.", CourseLevel: domain.DifficultyLevelAdvanced, CourseCreatedBy: "teacher-1", CheckpointCount: 1},
+			},
+		},
+		{
+			name: "presents several enrollments in their given order",
+			enrollments: []domain.CourseEnrollment{
+				{CourseID: "course-2", CourseVersionNumber: 1},
+				{CourseID: "course-1", CourseVersionNumber: 2},
+			},
+			want: []application.CourseEnrollmentPresentation{
+				{CourseSummary: "Rhythm first.", CourseLevel: domain.DifficultyLevelIntermediate, CourseCreatedBy: "teacher-2", CheckpointCount: 1},
+				{CourseSummary: "A later rewrite.", CourseLevel: domain.DifficultyLevelAdvanced, CourseCreatedBy: "teacher-1", CheckpointCount: 1},
+			},
+		},
+		{
+			name:        "no enrollments presents nothing",
+			enrollments: []domain.CourseEnrollment{},
+			want:        []application.CourseEnrollmentPresentation{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := courseEnrollmentFixtures{
+				paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
+				studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
+			}
+			f.courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusPublished})
+			f.courses.put(domain.Course{ID: "course-2", CreatedBy: "teacher-2", Status: domain.CourseStatusPublished})
+			if tt.draftUnresolvable {
+				f.courses.getByIDErr = errors.New("course checkpoint references missing learning path")
+			}
+			for _, v := range []domain.CourseVersion{
+				{
+					ID: "version-1", CourseID: "course-1", VersionNumber: 1,
+					SummarySnapshot: "Start with the essentials.", LevelSnapshot: domain.DifficultyLevelBeginner,
+					Checkpoints: []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: "path-1"}, {Position: 2, LearningPathID: "path-2"}},
+				},
+				{
+					ID: "version-2", CourseID: "course-1", VersionNumber: 2,
+					SummarySnapshot: "A later rewrite.", LevelSnapshot: domain.DifficultyLevelAdvanced,
+					Checkpoints: []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: "path-1"}},
+				},
+				{
+					ID: "version-3", CourseID: "course-2", VersionNumber: 1,
+					SummarySnapshot: "Rhythm first.", LevelSnapshot: domain.DifficultyLevelIntermediate,
+					Checkpoints: []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: "path-2"}},
+				},
+			} {
+				require.NoError(t, f.courseVersions.Create(context.Background(), v))
+			}
+			svc := newCourseEnrollmentService(f)
+
+			got, err := svc.PresentationsFor(context.Background(), tt.enrollments)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+			assert.LessOrEqual(t, f.courses.getCreatorIDsCalls, 1, "every creator resolves in at most one lookup")
+		})
+	}
 }
 
 func TestCourseEnrollmentService_ListMyCourseEnrollments(t *testing.T) {

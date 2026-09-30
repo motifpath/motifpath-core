@@ -111,6 +111,55 @@ func (r *EntCourseVersionRepository) GetLatestByCourseID(ctx context.Context, co
 	}, nil
 }
 
+func (r *EntCourseVersionRepository) GetByCourseIDAndVersionNumber(ctx context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	parsed, err := uuid.Parse(courseID)
+	if err != nil {
+		return domain.CourseVersion{}, domain.ErrNotFound
+	}
+
+	row, err := r.client.CourseVersion.Query().
+		Where(courseversion.CourseID(parsed), courseversion.VersionNumberEQ(versionNumber)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.CourseVersion{}, domain.ErrNotFound
+		}
+		return domain.CourseVersion{}, err
+	}
+
+	checkpointRows, err := r.client.CourseVersionCheckpoint.Query().
+		Where(courseversioncheckpoint.CourseVersionID(row.ID)).
+		Order(courseversioncheckpoint.ByPosition()).
+		All(ctx)
+	if err != nil {
+		return domain.CourseVersion{}, err
+	}
+
+	checkpoints := make([]domain.CourseVersionCheckpoint, len(checkpointRows))
+	for i, cp := range checkpointRows {
+		checkpoints[i] = domain.CourseVersionCheckpoint{
+			Position:       cp.Position,
+			LearningPathID: cp.LearningPathID.String(),
+			EffectiveTitle: cp.EffectiveTitle,
+		}
+	}
+
+	return domain.CourseVersion{
+		ID:                         row.ID.String(),
+		CourseID:                   row.CourseID.String(),
+		VersionNumber:              row.VersionNumber,
+		TitleSnapshot:              row.TitleSnapshot,
+		SummarySnapshot:            row.SummarySnapshot,
+		LevelSnapshot:              domain.DifficultyLevel(row.LevelSnapshot),
+		LanguageSnapshot:           row.LanguageSnapshot,
+		InstrumentIDsSnapshot:      row.InstrumentIdsSnapshot,
+		ThumbnailURLSnapshot:       row.ThumbnailURLSnapshot,
+		Checkpoints:                checkpoints,
+		PublishedAt:                row.PublishedAt,
+		AvailableForNewEnrollments: row.AvailableForNewEnrollments,
+	}, nil
+}
+
 func (r *EntCourseVersionRepository) GetLatestByCourseIDs(ctx context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
 	if len(courseIDs) == 0 {
 		return map[string]domain.CourseVersion{}, nil

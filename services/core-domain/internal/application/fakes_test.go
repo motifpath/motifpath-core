@@ -651,9 +651,10 @@ func (f *fakeExpandedContentRepository) Delete(_ context.Context, id string) err
 
 // fakeLearningPathRepository is a minimal in-memory ports.LearningPathRepository.
 type fakeLearningPathRepository struct {
-	mu        sync.Mutex
-	byID      map[string]domain.LearningPath
-	createErr error
+	mu              sync.Mutex
+	byID            map[string]domain.LearningPath
+	createErr       error
+	countItemsCalls int
 }
 
 func newFakeLearningPathRepository() *fakeLearningPathRepository {
@@ -678,6 +679,19 @@ func (f *fakeLearningPathRepository) GetByID(_ context.Context, id string) (doma
 		return domain.LearningPath{}, domain.ErrNotFound
 	}
 	return path, nil
+}
+
+func (f *fakeLearningPathRepository) CountItems(_ context.Context, ids []string) (map[string]int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.countItemsCalls++
+	counts := map[string]int{}
+	for _, id := range ids {
+		if path, ok := f.byID[id]; ok {
+			counts[id] = len(path.Items)
+		}
+	}
+	return counts, nil
 }
 
 func (f *fakeLearningPathRepository) put(path domain.LearningPath) {
@@ -732,6 +746,10 @@ type fakeCourseRepository struct {
 	// lastFilter records the filter most recently passed to List, so tests
 	// can assert what the service asked the repository for.
 	lastFilter domain.CourseListFilter
+	// getByIDErr, when set, fails every GetByID — standing in for a live
+	// draft whose checkpoints no longer resolve.
+	getByIDErr         error
+	getCreatorIDsCalls int
 }
 
 func newFakeCourseRepository() *fakeCourseRepository {
@@ -748,11 +766,27 @@ func (f *fakeCourseRepository) Create(_ context.Context, course domain.Course) e
 func (f *fakeCourseRepository) GetByID(_ context.Context, id string) (domain.Course, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.getByIDErr != nil {
+		return domain.Course{}, f.getByIDErr
+	}
 	course, ok := f.byID[id]
 	if !ok {
 		return domain.Course{}, domain.ErrNotFound
 	}
 	return course, nil
+}
+
+func (f *fakeCourseRepository) GetCreatorIDs(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.getCreatorIDsCalls++
+	creators := map[string]string{}
+	for _, id := range ids {
+		if course, ok := f.byID[id]; ok {
+			creators[id] = course.CreatedBy
+		}
+	}
+	return creators, nil
 }
 
 // List applies every filter except the classification ones (SkillIDs /
@@ -877,6 +911,17 @@ func (f *fakeCourseVersionRepository) GetLatestByCourseID(_ context.Context, cou
 		}
 	}
 	return latest, nil
+}
+
+func (f *fakeCourseVersionRepository) GetByCourseIDAndVersionNumber(_ context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, version := range f.byCourse[courseID] {
+		if version.VersionNumber == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.CourseVersion{}, domain.ErrNotFound
 }
 
 func (f *fakeCourseVersionRepository) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {

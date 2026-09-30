@@ -1069,12 +1069,36 @@ func (h *Handler) catalogEntries(ctx context.Context, courses []domain.Course, v
 	if err != nil {
 		return nil, err
 	}
-	return toCourseCatalogEntries(courses, view, func(courseID string) (*domain.CourseVersion, error) {
+	entries, err := toCourseCatalogEntries(courses, view, func(courseID string) (*domain.CourseVersion, error) {
 		if v, ok := latestByCourse[courseID]; ok {
 			return &v, nil
 		}
 		return nil, nil
 	}, names)
+	if err != nil {
+		return nil, err
+	}
+
+	learningPathIDs := make(map[string][]string, len(courses))
+	for _, course := range courses {
+		learningPathIDs[course.ID] = courseLearningPathIDs(course.Checkpoints)
+		if view == learnerCatalogView {
+			latest, ok := latestByCourse[course.ID]
+			if !ok {
+				return nil, domain.ErrNotFound
+			}
+			learningPathIDs[course.ID] = courseVersionLearningPathIDs(latest.Checkpoints)
+		}
+	}
+	lessonCounts, err := h.course.CountLessons(ctx, learningPathIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i, course := range courses {
+		entries[i].LessonCount = lessonCounts[course.ID]
+	}
+
+	return entries, nil
 }
 
 // ListCourseCreators returns the creators of the courses visible to the
@@ -1274,7 +1298,11 @@ func (h *Handler) GetPublishedCourse(ctx context.Context, request generated.GetP
 		return nil, err
 	}
 
-	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view)), nil
+	names, err := h.loadUserNames(ctx, []string{view.CreatedBy})
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetPublishedCourse200JSONResponse(toCourseDetail(courseID, view, names)), nil
 }
 
 func (h *Handler) RetireCourse(ctx context.Context, request generated.RetireCourseRequestObject) (generated.RetireCourseResponseObject, error) {
@@ -1352,11 +1380,11 @@ func (h *Handler) ListMyCourseEnrollments(ctx context.Context, _ generated.ListM
 		return nil, err
 	}
 
-	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollments...))
+	presentations, err := h.courseEnrollmentPresentations(ctx, enrollments)
 	if err != nil {
 		return nil, err
 	}
-	return generated.ListMyCourseEnrollments200JSONResponse(toCourseEnrollments(enrollments, names)), nil
+	return generated.ListMyCourseEnrollments200JSONResponse(presentations), nil
 }
 
 func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.CreateCourseEnrollmentRequestObject) (generated.CreateCourseEnrollmentResponseObject, error) {
@@ -1381,11 +1409,11 @@ func (h *Handler) CreateCourseEnrollment(ctx context.Context, request generated.
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollment))
+	presentations, err := h.courseEnrollmentPresentations(ctx, []domain.CourseEnrollment{enrollment})
 	if err != nil {
 		return nil, err
 	}
-	return generated.CreateCourseEnrollment201JSONResponse(toCourseEnrollment(enrollment, names)), nil
+	return generated.CreateCourseEnrollment201JSONResponse(presentations[0]), nil
 }
 
 func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated.AbandonCourseEnrollmentRequestObject) (generated.AbandonCourseEnrollmentResponseObject, error) {
@@ -1406,11 +1434,30 @@ func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, courseEnrollmentUserIDs(enrollment))
+	presentations, err := h.courseEnrollmentPresentations(ctx, []domain.CourseEnrollment{enrollment})
 	if err != nil {
 		return nil, err
 	}
-	return generated.AbandonCourseEnrollment200JSONResponse(toCourseEnrollment(enrollment, names)), nil
+	return generated.AbandonCourseEnrollment200JSONResponse(presentations[0]), nil
+}
+
+// courseEnrollmentPresentations resolves each enrollment's pinned course
+// version before rendering it, then loads both the student and course
+// creator display names in one identity lookup.
+func (h *Handler) courseEnrollmentPresentations(ctx context.Context, enrollments []domain.CourseEnrollment) ([]generated.CourseEnrollment, error) {
+	presentations, err := h.courseEnrollment.PresentationsFor(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
+	userIDs := make([]string, 0, 2*len(enrollments))
+	for i, enrollment := range enrollments {
+		userIDs = append(userIDs, enrollment.StudentID, presentations[i].CourseCreatedBy)
+	}
+	names, err := h.loadUserNames(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	return toCourseEnrollments(enrollments, presentations, names), nil
 }
 
 func (h *Handler) SetCurrentPath(ctx context.Context, request generated.SetCurrentPathRequestObject) (generated.SetCurrentPathResponseObject, error) {

@@ -24,7 +24,7 @@ func TestCourseLanguageMapping(t *testing.T) {
 
 	t.Run("versions and the published outline carry the language they were published in", func(t *testing.T) {
 		assert.Equal(t, "en", toGeneratedCourseVersion(*published).LanguageSnapshot)
-		assert.Equal(t, "en", toCourseDetail(course.ID, application.PublishedCourseView{Language: "en"}).Language)
+		assert.Equal(t, "en", toCourseDetail(course.ID, application.PublishedCourseView{Language: "en", CreatedBy: course.CreatedBy}, userNames{}).Language)
 	})
 
 	t.Run("both course lists map their language parameter onto the filter", func(t *testing.T) {

@@ -31,6 +31,16 @@ type CourseEnrollmentService struct {
 	now            func() time.Time
 }
 
+// CourseEnrollmentPresentation is the learner-facing context resolved from
+// the immutable CourseVersion an enrollment pins. The creator belongs to the
+// course itself because course ownership never changes after creation.
+type CourseEnrollmentPresentation struct {
+	CourseSummary   string
+	CourseLevel     domain.DifficultyLevel
+	CourseCreatedBy string
+	CheckpointCount int
+}
+
 func NewCourseEnrollmentService(
 	courses ports.CourseRepository,
 	courseVersions ports.CourseVersionRepository,
@@ -195,6 +205,42 @@ func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, c
 	}
 
 	return list, nil
+}
+
+// PresentationsFor returns, in order, the course context attached to each
+// enrollment's exact pinned CourseVersion. It must never use the latest
+// version: a republish cannot rewrite the description, level, or checkpoint
+// count shown to an already-enrolled learner. Creators are read from the
+// course rows alone, never the live draft, so a draft edit that no longer
+// resolves cannot break a learner's view of a course they already hold.
+func (s *CourseEnrollmentService) PresentationsFor(ctx context.Context, enrollments []domain.CourseEnrollment) ([]CourseEnrollmentPresentation, error) {
+	courseIDs := make([]string, len(enrollments))
+	for i, enrollment := range enrollments {
+		courseIDs[i] = enrollment.CourseID
+	}
+	creators, err := s.courses.GetCreatorIDs(ctx, courseIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	presentations := make([]CourseEnrollmentPresentation, len(enrollments))
+	for i, enrollment := range enrollments {
+		createdBy, ok := creators[enrollment.CourseID]
+		if !ok {
+			return nil, domain.ErrNotFound
+		}
+		version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
+		if err != nil {
+			return nil, err
+		}
+		presentations[i] = CourseEnrollmentPresentation{
+			CourseSummary:   version.SummarySnapshot,
+			CourseLevel:     version.LevelSnapshot,
+			CourseCreatedBy: createdBy,
+			CheckpointCount: len(version.Checkpoints),
+		}
+	}
+	return presentations, nil
 }
 
 // AbandonCourseEnrollment sets the CourseEnrollment with the given id to
