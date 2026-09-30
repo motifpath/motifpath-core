@@ -22,6 +22,12 @@ type LearningPath struct {
 	TeacherID uuid.UUID `json:"teacher_id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
+	// Summary holds the value of the "summary" field.
+	Summary *string `json:"summary,omitempty"`
+	// Language holds the value of the "language" field.
+	Language *string `json:"language,omitempty"`
+	// Status holds the value of the "status" field.
+	Status learningpath.Status `json:"status,omitempty"`
 	// Level holds the value of the "level" field.
 	Level *learningpath.Level `json:"level,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -70,7 +76,7 @@ func (*LearningPath) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case learningpath.FieldTitle, learningpath.FieldLevel, learningpath.FieldThumbnailURL:
+		case learningpath.FieldTitle, learningpath.FieldSummary, learningpath.FieldLanguage, learningpath.FieldStatus, learningpath.FieldLevel, learningpath.FieldThumbnailURL:
 			values[i] = new(sql.NullString)
 		case learningpath.FieldUpdatedAt, learningpath.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -108,6 +114,26 @@ func (_m *LearningPath) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field title", values[i])
 			} else if value.Valid {
 				_m.Title = value.String
+			}
+		case learningpath.FieldSummary:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field summary", values[i])
+			} else if value.Valid {
+				_m.Summary = new(string)
+				*_m.Summary = value.String
+			}
+		case learningpath.FieldLanguage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field language", values[i])
+			} else if value.Valid {
+				_m.Language = new(string)
+				*_m.Language = value.String
+			}
+		case learningpath.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = learningpath.Status(value.String)
 			}
 		case learningpath.FieldLevel:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -186,6 +212,19 @@ func (_m *LearningPath) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
+	builder.WriteString(", ")
+	if v := _m.Summary; v != nil {
+		builder.WriteString("summary=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Language; v != nil {
+		builder.WriteString("language=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	if v := _m.Level; v != nil {
 		builder.WriteString("level=")

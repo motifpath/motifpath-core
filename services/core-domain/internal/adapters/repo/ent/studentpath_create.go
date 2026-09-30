@@ -101,6 +101,62 @@ func (_c *StudentPathCreate) SetNillableCourseCheckpointPosition(v *int) *Studen
 	return _c
 }
 
+// SetSummarySnapshot sets the "summary_snapshot" field.
+func (_c *StudentPathCreate) SetSummarySnapshot(v string) *StudentPathCreate {
+	_c.mutation.SetSummarySnapshot(v)
+	return _c
+}
+
+// SetNillableSummarySnapshot sets the "summary_snapshot" field if the given value is not nil.
+func (_c *StudentPathCreate) SetNillableSummarySnapshot(v *string) *StudentPathCreate {
+	if v != nil {
+		_c.SetSummarySnapshot(*v)
+	}
+	return _c
+}
+
+// SetLevelSnapshot sets the "level_snapshot" field.
+func (_c *StudentPathCreate) SetLevelSnapshot(v studentpath.LevelSnapshot) *StudentPathCreate {
+	_c.mutation.SetLevelSnapshot(v)
+	return _c
+}
+
+// SetNillableLevelSnapshot sets the "level_snapshot" field if the given value is not nil.
+func (_c *StudentPathCreate) SetNillableLevelSnapshot(v *studentpath.LevelSnapshot) *StudentPathCreate {
+	if v != nil {
+		_c.SetLevelSnapshot(*v)
+	}
+	return _c
+}
+
+// SetThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field.
+func (_c *StudentPathCreate) SetThumbnailURLSnapshot(v string) *StudentPathCreate {
+	_c.mutation.SetThumbnailURLSnapshot(v)
+	return _c
+}
+
+// SetNillableThumbnailURLSnapshot sets the "thumbnail_url_snapshot" field if the given value is not nil.
+func (_c *StudentPathCreate) SetNillableThumbnailURLSnapshot(v *string) *StudentPathCreate {
+	if v != nil {
+		_c.SetThumbnailURLSnapshot(*v)
+	}
+	return _c
+}
+
+// SetCreatedBySnapshot sets the "created_by_snapshot" field.
+func (_c *StudentPathCreate) SetCreatedBySnapshot(v uuid.UUID) *StudentPathCreate {
+	_c.mutation.SetCreatedBySnapshot(v)
+	return _c
+}
+
+// SetNillableCreatedBySnapshot sets the "created_by_snapshot" field if the given value is not nil.
+func (_c *StudentPathCreate) SetNillableCreatedBySnapshot(v *uuid.UUID) *StudentPathCreate {
+	if v != nil {
+		_c.SetCreatedBySnapshot(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *StudentPathCreate) SetID(v uuid.UUID) *StudentPathCreate {
 	_c.mutation.SetID(v)
@@ -177,6 +233,11 @@ func (_c *StudentPathCreate) check() error {
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		return &ValidationError{Name: "assigned_at", err: errors.New(`ent: missing required field "StudentPath.assigned_at"`)}
 	}
+	if v, ok := _c.mutation.LevelSnapshot(); ok {
+		if err := studentpath.LevelSnapshotValidator(v); err != nil {
+			return &ValidationError{Name: "level_snapshot", err: fmt.Errorf(`ent: validator failed for field "StudentPath.level_snapshot": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -243,6 +304,22 @@ func (_c *StudentPathCreate) createSpec() (*StudentPath, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CourseCheckpointPosition(); ok {
 		_spec.SetField(studentpath.FieldCourseCheckpointPosition, field.TypeInt, value)
 		_node.CourseCheckpointPosition = &value
+	}
+	if value, ok := _c.mutation.SummarySnapshot(); ok {
+		_spec.SetField(studentpath.FieldSummarySnapshot, field.TypeString, value)
+		_node.SummarySnapshot = &value
+	}
+	if value, ok := _c.mutation.LevelSnapshot(); ok {
+		_spec.SetField(studentpath.FieldLevelSnapshot, field.TypeEnum, value)
+		_node.LevelSnapshot = &value
+	}
+	if value, ok := _c.mutation.ThumbnailURLSnapshot(); ok {
+		_spec.SetField(studentpath.FieldThumbnailURLSnapshot, field.TypeString, value)
+		_node.ThumbnailURLSnapshot = &value
+	}
+	if value, ok := _c.mutation.CreatedBySnapshot(); ok {
+		_spec.SetField(studentpath.FieldCreatedBySnapshot, field.TypeUUID, value)
+		_node.CreatedBySnapshot = &value
 	}
 	return _node, _spec
 }

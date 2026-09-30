@@ -289,11 +289,11 @@ func init() {
 	learningpathFields := schema.LearningPath{}.Fields()
 	_ = learningpathFields
 	// learningpathDescUpdatedAt is the schema descriptor for updated_at field.
-	learningpathDescUpdatedAt := learningpathFields[4].Descriptor()
+	learningpathDescUpdatedAt := learningpathFields[7].Descriptor()
 	// learningpath.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	learningpath.DefaultUpdatedAt = learningpathDescUpdatedAt.Default.(func() time.Time)
 	// learningpathDescCreatedAt is the schema descriptor for created_at field.
-	learningpathDescCreatedAt := learningpathFields[6].Descriptor()
+	learningpathDescCreatedAt := learningpathFields[9].Descriptor()
 	// learningpath.DefaultCreatedAt holds the default value on creation for the created_at field.
 	learningpath.DefaultCreatedAt = learningpathDescCreatedAt.Default.(func() time.Time)
 	// learningpathDescID is the schema descriptor for id field.

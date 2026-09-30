@@ -95,6 +95,21 @@ func CourseCheckpointPosition(v int) predicate.StudentPath {
 	return predicate.StudentPath(sql.FieldEQ(FieldCourseCheckpointPosition, v))
 }
 
+// SummarySnapshot applies equality check predicate on the "summary_snapshot" field. It's identical to SummarySnapshotEQ.
+func SummarySnapshot(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldSummarySnapshot, v))
+}
+
+// ThumbnailURLSnapshot applies equality check predicate on the "thumbnail_url_snapshot" field. It's identical to ThumbnailURLSnapshotEQ.
+func ThumbnailURLSnapshot(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// CreatedBySnapshot applies equality check predicate on the "created_by_snapshot" field. It's identical to CreatedBySnapshotEQ.
+func CreatedBySnapshot(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldCreatedBySnapshot, v))
+}
+
 // StudentIDEQ applies the EQ predicate on the "student_id" field.
 func StudentIDEQ(v uuid.UUID) predicate.StudentPath {
 	return predicate.StudentPath(sql.FieldEQ(FieldStudentID, v))
@@ -468,6 +483,236 @@ func CourseCheckpointPositionIsNil() predicate.StudentPath {
 // CourseCheckpointPositionNotNil applies the NotNil predicate on the "course_checkpoint_position" field.
 func CourseCheckpointPositionNotNil() predicate.StudentPath {
 	return predicate.StudentPath(sql.FieldNotNull(FieldCourseCheckpointPosition))
+}
+
+// SummarySnapshotEQ applies the EQ predicate on the "summary_snapshot" field.
+func SummarySnapshotEQ(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotNEQ applies the NEQ predicate on the "summary_snapshot" field.
+func SummarySnapshotNEQ(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNEQ(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotIn applies the In predicate on the "summary_snapshot" field.
+func SummarySnapshotIn(vs ...string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIn(FieldSummarySnapshot, vs...))
+}
+
+// SummarySnapshotNotIn applies the NotIn predicate on the "summary_snapshot" field.
+func SummarySnapshotNotIn(vs ...string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotIn(FieldSummarySnapshot, vs...))
+}
+
+// SummarySnapshotGT applies the GT predicate on the "summary_snapshot" field.
+func SummarySnapshotGT(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGT(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotGTE applies the GTE predicate on the "summary_snapshot" field.
+func SummarySnapshotGTE(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGTE(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotLT applies the LT predicate on the "summary_snapshot" field.
+func SummarySnapshotLT(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLT(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotLTE applies the LTE predicate on the "summary_snapshot" field.
+func SummarySnapshotLTE(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLTE(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotContains applies the Contains predicate on the "summary_snapshot" field.
+func SummarySnapshotContains(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldContains(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotHasPrefix applies the HasPrefix predicate on the "summary_snapshot" field.
+func SummarySnapshotHasPrefix(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldHasPrefix(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotHasSuffix applies the HasSuffix predicate on the "summary_snapshot" field.
+func SummarySnapshotHasSuffix(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldHasSuffix(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotIsNil applies the IsNil predicate on the "summary_snapshot" field.
+func SummarySnapshotIsNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIsNull(FieldSummarySnapshot))
+}
+
+// SummarySnapshotNotNil applies the NotNil predicate on the "summary_snapshot" field.
+func SummarySnapshotNotNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotNull(FieldSummarySnapshot))
+}
+
+// SummarySnapshotEqualFold applies the EqualFold predicate on the "summary_snapshot" field.
+func SummarySnapshotEqualFold(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEqualFold(FieldSummarySnapshot, v))
+}
+
+// SummarySnapshotContainsFold applies the ContainsFold predicate on the "summary_snapshot" field.
+func SummarySnapshotContainsFold(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldContainsFold(FieldSummarySnapshot, v))
+}
+
+// LevelSnapshotEQ applies the EQ predicate on the "level_snapshot" field.
+func LevelSnapshotEQ(v LevelSnapshot) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldLevelSnapshot, v))
+}
+
+// LevelSnapshotNEQ applies the NEQ predicate on the "level_snapshot" field.
+func LevelSnapshotNEQ(v LevelSnapshot) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNEQ(FieldLevelSnapshot, v))
+}
+
+// LevelSnapshotIn applies the In predicate on the "level_snapshot" field.
+func LevelSnapshotIn(vs ...LevelSnapshot) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIn(FieldLevelSnapshot, vs...))
+}
+
+// LevelSnapshotNotIn applies the NotIn predicate on the "level_snapshot" field.
+func LevelSnapshotNotIn(vs ...LevelSnapshot) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotIn(FieldLevelSnapshot, vs...))
+}
+
+// LevelSnapshotIsNil applies the IsNil predicate on the "level_snapshot" field.
+func LevelSnapshotIsNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIsNull(FieldLevelSnapshot))
+}
+
+// LevelSnapshotNotNil applies the NotNil predicate on the "level_snapshot" field.
+func LevelSnapshotNotNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotNull(FieldLevelSnapshot))
+}
+
+// ThumbnailURLSnapshotEQ applies the EQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEQ(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotNEQ applies the NEQ predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNEQ(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNEQ(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIn applies the In predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIn(vs ...string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotNotIn applies the NotIn predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotIn(vs ...string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotIn(FieldThumbnailURLSnapshot, vs...))
+}
+
+// ThumbnailURLSnapshotGT applies the GT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGT(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotGTE applies the GTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotGTE(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLT applies the LT predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLT(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLT(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotLTE applies the LTE predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotLTE(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLTE(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContains applies the Contains predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContains(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldContains(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasPrefix applies the HasPrefix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasPrefix(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldHasPrefix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotHasSuffix applies the HasSuffix predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotHasSuffix(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldHasSuffix(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotIsNil applies the IsNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotIsNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIsNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotNotNil applies the NotNil predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotNotNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotNull(FieldThumbnailURLSnapshot))
+}
+
+// ThumbnailURLSnapshotEqualFold applies the EqualFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotEqualFold(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEqualFold(FieldThumbnailURLSnapshot, v))
+}
+
+// ThumbnailURLSnapshotContainsFold applies the ContainsFold predicate on the "thumbnail_url_snapshot" field.
+func ThumbnailURLSnapshotContainsFold(v string) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldContainsFold(FieldThumbnailURLSnapshot, v))
+}
+
+// CreatedBySnapshotEQ applies the EQ predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotEQ(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldEQ(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotNEQ applies the NEQ predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotNEQ(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNEQ(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotIn applies the In predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotIn(vs ...uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIn(FieldCreatedBySnapshot, vs...))
+}
+
+// CreatedBySnapshotNotIn applies the NotIn predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotNotIn(vs ...uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotIn(FieldCreatedBySnapshot, vs...))
+}
+
+// CreatedBySnapshotGT applies the GT predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotGT(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGT(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotGTE applies the GTE predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotGTE(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldGTE(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotLT applies the LT predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotLT(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLT(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotLTE applies the LTE predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotLTE(v uuid.UUID) predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldLTE(FieldCreatedBySnapshot, v))
+}
+
+// CreatedBySnapshotIsNil applies the IsNil predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotIsNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldIsNull(FieldCreatedBySnapshot))
+}
+
+// CreatedBySnapshotNotNil applies the NotNil predicate on the "created_by_snapshot" field.
+func CreatedBySnapshotNotNil() predicate.StudentPath {
+	return predicate.StudentPath(sql.FieldNotNull(FieldCreatedBySnapshot))
 }
 
 // And groups predicates with the AND operator between them.

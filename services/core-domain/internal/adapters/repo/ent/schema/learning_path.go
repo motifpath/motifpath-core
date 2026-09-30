@@ -28,6 +28,25 @@ func (LearningPath) Fields() []ent.Field {
 
 		field.String("title"),
 
+		// summary is the short description shown in the path catalog; NULL
+		// until an author gives the path one.
+		field.String("summary").
+			Optional().
+			Nillable(),
+
+		// language is the Language.code the path is written in; NULL until
+		// an author gives the path one.
+		field.String("language").
+			Optional().
+			Nillable(),
+
+		// status is draft for every new path until an admin publishes it;
+		// only a published path is listed in the path catalog, assignable,
+		// or usable by a published course.
+		field.Enum("status").
+			Values("draft", "published").
+			Default("draft"),
+
 		// level is the level a learner should be at to follow the path.
 		// NULL only for a path created before levels were recorded, until
 		// it is next saved.

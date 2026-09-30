@@ -34,7 +34,15 @@ type StudentPath struct {
 	SourceCourseEnrollmentID *uuid.UUID `json:"source_course_enrollment_id,omitempty"`
 	// CourseCheckpointPosition holds the value of the "course_checkpoint_position" field.
 	CourseCheckpointPosition *int `json:"course_checkpoint_position,omitempty"`
-	selectValues             sql.SelectValues
+	// SummarySnapshot holds the value of the "summary_snapshot" field.
+	SummarySnapshot *string `json:"summary_snapshot,omitempty"`
+	// LevelSnapshot holds the value of the "level_snapshot" field.
+	LevelSnapshot *studentpath.LevelSnapshot `json:"level_snapshot,omitempty"`
+	// ThumbnailURLSnapshot holds the value of the "thumbnail_url_snapshot" field.
+	ThumbnailURLSnapshot *string `json:"thumbnail_url_snapshot,omitempty"`
+	// CreatedBySnapshot holds the value of the "created_by_snapshot" field.
+	CreatedBySnapshot *uuid.UUID `json:"created_by_snapshot,omitempty"`
+	selectValues      sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -42,11 +50,11 @@ func (*StudentPath) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case studentpath.FieldSourceCourseEnrollmentID:
+		case studentpath.FieldSourceCourseEnrollmentID, studentpath.FieldCreatedBySnapshot:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case studentpath.FieldCourseCheckpointPosition:
 			values[i] = new(sql.NullInt64)
-		case studentpath.FieldTitle:
+		case studentpath.FieldTitle, studentpath.FieldSummarySnapshot, studentpath.FieldLevelSnapshot, studentpath.FieldThumbnailURLSnapshot:
 			values[i] = new(sql.NullString)
 		case studentpath.FieldAssignedAt, studentpath.FieldArchivedAt:
 			values[i] = new(sql.NullTime)
@@ -124,6 +132,34 @@ func (_m *StudentPath) assignValues(columns []string, values []any) error {
 				_m.CourseCheckpointPosition = new(int)
 				*_m.CourseCheckpointPosition = int(value.Int64)
 			}
+		case studentpath.FieldSummarySnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field summary_snapshot", values[i])
+			} else if value.Valid {
+				_m.SummarySnapshot = new(string)
+				*_m.SummarySnapshot = value.String
+			}
+		case studentpath.FieldLevelSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field level_snapshot", values[i])
+			} else if value.Valid {
+				_m.LevelSnapshot = new(studentpath.LevelSnapshot)
+				*_m.LevelSnapshot = studentpath.LevelSnapshot(value.String)
+			}
+		case studentpath.FieldThumbnailURLSnapshot:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field thumbnail_url_snapshot", values[i])
+			} else if value.Valid {
+				_m.ThumbnailURLSnapshot = new(string)
+				*_m.ThumbnailURLSnapshot = value.String
+			}
+		case studentpath.FieldCreatedBySnapshot:
+			if value, ok := values[i].(*sql.NullScanner); !ok {
+				return fmt.Errorf("unexpected type %T for field created_by_snapshot", values[i])
+			} else if value.Valid {
+				_m.CreatedBySnapshot = new(uuid.UUID)
+				*_m.CreatedBySnapshot = *value.S.(*uuid.UUID)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -187,6 +223,26 @@ func (_m *StudentPath) String() string {
 	builder.WriteString(", ")
 	if v := _m.CourseCheckpointPosition; v != nil {
 		builder.WriteString("course_checkpoint_position=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.SummarySnapshot; v != nil {
+		builder.WriteString("summary_snapshot=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LevelSnapshot; v != nil {
+		builder.WriteString("level_snapshot=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.ThumbnailURLSnapshot; v != nil {
+		builder.WriteString("thumbnail_url_snapshot=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.CreatedBySnapshot; v != nil {
+		builder.WriteString("created_by_snapshot=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteByte(')')

@@ -29,12 +29,37 @@ type NewLearningPathItem struct {
 	SectionLabel *string
 }
 
+// LearningPathStatus says whether learners can find a path. A draft is seen
+// only by teachers and admins; a published path is listed in the path
+// catalog, where any user can enroll, and is the only kind staff can assign
+// or a course can publish with.
+type LearningPathStatus string
+
+const (
+	LearningPathStatusDraft     LearningPathStatus = "draft"
+	LearningPathStatusPublished LearningPathStatus = "published"
+)
+
+// Valid reports whether s is a status a path can have.
+func (s LearningPathStatus) Valid() bool {
+	return s == LearningPathStatusDraft || s == LearningPathStatusPublished
+}
+
 // LearningPath is an ordered sequence of content nodes assigned to students
 // as a structured curriculum.
 type LearningPath struct {
 	ID        string
 	TeacherID string
 	Title     string
+	// Summary is the short description shown in the path catalog; nil
+	// until an author gives the path one.
+	Summary *string
+	// Language is the Language.Code the path is written in; nil until an
+	// author gives the path one. Never LanguageCodeAny.
+	Language *string
+	// Status is draft for every new path until an admin publishes it.
+	// Saving a path never changes it.
+	Status LearningPathStatus
 	// Level is the level a learner should be at to follow the path. It is
 	// nil only for a path created before levels were recorded, until it is
 	// next saved.

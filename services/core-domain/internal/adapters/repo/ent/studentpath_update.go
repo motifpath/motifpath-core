@@ -118,6 +118,18 @@ func (_u *StudentPathUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if _u.mutation.CourseCheckpointPositionCleared() {
 		_spec.ClearField(studentpath.FieldCourseCheckpointPosition, field.TypeInt)
 	}
+	if _u.mutation.SummarySnapshotCleared() {
+		_spec.ClearField(studentpath.FieldSummarySnapshot, field.TypeString)
+	}
+	if _u.mutation.LevelSnapshotCleared() {
+		_spec.ClearField(studentpath.FieldLevelSnapshot, field.TypeEnum)
+	}
+	if _u.mutation.ThumbnailURLSnapshotCleared() {
+		_spec.ClearField(studentpath.FieldThumbnailURLSnapshot, field.TypeString)
+	}
+	if _u.mutation.CreatedBySnapshotCleared() {
+		_spec.ClearField(studentpath.FieldCreatedBySnapshot, field.TypeUUID)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{studentpath.Label}
@@ -257,6 +269,18 @@ func (_u *StudentPathUpdateOne) sqlSave(ctx context.Context) (_node *StudentPath
 	}
 	if _u.mutation.CourseCheckpointPositionCleared() {
 		_spec.ClearField(studentpath.FieldCourseCheckpointPosition, field.TypeInt)
+	}
+	if _u.mutation.SummarySnapshotCleared() {
+		_spec.ClearField(studentpath.FieldSummarySnapshot, field.TypeString)
+	}
+	if _u.mutation.LevelSnapshotCleared() {
+		_spec.ClearField(studentpath.FieldLevelSnapshot, field.TypeEnum)
+	}
+	if _u.mutation.ThumbnailURLSnapshotCleared() {
+		_spec.ClearField(studentpath.FieldThumbnailURLSnapshot, field.TypeString)
+	}
+	if _u.mutation.CreatedBySnapshotCleared() {
+		_spec.ClearField(studentpath.FieldCreatedBySnapshot, field.TypeUUID)
 	}
 	_node = &StudentPath{config: _u.config}
 	_spec.Assign = _node.assignValues

@@ -11,7 +11,14 @@ import (
 // copy of a learning path template, created at assign or enrollment time.
 // A student may hold many StudentPaths at once.
 type StudentPathRepository interface {
+	// Create returns domain.ErrAlreadyExists when path is standalone and
+	// the student already holds a non-archived standalone copy of the same
+	// template — a learner holds at most one.
 	Create(ctx context.Context, path domain.StudentPath) error
+
+	// FindActiveStandalone returns studentID's non-archived standalone copy
+	// of templateID, or domain.ErrNotFound when there is none.
+	FindActiveStandalone(ctx context.Context, studentID, templateID string) (domain.StudentPath, error)
 
 	// GetByID returns domain.ErrNotFound if no StudentPath exists with the
 	// given id.
