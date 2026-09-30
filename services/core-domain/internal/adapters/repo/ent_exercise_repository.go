@@ -10,7 +10,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
@@ -56,8 +59,13 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return rollback(tx, err)
 	}
+	createdBy, err := optionalCreatorID(ex.CreatedBy)
+	if err != nil {
+		return rollback(tx, err)
+	}
 
 	builder := tx.Exercise.Create().
+		SetNillableCreatedBy(createdBy).
 		SetID(id).
 		SetTitle(ex.Title).
 		SetPrompt(promptJSON).
@@ -417,20 +425,14 @@ func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID strin
 	return toDomainExercises(rows), nil
 }
 
-// List returns exercises from the whole pool, optionally narrowed by
-// skillID and/or exerciseType, both filtered in the query itself.
+// List returns exercises from the whole pool narrowed by filter, every
+// filter applied in the query itself.
 func (r *EntExerciseRepository) List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
-	query := r.client.Exercise.Query()
-	if filter.ExerciseType != "" {
-		query = query.Where(exercise.ExerciseTypeEQ(exercise.ExerciseType(filter.ExerciseType)))
+	predicates, err := exerciseFilterPredicates(filter)
+	if err != nil {
+		return domain.Page[domain.Exercise]{}, err
 	}
-	if filter.SkillID != "" {
-		parsed, err := uuid.Parse(filter.SkillID)
-		if err != nil {
-			return domain.Page[domain.Exercise]{}, err
-		}
-		query = query.Where(exercise.HasSkillsWith(skill.ID(parsed)))
-	}
+	query := r.client.Exercise.Query().Where(predicates...)
 
 	total, err := query.Clone().Count(ctx)
 	if err != nil {
@@ -451,6 +453,61 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 		return domain.Page[domain.Exercise]{}, err
 	}
 	return domain.Page[domain.Exercise]{Items: toDomainExercises(rows), Total: total}, nil
+}
+
+// ListCreatorIDs returns the distinct created_by of every exercise that has
+// one recorded.
+func (r *EntExerciseRepository) ListCreatorIDs(ctx context.Context) ([]string, error) {
+	var rows []struct {
+		CreatedBy uuid.UUID `json:"created_by"`
+	}
+	err := r.client.Exercise.Query().
+		Where(exercise.CreatedByNotNil()).
+		Unique(true).
+		Select(exercise.FieldCreatedBy).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.CreatedBy.String()
+	}
+	return ids, nil
+}
+
+// exerciseFilterPredicates translates filter into query predicates; a
+// zero-valued field adds none.
+func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercise, error) {
+	var predicates []predicate.Exercise
+	if filter.ExerciseType != "" {
+		predicates = append(predicates, exercise.ExerciseTypeEQ(exercise.ExerciseType(filter.ExerciseType)))
+	}
+	if filter.Query != "" {
+		predicates = append(predicates, exercise.TitleContainsFold(filter.Query))
+	}
+	if filter.Language != "" {
+		predicates = append(predicates, exercise.HasLanguagesWith(language.Code(filter.Language)))
+	}
+	byID := []struct {
+		id    string
+		match func(uuid.UUID) predicate.Exercise
+	}{
+		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(skill.ID(id)) }},
+		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(concept.ID(id)) }},
+		{filter.CreatedBy, exercise.CreatedBy},
+	}
+	for _, f := range byID {
+		if f.id == "" {
+			continue
+		}
+		parsed, err := uuid.Parse(f.id)
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, f.match(parsed))
+	}
+	return predicates, nil
 }
 
 // Update replaces ex's mutable fields (title, prompt, skill_tags, image_url,
@@ -595,8 +652,30 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		Languages:                languages,
+		CreatedBy:                creatorIDString(row.CreatedBy),
 		CreatedAt:                row.CreatedAt,
 	}
+}
+
+// optionalCreatorID parses an exercise's CreatedBy, "" meaning none
+// recorded.
+func optionalCreatorID(createdBy string) (*uuid.UUID, error) {
+	if createdBy == "" {
+		return nil, nil
+	}
+	parsed, err := uuid.Parse(createdBy)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+// creatorIDString is the inverse of optionalCreatorID.
+func creatorIDString(createdBy *uuid.UUID) string {
+	if createdBy == nil {
+		return ""
+	}
+	return createdBy.String()
 }
 
 // marshalDiagramRef serializes ref to the JSON text stored in a

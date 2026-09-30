@@ -167,3 +167,71 @@ func TestEntExerciseRepository_List_PagesAndFilters(t *testing.T) {
 		assert.Len(t, got.Items, 1)
 	})
 }
+
+func TestEntExerciseRepository_List_TextLanguageConceptAndCreatorFilters(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	repo := NewEntExerciseRepository(client)
+	triad := seedConcept(t, ctx, client, "triad-"+uuid.NewString())
+	fifth := seedConcept(t, ctx, client, "fifth-"+uuid.NewString())
+	bob, carol := uuid.NewString(), uuid.NewString()
+
+	exercise := func(title, lang, createdBy string, concept domain.Concept) domain.Exercise {
+		ex := domain.Exercise{
+			ID: uuid.NewString(), Title: title, Prompt: domain.NewPlainTextPrompt("Say it"),
+			ExerciseType: domain.ExerciseTypeTextResponse, Concepts: []domain.Concept{concept}, Options: []domain.Option{},
+			ChallengeIDs: []string{}, ContentNodeIDs: []string{},
+			Languages: []domain.Language{{Code: lang}}, CreatedBy: createdBy, CreatedAt: fixedAt,
+		}
+		require.NoError(t, repo.Create(ctx, ex))
+		return ex
+	}
+	bobsTriad := exercise("Major Triad Shapes", "en", bob, triad)
+	carolsTriad := exercise("Tríade invertida triad", "pt_BR", carol, triad)
+	carolsFifth := exercise("Perfect fifth drill", "pt_BR", carol, fifth)
+	legacy := exercise("Legacy triad", "en", "", triad)
+	all := domain.PageRequest{Limit: domain.MaxPageLimit}
+	exerciseID := func(e domain.Exercise) string { return e.ID }
+
+	tests := []struct {
+		name   string
+		filter domain.ExerciseFilter
+		want   []domain.Exercise
+	}{
+		{name: "title search ignores case", filter: domain.ExerciseFilter{Query: "TRIAD"}, want: []domain.Exercise{bobsTriad, carolsTriad, legacy}},
+		{name: "by concept", filter: domain.ExerciseFilter{ConceptID: fifth.ID}, want: []domain.Exercise{carolsFifth}},
+		{name: "by language", filter: domain.ExerciseFilter{Language: "pt_BR"}, want: []domain.Exercise{carolsTriad, carolsFifth}},
+		{name: "by creator, never matching an exercise with no recorded creator", filter: domain.ExerciseFilter{CreatedBy: bob}, want: []domain.Exercise{bobsTriad}},
+		{name: "filters combine", filter: domain.ExerciseFilter{Query: "triad", CreatedBy: carol}, want: []domain.Exercise{carolsTriad}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := repo.List(ctx, tt.filter, all)
+
+			require.NoError(t, err)
+			assert.ElementsMatch(t, titlesOf(tt.want, exerciseID), titlesOf(got.Items, exerciseID))
+			assert.Equal(t, len(tt.want), got.Total)
+		})
+	}
+
+	t.Run("the creator is read back", func(t *testing.T) {
+		got, err := repo.GetByID(ctx, bobsTriad.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, bob, got.CreatedBy)
+	})
+
+	t.Run("an exercise with no recorded creator reads back with none", func(t *testing.T) {
+		got, err := repo.GetByID(ctx, legacy.ID)
+
+		require.NoError(t, err)
+		assert.Empty(t, got.CreatedBy)
+	})
+
+	t.Run("creator ids are distinct and skip exercises with none", func(t *testing.T) {
+		got, err := repo.ListCreatorIDs(ctx)
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{bob, carol}, got)
+	})
+}

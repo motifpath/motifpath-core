@@ -24,7 +24,9 @@ type ExerciseService struct {
 	instruments ports.InstrumentRepository
 	// voices checks the voice a diagram stimulus plays with.
 	voices ports.VoiceRepository
-	newID  func() string
+	// users names the creators ListExerciseCreators returns.
+	users ports.UserRepository
+	newID func() string
 	now    func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
 	// math/rand.Shuffle's signature — injected so tests can supply a
@@ -41,11 +43,12 @@ func NewExerciseService(
 	diagrams ports.DiagramRepository,
 	instruments ports.InstrumentRepository,
 	voices ports.VoiceRepository,
+	users ports.UserRepository,
 	newID func() string,
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, voices: voices, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, voices: voices, users: users, newID: newID, now: now, shuffle: shuffle}
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -97,6 +100,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 	if err != nil {
 		return domain.Exercise{}, err
 	}
+	exercise.CreatedBy = caller.ID
 	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
@@ -364,8 +368,8 @@ func (s *ExerciseService) GetExercise(ctx context.Context, id string) (domain.Ex
 }
 
 // ListExercises returns exercises from the reusable pool, optionally
-// narrowed by skillID and/or exerciseType (either may be "" for "no
-// filter"). Only teachers and admins may list exercises — the pool is an
+// narrowed by filter (every zero-valued field means "no filter"). Only
+// teachers and admins may list exercises — the pool is an
 // authoring surface, unlike GetExercise which any authenticated user may
 // call for a specific known id.
 func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
@@ -373,6 +377,22 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 		return domain.Page[domain.Exercise]{}, domain.ErrForbidden
 	}
 	return s.exercises.List(ctx, filter, page)
+}
+
+// ListExerciseCreators returns the distinct creators of the exercises in the
+// pool, so a picker can offer a complete creator filter without paging.
+// Only teachers and admins may list them, as with the pool itself. A
+// non-empty nameQuery keeps only the creators whose display name contains
+// it; see namedCreators for matching and ordering.
+func (s *ExerciseService) ListExerciseCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	ids, err := s.exercises.ListCreatorIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return namedCreators(ctx, s.users, ids, nameQuery)
 }
 
 // UpdateExercise replaces the given exercise's title, prompt, skill/concept

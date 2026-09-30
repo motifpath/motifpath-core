@@ -34,6 +34,8 @@ const (
 	FieldDiagramRef = "diagram_ref"
 	// FieldDiagramStackRef holds the string denoting the diagram_stack_ref field in the database.
 	FieldDiagramStackRef = "diagram_stack_ref"
+	// FieldCreatedBy holds the string denoting the created_by field in the database.
+	FieldCreatedBy = "created_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeChallenges holds the string denoting the challenges edge name in mutations.
@@ -141,6 +143,7 @@ var Columns = []string{
 	FieldRemediationTargets,
 	FieldDiagramRef,
 	FieldDiagramStackRef,
+	FieldCreatedBy,
 	FieldCreatedAt,
 }
 
@@ -256,6 +259,11 @@ func ByDiagramRef(opts ...sql.OrderTermOption) OrderOption {
 // ByDiagramStackRef orders the results by the diagram_stack_ref field.
 func ByDiagramStackRef(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDiagramStackRef, opts...).ToFunc()
+}
+
+// ByCreatedBy orders the results by the created_by field.
+func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

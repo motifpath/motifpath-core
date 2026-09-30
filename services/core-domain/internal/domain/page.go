@@ -69,7 +69,15 @@ type ContentNodeFilter struct {
 // filter" on that dimension.
 type ExerciseFilter struct {
 	SkillID      string
+	ConceptID    string
 	ExerciseType ExerciseType
+	// Language keeps exercises available in that language code.
+	Language string
+	// CreatedBy keeps exercises created by that user; an exercise with no
+	// recorded creator never matches.
+	CreatedBy string
+	// Query is a case-insensitive substring match against the title.
+	Query string
 }
 
 // LearningPathFilter narrows a learning path listing. Query is a

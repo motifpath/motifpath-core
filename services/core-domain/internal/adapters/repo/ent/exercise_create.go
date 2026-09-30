@@ -134,6 +134,20 @@ func (_c *ExerciseCreate) SetNillableDiagramStackRef(v *string) *ExerciseCreate 
 	return _c
 }
 
+// SetCreatedBy sets the "created_by" field.
+func (_c *ExerciseCreate) SetCreatedBy(v uuid.UUID) *ExerciseCreate {
+	_c.mutation.SetCreatedBy(v)
+	return _c
+}
+
+// SetNillableCreatedBy sets the "created_by" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableCreatedBy(v *uuid.UUID) *ExerciseCreate {
+	if v != nil {
+		_c.SetCreatedBy(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ExerciseCreate) SetCreatedAt(v time.Time) *ExerciseCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -461,6 +475,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DiagramStackRef(); ok {
 		_spec.SetField(exercise.FieldDiagramStackRef, field.TypeString, value)
 		_node.DiagramStackRef = &value
+	}
+	if value, ok := _c.mutation.CreatedBy(); ok {
+		_spec.SetField(exercise.FieldCreatedBy, field.TypeUUID, value)
+		_node.CreatedBy = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)

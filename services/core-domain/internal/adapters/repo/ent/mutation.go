@@ -16454,6 +16454,7 @@ type ExerciseMutation struct {
 	remediation_targets           *string
 	diagram_ref                   *string
 	diagram_stack_ref             *string
+	created_by                    *uuid.UUID
 	created_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	challenges                    map[uuid.UUID]struct{}
@@ -17019,6 +17020,55 @@ func (m *ExerciseMutation) DiagramStackRefCleared() bool {
 func (m *ExerciseMutation) ResetDiagramStackRef() {
 	m.diagram_stack_ref = nil
 	delete(m.clearedFields, exercise.FieldDiagramStackRef)
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (m *ExerciseMutation) SetCreatedBy(u uuid.UUID) {
+	m.created_by = &u
+}
+
+// CreatedBy returns the value of the "created_by" field in the mutation.
+func (m *ExerciseMutation) CreatedBy() (r uuid.UUID, exists bool) {
+	v := m.created_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedBy returns the old "created_by" field's value of the Exercise entity.
+// If the Exercise object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseMutation) OldCreatedBy(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedBy: %w", err)
+	}
+	return oldValue.CreatedBy, nil
+}
+
+// ClearCreatedBy clears the value of the "created_by" field.
+func (m *ExerciseMutation) ClearCreatedBy() {
+	m.created_by = nil
+	m.clearedFields[exercise.FieldCreatedBy] = struct{}{}
+}
+
+// CreatedByCleared returns if the "created_by" field was cleared in this mutation.
+func (m *ExerciseMutation) CreatedByCleared() bool {
+	_, ok := m.clearedFields[exercise.FieldCreatedBy]
+	return ok
+}
+
+// ResetCreatedBy resets all changes to the "created_by" field.
+func (m *ExerciseMutation) ResetCreatedBy() {
+	m.created_by = nil
+	delete(m.clearedFields, exercise.FieldCreatedBy)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -17685,7 +17735,7 @@ func (m *ExerciseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ExerciseMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.title != nil {
 		fields = append(fields, exercise.FieldTitle)
 	}
@@ -17712,6 +17762,9 @@ func (m *ExerciseMutation) Fields() []string {
 	}
 	if m.diagram_stack_ref != nil {
 		fields = append(fields, exercise.FieldDiagramStackRef)
+	}
+	if m.created_by != nil {
+		fields = append(fields, exercise.FieldCreatedBy)
 	}
 	if m.created_at != nil {
 		fields = append(fields, exercise.FieldCreatedAt)
@@ -17742,6 +17795,8 @@ func (m *ExerciseMutation) Field(name string) (ent.Value, bool) {
 		return m.DiagramRef()
 	case exercise.FieldDiagramStackRef:
 		return m.DiagramStackRef()
+	case exercise.FieldCreatedBy:
+		return m.CreatedBy()
 	case exercise.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -17771,6 +17826,8 @@ func (m *ExerciseMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldDiagramRef(ctx)
 	case exercise.FieldDiagramStackRef:
 		return m.OldDiagramStackRef(ctx)
+	case exercise.FieldCreatedBy:
+		return m.OldCreatedBy(ctx)
 	case exercise.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -17845,6 +17902,13 @@ func (m *ExerciseMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDiagramStackRef(v)
 		return nil
+	case exercise.FieldCreatedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedBy(v)
+		return nil
 	case exercise.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -17915,6 +17979,9 @@ func (m *ExerciseMutation) ClearedFields() []string {
 	if m.FieldCleared(exercise.FieldDiagramStackRef) {
 		fields = append(fields, exercise.FieldDiagramStackRef)
 	}
+	if m.FieldCleared(exercise.FieldCreatedBy) {
+		fields = append(fields, exercise.FieldCreatedBy)
+	}
 	return fields
 }
 
@@ -17946,6 +18013,9 @@ func (m *ExerciseMutation) ClearField(name string) error {
 		return nil
 	case exercise.FieldDiagramStackRef:
 		m.ClearDiagramStackRef()
+		return nil
+	case exercise.FieldCreatedBy:
+		m.ClearCreatedBy()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise nullable field %s", name)
@@ -17981,6 +18051,9 @@ func (m *ExerciseMutation) ResetField(name string) error {
 		return nil
 	case exercise.FieldDiagramStackRef:
 		m.ResetDiagramStackRef()
+		return nil
+	case exercise.FieldCreatedBy:
+		m.ResetCreatedBy()
 		return nil
 	case exercise.FieldCreatedAt:
 		m.ResetCreatedAt()

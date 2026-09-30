@@ -231,6 +231,9 @@ type Exercise struct {
 	// this Exercise has been read back from the repository with its
 	// Language rows joined in.
 	Languages []Language
+	// CreatedBy is the id of the user who created the exercise, or "" for
+	// an exercise created before creators were recorded. Fixed at creation.
+	CreatedBy string
 	CreatedAt time.Time
 }
 

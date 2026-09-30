@@ -592,6 +592,7 @@ var (
 		{Name: "remediation_targets", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "diagram_ref", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "diagram_stack_ref", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_by", Type: field.TypeUUID, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.

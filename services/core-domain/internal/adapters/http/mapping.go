@@ -210,7 +210,7 @@ func toDomainPromptDocumentPtr(prompt *generated.PromptDocument) *domain.PromptD
 	return &doc
 }
 
-func toExercise(e domain.Exercise) generated.Exercise {
+func toExercise(e domain.Exercise, names userNames) generated.Exercise {
 	challengeIDs := make([]uuid.UUID, len(e.ChallengeIDs))
 	for i, id := range e.ChallengeIDs {
 		challengeIDs[i] = mustUUID(id)
@@ -242,6 +242,10 @@ func toExercise(e domain.Exercise) generated.Exercise {
 		CreatedAt:                e.CreatedAt,
 		DiagramRef:               toGeneratedDiagramRefPtr(e.DiagramRef),
 		DiagramStackRef:          toGeneratedDiagramStackRefPtr(e.DiagramStackRef),
+	}
+	if e.CreatedBy != "" {
+		createdBy := names.ref(e.CreatedBy)
+		exercise.CreatedBy = &createdBy
 	}
 	return exercise
 }
@@ -280,19 +284,19 @@ func toDomainRemediationTargets(targets []generated.RemediationTarget) []domain.
 	return result
 }
 
-func toExercises(exercises []domain.Exercise) []generated.Exercise {
+func toExercises(exercises []domain.Exercise, names userNames) []generated.Exercise {
 	result := make([]generated.Exercise, len(exercises))
 	for i, e := range exercises {
-		result[i] = toExercise(e)
+		result[i] = toExercise(e, names)
 	}
 	return result
 }
 
-func toPracticeSession(session application.PracticeSession) generated.PracticeSession {
+func toPracticeSession(session application.PracticeSession, names userNames) generated.PracticeSession {
 	return generated.PracticeSession{
 		PracticeSessionId: mustUUID(session.ID),
 		SkillId:           mustUUID(session.SkillID),
-		Exercises:         toExercises(session.Exercises),
+		Exercises:         toExercises(session.Exercises, names),
 	}
 }
 
@@ -418,6 +422,24 @@ func toLearningPath(p domain.LearningPath, names userNames) generated.LearningPa
 		result.Level = &level
 	}
 	return result
+}
+
+// exerciseListFilter maps GET /exercises' query parameters onto the domain
+// filter.
+func exerciseListFilter(params generated.ListExercisesParams) domain.ExerciseFilter {
+	filter := domain.ExerciseFilter{
+		Query:     searchQuery(params.Q),
+		SkillID:   uuidPtrToString(params.SkillId),
+		ConceptID: uuidPtrToString(params.ConceptId),
+		CreatedBy: uuidPtrToString(params.CreatedBy),
+	}
+	if params.ExerciseType != nil {
+		filter.ExerciseType = domain.ExerciseType(*params.ExerciseType)
+	}
+	if params.Language != nil {
+		filter.Language = *params.Language
+	}
+	return filter
 }
 
 // learningPathListFilter maps GET /learning-paths' query parameters onto the

@@ -55,6 +55,42 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^an unauthenticated request attempts to list all exercises$`, w.unauthListsAllExercises)
 	sc.Step(`^"([^"]+)" lists exercises filtered by skill "([^"]+)"$`, w.listsExercisesBySkill)
 	sc.Step(`^"([^"]+)" lists exercises filtered by exercise_type "([^"]+)"$`, w.listsExercisesByType)
+	sc.Step(`^an exercise "([^"]+)" exists titled "([^"]+)"$`, func(slug, title string) error { return w.putExerciseWith(slug, exerciseSeed{title: title}) })
+	sc.Step(`^an exercise "([^"]+)" exists(?: titled "([^"]+)")?, created by "([^"]+)"$`, func(slug, title, creator string) error {
+		return w.putExerciseWith(slug, exerciseSeed{title: title, createdBy: w.ensureRegistered(creator, roleOf(creator)).String()})
+	})
+	sc.Step(`^an exercise "([^"]+)" exists with no recorded creator$`, w.putExercise)
+	sc.Step(`^an exercise "([^"]+)" exists with concepts "([^"]+)"$`, func(slug, concepts string) error {
+		return w.putExerciseWith(slug, exerciseSeed{concepts: concepts})
+	})
+	sc.Step(`^an exercise "([^"]+)" exists in language "([^"]+)"$`, func(slug, language string) error {
+		return w.putExerciseWith(slug, exerciseSeed{language: language})
+	})
+	sc.Step(`^"([^"]+)" lists exercises filtered by concept "([^"]+)"$`, func(_, concept string) error {
+		id := w.conceptIDFor(concept)
+		return w.listExercises(generated.ListExercisesParams{ConceptId: &id})
+	})
+	sc.Step(`^"([^"]+)" lists exercises filtered by language "([^"]+)"$`, func(_, language string) error {
+		return w.listExercises(generated.ListExercisesParams{Language: &language})
+	})
+	sc.Step(`^"([^"]+)" lists exercises filtered by creator "([^"]+)"$`, func(_, creator string) error {
+		id := w.ensureRegistered(creator, roleOf(creator))
+		return w.listExercises(generated.ListExercisesParams{CreatedBy: &id})
+	})
+	sc.Step(`^"([^"]+)" lists exercises matching "([^"]+)"$`, func(_, query string) error {
+		return w.listExercises(generated.ListExercisesParams{Q: &query})
+	})
+	sc.Step(`^"([^"]+)" lists exercises matching "([^"]+)", filtered by creator "([^"]+)"$`, func(_, query, creator string) error {
+		id := w.ensureRegistered(creator, roleOf(creator))
+		return w.listExercises(generated.ListExercisesParams{Q: &query, CreatedBy: &id})
+	})
+	sc.Step(`^the exercise's creator is "([^"]+)", named "([^"]+)"$`, w.exerciseCreatorIs)
+	sc.Step(`^"([^"]+)" lists the exercise creators$`, func(string) error {
+		return w.listExerciseCreators(generated.ListExerciseCreatorsParams{})
+	})
+	sc.Step(`^"([^"]+)" lists the exercise creators matching "([^"]+)"$`, func(_, query string) error {
+		return w.listExerciseCreators(generated.ListExerciseCreatorsParams{Q: &query})
+	})
 
 	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with title "([^"]+)" and prompt "([^"]+)" and one correct option$`, w.updatesExerciseFull)
 	sc.Step(`^"([^"]+)" updates exercise "([^"]+)" with skills "([^"]+)"$`, w.updatesExerciseSkills)
@@ -1048,6 +1084,76 @@ func (w *world) listsExercisesBySkill(name, skillName string) error {
 	})
 	w.lastResp, w.lastErr = resp, err
 	return err
+}
+
+// exerciseSeed is what a seeded exercise differs in from putExercise's
+// defaults; a zero field keeps the default.
+type exerciseSeed struct {
+	title, createdBy, concepts, language string
+}
+
+func (w *world) putExerciseWith(slug string, seed exerciseSeed) error {
+	if err := w.putExercise(slug); err != nil {
+		return err
+	}
+	ex, err := w.exercises.GetByID(w.ctx(), exerciseID(slug).String())
+	if err != nil {
+		return err
+	}
+	if seed.title != "" {
+		ex.Title = seed.title
+	}
+	ex.CreatedBy = seed.createdBy
+	if seed.concepts != "" {
+		ex.Concepts = nil
+		for _, id := range w.conceptIDsFor(seed.concepts) {
+			ex.Concepts = append(ex.Concepts, domain.Concept{ID: id.String()})
+		}
+	}
+	if seed.language != "" {
+		ex.Languages = []domain.Language{{Code: seed.language}}
+	}
+	w.exercises.put(ex)
+	return nil
+}
+
+// roleOf is the role a persona is registered with when a step names them
+// only as a creator: "admin" is an admin, anyone else a teacher.
+func roleOf(persona string) domain.Role {
+	if persona == "admin" {
+		return domain.RoleAdmin
+	}
+	return domain.RoleTeacher
+}
+
+func (w *world) listExercises(params generated.ListExercisesParams) error {
+	resp, err := w.handler.ListExercises(w.ctx(), generated.ListExercisesRequestObject{Params: params})
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+// listExerciseCreators stores a 200 as the course creators' response type,
+// so the shared "the creators returned …" steps read either list.
+func (w *world) listExerciseCreators(params generated.ListExerciseCreatorsParams) error {
+	resp, err := w.handler.ListExerciseCreators(w.ctx(), generated.ListExerciseCreatorsRequestObject{Params: params})
+	if creators, ok := resp.(generated.ListExerciseCreators200JSONResponse); ok {
+		w.lastResp, w.lastErr = generated.ListCourseCreators200JSONResponse(creators), err
+		return err
+	}
+	w.lastResp, w.lastErr = resp, err
+	return err
+}
+
+func (w *world) exerciseCreatorIs(persona, displayName string) error {
+	resp, ok := w.lastResp.(generated.CreateExercise201JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a created exercise, got %T (err: %v)", w.lastResp, w.lastErr)
+	}
+	want := generated.UserRef{UserId: w.ensureRegistered(persona, roleOf(persona)), DisplayName: displayName}
+	if resp.CreatedBy == nil || *resp.CreatedBy != want {
+		return fmt.Errorf("expected the exercise's creator to be %+v, got %+v", want, resp.CreatedBy)
+	}
+	return nil
 }
 
 func (w *world) listsExercisesByType(name, exerciseType string) error {

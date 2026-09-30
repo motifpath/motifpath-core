@@ -426,7 +426,11 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 		}
 	}
 
-	return generated.CreateExercise201JSONResponse(toExercise(exercise)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.CreateExercise201JSONResponse(toExercise(exercise, names)), nil
 }
 
 func (h *Handler) GetExercise(ctx context.Context, request generated.GetExerciseRequestObject) (generated.GetExerciseResponseObject, error) {
@@ -442,22 +446,17 @@ func (h *Handler) GetExercise(ctx context.Context, request generated.GetExercise
 		return nil, err
 	}
 
-	return generated.GetExercise200JSONResponse(toExercise(exercise)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.GetExercise200JSONResponse(toExercise(exercise, names)), nil
 }
 
 func (h *Handler) ListExercises(ctx context.Context, request generated.ListExercisesRequestObject) (generated.ListExercisesResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
 		return generated.ListExercises401JSONResponse(unauthorizedError()), nil
-	}
-
-	var skillID string
-	if request.Params.SkillId != nil {
-		skillID = request.Params.SkillId.String()
-	}
-	var exerciseType domain.ExerciseType
-	if request.Params.ExerciseType != nil {
-		exerciseType = domain.ExerciseType(*request.Params.ExerciseType)
 	}
 
 	page, err := domain.NewPageRequest(request.Params.Limit, request.Params.Offset)
@@ -467,17 +466,43 @@ func (h *Handler) ListExercises(ctx context.Context, request generated.ListExerc
 		})
 	}
 
-	result, err := h.exercise.ListExercises(ctx, caller, domain.ExerciseFilter{SkillID: skillID, ExerciseType: exerciseType}, page)
+	result, err := h.exercise.ListExercises(ctx, caller, exerciseListFilter(request.Params), page)
 	if err != nil {
 		if kind, _ := classify(err); kind == errKindForbidden {
 			return generated.ListExercises403JSONResponse(forbiddenError("only teachers and admins may list exercises")), nil
 		}
 		return nil, err
 	}
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(result.Items...))
+	if err != nil {
+		return nil, err
+	}
 
 	return generated.ListExercises200JSONResponse{
-		Items: toExercises(result.Items), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
+		Items: toExercises(result.Items, names), Total: result.Total, Limit: page.Limit, Offset: page.Offset,
 	}, nil
+}
+
+// ListExerciseCreators returns the creators of the exercises in the pool,
+// optionally narrowed by name, in name order.
+func (h *Handler) ListExerciseCreators(ctx context.Context, request generated.ListExerciseCreatorsRequestObject) (generated.ListExerciseCreatorsResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ListExerciseCreators401JSONResponse(unauthorizedError()), nil
+	}
+
+	query := ""
+	if request.Params.Q != nil {
+		query = *request.Params.Q
+	}
+	creators, err := h.exercise.ListExerciseCreators(ctx, caller, query)
+	if err != nil {
+		if kind, _ := classify(err); kind == errKindForbidden {
+			return generated.ListExerciseCreators403JSONResponse(forbiddenError("students may not list exercise creators")), nil
+		}
+		return nil, err
+	}
+	return generated.ListExerciseCreators200JSONResponse(toUserRefs(creators)), nil
 }
 
 func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateExerciseRequestObject) (generated.UpdateExerciseResponseObject, error) {
@@ -510,7 +535,11 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 		}
 	}
 
-	return generated.UpdateExercise200JSONResponse(toExercise(exercise)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.UpdateExercise200JSONResponse(toExercise(exercise, names)), nil
 }
 
 func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated.LinkExerciseToChallengeRequestObject) (generated.LinkExerciseToChallengeResponseObject, error) {
@@ -533,7 +562,11 @@ func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated
 		}
 	}
 
-	return generated.LinkExerciseToChallenge201JSONResponse(toExercise(exercise)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.LinkExerciseToChallenge201JSONResponse(toExercise(exercise, names)), nil
 }
 
 func (h *Handler) UnlinkExerciseFromChallenge(ctx context.Context, request generated.UnlinkExerciseFromChallengeRequestObject) (generated.UnlinkExerciseFromChallengeResponseObject, error) {
@@ -1608,7 +1641,11 @@ func (h *Handler) ListChallengeExercises(ctx context.Context, request generated.
 		return nil, err
 	}
 
-	return generated.ListChallengeExercises200JSONResponse(toExercises(exercises)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercises...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListChallengeExercises200JSONResponse(toExercises(exercises, names)), nil
 }
 
 func (h *Handler) ListContentNodePathExercises(ctx context.Context, request generated.ListContentNodePathExercisesRequestObject) (generated.ListContentNodePathExercisesResponseObject, error) {
@@ -1624,7 +1661,11 @@ func (h *Handler) ListContentNodePathExercises(ctx context.Context, request gene
 		return nil, err
 	}
 
-	return generated.ListContentNodePathExercises200JSONResponse(toExercises(exercises)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercises...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.ListContentNodePathExercises200JSONResponse(toExercises(exercises, names)), nil
 }
 
 func (h *Handler) LinkExerciseToContentNode(ctx context.Context, request generated.LinkExerciseToContentNodeRequestObject) (generated.LinkExerciseToContentNodeResponseObject, error) {
@@ -1647,7 +1688,11 @@ func (h *Handler) LinkExerciseToContentNode(ctx context.Context, request generat
 		}
 	}
 
-	return generated.LinkExerciseToContentNode201JSONResponse(toExercise(exercise)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(exercise))
+	if err != nil {
+		return nil, err
+	}
+	return generated.LinkExerciseToContentNode201JSONResponse(toExercise(exercise, names)), nil
 }
 
 func (h *Handler) UnlinkExerciseFromContentNode(ctx context.Context, request generated.UnlinkExerciseFromContentNodeRequestObject) (generated.UnlinkExerciseFromContentNodeResponseObject, error) {
@@ -1699,7 +1744,11 @@ func (h *Handler) StartPracticeSession(ctx context.Context, request generated.St
 		return nil, err
 	}
 
-	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session)), nil
+	names, err := h.loadUserNames(ctx, exerciseUserIDs(session.Exercises...))
+	if err != nil {
+		return nil, err
+	}
+	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session, names)), nil
 }
 
 func (h *Handler) ListSkills(ctx context.Context, _ generated.ListSkillsRequestObject) (generated.ListSkillsResponseObject, error) {

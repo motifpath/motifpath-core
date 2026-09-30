@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -523,10 +524,36 @@ func (f *fakeExerciseRepository) List(_ context.Context, filter domain.ExerciseF
 		if filter.SkillID != "" && !containsID(exerciseSkillIDs(ex), filter.SkillID) {
 			continue
 		}
+		if filter.ConceptID != "" && !slices.ContainsFunc(ex.Concepts, func(c domain.Concept) bool { return c.ID == filter.ConceptID }) {
+			continue
+		}
+		if filter.Language != "" && !slices.ContainsFunc(ex.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
+			continue
+		}
+		if filter.CreatedBy != "" && ex.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		if filter.Query != "" && !strings.Contains(strings.ToLower(ex.Title), strings.ToLower(filter.Query)) {
+			continue
+		}
 		result = append(result, ex)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return paginate(result, page), nil
+}
+
+func (f *fakeExerciseRepository) ListCreatorIDs(_ context.Context) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, ex := range f.byID {
+		if ex.CreatedBy != "" && !seen[ex.CreatedBy] {
+			seen[ex.CreatedBy] = true
+			ids = append(ids, ex.CreatedBy)
+		}
+	}
+	return ids, nil
 }
 
 func exerciseSkillIDs(ex domain.Exercise) []string {
