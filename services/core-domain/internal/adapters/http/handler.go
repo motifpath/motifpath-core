@@ -1445,15 +1445,13 @@ func (h *Handler) AbandonCourseEnrollment(ctx context.Context, request generated
 // version before rendering it, then loads both the student and course
 // creator display names in one identity lookup.
 func (h *Handler) courseEnrollmentPresentations(ctx context.Context, enrollments []domain.CourseEnrollment) ([]generated.CourseEnrollment, error) {
-	presentations := make([]application.CourseEnrollmentPresentation, len(enrollments))
+	presentations, err := h.courseEnrollment.PresentationsFor(ctx, enrollments)
+	if err != nil {
+		return nil, err
+	}
 	userIDs := make([]string, 0, 2*len(enrollments))
 	for i, enrollment := range enrollments {
-		presentation, err := h.courseEnrollment.PresentationFor(ctx, enrollment)
-		if err != nil {
-			return nil, err
-		}
-		presentations[i] = presentation
-		userIDs = append(userIDs, enrollment.StudentID, presentation.CourseCreatedBy)
+		userIDs = append(userIDs, enrollment.StudentID, presentations[i].CourseCreatedBy)
 	}
 	names, err := h.loadUserNames(ctx, userIDs)
 	if err != nil {

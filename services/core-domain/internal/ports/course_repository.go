@@ -15,6 +15,12 @@ type CourseRepository interface {
 	// GetByID returns domain.ErrNotFound if no course exists with the given id.
 	GetByID(ctx context.Context, id string) (domain.Course, error)
 
+	// GetCreatorIDs returns the creator user id of every course in ids in one
+	// round-trip, keyed by course id. It reads the course rows alone —
+	// never the live draft's checkpoints — so it still answers for a course
+	// whose draft no longer resolves. An unknown id is simply absent.
+	GetCreatorIDs(ctx context.Context, ids []string) (map[string]string, error)
+
 	// List returns one page of the courses matching filter, ordered by title
 	// then id (the published version's title when filter.PublishedView is
 	// set), with the count of all matches across pages.

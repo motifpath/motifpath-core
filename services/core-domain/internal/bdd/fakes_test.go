@@ -838,6 +838,18 @@ func (f *fakeCourseRepo) Create(_ context.Context, c domain.Course) error {
 	return nil
 }
 
+func (f *fakeCourseRepo) GetCreatorIDs(_ context.Context, ids []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	creators := map[string]string{}
+	for _, id := range ids {
+		if c, ok := f.byID[id]; ok {
+			creators[id] = c.CreatedBy
+		}
+	}
+	return creators, nil
+}
+
 func (f *fakeCourseRepo) GetByID(_ context.Context, id string) (domain.Course, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

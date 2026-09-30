@@ -416,9 +416,7 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 // whole set so a catalog page costs the same however many courses it holds.
 // Repeated path ids are intentionally counted repeatedly: each occurrence is
 // a distinct checkpoint in the learner's course scope. A path that no longer
-// exists contributes no lessons rather than failing: deletion is only refused
-// for paths a published version uses, so a draft checkpoint can outlive its
-// path, and one stale draft must not break every course listed beside it.
+// exists contributes no lessons.
 func (s *CourseService) CountLessons(ctx context.Context, learningPathIDs map[string][]string) (map[string]int, error) {
 	var allIDs []string
 	for _, ids := range learningPathIDs {

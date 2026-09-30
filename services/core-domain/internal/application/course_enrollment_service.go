@@ -207,27 +207,40 @@ func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, c
 	return list, nil
 }
 
-// PresentationFor returns the course context attached to enrollment's exact
-// pinned CourseVersion. It must never use the latest version: a republish
-// cannot rewrite the description, level, or checkpoint count shown to an
-// already-enrolled learner.
-func (s *CourseEnrollmentService) PresentationFor(ctx context.Context, enrollment domain.CourseEnrollment) (CourseEnrollmentPresentation, error) {
-	course, err := s.courses.GetByID(ctx, enrollment.CourseID)
+// PresentationsFor returns, in order, the course context attached to each
+// enrollment's exact pinned CourseVersion. It must never use the latest
+// version: a republish cannot rewrite the description, level, or checkpoint
+// count shown to an already-enrolled learner. Creators are read from the
+// course rows alone, never the live draft, so a draft edit that no longer
+// resolves cannot break a learner's view of a course they already hold.
+func (s *CourseEnrollmentService) PresentationsFor(ctx context.Context, enrollments []domain.CourseEnrollment) ([]CourseEnrollmentPresentation, error) {
+	courseIDs := make([]string, len(enrollments))
+	for i, enrollment := range enrollments {
+		courseIDs[i] = enrollment.CourseID
+	}
+	creators, err := s.courses.GetCreatorIDs(ctx, courseIDs)
 	if err != nil {
-		return CourseEnrollmentPresentation{}, err
+		return nil, err
 	}
 
-	version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
-	if err != nil {
-		return CourseEnrollmentPresentation{}, err
+	presentations := make([]CourseEnrollmentPresentation, len(enrollments))
+	for i, enrollment := range enrollments {
+		createdBy, ok := creators[enrollment.CourseID]
+		if !ok {
+			return nil, domain.ErrNotFound
+		}
+		version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
+		if err != nil {
+			return nil, err
+		}
+		presentations[i] = CourseEnrollmentPresentation{
+			CourseSummary:   version.SummarySnapshot,
+			CourseLevel:     version.LevelSnapshot,
+			CourseCreatedBy: createdBy,
+			CheckpointCount: len(version.Checkpoints),
+		}
 	}
-
-	return CourseEnrollmentPresentation{
-		CourseSummary:   version.SummarySnapshot,
-		CourseLevel:     version.LevelSnapshot,
-		CourseCreatedBy: course.CreatedBy,
-		CheckpointCount: len(version.Checkpoints),
-	}, nil
+	return presentations, nil
 }
 
 // AbandonCourseEnrollment sets the CourseEnrollment with the given id to
