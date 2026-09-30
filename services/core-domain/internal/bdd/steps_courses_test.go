@@ -128,7 +128,7 @@ func (w *world) learningPathContainsLessons(slug string, lessons int) error {
 	}
 	w.paths.put(domain.LearningPath{
 		ID: pathID(slug).String(), TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
-		Title: slug, Items: items, CreatedAt: fixedNow,
+		Title: slug, Items: items, CreatedAt: fixedNow, Status: domain.LearningPathStatusPublished,
 	})
 	return nil
 }

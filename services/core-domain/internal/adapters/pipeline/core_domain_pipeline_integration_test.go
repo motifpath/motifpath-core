@@ -81,7 +81,7 @@ func setupPipeline(t *testing.T) *pipeline {
 	return &pipeline{
 		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
-		path:        application.NewLearningPathService(nodes, paths, courseVersions, instrumentRepo, newID, now),
+		path:        application.NewLearningPathService(nodes, paths, courseVersions, versions, repo.NewEntLanguageRepository(entClient), instrumentRepo, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),
 		skills:      application.NewSkillService(skillRepo, newID),
 		concepts:    application.NewConceptService(conceptRepo, newID),
@@ -117,7 +117,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, node.ID, challenge.ContentNodeID)
 
-	learningPath, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Week 1", Items: []application.PathItemInput{{ContentNodeID: node.ID}}})
+	learningPath, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Week 1", Summary: ptr("Week 1 summary"), Language: ptr("en"), Items: []application.PathItemInput{{ContentNodeID: node.ID}}})
 	require.NoError(t, err)
 
 	// AssignLearningPath needs the student to exist in the same Postgres
@@ -129,6 +129,8 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	// have a published version before it can be copied into a StudentPath.
 	_, err = p.content.PublishContentNode(ctx, teacher, node.ID)
 	require.NoError(t, err)
+	// Only a published path can be assigned.
+	publishPath(t, ctx, p, learningPath.ID)
 
 	studentPath, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, learningPath.ID)
 	require.NoError(t, err)
@@ -162,9 +164,10 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node1.ID)
 	require.NoError(t, err)
-	path1, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 1", Items: []application.PathItemInput{{ContentNodeID: node1.ID}}})
+	path1, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 1", Summary: ptr("Path 1 summary"), Language: ptr("en"), Items: []application.PathItemInput{{ContentNodeID: node1.ID}}})
 	require.NoError(t, err)
 
+	publishPath(t, ctx, p, path1.ID)
 	first, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
 	require.NoError(t, err)
 
@@ -182,9 +185,10 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 	_, err = p.content.PublishContentNode(ctx, teacher, node2.ID)
 	require.NoError(t, err)
-	path2, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 2", Items: []application.PathItemInput{{ContentNodeID: node2.ID}}})
+	path2, err := p.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Path 2", Summary: ptr("Path 2 summary"), Language: ptr("en"), Items: []application.PathItemInput{{ContentNodeID: node2.ID}}})
 	require.NoError(t, err)
 
+	publishPath(t, ctx, p, path2.ID)
 	second, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
 	require.NoError(t, err)
 	assert.NotEqual(t, first.ID, second.ID)
@@ -222,3 +226,13 @@ func testVideoURL() *string {
 	url := "https://cdn.motifpath.io/videos/pipeline-test.mp4"
 	return &url
 }
+
+// publishPath publishes a learning path as an admin, the step every path
+// takes before it can be assigned.
+func publishPath(t *testing.T, ctx context.Context, p *pipeline, id string) {
+	t.Helper()
+	_, err := p.path.PublishLearningPath(ctx, domain.User{ID: uuid.NewString(), Role: domain.RoleAdmin}, id)
+	require.NoError(t, err)
+}
+
+func ptr(s string) *string { return &s }

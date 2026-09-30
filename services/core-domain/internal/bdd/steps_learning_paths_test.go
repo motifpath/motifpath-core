@@ -337,6 +337,10 @@ func (w *world) putLearningPathThreeItemsWithSections(slug, n1, n2, sectionA, n3
 	return nil
 }
 
+// putLearningPathDefault seeds a published path: a path that "exists in the
+// system" means one ready to be assigned, enrolled in or used by a published
+// course, just as its item's content node is seeded already published. The
+// "exists with items" authoring steps seed drafts instead.
 func (w *world) putLearningPathDefault(slug string) error {
 	if err := w.putContentNode("default-node-for-"+slug, domain.ContentTypeVideo); err != nil {
 		return err
@@ -346,6 +350,7 @@ func (w *world) putLearningPathDefault(slug string) error {
 		ID:        pathID(slug).String(),
 		TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
 		Title:     slug,
+		Status:    domain.LearningPathStatusPublished,
 		Items: []domain.LearningPathItem{
 			{Position: 1, ContentNodeID: nodeID("default-node-for-" + slug).String(), Title: "default", ContentType: domain.ContentTypeVideo},
 		},

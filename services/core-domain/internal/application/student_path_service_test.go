@@ -58,6 +58,7 @@ func publishedVersions(nodeIDs ...string) *fakeContentNodeVersionRepository {
 
 func threeItemTemplate() domain.LearningPath {
 	return domain.LearningPath{
+		Status: domain.LearningPathStatusPublished,
 		ID:    "path-1",
 		Title: "Beginner Guitar",
 		Items: []domain.LearningPathItem{
@@ -120,7 +121,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		users.put(domain.User{ID: "student-1", Role: domain.RoleStudent})
 		paths := newFakeLearningPathRepository()
 		paths.put(threeItemTemplate())
-		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		studentPaths := newFakeStudentPathRepository()
 		state := newFakeStudentLearningStateRepository()
 		versions := publishedVersions("node-01", "node-02", "node-03", "node-04")
@@ -366,7 +367,7 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
-		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
 		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
@@ -383,7 +384,7 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
-		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
 		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
@@ -430,7 +431,7 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		users, paths, studentPaths, versions, state := newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03", "node-04"), newFakeStudentLearningStateRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
-		paths.put(domain.LearningPath{ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
 		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
@@ -587,4 +588,40 @@ func TestStudentPathService_ListMyStandalonePaths(t *testing.T) {
 
 		require.NoError(t, err)
 	})
+}
+
+func TestStudentPathService_AssignRequiresPublishedPath(t *testing.T) {
+	cases := []struct {
+		name    string
+		status  domain.LearningPathStatus
+		caller  domain.User
+		wantErr error
+	}{
+		{name: "a teacher cannot assign a draft path", status: domain.LearningPathStatusDraft, caller: teacherCaller(), wantErr: domain.ErrConflict},
+		{name: "an admin cannot assign a draft path either", status: domain.LearningPathStatusDraft, caller: adminCaller(), wantErr: domain.ErrConflict},
+		{name: "a published path can be assigned", status: domain.LearningPathStatusPublished, caller: teacherCaller()},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			users := newFakeUserRepository()
+			users.put(domain.User{ID: "student-1", Role: domain.RoleStudent})
+			paths := newFakeLearningPathRepository()
+			template := threeItemTemplate()
+			template.Status = tc.status
+			paths.put(template)
+			studentPaths := newFakeStudentPathRepository()
+			svc := newStudentPathService(users, paths, studentPaths, publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
+
+			_, err := svc.AssignLearningPath(context.Background(), tc.caller, "student-1", "path-1")
+
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				held, listErr := studentPaths.ListStandaloneByStudentID(context.Background(), "student-1")
+				require.NoError(t, listErr)
+				assert.Empty(t, held, "a refused assignment copies nothing")
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }

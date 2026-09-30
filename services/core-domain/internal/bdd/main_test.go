@@ -83,6 +83,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerMediaUploadSteps(sc, w)
 	registerExpandedContentSteps(sc, w)
 	registerLearningPathSteps(sc, w)
+	registerPathPublishingSteps(sc, w)
 	registerCourseSteps(sc, w)
 	registerCourseReactivationSteps(sc, w)
 	registerCourseLanguageSteps(sc, w)

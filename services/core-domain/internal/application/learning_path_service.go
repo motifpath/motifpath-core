@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -14,13 +15,15 @@ type LearningPathService struct {
 	nodes          ports.ContentNodeRepository
 	paths          ports.LearningPathRepository
 	courseVersions ports.CourseVersionRepository
+	versions       ports.ContentNodeVersionRepository
+	languages      ports.LanguageRepository
 	newID          func() string
 	now            func() time.Time
 	instruments    ports.InstrumentRepository
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, newID: newID, now: now, instruments: instruments}
+func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, newID: newID, now: now, instruments: instruments}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -34,7 +37,11 @@ type PathItemInput struct {
 // path.
 type LearningPathInput struct {
 	Title string
-	Level domain.DifficultyLevel
+	// Summary and Language may be nil while the path is a draft; publishing
+	// requires both.
+	Summary  *string
+	Language *string
+	Level    domain.DifficultyLevel
 	// InstrumentIDs are the instruments the path is for; empty means every
 	// instrument.
 	InstrumentIDs []string
@@ -46,7 +53,7 @@ type LearningPathInput struct {
 // fields resolves input into the domain's LearningPathFields, given its items
 // already resolved against their content nodes.
 func (input LearningPathInput) fields(items []domain.NewLearningPathItem) domain.LearningPathFields {
-	return domain.LearningPathFields{Title: input.Title, Level: input.Level, InstrumentIDs: input.InstrumentIDs, ThumbnailURL: input.ThumbnailURL, Items: items}
+	return domain.LearningPathFields{Title: input.Title, Summary: input.Summary, Language: input.Language, Level: input.Level, InstrumentIDs: input.InstrumentIDs, ThumbnailURL: input.ThumbnailURL, Items: items}
 }
 
 // CreateLearningPath creates a learning path from the given ordered items.
@@ -63,7 +70,12 @@ func (s *LearningPathService) CreateLearningPath(ctx context.Context, caller dom
 		return domain.LearningPath{}, err
 	}
 
-	path, err := domain.NewLearningPath(s.newID(), caller.ID, input.fields(items), s.now())
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+
+	path, err := domain.NewLearningPath(s.newID(), caller.ID, input.fields(items), offered, s.now())
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
@@ -97,6 +109,9 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 	if !filter.Sort.Valid() {
 		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("sort", "must be one of: title, updated")
 	}
+	if filter.Status != "" && !filter.Status.Valid() {
+		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("status", "must be one of: draft, published")
+	}
 	return s.paths.List(ctx, filter, page)
 }
 
@@ -107,6 +122,11 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 // doesn't exist is a validation failure (400), matching CreateLearningPath.
 // Only the creating teacher or an admin may replace a learning path.
 // Returns domain.ErrNotFound if no path exists with the given id.
+//
+// Replacing never changes the path's status. A published path's edits are
+// live — the catalog shows them and the next learner copies them — so a
+// replace that would leave a published path unpublishable is refused with a
+// *domain.LearningPathNotPublishableError and changes nothing.
 func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller domain.User, id string, input LearningPathInput) (domain.LearningPath, error) {
 	if !canManageContent(caller.Role) {
 		return domain.LearningPath{}, domain.ErrForbidden
@@ -125,12 +145,23 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 		return domain.LearningPath{}, err
 	}
 
-	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, input.fields(items), existing.CreatedAt)
+	offered, err := offeredLanguages(ctx, s.languages)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+
+	replaced, err := domain.NewLearningPath(existing.ID, existing.TeacherID, input.fields(items), offered, existing.CreatedAt)
 	if err != nil {
 		return domain.LearningPath{}, err
 	}
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.LearningPath{}, err
+	}
+	replaced.Status = existing.Status
+	if replaced.Status == domain.LearningPathStatusPublished {
+		if err := s.checkPublishable(ctx, replaced); err != nil {
+			return domain.LearningPath{}, err
+		}
 	}
 	replaced.UpdatedAt = s.now()
 	if err := s.paths.Replace(ctx, replaced); err != nil {
@@ -146,8 +177,10 @@ func (s *LearningPathService) ReplaceLearningPath(ctx context.Context, caller do
 // or an admin may delete a learning path. Refused with domain.ErrConflict
 // if the template is referenced by a checkpoint of any published
 // CourseVersion, even one belonging to a since-retired course — a
-// published course's checkpoint sequence must always resolve. Returns
-// domain.ErrNotFound if no path exists with the given id.
+// published course's checkpoint sequence must always resolve — and while
+// the path is published, so a path never vanishes from the catalog under a
+// learner: it must be unpublished first. Returns domain.ErrNotFound if no
+// path exists with the given id.
 func (s *LearningPathService) DeleteLearningPath(ctx context.Context, caller domain.User, id string) error {
 	if !canManageContent(caller.Role) {
 		return domain.ErrForbidden
@@ -160,6 +193,9 @@ func (s *LearningPathService) DeleteLearningPath(ctx context.Context, caller dom
 	if err := requireOwner(caller, existing.TeacherID); err != nil {
 		return err
 	}
+	if existing.Status == domain.LearningPathStatusPublished {
+		return domain.ErrConflict
+	}
 
 	referenced, err := s.courseVersions.IsLearningPathReferenced(ctx, id)
 	if err != nil {
@@ -170,6 +206,100 @@ func (s *LearningPathService) DeleteLearningPath(ctx context.Context, caller dom
 	}
 
 	return s.paths.Delete(ctx, id)
+}
+
+// PublishLearningPath lists the path in the catalog, where learners can find
+// and enroll in it. Admin-only. Refused with a
+// *domain.LearningPathNotPublishableError listing everything the path lacks.
+// Publishing a published path returns it unchanged. Returns
+// domain.ErrNotFound if no path exists with the given id.
+func (s *LearningPathService) PublishLearningPath(ctx context.Context, caller domain.User, id string) (domain.LearningPath, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.LearningPath{}, domain.ErrForbidden
+	}
+	path, err := s.paths.GetByID(ctx, id)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if path.Status == domain.LearningPathStatusPublished {
+		return path, nil
+	}
+	if err := s.checkPublishable(ctx, path); err != nil {
+		return domain.LearningPath{}, err
+	}
+	if err := s.paths.UpdateStatus(ctx, id, domain.LearningPathStatusPublished); err != nil {
+		return domain.LearningPath{}, err
+	}
+	path.Status = domain.LearningPathStatusPublished
+	return path, nil
+}
+
+// UnpublishLearningPath takes the path out of the catalog; no one else can
+// enroll in it, and every copy already made is untouched. Admin-only.
+// Refused with domain.ErrConflict while a checkpoint of any published
+// CourseVersion uses the path — learners enrolled in that version still
+// unlock its later checkpoints and copy their paths. Unpublishing a draft
+// returns it unchanged. Returns domain.ErrNotFound if no path exists with
+// the given id.
+func (s *LearningPathService) UnpublishLearningPath(ctx context.Context, caller domain.User, id string) (domain.LearningPath, error) {
+	if caller.Role != domain.RoleAdmin {
+		return domain.LearningPath{}, domain.ErrForbidden
+	}
+	path, err := s.paths.GetByID(ctx, id)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if path.Status == domain.LearningPathStatusDraft {
+		return path, nil
+	}
+	referenced, err := s.courseVersions.IsLearningPathReferenced(ctx, id)
+	if err != nil {
+		return domain.LearningPath{}, err
+	}
+	if referenced {
+		return domain.LearningPath{}, domain.ErrConflict
+	}
+	if err := s.paths.UpdateStatus(ctx, id, domain.LearningPathStatusDraft); err != nil {
+		return domain.LearningPath{}, err
+	}
+	path.Status = domain.LearningPathStatusDraft
+	return path, nil
+}
+
+// checkPublishable returns a *domain.LearningPathNotPublishableError when
+// path lacks anything publishing requires, including items whose content
+// node has never been published.
+func (s *LearningPathService) checkPublishable(ctx context.Context, path domain.LearningPath) error {
+	unpublished, err := s.unpublishedContentNodeIDs(ctx, path.Items)
+	if err != nil {
+		return err
+	}
+	if problems := path.PublishingProblems(unpublished); problems != nil {
+		return problems
+	}
+	return nil
+}
+
+// unpublishedContentNodeIDs returns, in item order and without repeats, the
+// items' content nodes that have no published version.
+func (s *LearningPathService) unpublishedContentNodeIDs(ctx context.Context, items []domain.LearningPathItem) ([]string, error) {
+	var unpublished []string
+	seen := make(map[string]bool, len(items))
+	for _, item := range items {
+		if seen[item.ContentNodeID] {
+			continue
+		}
+		seen[item.ContentNodeID] = true
+		_, err := s.versions.GetLatestByContentNodeID(ctx, item.ContentNodeID)
+		if errors.Is(err, domain.ErrNotFound) {
+			unpublished = append(unpublished, item.ContentNodeID)
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return unpublished, nil
 }
 
 // resolvePathItems turns pathItems into the resolved domain.NewLearningPathItem

@@ -102,7 +102,7 @@ func run() error {
 	now := func() time.Time { return time.Now().UTC() }
 
 	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
-	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, instrumentRepo, newID, now)
+	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now, rand.Shuffle)
@@ -238,7 +238,7 @@ func seedPathAndProgress(
 		nodeIDs = append(nodeIDs, node.ID)
 	}
 
-	path, err := pathService.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Blues Guitar Foundations", Items: items})
+	path, err := pathService.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Blues Guitar Foundations", Summary: strPtr("From your first shuffle to a twelve-bar solo."), Language: strPtr("en"), Items: items})
 	if err != nil {
 		return nil, fmt.Errorf("create learning path: %w", err)
 	}
@@ -248,6 +248,11 @@ func seedPathAndProgress(
 		if _, err := contentService.PublishContentNode(ctx, teacher, item.ContentNodeID); err != nil {
 			return nil, fmt.Errorf("publish content node %s: %w", item.ContentNodeID, err)
 		}
+	}
+
+	// Only a published path can be assigned; publishing is an admin's act.
+	if _, err := pathService.PublishLearningPath(ctx, domain.User{ID: teacher.ID, Role: domain.RoleAdmin}, path.ID); err != nil {
+		return nil, fmt.Errorf("publish learning path: %w", err)
 	}
 
 	if _, err := studentPathService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
@@ -392,3 +397,5 @@ func seedCompletionStatuses(ctx context.Context, db *mongo.Database, studentID s
 	}
 	return nil
 }
+
+func strPtr(s string) *string { return &s }

@@ -95,7 +95,7 @@ var (
 	textClause     = regexp.MustCompile(`(?:matching )?text "([^"]*)"`)
 	quotedName     = regexp.MustCompile(`"([^"]+)"`)
 	typeClause     = regexp.MustCompile(`of type "([^"]+)"`)
-	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|instrument|text) ((?:"[^"]*"(?:, )?)+)`)
+	filterClauses  = regexp.MustCompile(`(levels|level|skills|skill|concepts|concept|creator|language|instrument|status|text) ((?:"[^"]*"(?:, )?)+)`)
 	quotedListItem = regexp.MustCompile(`"([^"]*)"`)
 )
 

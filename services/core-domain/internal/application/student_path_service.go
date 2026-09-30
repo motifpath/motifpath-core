@@ -116,8 +116,10 @@ func (s *StudentPathService) resolveLatestVersionIDs(ctx context.Context, items 
 // AssignLearningPath copies learningPathID's current items into a new,
 // standalone StudentPath owned by studentID, and sets it as the student's
 // current path unconditionally. Only teachers and admins may assign paths.
-// Every content node the template's items reference must already have at
-// least one published version.
+// Only a published template can be assigned — a draft is unfinished whoever
+// hands it out — so a draft is refused with domain.ErrConflict. Every
+// content node the template's items reference must already have at least
+// one published version.
 func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller domain.User, studentID, learningPathID string) (domain.StudentPath, error) {
 	if !canManageContent(caller.Role) {
 		return domain.StudentPath{}, domain.ErrForbidden
@@ -132,6 +134,9 @@ func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller doma
 	template, err := s.paths.GetByID(ctx, learningPathID)
 	if err != nil {
 		return domain.StudentPath{}, err
+	}
+	if template.Status != domain.LearningPathStatusPublished {
+		return domain.StudentPath{}, domain.ErrConflict
 	}
 
 	versionIDs, err := s.resolveLatestVersionIDs(ctx, template.Items)

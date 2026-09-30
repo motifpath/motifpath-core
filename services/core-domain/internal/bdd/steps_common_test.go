@@ -290,7 +290,9 @@ func (w *world) requestRefusedForbidden() error {
 		generated.PublishCourse403JSONResponse,
 		generated.RetireCourse403JSONResponse,
 		generated.ReactivateCourse403JSONResponse,
-		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse:
+		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse,
+		generated.PublishLearningPath403JSONResponse,
+		generated.UnpublishLearningPath403JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 403 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -340,7 +342,9 @@ func (w *world) requestRefusedNotFound() error {
 		generated.ReactivateCourse404JSONResponse,
 		generated.CreateCourseEnrollment404JSONResponse,
 		generated.AbandonCourseEnrollment404JSONResponse,
-		generated.SetCurrentPath404JSONResponse:
+		generated.SetCurrentPath404JSONResponse,
+		generated.PublishLearningPath404JSONResponse,
+		generated.UnpublishLearningPath404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -355,7 +359,12 @@ func (w *world) requestRefusedConflict() error {
 		generated.ArchiveStandaloneStudentPath409JSONResponse,
 		generated.DeleteLearningPath409JSONResponse,
 		generated.CreateCourseEnrollment409JSONResponse,
-		generated.AbandonCourseEnrollment409JSONResponse:
+		generated.AbandonCourseEnrollment409JSONResponse,
+		generated.AssignLearningPath409JSONResponse,
+		generated.PublishCourse409JSONResponse,
+		generated.PublishLearningPath409JSONResponse,
+		generated.UnpublishLearningPath409JSONResponse,
+		generated.ReplaceLearningPath409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -365,6 +374,7 @@ func (w *world) requestRefusedConflict() error {
 func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
+		generated.PublishLearningPath401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
 		generated.ListCourseCreators401JSONResponse,
 		generated.ListCatalogCreators401JSONResponse,
