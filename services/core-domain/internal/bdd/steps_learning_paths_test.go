@@ -588,22 +588,16 @@ func (w *world) seedCourseWithCheckpoint(courseSlug, pathSlug string, publish bo
 		}
 	}
 
-	teacherName := "seed-teacher-for-" + courseSlug
-	w.ensureRegistered(teacherName, domain.RoleTeacher)
-	teacherCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(teacherName))
-
-	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{
-		Body: &generated.CreateCourseRequest{
-			Language: "en",
-			Title:    courseSlug,
-			Summary:  "Seeded for testing",
-			Level:    generated.CreateCourseRequestLevelBeginner,
-			Checkpoints: []struct {
-				LearningPathId uuid.UUID `json:"learning_path_id"`
-				Title          *string   `json:"title,omitempty"`
-			}{
-				{LearningPathId: pathID(pathSlug)},
-			},
+	resp, err := w.createSeededCourse("seed-teacher-for-"+courseSlug, &generated.CreateCourseRequest{
+		Language: "en",
+		Title:    courseSlug,
+		Summary:  "Seeded for testing",
+		Level:    generated.CreateCourseRequestLevelBeginner,
+		Checkpoints: []struct {
+			LearningPathId uuid.UUID `json:"learning_path_id"`
+			Title          *string   `json:"title,omitempty"`
+		}{
+			{LearningPathId: pathID(pathSlug)},
 		},
 	})
 	if err != nil {

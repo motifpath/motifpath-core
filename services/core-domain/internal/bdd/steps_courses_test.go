@@ -188,9 +188,6 @@ func (w *world) seedCourseWith(courseSlug string, pathSlugs []string, creatorNam
 		}
 	}
 
-	w.ensureRegistered(creatorName, domain.RoleTeacher)
-	teacherCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(creatorName))
-
 	specs := make([]courseCheckpointSpec, len(pathSlugs))
 	for i, slug := range pathSlugs {
 		specs[i] = courseCheckpointSpec{slug: slug}
@@ -204,7 +201,7 @@ func (w *world) seedCourseWith(courseSlug string, pathSlugs []string, creatorNam
 		Checkpoints: toCourseCheckpointBody(specs),
 	}
 	adjust(body)
-	resp, err := w.handler.CreateCourse(teacherCtx, generated.CreateCourseRequestObject{Body: body})
+	resp, err := w.createSeededCourse(creatorName, body)
 	if err != nil {
 		return uuid.UUID{}, err
 	}

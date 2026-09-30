@@ -182,7 +182,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 func TestLearningPathService_GetLearningPath(t *testing.T) {
 	t.Run("a teacher retrieves a learning path by id", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		path := domain.LearningPath{ID: "path-1", Title: "Week 1"}
+		path := domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Week 1"}
 		paths.put(path)
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
@@ -236,6 +236,35 @@ func TestLearningPathService_ListLearningPaths(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Len(t, got.Items, 1)
+	})
+
+	t.Run("a teacher's library holds only their own paths; an admin's holds everyone's", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "mine", TeacherID: "teacher-1", Title: "Mine"})
+		paths.put(domain.LearningPath{ID: "theirs", TeacherID: "teacher-2", Title: "Theirs"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		teacherPage, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{}, firstPage)
+		require.NoError(t, err)
+		adminPage, err := svc.ListLearningPaths(context.Background(), adminCaller(), domain.LearningPathFilter{}, firstPage)
+		require.NoError(t, err)
+
+		require.Len(t, teacherPage.Items, 1)
+		assert.Equal(t, "mine", teacherPage.Items[0].ID)
+		assert.Equal(t, 2, adminPage.Total)
+	})
+
+	t.Run("a teacher may filter by their own id but not by another author's", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "mine", TeacherID: "teacher-1", Title: "Mine"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		own, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{CreatedBy: "teacher-1"}, firstPage)
+		require.NoError(t, err)
+		assert.Len(t, own.Items, 1)
+
+		_, err = svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{CreatedBy: "teacher-2"}, firstPage)
+		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 
 	t.Run("searches by title text", func(t *testing.T) {
@@ -560,8 +589,8 @@ func TestLearningPathService_ListLearningPathCreators(t *testing.T) {
 		nameQuery string
 		want      []string
 	}{
-		{name: "a teacher gets every creator in the library, drafts included, each once, by name", caller: teacherCaller(), want: []string{"Bob", "Carol"}},
-		{name: "an admin gets the same list", caller: adminCaller(), want: []string{"Bob", "Carol"}},
+		{name: "a teacher gets only themselves, their library being only their own paths", caller: domain.User{ID: "teacher-bob", Role: domain.RoleTeacher}, want: []string{"Bob"}},
+		{name: "an admin gets every creator in the library, drafts included, each once, by name", caller: adminCaller(), want: []string{"Bob", "Carol"}},
 		{name: "the name query narrows them", caller: adminCaller(), nameQuery: "car", want: []string{"Carol"}},
 	}
 	for _, tc := range cases {

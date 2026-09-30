@@ -99,13 +99,20 @@ func (s *LearningPathService) GetLearningPath(ctx context.Context, caller domain
 	return s.paths.GetByID(ctx, id)
 }
 
-// ListLearningPaths returns one page of the learning paths in the library
-// matching filter. Teachers and
-// admins may list learning paths; students may not browse paths directly —
+// ListLearningPaths returns one page of the learning paths in the caller's
+// library matching filter. A teacher's library is only the paths they
+// created, and filtering it by another author is forbidden; an admin's
+// holds every author's paths. Students may not browse paths directly —
 // their view is through PathAssignmentService.GetMyPath.
 func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller domain.User, filter domain.LearningPathFilter, page domain.PageRequest) (domain.Page[domain.LearningPath], error) {
 	if !canManageContent(caller.Role) {
 		return domain.Page[domain.LearningPath]{}, domain.ErrForbidden
+	}
+	if caller.Role == domain.RoleTeacher {
+		if filter.CreatedBy != "" && filter.CreatedBy != caller.ID {
+			return domain.Page[domain.LearningPath]{}, domain.ErrForbidden
+		}
+		filter.CreatedBy = caller.ID
 	}
 	if !filter.Sort.Valid() {
 		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("sort", "must be one of: title, updated")
@@ -117,15 +124,20 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 }
 
 // ListLearningPathCreators returns every user who created at least one path
-// in the library, whatever its status, each once, ordered by name as a
-// person reads names; nameQuery, when non-empty, keeps those whose name
-// contains it. The library is shared, so teachers and admins get the same
-// list; students are refused, as they are from the library itself.
+// in the caller's library, whatever its status, each once, ordered by name
+// as a person reads names; nameQuery, when non-empty, keeps those whose
+// name contains it. A teacher's library is only their own paths, so they
+// get at most themselves; students are refused, as they are from the
+// library itself.
 func (s *LearningPathService) ListLearningPathCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
 	if !canManageContent(caller.Role) {
 		return nil, domain.ErrForbidden
 	}
-	ids, err := s.paths.ListCreatorIDs(ctx, domain.LearningPathFilter{})
+	filter := domain.LearningPathFilter{}
+	if caller.Role == domain.RoleTeacher {
+		filter.CreatedBy = caller.ID
+	}
+	ids, err := s.paths.ListCreatorIDs(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

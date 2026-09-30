@@ -31,6 +31,45 @@ func checkpointInputs(ids ...string) []application.CheckpointInput {
 	return items
 }
 
+func TestCourseService_CheckpointPathOwnership(t *testing.T) {
+	seed := func() (*fakeLearningPathRepository, *fakeCourseRepository) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "own-path", TeacherID: "teacher-1", Title: "Mine"})
+		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "other-path", TeacherID: "teacher-2", Title: "Theirs"})
+		return paths, newFakeCourseRepository()
+	}
+	input := func(ids ...string) application.CourseInput {
+		return application.CourseInput{Language: "en", Title: "Journey", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs(ids...)}
+	}
+
+	t.Run("a teacher cannot create a course on another author's path", func(t *testing.T) {
+		paths, courses := seed()
+
+		_, err := newCourseService(paths, courses).CreateCourse(context.Background(), teacherCaller(), input("own-path", "other-path"))
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a teacher cannot replace their course draft with another author's path", func(t *testing.T) {
+		paths, courses := seed()
+		svc := newCourseService(paths, courses)
+		course, err := svc.CreateCourse(context.Background(), teacherCaller(), input("own-path"))
+		require.NoError(t, err)
+
+		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), course.ID, input("own-path", "other-path"))
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("an admin builds a course from any author's paths", func(t *testing.T) {
+		paths, courses := seed()
+
+		_, err := newCourseService(paths, courses).CreateCourse(context.Background(), adminCaller(), input("own-path", "other-path"))
+
+		assert.NoError(t, err)
+	})
+}
+
 func TestCourseService_CreateCourse(t *testing.T) {
 	t.Run("a teacher creates a course with multiple checkpoints", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
