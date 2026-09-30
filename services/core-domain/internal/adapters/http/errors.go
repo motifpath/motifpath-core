@@ -11,6 +11,10 @@ func unauthorizedError() generated.UnauthorizedError {
 	return generated.UnauthorizedError{Message: "missing or invalid bearer token"}
 }
 
+// checkpointPathNotOwnedMessage explains a course checkpoint refused because
+// the path isn't its author's, so the author knows which checkpoint to fix.
+const checkpointPathNotOwnedMessage = "a course a teacher authored may use only that teacher's learning paths"
+
 func forbiddenError(message string) generated.ForbiddenError {
 	return generated.ForbiddenError{Message: message}
 }

@@ -1182,8 +1182,9 @@ func (h *Handler) ListCourseCreators(ctx context.Context, request generated.List
 	return generated.ListCourseCreators200JSONResponse(toUserRefs(creators)), nil
 }
 
-// ListLearningPathCreators returns the creators of every path in the
-// authoring library, optionally narrowed by name, in name order.
+// ListLearningPathCreators returns the creators of the paths in the
+// caller's library (only themselves, for a teacher), optionally narrowed by
+// name, in name order.
 func (h *Handler) ListLearningPathCreators(ctx context.Context, request generated.ListLearningPathCreatorsRequestObject) (generated.ListLearningPathCreatorsResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -1258,6 +1259,9 @@ func (h *Handler) CreateCourse(ctx context.Context, request generated.CreateCour
 		case errKindValidation:
 			return generated.CreateCourse400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindForbidden:
+			if errors.Is(err, domain.ErrCheckpointPathNotOwned) {
+				return generated.CreateCourse403JSONResponse(forbiddenError(checkpointPathNotOwnedMessage)), nil
+			}
 			return generated.CreateCourse403JSONResponse(forbiddenError("only teachers and admins may create courses")), nil
 		case errKindNotFound, errKindOther:
 			return nil, err
@@ -1323,6 +1327,9 @@ func (h *Handler) ReplaceCourse(ctx context.Context, request generated.ReplaceCo
 		case errKindValidation:
 			return generated.ReplaceCourse400JSONResponse(validationErrorResponse(valErr)), nil
 		case errKindForbidden:
+			if errors.Is(err, domain.ErrCheckpointPathNotOwned) {
+				return generated.ReplaceCourse403JSONResponse(forbiddenError(checkpointPathNotOwnedMessage)), nil
+			}
 			return generated.ReplaceCourse403JSONResponse(forbiddenError("only the creating teacher or an admin may replace this course")), nil
 		case errKindNotFound:
 			return generated.ReplaceCourse404JSONResponse(notFoundError("no course exists with the given id")), nil

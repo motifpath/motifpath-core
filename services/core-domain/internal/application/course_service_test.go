@@ -18,7 +18,18 @@ func newCourseService(paths *fakeLearningPathRepository, courses *fakeCourseRepo
 	if len(versions) > 0 {
 		v = versions[0]
 	}
-	return application.NewCourseService(paths, courses, v, newFakeUserRepository(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewCourseService(paths, courses, v, courseAuthors(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+}
+
+// courseAuthors registers the users these tests author courses as, since
+// replacing a course looks up its author to decide which paths it may use.
+func courseAuthors() *fakeUserRepository {
+	users := newFakeUserRepository()
+	users.put(adminCaller())
+	for _, id := range []string{"teacher-1", "teacher-2", "teacher-3", "teacher-4"} {
+		users.put(domain.User{ID: id, Role: domain.RoleTeacher})
+	}
+	return users
 }
 
 // checkpointInputs builds an unlabelled CheckpointInput slice from learning
@@ -32,39 +43,64 @@ func checkpointInputs(ids ...string) []application.CheckpointInput {
 }
 
 func TestCourseService_CheckpointPathOwnership(t *testing.T) {
-	seed := func() (*fakeLearningPathRepository, *fakeCourseRepository) {
+	newSvc := func() *application.CourseService {
 		paths := newFakeLearningPathRepository()
 		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "own-path", TeacherID: "teacher-1", Title: "Mine"})
 		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "other-path", TeacherID: "teacher-2", Title: "Theirs"})
-		return paths, newFakeCourseRepository()
+		users := newFakeUserRepository()
+		users.put(teacherCaller())
+		users.put(adminCaller())
+		return application.NewCourseService(paths, newFakeCourseRepository(), newFakeCourseVersionRepository(), users, newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 	}
 	input := func(ids ...string) application.CourseInput {
 		return application.CourseInput{Language: "en", Title: "Journey", Summary: "Summary", Level: domain.DifficultyLevelBeginner, Checkpoints: checkpointInputs(ids...)}
 	}
+	create := func(t *testing.T, svc *application.CourseService, author domain.User, ids ...string) domain.Course {
+		t.Helper()
+		course, err := svc.CreateCourse(context.Background(), author, input(ids...))
+		require.NoError(t, err)
+		return course
+	}
 
 	t.Run("a teacher cannot create a course on another author's path", func(t *testing.T) {
-		paths, courses := seed()
+		_, err := newSvc().CreateCourse(context.Background(), teacherCaller(), input("own-path", "other-path"))
 
-		_, err := newCourseService(paths, courses).CreateCourse(context.Background(), teacherCaller(), input("own-path", "other-path"))
-
+		assert.ErrorIs(t, err, domain.ErrCheckpointPathNotOwned)
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 
-	t.Run("a teacher cannot replace their course draft with another author's path", func(t *testing.T) {
-		paths, courses := seed()
-		svc := newCourseService(paths, courses)
-		course, err := svc.CreateCourse(context.Background(), teacherCaller(), input("own-path"))
-		require.NoError(t, err)
+	t.Run("a teacher cannot add another author's path to their course", func(t *testing.T) {
+		svc := newSvc()
+		course := create(t, svc, teacherCaller(), "own-path")
 
-		_, err = svc.ReplaceCourse(context.Background(), teacherCaller(), course.ID, input("own-path", "other-path"))
+		_, err := svc.ReplaceCourse(context.Background(), teacherCaller(), course.ID, input("own-path", "other-path"))
 
-		assert.ErrorIs(t, err, domain.ErrForbidden)
+		assert.ErrorIs(t, err, domain.ErrCheckpointPathNotOwned)
 	})
 
-	t.Run("an admin builds a course from any author's paths", func(t *testing.T) {
-		paths, courses := seed()
+	t.Run("an admin cannot add another author's path to a teacher's course", func(t *testing.T) {
+		svc := newSvc()
+		course := create(t, svc, teacherCaller(), "own-path")
 
-		_, err := newCourseService(paths, courses).CreateCourse(context.Background(), adminCaller(), input("own-path", "other-path"))
+		_, err := svc.ReplaceCourse(context.Background(), adminCaller(), course.ID, input("own-path", "other-path"))
+
+		assert.ErrorIs(t, err, domain.ErrCheckpointPathNotOwned)
+	})
+
+	t.Run("an admin edits a teacher's course with that teacher's paths", func(t *testing.T) {
+		svc := newSvc()
+		course := create(t, svc, teacherCaller(), "own-path")
+
+		_, err := svc.ReplaceCourse(context.Background(), adminCaller(), course.ID, input("own-path"))
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("an admin's own course may use any author's paths, on create and on replace", func(t *testing.T) {
+		svc := newSvc()
+		course := create(t, svc, adminCaller(), "own-path", "other-path")
+
+		_, err := svc.ReplaceCourse(context.Background(), adminCaller(), course.ID, input("other-path", "own-path"))
 
 		assert.NoError(t, err)
 	})

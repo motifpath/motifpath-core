@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -12,6 +13,12 @@ var (
 	// ErrForbidden is returned when the authenticated caller's role does not
 	// permit the requested operation.
 	ErrForbidden = errors.New("forbidden")
+
+	// ErrCheckpointPathNotOwned refuses a course checkpoint on a learning
+	// path its author didn't write: a course a teacher authored may use only
+	// that teacher's paths, whoever saves it. It is an ErrForbidden, so it
+	// maps to 403 like any other refusal, with its own message.
+	ErrCheckpointPathNotOwned = fmt.Errorf("%w: a course a teacher authored may use only that teacher's learning paths", ErrForbidden)
 
 	// ErrAlreadyExists is returned when a resource that must be unique
 	// (e.g. a user record for a Clerk identity) already exists.
