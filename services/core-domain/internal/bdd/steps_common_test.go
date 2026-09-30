@@ -305,6 +305,7 @@ func (w *world) requestRefusedForbidden() error {
 		generated.RetireCourse403JSONResponse,
 		generated.ReactivateCourse403JSONResponse,
 		generated.ListCourseCreators403JSONResponse, generated.ListDiagramCreators403JSONResponse,
+		generated.ListLearningPathCreators403JSONResponse,
 		generated.PublishLearningPath403JSONResponse,
 		generated.UnpublishLearningPath403JSONResponse:
 		return nil
@@ -393,6 +394,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.PublishLearningPath401JSONResponse,
 		generated.ListCatalogPaths401JSONResponse,
 		generated.ListCatalogPathCreators401JSONResponse,
+		generated.ListLearningPathCreators401JSONResponse,
 		generated.EnrollInLearningPath401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
 		generated.ListCourseCreators401JSONResponse,

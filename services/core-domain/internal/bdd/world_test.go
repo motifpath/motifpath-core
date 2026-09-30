@@ -98,7 +98,7 @@ type world struct {
 	// sharedLessonPath is the standalone path whose first lesson a course
 	// also holds, for the "completed that lesson in the course" step.
 	sharedLessonPath string
-	lastErr  error
+	lastErr          error
 
 	// lastPromptSent holds whichever prompt document the most recent
 	// create/update exercise step built, so a following "the exercise's
@@ -258,7 +258,7 @@ func newWorld() *world {
 	skill := application.NewSkillService(w.skills, newID)
 	concept := application.NewConceptService(w.concepts, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.instruments, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
@@ -471,4 +471,27 @@ func (w *world) authenticateAs(name string, role domain.Role) {
 	w.hasToken = true
 	w.clerkSub = clerkSub(name)
 	w.persona = name
+}
+
+// createSeededCourse creates a course through the API for a Given step, recording
+// creatorName as its creator. It creates as an admin, since a seeded course
+// may use paths its creator didn't write, which a teacher's own request
+// can't; seeding sets up state, it doesn't exercise authoring rules.
+func (w *world) createSeededCourse(creatorName string, body *generated.CreateCourseRequest) (generated.CreateCourseResponseObject, error) {
+	creatorID := w.ensureRegistered(creatorName, domain.RoleTeacher)
+	w.ensureRegistered("course-seeding-admin", domain.RoleAdmin)
+	adminCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub("course-seeding-admin"))
+	resp, err := w.handler.CreateCourse(adminCtx, generated.CreateCourseRequestObject{Body: body})
+	if err != nil {
+		return resp, err
+	}
+	if created, ok := resp.(generated.CreateCourse201JSONResponse); ok {
+		course, err := w.courses.GetByID(context.Background(), created.CourseId.String())
+		if err != nil {
+			return resp, err
+		}
+		course.CreatedBy = creatorID.String()
+		w.courses.put(course)
+	}
+	return resp, nil
 }

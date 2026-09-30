@@ -694,9 +694,14 @@ func (f *fakeLearningPathRepository) CountItems(_ context.Context, ids []string)
 	return counts, nil
 }
 
+// put seeds a path directly. A path seeded without an author belongs to
+// teacherCaller, since a teacher works only with their own paths.
 func (f *fakeLearningPathRepository) put(path domain.LearningPath) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if path.TeacherID == "" {
+		path.TeacherID = teacherCaller().ID
+	}
 	f.byID[path.ID] = path
 }
 
@@ -712,6 +717,9 @@ func (f *fakeLearningPathRepository) List(_ context.Context, filter domain.Learn
 			continue
 		}
 		if filter.Language != "" && (path.Language == nil || *path.Language != filter.Language) {
+			continue
+		}
+		if filter.CreatedBy != "" && path.TeacherID != filter.CreatedBy {
 			continue
 		}
 		result = append(result, path)

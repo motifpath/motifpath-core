@@ -386,17 +386,13 @@ func (w *world) seedCourseFrom(seed courseSeed) (uuid.UUID, error) {
 		}
 	}
 
-	w.ensureRegistered(seed.creator, domain.RoleTeacher)
-	creatorCtx := appHTTP.WithClerkUserID(context.Background(), clerkSub(seed.creator))
 	specs := make([]courseCheckpointSpec, len(seed.pathSlugs))
 	for i, slug := range seed.pathSlugs {
 		specs[i] = courseCheckpointSpec{slug: slug}
 	}
-	resp, err := w.handler.CreateCourse(creatorCtx, generated.CreateCourseRequestObject{
-		Body: &generated.CreateCourseRequest{
-			Language: "en",
-			Title:    seed.title, Summary: "Seeded for testing", Level: seed.level, Checkpoints: toCourseCheckpointBody(specs),
-		},
+	resp, err := w.createSeededCourse(seed.creator, &generated.CreateCourseRequest{
+		Language: "en",
+		Title:    seed.title, Summary: "Seeded for testing", Level: seed.level, Checkpoints: toCourseCheckpointBody(specs),
 	})
 	if err != nil {
 		return uuid.UUID{}, err

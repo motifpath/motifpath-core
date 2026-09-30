@@ -65,7 +65,8 @@ func (s *CourseService) CreateCourse(ctx context.Context, caller domain.User, in
 		return domain.Course{}, domain.ErrForbidden
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
+	// The caller becomes the course's author.
+	resolved, err := s.resolveCheckpoints(ctx, caller, input.Checkpoints)
 	if err != nil {
 		return domain.Course{}, err
 	}
@@ -193,7 +194,11 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 		return domain.Course{}, err
 	}
 
-	resolved, err := s.resolveCheckpoints(ctx, input.Checkpoints)
+	author, err := s.users.GetByID(ctx, existing.CreatedBy)
+	if err != nil {
+		return domain.Course{}, err
+	}
+	resolved, err := s.resolveCheckpoints(ctx, author, input.Checkpoints)
 	if err != nil {
 		return domain.Course{}, err
 	}
@@ -464,9 +469,13 @@ func (s *CourseService) CountLessons(ctx context.Context, learningPathIDs map[st
 // resolveCheckpoints turns checkpoints into the resolved
 // domain.NewCourseCheckpoint slice domain.NewCourse needs. Returns a
 // domain.ValidationError under "learning_path_id" naming the first
-// checkpoint whose learning_path_id doesn't exist — shared by CreateCourse
-// and ReplaceCourse, which resolve checkpoints identically.
-func (s *CourseService) resolveCheckpoints(ctx context.Context, checkpoints []CheckpointInput) ([]domain.NewCourseCheckpoint, error) {
+// checkpoint whose learning_path_id doesn't exist, and
+// domain.ErrCheckpointPathNotOwned when a course a teacher authored names a
+// path another author created: a teacher's course uses only that teacher's
+// paths, whoever saves it, while an admin's own course may use any —
+// shared by CreateCourse and ReplaceCourse, which resolve checkpoints
+// identically.
+func (s *CourseService) resolveCheckpoints(ctx context.Context, author domain.User, checkpoints []CheckpointInput) ([]domain.NewCourseCheckpoint, error) {
 	resolved := make([]domain.NewCourseCheckpoint, 0, len(checkpoints))
 	for _, checkpoint := range checkpoints {
 		path, err := s.paths.GetByID(ctx, checkpoint.LearningPathID)
@@ -475,6 +484,9 @@ func (s *CourseService) resolveCheckpoints(ctx context.Context, checkpoints []Ch
 				return nil, domain.NewValidationError("learning_path_id", "references a learning path that does not exist: "+checkpoint.LearningPathID)
 			}
 			return nil, err
+		}
+		if author.Role == domain.RoleTeacher && path.TeacherID != author.ID {
+			return nil, domain.ErrCheckpointPathNotOwned
 		}
 		resolved = append(resolved, domain.NewCourseCheckpoint{Path: path, Title: checkpoint.Title})
 	}

@@ -22,7 +22,7 @@ func newLearningPathServiceWithVersions(nodes *fakeContentNodeRepository, paths 
 }
 
 func newLearningPathServiceWith(nodes *fakeContentNodeRepository, paths *fakeLearningPathRepository, courseVersions *fakeCourseVersionRepository, versions *fakeContentNodeVersionRepository) *application.LearningPathService {
-	return application.NewLearningPathService(nodes, paths, courseVersions, versions, newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewLearningPathService(nodes, paths, courseVersions, versions, newFakeLanguageRepository(), newFakeUserRepository(), seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // pathItems builds an unlabelled PathItemInput slice from content node ids,
@@ -182,7 +182,7 @@ func TestLearningPathService_CreateLearningPath(t *testing.T) {
 func TestLearningPathService_GetLearningPath(t *testing.T) {
 	t.Run("a teacher retrieves a learning path by id", func(t *testing.T) {
 		paths := newFakeLearningPathRepository()
-		path := domain.LearningPath{ID: "path-1", Title: "Week 1"}
+		path := domain.LearningPath{ID: "path-1", TeacherID: "teacher-1", Title: "Week 1"}
 		paths.put(path)
 		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
 
@@ -236,6 +236,35 @@ func TestLearningPathService_ListLearningPaths(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Len(t, got.Items, 1)
+	})
+
+	t.Run("a teacher's library holds only their own paths; an admin's holds everyone's", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "mine", TeacherID: "teacher-1", Title: "Mine"})
+		paths.put(domain.LearningPath{ID: "theirs", TeacherID: "teacher-2", Title: "Theirs"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		teacherPage, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{}, firstPage)
+		require.NoError(t, err)
+		adminPage, err := svc.ListLearningPaths(context.Background(), adminCaller(), domain.LearningPathFilter{}, firstPage)
+		require.NoError(t, err)
+
+		require.Len(t, teacherPage.Items, 1)
+		assert.Equal(t, "mine", teacherPage.Items[0].ID)
+		assert.Equal(t, 2, adminPage.Total)
+	})
+
+	t.Run("a teacher may filter by their own id but not by another author's", func(t *testing.T) {
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "mine", TeacherID: "teacher-1", Title: "Mine"})
+		svc := newLearningPathService(newFakeContentNodeRepository(), paths)
+
+		own, err := svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{CreatedBy: "teacher-1"}, firstPage)
+		require.NoError(t, err)
+		assert.Len(t, own.Items, 1)
+
+		_, err = svc.ListLearningPaths(context.Background(), teacherCaller(), domain.LearningPathFilter{CreatedBy: "teacher-2"}, firstPage)
+		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 
 	t.Run("searches by title text", func(t *testing.T) {
@@ -515,7 +544,7 @@ func TestLearningPathService_LevelAndLastUpdate(t *testing.T) {
 	t.Run("replacing a path records the replace time and keeps the creation time", func(t *testing.T) {
 		later := fixedCreatedAt.Add(48 * time.Hour)
 		clock := []time.Time{fixedCreatedAt, later}
-		svc := application.NewLearningPathService(nodes, newFakeLearningPathRepository(), newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), seededInstrumentRepository(), idSequence(), func() time.Time {
+		svc := application.NewLearningPathService(nodes, newFakeLearningPathRepository(), newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), newFakeUserRepository(), seededInstrumentRepository(), idSequence(), func() time.Time {
 			now := clock[0]
 			clock = clock[1:]
 			return now
@@ -539,5 +568,47 @@ func TestLearningPathService_LevelAndLastUpdate(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
 		assert.Equal(t, "sort", valErr.Fields[0].Field)
+	})
+}
+
+func TestLearningPathService_ListLearningPathCreators(t *testing.T) {
+	setup := func() *application.LearningPathService {
+		users := newFakeUserRepository()
+		users.put(domain.User{ID: "teacher-bob", Role: domain.RoleTeacher, DisplayName: "Bob"})
+		users.put(domain.User{ID: "teacher-carol", Role: domain.RoleTeacher, DisplayName: "Carol"})
+		paths := newFakeLearningPathRepository()
+		paths.put(domain.LearningPath{ID: "open-chords", TeacherID: "teacher-bob", Title: "Open Chords", Status: domain.LearningPathStatusDraft})
+		paths.put(domain.LearningPath{ID: "strumming", TeacherID: "teacher-bob", Title: "Strumming", Status: domain.LearningPathStatusPublished})
+		paths.put(domain.LearningPath{ID: "acordes", TeacherID: "teacher-carol", Title: "Acordes", Status: domain.LearningPathStatusPublished})
+		return application.NewLearningPathService(newFakeContentNodeRepository(), paths, newFakeCourseVersionRepository(), newFakeContentNodeVersionRepository(), newFakeLanguageRepository(), users, seededInstrumentRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	}
+
+	cases := []struct {
+		name      string
+		caller    domain.User
+		nameQuery string
+		want      []string
+	}{
+		{name: "a teacher gets only themselves, their library being only their own paths", caller: domain.User{ID: "teacher-bob", Role: domain.RoleTeacher}, want: []string{"Bob"}},
+		{name: "an admin gets every creator in the library, drafts included, each once, by name", caller: adminCaller(), want: []string{"Bob", "Carol"}},
+		{name: "the name query narrows them", caller: adminCaller(), nameQuery: "car", want: []string{"Carol"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			creators, err := setup().ListLearningPathCreators(context.Background(), tc.caller, tc.nameQuery)
+
+			require.NoError(t, err)
+			names := make([]string, len(creators))
+			for i, c := range creators {
+				names[i] = c.DisplayName
+			}
+			assert.Equal(t, tc.want, names)
+		})
+	}
+
+	t.Run("a student is refused", func(t *testing.T) {
+		_, err := setup().ListLearningPathCreators(context.Background(), studentCaller(), "")
+
+		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
