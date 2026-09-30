@@ -919,7 +919,7 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		return generated.AssignLearningPath401JSONResponse(unauthorizedError()), nil
 	}
 
-	sp, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
+	sp, created, err := h.studentPath.AssignLearningPath(ctx, caller, request.StudentId.String(), request.Body.LearningPathId.String())
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -937,11 +937,14 @@ func (h *Handler) AssignLearningPath(ctx context.Context, request generated.Assi
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
 	if err != nil {
 		return nil, err
 	}
-	return generated.AssignLearningPath201JSONResponse(toStudentPath(sp, names)), nil
+	if !created {
+		return generated.AssignLearningPath200JSONResponse(cards[0]), nil
+	}
+	return generated.AssignLearningPath201JSONResponse(cards[0]), nil
 }
 
 func (h *Handler) GetMyPath(ctx context.Context, _ generated.GetMyPathRequestObject) (generated.GetMyPathResponseObject, error) {
@@ -982,11 +985,11 @@ func (h *Handler) ArchiveStandaloneStudentPath(ctx context.Context, request gene
 		}
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(sp))
+	cards, err := h.studentPathCards(ctx, sp.StudentID, sp)
 	if err != nil {
 		return nil, err
 	}
-	return generated.ArchiveStandaloneStudentPath200JSONResponse(toStudentPath(sp, names)), nil
+	return generated.ArchiveStandaloneStudentPath200JSONResponse(cards[0]), nil
 }
 
 func (h *Handler) PublishContentNode(ctx context.Context, request generated.PublishContentNodeRequestObject) (generated.PublishContentNodeResponseObject, error) {
@@ -1048,15 +1051,11 @@ func (h *Handler) ListMyStandalonePaths(ctx context.Context, _ generated.ListMyS
 		return nil, err
 	}
 
-	names, err := h.loadUserNames(ctx, studentPathUserIDs(paths...))
+	cards, err := h.studentPathCards(ctx, caller.ID, paths...)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]generated.StudentPath, len(paths))
-	for i, sp := range paths {
-		items[i] = toStudentPath(sp, names)
-	}
-	return generated.ListMyStandalonePaths200JSONResponse(items), nil
+	return generated.ListMyStandalonePaths200JSONResponse(cards), nil
 }
 
 func (h *Handler) ListCourses(ctx context.Context, request generated.ListCoursesRequestObject) (generated.ListCoursesResponseObject, error) {

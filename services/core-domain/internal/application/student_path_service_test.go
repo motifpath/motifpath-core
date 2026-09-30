@@ -77,7 +77,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
 
 		require.NoError(t, err)
 		assert.Equal(t, "student-1", sp.StudentID)
@@ -95,7 +95,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		state := newFakeStudentLearningStateRepository()
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), state, newFakeCompletionStateReader())
 
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
 		require.NoError(t, err)
 
 		got, err := state.GetByStudentID(context.Background(), "student-1")
@@ -111,7 +111,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), adminCaller(), "student-1", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), adminCaller(), "student-1", "path-1")
 
 		require.NoError(t, err)
 	})
@@ -127,10 +127,10 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		versions := publishedVersions("node-01", "node-02", "node-03", "node-04")
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
 
-		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
+		first, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
 		require.NoError(t, err)
 
-		second, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-2")
+		second, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-2")
 		require.NoError(t, err)
 
 		assert.NotEqual(t, first.ID, second.ID)
@@ -153,7 +153,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "path-1")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -163,7 +163,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(newFakeUserRepository(), paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "missing", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "missing", "path-1")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -173,7 +173,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		users.put(domain.User{ID: "student-1", Role: domain.RoleStudent})
 		svc := newStudentPathService(users, newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "missing")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "student-1", "missing")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -185,7 +185,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "carol-1", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "carol-1", "path-1")
 
 		require.NoError(t, err)
 		assert.Equal(t, "carol-1", sp.StudentID)
@@ -198,7 +198,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, newFakeStudentPathRepository(), publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
 
 		require.NoError(t, err)
 		assert.Equal(t, "admin-1", sp.StudentID)
@@ -207,7 +207,7 @@ func TestStudentPathService_AssignLearningPath(t *testing.T) {
 	t.Run("a student cannot assign a learning path", func(t *testing.T) {
 		svc := newStudentPathService(newFakeUserRepository(), newFakeLearningPathRepository(), newFakeStudentPathRepository(), newFakeContentNodeVersionRepository(), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), studentCaller(), "student-1", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), studentCaller(), "student-1", "path-1")
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -230,7 +230,7 @@ func TestStudentPathService_GetMyPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-03", Title: "Three", ContentType: domain.ContentTypeArticle, Languages: anyLocale})
 		svc := newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, nodes, newFakeExerciseRepository(), completion)
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent})
@@ -303,7 +303,7 @@ func TestStudentPathService_GetMyPath(t *testing.T) {
 		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: "pt_BR"}}})
 		svc := newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, nodes, newFakeExerciseRepository(), newFakeCompletionStateReader())
 
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "en"}})
@@ -351,7 +351,7 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		archived, err := svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, sp.ID)
@@ -369,9 +369,9 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		_, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
-		second, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
+		second, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
 		require.NoError(t, err)
 
 		// second is now current (AssignLearningPath sets current unconditionally).
@@ -386,9 +386,9 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		first, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
-		_, err = svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
+		_, _, err = svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
 		require.NoError(t, err)
 
 		archived, err := svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, first.ID)
@@ -404,7 +404,7 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		enrollments := newFakeCourseEnrollmentRepository()
 		enrollments.put(domain.CourseEnrollment{ID: "enrollment-1", StudentID: "alice", CourseID: "course-1", Status: domain.CourseEnrollmentStatusActive})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader(), enrollments)
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, sp.ID)
@@ -417,7 +417,7 @@ func TestStudentPathService_ArchiveStandaloneStudentPath(t *testing.T) {
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		_, err = svc.ArchiveStandaloneStudentPath(context.Background(), domain.User{ID: "bob", Role: domain.RoleStudent}, sp.ID)
@@ -433,9 +433,9 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		paths.put(threeItemTemplate())
 		paths.put(domain.LearningPath{Status: domain.LearningPathStatusPublished, ID: "path-2", Title: "Fingerstyle", Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: "node-04"}}})
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		first, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		first, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
-		_, err = svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
+		_, _, err = svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-2")
 		require.NoError(t, err)
 
 		view, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent}, application.SetCurrentPathInput{StudentPathID: &first.ID})
@@ -483,7 +483,7 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		users.put(domain.User{ID: "admin-1", Role: domain.RoleAdmin})
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "admin-1", "path-1")
 		require.NoError(t, err)
 
 		view, err := svc.SetCurrentPath(context.Background(), domain.User{ID: "admin-1", Role: domain.RoleAdmin}, application.SetCurrentPathInput{StudentPathID: &sp.ID})
@@ -516,7 +516,7 @@ func TestStudentPathService_SetCurrentPath(t *testing.T) {
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths.put(threeItemTemplate())
 		svc := newStudentPathService(users, paths, studentPaths, versions, state, newFakeCompletionStateReader())
-		sp, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		sp, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
 		require.NoError(t, err)
 
 		_, err = svc.SetCurrentPath(context.Background(), domain.User{ID: "bob", Role: domain.RoleStudent}, application.SetCurrentPathInput{StudentPathID: &sp.ID})
@@ -612,7 +612,7 @@ func TestStudentPathService_AssignRequiresPublishedPath(t *testing.T) {
 			studentPaths := newFakeStudentPathRepository()
 			svc := newStudentPathService(users, paths, studentPaths, publishedVersions("node-01", "node-02", "node-03"), newFakeStudentLearningStateRepository(), newFakeCompletionStateReader())
 
-			_, err := svc.AssignLearningPath(context.Background(), tc.caller, "student-1", "path-1")
+			_, _, err := svc.AssignLearningPath(context.Background(), tc.caller, "student-1", "path-1")
 
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)

@@ -473,7 +473,10 @@ func toLearningPaths(paths []domain.LearningPath, names userNames) []generated.L
 	return result
 }
 
-func toStudentPath(sp domain.StudentPath, names userNames) generated.StudentPath {
+// toStudentPath renders sp with the presentation it recorded when copied,
+// its lesson count and completed, how many of those lessons its student
+// has completed.
+func toStudentPath(sp domain.StudentPath, names userNames, completed int) generated.StudentPath {
 	result := generated.StudentPath{
 		StudentPathId:            mustUUID(sp.ID),
 		Student:                  names.ref(sp.StudentID),
@@ -483,10 +486,22 @@ func toStudentPath(sp domain.StudentPath, names userNames) generated.StudentPath
 		AssignedAt:               sp.AssignedAt,
 		ArchivedAt:               sp.ArchivedAt,
 		CourseCheckpointPosition: sp.CourseCheckpointPosition,
+		Summary:                  sp.SummarySnapshot,
+		ThumbnailUrl:             sp.ThumbnailURLSnapshot,
+		LessonCount:              len(sp.Items),
+		CompletedCount:           completed,
 	}
 	if sp.SourceCourseEnrollmentID != nil {
 		id := mustUUID(*sp.SourceCourseEnrollmentID)
 		result.SourceCourseEnrollmentId = &id
+	}
+	if sp.LevelSnapshot != nil {
+		level := generated.StudentPathLevel(*sp.LevelSnapshot)
+		result.Level = &level
+	}
+	if sp.CreatedBySnapshot != nil {
+		creator := names.ref(*sp.CreatedBySnapshot)
+		result.CreatedBy = &creator
 	}
 	return result
 }

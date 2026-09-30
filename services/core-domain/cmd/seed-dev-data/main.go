@@ -255,7 +255,7 @@ func seedPathAndProgress(
 		return nil, fmt.Errorf("publish learning path: %w", err)
 	}
 
-	if _, err := studentPathService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
+	if _, _, err := studentPathService.AssignLearningPath(ctx, teacher, student.ID, path.ID); err != nil {
 		return nil, fmt.Errorf("assign learning path: %w", err)
 	}
 	log.Printf("assigned path %s to student %s", path.ID, student.ID)

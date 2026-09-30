@@ -821,7 +821,7 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	if err != nil {
 		return fmt.Errorf("resolve template A: %w", err)
 	}
-	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, carlaCtx.ID, templateA.ID); err != nil {
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, carlaCtx.ID, templateA.ID); err != nil {
 		return fmt.Errorf("assign standalone path to carla: %w", err)
 	}
 
@@ -830,7 +830,7 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	if err != nil {
 		return fmt.Errorf("resolve template B: %w", err)
 	}
-	brunoStandalone, err := svc.studentPath.AssignLearningPath(ctx, teacher, brunoCtx.ID, templateB.ID)
+	brunoStandalone, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, brunoCtx.ID, templateB.ID)
 	if err != nil {
 		return fmt.Errorf("assign standalone path to bruno: %w", err)
 	}
@@ -901,7 +901,7 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 	if _, err := svc.path.PublishLearningPath(ctx, deps.synthAdmin, adminPath.ID); err != nil {
 		return fmt.Errorf("publish admin's standalone path: %w", err)
 	}
-	if _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
+	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
 		return fmt.Errorf("assign standalone path to admin: %w", err)
 	}
 	return seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{

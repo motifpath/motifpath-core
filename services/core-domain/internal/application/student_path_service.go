@@ -113,55 +113,137 @@ func (s *StudentPathService) resolveLatestVersionIDs(ctx context.Context, items 
 	return versionIDs, nil
 }
 
-// AssignLearningPath copies learningPathID's current items into a new,
-// standalone StudentPath owned by studentID, and sets it as the student's
-// current path unconditionally. Only teachers and admins may assign paths.
-// Only a published template can be assigned — a draft is unfinished whoever
-// hands it out — so a draft is refused with domain.ErrConflict. Every
-// content node the template's items reference must already have at least
-// one published version.
-func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller domain.User, studentID, learningPathID string) (domain.StudentPath, error) {
+// AssignLearningPath gives studentID a standalone copy of learningPathID
+// and sets it as the student's current path unconditionally. Only teachers
+// and admins may assign paths. Only a published template can be assigned —
+// a draft is unfinished whoever hands it out — so a draft is refused with
+// domain.ErrConflict. Every content node the template's items reference
+// must already have at least one published version. created is false when
+// the student already held an active standalone copy, which is reused
+// rather than duplicated.
+func (s *StudentPathService) AssignLearningPath(ctx context.Context, caller domain.User, studentID, learningPathID string) (sp domain.StudentPath, created bool, err error) {
 	if !canManageContent(caller.Role) {
-		return domain.StudentPath{}, domain.ErrForbidden
+		return domain.StudentPath{}, false, domain.ErrForbidden
 	}
 
 	// Any user may be assigned a path, whatever their role — every user can
 	// learn. The target only has to exist.
 	if _, err := s.users.GetByID(ctx, studentID); err != nil {
-		return domain.StudentPath{}, err
+		return domain.StudentPath{}, false, err
 	}
 
 	template, err := s.paths.GetByID(ctx, learningPathID)
 	if err != nil {
-		return domain.StudentPath{}, err
+		return domain.StudentPath{}, false, err
 	}
 	if template.Status != domain.LearningPathStatusPublished {
-		return domain.StudentPath{}, domain.ErrConflict
+		return domain.StudentPath{}, false, domain.ErrConflict
+	}
+	return s.startStandalone(ctx, studentID, template, caller.ID)
+}
+
+// EnrollInLearningPath gives caller a standalone copy of the published path
+// learningPathID and makes it their current path, whatever was current
+// before — every other enrollment and path keeps its progress. It is never
+// refused because of what caller already holds; an active standalone copy
+// of the same path is reused (created is false). Any user may enroll,
+// whatever their role. A draft or unknown path is domain.ErrNotFound.
+func (s *StudentPathService) EnrollInLearningPath(ctx context.Context, caller domain.User, learningPathID string) (sp domain.StudentPath, created bool, err error) {
+	template, err := s.paths.GetByID(ctx, learningPathID)
+	if err != nil {
+		return domain.StudentPath{}, false, err
+	}
+	if template.Status != domain.LearningPathStatusPublished {
+		return domain.StudentPath{}, false, domain.ErrNotFound
+	}
+	return s.startStandalone(ctx, caller.ID, template, caller.ID)
+}
+
+// startStandalone makes a standalone copy of template studentID's current
+// path. A learner holds at most one active standalone copy of a template:
+// an existing one is reused, and a copy racing in alongside this one (the
+// store refuses the duplicate) is picked up instead of failing.
+func (s *StudentPathService) startStandalone(ctx context.Context, studentID string, template domain.LearningPath, assignedBy string) (domain.StudentPath, bool, error) {
+	sp, err := s.studentPaths.FindActiveStandalone(ctx, studentID, template.ID)
+	created := false
+	switch {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound):
+		sp, created, err = s.createStandalone(ctx, studentID, template, assignedBy)
+		if err != nil {
+			return domain.StudentPath{}, false, err
+		}
+	default:
+		return domain.StudentPath{}, false, err
 	}
 
+	if err := s.makeStandaloneCurrent(ctx, studentID, sp.ID); err != nil {
+		return domain.StudentPath{}, false, err
+	}
+	return sp, created, nil
+}
+
+func (s *StudentPathService) createStandalone(ctx context.Context, studentID string, template domain.LearningPath, assignedBy string) (domain.StudentPath, bool, error) {
 	versionIDs, err := s.resolveLatestVersionIDs(ctx, template.Items)
 	if err != nil {
-		return domain.StudentPath{}, err
+		return domain.StudentPath{}, false, err
 	}
-
-	sp, err := domain.NewStudentPathFromTemplate(s.newID(), studentID, template, caller.ID, s.now(), versionIDs)
+	sp, err := domain.NewStudentPathFromTemplate(s.newID(), studentID, template, assignedBy, s.now(), versionIDs)
 	if err != nil {
-		return domain.StudentPath{}, err
+		return domain.StudentPath{}, false, err
 	}
-	if err := s.studentPaths.Create(ctx, sp); err != nil {
-		return domain.StudentPath{}, err
+	err = s.studentPaths.Create(ctx, sp)
+	if errors.Is(err, domain.ErrAlreadyExists) {
+		existing, findErr := s.studentPaths.FindActiveStandalone(ctx, studentID, template.ID)
+		return existing, false, findErr
 	}
+	if err != nil {
+		return domain.StudentPath{}, false, err
+	}
+	return sp, true, nil
+}
 
+func (s *StudentPathService) makeStandaloneCurrent(ctx context.Context, studentID, studentPathID string) error {
 	existingState, err := s.state.GetByStudentID(ctx, studentID)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return domain.StudentPath{}, err
+		return err
 	}
 	existingState.StudentID = studentID
-	if err := s.state.Upsert(ctx, existingState.WithCurrentStandalonePath(sp.ID)); err != nil {
-		return domain.StudentPath{}, err
-	}
+	return s.state.Upsert(ctx, existingState.WithCurrentStandalonePath(studentPathID))
+}
 
-	return sp, nil
+// CompletedCounts returns, for each of paths, how many of its items' content
+// nodes studentID has completed — here or in any other path, since progress
+// is kept per content node — keyed by StudentPath id. It reads completion
+// once for every node across all paths.
+func (s *StudentPathService) CompletedCounts(ctx context.Context, studentID string, paths []domain.StudentPath) (map[string]int, error) {
+	counts := make(map[string]int, len(paths))
+	var nodeIDs []string
+	seen := map[string]bool{}
+	for _, sp := range paths {
+		counts[sp.ID] = 0
+		for _, item := range sp.Items {
+			if !seen[item.ContentNodeID] {
+				seen[item.ContentNodeID] = true
+				nodeIDs = append(nodeIDs, item.ContentNodeID)
+			}
+		}
+	}
+	if len(nodeIDs) == 0 {
+		return counts, nil
+	}
+	statuses, err := s.completion.GetStatuses(ctx, studentID, nodeIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, sp := range paths {
+		for _, item := range sp.Items {
+			if statuses[item.ContentNodeID] == domain.CompletionStatusCompleted {
+				counts[sp.ID]++
+			}
+		}
+	}
+	return counts, nil
 }
 
 // StudentPathView is the authenticated caller's current learning path with

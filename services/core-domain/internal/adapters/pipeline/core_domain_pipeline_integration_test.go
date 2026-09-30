@@ -132,7 +132,7 @@ func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {
 	// Only a published path can be assigned.
 	publishPath(t, ctx, p, learningPath.ID)
 
-	studentPath, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, learningPath.ID)
+	studentPath, _, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, learningPath.ID)
 	require.NoError(t, err)
 	assert.Equal(t, student.ID, studentPath.StudentID)
 
@@ -168,7 +168,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 
 	publishPath(t, ctx, p, path1.ID)
-	first, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
+	first, _, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path1.ID)
 	require.NoError(t, err)
 
 	// Mark the first path's node completed under the first StudentPath.
@@ -189,7 +189,7 @@ func TestCoreDomainPipeline_AssigningANewPathIsAdditiveAndMovesCurrent(t *testin
 	require.NoError(t, err)
 
 	publishPath(t, ctx, p, path2.ID)
-	second, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
+	second, _, err := p.studentPath.AssignLearningPath(ctx, teacher, student.ID, path2.ID)
 	require.NoError(t, err)
 	assert.NotEqual(t, first.ID, second.ID)
 

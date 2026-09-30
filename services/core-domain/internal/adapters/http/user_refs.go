@@ -46,9 +46,12 @@ func learningPathUserIDs(paths ...domain.LearningPath) []string {
 }
 
 func studentPathUserIDs(paths ...domain.StudentPath) []string {
-	ids := make([]string, 0, 2*len(paths))
+	ids := make([]string, 0, 3*len(paths))
 	for _, sp := range paths {
 		ids = append(ids, sp.StudentID, sp.AssignedBy)
+		if sp.CreatedBySnapshot != nil {
+			ids = append(ids, *sp.CreatedBySnapshot)
+		}
 	}
 	return ids
 }

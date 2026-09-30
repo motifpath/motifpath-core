@@ -92,6 +92,12 @@ type world struct {
 	// lastPathSlug is the learning path the scenario last published,
 	// unpublished or replaced by slug, so a later status check reads it.
 	lastPathSlug string
+	// lastEnroller is the persona who last enrolled in a path, the "her" of
+	// the enrollment outcome steps.
+	lastEnroller string
+	// sharedLessonPath is the standalone path whose first lesson a course
+	// also holds, for the "completed that lesson in the course" step.
+	sharedLessonPath string
 	lastErr  error
 
 	// lastPromptSent holds whichever prompt document the most recent

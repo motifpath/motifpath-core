@@ -126,14 +126,14 @@ func TestUserRefMapping(t *testing.T) {
 		{
 			name: "student path student",
 			got: func() generated.UserRef {
-				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names).Student
+				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0).Student
 			},
 			want: student,
 		},
 		{
 			name: "student path assigner",
 			got: func() generated.UserRef {
-				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names).AssignedBy
+				return toStudentPath(domain.StudentPath{ID: uuid.NewString(), StudentID: studentID.String(), SourceTemplateID: uuid.NewString(), AssignedBy: teacherID.String()}, names, 0).AssignedBy
 			},
 			want: teacher,
 		},

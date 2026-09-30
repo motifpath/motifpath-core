@@ -59,6 +59,7 @@ func (w *world) alreadyHasAssigned(name, pathSlug string) error {
 	// Recorded so a later assign in the same scenario (which overwrites
 	// w.lastResp) can still be compared against this earlier copy.
 	w.priorStudentPathID = created.StudentPathId.String()
+	w.standalonePathIDByKey[name+"|"+pathSlug] = created.StudentPathId.String()
 	return nil
 }
 
@@ -150,9 +151,9 @@ func (w *world) studentPathRecordsAssignerAndOwner(assignerName, studentName str
 }
 
 func (w *world) studentPathBecomesCurrentPath(studentName string) error {
-	resp, ok := w.lastResp.(generated.AssignLearningPath201JSONResponse)
-	if !ok {
-		return fmt.Errorf("expected a 201 response, got %#v", w.lastResp)
+	resp, err := w.returnedCopy()
+	if err != nil {
+		return err
 	}
 	studentMotifID := w.userMotifID[studentName]
 	state, err := w.learningState.GetByStudentID(context.Background(), studentMotifID.String())
@@ -210,7 +211,8 @@ func (w *world) editsStudentsCopyOfPath(teacherName, studentName string) error {
 		return err
 	}
 	sp.Title = "Edited copy title"
-	return w.studentPaths.Create(context.Background(), sp)
+	w.studentPaths.put(sp)
+	return nil
 }
 
 func (w *world) templateUnchangedAfterEdit(pathSlug string) error {

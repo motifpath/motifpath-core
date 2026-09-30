@@ -359,7 +359,8 @@ func (w *world) requestRefusedNotFound() error {
 		generated.SetCurrentPath404JSONResponse,
 		generated.PublishLearningPath404JSONResponse,
 		generated.UnpublishLearningPath404JSONResponse,
-		generated.GetCatalogPath404JSONResponse:
+		generated.GetCatalogPath404JSONResponse,
+		generated.EnrollInLearningPath404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -392,6 +393,7 @@ func (w *world) requestRefusedAuthError() error {
 		generated.PublishLearningPath401JSONResponse,
 		generated.ListCatalogPaths401JSONResponse,
 		generated.ListCatalogPathCreators401JSONResponse,
+		generated.EnrollInLearningPath401JSONResponse,
 		generated.ListContentNodeVersions401JSONResponse,
 		generated.ListCourseCreators401JSONResponse,
 		generated.ListCatalogCreators401JSONResponse,
@@ -488,6 +490,8 @@ func (w *world) validationErrors() ([]struct {
 	case generated.RegisterUser400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCatalogPaths400JSONResponse:
+		return resp.Errors, nil
+	case generated.EnrollInLearningPath400JSONResponse:
 		return resp.Errors, nil
 	case generated.StartPracticeSession400JSONResponse:
 		return resp.Errors, nil
