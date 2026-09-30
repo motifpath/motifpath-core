@@ -23,7 +23,7 @@ func TestInstrumentMapping(t *testing.T) {
 		assert.Equal(t, []uuid.UUID{guitar}, toCourseCatalogEntry(course, authoringListView, published, userNames{}).InstrumentIds)
 		assert.Equal(t, []uuid.UUID{piano}, toCourseCatalogEntry(course, learnerCatalogView, published, userNames{}).InstrumentIds)
 		assert.Equal(t, []uuid.UUID{piano}, toGeneratedCourseVersion(*published).InstrumentIdsSnapshot)
-		assert.Equal(t, []uuid.UUID{piano}, toCourseDetail(course.ID, application.PublishedCourseView{InstrumentIDs: []string{piano.String()}}).InstrumentIds)
+		assert.Equal(t, []uuid.UUID{piano}, toCourseDetail(course.ID, application.PublishedCourseView{InstrumentIDs: []string{piano.String()}, CreatedBy: course.CreatedBy}, userNames{}).InstrumentIds)
 	})
 
 	t.Run("an item for every instrument responds with an empty list, never null", func(t *testing.T) {

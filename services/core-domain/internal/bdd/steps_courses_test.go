@@ -50,6 +50,7 @@ func registerCourseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a course "([^"]+)" exists, published, with checkpoints "([^"]+)", "([^"]+)"$`, w.courseExistsPublishedTwoCheckpoints)
 	sc.Step(`^a course "([^"]+)" exists as a draft with checkpoints "([^"]+)", created by "([^"]+)"$`, w.courseExistsDraftWithCreator)
 	sc.Step(`^a second course "([^"]+)" exists, published, with checkpoints "([^"]+)"$`, w.courseExistsPublishedWithCheckpoint)
+	sc.Step(`^learning path "([^"]+)" contains (\d+) lessons$`, w.learningPathContainsLessons)
 	sc.Step(`^student "([^"]+)" is enrolled in "([^"]+)"$`, w.studentEnrolledInCourseSetup)
 
 	// ── Creating a course ────────────────────────────────────────────────
@@ -99,6 +100,7 @@ func registerCourseSteps(sc *godog.ScenarioContext, w *world) {
 
 	// ── Catalog ──────────────────────────────────────────────────────────
 	sc.Step(`^"([^"]+)" lists the course catalog$`, w.listsCourseCatalog)
+	sc.Step(`^the entry for "([^"]+)" reports (\d+) checkpoints and (\d+) lessons$`, w.catalogEntryReportsScope)
 
 	// ── Published outline ────────────────────────────────────────────────
 	sc.Step(`^"([^"]+)" retrieves the published version of course "([^"]+)"$`, w.retrievesPublishedCourse)
@@ -108,6 +110,43 @@ func registerCourseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the response does not include any item's lesson content$`, w.responseHasNoLessonContent)
 	sc.Step(`^the response does not include any checkpoint's learning_path_id$`, w.responseHasNoCheckpointLearningPathID)
 	sc.Step(`^the response still shows checkpoints "([^"]+)", "([^"]+)" from the last published version$`, w.responseStillShowsCheckpoints)
+	sc.Step(`^the response identifies "([^"]+)" as the course creator$`, w.publishedCourseResponseNamesCreator)
+	sc.Step(`^the response reports (\d+) checkpoints and (\d+) lessons$`, w.publishedCourseResponseReportsScope)
+}
+
+func (w *world) learningPathContainsLessons(slug string, lessons int) error {
+	items := make([]domain.LearningPathItem, lessons)
+	for i := range items {
+		nodeSlug := fmt.Sprintf("%s-lesson-%d", slug, i+1)
+		if err := w.putContentNode(nodeSlug, domain.ContentTypeVideo); err != nil {
+			return err
+		}
+		w.autoPublishNode(nodeSlug)
+		items[i] = domain.LearningPathItem{
+			Position: i + 1, ContentNodeID: nodeID(nodeSlug).String(), Title: nodeSlug, ContentType: domain.ContentTypeVideo,
+		}
+	}
+	w.paths.put(domain.LearningPath{
+		ID: pathID(slug).String(), TeacherID: w.ensureRegistered("bob", domain.RoleTeacher).String(),
+		Title: slug, Items: items, CreatedAt: fixedNow,
+	})
+	return nil
+}
+
+func (w *world) catalogEntryReportsScope(courseSlug string, checkpoints, lessons int) error {
+	resp, ok := w.lastResp.(generated.ListCourses200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a course list response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	for _, entry := range resp.Items {
+		if w.courseMatchesSlug(entry, courseSlug) {
+			if entry.CheckpointCount != checkpoints || entry.LessonCount != lessons {
+				return fmt.Errorf("expected %q to report %d checkpoints and %d lessons, got %d and %d", courseSlug, checkpoints, lessons, entry.CheckpointCount, entry.LessonCount)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("expected the response to include %q", courseSlug)
 }
 
 // seedCourse creates a course draft with one checkpoint per slug in
@@ -675,6 +714,25 @@ func (w *world) responseStillShowsCheckpoints(n1, n2 string) error {
 		if cp.Title != want[i] {
 			return fmt.Errorf("expected checkpoint %d title %q, got %q", i, want[i], cp.Title)
 		}
+	}
+	return nil
+}
+
+func (w *world) publishedCourseResponseNamesCreator(creator string) error {
+	resp, ok := w.lastResp.(generated.GetPublishedCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a published course response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	return w.expectUserRef("the course creator", resp.CreatedBy, creator, w.nameClaim(creator))
+}
+
+func (w *world) publishedCourseResponseReportsScope(checkpoints, lessons int) error {
+	resp, ok := w.lastResp.(generated.GetPublishedCourse200JSONResponse)
+	if !ok {
+		return fmt.Errorf("expected a published course response, got %#v (err=%v)", w.lastResp, w.lastErr)
+	}
+	if resp.CheckpointCount != checkpoints || resp.LessonCount != lessons {
+		return fmt.Errorf("expected the course detail to report %d checkpoints and %d lessons, got %d and %d", checkpoints, lessons, resp.CheckpointCount, resp.LessonCount)
 	}
 	return nil
 }

@@ -22,13 +22,13 @@ func TestThumbnailMapping(t *testing.T) {
 		assert.Equal(t, draft, toCourseCatalogEntry(course, authoringListView, version, userNames{}).ThumbnailUrl)
 		assert.Equal(t, published, toCourseCatalogEntry(course, learnerCatalogView, version, userNames{}).ThumbnailUrl)
 		assert.Equal(t, published, toGeneratedCourseVersion(*version).ThumbnailUrlSnapshot)
-		assert.Equal(t, published, toCourseDetail(course.ID, application.PublishedCourseView{ThumbnailURL: published}).ThumbnailUrl)
+		assert.Equal(t, published, toCourseDetail(course.ID, application.PublishedCourseView{ThumbnailURL: published, CreatedBy: course.CreatedBy}, userNames{}).ThumbnailUrl)
 	})
 
 	t.Run("an enrollment shows the thumbnail of the version it is pinned to", func(t *testing.T) {
 		enrollment := domain.CourseEnrollment{ID: uuid.NewString(), StudentID: uuid.NewString(), CourseID: course.ID, CourseThumbnailURL: published}
 
-		assert.Equal(t, published, toCourseEnrollment(enrollment, userNames{}).CourseThumbnailUrl)
+		assert.Equal(t, published, toCourseEnrollment(enrollment, application.CourseEnrollmentPresentation{CourseCreatedBy: course.CreatedBy}, userNames{}).CourseThumbnailUrl)
 	})
 
 	t.Run("learning paths, content nodes and node versions carry their thumbnail", func(t *testing.T) {

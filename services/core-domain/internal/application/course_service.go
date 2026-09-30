@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
@@ -347,14 +346,19 @@ type PublishedCourseView struct {
 	Summary  string
 	Level    domain.DifficultyLevel
 	Language string
+	// CreatedBy is immutable course ownership, resolved separately from the
+	// published snapshot so a learner can see the teacher byline.
+	CreatedBy string
 	// InstrumentIDs are the instruments the published version is for; empty
 	// means every instrument.
 	InstrumentIDs []string
 	// ThumbnailURL is the published version's thumbnail; nil means none.
-	ThumbnailURL *string
-	Status       domain.CourseStatus
-	PublishedAt  time.Time
-	Checkpoints  []CourseOutlineCheckpoint
+	ThumbnailURL    *string
+	Status          domain.CourseStatus
+	PublishedAt     time.Time
+	Checkpoints     []CourseOutlineCheckpoint
+	CheckpointCount int
+	LessonCount     int
 }
 
 // GetPublishedCourse returns course's latest published version rendered as
@@ -377,6 +381,7 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 	}
 
 	checkpoints := make([]CourseOutlineCheckpoint, len(latest.Checkpoints))
+	lessonCount := 0
 	for i, cp := range latest.Checkpoints {
 		path, err := s.paths.GetByID(ctx, cp.LearningPathID)
 		if err != nil {
@@ -386,20 +391,39 @@ func (s *CourseService) GetPublishedCourse(ctx context.Context, id string) (Publ
 		for j, item := range path.Items {
 			items[j] = CourseOutlineItem{Title: item.Title, SectionLabel: item.SectionLabel}
 		}
+		lessonCount += len(items)
 		checkpoints[i] = CourseOutlineCheckpoint{Position: cp.Position, Title: cp.EffectiveTitle, Items: items}
 	}
 
 	return PublishedCourseView{
-		Title:         latest.TitleSnapshot,
-		Summary:       latest.SummarySnapshot,
-		Level:         latest.LevelSnapshot,
-		Language:      latest.LanguageSnapshot,
-		InstrumentIDs: latest.InstrumentIDsSnapshot,
-		ThumbnailURL:  latest.ThumbnailURLSnapshot,
-		Status:        course.Status,
-		PublishedAt:   latest.PublishedAt,
-		Checkpoints:   checkpoints,
+		Title:           latest.TitleSnapshot,
+		Summary:         latest.SummarySnapshot,
+		Level:           latest.LevelSnapshot,
+		Language:        latest.LanguageSnapshot,
+		CreatedBy:       course.CreatedBy,
+		InstrumentIDs:   latest.InstrumentIDsSnapshot,
+		ThumbnailURL:    latest.ThumbnailURLSnapshot,
+		Status:          course.Status,
+		PublishedAt:     latest.PublishedAt,
+		Checkpoints:     checkpoints,
+		CheckpointCount: len(latest.Checkpoints),
+		LessonCount:     lessonCount,
 	}, nil
+}
+
+// CountLessons resolves the current content-node count for every checkpoint
+// learning path. Repeated path ids are intentionally counted repeatedly:
+// each occurrence is a distinct checkpoint in the learner's course scope.
+func (s *CourseService) CountLessons(ctx context.Context, learningPathIDs []string) (int, error) {
+	count := 0
+	for _, learningPathID := range learningPathIDs {
+		path, err := s.paths.GetByID(ctx, learningPathID)
+		if err != nil {
+			return 0, err
+		}
+		count += len(path.Items)
+	}
+	return count, nil
 }
 
 // resolveCheckpoints turns checkpoints into the resolved

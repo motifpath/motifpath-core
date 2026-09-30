@@ -1170,6 +1170,16 @@ func TestEntCourseVersionRepository_GetLatestByCourseID(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, latest.VersionNumber)
 	assert.Equal(t, "Revised Journey", latest.TitleSnapshot)
+
+	pinned, err := repo.GetByCourseIDAndVersionNumber(ctx, course.ID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, 1, pinned.VersionNumber)
+	assert.Equal(t, "Fingerstyle Journey", pinned.TitleSnapshot)
+	require.Len(t, pinned.Checkpoints, 1)
+	assert.Equal(t, path.ID, pinned.Checkpoints[0].LearningPathID)
+
+	_, err = repo.GetByCourseIDAndVersionNumber(ctx, course.ID, 3)
+	require.ErrorIs(t, err, domain.ErrNotFound)
 }
 
 // TestEntCourseVersionRepository_GetLatestByCourseIDs confirms the batched

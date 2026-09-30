@@ -500,12 +500,16 @@ func toStudentPathView(v application.StudentPathView) generated.StudentPathView 
 	return view
 }
 
-func toCourseEnrollment(e domain.CourseEnrollment, names userNames) generated.CourseEnrollment {
+func toCourseEnrollment(e domain.CourseEnrollment, presentation application.CourseEnrollmentPresentation, names userNames) generated.CourseEnrollment {
 	result := generated.CourseEnrollment{
 		CourseEnrollmentId:       mustUUID(e.ID),
 		Student:                  names.ref(e.StudentID),
 		CourseId:                 mustUUID(e.CourseID),
 		CourseTitle:              e.CourseTitle,
+		CourseSummary:            presentation.CourseSummary,
+		CourseLevel:              generated.CourseEnrollmentCourseLevel(presentation.CourseLevel),
+		CourseCreatedBy:          names.ref(presentation.CourseCreatedBy),
+		CheckpointCount:          presentation.CheckpointCount,
 		CourseThumbnailUrl:       e.CourseThumbnailURL,
 		CourseVersionNumber:      e.CourseVersionNumber,
 		Status:                   generated.CourseEnrollmentStatus(e.Status),
@@ -519,10 +523,10 @@ func toCourseEnrollment(e domain.CourseEnrollment, names userNames) generated.Co
 	return result
 }
 
-func toCourseEnrollments(enrollments []domain.CourseEnrollment, names userNames) []generated.CourseEnrollment {
+func toCourseEnrollments(enrollments []domain.CourseEnrollment, presentations []application.CourseEnrollmentPresentation, names userNames) []generated.CourseEnrollment {
 	result := make([]generated.CourseEnrollment, len(enrollments))
 	for i, e := range enrollments {
-		result[i] = toCourseEnrollment(e, names)
+		result[i] = toCourseEnrollment(e, presentations[i], names)
 	}
 	return result
 }
@@ -1028,15 +1032,16 @@ const (
 // from it.
 func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain.CourseVersion, names userNames) generated.CourseCatalogEntry {
 	entry := generated.CourseCatalogEntry{
-		CourseId:      mustUUID(c.ID),
-		Title:         c.Title,
-		Summary:       c.Summary,
-		Level:         generated.CourseCatalogEntryLevel(c.Level),
-		Language:      c.Language,
-		InstrumentIds: toUUIDs(c.InstrumentIDs),
-		ThumbnailUrl:  c.ThumbnailURL,
-		CreatedBy:     names.ref(c.CreatedBy),
-		Status:        generated.CourseCatalogEntryStatus(c.Status),
+		CourseId:        mustUUID(c.ID),
+		Title:           c.Title,
+		Summary:         c.Summary,
+		Level:           generated.CourseCatalogEntryLevel(c.Level),
+		Language:        c.Language,
+		InstrumentIds:   toUUIDs(c.InstrumentIDs),
+		ThumbnailUrl:    c.ThumbnailURL,
+		CreatedBy:       names.ref(c.CreatedBy),
+		Status:          generated.CourseCatalogEntryStatus(c.Status),
+		CheckpointCount: len(c.Checkpoints),
 	}
 	if latest != nil {
 		publishedAt := latest.PublishedAt
@@ -1051,6 +1056,7 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 			entry.Language = latest.LanguageSnapshot
 			entry.InstrumentIds = toUUIDs(latest.InstrumentIDsSnapshot)
 			entry.ThumbnailUrl = latest.ThumbnailURLSnapshot
+			entry.CheckpointCount = len(latest.Checkpoints)
 		}
 	}
 	if view == authoringListView {
@@ -1064,6 +1070,22 @@ func toCourseCatalogEntry(c domain.Course, view catalogEntryView, latest *domain
 // the course has never been published (domain.ErrNotFound). Any other
 // error is returned unchanged as the second value.
 type courseVersionLookup func(courseID string) (*domain.CourseVersion, error)
+
+func courseLearningPathIDs(checkpoints []domain.CourseCheckpoint) []string {
+	ids := make([]string, len(checkpoints))
+	for i, checkpoint := range checkpoints {
+		ids[i] = checkpoint.LearningPathID
+	}
+	return ids
+}
+
+func courseVersionLearningPathIDs(checkpoints []domain.CourseVersionCheckpoint) []string {
+	ids := make([]string, len(checkpoints))
+	for i, checkpoint := range checkpoints {
+		ids[i] = checkpoint.LearningPathID
+	}
+	return ids
+}
 
 func toCourseCatalogEntries(courses []domain.Course, view catalogEntryView, latest courseVersionLookup, names userNames) ([]generated.CourseCatalogEntry, error) {
 	result := make([]generated.CourseCatalogEntry, len(courses))
@@ -1104,23 +1126,26 @@ func toCourseOutlineCheckpoint(cp application.CourseOutlineCheckpoint) generated
 	return generated.CourseOutlineCheckpoint{Position: cp.Position, Title: cp.Title, Items: items}
 }
 
-func toCourseDetail(courseID string, view application.PublishedCourseView) generated.CourseDetail {
+func toCourseDetail(courseID string, view application.PublishedCourseView, names userNames) generated.CourseDetail {
 	checkpoints := make([]generated.CourseOutlineCheckpoint, len(view.Checkpoints))
 	for i, cp := range view.Checkpoints {
 		checkpoints[i] = toCourseOutlineCheckpoint(cp)
 	}
 	publishedAt := view.PublishedAt
 	return generated.CourseDetail{
-		CourseId:      mustUUID(courseID),
-		Title:         view.Title,
-		Summary:       view.Summary,
-		Level:         generated.CourseDetailLevel(view.Level),
-		Language:      view.Language,
-		InstrumentIds: toUUIDs(view.InstrumentIDs),
-		ThumbnailUrl:  view.ThumbnailURL,
-		Status:        generated.CourseDetailStatus(view.Status),
-		PublishedAt:   &publishedAt,
-		Checkpoints:   checkpoints,
+		CourseId:        mustUUID(courseID),
+		Title:           view.Title,
+		Summary:         view.Summary,
+		Level:           generated.CourseDetailLevel(view.Level),
+		Language:        view.Language,
+		CreatedBy:       names.ref(view.CreatedBy),
+		InstrumentIds:   toUUIDs(view.InstrumentIDs),
+		ThumbnailUrl:    view.ThumbnailURL,
+		Status:          generated.CourseDetailStatus(view.Status),
+		PublishedAt:     &publishedAt,
+		Checkpoints:     checkpoints,
+		CheckpointCount: view.CheckpointCount,
+		LessonCount:     view.LessonCount,
 	}
 }
 

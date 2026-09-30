@@ -1059,6 +1059,17 @@ func (f *fakeCourseVersionRepo) GetLatestByCourseID(_ context.Context, courseID 
 	return latest, nil
 }
 
+func (f *fakeCourseVersionRepo) GetByCourseIDAndVersionNumber(_ context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, version := range f.byCourse[courseID] {
+		if version.VersionNumber == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.CourseVersion{}, domain.ErrNotFound
+}
+
 func (f *fakeCourseVersionRepo) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

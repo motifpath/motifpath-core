@@ -31,6 +31,16 @@ type CourseEnrollmentService struct {
 	now            func() time.Time
 }
 
+// CourseEnrollmentPresentation is the learner-facing context resolved from
+// the immutable CourseVersion an enrollment pins. The creator belongs to the
+// course itself because course ownership never changes after creation.
+type CourseEnrollmentPresentation struct {
+	CourseSummary   string
+	CourseLevel     domain.DifficultyLevel
+	CourseCreatedBy string
+	CheckpointCount int
+}
+
 func NewCourseEnrollmentService(
 	courses ports.CourseRepository,
 	courseVersions ports.CourseVersionRepository,
@@ -195,6 +205,29 @@ func (s *CourseEnrollmentService) ListMyCourseEnrollments(ctx context.Context, c
 	}
 
 	return list, nil
+}
+
+// PresentationFor returns the course context attached to enrollment's exact
+// pinned CourseVersion. It must never use the latest version: a republish
+// cannot rewrite the description, level, or checkpoint count shown to an
+// already-enrolled learner.
+func (s *CourseEnrollmentService) PresentationFor(ctx context.Context, enrollment domain.CourseEnrollment) (CourseEnrollmentPresentation, error) {
+	course, err := s.courses.GetByID(ctx, enrollment.CourseID)
+	if err != nil {
+		return CourseEnrollmentPresentation{}, err
+	}
+
+	version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, enrollment.CourseID, enrollment.CourseVersionNumber)
+	if err != nil {
+		return CourseEnrollmentPresentation{}, err
+	}
+
+	return CourseEnrollmentPresentation{
+		CourseSummary:   version.SummarySnapshot,
+		CourseLevel:     version.LevelSnapshot,
+		CourseCreatedBy: course.CreatedBy,
+		CheckpointCount: len(version.Checkpoints),
+	}, nil
 }
 
 // AbandonCourseEnrollment sets the CourseEnrollment with the given id to

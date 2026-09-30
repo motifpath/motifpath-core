@@ -879,6 +879,17 @@ func (f *fakeCourseVersionRepository) GetLatestByCourseID(_ context.Context, cou
 	return latest, nil
 }
 
+func (f *fakeCourseVersionRepository) GetByCourseIDAndVersionNumber(_ context.Context, courseID string, versionNumber int) (domain.CourseVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, version := range f.byCourse[courseID] {
+		if version.VersionNumber == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.CourseVersion{}, domain.ErrNotFound
+}
+
 func (f *fakeCourseVersionRepository) GetLatestByCourseIDs(_ context.Context, courseIDs []string) (map[string]domain.CourseVersion, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

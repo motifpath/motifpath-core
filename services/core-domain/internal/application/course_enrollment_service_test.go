@@ -254,6 +254,38 @@ func TestCourseEnrollmentService_CreateCourseEnrollment(t *testing.T) {
 	})
 }
 
+func TestCourseEnrollmentService_PresentationFor(t *testing.T) {
+	f := courseEnrollmentFixtures{
+		paths: newFakeLearningPathRepository(), courses: newFakeCourseRepository(), courseVersions: newFakeCourseVersionRepository(),
+		studentPaths: newFakeStudentPathRepository(), enrollments: newFakeCourseEnrollmentRepository(), state: newFakeStudentLearningStateRepository(),
+	}
+	f.courses.put(domain.Course{ID: "course-1", CreatedBy: "teacher-1", Status: domain.CourseStatusPublished})
+	require.NoError(t, f.courseVersions.Create(context.Background(), domain.CourseVersion{
+		ID: "version-1", CourseID: "course-1", VersionNumber: 1,
+		SummarySnapshot: "Start with the essentials.", LevelSnapshot: domain.DifficultyLevelBeginner,
+		Checkpoints: []domain.CourseVersionCheckpoint{
+			{Position: 1, LearningPathID: "path-1"},
+			{Position: 2, LearningPathID: "path-2"},
+		},
+	}))
+	require.NoError(t, f.courseVersions.Create(context.Background(), domain.CourseVersion{
+		ID: "version-2", CourseID: "course-1", VersionNumber: 2,
+		SummarySnapshot: "A later rewrite.", LevelSnapshot: domain.DifficultyLevelAdvanced,
+		Checkpoints: []domain.CourseVersionCheckpoint{{Position: 1, LearningPathID: "path-1"}},
+	}))
+	svc := newCourseEnrollmentService(f)
+
+	presentation, err := svc.PresentationFor(context.Background(), domain.CourseEnrollment{
+		CourseID: "course-1", CourseVersionNumber: 1,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "Start with the essentials.", presentation.CourseSummary)
+	assert.Equal(t, domain.DifficultyLevelBeginner, presentation.CourseLevel)
+	assert.Equal(t, "teacher-1", presentation.CourseCreatedBy)
+	assert.Equal(t, 2, presentation.CheckpointCount)
+}
+
 func TestCourseEnrollmentService_ListMyCourseEnrollments(t *testing.T) {
 	t.Run("returns every enrollment the student has ever held", func(t *testing.T) {
 		f := courseEnrollmentFixtures{
