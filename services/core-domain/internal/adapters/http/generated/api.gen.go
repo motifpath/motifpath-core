@@ -2127,6 +2127,14 @@ type Exercise struct {
 	// CreatedAt Timestamp at which the exercise was created.
 	CreatedAt time.Time `json:"created_at"`
 
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy *UserRef `json:"created_by,omitempty"`
+
 	// DiagramRef A usage of one Diagram — its render config, never a stored variant
 	// of the diagram itself. The same Diagram can be pointed at by any
 	// number of DiagramRefs with different configs.
@@ -3891,6 +3899,9 @@ type ListDiagramCreatorsParams struct {
 
 // ListExercisesParams defines parameters for ListExercises.
 type ListExercisesParams struct {
+	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
+	Q *SearchText `form:"q,omitempty" json:"q,omitempty"`
+
 	// Limit Maximum number of items to return in this page (ADR-031).
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 
@@ -3901,12 +3912,32 @@ type ListExercisesParams struct {
 	// returned.
 	SkillId *openapi_types.UUID `form:"skill_id,omitempty" json:"skill_id,omitempty"`
 
+	// ConceptId When given, only exercises linked to this exact concept id are
+	// returned.
+	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
+
+	// Language Restricts the results to exercises written in this language (a
+	// Language.code other than "any").
+	Language *string `form:"language,omitempty" json:"language,omitempty"`
+
+	// CreatedBy Restricts the results to exercises created by this user. An
+	// exercise with no recorded creator (created before creators were
+	// recorded) never matches. GET /exercises/creators lists the
+	// creators to offer.
+	CreatedBy *openapi_types.UUID `form:"created_by,omitempty" json:"created_by,omitempty"`
+
 	// ExerciseType When given, only exercises of this type are returned.
 	ExerciseType *ListExercisesParamsExerciseType `form:"exercise_type,omitempty" json:"exercise_type,omitempty"`
 }
 
 // ListExercisesParamsExerciseType defines parameters for ListExercises.
 type ListExercisesParamsExerciseType string
+
+// ListExerciseCreatorsParams defines parameters for ListExerciseCreators.
+type ListExerciseCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
 
 // ListLearningPathsParams defines parameters for ListLearningPaths.
 type ListLearningPathsParams struct {
@@ -4170,6 +4201,9 @@ type ServerInterface interface {
 	// Create a standalone exercise
 	// (POST /exercises)
 	CreateExercise(w http.ResponseWriter, r *http.Request)
+	// List the creators of the exercises in the pool
+	// (GET /exercises/creators)
+	ListExerciseCreators(w http.ResponseWriter, r *http.Request, params ListExerciseCreatorsParams)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(w http.ResponseWriter, r *http.Request, exerciseId openapi_types.UUID)
@@ -4524,6 +4558,12 @@ func (_ Unimplemented) ListExercises(w http.ResponseWriter, r *http.Request, par
 // Create a standalone exercise
 // (POST /exercises)
 func (_ Unimplemented) CreateExercise(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the exercises in the pool
+// (GET /exercises/creators)
+func (_ Unimplemented) ListExerciseCreators(w http.ResponseWriter, r *http.Request, params ListExerciseCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -6296,6 +6336,14 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListExercisesParams
 
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
 	// ------------- Optional query parameter "limit" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
@@ -6317,6 +6365,30 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 	err = runtime.BindQueryParameter("form", true, false, "skill_id", r.URL.Query(), &params.SkillId)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "concept_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "language" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "language", r.URL.Query(), &params.Language)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "language", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "created_by" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "created_by", r.URL.Query(), &params.CreatedBy)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "created_by", Err: err})
 		return
 	}
 
@@ -6350,6 +6422,39 @@ func (siw *ServerInterfaceWrapper) CreateExercise(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateExercise(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListExerciseCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListExerciseCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListExerciseCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListExerciseCreators(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7570,6 +7675,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/exercises", wrapper.CreateExercise)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/exercises/creators", wrapper.ListExerciseCreators)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises/{exercise_id}", wrapper.GetExercise)
@@ -9443,6 +9551,50 @@ func (response CreateExercise403JSONResponse) VisitCreateExerciseResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListExerciseCreatorsRequestObject struct {
+	Params ListExerciseCreatorsParams
+}
+
+type ListExerciseCreatorsResponseObject interface {
+	VisitListExerciseCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListExerciseCreators200JSONResponse []UserRef
+
+func (response ListExerciseCreators200JSONResponse) VisitListExerciseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExerciseCreators400JSONResponse ValidationError
+
+func (response ListExerciseCreators400JSONResponse) VisitListExerciseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExerciseCreators401JSONResponse UnauthorizedError
+
+func (response ListExerciseCreators401JSONResponse) VisitListExerciseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListExerciseCreators403JSONResponse ForbiddenError
+
+func (response ListExerciseCreators403JSONResponse) VisitListExerciseCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetExerciseRequestObject struct {
 	ExerciseId openapi_types.UUID `json:"exercise_id"`
 }
@@ -11075,6 +11227,9 @@ type StrictServerInterface interface {
 	// Create a standalone exercise
 	// (POST /exercises)
 	CreateExercise(ctx context.Context, request CreateExerciseRequestObject) (CreateExerciseResponseObject, error)
+	// List the creators of the exercises in the pool
+	// (GET /exercises/creators)
+	ListExerciseCreators(ctx context.Context, request ListExerciseCreatorsRequestObject) (ListExerciseCreatorsResponseObject, error)
 	// Get an exercise by ID
 	// (GET /exercises/{exercise_id})
 	GetExercise(ctx context.Context, request GetExerciseRequestObject) (GetExerciseResponseObject, error)
@@ -12339,6 +12494,32 @@ func (sh *strictHandler) CreateExercise(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateExerciseResponseObject); ok {
 		if err := validResponse.VisitCreateExerciseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListExerciseCreators operation middleware
+func (sh *strictHandler) ListExerciseCreators(w http.ResponseWriter, r *http.Request, params ListExerciseCreatorsParams) {
+	var request ListExerciseCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListExerciseCreators(ctx, request.(ListExerciseCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListExerciseCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListExerciseCreatorsResponseObject); ok {
+		if err := validResponse.VisitListExerciseCreatorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
