@@ -3954,6 +3954,12 @@ type ListLearningPathsParamsSort string
 // ListLearningPathsParamsStatus defines parameters for ListLearningPaths.
 type ListLearningPathsParamsStatus string
 
+// ListLearningPathCreatorsParams defines parameters for ListLearningPathCreators.
+type ListLearningPathCreatorsParams struct {
+	// Q Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José").
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+}
+
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
 	// SkillId The Skill to select exercises for.
@@ -4197,6 +4203,9 @@ type ServerInterface interface {
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(w http.ResponseWriter, r *http.Request)
+	// List the creators of the learning paths in the authoring library
+	// (GET /learning-paths/creators)
+	ListLearningPathCreators(w http.ResponseWriter, r *http.Request, params ListLearningPathCreatorsParams)
 	// Delete a learning path template
 	// (DELETE /learning-paths/{learning_path_id})
 	DeleteLearningPath(w http.ResponseWriter, r *http.Request, learningPathId openapi_types.UUID)
@@ -4581,6 +4590,12 @@ func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request,
 // Create a learning path
 // (POST /learning-paths)
 func (_ Unimplemented) CreateLearningPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List the creators of the learning paths in the authoring library
+// (GET /learning-paths/creators)
+func (_ Unimplemented) ListLearningPathCreators(w http.ResponseWriter, r *http.Request, params ListLearningPathCreatorsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -6717,6 +6732,39 @@ func (siw *ServerInterfaceWrapper) CreateLearningPath(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// ListLearningPathCreators operation middleware
+func (siw *ServerInterfaceWrapper) ListLearningPathCreators(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLearningPathCreatorsParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLearningPathCreators(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DeleteLearningPath operation middleware
 func (siw *ServerInterfaceWrapper) DeleteLearningPath(w http.ResponseWriter, r *http.Request) {
 
@@ -7555,6 +7603,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/learning-paths", wrapper.CreateLearningPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/learning-paths/creators", wrapper.ListLearningPathCreators)
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/learning-paths/{learning_path_id}", wrapper.DeleteLearningPath)
@@ -9840,6 +9891,50 @@ func (response CreateLearningPath403JSONResponse) VisitCreateLearningPathRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListLearningPathCreatorsRequestObject struct {
+	Params ListLearningPathCreatorsParams
+}
+
+type ListLearningPathCreatorsResponseObject interface {
+	VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error
+}
+
+type ListLearningPathCreators200JSONResponse []UserRef
+
+func (response ListLearningPathCreators200JSONResponse) VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPathCreators400JSONResponse ValidationError
+
+func (response ListLearningPathCreators400JSONResponse) VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPathCreators401JSONResponse UnauthorizedError
+
+func (response ListLearningPathCreators401JSONResponse) VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLearningPathCreators403JSONResponse ForbiddenError
+
+func (response ListLearningPathCreators403JSONResponse) VisitListLearningPathCreatorsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteLearningPathRequestObject struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
@@ -11013,6 +11108,9 @@ type StrictServerInterface interface {
 	// Create a learning path
 	// (POST /learning-paths)
 	CreateLearningPath(ctx context.Context, request CreateLearningPathRequestObject) (CreateLearningPathResponseObject, error)
+	// List the creators of the learning paths in the authoring library
+	// (GET /learning-paths/creators)
+	ListLearningPathCreators(ctx context.Context, request ListLearningPathCreatorsRequestObject) (ListLearningPathCreatorsResponseObject, error)
 	// Delete a learning path template
 	// (DELETE /learning-paths/{learning_path_id})
 	DeleteLearningPath(ctx context.Context, request DeleteLearningPathRequestObject) (DeleteLearningPathResponseObject, error)
@@ -12554,6 +12652,32 @@ func (sh *strictHandler) CreateLearningPath(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateLearningPathResponseObject); ok {
 		if err := validResponse.VisitCreateLearningPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLearningPathCreators operation middleware
+func (sh *strictHandler) ListLearningPathCreators(w http.ResponseWriter, r *http.Request, params ListLearningPathCreatorsParams) {
+	var request ListLearningPathCreatorsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLearningPathCreators(ctx, request.(ListLearningPathCreatorsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLearningPathCreators")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLearningPathCreatorsResponseObject); ok {
+		if err := validResponse.VisitListLearningPathCreatorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
