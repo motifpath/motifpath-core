@@ -169,6 +169,12 @@ func (w *world) currentPage() (pageView, error) {
 			titles[i] = c.Title
 		}
 		return pageView{titles, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
+	case generated.ListCatalogPaths200JSONResponse:
+		titles := make([]string, len(resp.Items))
+		for i, p := range resp.Items {
+			titles[i] = p.Title
+		}
+		return pageView{titles, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
 	case generated.ListExercises200JSONResponse:
 		return pageView{nil, resp.Total, resp.Limit, resp.Offset, len(resp.Items), true}, nil
 	case generated.ListDiagrams200JSONResponse:
@@ -719,6 +725,16 @@ func (w *world) responseExcludesLevelCourse(level string) error {
 }
 
 func (w *world) entryRecordsCreator(slug, creator string) error {
+	if _, isPathCatalog := w.lastResp.(generated.ListCatalogPaths200JSONResponse); isPathCatalog {
+		entry, err := w.catalogEntry(slug)
+		if err != nil {
+			return err
+		}
+		if want := w.ensureRegistered(creator, domain.RoleTeacher); entry.CreatedBy.UserId != want {
+			return fmt.Errorf("expected %q's creator to be %s, got %s", slug, want, entry.CreatedBy.UserId)
+		}
+		return nil
+	}
 	resp, ok := w.lastResp.(generated.ListCourses200JSONResponse)
 	if !ok {
 		return fmt.Errorf("expected a course list response, got %#v", w.lastResp)

@@ -44,6 +44,7 @@ type Handler struct {
 	concept          *application.ConceptService
 	media            *application.MediaService
 	path             *application.LearningPathService
+	pathCatalog      *application.PathCatalogService
 	studentPath      *application.StudentPathService
 	course           *application.CourseService
 	courseEnrollment *application.CourseEnrollmentService
@@ -68,6 +69,7 @@ func NewHandler(
 	concept *application.ConceptService,
 	media *application.MediaService,
 	path *application.LearningPathService,
+	pathCatalog *application.PathCatalogService,
 	studentPath *application.StudentPathService,
 	course *application.CourseService,
 	courseEnrollment *application.CourseEnrollmentService,
@@ -86,6 +88,7 @@ func NewHandler(
 		concept:               concept,
 		media:                 media,
 		path:                  path,
+		pathCatalog:           pathCatalog,
 		studentPath:           studentPath,
 		course:                course,
 		courseEnrollment:      courseEnrollment,

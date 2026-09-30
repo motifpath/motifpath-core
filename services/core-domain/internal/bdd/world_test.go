@@ -261,7 +261,7 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), w.users, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 

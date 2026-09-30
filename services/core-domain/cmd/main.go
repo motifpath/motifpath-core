@@ -275,7 +275,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, studentPathService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil
 }
 
