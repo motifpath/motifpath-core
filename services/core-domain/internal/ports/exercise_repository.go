@@ -65,6 +65,10 @@ type ExerciseRepository interface {
 	// filter, ordered by id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error)
 
+	// ListCreatorIDs returns the distinct CreatedBy of every exercise in the
+	// pool, in no particular order, skipping exercises with none recorded.
+	ListCreatorIDs(ctx context.Context) ([]string, error)
+
 	// Update replaces exercise's title, prompt, skill/concept links,
 	// image_url, audio_url, options, and estimated_duration_seconds. exercise.ID
 	// identifies which row to update; exercise.ExerciseType,

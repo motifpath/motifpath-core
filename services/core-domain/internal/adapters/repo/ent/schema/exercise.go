@@ -67,6 +67,13 @@ func (Exercise) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		// created_by is fixed at creation. Exercises created before
+		// creators were recorded have none.
+		field.UUID("created_by", uuid.UUID{}).
+			Optional().
+			Nillable().
+			Immutable(),
+
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),

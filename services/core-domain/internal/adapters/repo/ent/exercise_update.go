@@ -676,6 +676,9 @@ func (_u *ExerciseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DiagramStackRefCleared() {
 		_spec.ClearField(exercise.FieldDiagramStackRef, field.TypeString)
 	}
+	if _u.mutation.CreatedByCleared() {
+		_spec.ClearField(exercise.FieldCreatedBy, field.TypeUUID)
+	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -1917,6 +1920,9 @@ func (_u *ExerciseUpdateOne) sqlSave(ctx context.Context) (_node *Exercise, err 
 	}
 	if _u.mutation.DiagramStackRefCleared() {
 		_spec.ClearField(exercise.FieldDiagramStackRef, field.TypeString)
+	}
+	if _u.mutation.CreatedByCleared() {
+		_spec.ClearField(exercise.FieldCreatedBy, field.TypeUUID)
 	}
 	if _u.mutation.ChallengesCleared() {
 		edge := &sqlgraph.EdgeSpec{

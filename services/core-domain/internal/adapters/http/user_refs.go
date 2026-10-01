@@ -64,6 +64,17 @@ func diagramUserIDs(diagrams ...domain.Diagram) []string {
 	return ids
 }
 
+// exerciseUserIDs skips exercises with no recorded creator.
+func exerciseUserIDs(exercises ...domain.Exercise) []string {
+	ids := make([]string, 0, len(exercises))
+	for _, e := range exercises {
+		if e.CreatedBy != "" {
+			ids = append(ids, e.CreatedBy)
+		}
+	}
+	return ids
+}
+
 func courseUserIDs(courses ...domain.Course) []string {
 	ids := make([]string, len(courses))
 	for i, c := range courses {

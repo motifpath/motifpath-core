@@ -210,7 +210,7 @@ func wireServices(res resources) (services, seedDeps) {
 		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
-		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now, rand.Shuffle),
+		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, rand.Shuffle),
 		skill:       application.NewSkillService(skillRepo, newID),
 		concept:     application.NewConceptService(conceptRepo, newID),
 		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, newID),

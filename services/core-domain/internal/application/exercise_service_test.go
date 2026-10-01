@@ -36,7 +36,16 @@ func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises 
 }
 
 func newExerciseServiceWithDiagrams(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository, diagrams *fakeDiagramRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+}
+
+// exerciseUsers are the teachers whose display names name an exercise's
+// creator.
+func exerciseUsers() *fakeUserRepository {
+	users := newFakeUserRepository()
+	users.put(domain.User{ID: teacherCaller().ID, ClerkUserID: "clerk-teacher-1", DisplayName: "Bob Ferreira"})
+	users.put(domain.User{ID: otherTeacherCaller().ID, ClerkUserID: "clerk-teacher-2", DisplayName: "Carol Souza"})
+	return users
 }
 
 // exerciseInstruments is a 6-string fretted guitar and a keyboard piano, the
@@ -159,6 +168,18 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Root position of a C major triad", exercise.Title)
 		assert.Empty(t, exercise.ChallengeIDs)
+	})
+
+	t.Run("a created exercise records its creator", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
+			"Chord name", domain.NewPlainTextPrompt("Name this chord"),
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+
+		require.NoError(t, err)
+		assert.Equal(t, teacherCaller().ID, exercise.CreatedBy)
 	})
 
 	t.Run("an admin creates an exercise", func(t *testing.T) {
@@ -893,6 +914,35 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		assert.Equal(t, []string{"chord-name-01"}, idsOf(got.Items))
 	})
 
+	t.Run("the new filters each narrow the pool and combine with AND", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "bobs-triad", Title: "Major Triad Shapes", Concepts: []domain.Concept{{ID: "concept-1"}}, Languages: []domain.Language{{Code: "en"}}, CreatedBy: "teacher-1"})
+		exercises.put(domain.Exercise{ID: "carols-triad", Title: "Triad inversions", Concepts: []domain.Concept{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
+		exercises.put(domain.Exercise{ID: "carols-picking", Title: "Picking drill", Concepts: []domain.Concept{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
+		exercises.put(domain.Exercise{ID: "legacy-triad", Title: "Triad legacy", Languages: []domain.Language{{Code: "en"}}})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		tests := []struct {
+			name   string
+			filter domain.ExerciseFilter
+			want   []string
+		}{
+			{name: "title search ignores case", filter: domain.ExerciseFilter{Query: "TRIAD"}, want: []string{"bobs-triad", "carols-triad", "legacy-triad"}},
+			{name: "by concept", filter: domain.ExerciseFilter{ConceptID: "concept-2"}, want: []string{"carols-picking", "carols-triad"}},
+			{name: "by language", filter: domain.ExerciseFilter{Language: "pt"}, want: []string{"carols-picking", "carols-triad"}},
+			{name: "by creator, never matching an exercise with no recorded creator", filter: domain.ExerciseFilter{CreatedBy: "teacher-1"}, want: []string{"bobs-triad"}},
+			{name: "filters combine", filter: domain.ExerciseFilter{Query: "triad", CreatedBy: "teacher-2"}, want: []string{"carols-triad"}},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := svc.ListExercises(context.Background(), teacherCaller(), tt.filter, firstPage)
+
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, idsOf(got.Items))
+			})
+		}
+	})
+
 	t.Run("returns the requested page and the filtered total", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		for _, id := range []string{"ex-1", "ex-2", "ex-3", "ex-4", "ex-5"} {
@@ -923,6 +973,60 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		_, err := svc.ListExercises(context.Background(), studentCaller(), domain.ExerciseFilter{}, firstPage)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestExerciseService_ListExerciseCreators(t *testing.T) {
+	ctx := context.Background()
+	bob := application.Creator{UserID: teacherCaller().ID, DisplayName: "Bob Ferreira"}
+	carol := application.Creator{UserID: otherTeacherCaller().ID, DisplayName: "Carol Souza"}
+	pool := func() *fakeExerciseRepository {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "bobs-drill", CreatedBy: bob.UserID})
+		exercises.put(domain.Exercise{ID: "bobs-quiz", CreatedBy: bob.UserID})
+		exercises.put(domain.Exercise{ID: "carols-drill", CreatedBy: carol.UserID})
+		exercises.put(domain.Exercise{ID: "legacy-drill"})
+		return exercises
+	}
+
+	tests := []struct {
+		name   string
+		caller domain.User
+		query  string
+		want   []application.Creator
+	}{
+		{name: "a teacher gets every creator, each once, in name order", caller: teacherCaller(), want: []application.Creator{bob, carol}},
+		{name: "an admin gets every creator", caller: adminCaller(), want: []application.Creator{bob, carol}},
+		{name: "the query keeps creators whose name contains it, ignoring case and accents", caller: adminCaller(), query: "FÉRR", want: []application.Creator{bob}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newExerciseService(newFakeChallengeRepository(), pool())
+
+			got, err := svc.ListExerciseCreators(ctx, tt.caller, tt.query)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+
+	t.Run("a pool with no recorded creator lists nobody", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "legacy-drill"})
+		svc := newExerciseService(newFakeChallengeRepository(), exercises)
+
+		got, err := svc.ListExerciseCreators(ctx, teacherCaller(), "")
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("a student cannot list exercise creators", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), pool())
+
+		_, err := svc.ListExerciseCreators(ctx, studentCaller(), "")
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
 
@@ -1204,7 +1308,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
 		require.NoError(t, err)
@@ -1223,7 +1327,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
 
@@ -1366,7 +1470,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
 		require.NoError(t, err)
@@ -1495,7 +1599,7 @@ func TestExerciseService_StartPracticeSession(t *testing.T) {
 		putWithSkill(exercises, "ex-1", "skill-1")
 		putWithSkill(exercises, "ex-2", "skill-1")
 		putWithSkill(exercises, "ex-3", "skill-1")
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
 

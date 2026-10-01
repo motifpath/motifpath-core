@@ -548,10 +548,36 @@ func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter,
 		if filter.SkillID != "" && !containsID(exerciseSkillIDs(e), filter.SkillID) {
 			continue
 		}
+		if filter.ConceptID != "" && !slices.ContainsFunc(e.Concepts, func(c domain.Concept) bool { return c.ID == filter.ConceptID }) {
+			continue
+		}
+		if filter.Language != "" && !slices.ContainsFunc(e.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
+			continue
+		}
+		if filter.CreatedBy != "" && e.CreatedBy != filter.CreatedBy {
+			continue
+		}
+		if filter.Query != "" && !strings.Contains(strings.ToLower(e.Title), strings.ToLower(filter.Query)) {
+			continue
+		}
 		result = append(result, e)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return paginate(result, page), nil
+}
+
+func (f *fakeExerciseRepo) ListCreatorIDs(_ context.Context) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, e := range f.byID {
+		if e.CreatedBy != "" && !seen[e.CreatedBy] {
+			seen[e.CreatedBy] = true
+			ids = append(ids, e.CreatedBy)
+		}
+	}
+	return ids, nil
 }
 
 func exerciseSkillIDs(e domain.Exercise) []string {
