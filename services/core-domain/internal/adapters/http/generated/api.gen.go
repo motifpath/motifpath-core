@@ -306,6 +306,18 @@ const (
 	InstrumentFamilyKeyboard InstrumentFamily = "keyboard"
 )
 
+// Defines values for KnowledgeEdgeType.
+const (
+	Applies  KnowledgeEdgeType = "applies"
+	Requires KnowledgeEdgeType = "requires"
+)
+
+// Defines values for KnowledgeNodeKind.
+const (
+	Concept KnowledgeNodeKind = "concept"
+	Skill   KnowledgeNodeKind = "skill"
+)
+
 // Defines values for LearningPathLevel.
 const (
 	LearningPathLevelAdvanced          LearningPathLevel = "advanced"
@@ -334,6 +346,13 @@ const (
 	LearningPathNotPublishableErrorMissingLevel              LearningPathNotPublishableErrorMissing = "level"
 	LearningPathNotPublishableErrorMissingSummary            LearningPathNotPublishableErrorMissing = "summary"
 	LearningPathNotPublishableErrorMissingUnpublishedContent LearningPathNotPublishableErrorMissing = "unpublished_content"
+)
+
+// Defines values for MasteryLevel.
+const (
+	Accurate MasteryLevel = "accurate"
+	Fluent   MasteryLevel = "fluent"
+	Retained MasteryLevel = "retained"
 )
 
 // Defines values for OptionRegionShape.
@@ -577,7 +596,7 @@ type AssignLearningPathRequest struct {
 }
 
 // Challenge A challenge is the assessment unit for a content node. It groups
-// exercises and carries the subject (a Skill or Concept reference) and
+// exercises and carries the subject (a skill- or concept-kind KnowledgeNode) and
 // threshold rules used by the recommendation engine. Its ID is carried
 // in exercise-family tracking events as challenge_id inside
 // trigger_context.
@@ -600,10 +619,10 @@ type Challenge struct {
 	// ShuffleOptions Whether each exercise's option order varies per request, independent of shuffle_exercises.
 	ShuffleOptions bool `json:"shuffle_options"`
 
-	// SubjectConceptId The Concept this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
 	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
 
-	// SubjectSkillId The Skill this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
 	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
@@ -619,14 +638,14 @@ type Challenge struct {
 }
 
 // Classification The classification of a content node as returned by the API —
-// skills/concepts are embedded in full (id, name, parent_id) rather
-// than left as bare ids, so a client can render each one's position
+// skills/concepts are embedded as full KnowledgeNodes rather than
+// left as bare ids, so a client can render each one's position
 // in the tree without a follow-up lookup per id. Includes review
 // state: all classifications start as pending and must be confirmed
 // by an admin before the content node is considered fully ready.
 type Classification struct {
-	// Concepts The Concept tree node(s) this content addresses, in full.
-	Concepts []Concept `json:"concepts"`
+	// Concepts The concept node(s) this content addresses, in full.
+	Concepts []KnowledgeNode `json:"concepts"`
 
 	// DifficultyLevel The difficulty level of this content node, ordered beginner <
 	// early_intermediate < intermediate < advanced < expert.
@@ -638,8 +657,8 @@ type Classification struct {
 	// human reviewer.
 	ReviewState ClassificationReviewState `json:"review_state"`
 
-	// Skills The Skill tree node(s) this content teaches, in full.
-	Skills []Skill `json:"skills"`
+	// Skills The skill node(s) this content teaches, in full.
+	Skills []KnowledgeNode `json:"skills"`
 }
 
 // ClassificationDifficultyLevel The difficulty level of this content node, ordered beginner <
@@ -655,45 +674,34 @@ type ClassificationReviewState string
 // ClassificationInput The three mandatory classification dimensions for a content node.
 // These dimensions are the minimum semantic layer required for gap
 // detection and the rules-based recommendation engine to function.
-// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
-// create one first via POST /skills or POST /concepts if the one you
-// need doesn't exist yet.
+// skill_ids/concept_ids reference existing KnowledgeNodes of kind
+// skill and concept respectively. Only admins create nodes; a teacher
+// who needs a missing one asks the team.
+// Every node must suit the content's instruments: it is for every
+// instrument, or for at least one of the content's instrument_ids.
+// Content for every instrument (empty instrument_ids) may use only
+// nodes for every instrument. A violation is rejected with the
+// offending skill_ids or concept_ids identified.
 type ClassificationInput struct {
-	// ConceptIds The id(s) of the Concept tree node(s) this content addresses —
+	// ConceptIds The id(s) of the concept node(s) this content addresses —
 	// same depth/mix rules as skill_ids. Must not be empty; each id
-	// must reference an existing concept.
+	// must reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
 	// DifficultyLevel The difficulty level of this content node, ordered beginner <
 	// early_intermediate < intermediate < advanced < expert.
 	DifficultyLevel ClassificationInputDifficultyLevel `json:"difficulty_level"`
 
-	// SkillIds The id(s) of the Skill tree node(s) this content teaches — may
+	// SkillIds The id(s) of the skill node(s) this content teaches — may
 	// be a root, a leaf, or a mix of nodes at different depths,
 	// whichever set actually fits this content's scope. Must not be
-	// empty; each id must reference an existing skill.
+	// empty; each id must reference an existing skill-kind node.
 	SkillIds []openapi_types.UUID `json:"skill_ids"`
 }
 
 // ClassificationInputDifficultyLevel The difficulty level of this content node, ordered beginner <
 // early_intermediate < intermediate < advanced < expert.
 type ClassificationInputDifficultyLevel string
-
-// Concept An intellectual concept a content node can address. Concepts form a
-// tree the same way Skills do — parent_id null means a root concept;
-// any concept may have children, to any depth. A node's name is unique
-// among its siblings (including other roots), not globally.
-type Concept struct {
-	// ConceptId Stable identifier for this concept.
-	ConceptId openapi_types.UUID `json:"concept_id"`
-
-	// Name Short kebab-case tag naming the concept (e.g. chord-theory,
-	// interval-recognition).
-	Name string `json:"name"`
-
-	// ParentId The parent concept's id, or null if this is a root concept.
-	ParentId *openapi_types.UUID `json:"parent_id"`
-}
 
 // ConflictError Returned when a resource already exists and cannot be created again.
 type ConflictError struct {
@@ -706,8 +714,8 @@ type ConflictError struct {
 // content_node_id.
 type ContentNode struct {
 	// Classification The classification of a content node as returned by the API —
-	// skills/concepts are embedded in full (id, name, parent_id) rather
-	// than left as bare ids, so a client can render each one's position
+	// skills/concepts are embedded as full KnowledgeNodes rather than
+	// left as bare ids, so a client can render each one's position
 	// in the tree without a follow-up lookup per id. Includes review
 	// state: all classifications start as pending and must be confirmed
 	// by an admin before the content node is considered fully ready.
@@ -779,8 +787,8 @@ type ContentNodeContentType string
 // later publish.
 type ContentNodeVersion struct {
 	// ClassificationSnapshot The classification of a content node as returned by the API —
-	// skills/concepts are embedded in full (id, name, parent_id) rather
-	// than left as bare ids, so a client can render each one's position
+	// skills/concepts are embedded as full KnowledgeNodes rather than
+	// left as bare ids, so a client can render each one's position
 	// in the tree without a follow-up lookup per id. Includes review
 	// state: all classifications start as pending and must be confirmed
 	// by an admin before the content node is considered fully ready.
@@ -1164,12 +1172,12 @@ type CreateChallengeRequest struct {
 	// request, independent of shuffle_exercises. Defaults to false.
 	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
 
-	// SubjectConceptId The Concept this challenge assesses. Must be one of the parent
+	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent
 	// content node's linked concept_ids. Exactly one of
 	// subject_skill_id/subject_concept_id must be set.
 	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
 
-	// SubjectSkillId The Skill this challenge assesses. Must be one of the parent
+	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent
 	// content node's linked skill_ids. Exactly one of
 	// subject_skill_id/subject_concept_id must be set — the subject is
 	// the minimum required for gap detection, a challenge without one
@@ -1189,26 +1197,19 @@ type CreateChallengeRequest struct {
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
 
-// CreateConceptRequest Payload for creating a new concept node. There is no update or
-// delete endpoint yet — re-parenting, renaming, or deleting a concept
-// that already has links is a deliberately open question.
-type CreateConceptRequest struct {
-	// Name Short kebab-case tag naming the concept.
-	Name string `json:"name"`
-
-	// ParentId The parent concept's id. Omit to create a root concept. Must
-	// reference an existing concept if given.
-	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
-}
-
 // CreateContentNodeRequest Payload for creating a new content node.
 type CreateContentNodeRequest struct {
 	// Classification The three mandatory classification dimensions for a content node.
 	// These dimensions are the minimum semantic layer required for gap
 	// detection and the rules-based recommendation engine to function.
-	// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
-	// create one first via POST /skills or POST /concepts if the one you
-	// need doesn't exist yet.
+	// skill_ids/concept_ids reference existing KnowledgeNodes of kind
+	// skill and concept respectively. Only admins create nodes; a teacher
+	// who needs a missing one asks the team.
+	// Every node must suit the content's instruments: it is for every
+	// instrument, or for at least one of the content's instrument_ids.
+	// Content for every instrument (empty instrument_ids) may use only
+	// nodes for every instrument. A violation is rejected with the
+	// offending skill_ids or concept_ids identified.
 	Classification ClassificationInput `json:"classification"`
 
 	// ContentType The media format of this content node. A diagram is not a
@@ -1311,17 +1312,20 @@ type CreateCourseRequestLevel string
 // keyed by exactly the languages of names.
 type CreateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
-	// exact Skill/Concept tree ContentNode and Exercise use (see
+	// exact knowledge graph ContentNode and Exercise use (see
 	// ClassificationInput) — not a separate tagging scheme — but carry no
 	// difficulty_level; a diagram is a reusable shape, not a leveled
-	// piece of content.
+	// piece of content. Every node must be for every instrument or for
+	// at least one of the diagram's instruments.
 	Classification DiagramClassificationInput `json:"classification"`
 
 	// Color The diagram's general marker color as #RRGGBB. Null (or omitted)
 	// leaves it unrecorded.
 	Color *string `json:"color"`
 
-	// InstrumentIds Compatible instruments; the first is the layout instrument.
+	// InstrumentIds The compatible instruments for this diagram. The first is the
+	// immutable layout instrument; every selected instrument must have
+	// matching coordinate geometry.
 	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind Whether the new diagram is a curated basic template or the
@@ -1397,8 +1401,8 @@ type CreateExerciseRequest struct {
 	// is audio_recognition; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
-	// ConceptIds The id(s) of the Concept tree node(s) this exercise addresses.
-	// Must not be empty; each id must reference an existing concept.
+	// ConceptIds The id(s) of the concept node(s) this exercise addresses.
+	// Must not be empty; each id must reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
 	// DiagramRef A usage of one Diagram — its render config, never a stored variant
@@ -1433,6 +1437,12 @@ type CreateExerciseRequest struct {
 	// diagram_stack_ref is given instead; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds *InstrumentIds `json:"instrument_ids,omitempty"`
+
 	// LanguageCodes One or more Language.code values this exercise is available in.
 	// A single-element array containing "any" marks the exercise as
 	// language-agnostic; "any" cannot be combined with other language
@@ -1466,10 +1476,10 @@ type CreateExerciseRequest struct {
 	// no remediation is configured for this exercise.
 	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
-	// SkillIds The id(s) of the Skill tree node(s) this exercise targets,
+	// SkillIds The id(s) of the skill node(s) this exercise targets,
 	// independent of any challenge or content node it may also be
 	// linked to. Must not be empty; each id must reference an
-	// existing skill.
+	// existing skill-kind node.
 	SkillIds []openapi_types.UUID `json:"skill_ids"`
 
 	// Title A short, authoring-only name for this exercise (e.g. "Alternate
@@ -1592,6 +1602,60 @@ type CreateInstrumentRequest struct {
 // CreateInstrumentRequestFamily Which coordinate shape Diagrams against this instrument will use.
 type CreateInstrumentRequestFamily string
 
+// CreateKnowledgeEdgeRequest Payload for linking two knowledge nodes.
+type CreateKnowledgeEdgeRequest struct {
+	// FromId The node the edge leaves. For applies, a skill.
+	FromId openapi_types.UUID `json:"from_id"`
+
+	// Level The practice mastery scale, ordered accurate < fluent < retained. A
+	// requires edge asks for its target at this level or above.
+	Level *MasteryLevel `json:"level,omitempty"`
+
+	// ToId The node the edge arrives at. For applies, a concept. Never the same node as from_id.
+	ToId openapi_types.UUID `json:"to_id"`
+
+	// Type applies — the skill (from) uses the concept (to); only skill →
+	// concept, never with a level. requires — from needs to at level or
+	// above; any kind to any kind, always with a level, and requires edges
+	// never form a cycle. requires informs practice and recommendations;
+	// it never locks content or blocks practice. A requires edge counts
+	// for an instrument only when both of its nodes are for that
+	// instrument. An applies edge never implies a requirement; the same
+	// two nodes may carry both.
+	Type KnowledgeEdgeType `json:"type"`
+}
+
+// CreateKnowledgeNodeRequest Payload for creating a skill or concept.
+type CreateKnowledgeNodeRequest struct {
+	// Descriptions A description in one or more languages, keyed by Language.code
+	// (never "any").
+	Descriptions *LocalizedDescription `json:"descriptions,omitempty"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds *InstrumentIds `json:"instrument_ids,omitempty"`
+
+	// Key The node's key — lowercase kebab-case, unique across both kinds. Cannot be changed later.
+	Key string `json:"key"`
+
+	// Kind skill — something a student can do, named as an action ("Play open
+	// chords"). concept — something true or known ("Open chord shapes").
+	// The naming convention is documented, not enforced.
+	Kind KnowledgeNodeKind `json:"kind"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// ParentId The parent node's id. Omit to create a root. Must reference an
+	// existing node of the same kind.
+	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
+}
+
 // CreateLearningPathRequest Payload for creating a learning path.
 type CreateLearningPathRequest struct {
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
@@ -1663,18 +1727,6 @@ type CreateMediaUploadUrlRequestContentType string
 // content_type must be image.
 type CreateMediaUploadUrlRequestPurpose string
 
-// CreateSkillRequest Payload for creating a new skill node. There is no update or delete
-// endpoint yet — re-parenting, renaming, or deleting a skill that
-// already has links is a deliberately open question.
-type CreateSkillRequest struct {
-	// Name Short kebab-case tag naming the skill.
-	Name string `json:"name"`
-
-	// ParentId The parent skill's id. Omit to create a root skill. Must
-	// reference an existing skill if given.
-	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
-}
-
 // Diagram A prebuilt, reusable diagram — structured position data for a scale,
 // chord, or similar pattern on a specific instrument. Never stores a
 // rendered image or SVG; motifpath-web renders positions client-side
@@ -1682,7 +1734,7 @@ type CreateSkillRequest struct {
 // points at this diagram.
 type Diagram struct {
 	// Classification A Diagram's classification as returned by the API — skills/concepts
-	// embedded in full (id, name, parent_id), the same convention
+	// embedded as full KnowledgeNodes, the same convention
 	// Classification uses for ContentNode.
 	Classification DiagramClassification `json:"classification"`
 
@@ -1711,8 +1763,9 @@ type Diagram struct {
 	// InstrumentId The immutable layout instrument this diagram is authored against.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
-	// InstrumentIds Every instrument through which this diagram is available,
-	// including InstrumentId.
+	// InstrumentIds Every instrument for which this diagram is available, including
+	// instrument_id. Every linked instrument has coordinate geometry
+	// compatible with the layout instrument.
 	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind basic diagrams are curated templates: every teacher can find and
@@ -1800,28 +1853,29 @@ type DiagramKind string
 type DiagramLabelDisplay string
 
 // DiagramClassification A Diagram's classification as returned by the API — skills/concepts
-// embedded in full (id, name, parent_id), the same convention
+// embedded as full KnowledgeNodes, the same convention
 // Classification uses for ContentNode.
 type DiagramClassification struct {
-	// Concepts The Concept tree node(s) this diagram addresses, in full.
-	Concepts []Concept `json:"concepts"`
+	// Concepts The concept node(s) this diagram addresses, in full.
+	Concepts []KnowledgeNode `json:"concepts"`
 
-	// Skills The Skill tree node(s) this diagram illustrates, in full.
-	Skills []Skill `json:"skills"`
+	// Skills The skill node(s) this diagram illustrates, in full.
+	Skills []KnowledgeNode `json:"skills"`
 }
 
 // DiagramClassificationInput Classification for a new or updated Diagram. Diagrams share the
-// exact Skill/Concept tree ContentNode and Exercise use (see
+// exact knowledge graph ContentNode and Exercise use (see
 // ClassificationInput) — not a separate tagging scheme — but carry no
 // difficulty_level; a diagram is a reusable shape, not a leveled
-// piece of content.
+// piece of content. Every node must be for every instrument or for
+// at least one of the diagram's instruments.
 type DiagramClassificationInput struct {
-	// ConceptIds The id(s) of the Concept tree node(s) this diagram addresses.
-	// Must not be empty; each id must reference an existing concept.
+	// ConceptIds The id(s) of the concept node(s) this diagram addresses.
+	// Must not be empty; each id must reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
-	// SkillIds The id(s) of the Skill tree node(s) this diagram illustrates.
-	// Must not be empty; each id must reference an existing skill.
+	// SkillIds The id(s) of the skill node(s) this diagram illustrates.
+	// Must not be empty; each id must reference an existing skill-kind node.
 	SkillIds []openapi_types.UUID `json:"skill_ids"`
 }
 
@@ -2104,7 +2158,7 @@ type EnrollInLearningPathRequest struct {
 	LearningPathId openapi_types.UUID `json:"learning_path_id"`
 }
 
-// Exercise A reusable, standalone practice item classified by Skill/Concept
+// Exercise A reusable, standalone practice item classified by skill/concept
 // tree references and independent of any single challenge. The
 // exercise_id is the value the SPA supplies in exercise-family
 // tracking events. An exercise is checked by option selection: the
@@ -2119,8 +2173,8 @@ type Exercise struct {
 	// challenge.
 	ChallengeIds []openapi_types.UUID `json:"challenge_ids"`
 
-	// Concepts The Concept tree node(s) this exercise addresses, in full.
-	Concepts []Concept `json:"concepts"`
+	// Concepts The concept node(s) this exercise addresses, in full.
+	Concepts []KnowledgeNode `json:"concepts"`
 
 	// ContentNodeIds The content nodes this exercise is currently linked to as a path
 	// exercise. May be empty. Independent of challenge_ids — an exercise
@@ -2168,6 +2222,12 @@ type Exercise struct {
 	// is image_recognition and diagram_ref/diagram_stack_ref are absent.
 	ImageUrl *string `json:"image_url,omitempty"`
 
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
 	// Languages The language(s) this exercise is available in, or a single "any"
 	// entry for language-agnostic content. Independent of any content
 	// node's languages — an exercise can be reused across multiple
@@ -2198,8 +2258,8 @@ type Exercise struct {
 	// exist without any remediation configured.
 	RemediationTargets []RemediationTarget `json:"remediation_targets"`
 
-	// Skills The Skill tree node(s) this exercise targets, in full.
-	Skills []Skill `json:"skills"`
+	// Skills The skill node(s) this exercise targets, in full.
+	Skills []KnowledgeNode `json:"skills"`
 
 	// Title Short, authoring-only name for this exercise. Not shown to students.
 	Title string `json:"title"`
@@ -2363,6 +2423,91 @@ type InstrumentFamily string
 // may repeat.
 type InstrumentIds = []openapi_types.UUID
 
+// KnowledgeEdge A typed link between two knowledge nodes. At most one edge of each
+// type links the same two nodes in the same direction.
+type KnowledgeEdge struct {
+	// EdgeId Stable identifier for this edge.
+	EdgeId openapi_types.UUID `json:"edge_id"`
+
+	// FromId The node the edge leaves.
+	FromId openapi_types.UUID `json:"from_id"`
+
+	// Level The level a requires edge asks for; null for an applies edge.
+	Level *MasteryLevel `json:"level"`
+
+	// ToId The node the edge arrives at.
+	ToId openapi_types.UUID `json:"to_id"`
+
+	// Type applies — the skill (from) uses the concept (to); only skill →
+	// concept, never with a level. requires — from needs to at level or
+	// above; any kind to any kind, always with a level, and requires edges
+	// never form a cycle. requires informs practice and recommendations;
+	// it never locks content or blocks practice. A requires edge counts
+	// for an instrument only when both of its nodes are for that
+	// instrument. An applies edge never implies a requirement; the same
+	// two nodes may carry both.
+	Type KnowledgeEdgeType `json:"type"`
+}
+
+// KnowledgeEdgeType applies — the skill (from) uses the concept (to); only skill →
+// concept, never with a level. requires — from needs to at level or
+// above; any kind to any kind, always with a level, and requires edges
+// never form a cycle. requires informs practice and recommendations;
+// it never locks content or blocks practice. A requires edge counts
+// for an instrument only when both of its nodes are for that
+// instrument. An applies edge never implies a requirement; the same
+// two nodes may carry both.
+type KnowledgeEdgeType string
+
+// KnowledgeNode A skill or concept in the knowledge graph. Each kind forms
+// a strict tree through parent_id — at most one parent, always of the
+// same kind — which says where a node lives. What a node uses or needs
+// across the tree is a KnowledgeEdge. Content, exercises and diagrams
+// link to nodes by id; they are never nodes themselves.
+type KnowledgeNode struct {
+	// Descriptions An optional explanation of the node, in every language MotifPath
+	// offers, or null when there is none.
+	Descriptions *LocalizedDescription `json:"descriptions"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds InstrumentIds `json:"instrument_ids"`
+
+	// Key Stable handle for code and seed scripts (e.g.
+	// play-open-chords) — lowercase kebab-case, unique across both
+	// kinds, and never changed after creation. Not for display: show
+	// names instead.
+	Key string `json:"key"`
+
+	// Kind skill — something a student can do, named as an action ("Play open
+	// chords"). concept — something true or known ("Open chord shapes").
+	// The naming convention is documented, not enforced.
+	Kind KnowledgeNodeKind `json:"kind"`
+
+	// Languages The Language.code of every language this node has a name in —
+	// the keys of names, sorted.
+	Languages []string `json:"languages"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId Stable identifier for this node.
+	NodeId openapi_types.UUID `json:"node_id"`
+
+	// ParentId The parent node's id (always of the same kind), or null for a root.
+	ParentId *openapi_types.UUID `json:"parent_id"`
+}
+
+// KnowledgeNodeKind skill — something a student can do, named as an action ("Play open
+// chords"). concept — something true or known ("Open chord shapes").
+// The naming convention is documented, not enforced.
+type KnowledgeNodeKind string
+
 // Language A language MotifPath content or a user's locale preference can be
 // tagged with. Includes the literal code "any", which marks content as
 // language-agnostic (e.g. an image with no spoken or written words)
@@ -2471,6 +2616,10 @@ type LearningPathNotPublishableErrorMissing string
 // "any").
 type LocalizedCaption map[string]string
 
+// LocalizedDescription A description in one or more languages, keyed by Language.code
+// (never "any").
+type LocalizedDescription map[string]string
+
 // LocalizedMarkerLabel A marker label in one or more languages, keyed by Language.code
 // (never "any"); each value fits inside a marker.
 type LocalizedMarkerLabel map[string]string
@@ -2484,6 +2633,10 @@ type LocalizedNames map[string]string
 // LocalizedNote A short note in one or more languages, keyed by Language.code
 // (never "any").
 type LocalizedNote map[string]string
+
+// MasteryLevel The practice mastery scale, ordered accurate < fluent < retained. A
+// requires edge asks for its target at this level or above.
+type MasteryLevel string
 
 // MediaUploadUrl A presigned upload URL and the object's eventual read URL. The caller
 // performs an HTTP PUT of the file's raw bytes to upload_url, then stores
@@ -2821,7 +2974,7 @@ type PracticeSession struct {
 	// back to the session and skill that produced them.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
 
-	// SkillId The Skill this session was generated for.
+	// SkillId The skill-kind KnowledgeNode this session was generated for.
 	SkillId openapi_types.UUID `json:"skill_id"`
 }
 
@@ -3076,23 +3229,6 @@ type SetCurrentPathRequest struct {
 	StudentPathId *openapi_types.UUID `json:"student_path_id,omitempty"`
 }
 
-// Skill An observable, practicable skill a content node can teach. Skills
-// form a tree — parent_id null means a root skill; any skill may have
-// children, to any depth. A node's name is unique among its siblings
-// (including other roots), not globally, so two different branches may
-// contain a same-named skill.
-type Skill struct {
-	// Name Short kebab-case tag naming the skill (e.g. triad-shapes,
-	// sweep-picking).
-	Name string `json:"name"`
-
-	// ParentId The parent skill's id, or null if this is a root skill.
-	ParentId *openapi_types.UUID `json:"parent_id"`
-
-	// SkillId Stable identifier for this skill.
-	SkillId openapi_types.UUID `json:"skill_id"`
-}
-
 // StudentPath A student's own copy of a learning path template's items. Created by
 // copying a LearningPath at assign time; independently editable
 // afterwards and never affected by later changes to the template it
@@ -3266,10 +3402,10 @@ type UpdateChallengeRequest struct {
 	// ShuffleOptions Whether each exercise's option order varies per request.
 	ShuffleOptions *bool `json:"shuffle_options,omitempty"`
 
-	// SubjectConceptId The Concept this challenge assesses. Must be one of the parent content node's linked concept_ids.
+	// SubjectConceptId The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent content node's linked concept_ids.
 	SubjectConceptId *openapi_types.UUID `json:"subject_concept_id,omitempty"`
 
-	// SubjectSkillId The Skill this challenge assesses. Must be one of the parent content node's linked skill_ids.
+	// SubjectSkillId The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent content node's linked skill_ids.
 	SubjectSkillId *openapi_types.UUID `json:"subject_skill_id,omitempty"`
 
 	// TimeThresholdMs An informational time expectation for this challenge, in
@@ -3287,9 +3423,14 @@ type UpdateContentNodeRequest struct {
 	// Classification The three mandatory classification dimensions for a content node.
 	// These dimensions are the minimum semantic layer required for gap
 	// detection and the rules-based recommendation engine to function.
-	// skill_ids/concept_ids reference existing Skill/Concept tree nodes —
-	// create one first via POST /skills or POST /concepts if the one you
-	// need doesn't exist yet.
+	// skill_ids/concept_ids reference existing KnowledgeNodes of kind
+	// skill and concept respectively. Only admins create nodes; a teacher
+	// who needs a missing one asks the team.
+	// Every node must suit the content's instruments: it is for every
+	// instrument, or for at least one of the content's instrument_ids.
+	// Content for every instrument (empty instrument_ids) may use only
+	// nodes for every instrument. A violation is rejected with the
+	// offending skill_ids or concept_ids identified.
 	Classification ClassificationInput `json:"classification"`
 
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
@@ -3340,17 +3481,18 @@ type UpdateContentNodeRequest struct {
 // note, and tempo_bpm is set exactly when the sequence is non-empty. Every
 // per-language text on the diagram — names, positions' custom_label
 // and note, regions' description — must cover exactly the same
-// languages once the update is applied. instrument_id is not
-// present here — it cannot be changed after creation, since every
-// position's coordinate shape depends on it. Nor are kind and
+// languages once the update is applied. instrument_ids may replace the
+// compatible instruments only with records that match the diagram's
+// immutable layout geometry. Nor are kind and
 // created_by, which are fixed at creation; a copy saved under a
 // different kind or creator is a new diagram.
 type UpdateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
-	// exact Skill/Concept tree ContentNode and Exercise use (see
+	// exact knowledge graph ContentNode and Exercise use (see
 	// ClassificationInput) — not a separate tagging scheme — but carry no
 	// difficulty_level; a diagram is a reusable shape, not a leveled
-	// piece of content.
+	// piece of content. Every node must be for every instrument or for
+	// at least one of the diagram's instruments.
 	Classification *DiagramClassificationInput `json:"classification,omitempty"`
 
 	// Color The diagram's general marker color as #RRGGBB, replacing the
@@ -3361,7 +3503,7 @@ type UpdateDiagramRequest struct {
 	// by omitting them.
 	Color *string `json:"color,omitempty"`
 
-	// InstrumentIds Replaces the compatible instruments.
+	// InstrumentIds Replaces the compatible instruments for this diagram.
 	InstrumentIds *[]openapi_types.UUID `json:"instrument_ids,omitempty"`
 
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
@@ -3431,9 +3573,9 @@ type UpdateExerciseRequest struct {
 	// exercise's exercise_type is audio_recognition; absent otherwise.
 	AudioUrl *string `json:"audio_url,omitempty"`
 
-	// ConceptIds The id(s) of the Concept tree node(s) this exercise addresses,
+	// ConceptIds The id(s) of the concept node(s) this exercise addresses,
 	// replacing its current set. Must not be empty; each id must
-	// reference an existing concept.
+	// reference an existing concept-kind node.
 	ConceptIds []openapi_types.UUID `json:"concept_ids"`
 
 	// DiagramRef A usage of one Diagram — its render config, never a stored variant
@@ -3458,6 +3600,12 @@ type UpdateExerciseRequest struct {
 	// image_recognition, required unless diagram_ref or
 	// diagram_stack_ref is given instead; absent otherwise.
 	ImageUrl *string `json:"image_url,omitempty"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds *InstrumentIds `json:"instrument_ids,omitempty"`
 
 	// LanguageCodes One or more Language.code values this exercise is available in,
 	// replacing its current set. A single-element array containing
@@ -3490,9 +3638,9 @@ type UpdateExerciseRequest struct {
 	// set. Empty or omitted clears any previously configured targets.
 	RemediationTargets *[]RemediationTarget `json:"remediation_targets,omitempty"`
 
-	// SkillIds The id(s) of the Skill tree node(s) this exercise targets,
+	// SkillIds The id(s) of the skill node(s) this exercise targets,
 	// replacing its current set. Must not be empty; each id must
-	// reference an existing skill.
+	// reference an existing skill-kind node.
 	SkillIds []openapi_types.UUID `json:"skill_ids"`
 
 	// Title A short, authoring-only name for this exercise, used to identify
@@ -3570,6 +3718,38 @@ type UpdateInstrumentRequest struct {
 	// always words in some language. Clients display the name for the
 	// viewer's locale, falling back to "en", then to any name present.
 	Names LocalizedNames `json:"names"`
+}
+
+// UpdateKnowledgeEdgeRequest Payload for changing the level of a requires edge.
+type UpdateKnowledgeEdgeRequest struct {
+	// Level The practice mastery scale, ordered accurate < fluent < retained. A
+	// requires edge asks for its target at this level or above.
+	Level MasteryLevel `json:"level"`
+}
+
+// UpdateKnowledgeNodeRequest Payload for changing a node. Every field is optional; a field left
+// out is unchanged.
+type UpdateKnowledgeNodeRequest struct {
+	// Descriptions The node's descriptions, replacing the current set — one for
+	// every language MotifPath offers — or null to remove them.
+	Descriptions *LocalizedDescription `json:"descriptions"`
+
+	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
+	// empty list means it suits every instrument (for example, music
+	// theory). Every id must reference an existing instrument, and none
+	// may repeat.
+	InstrumentIds *InstrumentIds `json:"instrument_ids,omitempty"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names *LocalizedNames `json:"names,omitempty"`
+
+	// ParentId The new parent's id, which must be an existing node of the same
+	// kind outside this node's subtree, or null to make the node a
+	// root.
+	ParentId *openapi_types.UUID `json:"parent_id"`
 }
 
 // UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.
@@ -3946,6 +4126,30 @@ type ListExerciseCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// ListKnowledgeEdgesParams defines parameters for ListKnowledgeEdges.
+type ListKnowledgeEdgesParams struct {
+	Type *KnowledgeEdgeType `form:"type,omitempty" json:"type,omitempty"`
+
+	// FromId Only edges leaving this node.
+	FromId *openapi_types.UUID `form:"from_id,omitempty" json:"from_id,omitempty"`
+
+	// ToId Only edges arriving at this node.
+	ToId *openapi_types.UUID `form:"to_id,omitempty" json:"to_id,omitempty"`
+}
+
+// ListKnowledgeNodesParams defines parameters for ListKnowledgeNodes.
+type ListKnowledgeNodesParams struct {
+	// Kind Return only nodes of this kind. Omit for both kinds.
+	Kind *KnowledgeNodeKind `form:"kind,omitempty" json:"kind,omitempty"`
+
+	// InstrumentId Return only nodes for at least one of these instruments — those
+	// that list any of them in instrument_ids, plus those for every
+	// instrument (an empty instrument_ids). Repeat the parameter for
+	// several instruments, as an authoring screen does for content
+	// meant for more than one. Omit for nodes of every scope.
+	InstrumentId *[]openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+}
+
 // ListLearningPathsParams defines parameters for ListLearningPaths.
 type ListLearningPathsParams struct {
 	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
@@ -4000,7 +4204,7 @@ type ListLearningPathCreatorsParams struct {
 
 // StartPracticeSessionParams defines parameters for StartPracticeSession.
 type StartPracticeSessionParams struct {
-	// SkillId The Skill to select exercises for.
+	// SkillId The skill-kind KnowledgeNode to select exercises for.
 	SkillId openapi_types.UUID `form:"skill_id" json:"skill_id"`
 
 	// Count The number of exercises requested. The response may contain fewer
@@ -4010,9 +4214,6 @@ type StartPracticeSessionParams struct {
 
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
-
-// CreateConceptJSONRequestBody defines body for CreateConcept for application/json ContentType.
-type CreateConceptJSONRequestBody = CreateConceptRequest
 
 // CreateContentNodeJSONRequestBody defines body for CreateContentNode for application/json ContentType.
 type CreateContentNodeJSONRequestBody = CreateContentNodeRequest
@@ -4053,6 +4254,18 @@ type CreateInstrumentJSONRequestBody = CreateInstrumentRequest
 // UpdateInstrumentJSONRequestBody defines body for UpdateInstrument for application/json ContentType.
 type UpdateInstrumentJSONRequestBody = UpdateInstrumentRequest
 
+// CreateKnowledgeEdgeJSONRequestBody defines body for CreateKnowledgeEdge for application/json ContentType.
+type CreateKnowledgeEdgeJSONRequestBody = CreateKnowledgeEdgeRequest
+
+// UpdateKnowledgeEdgeJSONRequestBody defines body for UpdateKnowledgeEdge for application/json ContentType.
+type UpdateKnowledgeEdgeJSONRequestBody = UpdateKnowledgeEdgeRequest
+
+// CreateKnowledgeNodeJSONRequestBody defines body for CreateKnowledgeNode for application/json ContentType.
+type CreateKnowledgeNodeJSONRequestBody = CreateKnowledgeNodeRequest
+
+// UpdateKnowledgeNodeJSONRequestBody defines body for UpdateKnowledgeNode for application/json ContentType.
+type UpdateKnowledgeNodeJSONRequestBody = UpdateKnowledgeNodeRequest
+
 // CreateLearningPathJSONRequestBody defines body for CreateLearningPath for application/json ContentType.
 type CreateLearningPathJSONRequestBody = CreateLearningPathRequest
 
@@ -4061,9 +4274,6 @@ type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
-
-// CreateSkillJSONRequestBody defines body for CreateSkill for application/json ContentType.
-type CreateSkillJSONRequestBody = CreateSkillRequest
 
 // CreateCourseEnrollmentJSONRequestBody defines body for CreateCourseEnrollment for application/json ContentType.
 type CreateCourseEnrollmentJSONRequestBody = CreateCourseEnrollmentRequest
@@ -4115,12 +4325,6 @@ type ServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
-	// List all known concepts
-	// (GET /concepts)
-	ListConcepts(w http.ResponseWriter, r *http.Request)
-	// Create a concept node
-	// (POST /concepts)
-	CreateConcept(w http.ResponseWriter, r *http.Request)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams)
@@ -4238,6 +4442,33 @@ type ServerInterface interface {
 	// Replace an instrument's names and default voice
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID)
+	// List knowledge edges
+	// (GET /knowledge-edges)
+	ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams)
+	// Link two knowledge nodes
+	// (POST /knowledge-edges)
+	CreateKnowledgeEdge(w http.ResponseWriter, r *http.Request)
+	// Delete a knowledge edge
+	// (DELETE /knowledge-edges/{edge_id})
+	DeleteKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID)
+	// Change a requires edge's level
+	// (PATCH /knowledge-edges/{edge_id})
+	UpdateKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID)
+	// List knowledge nodes
+	// (GET /knowledge-nodes)
+	ListKnowledgeNodes(w http.ResponseWriter, r *http.Request, params ListKnowledgeNodesParams)
+	// Create a knowledge node
+	// (POST /knowledge-nodes)
+	CreateKnowledgeNode(w http.ResponseWriter, r *http.Request)
+	// Delete a knowledge node
+	// (DELETE /knowledge-nodes/{node_id})
+	DeleteKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID)
+	// Get a knowledge node
+	// (GET /knowledge-nodes/{node_id})
+	GetKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID)
+	// Rename, describe or move a knowledge node
+	// (PATCH /knowledge-nodes/{node_id})
+	UpdateKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams)
@@ -4271,12 +4502,6 @@ type ServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
-	// List all known skills
-	// (GET /skills)
-	ListSkills(w http.ResponseWriter, r *http.Request)
-	// Create a skill node
-	// (POST /skills)
-	CreateSkill(w http.ResponseWriter, r *http.Request)
 	// List the authenticated student's course enrollments
 	// (GET /students/me/course-enrollments)
 	ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request)
@@ -4379,18 +4604,6 @@ func (_ Unimplemented) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *htt
 // Link an existing exercise to a challenge
 // (POST /challenges/{challenge_id}/exercises/{exercise_id})
 func (_ Unimplemented) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// List all known concepts
-// (GET /concepts)
-func (_ Unimplemented) ListConcepts(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Create a concept node
-// (POST /concepts)
-func (_ Unimplemented) CreateConcept(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -4628,6 +4841,60 @@ func (_ Unimplemented) UpdateInstrument(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// List knowledge edges
+// (GET /knowledge-edges)
+func (_ Unimplemented) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Link two knowledge nodes
+// (POST /knowledge-edges)
+func (_ Unimplemented) CreateKnowledgeEdge(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete a knowledge edge
+// (DELETE /knowledge-edges/{edge_id})
+func (_ Unimplemented) DeleteKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Change a requires edge's level
+// (PATCH /knowledge-edges/{edge_id})
+func (_ Unimplemented) UpdateKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List knowledge nodes
+// (GET /knowledge-nodes)
+func (_ Unimplemented) ListKnowledgeNodes(w http.ResponseWriter, r *http.Request, params ListKnowledgeNodesParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create a knowledge node
+// (POST /knowledge-nodes)
+func (_ Unimplemented) CreateKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Delete a knowledge node
+// (DELETE /knowledge-nodes/{node_id})
+func (_ Unimplemented) DeleteKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a knowledge node
+// (GET /knowledge-nodes/{node_id})
+func (_ Unimplemented) GetKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Rename, describe or move a knowledge node
+// (PATCH /knowledge-nodes/{node_id})
+func (_ Unimplemented) UpdateKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // List learning paths for authoring
 // (GET /learning-paths)
 func (_ Unimplemented) ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams) {
@@ -4691,18 +4958,6 @@ func (_ Unimplemented) StartPracticeSession(w http.ResponseWriter, r *http.Reque
 // Readiness probe
 // (GET /readyz)
 func (_ Unimplemented) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// List all known skills
-// (GET /skills)
-func (_ Unimplemented) ListSkills(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Create a skill node
-// (POST /skills)
-func (_ Unimplemented) CreateSkill(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -5248,46 +5503,6 @@ func (siw *ServerInterfaceWrapper) LinkExerciseToChallenge(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.LinkExerciseToChallenge(w, r, challengeId, exerciseId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListConcepts operation middleware
-func (siw *ServerInterfaceWrapper) ListConcepts(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListConcepts(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateConcept operation middleware
-func (siw *ServerInterfaceWrapper) CreateConcept(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateConcept(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -6711,6 +6926,291 @@ func (siw *ServerInterfaceWrapper) UpdateInstrument(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// ListKnowledgeEdges operation middleware
+func (siw *ServerInterfaceWrapper) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListKnowledgeEdgesParams
+
+	// ------------- Optional query parameter "type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "type", r.URL.Query(), &params.Type)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "type", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "from_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "from_id", r.URL.Query(), &params.FromId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "to_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "to_id", r.URL.Query(), &params.ToId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListKnowledgeEdges(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateKnowledgeEdge operation middleware
+func (siw *ServerInterfaceWrapper) CreateKnowledgeEdge(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateKnowledgeEdge(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteKnowledgeEdge operation middleware
+func (siw *ServerInterfaceWrapper) DeleteKnowledgeEdge(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "edge_id" -------------
+	var edgeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "edge_id", chi.URLParam(r, "edge_id"), &edgeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "edge_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteKnowledgeEdge(w, r, edgeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateKnowledgeEdge operation middleware
+func (siw *ServerInterfaceWrapper) UpdateKnowledgeEdge(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "edge_id" -------------
+	var edgeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "edge_id", chi.URLParam(r, "edge_id"), &edgeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "edge_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateKnowledgeEdge(w, r, edgeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListKnowledgeNodes operation middleware
+func (siw *ServerInterfaceWrapper) ListKnowledgeNodes(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListKnowledgeNodesParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "kind", r.URL.Query(), &params.Kind)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListKnowledgeNodes(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateKnowledgeNode operation middleware
+func (siw *ServerInterfaceWrapper) CreateKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateKnowledgeNode(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteKnowledgeNode operation middleware
+func (siw *ServerInterfaceWrapper) DeleteKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "node_id" -------------
+	var nodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "node_id", chi.URLParam(r, "node_id"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteKnowledgeNode(w, r, nodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetKnowledgeNode operation middleware
+func (siw *ServerInterfaceWrapper) GetKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "node_id" -------------
+	var nodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "node_id", chi.URLParam(r, "node_id"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetKnowledgeNode(w, r, nodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateKnowledgeNode operation middleware
+func (siw *ServerInterfaceWrapper) UpdateKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "node_id" -------------
+	var nodeId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "node_id", chi.URLParam(r, "node_id"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateKnowledgeNode(w, r, nodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListLearningPaths operation middleware
 func (siw *ServerInterfaceWrapper) ListLearningPaths(w http.ResponseWriter, r *http.Request) {
 
@@ -7105,46 +7605,6 @@ func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ReadinessCheck(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListSkills operation middleware
-func (siw *ServerInterfaceWrapper) ListSkills(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListSkills(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateSkill operation middleware
-func (siw *ServerInterfaceWrapper) CreateSkill(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateSkill(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7591,12 +8051,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.LinkExerciseToChallenge)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/concepts", wrapper.ListConcepts)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/concepts", wrapper.CreateConcept)
-	})
-	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes", wrapper.ListContentNodes)
 	})
 	r.Group(func(r chi.Router) {
@@ -7714,6 +8168,33 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/instruments/{instrument_id}", wrapper.UpdateInstrument)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/knowledge-edges", wrapper.ListKnowledgeEdges)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/knowledge-edges", wrapper.CreateKnowledgeEdge)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/knowledge-edges/{edge_id}", wrapper.DeleteKnowledgeEdge)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/knowledge-edges/{edge_id}", wrapper.UpdateKnowledgeEdge)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/knowledge-nodes", wrapper.ListKnowledgeNodes)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/knowledge-nodes", wrapper.CreateKnowledgeNode)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/knowledge-nodes/{node_id}", wrapper.DeleteKnowledgeNode)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/knowledge-nodes/{node_id}", wrapper.GetKnowledgeNode)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/knowledge-nodes/{node_id}", wrapper.UpdateKnowledgeNode)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/learning-paths", wrapper.ListLearningPaths)
 	})
 	r.Group(func(r chi.Router) {
@@ -7745,12 +8226,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/skills", wrapper.ListSkills)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/skills", wrapper.CreateSkill)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/course-enrollments", wrapper.ListMyCourseEnrollments)
@@ -8188,75 +8663,6 @@ type LinkExerciseToChallenge409JSONResponse ConflictError
 func (response LinkExerciseToChallenge409JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListConceptsRequestObject struct {
-}
-
-type ListConceptsResponseObject interface {
-	VisitListConceptsResponse(w http.ResponseWriter) error
-}
-
-type ListConcepts200JSONResponse []Concept
-
-func (response ListConcepts200JSONResponse) VisitListConceptsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListConcepts401JSONResponse UnauthorizedError
-
-func (response ListConcepts401JSONResponse) VisitListConceptsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateConceptRequestObject struct {
-	Body *CreateConceptJSONRequestBody
-}
-
-type CreateConceptResponseObject interface {
-	VisitCreateConceptResponse(w http.ResponseWriter) error
-}
-
-type CreateConcept201JSONResponse Concept
-
-func (response CreateConcept201JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateConcept400JSONResponse ValidationError
-
-func (response CreateConcept400JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateConcept401JSONResponse UnauthorizedError
-
-func (response CreateConcept401JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateConcept403JSONResponse ForbiddenError
-
-func (response CreateConcept403JSONResponse) VisitCreateConceptResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -9962,6 +10368,429 @@ func (response UpdateInstrument404JSONResponse) VisitUpdateInstrumentResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListKnowledgeEdgesRequestObject struct {
+	Params ListKnowledgeEdgesParams
+}
+
+type ListKnowledgeEdgesResponseObject interface {
+	VisitListKnowledgeEdgesResponse(w http.ResponseWriter) error
+}
+
+type ListKnowledgeEdges200JSONResponse []KnowledgeEdge
+
+func (response ListKnowledgeEdges200JSONResponse) VisitListKnowledgeEdgesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListKnowledgeEdges400JSONResponse ValidationError
+
+func (response ListKnowledgeEdges400JSONResponse) VisitListKnowledgeEdgesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListKnowledgeEdges401JSONResponse UnauthorizedError
+
+func (response ListKnowledgeEdges401JSONResponse) VisitListKnowledgeEdgesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeEdgeRequestObject struct {
+	Body *CreateKnowledgeEdgeJSONRequestBody
+}
+
+type CreateKnowledgeEdgeResponseObject interface {
+	VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error
+}
+
+type CreateKnowledgeEdge201JSONResponse KnowledgeEdge
+
+func (response CreateKnowledgeEdge201JSONResponse) VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeEdge400JSONResponse ValidationError
+
+func (response CreateKnowledgeEdge400JSONResponse) VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeEdge401JSONResponse UnauthorizedError
+
+func (response CreateKnowledgeEdge401JSONResponse) VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeEdge403JSONResponse ForbiddenError
+
+func (response CreateKnowledgeEdge403JSONResponse) VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeEdge409JSONResponse ConflictError
+
+func (response CreateKnowledgeEdge409JSONResponse) VisitCreateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeEdgeRequestObject struct {
+	EdgeId openapi_types.UUID `json:"edge_id"`
+}
+
+type DeleteKnowledgeEdgeResponseObject interface {
+	VisitDeleteKnowledgeEdgeResponse(w http.ResponseWriter) error
+}
+
+type DeleteKnowledgeEdge204Response struct {
+}
+
+func (response DeleteKnowledgeEdge204Response) VisitDeleteKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteKnowledgeEdge401JSONResponse UnauthorizedError
+
+func (response DeleteKnowledgeEdge401JSONResponse) VisitDeleteKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeEdge403JSONResponse ForbiddenError
+
+func (response DeleteKnowledgeEdge403JSONResponse) VisitDeleteKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeEdge404JSONResponse NotFoundError
+
+func (response DeleteKnowledgeEdge404JSONResponse) VisitDeleteKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeEdgeRequestObject struct {
+	EdgeId openapi_types.UUID `json:"edge_id"`
+	Body   *UpdateKnowledgeEdgeJSONRequestBody
+}
+
+type UpdateKnowledgeEdgeResponseObject interface {
+	VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error
+}
+
+type UpdateKnowledgeEdge200JSONResponse KnowledgeEdge
+
+func (response UpdateKnowledgeEdge200JSONResponse) VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeEdge400JSONResponse ValidationError
+
+func (response UpdateKnowledgeEdge400JSONResponse) VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeEdge401JSONResponse UnauthorizedError
+
+func (response UpdateKnowledgeEdge401JSONResponse) VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeEdge403JSONResponse ForbiddenError
+
+func (response UpdateKnowledgeEdge403JSONResponse) VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeEdge404JSONResponse NotFoundError
+
+func (response UpdateKnowledgeEdge404JSONResponse) VisitUpdateKnowledgeEdgeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListKnowledgeNodesRequestObject struct {
+	Params ListKnowledgeNodesParams
+}
+
+type ListKnowledgeNodesResponseObject interface {
+	VisitListKnowledgeNodesResponse(w http.ResponseWriter) error
+}
+
+type ListKnowledgeNodes200JSONResponse []KnowledgeNode
+
+func (response ListKnowledgeNodes200JSONResponse) VisitListKnowledgeNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListKnowledgeNodes400JSONResponse ValidationError
+
+func (response ListKnowledgeNodes400JSONResponse) VisitListKnowledgeNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListKnowledgeNodes401JSONResponse UnauthorizedError
+
+func (response ListKnowledgeNodes401JSONResponse) VisitListKnowledgeNodesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeNodeRequestObject struct {
+	Body *CreateKnowledgeNodeJSONRequestBody
+}
+
+type CreateKnowledgeNodeResponseObject interface {
+	VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error
+}
+
+type CreateKnowledgeNode201JSONResponse KnowledgeNode
+
+func (response CreateKnowledgeNode201JSONResponse) VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeNode400JSONResponse ValidationError
+
+func (response CreateKnowledgeNode400JSONResponse) VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeNode401JSONResponse UnauthorizedError
+
+func (response CreateKnowledgeNode401JSONResponse) VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeNode403JSONResponse ForbiddenError
+
+func (response CreateKnowledgeNode403JSONResponse) VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateKnowledgeNode409JSONResponse ConflictError
+
+func (response CreateKnowledgeNode409JSONResponse) VisitCreateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeNodeRequestObject struct {
+	NodeId openapi_types.UUID `json:"node_id"`
+}
+
+type DeleteKnowledgeNodeResponseObject interface {
+	VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error
+}
+
+type DeleteKnowledgeNode204Response struct {
+}
+
+func (response DeleteKnowledgeNode204Response) VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteKnowledgeNode401JSONResponse UnauthorizedError
+
+func (response DeleteKnowledgeNode401JSONResponse) VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeNode403JSONResponse ForbiddenError
+
+func (response DeleteKnowledgeNode403JSONResponse) VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeNode404JSONResponse NotFoundError
+
+func (response DeleteKnowledgeNode404JSONResponse) VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteKnowledgeNode409JSONResponse ConflictError
+
+func (response DeleteKnowledgeNode409JSONResponse) VisitDeleteKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetKnowledgeNodeRequestObject struct {
+	NodeId openapi_types.UUID `json:"node_id"`
+}
+
+type GetKnowledgeNodeResponseObject interface {
+	VisitGetKnowledgeNodeResponse(w http.ResponseWriter) error
+}
+
+type GetKnowledgeNode200JSONResponse KnowledgeNode
+
+func (response GetKnowledgeNode200JSONResponse) VisitGetKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetKnowledgeNode401JSONResponse UnauthorizedError
+
+func (response GetKnowledgeNode401JSONResponse) VisitGetKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetKnowledgeNode404JSONResponse NotFoundError
+
+func (response GetKnowledgeNode404JSONResponse) VisitGetKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNodeRequestObject struct {
+	NodeId openapi_types.UUID `json:"node_id"`
+	Body   *UpdateKnowledgeNodeJSONRequestBody
+}
+
+type UpdateKnowledgeNodeResponseObject interface {
+	VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error
+}
+
+type UpdateKnowledgeNode200JSONResponse KnowledgeNode
+
+func (response UpdateKnowledgeNode200JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNode400JSONResponse ValidationError
+
+func (response UpdateKnowledgeNode400JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNode401JSONResponse UnauthorizedError
+
+func (response UpdateKnowledgeNode401JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNode403JSONResponse ForbiddenError
+
+func (response UpdateKnowledgeNode403JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNode404JSONResponse NotFoundError
+
+func (response UpdateKnowledgeNode404JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateKnowledgeNode409JSONResponse ConflictError
+
+func (response UpdateKnowledgeNode409JSONResponse) VisitUpdateKnowledgeNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListLearningPathsRequestObject struct {
 	Params ListLearningPathsParams
 }
@@ -10486,75 +11315,6 @@ type ReadinessCheck503JSONResponse HealthStatus
 func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(503)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListSkillsRequestObject struct {
-}
-
-type ListSkillsResponseObject interface {
-	VisitListSkillsResponse(w http.ResponseWriter) error
-}
-
-type ListSkills200JSONResponse []Skill
-
-func (response ListSkills200JSONResponse) VisitListSkillsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListSkills401JSONResponse UnauthorizedError
-
-func (response ListSkills401JSONResponse) VisitListSkillsResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateSkillRequestObject struct {
-	Body *CreateSkillJSONRequestBody
-}
-
-type CreateSkillResponseObject interface {
-	VisitCreateSkillResponse(w http.ResponseWriter) error
-}
-
-type CreateSkill201JSONResponse Skill
-
-func (response CreateSkill201JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateSkill400JSONResponse ValidationError
-
-func (response CreateSkill400JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateSkill401JSONResponse UnauthorizedError
-
-func (response CreateSkill401JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateSkill403JSONResponse ForbiddenError
-
-func (response CreateSkill403JSONResponse) VisitCreateSkillResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -11141,12 +11901,6 @@ type StrictServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(ctx context.Context, request LinkExerciseToChallengeRequestObject) (LinkExerciseToChallengeResponseObject, error)
-	// List all known concepts
-	// (GET /concepts)
-	ListConcepts(ctx context.Context, request ListConceptsRequestObject) (ListConceptsResponseObject, error)
-	// Create a concept node
-	// (POST /concepts)
-	CreateConcept(ctx context.Context, request CreateConceptRequestObject) (CreateConceptResponseObject, error)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(ctx context.Context, request ListContentNodesRequestObject) (ListContentNodesResponseObject, error)
@@ -11264,6 +12018,33 @@ type StrictServerInterface interface {
 	// Replace an instrument's names and default voice
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(ctx context.Context, request UpdateInstrumentRequestObject) (UpdateInstrumentResponseObject, error)
+	// List knowledge edges
+	// (GET /knowledge-edges)
+	ListKnowledgeEdges(ctx context.Context, request ListKnowledgeEdgesRequestObject) (ListKnowledgeEdgesResponseObject, error)
+	// Link two knowledge nodes
+	// (POST /knowledge-edges)
+	CreateKnowledgeEdge(ctx context.Context, request CreateKnowledgeEdgeRequestObject) (CreateKnowledgeEdgeResponseObject, error)
+	// Delete a knowledge edge
+	// (DELETE /knowledge-edges/{edge_id})
+	DeleteKnowledgeEdge(ctx context.Context, request DeleteKnowledgeEdgeRequestObject) (DeleteKnowledgeEdgeResponseObject, error)
+	// Change a requires edge's level
+	// (PATCH /knowledge-edges/{edge_id})
+	UpdateKnowledgeEdge(ctx context.Context, request UpdateKnowledgeEdgeRequestObject) (UpdateKnowledgeEdgeResponseObject, error)
+	// List knowledge nodes
+	// (GET /knowledge-nodes)
+	ListKnowledgeNodes(ctx context.Context, request ListKnowledgeNodesRequestObject) (ListKnowledgeNodesResponseObject, error)
+	// Create a knowledge node
+	// (POST /knowledge-nodes)
+	CreateKnowledgeNode(ctx context.Context, request CreateKnowledgeNodeRequestObject) (CreateKnowledgeNodeResponseObject, error)
+	// Delete a knowledge node
+	// (DELETE /knowledge-nodes/{node_id})
+	DeleteKnowledgeNode(ctx context.Context, request DeleteKnowledgeNodeRequestObject) (DeleteKnowledgeNodeResponseObject, error)
+	// Get a knowledge node
+	// (GET /knowledge-nodes/{node_id})
+	GetKnowledgeNode(ctx context.Context, request GetKnowledgeNodeRequestObject) (GetKnowledgeNodeResponseObject, error)
+	// Rename, describe or move a knowledge node
+	// (PATCH /knowledge-nodes/{node_id})
+	UpdateKnowledgeNode(ctx context.Context, request UpdateKnowledgeNodeRequestObject) (UpdateKnowledgeNodeResponseObject, error)
 	// List learning paths for authoring
 	// (GET /learning-paths)
 	ListLearningPaths(ctx context.Context, request ListLearningPathsRequestObject) (ListLearningPathsResponseObject, error)
@@ -11297,12 +12078,6 @@ type StrictServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
-	// List all known skills
-	// (GET /skills)
-	ListSkills(ctx context.Context, request ListSkillsRequestObject) (ListSkillsResponseObject, error)
-	// Create a skill node
-	// (POST /skills)
-	CreateSkill(ctx context.Context, request CreateSkillRequestObject) (CreateSkillResponseObject, error)
 	// List the authenticated student's course enrollments
 	// (GET /students/me/course-enrollments)
 	ListMyCourseEnrollments(ctx context.Context, request ListMyCourseEnrollmentsRequestObject) (ListMyCourseEnrollmentsResponseObject, error)
@@ -11635,61 +12410,6 @@ func (sh *strictHandler) LinkExerciseToChallenge(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LinkExerciseToChallengeResponseObject); ok {
 		if err := validResponse.VisitLinkExerciseToChallengeResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListConcepts operation middleware
-func (sh *strictHandler) ListConcepts(w http.ResponseWriter, r *http.Request) {
-	var request ListConceptsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListConcepts(ctx, request.(ListConceptsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListConcepts")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListConceptsResponseObject); ok {
-		if err := validResponse.VisitListConceptsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateConcept operation middleware
-func (sh *strictHandler) CreateConcept(w http.ResponseWriter, r *http.Request) {
-	var request CreateConceptRequestObject
-
-	var body CreateConceptJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateConcept(ctx, request.(CreateConceptRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateConcept")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateConceptResponseObject); ok {
-		if err := validResponse.VisitCreateConceptResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -12790,6 +13510,264 @@ func (sh *strictHandler) UpdateInstrument(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ListKnowledgeEdges operation middleware
+func (sh *strictHandler) ListKnowledgeEdges(w http.ResponseWriter, r *http.Request, params ListKnowledgeEdgesParams) {
+	var request ListKnowledgeEdgesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListKnowledgeEdges(ctx, request.(ListKnowledgeEdgesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListKnowledgeEdges")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListKnowledgeEdgesResponseObject); ok {
+		if err := validResponse.VisitListKnowledgeEdgesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateKnowledgeEdge operation middleware
+func (sh *strictHandler) CreateKnowledgeEdge(w http.ResponseWriter, r *http.Request) {
+	var request CreateKnowledgeEdgeRequestObject
+
+	var body CreateKnowledgeEdgeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateKnowledgeEdge(ctx, request.(CreateKnowledgeEdgeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateKnowledgeEdge")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateKnowledgeEdgeResponseObject); ok {
+		if err := validResponse.VisitCreateKnowledgeEdgeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteKnowledgeEdge operation middleware
+func (sh *strictHandler) DeleteKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID) {
+	var request DeleteKnowledgeEdgeRequestObject
+
+	request.EdgeId = edgeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteKnowledgeEdge(ctx, request.(DeleteKnowledgeEdgeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteKnowledgeEdge")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteKnowledgeEdgeResponseObject); ok {
+		if err := validResponse.VisitDeleteKnowledgeEdgeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateKnowledgeEdge operation middleware
+func (sh *strictHandler) UpdateKnowledgeEdge(w http.ResponseWriter, r *http.Request, edgeId openapi_types.UUID) {
+	var request UpdateKnowledgeEdgeRequestObject
+
+	request.EdgeId = edgeId
+
+	var body UpdateKnowledgeEdgeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateKnowledgeEdge(ctx, request.(UpdateKnowledgeEdgeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateKnowledgeEdge")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateKnowledgeEdgeResponseObject); ok {
+		if err := validResponse.VisitUpdateKnowledgeEdgeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListKnowledgeNodes operation middleware
+func (sh *strictHandler) ListKnowledgeNodes(w http.ResponseWriter, r *http.Request, params ListKnowledgeNodesParams) {
+	var request ListKnowledgeNodesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListKnowledgeNodes(ctx, request.(ListKnowledgeNodesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListKnowledgeNodes")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListKnowledgeNodesResponseObject); ok {
+		if err := validResponse.VisitListKnowledgeNodesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateKnowledgeNode operation middleware
+func (sh *strictHandler) CreateKnowledgeNode(w http.ResponseWriter, r *http.Request) {
+	var request CreateKnowledgeNodeRequestObject
+
+	var body CreateKnowledgeNodeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateKnowledgeNode(ctx, request.(CreateKnowledgeNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateKnowledgeNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateKnowledgeNodeResponseObject); ok {
+		if err := validResponse.VisitCreateKnowledgeNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteKnowledgeNode operation middleware
+func (sh *strictHandler) DeleteKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	var request DeleteKnowledgeNodeRequestObject
+
+	request.NodeId = nodeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteKnowledgeNode(ctx, request.(DeleteKnowledgeNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteKnowledgeNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteKnowledgeNodeResponseObject); ok {
+		if err := validResponse.VisitDeleteKnowledgeNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetKnowledgeNode operation middleware
+func (sh *strictHandler) GetKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	var request GetKnowledgeNodeRequestObject
+
+	request.NodeId = nodeId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetKnowledgeNode(ctx, request.(GetKnowledgeNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetKnowledgeNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetKnowledgeNodeResponseObject); ok {
+		if err := validResponse.VisitGetKnowledgeNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateKnowledgeNode operation middleware
+func (sh *strictHandler) UpdateKnowledgeNode(w http.ResponseWriter, r *http.Request, nodeId openapi_types.UUID) {
+	var request UpdateKnowledgeNodeRequestObject
+
+	request.NodeId = nodeId
+
+	var body UpdateKnowledgeNodeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateKnowledgeNode(ctx, request.(UpdateKnowledgeNodeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateKnowledgeNode")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateKnowledgeNodeResponseObject); ok {
+		if err := validResponse.VisitUpdateKnowledgeNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListLearningPaths operation middleware
 func (sh *strictHandler) ListLearningPaths(w http.ResponseWriter, r *http.Request, params ListLearningPathsParams) {
 	var request ListLearningPathsRequestObject
@@ -13084,61 +14062,6 @@ func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReadinessCheckResponseObject); ok {
 		if err := validResponse.VisitReadinessCheckResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListSkills operation middleware
-func (sh *strictHandler) ListSkills(w http.ResponseWriter, r *http.Request) {
-	var request ListSkillsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListSkills(ctx, request.(ListSkillsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListSkills")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListSkillsResponseObject); ok {
-		if err := validResponse.VisitListSkillsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateSkill operation middleware
-func (sh *strictHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
-	var request CreateSkillRequestObject
-
-	var body CreateSkillJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateSkill(ctx, request.(CreateSkillRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateSkill")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateSkillResponseObject); ok {
-		if err := validResponse.VisitCreateSkillResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
