@@ -124,7 +124,7 @@ func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, calle
 	if err := s.diagrams.Create(ctx, diagram); err != nil {
 		return domain.Diagram{}, err
 	}
-	return diagram, nil
+	return s.diagrams.GetByID(ctx, diagram.ID)
 }
 
 // recheckClassification checks updated's skills and concepts against its
@@ -337,7 +337,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err := s.diagrams.Update(ctx, updated); err != nil {
 		return domain.Diagram{}, err
 	}
-	return updated, nil
+	return s.diagrams.GetByID(ctx, updated.ID)
 }
 
 // updatedNames returns update's names, or current's when update leaves them out.

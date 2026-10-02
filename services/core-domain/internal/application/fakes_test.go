@@ -1413,6 +1413,21 @@ func (f *fakeKnowledgeNodeRepository) GetByID(_ context.Context, id string) (dom
 	return node, nil
 }
 
+// joined returns each of nodes as stored here, keeping one this repository
+// doesn't hold as given.
+func (f *fakeKnowledgeNodeRepository) joined(nodes []domain.KnowledgeNode) []domain.KnowledgeNode {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]domain.KnowledgeNode, len(nodes))
+	for i, node := range nodes {
+		if stored, ok := f.byID[node.ID]; ok {
+			node = stored
+		}
+		result[i] = node
+	}
+	return result
+}
+
 func (f *fakeKnowledgeNodeRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1723,9 +1738,12 @@ func (f *fakeVoiceRepository) List(_ context.Context) ([]domain.Voice, error) {
 }
 
 // fakeDiagramRepository is a minimal in-memory ports.DiagramRepository.
+// With knowledge set, GetByID joins each skill and concept in from it, as the
+// real repository does; otherwise they stay as stored.
 type fakeDiagramRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.Diagram
+	mu        sync.Mutex
+	byID      map[string]domain.Diagram
+	knowledge *fakeKnowledgeNodeRepository
 }
 
 func newFakeDiagramRepository() *fakeDiagramRepository {
@@ -1745,6 +1763,10 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	diagram, ok := f.byID[id]
 	if !ok {
 		return domain.Diagram{}, domain.ErrNotFound
+	}
+	if f.knowledge != nil {
+		diagram.Skills = f.knowledge.joined(diagram.Skills)
+		diagram.Concepts = f.knowledge.joined(diagram.Concepts)
 	}
 	return diagram, nil
 }

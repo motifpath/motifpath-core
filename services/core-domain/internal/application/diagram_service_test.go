@@ -37,6 +37,7 @@ func newDiagramFixture() diagramFixture {
 	}
 	knowledge := seededKnowledgeNodeRepository()
 	knowledge.put(domain.KnowledgeNode{ID: "pedal-sustain", Kind: domain.KnowledgeNodeKindSkill, Key: "pedal-sustain", InstrumentIDs: []string{"piano"}})
+	diagrams.knowledge = knowledge
 	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, idSequence(), func() time.Time { return fixedCreatedAt })
 	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, svc: svc}
 }
@@ -67,6 +68,20 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		assert.NotEqual(t, got.Positions[0].ID, got.Positions[1].ID)
 		_, err = f.diagrams.GetByID(ctx, got.ID)
 		require.NoError(t, err)
+	})
+
+	t.Run("the created diagram carries its full skills and concepts", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Minor Pentatonic"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+
+		require.NoError(t, err)
+		require.Len(t, got.Skills, 1)
+		assert.Equal(t, domain.KnowledgeNodeKindSkill, got.Skills[0].Kind)
+		assert.Equal(t, "skill-1", got.Skills[0].Key)
+		require.Len(t, got.Concepts, 1)
+		assert.Equal(t, domain.KnowledgeNodeKindConcept, got.Concepts[0].Kind)
+		assert.Equal(t, "concept-1", got.Concepts[0].Key)
 	})
 
 	t.Run("a client-supplied position id is kept", func(t *testing.T) {
@@ -357,6 +372,21 @@ func TestDiagramService_UpdateDiagram(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"skill-2"}, got.SkillIDs())
 		assert.Equal(t, []string{"concept-2"}, got.ConceptIDs())
+	})
+
+	t.Run("the updated diagram carries its full skills and concepts", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := seed(t, f)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{SkillIDs: []string{"skill-2"}, ConceptIDs: []string{"concept-2"}})
+
+		require.NoError(t, err)
+		require.Len(t, got.Skills, 1)
+		assert.Equal(t, domain.KnowledgeNodeKindSkill, got.Skills[0].Kind)
+		assert.Equal(t, "skill-2", got.Skills[0].Key)
+		require.Len(t, got.Concepts, 1)
+		assert.Equal(t, domain.KnowledgeNodeKindConcept, got.Concepts[0].Kind)
+		assert.Equal(t, "concept-2", got.Concepts[0].Key)
 	})
 
 	t.Run("wrong-shape positions are rejected and the diagram is unchanged", func(t *testing.T) {
