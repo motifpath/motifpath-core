@@ -54,11 +54,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
-	if err != nil {
-		return rollback(tx, err)
-	}
-	instrumentIDs, err := parseUUIDs(ex.InstrumentIDs)
+	edges, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -80,10 +76,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableDiagramRef(diagramRefJSON).
 		SetNillableDiagramStackRef(diagramStackRefJSON).
 		SetCreatedAt(ex.CreatedAt).
-		AddLanguageIDs(langIDs...).
-		AddSkillIDs(skillIDs...).
-		AddConceptIDs(conceptIDs...).
-		AddInstrumentIDs(instrumentIDs...)
+		AddLanguageIDs(edges.languages...).
+		AddSkillIDs(edges.skills...).
+		AddConceptIDs(edges.concepts...).
+		AddInstrumentIDs(edges.instruments...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -101,28 +97,35 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	return tx.Commit()
 }
 
+// resolveExerciseEdgeIDs resolves ex's languages, skills, concepts and
+// instruments to the row ids Create/Update need to (re)establish those
+// edges, shared by both since they resolve the same edges the same way.
+func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (exerciseEdgeIDs, error) {
+	var ids exerciseEdgeIDs
+	var err error
+	if ids.languages, err = languageIDsByCode(ctx, tx.Language, ex.Languages); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.skills, err = parseUUIDs(nodeIDsOf(ex.Skills)); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.concepts, err = parseUUIDs(nodeIDsOf(ex.Concepts)); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.instruments, err = parseUUIDs(ex.InstrumentIDs); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	return ids, nil
+}
+
+// exerciseEdgeIDs are the rows an exercise links to.
+type exerciseEdgeIDs struct {
+	languages, skills, concepts, instruments []uuid.UUID
+}
+
 // buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
 // opt, shared by Create and Update since both fully (re)establish an
 // exercise's options the same way.
-// resolveExerciseEdgeIDs resolves ex's Languages/Skills/Concepts to the row
-// ids Create/Update need to (re)establish those edges, shared by both since
-// they resolve the same three edges the same way.
-func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (langIDs, skillIDs, conceptIDs []uuid.UUID, err error) {
-	langIDs, err = languageIDsByCode(ctx, tx.Language, ex.Languages)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	skillIDs, err = parseUUIDs(nodeIDsOf(ex.Skills))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	conceptIDs, err = parseUUIDs(nodeIDsOf(ex.Concepts))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return langIDs, skillIDs, conceptIDs, nil
-}
-
 func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
 	builders := make([]*ent.ExerciseOptionCreate, len(options))
 	for i, opt := range options {
@@ -550,11 +553,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
-	if err != nil {
-		return rollback(tx, err)
-	}
-	instrumentIDs, err := parseUUIDs(ex.InstrumentIDs)
+	edges, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -566,13 +565,13 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		ClearLanguages().
-		AddLanguageIDs(langIDs...).
+		AddLanguageIDs(edges.languages...).
 		ClearSkills().
-		AddSkillIDs(skillIDs...).
+		AddSkillIDs(edges.skills...).
 		ClearConcepts().
-		AddConceptIDs(conceptIDs...).
+		AddConceptIDs(edges.concepts...).
 		ClearInstruments().
-		AddInstrumentIDs(instrumentIDs...)
+		AddInstrumentIDs(edges.instruments...)
 	applyExerciseUpdateNillableJSON(updateBuilder, remediationJSON, diagramRefJSON, diagramStackRefJSON)
 	_, err = updateBuilder.Save(ctx)
 	if err != nil {

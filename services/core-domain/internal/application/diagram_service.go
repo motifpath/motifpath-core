@@ -127,6 +127,15 @@ func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, calle
 	return diagram, nil
 }
 
+// recheckClassification checks updated's skills and concepts against its
+// instruments when an update changed either of them.
+func (s *DiagramService) recheckClassification(ctx context.Context, changed bool, updated domain.Diagram) error {
+	if !changed {
+		return nil
+	}
+	return checkClassificationSuits(ctx, s.knowledge, updated.SkillIDs(), updated.ConceptIDs(), updated.InstrumentIDs)
+}
+
 // updatedInstrumentIDs returns update's compatible instruments once they pass
 // validation, or current's when update leaves them out.
 func (s *DiagramService) updatedInstrumentIDs(ctx context.Context, layout domain.Instrument, current domain.Diagram, update DiagramUpdate) ([]string, error) {
@@ -321,10 +330,8 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if updated.InstrumentIDs, err = s.updatedInstrumentIDs(ctx, instrument, current, update); err != nil {
 		return domain.Diagram{}, err
 	}
-	if classificationChanged || update.InstrumentIDs != nil {
-		if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, updated.InstrumentIDs); err != nil {
-			return domain.Diagram{}, err
-		}
+	if err := s.recheckClassification(ctx, classificationChanged || update.InstrumentIDs != nil, updated); err != nil {
+		return domain.Diagram{}, err
 	}
 
 	if err := s.diagrams.Update(ctx, updated); err != nil {

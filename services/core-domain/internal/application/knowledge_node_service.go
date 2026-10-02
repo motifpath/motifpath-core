@@ -100,19 +100,8 @@ func (s *KnowledgeNodeService) Update(ctx context.Context, caller domain.User, i
 	if err != nil {
 		return domain.KnowledgeNode{}, err
 	}
-	if input.Names != nil {
-		if node, err = node.Rename(input.Names, offered); err != nil {
-			return domain.KnowledgeNode{}, err
-		}
-	}
-	if input.Descriptions.Set {
-		var descriptions map[string]string
-		if input.Descriptions.Value != nil {
-			descriptions = *input.Descriptions.Value
-		}
-		if node, err = node.Describe(descriptions, offered); err != nil {
-			return domain.KnowledgeNode{}, err
-		}
+	if node, err = applyText(node, input, offered); err != nil {
+		return domain.KnowledgeNode{}, err
 	}
 	if input.ParentID.Set {
 		if err := s.checkMove(ctx, node, input.ParentID.Value); err != nil {
@@ -129,6 +118,25 @@ func (s *KnowledgeNodeService) Update(ctx context.Context, caller domain.User, i
 		return domain.KnowledgeNode{}, err
 	}
 	return node, nil
+}
+
+// applyText returns node with input's names and descriptions, those it
+// sets, in every language of offered.
+func applyText(node domain.KnowledgeNode, input UpdateKnowledgeNodeInput, offered []string) (domain.KnowledgeNode, error) {
+	var err error
+	if input.Names != nil {
+		if node, err = node.Rename(input.Names, offered); err != nil {
+			return domain.KnowledgeNode{}, err
+		}
+	}
+	if !input.Descriptions.Set {
+		return node, nil
+	}
+	var descriptions map[string]string
+	if input.Descriptions.Value != nil {
+		descriptions = *input.Descriptions.Value
+	}
+	return node.Describe(descriptions, offered)
 }
 
 // checkParent returns a validation error on "parent_id" unless parentID is
