@@ -32,8 +32,7 @@ type pipeline struct {
 	challenge   *application.ChallengeService
 	path        *application.LearningPathService
 	studentPath *application.StudentPathService
-	skills      *application.SkillService
-	concepts    *application.ConceptService
+	knowledge   *application.KnowledgeNodeService
 	users       *repo.EntUserRepository
 	mongoDB     *mongo.Database
 }
@@ -73,34 +72,35 @@ func setupPipeline(t *testing.T) *pipeline {
 	courseVersions := repo.NewEntCourseVersionRepository(entClient)
 	users := repo.NewEntUserRepository(entClient)
 	completion := repo.NewMongoCompletionStateReader(mongoDB)
-	skillRepo := repo.NewEntSkillRepository(entClient)
-	conceptRepo := repo.NewEntConceptRepository(entClient)
+	knowledgeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 
 	return &pipeline{
-		content:     application.NewContentService(nodes, expanded, skillRepo, conceptRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), newID, now),
+		content:     application.NewContentService(nodes, expanded, knowledgeRepo, versions, diagramRepo, instrumentRepo, repo.NewEntVoiceRepository(entClient), newID, now),
 		challenge:   application.NewChallengeService(nodes, challenges, exercises, newID, now),
 		path:        application.NewLearningPathService(nodes, paths, courseVersions, versions, repo.NewEntLanguageRepository(entClient), users, instrumentRepo, newID, now),
 		studentPath: application.NewStudentPathService(users, paths, studentPaths, versions, learningState, courseEnrollments, courseVersions, nodes, exercises, completion, newID, now),
-		skills:      application.NewSkillService(skillRepo, newID),
-		concepts:    application.NewConceptService(conceptRepo, newID),
+		knowledge:   application.NewKnowledgeNodeService(knowledgeRepo, instrumentRepo, repo.NewEntLanguageRepository(entClient), newID),
 		users:       users,
 		mongoDB:     mongoDB,
 	}
 }
 
-// seedClassification creates a fresh root Skill and Concept (owned by
-// teacher) for a test's content node/challenge to reference — the pipeline
-// exercises real membership validation end to end, so ids must reference
-// real rows, not arbitrary uuids.
-func seedClassification(t *testing.T, ctx context.Context, p *pipeline, teacher domain.User, name string) (skillID, conceptID string) {
+// seedClassification creates a fresh root skill and concept, as an admin,
+// for a test's content node/challenge to reference — the pipeline exercises
+// real membership validation end to end, so ids must reference real rows,
+// not arbitrary uuids.
+func seedClassification(t *testing.T, ctx context.Context, p *pipeline, _ domain.User, name string) (skillID, conceptID string) {
 	t.Helper()
-	skill, err := p.skills.CreateSkill(ctx, teacher, name+"-skill-"+uuid.NewString(), nil)
-	require.NoError(t, err)
-	concept, err := p.concepts.CreateConcept(ctx, teacher, name+"-concept-"+uuid.NewString(), nil)
-	require.NoError(t, err)
-	return skill.ID, concept.ID
+	admin := domain.User{ID: uuid.NewString(), Role: domain.RoleAdmin}
+	create := func(kind domain.KnowledgeNodeKind) string {
+		key := name + "-" + string(kind) + "-" + uuid.NewString()
+		node, err := p.knowledge.Create(ctx, admin, application.CreateKnowledgeNodeInput{Kind: kind, Key: key, Names: map[string]string{"en": key}})
+		require.NoError(t, err)
+		return node.ID
+	}
+	return create(domain.KnowledgeNodeKindSkill), create(domain.KnowledgeNodeKindConcept)
 }
 
 func TestCoreDomainPipeline_CreateAssignAndViewPath(t *testing.T) {

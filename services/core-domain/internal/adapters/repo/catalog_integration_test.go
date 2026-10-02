@@ -51,7 +51,7 @@ func TestBasicCatalog(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(raw, &entries))
 	six := 6
-	instrument, err := domain.NewInstrument(uuid.NewString(), map[string]string{"en": "Guitar", "pt_BR": "Violão"}, []string{"en", "pt_BR"}, domain.InstrumentFamilyFretted, &six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, domain.Voice{ID: "acoustic-guitar", Family: domain.InstrumentFamilyFretted})
+	instrument, err := domain.NewInstrument(uuid.NewString(), map[string]string{"en": "Acoustic guitar", "pt_BR": "Violão"}, []string{"en", "pt_BR"}, domain.InstrumentFamilyFretted, &six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, domain.Voice{ID: "acoustic-guitar", Family: domain.InstrumentFamilyFretted})
 	require.NoError(t, err)
 	owner := "77d0239a-8d28-5c95-bc6e-53d59f7f84a8"
 	positionsCount := 0
@@ -70,7 +70,7 @@ func TestBasicCatalog(t *testing.T) {
 	}
 	db := startMigrationPostgres(t, ctx)
 	for _, file := range migrationFiles(t) {
-		if filepath.Base(file) == "20261001000000_basic_guitar_catalog.up.sql" {
+		if filepath.Base(file) == "20261002123500_basic_guitar_catalog.up.sql" {
 			continue
 		}
 		contents, err := os.ReadFile(file)
@@ -78,7 +78,7 @@ func TestBasicCatalog(t *testing.T) {
 		_, err = db.ExecContext(ctx, string(contents))
 		require.NoError(t, err, file)
 	}
-	sqlBytes, err := os.ReadFile(filepath.Join(root, "services/core-domain/internal/adapters/repo/ent/migrate/migrations/20261001000000_basic_guitar_catalog.up.sql"))
+	sqlBytes, err := os.ReadFile(filepath.Join(root, "services/core-domain/internal/adapters/repo/ent/migrate/migrations/20261002123500_basic_guitar_catalog.up.sql"))
 	require.NoError(t, err)
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
@@ -92,11 +92,18 @@ func TestBasicCatalog(t *testing.T) {
 	require.Equal(t, "admin", role)
 	require.Equal(t, "MotifPath Catalog", displayName)
 	require.Equal(t, "en", locale)
-	var catalogInstruments int
-	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(DISTINCT d.instrument_id) FROM diagrams d JOIN instruments i ON i.id=d.instrument_id WHERE i.names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)").Scan(&catalogInstruments))
-	require.Equal(t, 1, catalogInstruments)
+	var layouts []string
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT instrument_id::text FROM diagrams")
+	require.NoError(t, err)
+	for rows.Next() {
+		var id string
+		require.NoError(t, rows.Scan(&id))
+		layouts = append(layouts, id)
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, []string{acousticGuitarID}, layouts)
 	var linkedInstruments int
-	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagram_instruments di JOIN instruments i ON i.id=di.instrument_id WHERE i.names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)").Scan(&linkedInstruments))
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagram_instruments WHERE instrument_id IN ($1, $2)", acousticGuitarID, electricGuitarID).Scan(&linkedInstruments))
 	require.Equal(t, len(entries)*2, linkedInstruments)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagrams").Scan(&count))
 	require.Equal(t, len(entries), count)

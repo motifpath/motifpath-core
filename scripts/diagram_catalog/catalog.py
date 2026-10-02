@@ -79,9 +79,25 @@ def stable_id(key):
 SYSTEM_CATALOG_USER_ID = stable_id('user/system-catalog')
 SYSTEM_CATALOG_CLERK_USER_ID = 'system:catalog'
 SYSTEM_CATALOG_DISPLAY_NAME = 'MotifPath Catalog'
-INSTRUMENTS = {
-    'guitar': {'en': 'Guitar', 'pt_BR': 'Violão'},
-    'electric-guitar': {'en': 'Electric guitar', 'pt_BR': 'Guitarra elétrica'},
+# Every diagram's layout instrument; it is also linked to every key in its
+# instruments. The catalog instruments install before this catalog, with these
+# fixed IDs (scripts/knowledge_map).
+LAYOUT_INSTRUMENT = 'guitar'
+# Each family's skill and concept, by knowledge map key. The map installs
+# before this catalog; the catalog never creates nodes of its own.
+DIAGRAM_CLASSIFICATION = {
+    'scale': ('play-scale-positions', 'scales'),
+    '3nps': ('play-scale-positions', 'scales'),
+    'caged-window': ('play-scale-positions', 'scales'),
+    'substitution': ('play-scale-positions', 'scales'),
+    'pentatonic-box': ('play-pentatonic-positions', 'pentatonic-shapes'),
+    'caged': ('map-fretboard-caged', 'caged-system'),
+    'arpeggio': ('play-arpeggios', 'chords'),
+    'chromatic': ('find-notes', 'notes-fretboard'),
+    'root': ('find-notes', 'notes-fretboard'),
+    'interval-structure': ('improvisation', 'scales'),
+    'triad-pair': ('improvisation', 'scales'),
+    'digital-pattern': ('improvisation', 'scales'),
 }
 
 
@@ -276,51 +292,34 @@ def render_sql(entries):
          "-- Each assertion deliberately divides by zero when its precondition is false.",
          "SELECT 1 / (SELECT CASE WHEN EXISTS (SELECT 1 FROM languages WHERE code='en') AND EXISTS (SELECT 1 FROM languages WHERE code='pt_BR') AND NOT EXISTS (SELECT 1 FROM languages WHERE code NOT IN ('en','pt_BR','any')) THEN 1 ELSE 0 END) AS catalog_translations_required;",
          "SELECT 1 / (SELECT CASE WHEN (NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+" OR clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+")) OR EXISTS (SELECT 1 FROM users u JOIN languages l ON l.id=u.locale_id WHERE u.id="+sql_text(SYSTEM_CATALOG_USER_ID)+" AND u.clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+" AND u.role='admin' AND u.display_name="+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+" AND l.code='en') THEN 1 ELSE 0 END) AS system_catalog_profile_compatible;",
-         "INSERT INTO users (id,clerk_user_id,role,display_name,locale_id,registered_at) SELECT "+sql_text(SYSTEM_CATALOG_USER_ID)+","+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+",'admin',"+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+",id,'2026-10-01T00:00:00Z' FROM languages WHERE code='en' AND NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+");",
-         "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM instruments WHERE names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)) <= 2 THEN 1 ELSE 0 END) AS unambiguous_catalog_instruments_required;",
-         "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name='Scales' AND parent_id IS NULL) <= 1 AND (SELECT count(*) FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_catalog_classification_required;",
-         "INSERT INTO skills (id,name) SELECT '"+stable_id('skill/scales')+"','Scales' WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name='Scales' AND parent_id IS NULL);",
-         "INSERT INTO concepts (id,name) SELECT '"+stable_id('concept/fretboard-patterns')+"','Fretboard patterns' WHERE NOT EXISTS (SELECT 1 FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL);"]
-    for key, names in INSTRUMENTS.items():
-        names_json = sql_text(compact(names)) + '::jsonb'
-        sql.append("INSERT INTO instruments (id,names,family,string_count,tuning,default_voice_id) SELECT "+sql_text(stable_id('instrument/'+key))+","+names_json+",'fretted',6,'[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]','acoustic-guitar' WHERE NOT EXISTS (SELECT 1 FROM instruments WHERE names="+names_json+");")
-    for skill in ['Chords', 'Arpeggios', 'Improvisation', 'Fretboard navigation']:
-        sql.append("SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_skill_required;")
-        sql.append("INSERT INTO skills (id,name) SELECT "+sql_text(stable_id('skill/'+skill))+","+sql_text(skill)+" WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL);")
-
+         "INSERT INTO users (id,clerk_user_id,role,display_name,locale_id,registered_at) SELECT "+sql_text(SYSTEM_CATALOG_USER_ID)+","+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+",'admin',"+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+",id,'2026-10-01T00:00:00Z' FROM languages WHERE code='en' AND NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+");"]
     diagrams = []
     diagram_instruments = []
     positions = []
     classifications = []
     for e in entries:
-        instrument_names = sql_text(compact(INSTRUMENTS['guitar'])) + '::jsonb'
-        instrument_id = "(SELECT id FROM instruments WHERE names="+instrument_names+" AND family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)"
-        values=[sql_text(e['diagram_id']), instrument_id,sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
+        values=[sql_text(e['diagram_id']), sql_text(stable_id('instrument/'+LAYOUT_INSTRUMENT)),sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
         diagrams.append('('+','.join(values)+')')
         for key in e['instruments']:
-            compatible_names = sql_text(compact(INSTRUMENTS[key])) + '::jsonb'
-            compatible_id = "(SELECT id FROM instruments WHERE names="+compatible_names+" AND family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)"
-            diagram_instruments.append('('+sql_text(e['diagram_id'])+'::uuid,'+compatible_id+')')
+            diagram_instruments.append('('+sql_text(e['diagram_id'])+','+sql_text(stable_id('instrument/'+key))+",'2026-10-01T00:00:00Z')")
         for ordinal,p in enumerate(e['positions']):
             positions.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
-        skill = 'Chords' if e['family'] in ['caged','triad-inversion','seventh-inversion','drop-2','drop-3','drop-2-4','shell'] else 'Arpeggios' if e['family']=='arpeggio' else 'Improvisation' if e['tier']=='C' else 'Fretboard navigation' if e['family'] in ['root','chromatic'] else 'Scales'
-        classifications.append((e['diagram_id'], skill))
+        skill, concept = DIAGRAM_CLASSIFICATION[e['family']]
+        classifications.append((e['diagram_id'], stable_id('knowledge-node/'+skill), stable_id('knowledge-node/'+concept)))
     for group in batches(diagrams, 250):
         sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(group)+';')
     for group in batches(diagram_instruments, 1000):
-        sql.append('INSERT INTO diagram_instruments (diagram_id,instrument_id) VALUES '+','.join(group)+';')
+        sql.append('INSERT INTO diagram_instruments (diagram_id,instrument_id,linked_at) VALUES '+','.join(group)+';')
     for group in batches(positions, 1000):
         sql.append('INSERT INTO positions (id,diagram_id,ordinal,interval,note_name,shape,color,string_number,fret) VALUES '+','.join(group)+';')
     for group in batches(classifications, 1000):
-        values=','.join('('+sql_text(diagram_id)+'::uuid,'+sql_text(skill)+')' for diagram_id,skill in group)
-        sql.append("INSERT INTO diagram_skills (diagram_id,skill_id,linked_at) SELECT v.diagram_id,s.id,'2026-10-01T00:00:00Z' FROM (VALUES "+values+") AS v(diagram_id,skill_name) JOIN skills s ON s.name=v.skill_name AND s.parent_id IS NULL;")
+        sql.append("INSERT INTO diagram_skills (diagram_id,skill_id,linked_at) VALUES "+','.join('('+sql_text(d)+','+sql_text(skill)+",'2026-10-01T00:00:00Z')" for d,skill,_ in group)+';')
     for group in batches(classifications, 1000):
-        values=','.join('('+sql_text(diagram_id)+'::uuid)' for diagram_id,_ in group)
-        sql.append("INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) SELECT v.diagram_id,c.id,'2026-10-01T00:00:00Z' FROM (VALUES "+values+") AS v(diagram_id) JOIN concepts c ON c.name='Fretboard patterns' AND c.parent_id IS NULL;")
+        sql.append("INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) VALUES "+','.join('('+sql_text(d)+','+sql_text(concept)+",'2026-10-01T00:00:00Z')" for d,_,concept in group)+';')
     return '\n'.join(sql)+'\n'
 
 
-MIGRATION_FILE='20261001000000_basic_guitar_catalog.up.sql'
+MIGRATION_FILE='20261002123500_basic_guitar_catalog.up.sql'
 MIGRATIONS_DIR=Path(__file__).resolve().parents[2]/'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
 
 
