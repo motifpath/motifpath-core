@@ -530,6 +530,10 @@ func (w *world) validationErrors() ([]struct {
 		return resp.Errors, nil
 	case generated.CreateKnowledgeNode400JSONResponse:
 		return resp.Errors, nil
+	case generated.ListKnowledgeNodes400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListKnowledgeEdges400JSONResponse:
+		return resp.Errors, nil
 	case generated.UpdateKnowledgeNode400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateKnowledgeEdge400JSONResponse:

@@ -19,6 +19,7 @@ func registerKnowledgeNodeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^a root (skill|concept) "([^"]+)" exists in the system$`, w.aRootNodeExists)
 	sc.Step(`^a (skill|concept) "([^"]+)" exists under (?:skill|concept) "([^"]+)"$`, w.aNodeExistsUnder)
 	sc.Step(`^a root concept "([^"]+)" with a description exists in the system$`, w.aRootConceptWithDescriptionExists)
+	sc.Step(`^a skill "([^"]+)" for instrument "([^"]+)" exists under skill "([^"]+)"$`, w.aSkillForInstrumentExistsUnder)
 	sc.Step(`^a root skill "([^"]+)" for instrument "([^"]+)" exists in the system$`, w.aRootSkillForInstrumentExists)
 	sc.Step(`^a root skill "([^"]+)" for instruments "([^"]+)" and "([^"]+)" exists in the system$`, w.aRootSkillForInstrumentsExists)
 
@@ -89,6 +90,12 @@ func (w *world) aNodeExistsUnder(kind, name, parentName string) error {
 	} else {
 		w.putSkill(name, &parentID)
 	}
+	return nil
+}
+
+func (w *world) aSkillForInstrumentExistsUnder(name, instrument, parentName string) error {
+	parentID := w.skillIDFor(parentName)
+	w.putSkill(name, &parentID, instrumentID(instrument).String())
 	return nil
 }
 

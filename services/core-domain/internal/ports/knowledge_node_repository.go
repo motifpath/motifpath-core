@@ -53,6 +53,9 @@ type KnowledgeNodeRepository interface {
 	// Delete returns domain.ErrNotFound if no node exists with id.
 	Delete(ctx context.Context, id string) error
 
+	// Children returns the nodes whose parent is the node with id.
+	Children(ctx context.Context, id string) ([]domain.KnowledgeNode, error)
+
 	// InSubtree reports whether candidateID is rootID or one of its
 	// descendants.
 	InSubtree(ctx context.Context, rootID, candidateID string) (bool, error)

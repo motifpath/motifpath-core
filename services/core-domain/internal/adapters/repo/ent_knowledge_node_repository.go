@@ -192,6 +192,18 @@ func (r *EntKnowledgeNodeRepository) Delete(ctx context.Context, id string) erro
 	return tx.Commit()
 }
 
+func (r *EntKnowledgeNodeRepository) Children(ctx context.Context, id string) ([]domain.KnowledgeNode, error) {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return nil, nil
+	}
+	rows, err := r.query().Where(knowledgenode.ParentID(parsed)).Order(knowledgenode.ByKey()).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return domainKnowledgeNodesFromEdges(rows), nil
+}
+
 func (r *EntKnowledgeNodeRepository) InSubtree(ctx context.Context, rootID, candidateID string) (bool, error) {
 	root, err := uuid.Parse(rootID)
 	if err != nil {

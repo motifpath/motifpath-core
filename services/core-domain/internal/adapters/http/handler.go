@@ -1776,7 +1776,9 @@ func (h *Handler) ListKnowledgeNodes(ctx context.Context, request generated.List
 	}
 	nodes, err := h.knowledgeNode.List(ctx, filter)
 	if err != nil {
-		return nil, err
+		return listValidationFailure[generated.ListKnowledgeNodesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeNodesResponseObject {
+			return generated.ListKnowledgeNodes400JSONResponse(e)
+		})
 	}
 
 	return generated.ListKnowledgeNodes200JSONResponse(toGeneratedKnowledgeNodes(nodes)), nil
@@ -1896,7 +1898,9 @@ func (h *Handler) ListKnowledgeEdges(ctx context.Context, request generated.List
 	}
 	edges, err := h.knowledgeEdge.List(ctx, filter)
 	if err != nil {
-		return nil, err
+		return listValidationFailure[generated.ListKnowledgeEdgesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeEdgesResponseObject {
+			return generated.ListKnowledgeEdges400JSONResponse(e)
+		})
 	}
 
 	return generated.ListKnowledgeEdges200JSONResponse(toGeneratedKnowledgeEdges(edges)), nil

@@ -107,6 +107,17 @@ func TestEntKnowledgeNodeRepository(t *testing.T) {
 		assert.Len(t, forBoth, 5)
 	})
 
+	t.Run("Children lists only direct children", func(t *testing.T) {
+		got, err := repo.Children(ctx, fretting.ID)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"barre-chords"}, nodeKeys(got))
+		assert.Equal(t, []string{guitar.ID}, got[0].InstrumentIDs)
+
+		got, err = repo.Children(ctx, pedal.ID)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
 	t.Run("InSubtree follows parent links to any depth", func(t *testing.T) {
 		for _, tt := range []struct {
 			root, candidate string

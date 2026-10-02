@@ -107,3 +107,38 @@ func TestKnowledgeNodeSuits(t *testing.T) {
 		})
 	}
 }
+
+func TestKnowledgeNodeWithin(t *testing.T) {
+	everyInstrument := domain.KnowledgeNode{}
+	guitarAndBass := domain.KnowledgeNode{InstrumentIDs: []string{"guitar", "bass"}}
+	guitar := domain.KnowledgeNode{InstrumentIDs: []string{"guitar"}}
+	piano := domain.KnowledgeNode{InstrumentIDs: []string{"piano"}}
+
+	tests := []struct {
+		name          string
+		child, parent domain.KnowledgeNode
+		want          bool
+	}{
+		{name: "any child fits under an every-instrument parent", child: guitar, parent: everyInstrument, want: true},
+		{name: "an every-instrument child fits under an every-instrument parent", child: everyInstrument, parent: everyInstrument, want: true},
+		{name: "a guitar child fits under a guitar-and-bass parent", child: guitar, parent: guitarAndBass, want: true},
+		{name: "an equal scope fits", child: guitarAndBass, parent: guitarAndBass, want: true},
+		{name: "an every-instrument child is wider than a guitar parent", child: everyInstrument, parent: guitar, want: false},
+		{name: "a guitar-and-bass child is wider than a guitar parent", child: guitarAndBass, parent: guitar, want: false},
+		{name: "a piano child is outside a guitar parent", child: piano, parent: guitar, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.child.Within(tt.parent))
+		})
+	}
+}
+
+func TestKnowledgeEnumsValid(t *testing.T) {
+	assert.True(t, domain.KnowledgeNodeKindSkill.Valid())
+	assert.True(t, domain.KnowledgeNodeKindConcept.Valid())
+	assert.False(t, domain.KnowledgeNodeKind("topic").Valid())
+	assert.True(t, domain.KnowledgeEdgeTypeApplies.Valid())
+	assert.True(t, domain.KnowledgeEdgeTypeRequires.Valid())
+	assert.False(t, domain.KnowledgeEdgeType("prerequisite_of").Valid())
+}

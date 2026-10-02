@@ -59,8 +59,12 @@ func (s *KnowledgeNodeService) Create(ctx context.Context, caller domain.User, i
 	if err != nil {
 		return domain.KnowledgeNode{}, err
 	}
-	if err := s.checkParent(ctx, node.Kind, node.ParentID); err != nil {
+	parent, err := s.checkParent(ctx, node.Kind, node.ParentID)
+	if err != nil {
 		return domain.KnowledgeNode{}, err
+	}
+	if parent != nil && !node.Within(*parent) {
+		return domain.KnowledgeNode{}, errWiderThanParent("instrument_ids")
 	}
 	if err := checkInstrumentsExist(ctx, s.instruments, node.InstrumentIDs); err != nil {
 		return domain.KnowledgeNode{}, err
@@ -81,6 +85,9 @@ func (s *KnowledgeNodeService) Get(ctx context.Context, id string) (domain.Knowl
 
 // List returns the nodes matching filter, sorted by key.
 func (s *KnowledgeNodeService) List(ctx context.Context, filter ports.KnowledgeNodeFilter) ([]domain.KnowledgeNode, error) {
+	if filter.Kind != nil && !filter.Kind.Valid() {
+		return nil, domain.NewValidationError("kind", `must be "skill" or "concept"`)
+	}
 	return s.nodes.List(ctx, filter)
 }
 
@@ -114,6 +121,9 @@ func (s *KnowledgeNodeService) Update(ctx context.Context, caller domain.User, i
 			return domain.KnowledgeNode{}, err
 		}
 	}
+	if err := s.checkScope(ctx, node, input); err != nil {
+		return domain.KnowledgeNode{}, err
+	}
 	if err := s.nodes.Update(ctx, node); err != nil {
 		return domain.KnowledgeNode{}, err
 	}
@@ -139,28 +149,67 @@ func applyText(node domain.KnowledgeNode, input UpdateKnowledgeNodeInput, offere
 	return node.Describe(descriptions, offered)
 }
 
-// checkParent returns a validation error on "parent_id" unless parentID is
-// nil or an existing node of kind.
-func (s *KnowledgeNodeService) checkParent(ctx context.Context, kind domain.KnowledgeNodeKind, parentID *string) error {
+// checkParent returns the parent parentID names — nil for a root — or a
+// validation error on "parent_id" unless it is an existing node of kind.
+func (s *KnowledgeNodeService) checkParent(ctx context.Context, kind domain.KnowledgeNodeKind, parentID *string) (*domain.KnowledgeNode, error) {
 	if parentID == nil {
-		return nil
+		return nil, nil
 	}
 	parent, err := s.nodes.GetByID(ctx, *parentID)
 	if errors.Is(err, domain.ErrNotFound) {
-		return domain.NewValidationError("parent_id", "does not reference an existing knowledge node")
+		return nil, domain.NewValidationError("parent_id", "does not reference an existing knowledge node")
 	}
+	if err != nil {
+		return nil, err
+	}
+	if parent.Kind != kind {
+		return nil, domain.NewValidationError("parent_id", fmt.Sprintf("must be a %s, like the node itself", kind))
+	}
+	return &parent, nil
+}
+
+// checkScope keeps an updated node no wider than its parent and no
+// narrower than any of its children: a node's instruments always fit inside
+// its parent's. A node too wide for its parent is reported against the
+// field the request changed — instrument_ids when it changed them,
+// otherwise parent_id; a narrowing that leaves a child outside is a
+// domain.ErrConflict.
+func (s *KnowledgeNodeService) checkScope(ctx context.Context, node domain.KnowledgeNode, input UpdateKnowledgeNodeInput) error {
+	if (input.ParentID.Set || input.InstrumentIDs != nil) && node.ParentID != nil {
+		parent, err := s.nodes.GetByID(ctx, *node.ParentID)
+		if err != nil {
+			return err
+		}
+		if !node.Within(parent) {
+			field := "parent_id"
+			if input.InstrumentIDs != nil {
+				field = "instrument_ids"
+			}
+			return errWiderThanParent(field)
+		}
+	}
+	if input.InstrumentIDs == nil {
+		return nil
+	}
+	children, err := s.nodes.Children(ctx, node.ID)
 	if err != nil {
 		return err
 	}
-	if parent.Kind != kind {
-		return domain.NewValidationError("parent_id", fmt.Sprintf("must be a %s, like the node itself", kind))
+	for _, child := range children {
+		if !child.Within(node) {
+			return fmt.Errorf("%w: child %q is for an instrument outside the new instruments", domain.ErrConflict, child.Key)
+		}
 	}
 	return nil
 }
 
+func errWiderThanParent(field string) error {
+	return domain.NewValidationError(field, "would make the node wider than its parent: a child is for some of its parent's instruments only")
+}
+
 // checkMove checks that node may move under parentID (nil for the root).
 func (s *KnowledgeNodeService) checkMove(ctx context.Context, node domain.KnowledgeNode, parentID *string) error {
-	if err := s.checkParent(ctx, node.Kind, parentID); err != nil {
+	if _, err := s.checkParent(ctx, node.Kind, parentID); err != nil {
 		return err
 	}
 	if parentID == nil {

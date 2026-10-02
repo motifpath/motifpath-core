@@ -1474,6 +1474,18 @@ func (f *fakeKnowledgeNodeRepository) Delete(_ context.Context, id string) error
 	return nil
 }
 
+func (f *fakeKnowledgeNodeRepository) Children(_ context.Context, id string) ([]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var children []domain.KnowledgeNode
+	for _, node := range f.byID {
+		if node.ParentID != nil && *node.ParentID == id {
+			children = append(children, node)
+		}
+	}
+	return children, nil
+}
+
 func (f *fakeKnowledgeNodeRepository) InSubtree(_ context.Context, rootID, candidateID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

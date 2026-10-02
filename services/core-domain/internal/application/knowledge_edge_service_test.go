@@ -190,3 +190,14 @@ func TestKnowledgeEdgeService(t *testing.T) {
 		})
 	}
 }
+
+func TestKnowledgeEdgeService_ListRejectsAnUnknownType(t *testing.T) {
+	svc := application.NewKnowledgeEdgeService(newFakeKnowledgeEdgeRepository(), newFakeKnowledgeNodeRepository(), idSequence())
+	unknown := domain.KnowledgeEdgeType("prerequisite_of")
+
+	_, err := svc.List(context.Background(), ports.KnowledgeEdgeFilter{Type: &unknown})
+
+	var valErr *domain.ValidationError
+	require.ErrorAs(t, err, &valErr)
+	assert.Equal(t, "type", valErr.Fields[0].Field)
+}

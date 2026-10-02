@@ -131,7 +131,7 @@ func TestKnowledgeNodeService_Update(t *testing.T) {
 	fretting := domain.KnowledgeNode{ID: "fretting", Kind: domain.KnowledgeNodeKindSkill, Key: "fretting", Names: domain.LocalizedText{"en": "Fretting", "pt_BR": "Digitação"}}
 	chordPlaying := domain.KnowledgeNode{ID: "chord-playing", Kind: domain.KnowledgeNodeKindSkill, Key: "chord-playing", Names: domain.LocalizedText{"en": "Chords", "pt_BR": "Acordes"}}
 	barre := domain.KnowledgeNode{ID: "barre", Kind: domain.KnowledgeNodeKindSkill, Key: "barre-chords", Names: domain.LocalizedText{"en": "Barre", "pt_BR": "Pestana"}, ParentID: &fretting.ID, InstrumentIDs: []string{"guitar", "bass"}}
-	eShape := domain.KnowledgeNode{ID: "e-shape", Kind: domain.KnowledgeNodeKindSkill, Key: "e-shape-barre", Names: domain.LocalizedText{"en": "E", "pt_BR": "Mi"}, ParentID: &barre.ID}
+	eShape := domain.KnowledgeNode{ID: "e-shape", Kind: domain.KnowledgeNodeKindSkill, Key: "e-shape-barre", Names: domain.LocalizedText{"en": "E", "pt_BR": "Mi"}, ParentID: &barre.ID, InstrumentIDs: []string{"guitar"}}
 	blues := domain.KnowledgeNode{ID: "blues", Kind: domain.KnowledgeNodeKindConcept, Key: "blues-form", Names: domain.LocalizedText{"en": "Blues", "pt_BR": "Blues"}, Descriptions: domain.LocalizedText{"en": "12 bars", "pt_BR": "12 compassos"}}
 	setup := func() (*fakeKnowledgeNodeRepository, *application.KnowledgeNodeService) {
 		nodes := newFakeKnowledgeNodeRepository()
@@ -326,4 +326,99 @@ func TestKnowledgeNodeService_Delete(t *testing.T) {
 
 		assert.ErrorIs(t, svc.Delete(ctx, teacherCaller(), node.ID), domain.ErrForbidden)
 	})
+}
+
+func TestKnowledgeNodeService_ChildNeverWiderThanParent(t *testing.T) {
+	ctx := context.Background()
+	palmMuting := domain.KnowledgeNode{ID: "palm-muting", Kind: domain.KnowledgeNodeKindSkill, Key: "palm-muting", Names: domain.LocalizedText{"en": "Palm", "pt_BR": "Palm"}, InstrumentIDs: []string{"guitar"}}
+	chugs := domain.KnowledgeNode{ID: "chugs", Kind: domain.KnowledgeNodeKindSkill, Key: "palm-mute-chugs", Names: domain.LocalizedText{"en": "Chugs", "pt_BR": "Chugs"}, ParentID: &palmMuting.ID, InstrumentIDs: []string{"guitar"}}
+	charts := domain.KnowledgeNode{ID: "charts", Kind: domain.KnowledgeNodeKindSkill, Key: "read-chord-charts", Names: domain.LocalizedText{"en": "Charts", "pt_BR": "Cifras"}}
+	hammerOns := domain.KnowledgeNode{ID: "hammer-ons", Kind: domain.KnowledgeNodeKindSkill, Key: "hammer-ons", Names: domain.LocalizedText{"en": "Hammer", "pt_BR": "Hammer"}, InstrumentIDs: []string{"guitar", "bass"}}
+	bassGrooves := domain.KnowledgeNode{ID: "bass-grooves", Kind: domain.KnowledgeNodeKindSkill, Key: "bass-hammer-on-grooves", Names: domain.LocalizedText{"en": "Grooves", "pt_BR": "Grooves"}, ParentID: &hammerOns.ID, InstrumentIDs: []string{"bass"}}
+	setup := func() (*fakeKnowledgeNodeRepository, *application.KnowledgeNodeService) {
+		nodes := newFakeKnowledgeNodeRepository()
+		for _, n := range []domain.KnowledgeNode{palmMuting, chugs, charts, hammerOns, bassGrooves} {
+			nodes.put(n)
+		}
+		return nodes, newKnowledgeNodeService(nodes)
+	}
+	under := func(id string) application.Nullable[string] { return application.Nullable[string]{Set: true, Value: &id} }
+
+	rejected := []struct {
+		name      string
+		do        func(*application.KnowledgeNodeService) error
+		wantField string
+	}{
+		{name: "creating an every-instrument child under a guitar parent", wantField: "instrument_ids", do: func(svc *application.KnowledgeNodeService) error {
+			_, err := svc.Create(ctx, adminCaller(), application.CreateKnowledgeNodeInput{Kind: domain.KnowledgeNodeKindSkill, Key: "chug-riffs", Names: bilingualOpenChords, ParentID: &palmMuting.ID})
+			return err
+		}},
+		{name: "creating a guitar-and-bass child under a guitar parent", wantField: "instrument_ids", do: func(svc *application.KnowledgeNodeService) error {
+			_, err := svc.Create(ctx, adminCaller(), application.CreateKnowledgeNodeInput{Kind: domain.KnowledgeNodeKindSkill, Key: "chug-riffs", Names: bilingualOpenChords, ParentID: &palmMuting.ID, InstrumentIDs: []string{"guitar", "bass"}})
+			return err
+		}},
+		{name: "widening a child beyond its parent", wantField: "instrument_ids", do: func(svc *application.KnowledgeNodeService) error {
+			_, err := svc.Update(ctx, adminCaller(), chugs.ID, application.UpdateKnowledgeNodeInput{InstrumentIDs: &[]string{}})
+			return err
+		}},
+		{name: "moving an every-instrument node under a guitar parent", wantField: "parent_id", do: func(svc *application.KnowledgeNodeService) error {
+			_, err := svc.Update(ctx, adminCaller(), charts.ID, application.UpdateKnowledgeNodeInput{ParentID: under(palmMuting.ID)})
+			return err
+		}},
+		{name: "moving and widening in one request", wantField: "instrument_ids", do: func(svc *application.KnowledgeNodeService) error {
+			_, err := svc.Update(ctx, adminCaller(), bassGrooves.ID, application.UpdateKnowledgeNodeInput{ParentID: under(palmMuting.ID), InstrumentIDs: &[]string{"bass"}})
+			return err
+		}},
+	}
+	for _, tt := range rejected {
+		t.Run(tt.name+" is rejected", func(t *testing.T) {
+			_, svc := setup()
+
+			err := tt.do(svc)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, tt.wantField, valErr.Fields[0].Field)
+		})
+	}
+
+	t.Run("moving a node and narrowing it to fit its new parent in one request is accepted", func(t *testing.T) {
+		_, svc := setup()
+
+		got, err := svc.Update(ctx, adminCaller(), charts.ID, application.UpdateKnowledgeNodeInput{ParentID: under(palmMuting.ID), InstrumentIDs: &[]string{"guitar"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, &palmMuting.ID, got.ParentID)
+	})
+
+	t.Run("narrowing a node while a child is for an instrument outside the new scope is a conflict", func(t *testing.T) {
+		nodes, svc := setup()
+
+		_, err := svc.Update(ctx, adminCaller(), hammerOns.ID, application.UpdateKnowledgeNodeInput{InstrumentIDs: &[]string{"guitar"}})
+
+		assert.ErrorIs(t, err, domain.ErrConflict)
+		stored, getErr := nodes.GetByID(ctx, hammerOns.ID)
+		require.NoError(t, getErr)
+		assert.Equal(t, hammerOns.InstrumentIDs, stored.InstrumentIDs)
+	})
+
+	t.Run("narrowing a node its children still fit inside is accepted", func(t *testing.T) {
+		_, svc := setup()
+
+		got, err := svc.Update(ctx, adminCaller(), hammerOns.ID, application.UpdateKnowledgeNodeInput{InstrumentIDs: &[]string{"bass"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bass"}, got.InstrumentIDs)
+	})
+}
+
+func TestKnowledgeNodeService_ListRejectsAnUnknownKind(t *testing.T) {
+	svc := newKnowledgeNodeService(newFakeKnowledgeNodeRepository())
+	topic := domain.KnowledgeNodeKind("topic")
+
+	_, err := svc.List(context.Background(), ports.KnowledgeNodeFilter{Kind: &topic})
+
+	var valErr *domain.ValidationError
+	require.ErrorAs(t, err, &valErr)
+	assert.Equal(t, "kind", valErr.Fields[0].Field)
 }

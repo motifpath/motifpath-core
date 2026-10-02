@@ -13,6 +13,11 @@ const (
 	KnowledgeEdgeTypeRequires KnowledgeEdgeType = "requires"
 )
 
+// Valid reports whether t is a known edge type.
+func (t KnowledgeEdgeType) Valid() bool {
+	return t == KnowledgeEdgeTypeApplies || t == KnowledgeEdgeTypeRequires
+}
+
 // MasteryLevel is the practice mastery scale, ordered accurate < fluent <
 // retained.
 type MasteryLevel string

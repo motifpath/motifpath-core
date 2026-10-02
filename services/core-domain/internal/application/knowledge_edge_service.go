@@ -72,6 +72,9 @@ func (s *KnowledgeEdgeService) Create(ctx context.Context, caller domain.User, i
 
 // List returns the edges matching filter.
 func (s *KnowledgeEdgeService) List(ctx context.Context, filter ports.KnowledgeEdgeFilter) ([]domain.KnowledgeEdge, error) {
+	if filter.Type != nil && !filter.Type.Valid() {
+		return nil, domain.NewValidationError("type", `must be "applies" or "requires"`)
+	}
 	return s.edges.List(ctx, filter)
 }
 

@@ -18,6 +18,11 @@ const (
 	KnowledgeNodeKindConcept KnowledgeNodeKind = "concept"
 )
 
+// Valid reports whether k is a known kind.
+func (k KnowledgeNodeKind) Valid() bool {
+	return k == KnowledgeNodeKindSkill || k == KnowledgeNodeKindConcept
+}
+
 const (
 	knowledgeNodeKeyMaxLength         = 100
 	knowledgeNodeNameMaxLength        = 200
@@ -53,7 +58,7 @@ type KnowledgeNode struct {
 // descriptions when given, must cover exactly languages — every language
 // MotifPath offers.
 func NewKnowledgeNode(id string, kind KnowledgeNodeKind, key string, names, descriptions map[string]string, parentID *string, instrumentIDs []string, languages []string) (KnowledgeNode, error) {
-	if kind != KnowledgeNodeKindSkill && kind != KnowledgeNodeKindConcept {
+	if !kind.Valid() {
 		return KnowledgeNode{}, NewValidationError("kind", `must be "skill" or "concept"`)
 	}
 	if len(key) > knowledgeNodeKeyMaxLength || !knowledgeNodeKeyPattern.MatchString(key) {
@@ -136,4 +141,23 @@ func (n KnowledgeNode) Suits(instrumentIDs []string) bool {
 		}
 	}
 	return false
+}
+
+// Within reports whether n's instruments fit inside parent's: a child is
+// never wider than its parent. Under a parent for every instrument any child
+// fits; under a parent for specific instruments a child must be for some of
+// them only, never for every instrument.
+func (n KnowledgeNode) Within(parent KnowledgeNode) bool {
+	if len(parent.InstrumentIDs) == 0 {
+		return true
+	}
+	if len(n.InstrumentIDs) == 0 {
+		return false
+	}
+	for _, id := range n.InstrumentIDs {
+		if !slices.Contains(parent.InstrumentIDs, id) {
+			return false
+		}
+	}
+	return true
 }
