@@ -414,6 +414,31 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 	assert.Equal(t, []domain.Language{{Code: "any", Name: "Language-agnostic"}}, got.Languages)
 }
 
+func TestEntExerciseRepository_Instruments(t *testing.T) {
+	ctx := context.Background()
+	client := setupPostgres(t)
+	repo := NewEntExerciseRepository(client)
+	guitar := frettedInstrument()
+	require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, guitar))
+	exercise := domain.Exercise{
+		ID: uuid.NewString(), Title: "Roots", Prompt: domain.NewPlainTextPrompt("Name the root"), ExerciseType: domain.ExerciseTypeTextResponse,
+		Skills: []domain.KnowledgeNode{seedSkill(t, ctx, client, "roots-"+uuid.NewString())}, Concepts: []domain.KnowledgeNode{seedConcept(t, ctx, client, "notes-"+uuid.NewString())},
+		Options:   []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: strPtr("A")}},
+		Languages: []domain.Language{{Code: "en"}}, InstrumentIDs: []string{guitar.ID}, CreatedAt: fixedAt,
+	}
+	require.NoError(t, repo.Create(ctx, exercise))
+
+	got, err := repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{guitar.ID}, got.InstrumentIDs)
+
+	got.InstrumentIDs = nil
+	require.NoError(t, repo.Update(ctx, got))
+	got, err = repo.GetByID(ctx, exercise.ID)
+	require.NoError(t, err)
+	assert.Empty(t, got.InstrumentIDs)
+}
+
 func TestEntExerciseRepository_DiagramCellOptionsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	client := setupPostgres(t)

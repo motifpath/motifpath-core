@@ -231,6 +231,9 @@ type Exercise struct {
 	// this Exercise has been read back from the repository with its
 	// Language rows joined in.
 	Languages []Language
+	// InstrumentIDs are the instruments the exercise is for; empty means
+	// every instrument.
+	InstrumentIDs []string
 	// CreatedBy is the id of the user who created the exercise, or "" for
 	// an exercise created before creators were recorded. Fixed at creation.
 	CreatedBy string
@@ -600,4 +603,15 @@ func imageChoiceOptionShapeError(opt Option) string {
 		}
 	}
 	return ""
+}
+
+// ForInstruments returns the exercise for instrumentIDs instead; empty means
+// every instrument. Whether each id references an existing Instrument is an
+// application-layer concern.
+func (e Exercise) ForInstruments(instrumentIDs []string) (Exercise, error) {
+	if problem := instrumentIDsProblem(instrumentIDs); problem != "" {
+		return Exercise{}, NewValidationError("instrument_ids", problem)
+	}
+	e.InstrumentIDs = instrumentIDs
+	return e, nil
 }

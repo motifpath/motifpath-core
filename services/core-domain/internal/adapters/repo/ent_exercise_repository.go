@@ -11,9 +11,9 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -58,6 +58,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return rollback(tx, err)
 	}
+	instrumentIDs, err := parseUUIDs(ex.InstrumentIDs)
+	if err != nil {
+		return rollback(tx, err)
+	}
 	createdBy, err := optionalCreatorID(ex.CreatedBy)
 	if err != nil {
 		return rollback(tx, err)
@@ -78,7 +82,8 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetCreatedAt(ex.CreatedAt).
 		AddLanguageIDs(langIDs...).
 		AddSkillIDs(skillIDs...).
-		AddConceptIDs(conceptIDs...)
+		AddConceptIDs(conceptIDs...).
+		AddInstrumentIDs(instrumentIDs...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -190,6 +195,7 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithInstruments().
 		WithSkills(withNodeInstruments).
 		WithConcepts(withNodeInstruments).
 		Only(ctx)
@@ -389,6 +395,7 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithInstruments().
 		WithSkills(withNodeInstruments).
 		WithConcepts(withNodeInstruments).
 		All(ctx)
@@ -415,6 +422,7 @@ func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID strin
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithInstruments().
 		WithSkills(withNodeInstruments).
 		WithConcepts(withNodeInstruments).
 		All(ctx)
@@ -442,6 +450,7 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
+		WithInstruments().
 		WithSkills(withNodeInstruments).
 		WithConcepts(withNodeInstruments).
 		Order(exercise.ByID()).
@@ -545,6 +554,10 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 	if err != nil {
 		return rollback(tx, err)
 	}
+	instrumentIDs, err := parseUUIDs(ex.InstrumentIDs)
+	if err != nil {
+		return rollback(tx, err)
+	}
 
 	updateBuilder := tx.Exercise.UpdateOneID(id).
 		SetTitle(ex.Title).
@@ -557,7 +570,9 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().
-		AddConceptIDs(conceptIDs...)
+		AddConceptIDs(conceptIDs...).
+		ClearInstruments().
+		AddInstrumentIDs(instrumentIDs...)
 	applyExerciseUpdateNillableJSON(updateBuilder, remediationJSON, diagramRefJSON, diagramStackRefJSON)
 	_, err = updateBuilder.Save(ctx)
 	if err != nil {
@@ -651,6 +666,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		Languages:                languages,
+		InstrumentIDs:            instrumentIDsOf(row.Edges.Instruments),
 		CreatedBy:                creatorIDString(row.CreatedBy),
 		CreatedAt:                row.CreatedAt,
 	}

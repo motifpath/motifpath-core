@@ -12,20 +12,19 @@ import (
 )
 
 // DiagramService manages Diagram — a prebuilt, reusable set of positions on
-// one instrument, classified against the shared Skill/Concept trees.
+// one instrument, classified against the shared knowledge graph.
 type DiagramService struct {
 	diagrams    ports.DiagramRepository
 	instruments ports.InstrumentRepository
-	skills      ports.SkillRepository
-	concepts    ports.ConceptRepository
+	knowledge   ports.KnowledgeNodeRepository
 	languages   ports.LanguageRepository
 	users       ports.UserRepository
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, languages ports.LanguageRepository, users ports.UserRepository, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, skills: skills, concepts: concepts, languages: languages, users: users, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, newID: newID, now: now}
 }
 
 const (
@@ -118,7 +117,7 @@ func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, calle
 		return domain.Diagram{}, err
 	}
 	diagram.InstrumentIDs = domain.LayoutFirst(instrument.ID, instrumentIDs)
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, diagram.InstrumentIDs); err != nil {
 		return domain.Diagram{}, err
 	}
 
@@ -322,8 +321,8 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if updated.InstrumentIDs, err = s.updatedInstrumentIDs(ctx, instrument, current, update); err != nil {
 		return domain.Diagram{}, err
 	}
-	if classificationChanged {
-		if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if classificationChanged || update.InstrumentIDs != nil {
+		if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, updated.InstrumentIDs); err != nil {
 			return domain.Diagram{}, err
 		}
 	}

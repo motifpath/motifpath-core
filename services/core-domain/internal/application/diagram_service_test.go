@@ -35,7 +35,9 @@ func newDiagramFixture() diagramFixture {
 	} {
 		users.put(u)
 	}
-	svc := application.NewDiagramService(diagrams, instruments, seededSkillRepository(), seededConceptRepository(), newFakeLanguageRepository(), users, idSequence(), func() time.Time { return fixedCreatedAt })
+	knowledge := seededKnowledgeNodeRepository()
+	knowledge.put(domain.KnowledgeNode{ID: "pedal-sustain", Kind: domain.KnowledgeNodeKindSkill, Key: "pedal-sustain", InstrumentIDs: []string{"piano"}})
+	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, idSequence(), func() time.Time { return fixedCreatedAt })
 	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, svc: svc}
 }
 
@@ -138,6 +140,8 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		{name: "no skills", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
 		{name: "unknown skill", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"missing"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
 		{name: "unknown concept", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"skill-1"}, conceptIDs: []string{"missing"}, wantField: "concept_ids"},
+		{name: "a concept given as a skill", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"concept-2"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
+		{name: "a skill for none of its instruments", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"pedal-sustain"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
 	}
 	for _, tt := range tests {
 		t.Run("rejected: "+tt.name, func(t *testing.T) {

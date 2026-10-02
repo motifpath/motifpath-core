@@ -16,8 +16,7 @@ type ExerciseService struct {
 	challenges ports.ChallengeRepository
 	exercises  ports.ExerciseRepository
 	nodes      ports.ContentNodeRepository
-	skills     ports.SkillRepository
-	concepts   ports.ConceptRepository
+	knowledge  ports.KnowledgeNodeRepository
 	diagrams   ports.DiagramRepository
 	// instruments tells a diagram stimulus's family and string count, which
 	// decide whether its answers are fretboard cells.
@@ -27,7 +26,7 @@ type ExerciseService struct {
 	// users names the creators ListExerciseCreators returns.
 	users ports.UserRepository
 	newID func() string
-	now    func() time.Time
+	now   func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
 	// math/rand.Shuffle's signature — injected so tests can supply a
 	// deterministic permutation instead of a real random one.
@@ -38,8 +37,7 @@ func NewExerciseService(
 	challenges ports.ChallengeRepository,
 	exercises ports.ExerciseRepository,
 	nodes ports.ContentNodeRepository,
-	skills ports.SkillRepository,
-	concepts ports.ConceptRepository,
+	knowledge ports.KnowledgeNodeRepository,
 	diagrams ports.DiagramRepository,
 	instruments ports.InstrumentRepository,
 	voices ports.VoiceRepository,
@@ -48,7 +46,7 @@ func NewExerciseService(
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, skills: skills, concepts: concepts, diagrams: diagrams, instruments: instruments, voices: voices, users: users, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, newID: newID, now: now, shuffle: shuffle}
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -82,7 +80,7 @@ func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
 // or content node. Only teachers and admins may create exercises.
-func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User, title string, prompt domain.PromptDocument, exerciseType domain.ExerciseType, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string, instrumentIDs *[]string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -101,10 +99,15 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 	exercise.CreatedBy = caller.ID
+	if instrumentIDs != nil {
+		if exercise, err = s.forInstruments(ctx, exercise, *instrumentIDs); err != nil {
+			return domain.Exercise{}, err
+		}
+	}
 	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if err := checkClassification(ctx, s.knowledge, skillIDs, conceptIDs); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := s.exercises.Create(ctx, exercise); err != nil {
@@ -114,6 +117,19 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 	// Skills/Concepts only carry the request-supplied codes/ids until read
 	// back with their rows joined in.
 	return s.exercises.GetByID(ctx, exercise.ID)
+}
+
+// forInstruments returns exercise for instrumentIDs, each of which must
+// reference an existing instrument.
+func (s *ExerciseService) forInstruments(ctx context.Context, exercise domain.Exercise, instrumentIDs []string) (domain.Exercise, error) {
+	exercise, err := exercise.ForInstruments(instrumentIDs)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := checkInstrumentsExist(ctx, s.instruments, instrumentIDs); err != nil {
+		return domain.Exercise{}, err
+	}
+	return exercise, nil
 }
 
 // checkRemediationTargetsExist reports a domain.ValidationError under
@@ -401,7 +417,7 @@ func (s *ExerciseService) ListExerciseCreators(ctx context.Context, caller domai
 // challenge/content-node links are untouched. Only teachers and admins may
 // update an exercise. Returns domain.ErrNotFound if no exercise exists with
 // the given id.
-func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string) (domain.Exercise, error) {
+func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User, id, title string, prompt domain.PromptDocument, skillIDs, conceptIDs []string, imageURL, audioURL *string, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options []domain.Option, estimatedDurationSeconds *int, remediationTargets []domain.RemediationTarget, languages []string, instrumentIDs *[]string) (domain.Exercise, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Exercise{}, domain.ErrForbidden
 	}
@@ -424,10 +440,15 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err != nil {
 		return domain.Exercise{}, err
 	}
+	if instrumentIDs != nil {
+		if updated, err = s.forInstruments(ctx, updated, *instrumentIDs); err != nil {
+			return domain.Exercise{}, err
+		}
+	}
 	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
+	if err := checkClassification(ctx, s.knowledge, skillIDs, conceptIDs); err != nil {
 		return domain.Exercise{}, err
 	}
 

@@ -42,7 +42,7 @@ func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
 		t.Helper()
 		nodes, expanded, diagrams := newFakeContentNodeRepository(), newFakeExpandedContentRepository(), newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-		return newContentServiceWithDiagrams(nodes, expanded, seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams), nodes, expanded
+		return newContentServiceWithDiagrams(nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams), nodes, expanded
 	}
 	exerciseService := func(t *testing.T) (*application.ExerciseService, *fakeExerciseRepository) {
 		t.Helper()
@@ -91,28 +91,28 @@ func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
 		{name: "an exercise's prompt", field: "prompt", save: func(t *testing.T, doc *domain.PromptDocument, _ *domain.DiagramRef) error {
 			svc, _ := exerciseService(t)
 			_, err := svc.CreateExercise(ctx, teacherCaller(), "Name the lick", *doc, domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"},
-				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"})
+				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 			return err
 		}},
 		{name: "an edited exercise's prompt", field: "prompt", save: func(t *testing.T, doc *domain.PromptDocument, _ *domain.DiagramRef) error {
 			svc, _ := exerciseService(t)
 			exercise, err := svc.CreateExercise(ctx, teacherCaller(), "Name the lick", domain.NewPlainTextPrompt("Which lick?"), domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"},
-				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"})
+				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 			require.NoError(t, err)
 			_, err = svc.UpdateExercise(ctx, teacherCaller(), exercise.ID, "Name the lick", *doc, []string{"skill-1"}, []string{"concept-1"},
-				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"})
+				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 			return err
 		}},
 		{name: "an exercise's remediation", field: "remediation_targets", save: func(t *testing.T, doc *domain.PromptDocument, _ *domain.DiagramRef) error {
 			svc, _ := exerciseService(t)
 			_, err := svc.CreateExercise(ctx, teacherCaller(), "Name the lick", domain.NewPlainTextPrompt("Which lick?"), domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"},
-				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, []domain.RemediationTarget{{RichContent: doc}}, []string{"en"})
+				strPtr("https://cdn.example.com/a.png"), nil, nil, nil, imageRecognitionOptions(), nil, []domain.RemediationTarget{{RichContent: doc}}, []string{"en"}, nil)
 			return err
 		}},
 		{name: "an exercise option's thumbnail", field: "options", save: func(t *testing.T, doc *domain.PromptDocument, option *domain.DiagramRef) error {
 			svc, _ := exerciseService(t)
 			_, err := svc.CreateExercise(ctx, teacherCaller(), "Pick the lick", domain.NewPlainTextPrompt("Which one is the lick?"), domain.ExerciseTypeImageChoice, []string{"skill-1"}, []string{"concept-1"},
-				nil, nil, nil, nil, imageChoice(option), nil, nil, []string{"en"})
+				nil, nil, nil, nil, imageChoice(option), nil, nil, []string{"en"}, nil)
 			return err
 		}},
 	}
