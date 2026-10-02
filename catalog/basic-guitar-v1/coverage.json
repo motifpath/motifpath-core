@@ -1,0 +1,32 @@
+{
+  "diagrams": 13867,
+  "positions": 160871,
+  "tiers": {
+    "A": 3315,
+    "B": 9496,
+    "C": 1056
+  },
+  "families": {
+    "3nps": 415,
+    "arpeggio": 216,
+    "caged": 112,
+    "caged-window": 448,
+    "chromatic": 12,
+    "digital-pattern": 24,
+    "drop-2": 2478,
+    "drop-2-4": 3280,
+    "drop-3": 2645,
+    "dyad": 264,
+    "interval": 264,
+    "interval-structure": 48,
+    "pentatonic-box": 218,
+    "root": 12,
+    "scale": 192,
+    "seventh-inversion": 691,
+    "shell": 486,
+    "substitution": 864,
+    "triad-inversion": 1114,
+    "triad-pair": 84
+  },
+  "sha256": "9721eef73409c4b57f96aa04feeddc0faebf9122b5639ce7853a82780903ea65"
+}
