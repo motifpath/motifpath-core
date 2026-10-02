@@ -875,7 +875,7 @@ func HasSkills() predicate.Exercise {
 }
 
 // HasSkillsWith applies the HasEdge predicate on the "skills" edge with a given conditions (other predicates).
-func HasSkillsWith(preds ...predicate.Skill) predicate.Exercise {
+func HasSkillsWith(preds ...predicate.KnowledgeNode) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newSkillsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
@@ -898,9 +898,32 @@ func HasConcepts() predicate.Exercise {
 }
 
 // HasConceptsWith applies the HasEdge predicate on the "concepts" edge with a given conditions (other predicates).
-func HasConceptsWith(preds ...predicate.Concept) predicate.Exercise {
+func HasConceptsWith(preds ...predicate.KnowledgeNode) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasInstruments applies the HasEdge predicate on the "instruments" edge.
+func HasInstruments() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, InstrumentsTable, InstrumentsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInstrumentsWith applies the HasEdge predicate on the "instruments" edge with a given conditions (other predicates).
+func HasInstrumentsWith(preds ...predicate.Instrument) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newInstrumentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -1016,6 +1039,29 @@ func HasExerciseConcepts() predicate.Exercise {
 func HasExerciseConceptsWith(preds ...predicate.ExerciseConcept) predicate.Exercise {
 	return predicate.Exercise(func(s *sql.Selector) {
 		step := newExerciseConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasExerciseInstruments applies the HasEdge predicate on the "exercise_instruments" edge.
+func HasExerciseInstruments() predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, ExerciseInstrumentsTable, ExerciseInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasExerciseInstrumentsWith applies the HasEdge predicate on the "exercise_instruments" edge with a given conditions (other predicates).
+func HasExerciseInstrumentsWith(preds ...predicate.ExerciseInstrument) predicate.Exercise {
+	return predicate.Exercise(func(s *sql.Selector) {
+		step := newExerciseInstrumentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

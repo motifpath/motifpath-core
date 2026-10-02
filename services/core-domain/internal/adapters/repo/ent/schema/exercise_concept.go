@@ -41,7 +41,7 @@ func (ExerciseConcept) Edges() []ent.Edge {
 			Immutable().
 			Field("exercise_id"),
 
-		edge.To("concept", Concept.Type).
+		edge.To("concept", KnowledgeNode.Type).
 			Unique().
 			Required().
 			Immutable().

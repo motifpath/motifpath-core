@@ -35,9 +35,9 @@ const (
 	DiagramColumn = "diagram_id"
 	// ConceptTable is the table that holds the concept relation/edge.
 	ConceptTable = "diagram_concepts"
-	// ConceptInverseTable is the table name for the Concept entity.
-	// It exists in this package in order to avoid circular dependency with the "concept" package.
-	ConceptInverseTable = "concepts"
+	// ConceptInverseTable is the table name for the KnowledgeNode entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
+	ConceptInverseTable = "knowledge_nodes"
 	// ConceptColumn is the table column denoting the concept relation/edge.
 	ConceptColumn = "concept_id"
 )

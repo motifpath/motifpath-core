@@ -16,7 +16,11 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/voice"
@@ -189,6 +193,36 @@ func (_c *InstrumentCreate) AddContentNodes(v ...*ContentNode) *InstrumentCreate
 	return _c.AddContentNodeIDs(ids...)
 }
 
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
+func (_c *InstrumentCreate) AddExerciseIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddExerciseIDs(ids...)
+	return _c
+}
+
+// AddExercises adds the "exercises" edges to the Exercise entity.
+func (_c *InstrumentCreate) AddExercises(v ...*Exercise) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddExerciseIDs(ids...)
+}
+
+// AddKnowledgeNodeIDs adds the "knowledge_nodes" edge to the KnowledgeNode entity by IDs.
+func (_c *InstrumentCreate) AddKnowledgeNodeIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddKnowledgeNodeIDs(ids...)
+	return _c
+}
+
+// AddKnowledgeNodes adds the "knowledge_nodes" edges to the KnowledgeNode entity.
+func (_c *InstrumentCreate) AddKnowledgeNodes(v ...*KnowledgeNode) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddKnowledgeNodeIDs(ids...)
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
 func (_c *InstrumentCreate) AddDiagramInstrumentIDs(ids ...int) *InstrumentCreate {
 	_c.mutation.AddDiagramInstrumentIDs(ids...)
@@ -247,6 +281,36 @@ func (_c *InstrumentCreate) AddContentNodeInstruments(v ...*ContentNodeInstrumen
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeInstrumentIDs(ids...)
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (_c *InstrumentCreate) AddExerciseInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddExerciseInstrumentIDs(ids...)
+	return _c
+}
+
+// AddExerciseInstruments adds the "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_c *InstrumentCreate) AddExerciseInstruments(v ...*ExerciseInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddExerciseInstrumentIDs(ids...)
+}
+
+// AddKnowledgeNodeInstrumentIDs adds the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by IDs.
+func (_c *InstrumentCreate) AddKnowledgeNodeInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddKnowledgeNodeInstrumentIDs(ids...)
+	return _c
+}
+
+// AddKnowledgeNodeInstruments adds the "knowledge_node_instruments" edges to the KnowledgeNodeInstrument entity.
+func (_c *InstrumentCreate) AddKnowledgeNodeInstruments(v ...*KnowledgeNodeInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddKnowledgeNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the InstrumentMutation object of the builder.
@@ -481,6 +545,46 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.ExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _c.config, mutation: newExerciseInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.KnowledgeNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _c.config, mutation: newKnowledgeNodeInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -538,6 +642,38 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ExerciseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.KnowledgeNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

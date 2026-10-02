@@ -12,9 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 )
 
@@ -26,7 +26,7 @@ type ContentNodeConceptQuery struct {
 	inters          []Interceptor
 	predicates      []predicate.ContentNodeConcept
 	withContentNode *ContentNodeQuery
-	withConcept     *ConceptQuery
+	withConcept     *KnowledgeNodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -86,8 +86,8 @@ func (_q *ContentNodeConceptQuery) QueryContentNode() *ContentNodeQuery {
 }
 
 // QueryConcept chains the current query on the "concept" edge.
-func (_q *ContentNodeConceptQuery) QueryConcept() *ConceptQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ContentNodeConceptQuery) QueryConcept() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -98,7 +98,7 @@ func (_q *ContentNodeConceptQuery) QueryConcept() *ConceptQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnodeconcept.Table, contentnodeconcept.FieldID, selector),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, contentnodeconcept.ConceptTable, contentnodeconcept.ConceptColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -320,8 +320,8 @@ func (_q *ContentNodeConceptQuery) WithContentNode(opts ...func(*ContentNodeQuer
 
 // WithConcept tells the query-builder to eager-load the nodes that are connected to
 // the "concept" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeConceptQuery) WithConcept(opts ...func(*ConceptQuery)) *ContentNodeConceptQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ContentNodeConceptQuery) WithConcept(opts ...func(*KnowledgeNodeQuery)) *ContentNodeConceptQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -438,7 +438,7 @@ func (_q *ContentNodeConceptQuery) sqlAll(ctx context.Context, hooks ...queryHoo
 	}
 	if query := _q.withConcept; query != nil {
 		if err := _q.loadConcept(ctx, query, nodes, nil,
-			func(n *ContentNodeConcept, e *Concept) { n.Edges.Concept = e }); err != nil {
+			func(n *ContentNodeConcept, e *KnowledgeNode) { n.Edges.Concept = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -474,7 +474,7 @@ func (_q *ContentNodeConceptQuery) loadContentNode(ctx context.Context, query *C
 	}
 	return nil
 }
-func (_q *ContentNodeConceptQuery) loadConcept(ctx context.Context, query *ConceptQuery, nodes []*ContentNodeConcept, init func(*ContentNodeConcept), assign func(*ContentNodeConcept, *Concept)) error {
+func (_q *ContentNodeConceptQuery) loadConcept(ctx context.Context, query *KnowledgeNodeQuery, nodes []*ContentNodeConcept, init func(*ContentNodeConcept), assign func(*ContentNodeConcept, *KnowledgeNode)) error {
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*ContentNodeConcept)
 	for i := range nodes {
@@ -487,7 +487,7 @@ func (_q *ContentNodeConceptQuery) loadConcept(ctx context.Context, query *Conce
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(concept.IDIn(ids...))
+	query.Where(knowledgenode.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err

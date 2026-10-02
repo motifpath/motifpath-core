@@ -13,7 +13,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -22,9 +21,9 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ContentNodeQuery is the builder for querying ContentNode entities.
@@ -36,8 +35,8 @@ type ContentNodeQuery struct {
 	predicates                 []predicate.ContentNode
 	withPathExercises          *ExerciseQuery
 	withLanguages              *LanguageQuery
-	withSkills                 *SkillQuery
-	withConcepts               *ConceptQuery
+	withSkills                 *KnowledgeNodeQuery
+	withConcepts               *KnowledgeNodeQuery
 	withInstruments            *InstrumentQuery
 	withContentNodeExercises   *ContentNodeExerciseQuery
 	withContentNodeLanguages   *ContentNodeLanguageQuery
@@ -125,8 +124,8 @@ func (_q *ContentNodeQuery) QueryLanguages() *LanguageQuery {
 }
 
 // QuerySkills chains the current query on the "skills" edge.
-func (_q *ContentNodeQuery) QuerySkills() *SkillQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ContentNodeQuery) QuerySkills() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -137,7 +136,7 @@ func (_q *ContentNodeQuery) QuerySkills() *SkillQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.SkillsTable, contentnode.SkillsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -147,8 +146,8 @@ func (_q *ContentNodeQuery) QuerySkills() *SkillQuery {
 }
 
 // QueryConcepts chains the current query on the "concepts" edge.
-func (_q *ContentNodeQuery) QueryConcepts() *ConceptQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ContentNodeQuery) QueryConcepts() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -159,7 +158,7 @@ func (_q *ContentNodeQuery) QueryConcepts() *ConceptQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, selector),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.ConceptsTable, contentnode.ConceptsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -532,8 +531,8 @@ func (_q *ContentNodeQuery) WithLanguages(opts ...func(*LanguageQuery)) *Content
 
 // WithSkills tells the query-builder to eager-load the nodes that are connected to
 // the "skills" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithSkills(opts ...func(*SkillQuery)) *ContentNodeQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ContentNodeQuery) WithSkills(opts ...func(*KnowledgeNodeQuery)) *ContentNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -543,8 +542,8 @@ func (_q *ContentNodeQuery) WithSkills(opts ...func(*SkillQuery)) *ContentNodeQu
 
 // WithConcepts tells the query-builder to eager-load the nodes that are connected to
 // the "concepts" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ContentNodeQuery) WithConcepts(opts ...func(*ConceptQuery)) *ContentNodeQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ContentNodeQuery) WithConcepts(opts ...func(*KnowledgeNodeQuery)) *ContentNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -743,15 +742,15 @@ func (_q *ContentNodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 	}
 	if query := _q.withSkills; query != nil {
 		if err := _q.loadSkills(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.Skills = []*Skill{} },
-			func(n *ContentNode, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			func(n *ContentNode) { n.Edges.Skills = []*KnowledgeNode{} },
+			func(n *ContentNode, e *KnowledgeNode) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
 			return nil, err
 		}
 	}
 	if query := _q.withConcepts; query != nil {
 		if err := _q.loadConcepts(ctx, query, nodes,
-			func(n *ContentNode) { n.Edges.Concepts = []*Concept{} },
-			func(n *ContentNode, e *Concept) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
+			func(n *ContentNode) { n.Edges.Concepts = []*KnowledgeNode{} },
+			func(n *ContentNode, e *KnowledgeNode) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -932,7 +931,7 @@ func (_q *ContentNodeQuery) loadLanguages(ctx context.Context, query *LanguageQu
 	}
 	return nil
 }
-func (_q *ContentNodeQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *Skill)) error {
+func (_q *ContentNodeQuery) loadSkills(ctx context.Context, query *KnowledgeNodeQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*ContentNode)
 	nids := make(map[uuid.UUID]map[*ContentNode]struct{})
@@ -945,7 +944,7 @@ func (_q *ContentNodeQuery) loadSkills(ctx context.Context, query *SkillQuery, n
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(contentnode.SkillsTable)
-		s.Join(joinT).On(s.C(skill.FieldID), joinT.C(contentnode.SkillsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(contentnode.SkillsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(contentnode.SkillsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(contentnode.SkillsPrimaryKey[0]))
@@ -978,7 +977,7 @@ func (_q *ContentNodeQuery) loadSkills(ctx context.Context, query *SkillQuery, n
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Skill](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
@@ -993,7 +992,7 @@ func (_q *ContentNodeQuery) loadSkills(ctx context.Context, query *SkillQuery, n
 	}
 	return nil
 }
-func (_q *ContentNodeQuery) loadConcepts(ctx context.Context, query *ConceptQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *Concept)) error {
+func (_q *ContentNodeQuery) loadConcepts(ctx context.Context, query *KnowledgeNodeQuery, nodes []*ContentNode, init func(*ContentNode), assign func(*ContentNode, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*ContentNode)
 	nids := make(map[uuid.UUID]map[*ContentNode]struct{})
@@ -1006,7 +1005,7 @@ func (_q *ContentNodeQuery) loadConcepts(ctx context.Context, query *ConceptQuer
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(contentnode.ConceptsTable)
-		s.Join(joinT).On(s.C(concept.FieldID), joinT.C(contentnode.ConceptsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(contentnode.ConceptsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(contentnode.ConceptsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(contentnode.ConceptsPrimaryKey[0]))
@@ -1039,7 +1038,7 @@ func (_q *ContentNodeQuery) loadConcepts(ctx context.Context, query *ConceptQuer
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Concept](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}

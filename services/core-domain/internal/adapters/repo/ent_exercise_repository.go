@@ -10,11 +10,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -108,11 +107,11 @@ func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	skillIDs, err = parseUUIDs(skillIDsOf(ex.Skills))
+	skillIDs, err = parseUUIDs(nodeIDsOf(ex.Skills))
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	conceptIDs, err = parseUUIDs(conceptIDsOf(ex.Concepts))
+	conceptIDs, err = parseUUIDs(nodeIDsOf(ex.Concepts))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -191,8 +190,8 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -390,8 +389,8 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -411,13 +410,13 @@ func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID strin
 		return nil, err
 	}
 	rows, err := r.client.Exercise.Query().
-		Where(exercise.HasSkillsWith(skill.ID(parsed))).
+		Where(exercise.HasSkillsWith(knowledgenode.ID(parsed))).
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -443,8 +442,8 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		Order(exercise.ByID()).
 		Limit(page.Limit).
 		Offset(page.Offset).
@@ -493,8 +492,8 @@ func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercis
 		id    string
 		match func(uuid.UUID) predicate.Exercise
 	}{
-		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(skill.ID(id)) }},
-		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(concept.ID(id)) }},
+		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(knowledgenode.ID(id)) }},
+		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(knowledgenode.ID(id)) }},
 		{filter.CreatedBy, exercise.CreatedBy},
 	}
 	for _, f := range byID {
@@ -640,8 +639,8 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		Title:                    row.Title,
 		Prompt:                   unmarshalPrompt(row.Prompt),
 		ExerciseType:             domain.ExerciseType(row.ExerciseType),
-		Skills:                   domainSkillsFromEdges(row.Edges.Skills),
-		Concepts:                 domainConceptsFromEdges(row.Edges.Concepts),
+		Skills:                   domainKnowledgeNodesFromEdges(row.Edges.Skills),
+		Concepts:                 domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 		ImageURL:                 row.ImageURL,
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,

@@ -18,7 +18,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -39,17 +38,20 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -66,8 +68,6 @@ type Client struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
-	// Concept is the client for interacting with the Concept builders.
-	Concept *ConceptClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -108,6 +108,8 @@ type Client struct {
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
 	ExerciseConcept *ExerciseConceptClient
+	// ExerciseInstrument is the client for interacting with the ExerciseInstrument builders.
+	ExerciseInstrument *ExerciseInstrumentClient
 	// ExerciseLanguage is the client for interacting with the ExerciseLanguage builders.
 	ExerciseLanguage *ExerciseLanguageClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
@@ -118,6 +120,12 @@ type Client struct {
 	ExpandedContent *ExpandedContentClient
 	// Instrument is the client for interacting with the Instrument builders.
 	Instrument *InstrumentClient
+	// KnowledgeEdge is the client for interacting with the KnowledgeEdge builders.
+	KnowledgeEdge *KnowledgeEdgeClient
+	// KnowledgeNode is the client for interacting with the KnowledgeNode builders.
+	KnowledgeNode *KnowledgeNodeClient
+	// KnowledgeNodeInstrument is the client for interacting with the KnowledgeNodeInstrument builders.
+	KnowledgeNodeInstrument *KnowledgeNodeInstrumentClient
 	// Language is the client for interacting with the Language builders.
 	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
@@ -128,8 +136,6 @@ type Client struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
-	// Skill is the client for interacting with the Skill builders.
-	Skill *SkillClient
 	// StudentLearningState is the client for interacting with the StudentLearningState builders.
 	StudentLearningState *StudentLearningStateClient
 	// StudentPath is the client for interacting with the StudentPath builders.
@@ -153,7 +159,6 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Challenge = NewChallengeClient(c.config)
 	c.ChallengeExercise = NewChallengeExerciseClient(c.config)
-	c.Concept = NewConceptClient(c.config)
 	c.ContentNode = NewContentNodeClient(c.config)
 	c.ContentNodeConcept = NewContentNodeConceptClient(c.config)
 	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
@@ -174,17 +179,20 @@ func (c *Client) init() {
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseConcept = NewExerciseConceptClient(c.config)
+	c.ExerciseInstrument = NewExerciseInstrumentClient(c.config)
 	c.ExerciseLanguage = NewExerciseLanguageClient(c.config)
 	c.ExerciseOption = NewExerciseOptionClient(c.config)
 	c.ExerciseSkill = NewExerciseSkillClient(c.config)
 	c.ExpandedContent = NewExpandedContentClient(c.config)
 	c.Instrument = NewInstrumentClient(c.config)
+	c.KnowledgeEdge = NewKnowledgeEdgeClient(c.config)
+	c.KnowledgeNode = NewKnowledgeNodeClient(c.config)
+	c.KnowledgeNodeInstrument = NewKnowledgeNodeInstrumentClient(c.config)
 	c.Language = NewLanguageClient(c.config)
 	c.LearningPath = NewLearningPathClient(c.config)
 	c.LearningPathInstrument = NewLearningPathInstrumentClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.Position = NewPositionClient(c.config)
-	c.Skill = NewSkillClient(c.config)
 	c.StudentLearningState = NewStudentLearningStateClient(c.config)
 	c.StudentPath = NewStudentPathClient(c.config)
 	c.StudentPathItem = NewStudentPathItemClient(c.config)
@@ -284,7 +292,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                  cfg,
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
-		Concept:                 NewConceptClient(cfg),
 		ContentNode:             NewContentNodeClient(cfg),
 		ContentNodeConcept:      NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:     NewContentNodeExerciseClient(cfg),
@@ -305,17 +312,20 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
+		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
 		ExerciseLanguage:        NewExerciseLanguageClient(cfg),
 		ExerciseOption:          NewExerciseOptionClient(cfg),
 		ExerciseSkill:           NewExerciseSkillClient(cfg),
 		ExpandedContent:         NewExpandedContentClient(cfg),
 		Instrument:              NewInstrumentClient(cfg),
+		KnowledgeEdge:           NewKnowledgeEdgeClient(cfg),
+		KnowledgeNode:           NewKnowledgeNodeClient(cfg),
+		KnowledgeNodeInstrument: NewKnowledgeNodeInstrumentClient(cfg),
 		Language:                NewLanguageClient(cfg),
 		LearningPath:            NewLearningPathClient(cfg),
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
-		Skill:                   NewSkillClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
 		StudentPath:             NewStudentPathClient(cfg),
 		StudentPathItem:         NewStudentPathItemClient(cfg),
@@ -342,7 +352,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                  cfg,
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
-		Concept:                 NewConceptClient(cfg),
 		ContentNode:             NewContentNodeClient(cfg),
 		ContentNodeConcept:      NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:     NewContentNodeExerciseClient(cfg),
@@ -363,17 +372,20 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
+		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
 		ExerciseLanguage:        NewExerciseLanguageClient(cfg),
 		ExerciseOption:          NewExerciseOptionClient(cfg),
 		ExerciseSkill:           NewExerciseSkillClient(cfg),
 		ExpandedContent:         NewExpandedContentClient(cfg),
 		Instrument:              NewInstrumentClient(cfg),
+		KnowledgeEdge:           NewKnowledgeEdgeClient(cfg),
+		KnowledgeNode:           NewKnowledgeNodeClient(cfg),
+		KnowledgeNodeInstrument: NewKnowledgeNodeInstrumentClient(cfg),
 		Language:                NewLanguageClient(cfg),
 		LearningPath:            NewLearningPathClient(cfg),
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
-		Skill:                   NewSkillClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
 		StudentPath:             NewStudentPathClient(cfg),
 		StudentPathItem:         NewStudentPathItemClient(cfg),
@@ -408,16 +420,17 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
-		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
-		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
-		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeConcept,
+		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
+		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
-		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
-		c.Instrument, c.Language, c.LearningPath, c.LearningPathInstrument,
-		c.LearningPathItem, c.Position, c.Skill, c.StudentLearningState, c.StudentPath,
-		c.StudentPathItem, c.User, c.Voice,
+		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
+		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -427,16 +440,17 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Challenge, c.ChallengeExercise, c.Concept, c.ContentNode,
-		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
-		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
-		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
+		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeConcept,
+		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
+		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
+		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
-		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
-		c.Instrument, c.Language, c.LearningPath, c.LearningPathInstrument,
-		c.LearningPathItem, c.Position, c.Skill, c.StudentLearningState, c.StudentPath,
-		c.StudentPathItem, c.User, c.Voice,
+		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
+		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -449,8 +463,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Challenge.mutate(ctx, m)
 	case *ChallengeExerciseMutation:
 		return c.ChallengeExercise.mutate(ctx, m)
-	case *ConceptMutation:
-		return c.Concept.mutate(ctx, m)
 	case *ContentNodeMutation:
 		return c.ContentNode.mutate(ctx, m)
 	case *ContentNodeConceptMutation:
@@ -491,6 +503,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Exercise.mutate(ctx, m)
 	case *ExerciseConceptMutation:
 		return c.ExerciseConcept.mutate(ctx, m)
+	case *ExerciseInstrumentMutation:
+		return c.ExerciseInstrument.mutate(ctx, m)
 	case *ExerciseLanguageMutation:
 		return c.ExerciseLanguage.mutate(ctx, m)
 	case *ExerciseOptionMutation:
@@ -501,6 +515,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ExpandedContent.mutate(ctx, m)
 	case *InstrumentMutation:
 		return c.Instrument.mutate(ctx, m)
+	case *KnowledgeEdgeMutation:
+		return c.KnowledgeEdge.mutate(ctx, m)
+	case *KnowledgeNodeMutation:
+		return c.KnowledgeNode.mutate(ctx, m)
+	case *KnowledgeNodeInstrumentMutation:
+		return c.KnowledgeNodeInstrument.mutate(ctx, m)
 	case *LanguageMutation:
 		return c.Language.mutate(ctx, m)
 	case *LearningPathMutation:
@@ -511,8 +531,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LearningPathItem.mutate(ctx, m)
 	case *PositionMutation:
 		return c.Position.mutate(ctx, m)
-	case *SkillMutation:
-		return c.Skill.mutate(ctx, m)
 	case *StudentLearningStateMutation:
 		return c.StudentLearningState.mutate(ctx, m)
 	case *StudentPathMutation:
@@ -858,267 +876,6 @@ func (c *ChallengeExerciseClient) mutate(ctx context.Context, m *ChallengeExerci
 	}
 }
 
-// ConceptClient is a client for the Concept schema.
-type ConceptClient struct {
-	config
-}
-
-// NewConceptClient returns a client for the Concept from the given config.
-func NewConceptClient(c config) *ConceptClient {
-	return &ConceptClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `concept.Hooks(f(g(h())))`.
-func (c *ConceptClient) Use(hooks ...Hook) {
-	c.hooks.Concept = append(c.hooks.Concept, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `concept.Intercept(f(g(h())))`.
-func (c *ConceptClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Concept = append(c.inters.Concept, interceptors...)
-}
-
-// Create returns a builder for creating a Concept entity.
-func (c *ConceptClient) Create() *ConceptCreate {
-	mutation := newConceptMutation(c.config, OpCreate)
-	return &ConceptCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of Concept entities.
-func (c *ConceptClient) CreateBulk(builders ...*ConceptCreate) *ConceptCreateBulk {
-	return &ConceptCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *ConceptClient) MapCreateBulk(slice any, setFunc func(*ConceptCreate, int)) *ConceptCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &ConceptCreateBulk{err: fmt.Errorf("calling to ConceptClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*ConceptCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &ConceptCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for Concept.
-func (c *ConceptClient) Update() *ConceptUpdate {
-	mutation := newConceptMutation(c.config, OpUpdate)
-	return &ConceptUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *ConceptClient) UpdateOne(_m *Concept) *ConceptUpdateOne {
-	mutation := newConceptMutation(c.config, OpUpdateOne, withConcept(_m))
-	return &ConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *ConceptClient) UpdateOneID(id uuid.UUID) *ConceptUpdateOne {
-	mutation := newConceptMutation(c.config, OpUpdateOne, withConceptID(id))
-	return &ConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for Concept.
-func (c *ConceptClient) Delete() *ConceptDelete {
-	mutation := newConceptMutation(c.config, OpDelete)
-	return &ConceptDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *ConceptClient) DeleteOne(_m *Concept) *ConceptDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ConceptClient) DeleteOneID(id uuid.UUID) *ConceptDeleteOne {
-	builder := c.Delete().Where(concept.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &ConceptDeleteOne{builder}
-}
-
-// Query returns a query builder for Concept.
-func (c *ConceptClient) Query() *ConceptQuery {
-	return &ConceptQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeConcept},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a Concept entity by its id.
-func (c *ConceptClient) Get(ctx context.Context, id uuid.UUID) (*Concept, error) {
-	return c.Query().Where(concept.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *ConceptClient) GetX(ctx context.Context, id uuid.UUID) *Concept {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryChildren queries the children edge of a Concept.
-func (c *ConceptClient) QueryChildren(_m *Concept) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, concept.ChildrenTable, concept.ChildrenColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryParent queries the parent edge of a Concept.
-func (c *ConceptClient) QueryParent(_m *Concept) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, concept.ParentTable, concept.ParentColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryContentNodes queries the content_nodes edge of a Concept.
-func (c *ConceptClient) QueryContentNodes(_m *Concept) *ContentNodeQuery {
-	query := (&ContentNodeClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(contentnode.Table, contentnode.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, concept.ContentNodesTable, concept.ContentNodesPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryExercises queries the exercises edge of a Concept.
-func (c *ConceptClient) QueryExercises(_m *Concept) *ExerciseQuery {
-	query := (&ExerciseClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(exercise.Table, exercise.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, concept.ExercisesTable, concept.ExercisesPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryDiagrams queries the diagrams edge of a Concept.
-func (c *ConceptClient) QueryDiagrams(_m *Concept) *DiagramQuery {
-	query := (&DiagramClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(diagram.Table, diagram.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, concept.DiagramsTable, concept.DiagramsPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryContentNodeConcepts queries the content_node_concepts edge of a Concept.
-func (c *ConceptClient) QueryContentNodeConcepts(_m *Concept) *ContentNodeConceptQuery {
-	query := (&ContentNodeConceptClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(contentnodeconcept.Table, contentnodeconcept.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, concept.ContentNodeConceptsTable, concept.ContentNodeConceptsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryExerciseConcepts queries the exercise_concepts edge of a Concept.
-func (c *ConceptClient) QueryExerciseConcepts(_m *Concept) *ExerciseConceptQuery {
-	query := (&ExerciseConceptClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, concept.ExerciseConceptsTable, concept.ExerciseConceptsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryDiagramConcepts queries the diagram_concepts edge of a Concept.
-func (c *ConceptClient) QueryDiagramConcepts(_m *Concept) *DiagramConceptQuery {
-	query := (&DiagramConceptClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(concept.Table, concept.FieldID, id),
-			sqlgraph.To(diagramconcept.Table, diagramconcept.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, concept.DiagramConceptsTable, concept.DiagramConceptsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *ConceptClient) Hooks() []Hook {
-	return c.hooks.Concept
-}
-
-// Interceptors returns the client interceptors.
-func (c *ConceptClient) Interceptors() []Interceptor {
-	return c.inters.Concept
-}
-
-func (c *ConceptClient) mutate(ctx context.Context, m *ConceptMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&ConceptCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&ConceptUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&ConceptUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&ConceptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown Concept mutation op: %q", m.Op())
-	}
-}
-
 // ContentNodeClient is a client for the ContentNode schema.
 type ContentNodeClient struct {
 	config
@@ -1260,13 +1017,13 @@ func (c *ContentNodeClient) QueryLanguages(_m *ContentNode) *LanguageQuery {
 }
 
 // QuerySkills queries the skills edge of a ContentNode.
-func (c *ContentNodeClient) QuerySkills(_m *ContentNode) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *ContentNodeClient) QuerySkills(_m *ContentNode) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.SkillsTable, contentnode.SkillsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1276,13 +1033,13 @@ func (c *ContentNodeClient) QuerySkills(_m *ContentNode) *SkillQuery {
 }
 
 // QueryConcepts queries the concepts edge of a ContentNode.
-func (c *ContentNodeClient) QueryConcepts(_m *ContentNode) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *ContentNodeClient) QueryConcepts(_m *ContentNode) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnode.Table, contentnode.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, contentnode.ConceptsTable, contentnode.ConceptsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -1537,13 +1294,13 @@ func (c *ContentNodeConceptClient) QueryContentNode(_m *ContentNodeConcept) *Con
 }
 
 // QueryConcept queries the concept edge of a ContentNodeConcept.
-func (c *ContentNodeConceptClient) QueryConcept(_m *ContentNodeConcept) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *ContentNodeConceptClient) QueryConcept(_m *ContentNodeConcept) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnodeconcept.Table, contentnodeconcept.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, contentnodeconcept.ConceptTable, contentnodeconcept.ConceptColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -2197,13 +1954,13 @@ func (c *ContentNodeSkillClient) QueryContentNode(_m *ContentNodeSkill) *Content
 }
 
 // QuerySkill queries the skill edge of a ContentNodeSkill.
-func (c *ContentNodeSkillClient) QuerySkill(_m *ContentNodeSkill) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *ContentNodeSkillClient) QuerySkill(_m *ContentNodeSkill) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(contentnodeskill.Table, contentnodeskill.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, contentnodeskill.SkillTable, contentnodeskill.SkillColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -3405,13 +3162,13 @@ func (c *DiagramClient) QueryRegions(_m *Diagram) *DiagramRegionQuery {
 }
 
 // QuerySkills queries the skills edge of a Diagram.
-func (c *DiagramClient) QuerySkills(_m *Diagram) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *DiagramClient) QuerySkills(_m *Diagram) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagram.Table, diagram.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.SkillsTable, diagram.SkillsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -3421,13 +3178,13 @@ func (c *DiagramClient) QuerySkills(_m *Diagram) *SkillQuery {
 }
 
 // QueryConcepts queries the concepts edge of a Diagram.
-func (c *DiagramClient) QueryConcepts(_m *Diagram) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *DiagramClient) QueryConcepts(_m *Diagram) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagram.Table, diagram.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.ConceptsTable, diagram.ConceptsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -3634,13 +3391,13 @@ func (c *DiagramConceptClient) QueryDiagram(_m *DiagramConcept) *DiagramQuery {
 }
 
 // QueryConcept queries the concept edge of a DiagramConcept.
-func (c *DiagramConceptClient) QueryConcept(_m *DiagramConcept) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *DiagramConceptClient) QueryConcept(_m *DiagramConcept) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagramconcept.Table, diagramconcept.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, diagramconcept.ConceptTable, diagramconcept.ConceptColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -4113,13 +3870,13 @@ func (c *DiagramSkillClient) QueryDiagram(_m *DiagramSkill) *DiagramQuery {
 }
 
 // QuerySkill queries the skill edge of a DiagramSkill.
-func (c *DiagramSkillClient) QuerySkill(_m *DiagramSkill) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *DiagramSkillClient) QuerySkill(_m *DiagramSkill) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagramskill.Table, diagramskill.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, diagramskill.SkillTable, diagramskill.SkillColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -4326,13 +4083,13 @@ func (c *ExerciseClient) QueryLanguages(_m *Exercise) *LanguageQuery {
 }
 
 // QuerySkills queries the skills edge of a Exercise.
-func (c *ExerciseClient) QuerySkills(_m *Exercise) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *ExerciseClient) QuerySkills(_m *Exercise) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exercise.Table, exercise.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, exercise.SkillsTable, exercise.SkillsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -4342,14 +4099,30 @@ func (c *ExerciseClient) QuerySkills(_m *Exercise) *SkillQuery {
 }
 
 // QueryConcepts queries the concepts edge of a Exercise.
-func (c *ExerciseClient) QueryConcepts(_m *Exercise) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *ExerciseClient) QueryConcepts(_m *Exercise) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exercise.Table, exercise.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, exercise.ConceptsTable, exercise.ConceptsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstruments queries the instruments edge of a Exercise.
+func (c *ExerciseClient) QueryInstruments(_m *Exercise) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, exercise.InstrumentsTable, exercise.InstrumentsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -4430,6 +4203,22 @@ func (c *ExerciseClient) QueryExerciseConcepts(_m *Exercise) *ExerciseConceptQue
 			sqlgraph.From(exercise.Table, exercise.FieldID, id),
 			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ExerciseConceptsTable, exercise.ExerciseConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExerciseInstruments queries the exercise_instruments edge of a Exercise.
+func (c *ExerciseClient) QueryExerciseInstruments(_m *Exercise) *ExerciseInstrumentQuery {
+	query := (&ExerciseInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, id),
+			sqlgraph.To(exerciseinstrument.Table, exerciseinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ExerciseInstrumentsTable, exercise.ExerciseInstrumentsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -4587,13 +4376,13 @@ func (c *ExerciseConceptClient) QueryExercise(_m *ExerciseConcept) *ExerciseQuer
 }
 
 // QueryConcept queries the concept edge of a ExerciseConcept.
-func (c *ExerciseConceptClient) QueryConcept(_m *ExerciseConcept) *ConceptQuery {
-	query := (&ConceptClient{config: c.config}).Query()
+func (c *ExerciseConceptClient) QueryConcept(_m *ExerciseConcept) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exerciseconcept.Table, exerciseconcept.FieldID, id),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, exerciseconcept.ConceptTable, exerciseconcept.ConceptColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -4624,6 +4413,171 @@ func (c *ExerciseConceptClient) mutate(ctx context.Context, m *ExerciseConceptMu
 		return (&ExerciseConceptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ExerciseConcept mutation op: %q", m.Op())
+	}
+}
+
+// ExerciseInstrumentClient is a client for the ExerciseInstrument schema.
+type ExerciseInstrumentClient struct {
+	config
+}
+
+// NewExerciseInstrumentClient returns a client for the ExerciseInstrument from the given config.
+func NewExerciseInstrumentClient(c config) *ExerciseInstrumentClient {
+	return &ExerciseInstrumentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `exerciseinstrument.Hooks(f(g(h())))`.
+func (c *ExerciseInstrumentClient) Use(hooks ...Hook) {
+	c.hooks.ExerciseInstrument = append(c.hooks.ExerciseInstrument, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `exerciseinstrument.Intercept(f(g(h())))`.
+func (c *ExerciseInstrumentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ExerciseInstrument = append(c.inters.ExerciseInstrument, interceptors...)
+}
+
+// Create returns a builder for creating a ExerciseInstrument entity.
+func (c *ExerciseInstrumentClient) Create() *ExerciseInstrumentCreate {
+	mutation := newExerciseInstrumentMutation(c.config, OpCreate)
+	return &ExerciseInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ExerciseInstrument entities.
+func (c *ExerciseInstrumentClient) CreateBulk(builders ...*ExerciseInstrumentCreate) *ExerciseInstrumentCreateBulk {
+	return &ExerciseInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ExerciseInstrumentClient) MapCreateBulk(slice any, setFunc func(*ExerciseInstrumentCreate, int)) *ExerciseInstrumentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ExerciseInstrumentCreateBulk{err: fmt.Errorf("calling to ExerciseInstrumentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ExerciseInstrumentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ExerciseInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ExerciseInstrument.
+func (c *ExerciseInstrumentClient) Update() *ExerciseInstrumentUpdate {
+	mutation := newExerciseInstrumentMutation(c.config, OpUpdate)
+	return &ExerciseInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ExerciseInstrumentClient) UpdateOne(_m *ExerciseInstrument) *ExerciseInstrumentUpdateOne {
+	mutation := newExerciseInstrumentMutation(c.config, OpUpdateOne, withExerciseInstrument(_m))
+	return &ExerciseInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ExerciseInstrumentClient) UpdateOneID(id int) *ExerciseInstrumentUpdateOne {
+	mutation := newExerciseInstrumentMutation(c.config, OpUpdateOne, withExerciseInstrumentID(id))
+	return &ExerciseInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ExerciseInstrument.
+func (c *ExerciseInstrumentClient) Delete() *ExerciseInstrumentDelete {
+	mutation := newExerciseInstrumentMutation(c.config, OpDelete)
+	return &ExerciseInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ExerciseInstrumentClient) DeleteOne(_m *ExerciseInstrument) *ExerciseInstrumentDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ExerciseInstrumentClient) DeleteOneID(id int) *ExerciseInstrumentDeleteOne {
+	builder := c.Delete().Where(exerciseinstrument.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ExerciseInstrumentDeleteOne{builder}
+}
+
+// Query returns a query builder for ExerciseInstrument.
+func (c *ExerciseInstrumentClient) Query() *ExerciseInstrumentQuery {
+	return &ExerciseInstrumentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeExerciseInstrument},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ExerciseInstrument entity by its id.
+func (c *ExerciseInstrumentClient) Get(ctx context.Context, id int) (*ExerciseInstrument, error) {
+	return c.Query().Where(exerciseinstrument.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ExerciseInstrumentClient) GetX(ctx context.Context, id int) *ExerciseInstrument {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryExercise queries the exercise edge of a ExerciseInstrument.
+func (c *ExerciseInstrumentClient) QueryExercise(_m *ExerciseInstrument) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exerciseinstrument.Table, exerciseinstrument.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, exerciseinstrument.ExerciseTable, exerciseinstrument.ExerciseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstrument queries the instrument edge of a ExerciseInstrument.
+func (c *ExerciseInstrumentClient) QueryInstrument(_m *ExerciseInstrument) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exerciseinstrument.Table, exerciseinstrument.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, exerciseinstrument.InstrumentTable, exerciseinstrument.InstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ExerciseInstrumentClient) Hooks() []Hook {
+	return c.hooks.ExerciseInstrument
+}
+
+// Interceptors returns the client interceptors.
+func (c *ExerciseInstrumentClient) Interceptors() []Interceptor {
+	return c.inters.ExerciseInstrument
+}
+
+func (c *ExerciseInstrumentClient) mutate(ctx context.Context, m *ExerciseInstrumentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ExerciseInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ExerciseInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ExerciseInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ExerciseInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ExerciseInstrument mutation op: %q", m.Op())
 	}
 }
 
@@ -5066,13 +5020,13 @@ func (c *ExerciseSkillClient) QueryExercise(_m *ExerciseSkill) *ExerciseQuery {
 }
 
 // QuerySkill queries the skill edge of a ExerciseSkill.
-func (c *ExerciseSkillClient) QuerySkill(_m *ExerciseSkill) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
+func (c *ExerciseSkillClient) QuerySkill(_m *ExerciseSkill) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exerciseskill.Table, exerciseskill.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, exerciseskill.SkillTable, exerciseskill.SkillColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -5443,6 +5397,38 @@ func (c *InstrumentClient) QueryContentNodes(_m *Instrument) *ContentNodeQuery {
 	return query
 }
 
+// QueryExercises queries the exercises edge of a Instrument.
+func (c *InstrumentClient) QueryExercises(_m *Instrument) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, instrument.ExercisesTable, instrument.ExercisesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryKnowledgeNodes queries the knowledge_nodes edge of a Instrument.
+func (c *InstrumentClient) QueryKnowledgeNodes(_m *Instrument) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, instrument.KnowledgeNodesTable, instrument.KnowledgeNodesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryDiagramInstruments queries the diagram_instruments edge of a Instrument.
 func (c *InstrumentClient) QueryDiagramInstruments(_m *Instrument) *DiagramInstrumentQuery {
 	query := (&DiagramInstrumentClient{config: c.config}).Query()
@@ -5507,6 +5493,38 @@ func (c *InstrumentClient) QueryContentNodeInstruments(_m *Instrument) *ContentN
 	return query
 }
 
+// QueryExerciseInstruments queries the exercise_instruments edge of a Instrument.
+func (c *InstrumentClient) QueryExerciseInstruments(_m *Instrument) *ExerciseInstrumentQuery {
+	query := (&ExerciseInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(exerciseinstrument.Table, exerciseinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, instrument.ExerciseInstrumentsTable, instrument.ExerciseInstrumentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryKnowledgeNodeInstruments queries the knowledge_node_instruments edge of a Instrument.
+func (c *InstrumentClient) QueryKnowledgeNodeInstruments(_m *Instrument) *KnowledgeNodeInstrumentQuery {
+	query := (&KnowledgeNodeInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(knowledgenodeinstrument.Table, knowledgenodeinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, instrument.KnowledgeNodeInstrumentsTable, instrument.KnowledgeNodeInstrumentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *InstrumentClient) Hooks() []Hook {
 	return c.hooks.Instrument
@@ -5529,6 +5547,757 @@ func (c *InstrumentClient) mutate(ctx context.Context, m *InstrumentMutation) (V
 		return (&InstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Instrument mutation op: %q", m.Op())
+	}
+}
+
+// KnowledgeEdgeClient is a client for the KnowledgeEdge schema.
+type KnowledgeEdgeClient struct {
+	config
+}
+
+// NewKnowledgeEdgeClient returns a client for the KnowledgeEdge from the given config.
+func NewKnowledgeEdgeClient(c config) *KnowledgeEdgeClient {
+	return &KnowledgeEdgeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `knowledgeedge.Hooks(f(g(h())))`.
+func (c *KnowledgeEdgeClient) Use(hooks ...Hook) {
+	c.hooks.KnowledgeEdge = append(c.hooks.KnowledgeEdge, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `knowledgeedge.Intercept(f(g(h())))`.
+func (c *KnowledgeEdgeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.KnowledgeEdge = append(c.inters.KnowledgeEdge, interceptors...)
+}
+
+// Create returns a builder for creating a KnowledgeEdge entity.
+func (c *KnowledgeEdgeClient) Create() *KnowledgeEdgeCreate {
+	mutation := newKnowledgeEdgeMutation(c.config, OpCreate)
+	return &KnowledgeEdgeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of KnowledgeEdge entities.
+func (c *KnowledgeEdgeClient) CreateBulk(builders ...*KnowledgeEdgeCreate) *KnowledgeEdgeCreateBulk {
+	return &KnowledgeEdgeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *KnowledgeEdgeClient) MapCreateBulk(slice any, setFunc func(*KnowledgeEdgeCreate, int)) *KnowledgeEdgeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &KnowledgeEdgeCreateBulk{err: fmt.Errorf("calling to KnowledgeEdgeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*KnowledgeEdgeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &KnowledgeEdgeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for KnowledgeEdge.
+func (c *KnowledgeEdgeClient) Update() *KnowledgeEdgeUpdate {
+	mutation := newKnowledgeEdgeMutation(c.config, OpUpdate)
+	return &KnowledgeEdgeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *KnowledgeEdgeClient) UpdateOne(_m *KnowledgeEdge) *KnowledgeEdgeUpdateOne {
+	mutation := newKnowledgeEdgeMutation(c.config, OpUpdateOne, withKnowledgeEdge(_m))
+	return &KnowledgeEdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *KnowledgeEdgeClient) UpdateOneID(id uuid.UUID) *KnowledgeEdgeUpdateOne {
+	mutation := newKnowledgeEdgeMutation(c.config, OpUpdateOne, withKnowledgeEdgeID(id))
+	return &KnowledgeEdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for KnowledgeEdge.
+func (c *KnowledgeEdgeClient) Delete() *KnowledgeEdgeDelete {
+	mutation := newKnowledgeEdgeMutation(c.config, OpDelete)
+	return &KnowledgeEdgeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *KnowledgeEdgeClient) DeleteOne(_m *KnowledgeEdge) *KnowledgeEdgeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *KnowledgeEdgeClient) DeleteOneID(id uuid.UUID) *KnowledgeEdgeDeleteOne {
+	builder := c.Delete().Where(knowledgeedge.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &KnowledgeEdgeDeleteOne{builder}
+}
+
+// Query returns a query builder for KnowledgeEdge.
+func (c *KnowledgeEdgeClient) Query() *KnowledgeEdgeQuery {
+	return &KnowledgeEdgeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeKnowledgeEdge},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a KnowledgeEdge entity by its id.
+func (c *KnowledgeEdgeClient) Get(ctx context.Context, id uuid.UUID) (*KnowledgeEdge, error) {
+	return c.Query().Where(knowledgeedge.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *KnowledgeEdgeClient) GetX(ctx context.Context, id uuid.UUID) *KnowledgeEdge {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryFrom queries the from edge of a KnowledgeEdge.
+func (c *KnowledgeEdgeClient) QueryFrom(_m *KnowledgeEdge) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgeedge.Table, knowledgeedge.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, knowledgeedge.FromTable, knowledgeedge.FromColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTo queries the to edge of a KnowledgeEdge.
+func (c *KnowledgeEdgeClient) QueryTo(_m *KnowledgeEdge) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgeedge.Table, knowledgeedge.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, knowledgeedge.ToTable, knowledgeedge.ToColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *KnowledgeEdgeClient) Hooks() []Hook {
+	return c.hooks.KnowledgeEdge
+}
+
+// Interceptors returns the client interceptors.
+func (c *KnowledgeEdgeClient) Interceptors() []Interceptor {
+	return c.inters.KnowledgeEdge
+}
+
+func (c *KnowledgeEdgeClient) mutate(ctx context.Context, m *KnowledgeEdgeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&KnowledgeEdgeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&KnowledgeEdgeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&KnowledgeEdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&KnowledgeEdgeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown KnowledgeEdge mutation op: %q", m.Op())
+	}
+}
+
+// KnowledgeNodeClient is a client for the KnowledgeNode schema.
+type KnowledgeNodeClient struct {
+	config
+}
+
+// NewKnowledgeNodeClient returns a client for the KnowledgeNode from the given config.
+func NewKnowledgeNodeClient(c config) *KnowledgeNodeClient {
+	return &KnowledgeNodeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `knowledgenode.Hooks(f(g(h())))`.
+func (c *KnowledgeNodeClient) Use(hooks ...Hook) {
+	c.hooks.KnowledgeNode = append(c.hooks.KnowledgeNode, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `knowledgenode.Intercept(f(g(h())))`.
+func (c *KnowledgeNodeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.KnowledgeNode = append(c.inters.KnowledgeNode, interceptors...)
+}
+
+// Create returns a builder for creating a KnowledgeNode entity.
+func (c *KnowledgeNodeClient) Create() *KnowledgeNodeCreate {
+	mutation := newKnowledgeNodeMutation(c.config, OpCreate)
+	return &KnowledgeNodeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of KnowledgeNode entities.
+func (c *KnowledgeNodeClient) CreateBulk(builders ...*KnowledgeNodeCreate) *KnowledgeNodeCreateBulk {
+	return &KnowledgeNodeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *KnowledgeNodeClient) MapCreateBulk(slice any, setFunc func(*KnowledgeNodeCreate, int)) *KnowledgeNodeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &KnowledgeNodeCreateBulk{err: fmt.Errorf("calling to KnowledgeNodeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*KnowledgeNodeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &KnowledgeNodeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for KnowledgeNode.
+func (c *KnowledgeNodeClient) Update() *KnowledgeNodeUpdate {
+	mutation := newKnowledgeNodeMutation(c.config, OpUpdate)
+	return &KnowledgeNodeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *KnowledgeNodeClient) UpdateOne(_m *KnowledgeNode) *KnowledgeNodeUpdateOne {
+	mutation := newKnowledgeNodeMutation(c.config, OpUpdateOne, withKnowledgeNode(_m))
+	return &KnowledgeNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *KnowledgeNodeClient) UpdateOneID(id uuid.UUID) *KnowledgeNodeUpdateOne {
+	mutation := newKnowledgeNodeMutation(c.config, OpUpdateOne, withKnowledgeNodeID(id))
+	return &KnowledgeNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for KnowledgeNode.
+func (c *KnowledgeNodeClient) Delete() *KnowledgeNodeDelete {
+	mutation := newKnowledgeNodeMutation(c.config, OpDelete)
+	return &KnowledgeNodeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *KnowledgeNodeClient) DeleteOne(_m *KnowledgeNode) *KnowledgeNodeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *KnowledgeNodeClient) DeleteOneID(id uuid.UUID) *KnowledgeNodeDeleteOne {
+	builder := c.Delete().Where(knowledgenode.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &KnowledgeNodeDeleteOne{builder}
+}
+
+// Query returns a query builder for KnowledgeNode.
+func (c *KnowledgeNodeClient) Query() *KnowledgeNodeQuery {
+	return &KnowledgeNodeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeKnowledgeNode},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a KnowledgeNode entity by its id.
+func (c *KnowledgeNodeClient) Get(ctx context.Context, id uuid.UUID) (*KnowledgeNode, error) {
+	return c.Query().Where(knowledgenode.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *KnowledgeNodeClient) GetX(ctx context.Context, id uuid.UUID) *KnowledgeNode {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChildren queries the children edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryChildren(_m *KnowledgeNode) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.ChildrenTable, knowledgenode.ChildrenColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryParent queries the parent edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryParent(_m *KnowledgeNode) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, knowledgenode.ParentTable, knowledgenode.ParentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstruments queries the instruments edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryInstruments(_m *KnowledgeNode) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, knowledgenode.InstrumentsTable, knowledgenode.InstrumentsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryOutgoingEdges queries the outgoing_edges edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryOutgoingEdges(_m *KnowledgeNode) *KnowledgeEdgeQuery {
+	query := (&KnowledgeEdgeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(knowledgeedge.Table, knowledgeedge.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.OutgoingEdgesTable, knowledgenode.OutgoingEdgesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryIncomingEdges queries the incoming_edges edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryIncomingEdges(_m *KnowledgeNode) *KnowledgeEdgeQuery {
+	query := (&KnowledgeEdgeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(knowledgeedge.Table, knowledgeedge.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.IncomingEdgesTable, knowledgenode.IncomingEdgesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySkillContentNodes queries the skill_content_nodes edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QuerySkillContentNodes(_m *KnowledgeNode) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.SkillContentNodesTable, knowledgenode.SkillContentNodesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConceptContentNodes queries the concept_content_nodes edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryConceptContentNodes(_m *KnowledgeNode) *ContentNodeQuery {
+	query := (&ContentNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(contentnode.Table, contentnode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.ConceptContentNodesTable, knowledgenode.ConceptContentNodesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySkillExercises queries the skill_exercises edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QuerySkillExercises(_m *KnowledgeNode) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.SkillExercisesTable, knowledgenode.SkillExercisesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConceptExercises queries the concept_exercises edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryConceptExercises(_m *KnowledgeNode) *ExerciseQuery {
+	query := (&ExerciseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(exercise.Table, exercise.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.ConceptExercisesTable, knowledgenode.ConceptExercisesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySkillDiagrams queries the skill_diagrams edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QuerySkillDiagrams(_m *KnowledgeNode) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.SkillDiagramsTable, knowledgenode.SkillDiagramsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryConceptDiagrams queries the concept_diagrams edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryConceptDiagrams(_m *KnowledgeNode) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, knowledgenode.ConceptDiagramsTable, knowledgenode.ConceptDiagramsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryKnowledgeNodeInstruments queries the knowledge_node_instruments edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryKnowledgeNodeInstruments(_m *KnowledgeNode) *KnowledgeNodeInstrumentQuery {
+	query := (&KnowledgeNodeInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(knowledgenodeinstrument.Table, knowledgenodeinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.KnowledgeNodeInstrumentsTable, knowledgenode.KnowledgeNodeInstrumentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodeSkills queries the content_node_skills edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryContentNodeSkills(_m *KnowledgeNode) *ContentNodeSkillQuery {
+	query := (&ContentNodeSkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(contentnodeskill.Table, contentnodeskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.ContentNodeSkillsTable, knowledgenode.ContentNodeSkillsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContentNodeConcepts queries the content_node_concepts edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryContentNodeConcepts(_m *KnowledgeNode) *ContentNodeConceptQuery {
+	query := (&ContentNodeConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(contentnodeconcept.Table, contentnodeconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.ContentNodeConceptsTable, knowledgenode.ContentNodeConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExerciseSkills queries the exercise_skills edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryExerciseSkills(_m *KnowledgeNode) *ExerciseSkillQuery {
+	query := (&ExerciseSkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(exerciseskill.Table, exerciseskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.ExerciseSkillsTable, knowledgenode.ExerciseSkillsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExerciseConcepts queries the exercise_concepts edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryExerciseConcepts(_m *KnowledgeNode) *ExerciseConceptQuery {
+	query := (&ExerciseConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.ExerciseConceptsTable, knowledgenode.ExerciseConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramSkills queries the diagram_skills edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryDiagramSkills(_m *KnowledgeNode) *DiagramSkillQuery {
+	query := (&DiagramSkillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(diagramskill.Table, diagramskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.DiagramSkillsTable, knowledgenode.DiagramSkillsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramConcepts queries the diagram_concepts edge of a KnowledgeNode.
+func (c *KnowledgeNodeClient) QueryDiagramConcepts(_m *KnowledgeNode) *DiagramConceptQuery {
+	query := (&DiagramConceptClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenode.Table, knowledgenode.FieldID, id),
+			sqlgraph.To(diagramconcept.Table, diagramconcept.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, knowledgenode.DiagramConceptsTable, knowledgenode.DiagramConceptsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *KnowledgeNodeClient) Hooks() []Hook {
+	return c.hooks.KnowledgeNode
+}
+
+// Interceptors returns the client interceptors.
+func (c *KnowledgeNodeClient) Interceptors() []Interceptor {
+	return c.inters.KnowledgeNode
+}
+
+func (c *KnowledgeNodeClient) mutate(ctx context.Context, m *KnowledgeNodeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&KnowledgeNodeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&KnowledgeNodeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&KnowledgeNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&KnowledgeNodeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown KnowledgeNode mutation op: %q", m.Op())
+	}
+}
+
+// KnowledgeNodeInstrumentClient is a client for the KnowledgeNodeInstrument schema.
+type KnowledgeNodeInstrumentClient struct {
+	config
+}
+
+// NewKnowledgeNodeInstrumentClient returns a client for the KnowledgeNodeInstrument from the given config.
+func NewKnowledgeNodeInstrumentClient(c config) *KnowledgeNodeInstrumentClient {
+	return &KnowledgeNodeInstrumentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `knowledgenodeinstrument.Hooks(f(g(h())))`.
+func (c *KnowledgeNodeInstrumentClient) Use(hooks ...Hook) {
+	c.hooks.KnowledgeNodeInstrument = append(c.hooks.KnowledgeNodeInstrument, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `knowledgenodeinstrument.Intercept(f(g(h())))`.
+func (c *KnowledgeNodeInstrumentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.KnowledgeNodeInstrument = append(c.inters.KnowledgeNodeInstrument, interceptors...)
+}
+
+// Create returns a builder for creating a KnowledgeNodeInstrument entity.
+func (c *KnowledgeNodeInstrumentClient) Create() *KnowledgeNodeInstrumentCreate {
+	mutation := newKnowledgeNodeInstrumentMutation(c.config, OpCreate)
+	return &KnowledgeNodeInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of KnowledgeNodeInstrument entities.
+func (c *KnowledgeNodeInstrumentClient) CreateBulk(builders ...*KnowledgeNodeInstrumentCreate) *KnowledgeNodeInstrumentCreateBulk {
+	return &KnowledgeNodeInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *KnowledgeNodeInstrumentClient) MapCreateBulk(slice any, setFunc func(*KnowledgeNodeInstrumentCreate, int)) *KnowledgeNodeInstrumentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &KnowledgeNodeInstrumentCreateBulk{err: fmt.Errorf("calling to KnowledgeNodeInstrumentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*KnowledgeNodeInstrumentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &KnowledgeNodeInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for KnowledgeNodeInstrument.
+func (c *KnowledgeNodeInstrumentClient) Update() *KnowledgeNodeInstrumentUpdate {
+	mutation := newKnowledgeNodeInstrumentMutation(c.config, OpUpdate)
+	return &KnowledgeNodeInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *KnowledgeNodeInstrumentClient) UpdateOne(_m *KnowledgeNodeInstrument) *KnowledgeNodeInstrumentUpdateOne {
+	mutation := newKnowledgeNodeInstrumentMutation(c.config, OpUpdateOne, withKnowledgeNodeInstrument(_m))
+	return &KnowledgeNodeInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *KnowledgeNodeInstrumentClient) UpdateOneID(id int) *KnowledgeNodeInstrumentUpdateOne {
+	mutation := newKnowledgeNodeInstrumentMutation(c.config, OpUpdateOne, withKnowledgeNodeInstrumentID(id))
+	return &KnowledgeNodeInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for KnowledgeNodeInstrument.
+func (c *KnowledgeNodeInstrumentClient) Delete() *KnowledgeNodeInstrumentDelete {
+	mutation := newKnowledgeNodeInstrumentMutation(c.config, OpDelete)
+	return &KnowledgeNodeInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *KnowledgeNodeInstrumentClient) DeleteOne(_m *KnowledgeNodeInstrument) *KnowledgeNodeInstrumentDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *KnowledgeNodeInstrumentClient) DeleteOneID(id int) *KnowledgeNodeInstrumentDeleteOne {
+	builder := c.Delete().Where(knowledgenodeinstrument.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &KnowledgeNodeInstrumentDeleteOne{builder}
+}
+
+// Query returns a query builder for KnowledgeNodeInstrument.
+func (c *KnowledgeNodeInstrumentClient) Query() *KnowledgeNodeInstrumentQuery {
+	return &KnowledgeNodeInstrumentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeKnowledgeNodeInstrument},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a KnowledgeNodeInstrument entity by its id.
+func (c *KnowledgeNodeInstrumentClient) Get(ctx context.Context, id int) (*KnowledgeNodeInstrument, error) {
+	return c.Query().Where(knowledgenodeinstrument.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *KnowledgeNodeInstrumentClient) GetX(ctx context.Context, id int) *KnowledgeNodeInstrument {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryKnowledgeNode queries the knowledge_node edge of a KnowledgeNodeInstrument.
+func (c *KnowledgeNodeInstrumentClient) QueryKnowledgeNode(_m *KnowledgeNodeInstrument) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenodeinstrument.Table, knowledgenodeinstrument.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, knowledgenodeinstrument.KnowledgeNodeTable, knowledgenodeinstrument.KnowledgeNodeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstrument queries the instrument edge of a KnowledgeNodeInstrument.
+func (c *KnowledgeNodeInstrumentClient) QueryInstrument(_m *KnowledgeNodeInstrument) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(knowledgenodeinstrument.Table, knowledgenodeinstrument.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, knowledgenodeinstrument.InstrumentTable, knowledgenodeinstrument.InstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *KnowledgeNodeInstrumentClient) Hooks() []Hook {
+	return c.hooks.KnowledgeNodeInstrument
+}
+
+// Interceptors returns the client interceptors.
+func (c *KnowledgeNodeInstrumentClient) Interceptors() []Interceptor {
+	return c.inters.KnowledgeNodeInstrument
+}
+
+func (c *KnowledgeNodeInstrumentClient) mutate(ctx context.Context, m *KnowledgeNodeInstrumentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&KnowledgeNodeInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&KnowledgeNodeInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&KnowledgeNodeInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&KnowledgeNodeInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown KnowledgeNodeInstrument mutation op: %q", m.Op())
 	}
 }
 
@@ -6341,267 +7110,6 @@ func (c *PositionClient) mutate(ctx context.Context, m *PositionMutation) (Value
 	}
 }
 
-// SkillClient is a client for the Skill schema.
-type SkillClient struct {
-	config
-}
-
-// NewSkillClient returns a client for the Skill from the given config.
-func NewSkillClient(c config) *SkillClient {
-	return &SkillClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `skill.Hooks(f(g(h())))`.
-func (c *SkillClient) Use(hooks ...Hook) {
-	c.hooks.Skill = append(c.hooks.Skill, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `skill.Intercept(f(g(h())))`.
-func (c *SkillClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Skill = append(c.inters.Skill, interceptors...)
-}
-
-// Create returns a builder for creating a Skill entity.
-func (c *SkillClient) Create() *SkillCreate {
-	mutation := newSkillMutation(c.config, OpCreate)
-	return &SkillCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of Skill entities.
-func (c *SkillClient) CreateBulk(builders ...*SkillCreate) *SkillCreateBulk {
-	return &SkillCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *SkillClient) MapCreateBulk(slice any, setFunc func(*SkillCreate, int)) *SkillCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &SkillCreateBulk{err: fmt.Errorf("calling to SkillClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*SkillCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &SkillCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for Skill.
-func (c *SkillClient) Update() *SkillUpdate {
-	mutation := newSkillMutation(c.config, OpUpdate)
-	return &SkillUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *SkillClient) UpdateOne(_m *Skill) *SkillUpdateOne {
-	mutation := newSkillMutation(c.config, OpUpdateOne, withSkill(_m))
-	return &SkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *SkillClient) UpdateOneID(id uuid.UUID) *SkillUpdateOne {
-	mutation := newSkillMutation(c.config, OpUpdateOne, withSkillID(id))
-	return &SkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for Skill.
-func (c *SkillClient) Delete() *SkillDelete {
-	mutation := newSkillMutation(c.config, OpDelete)
-	return &SkillDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *SkillClient) DeleteOne(_m *Skill) *SkillDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SkillClient) DeleteOneID(id uuid.UUID) *SkillDeleteOne {
-	builder := c.Delete().Where(skill.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &SkillDeleteOne{builder}
-}
-
-// Query returns a query builder for Skill.
-func (c *SkillClient) Query() *SkillQuery {
-	return &SkillQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeSkill},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a Skill entity by its id.
-func (c *SkillClient) Get(ctx context.Context, id uuid.UUID) (*Skill, error) {
-	return c.Query().Where(skill.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *SkillClient) GetX(ctx context.Context, id uuid.UUID) *Skill {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryChildren queries the children edge of a Skill.
-func (c *SkillClient) QueryChildren(_m *Skill) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, skill.ChildrenTable, skill.ChildrenColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryParent queries the parent edge of a Skill.
-func (c *SkillClient) QueryParent(_m *Skill) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, skill.ParentTable, skill.ParentColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryContentNodes queries the content_nodes edge of a Skill.
-func (c *SkillClient) QueryContentNodes(_m *Skill) *ContentNodeQuery {
-	query := (&ContentNodeClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(contentnode.Table, contentnode.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, skill.ContentNodesTable, skill.ContentNodesPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryExercises queries the exercises edge of a Skill.
-func (c *SkillClient) QueryExercises(_m *Skill) *ExerciseQuery {
-	query := (&ExerciseClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(exercise.Table, exercise.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, skill.ExercisesTable, skill.ExercisesPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryDiagrams queries the diagrams edge of a Skill.
-func (c *SkillClient) QueryDiagrams(_m *Skill) *DiagramQuery {
-	query := (&DiagramClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(diagram.Table, diagram.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, skill.DiagramsTable, skill.DiagramsPrimaryKey...),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryContentNodeSkills queries the content_node_skills edge of a Skill.
-func (c *SkillClient) QueryContentNodeSkills(_m *Skill) *ContentNodeSkillQuery {
-	query := (&ContentNodeSkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(contentnodeskill.Table, contentnodeskill.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, skill.ContentNodeSkillsTable, skill.ContentNodeSkillsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryExerciseSkills queries the exercise_skills edge of a Skill.
-func (c *SkillClient) QueryExerciseSkills(_m *Skill) *ExerciseSkillQuery {
-	query := (&ExerciseSkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(exerciseskill.Table, exerciseskill.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, skill.ExerciseSkillsTable, skill.ExerciseSkillsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryDiagramSkills queries the diagram_skills edge of a Skill.
-func (c *SkillClient) QueryDiagramSkills(_m *Skill) *DiagramSkillQuery {
-	query := (&DiagramSkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(diagramskill.Table, diagramskill.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, skill.DiagramSkillsTable, skill.DiagramSkillsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *SkillClient) Hooks() []Hook {
-	return c.hooks.Skill
-}
-
-// Interceptors returns the client interceptors.
-func (c *SkillClient) Interceptors() []Interceptor {
-	return c.inters.Skill
-}
-
-func (c *SkillClient) mutate(ctx context.Context, m *SkillMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&SkillCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&SkillUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&SkillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&SkillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown Skill mutation op: %q", m.Op())
-	}
-}
-
 // StudentLearningStateClient is a client for the StudentLearningState schema.
 type StudentLearningStateClient struct {
 	config
@@ -7302,25 +7810,27 @@ func (c *VoiceClient) mutate(ctx context.Context, m *VoiceMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
+		Challenge, ChallengeExercise, ContentNode, ContentNodeConcept,
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		Exercise, ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
-		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
-		StudentPathItem, User, Voice []ent.Hook
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, KnowledgeEdge,
+		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
-		Challenge, ChallengeExercise, Concept, ContentNode, ContentNodeConcept,
+		Challenge, ChallengeExercise, ContentNode, ContentNodeConcept,
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		Exercise, ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
-		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
-		StudentPathItem, User, Voice []ent.Interceptor
+		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
+		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, KnowledgeEdge,
+		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
 	}
 )

@@ -13,16 +13,15 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // DiagramQuery is the builder for querying Diagram entities.
@@ -36,8 +35,8 @@ type DiagramQuery struct {
 	withCompatibleInstruments *InstrumentQuery
 	withPositions             *PositionQuery
 	withRegions               *DiagramRegionQuery
-	withSkills                *SkillQuery
-	withConcepts              *ConceptQuery
+	withSkills                *KnowledgeNodeQuery
+	withConcepts              *KnowledgeNodeQuery
 	withDiagramInstruments    *DiagramInstrumentQuery
 	withDiagramSkills         *DiagramSkillQuery
 	withDiagramConcepts       *DiagramConceptQuery
@@ -166,8 +165,8 @@ func (_q *DiagramQuery) QueryRegions() *DiagramRegionQuery {
 }
 
 // QuerySkills chains the current query on the "skills" edge.
-func (_q *DiagramQuery) QuerySkills() *SkillQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *DiagramQuery) QuerySkills() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -178,7 +177,7 @@ func (_q *DiagramQuery) QuerySkills() *SkillQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.SkillsTable, diagram.SkillsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -188,8 +187,8 @@ func (_q *DiagramQuery) QuerySkills() *SkillQuery {
 }
 
 // QueryConcepts chains the current query on the "concepts" edge.
-func (_q *DiagramQuery) QueryConcepts() *ConceptQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *DiagramQuery) QueryConcepts() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -200,7 +199,7 @@ func (_q *DiagramQuery) QueryConcepts() *ConceptQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.ConceptsTable, diagram.ConceptsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -528,8 +527,8 @@ func (_q *DiagramQuery) WithRegions(opts ...func(*DiagramRegionQuery)) *DiagramQ
 
 // WithSkills tells the query-builder to eager-load the nodes that are connected to
 // the "skills" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DiagramQuery) WithSkills(opts ...func(*SkillQuery)) *DiagramQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *DiagramQuery) WithSkills(opts ...func(*KnowledgeNodeQuery)) *DiagramQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -539,8 +538,8 @@ func (_q *DiagramQuery) WithSkills(opts ...func(*SkillQuery)) *DiagramQuery {
 
 // WithConcepts tells the query-builder to eager-load the nodes that are connected to
 // the "concepts" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DiagramQuery) WithConcepts(opts ...func(*ConceptQuery)) *DiagramQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *DiagramQuery) WithConcepts(opts ...func(*KnowledgeNodeQuery)) *DiagramQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -720,15 +719,15 @@ func (_q *DiagramQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Diag
 	}
 	if query := _q.withSkills; query != nil {
 		if err := _q.loadSkills(ctx, query, nodes,
-			func(n *Diagram) { n.Edges.Skills = []*Skill{} },
-			func(n *Diagram, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			func(n *Diagram) { n.Edges.Skills = []*KnowledgeNode{} },
+			func(n *Diagram, e *KnowledgeNode) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
 			return nil, err
 		}
 	}
 	if query := _q.withConcepts; query != nil {
 		if err := _q.loadConcepts(ctx, query, nodes,
-			func(n *Diagram) { n.Edges.Concepts = []*Concept{} },
-			func(n *Diagram, e *Concept) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
+			func(n *Diagram) { n.Edges.Concepts = []*KnowledgeNode{} },
+			func(n *Diagram, e *KnowledgeNode) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -908,7 +907,7 @@ func (_q *DiagramQuery) loadRegions(ctx context.Context, query *DiagramRegionQue
 	}
 	return nil
 }
-func (_q *DiagramQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *Skill)) error {
+func (_q *DiagramQuery) loadSkills(ctx context.Context, query *KnowledgeNodeQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Diagram)
 	nids := make(map[uuid.UUID]map[*Diagram]struct{})
@@ -921,7 +920,7 @@ func (_q *DiagramQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(diagram.SkillsTable)
-		s.Join(joinT).On(s.C(skill.FieldID), joinT.C(diagram.SkillsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(diagram.SkillsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(diagram.SkillsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(diagram.SkillsPrimaryKey[0]))
@@ -954,7 +953,7 @@ func (_q *DiagramQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Skill](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
@@ -969,7 +968,7 @@ func (_q *DiagramQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes
 	}
 	return nil
 }
-func (_q *DiagramQuery) loadConcepts(ctx context.Context, query *ConceptQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *Concept)) error {
+func (_q *DiagramQuery) loadConcepts(ctx context.Context, query *KnowledgeNodeQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Diagram)
 	nids := make(map[uuid.UUID]map[*Diagram]struct{})
@@ -982,7 +981,7 @@ func (_q *DiagramQuery) loadConcepts(ctx context.Context, query *ConceptQuery, n
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(diagram.ConceptsTable)
-		s.Join(joinT).On(s.C(concept.FieldID), joinT.C(diagram.ConceptsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(diagram.ConceptsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(diagram.ConceptsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(diagram.ConceptsPrimaryKey[0]))
@@ -1015,7 +1014,7 @@ func (_q *DiagramQuery) loadConcepts(ctx context.Context, query *ConceptQuery, n
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Concept](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}

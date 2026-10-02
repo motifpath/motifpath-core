@@ -10,8 +10,8 @@ import (
 
 func TestDiagramListFilter_Matches(t *testing.T) {
 	rootA := "A"
-	basic := domain.Diagram{ID: "b", Names: domain.LocalizedText{"en": "Scale", "pt_BR": "Escala Jônica"}, InstrumentID: "guitar", Kind: domain.DiagramKindBasic, CreatedBy: "admin", RootNote: &rootA, Skills: []domain.Skill{{ID: "s1"}}, Concepts: []domain.Concept{{ID: "c1"}}}
-	mine := domain.Diagram{ID: "m", Names: domain.LocalizedText{"en": "Box shape"}, InstrumentID: "guitar", Kind: domain.DiagramKindCustom, CreatedBy: "me", Skills: []domain.Skill{{ID: "s2"}}, Concepts: []domain.Concept{{ID: "c2"}}}
+	basic := domain.Diagram{ID: "b", Names: domain.LocalizedText{"en": "Scale", "pt_BR": "Escala Jônica"}, InstrumentID: "guitar", Kind: domain.DiagramKindBasic, CreatedBy: "admin", RootNote: &rootA, Skills: []domain.KnowledgeNode{{ID: "s1"}}, Concepts: []domain.KnowledgeNode{{ID: "c1"}}}
+	mine := domain.Diagram{ID: "m", Names: domain.LocalizedText{"en": "Box shape"}, InstrumentID: "guitar", Kind: domain.DiagramKindCustom, CreatedBy: "me", Skills: []domain.KnowledgeNode{{ID: "s2"}}, Concepts: []domain.KnowledgeNode{{ID: "c2"}}}
 	theirs := domain.Diagram{ID: "t", InstrumentID: "piano", Kind: domain.DiagramKindCustom, CreatedBy: "them"}
 
 	tests := []struct {

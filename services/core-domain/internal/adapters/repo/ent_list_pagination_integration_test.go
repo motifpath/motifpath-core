@@ -130,9 +130,9 @@ func TestEntExerciseRepository_List_PagesAndFilters(t *testing.T) {
 	ids := make([]string, 0, 5)
 	for i := 0; i < 5; i++ {
 		exType := domain.ExerciseTypeTextResponse
-		var skills []domain.Skill
+		var skills []domain.KnowledgeNode
 		if i%2 == 0 {
-			skills = []domain.Skill{skill}
+			skills = []domain.KnowledgeNode{skill}
 		}
 		ex := domain.Exercise{
 			ID: uuid.NewString(), Title: fmt.Sprintf("Exercise %d", i), Prompt: domain.NewPlainTextPrompt("Say it"),
@@ -176,10 +176,10 @@ func TestEntExerciseRepository_List_TextLanguageConceptAndCreatorFilters(t *test
 	fifth := seedConcept(t, ctx, client, "fifth-"+uuid.NewString())
 	bob, carol := uuid.NewString(), uuid.NewString()
 
-	exercise := func(title, lang, createdBy string, concept domain.Concept) domain.Exercise {
+	exercise := func(title, lang, createdBy string, concept domain.KnowledgeNode) domain.Exercise {
 		ex := domain.Exercise{
 			ID: uuid.NewString(), Title: title, Prompt: domain.NewPlainTextPrompt("Say it"),
-			ExerciseType: domain.ExerciseTypeTextResponse, Concepts: []domain.Concept{concept}, Options: []domain.Option{},
+			ExerciseType: domain.ExerciseTypeTextResponse, Concepts: []domain.KnowledgeNode{concept}, Options: []domain.Option{},
 			ChallengeIDs: []string{}, ContentNodeIDs: []string{},
 			Languages: []domain.Language{{Code: lang}}, CreatedBy: createdBy, CreatedAt: fixedAt,
 		}

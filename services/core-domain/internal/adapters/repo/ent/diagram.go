@@ -64,9 +64,9 @@ type DiagramEdges struct {
 	// Regions holds the value of the regions edge.
 	Regions []*DiagramRegion `json:"regions,omitempty"`
 	// Skills holds the value of the skills edge.
-	Skills []*Skill `json:"skills,omitempty"`
+	Skills []*KnowledgeNode `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
-	Concepts []*Concept `json:"concepts,omitempty"`
+	Concepts []*KnowledgeNode `json:"concepts,omitempty"`
 	// DiagramInstruments holds the value of the diagram_instruments edge.
 	DiagramInstruments []*DiagramInstrument `json:"diagram_instruments,omitempty"`
 	// DiagramSkills holds the value of the diagram_skills edge.
@@ -118,7 +118,7 @@ func (e DiagramEdges) RegionsOrErr() ([]*DiagramRegion, error) {
 
 // SkillsOrErr returns the Skills value or an error if the edge
 // was not loaded in eager-loading.
-func (e DiagramEdges) SkillsOrErr() ([]*Skill, error) {
+func (e DiagramEdges) SkillsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[4] {
 		return e.Skills, nil
 	}
@@ -127,7 +127,7 @@ func (e DiagramEdges) SkillsOrErr() ([]*Skill, error) {
 
 // ConceptsOrErr returns the Concepts value or an error if the edge
 // was not loaded in eager-loading.
-func (e DiagramEdges) ConceptsOrErr() ([]*Concept, error) {
+func (e DiagramEdges) ConceptsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[5] {
 		return e.Concepts, nil
 	}
@@ -317,12 +317,12 @@ func (_m *Diagram) QueryRegions() *DiagramRegionQuery {
 }
 
 // QuerySkills queries the "skills" edge of the Diagram entity.
-func (_m *Diagram) QuerySkills() *SkillQuery {
+func (_m *Diagram) QuerySkills() *KnowledgeNodeQuery {
 	return NewDiagramClient(_m.config).QuerySkills(_m)
 }
 
 // QueryConcepts queries the "concepts" edge of the Diagram entity.
-func (_m *Diagram) QueryConcepts() *ConceptQuery {
+func (_m *Diagram) QueryConcepts() *KnowledgeNodeQuery {
 	return NewDiagramClient(_m.config).QueryConcepts(_m)
 }
 

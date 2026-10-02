@@ -10,9 +10,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ExerciseConcept is the model entity for the ExerciseConcept schema.
@@ -37,7 +37,7 @@ type ExerciseConceptEdges struct {
 	// Exercise holds the value of the exercise edge.
 	Exercise *Exercise `json:"exercise,omitempty"`
 	// Concept holds the value of the concept edge.
-	Concept *Concept `json:"concept,omitempty"`
+	Concept *KnowledgeNode `json:"concept,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -56,11 +56,11 @@ func (e ExerciseConceptEdges) ExerciseOrErr() (*Exercise, error) {
 
 // ConceptOrErr returns the Concept value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e ExerciseConceptEdges) ConceptOrErr() (*Concept, error) {
+func (e ExerciseConceptEdges) ConceptOrErr() (*KnowledgeNode, error) {
 	if e.Concept != nil {
 		return e.Concept, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: concept.Label}
+		return nil, &NotFoundError{label: knowledgenode.Label}
 	}
 	return nil, &NotLoadedError{edge: "concept"}
 }
@@ -134,7 +134,7 @@ func (_m *ExerciseConcept) QueryExercise() *ExerciseQuery {
 }
 
 // QueryConcept queries the "concept" edge of the ExerciseConcept entity.
-func (_m *ExerciseConcept) QueryConcept() *ConceptQuery {
+func (_m *ExerciseConcept) QueryConcept() *KnowledgeNodeQuery {
 	return NewExerciseConceptClient(_m.config).QueryConcept(_m)
 }
 

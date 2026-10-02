@@ -186,7 +186,7 @@ func HasConcept() predicate.ExerciseConcept {
 }
 
 // HasConceptWith applies the HasEdge predicate on the "concept" edge with a given conditions (other predicates).
-func HasConceptWith(preds ...predicate.Concept) predicate.ExerciseConcept {
+func HasConceptWith(preds ...predicate.KnowledgeNode) predicate.ExerciseConcept {
 	return predicate.ExerciseConcept(func(s *sql.Selector) {
 		step := newConceptStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {

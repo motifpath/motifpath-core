@@ -155,8 +155,8 @@ type Diagram struct {
 	// TempoBPM is the default tempo Sequence plays at; nil exactly when
 	// Sequence is empty.
 	TempoBPM  *int
-	Skills    []Skill
-	Concepts  []Concept
+	Skills    []KnowledgeNode
+	Concepts  []KnowledgeNode
 	CreatedAt time.Time
 }
 
@@ -327,20 +327,20 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 
 // diagramClassification is a diagram's skills and concepts, carrying only
 // their ids, or an error when it has none of either.
-func diagramClassification(skillIDs, conceptIDs []string) ([]Skill, []Concept, error) {
+func diagramClassification(skillIDs, conceptIDs []string) ([]KnowledgeNode, []KnowledgeNode, error) {
 	if len(skillIDs) == 0 {
 		return nil, nil, NewValidationError("skill_ids", "must contain at least one skill")
 	}
 	if len(conceptIDs) == 0 {
 		return nil, nil, NewValidationError("concept_ids", "must contain at least one concept")
 	}
-	skills := make([]Skill, len(skillIDs))
+	skills := make([]KnowledgeNode, len(skillIDs))
 	for i, sid := range skillIDs {
-		skills[i] = Skill{ID: sid}
+		skills[i] = KnowledgeNode{ID: sid}
 	}
-	concepts := make([]Concept, len(conceptIDs))
+	concepts := make([]KnowledgeNode, len(conceptIDs))
 	for i, cid := range conceptIDs {
-		concepts[i] = Concept{ID: cid}
+		concepts[i] = KnowledgeNode{ID: cid}
 	}
 	return skills, concepts, nil
 }

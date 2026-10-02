@@ -76,5 +76,13 @@ func (Instrument) Edges() []ent.Edge {
 		edge.From("content_nodes", ContentNode.Type).
 			Ref("instruments").
 			Through("content_node_instruments", ContentNodeInstrument.Type),
+
+		edge.From("exercises", Exercise.Type).
+			Ref("instruments").
+			Through("exercise_instruments", ExerciseInstrument.Type),
+
+		edge.From("knowledge_nodes", KnowledgeNode.Type).
+			Ref("instruments").
+			Through("knowledge_node_instruments", KnowledgeNodeInstrument.Type),
 	}
 }

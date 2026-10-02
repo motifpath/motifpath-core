@@ -186,7 +186,7 @@ func HasSkill() predicate.ExerciseSkill {
 }
 
 // HasSkillWith applies the HasEdge predicate on the "skill" edge with a given conditions (other predicates).
-func HasSkillWith(preds ...predicate.Skill) predicate.ExerciseSkill {
+func HasSkillWith(preds ...predicate.KnowledgeNode) predicate.ExerciseSkill {
 	return predicate.ExerciseSkill(func(s *sql.Selector) {
 		step := newSkillStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {

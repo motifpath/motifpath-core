@@ -18,7 +18,11 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -223,6 +227,36 @@ func (_u *InstrumentUpdate) AddContentNodes(v ...*ContentNode) *InstrumentUpdate
 	return _u.AddContentNodeIDs(ids...)
 }
 
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
+func (_u *InstrumentUpdate) AddExerciseIDs(ids ...uuid.UUID) *InstrumentUpdate {
+	_u.mutation.AddExerciseIDs(ids...)
+	return _u
+}
+
+// AddExercises adds the "exercises" edges to the Exercise entity.
+func (_u *InstrumentUpdate) AddExercises(v ...*Exercise) *InstrumentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseIDs(ids...)
+}
+
+// AddKnowledgeNodeIDs adds the "knowledge_nodes" edge to the KnowledgeNode entity by IDs.
+func (_u *InstrumentUpdate) AddKnowledgeNodeIDs(ids ...uuid.UUID) *InstrumentUpdate {
+	_u.mutation.AddKnowledgeNodeIDs(ids...)
+	return _u
+}
+
+// AddKnowledgeNodes adds the "knowledge_nodes" edges to the KnowledgeNode entity.
+func (_u *InstrumentUpdate) AddKnowledgeNodes(v ...*KnowledgeNode) *InstrumentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnowledgeNodeIDs(ids...)
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
 func (_u *InstrumentUpdate) AddDiagramInstrumentIDs(ids ...int) *InstrumentUpdate {
 	_u.mutation.AddDiagramInstrumentIDs(ids...)
@@ -281,6 +315,36 @@ func (_u *InstrumentUpdate) AddContentNodeInstruments(v ...*ContentNodeInstrumen
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeInstrumentIDs(ids...)
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (_u *InstrumentUpdate) AddExerciseInstrumentIDs(ids ...int) *InstrumentUpdate {
+	_u.mutation.AddExerciseInstrumentIDs(ids...)
+	return _u
+}
+
+// AddExerciseInstruments adds the "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_u *InstrumentUpdate) AddExerciseInstruments(v ...*ExerciseInstrument) *InstrumentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseInstrumentIDs(ids...)
+}
+
+// AddKnowledgeNodeInstrumentIDs adds the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by IDs.
+func (_u *InstrumentUpdate) AddKnowledgeNodeInstrumentIDs(ids ...int) *InstrumentUpdate {
+	_u.mutation.AddKnowledgeNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// AddKnowledgeNodeInstruments adds the "knowledge_node_instruments" edges to the KnowledgeNodeInstrument entity.
+func (_u *InstrumentUpdate) AddKnowledgeNodeInstruments(v ...*KnowledgeNodeInstrument) *InstrumentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnowledgeNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the InstrumentMutation object of the builder.
@@ -399,6 +463,48 @@ func (_u *InstrumentUpdate) RemoveContentNodes(v ...*ContentNode) *InstrumentUpd
 	return _u.RemoveContentNodeIDs(ids...)
 }
 
+// ClearExercises clears all "exercises" edges to the Exercise entity.
+func (_u *InstrumentUpdate) ClearExercises() *InstrumentUpdate {
+	_u.mutation.ClearExercises()
+	return _u
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to Exercise entities by IDs.
+func (_u *InstrumentUpdate) RemoveExerciseIDs(ids ...uuid.UUID) *InstrumentUpdate {
+	_u.mutation.RemoveExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveExercises removes "exercises" edges to Exercise entities.
+func (_u *InstrumentUpdate) RemoveExercises(v ...*Exercise) *InstrumentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseIDs(ids...)
+}
+
+// ClearKnowledgeNodes clears all "knowledge_nodes" edges to the KnowledgeNode entity.
+func (_u *InstrumentUpdate) ClearKnowledgeNodes() *InstrumentUpdate {
+	_u.mutation.ClearKnowledgeNodes()
+	return _u
+}
+
+// RemoveKnowledgeNodeIDs removes the "knowledge_nodes" edge to KnowledgeNode entities by IDs.
+func (_u *InstrumentUpdate) RemoveKnowledgeNodeIDs(ids ...uuid.UUID) *InstrumentUpdate {
+	_u.mutation.RemoveKnowledgeNodeIDs(ids...)
+	return _u
+}
+
+// RemoveKnowledgeNodes removes "knowledge_nodes" edges to KnowledgeNode entities.
+func (_u *InstrumentUpdate) RemoveKnowledgeNodes(v ...*KnowledgeNode) *InstrumentUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnowledgeNodeIDs(ids...)
+}
+
 // ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
 func (_u *InstrumentUpdate) ClearDiagramInstruments() *InstrumentUpdate {
 	_u.mutation.ClearDiagramInstruments()
@@ -481,6 +587,48 @@ func (_u *InstrumentUpdate) RemoveContentNodeInstruments(v ...*ContentNodeInstru
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeInstrumentIDs(ids...)
+}
+
+// ClearExerciseInstruments clears all "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_u *InstrumentUpdate) ClearExerciseInstruments() *InstrumentUpdate {
+	_u.mutation.ClearExerciseInstruments()
+	return _u
+}
+
+// RemoveExerciseInstrumentIDs removes the "exercise_instruments" edge to ExerciseInstrument entities by IDs.
+func (_u *InstrumentUpdate) RemoveExerciseInstrumentIDs(ids ...int) *InstrumentUpdate {
+	_u.mutation.RemoveExerciseInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseInstruments removes "exercise_instruments" edges to ExerciseInstrument entities.
+func (_u *InstrumentUpdate) RemoveExerciseInstruments(v ...*ExerciseInstrument) *InstrumentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseInstrumentIDs(ids...)
+}
+
+// ClearKnowledgeNodeInstruments clears all "knowledge_node_instruments" edges to the KnowledgeNodeInstrument entity.
+func (_u *InstrumentUpdate) ClearKnowledgeNodeInstruments() *InstrumentUpdate {
+	_u.mutation.ClearKnowledgeNodeInstruments()
+	return _u
+}
+
+// RemoveKnowledgeNodeInstrumentIDs removes the "knowledge_node_instruments" edge to KnowledgeNodeInstrument entities by IDs.
+func (_u *InstrumentUpdate) RemoveKnowledgeNodeInstrumentIDs(ids ...int) *InstrumentUpdate {
+	_u.mutation.RemoveKnowledgeNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveKnowledgeNodeInstruments removes "knowledge_node_instruments" edges to KnowledgeNodeInstrument entities.
+func (_u *InstrumentUpdate) RemoveKnowledgeNodeInstruments(v ...*KnowledgeNodeInstrument) *InstrumentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnowledgeNodeInstrumentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -867,6 +1015,120 @@ func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExercisesIDs(); len(nodes) > 0 && !_u.mutation.ExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnowledgeNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnowledgeNodesIDs(); len(nodes) > 0 && !_u.mutation.KnowledgeNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnowledgeNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.DiagramInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1040,6 +1302,96 @@ func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnowledgeNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnowledgeNodeInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.KnowledgeNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnowledgeNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1252,6 +1604,36 @@ func (_u *InstrumentUpdateOne) AddContentNodes(v ...*ContentNode) *InstrumentUpd
 	return _u.AddContentNodeIDs(ids...)
 }
 
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by IDs.
+func (_u *InstrumentUpdateOne) AddExerciseIDs(ids ...uuid.UUID) *InstrumentUpdateOne {
+	_u.mutation.AddExerciseIDs(ids...)
+	return _u
+}
+
+// AddExercises adds the "exercises" edges to the Exercise entity.
+func (_u *InstrumentUpdateOne) AddExercises(v ...*Exercise) *InstrumentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseIDs(ids...)
+}
+
+// AddKnowledgeNodeIDs adds the "knowledge_nodes" edge to the KnowledgeNode entity by IDs.
+func (_u *InstrumentUpdateOne) AddKnowledgeNodeIDs(ids ...uuid.UUID) *InstrumentUpdateOne {
+	_u.mutation.AddKnowledgeNodeIDs(ids...)
+	return _u
+}
+
+// AddKnowledgeNodes adds the "knowledge_nodes" edges to the KnowledgeNode entity.
+func (_u *InstrumentUpdateOne) AddKnowledgeNodes(v ...*KnowledgeNode) *InstrumentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnowledgeNodeIDs(ids...)
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
 func (_u *InstrumentUpdateOne) AddDiagramInstrumentIDs(ids ...int) *InstrumentUpdateOne {
 	_u.mutation.AddDiagramInstrumentIDs(ids...)
@@ -1310,6 +1692,36 @@ func (_u *InstrumentUpdateOne) AddContentNodeInstruments(v ...*ContentNodeInstru
 		ids[i] = v[i].ID
 	}
 	return _u.AddContentNodeInstrumentIDs(ids...)
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (_u *InstrumentUpdateOne) AddExerciseInstrumentIDs(ids ...int) *InstrumentUpdateOne {
+	_u.mutation.AddExerciseInstrumentIDs(ids...)
+	return _u
+}
+
+// AddExerciseInstruments adds the "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_u *InstrumentUpdateOne) AddExerciseInstruments(v ...*ExerciseInstrument) *InstrumentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddExerciseInstrumentIDs(ids...)
+}
+
+// AddKnowledgeNodeInstrumentIDs adds the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by IDs.
+func (_u *InstrumentUpdateOne) AddKnowledgeNodeInstrumentIDs(ids ...int) *InstrumentUpdateOne {
+	_u.mutation.AddKnowledgeNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// AddKnowledgeNodeInstruments adds the "knowledge_node_instruments" edges to the KnowledgeNodeInstrument entity.
+func (_u *InstrumentUpdateOne) AddKnowledgeNodeInstruments(v ...*KnowledgeNodeInstrument) *InstrumentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddKnowledgeNodeInstrumentIDs(ids...)
 }
 
 // Mutation returns the InstrumentMutation object of the builder.
@@ -1428,6 +1840,48 @@ func (_u *InstrumentUpdateOne) RemoveContentNodes(v ...*ContentNode) *Instrument
 	return _u.RemoveContentNodeIDs(ids...)
 }
 
+// ClearExercises clears all "exercises" edges to the Exercise entity.
+func (_u *InstrumentUpdateOne) ClearExercises() *InstrumentUpdateOne {
+	_u.mutation.ClearExercises()
+	return _u
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to Exercise entities by IDs.
+func (_u *InstrumentUpdateOne) RemoveExerciseIDs(ids ...uuid.UUID) *InstrumentUpdateOne {
+	_u.mutation.RemoveExerciseIDs(ids...)
+	return _u
+}
+
+// RemoveExercises removes "exercises" edges to Exercise entities.
+func (_u *InstrumentUpdateOne) RemoveExercises(v ...*Exercise) *InstrumentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseIDs(ids...)
+}
+
+// ClearKnowledgeNodes clears all "knowledge_nodes" edges to the KnowledgeNode entity.
+func (_u *InstrumentUpdateOne) ClearKnowledgeNodes() *InstrumentUpdateOne {
+	_u.mutation.ClearKnowledgeNodes()
+	return _u
+}
+
+// RemoveKnowledgeNodeIDs removes the "knowledge_nodes" edge to KnowledgeNode entities by IDs.
+func (_u *InstrumentUpdateOne) RemoveKnowledgeNodeIDs(ids ...uuid.UUID) *InstrumentUpdateOne {
+	_u.mutation.RemoveKnowledgeNodeIDs(ids...)
+	return _u
+}
+
+// RemoveKnowledgeNodes removes "knowledge_nodes" edges to KnowledgeNode entities.
+func (_u *InstrumentUpdateOne) RemoveKnowledgeNodes(v ...*KnowledgeNode) *InstrumentUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnowledgeNodeIDs(ids...)
+}
+
 // ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
 func (_u *InstrumentUpdateOne) ClearDiagramInstruments() *InstrumentUpdateOne {
 	_u.mutation.ClearDiagramInstruments()
@@ -1510,6 +1964,48 @@ func (_u *InstrumentUpdateOne) RemoveContentNodeInstruments(v ...*ContentNodeIns
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveContentNodeInstrumentIDs(ids...)
+}
+
+// ClearExerciseInstruments clears all "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_u *InstrumentUpdateOne) ClearExerciseInstruments() *InstrumentUpdateOne {
+	_u.mutation.ClearExerciseInstruments()
+	return _u
+}
+
+// RemoveExerciseInstrumentIDs removes the "exercise_instruments" edge to ExerciseInstrument entities by IDs.
+func (_u *InstrumentUpdateOne) RemoveExerciseInstrumentIDs(ids ...int) *InstrumentUpdateOne {
+	_u.mutation.RemoveExerciseInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveExerciseInstruments removes "exercise_instruments" edges to ExerciseInstrument entities.
+func (_u *InstrumentUpdateOne) RemoveExerciseInstruments(v ...*ExerciseInstrument) *InstrumentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveExerciseInstrumentIDs(ids...)
+}
+
+// ClearKnowledgeNodeInstruments clears all "knowledge_node_instruments" edges to the KnowledgeNodeInstrument entity.
+func (_u *InstrumentUpdateOne) ClearKnowledgeNodeInstruments() *InstrumentUpdateOne {
+	_u.mutation.ClearKnowledgeNodeInstruments()
+	return _u
+}
+
+// RemoveKnowledgeNodeInstrumentIDs removes the "knowledge_node_instruments" edge to KnowledgeNodeInstrument entities by IDs.
+func (_u *InstrumentUpdateOne) RemoveKnowledgeNodeInstrumentIDs(ids ...int) *InstrumentUpdateOne {
+	_u.mutation.RemoveKnowledgeNodeInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveKnowledgeNodeInstruments removes "knowledge_node_instruments" edges to KnowledgeNodeInstrument entities.
+func (_u *InstrumentUpdateOne) RemoveKnowledgeNodeInstruments(v ...*KnowledgeNodeInstrument) *InstrumentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveKnowledgeNodeInstrumentIDs(ids...)
 }
 
 // Where appends a list predicates to the InstrumentUpdate builder.
@@ -1926,6 +2422,120 @@ func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, 
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExercisesIDs(); len(nodes) > 0 && !_u.mutation.ExercisesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExercisesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.ExercisesTable,
+			Columns: instrument.ExercisesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exercise.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _u.config, mutation: newExerciseInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnowledgeNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnowledgeNodesIDs(); len(nodes) > 0 && !_u.mutation.KnowledgeNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnowledgeNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodesTable,
+			Columns: instrument.KnowledgeNodesPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &KnowledgeNodeInstrumentCreate{config: _u.config, mutation: newKnowledgeNodeInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.DiagramInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -2099,6 +2709,96 @@ func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(contentnodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ExerciseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedExerciseInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.ExerciseInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ExerciseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.ExerciseInstrumentsTable,
+			Columns: []string{instrument.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.KnowledgeNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedKnowledgeNodeInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.KnowledgeNodeInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.KnowledgeNodeInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.KnowledgeNodeInstrumentsTable,
+			Columns: []string{instrument.KnowledgeNodeInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenodeinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -41,6 +41,10 @@ const (
 	EdgeLearningPaths = "learning_paths"
 	// EdgeContentNodes holds the string denoting the content_nodes edge name in mutations.
 	EdgeContentNodes = "content_nodes"
+	// EdgeExercises holds the string denoting the exercises edge name in mutations.
+	EdgeExercises = "exercises"
+	// EdgeKnowledgeNodes holds the string denoting the knowledge_nodes edge name in mutations.
+	EdgeKnowledgeNodes = "knowledge_nodes"
 	// EdgeDiagramInstruments holds the string denoting the diagram_instruments edge name in mutations.
 	EdgeDiagramInstruments = "diagram_instruments"
 	// EdgeCourseInstruments holds the string denoting the course_instruments edge name in mutations.
@@ -49,6 +53,10 @@ const (
 	EdgeLearningPathInstruments = "learning_path_instruments"
 	// EdgeContentNodeInstruments holds the string denoting the content_node_instruments edge name in mutations.
 	EdgeContentNodeInstruments = "content_node_instruments"
+	// EdgeExerciseInstruments holds the string denoting the exercise_instruments edge name in mutations.
+	EdgeExerciseInstruments = "exercise_instruments"
+	// EdgeKnowledgeNodeInstruments holds the string denoting the knowledge_node_instruments edge name in mutations.
+	EdgeKnowledgeNodeInstruments = "knowledge_node_instruments"
 	// Table holds the table name of the instrument in the database.
 	Table = "instruments"
 	// DefaultVoiceTable is the table that holds the default_voice relation/edge.
@@ -85,6 +93,16 @@ const (
 	// ContentNodesInverseTable is the table name for the ContentNode entity.
 	// It exists in this package in order to avoid circular dependency with the "contentnode" package.
 	ContentNodesInverseTable = "content_nodes"
+	// ExercisesTable is the table that holds the exercises relation/edge. The primary key declared below.
+	ExercisesTable = "exercise_instruments"
+	// ExercisesInverseTable is the table name for the Exercise entity.
+	// It exists in this package in order to avoid circular dependency with the "exercise" package.
+	ExercisesInverseTable = "exercises"
+	// KnowledgeNodesTable is the table that holds the knowledge_nodes relation/edge. The primary key declared below.
+	KnowledgeNodesTable = "knowledge_node_instruments"
+	// KnowledgeNodesInverseTable is the table name for the KnowledgeNode entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
+	KnowledgeNodesInverseTable = "knowledge_nodes"
 	// DiagramInstrumentsTable is the table that holds the diagram_instruments relation/edge.
 	DiagramInstrumentsTable = "diagram_instruments"
 	// DiagramInstrumentsInverseTable is the table name for the DiagramInstrument entity.
@@ -113,6 +131,20 @@ const (
 	ContentNodeInstrumentsInverseTable = "content_node_instruments"
 	// ContentNodeInstrumentsColumn is the table column denoting the content_node_instruments relation/edge.
 	ContentNodeInstrumentsColumn = "instrument_id"
+	// ExerciseInstrumentsTable is the table that holds the exercise_instruments relation/edge.
+	ExerciseInstrumentsTable = "exercise_instruments"
+	// ExerciseInstrumentsInverseTable is the table name for the ExerciseInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "exerciseinstrument" package.
+	ExerciseInstrumentsInverseTable = "exercise_instruments"
+	// ExerciseInstrumentsColumn is the table column denoting the exercise_instruments relation/edge.
+	ExerciseInstrumentsColumn = "instrument_id"
+	// KnowledgeNodeInstrumentsTable is the table that holds the knowledge_node_instruments relation/edge.
+	KnowledgeNodeInstrumentsTable = "knowledge_node_instruments"
+	// KnowledgeNodeInstrumentsInverseTable is the table name for the KnowledgeNodeInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenodeinstrument" package.
+	KnowledgeNodeInstrumentsInverseTable = "knowledge_node_instruments"
+	// KnowledgeNodeInstrumentsColumn is the table column denoting the knowledge_node_instruments relation/edge.
+	KnowledgeNodeInstrumentsColumn = "instrument_id"
 )
 
 // Columns holds all SQL columns for instrument fields.
@@ -140,6 +172,12 @@ var (
 	// ContentNodesPrimaryKey and ContentNodesColumn2 are the table columns denoting the
 	// primary key for the content_nodes relation (M2M).
 	ContentNodesPrimaryKey = []string{"content_node_id", "instrument_id"}
+	// ExercisesPrimaryKey and ExercisesColumn2 are the table columns denoting the
+	// primary key for the exercises relation (M2M).
+	ExercisesPrimaryKey = []string{"exercise_id", "instrument_id"}
+	// KnowledgeNodesPrimaryKey and KnowledgeNodesColumn2 are the table columns denoting the
+	// primary key for the knowledge_nodes relation (M2M).
+	KnowledgeNodesPrimaryKey = []string{"knowledge_node_id", "instrument_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -290,6 +328,34 @@ func ByContentNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByExercisesCount orders the results by exercises count.
+func ByExercisesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExercisesStep(), opts...)
+	}
+}
+
+// ByExercises orders the results by exercises terms.
+func ByExercises(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExercisesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByKnowledgeNodesCount orders the results by knowledge_nodes count.
+func ByKnowledgeNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newKnowledgeNodesStep(), opts...)
+	}
+}
+
+// ByKnowledgeNodes orders the results by knowledge_nodes terms.
+func ByKnowledgeNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newKnowledgeNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByDiagramInstrumentsCount orders the results by diagram_instruments count.
 func ByDiagramInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -345,6 +411,34 @@ func ByContentNodeInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderO
 		sqlgraph.OrderByNeighborTerms(s, newContentNodeInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByExerciseInstrumentsCount orders the results by exercise_instruments count.
+func ByExerciseInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newExerciseInstrumentsStep(), opts...)
+	}
+}
+
+// ByExerciseInstruments orders the results by exercise_instruments terms.
+func ByExerciseInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newExerciseInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByKnowledgeNodeInstrumentsCount orders the results by knowledge_node_instruments count.
+func ByKnowledgeNodeInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newKnowledgeNodeInstrumentsStep(), opts...)
+	}
+}
+
+// ByKnowledgeNodeInstruments orders the results by knowledge_node_instruments terms.
+func ByKnowledgeNodeInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newKnowledgeNodeInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDefaultVoiceStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -387,6 +481,20 @@ func newContentNodesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, true, ContentNodesTable, ContentNodesPrimaryKey...),
 	)
 }
+func newExercisesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExercisesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ExercisesTable, ExercisesPrimaryKey...),
+	)
+}
+func newKnowledgeNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(KnowledgeNodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, KnowledgeNodesTable, KnowledgeNodesPrimaryKey...),
+	)
+}
 func newDiagramInstrumentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -413,5 +521,19 @@ func newContentNodeInstrumentsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ContentNodeInstrumentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, ContentNodeInstrumentsTable, ContentNodeInstrumentsColumn),
+	)
+}
+func newExerciseInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ExerciseInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, ExerciseInstrumentsTable, ExerciseInstrumentsColumn),
+	)
+}
+func newKnowledgeNodeInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(KnowledgeNodeInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, KnowledgeNodeInstrumentsTable, KnowledgeNodeInstrumentsColumn),
 	)
 }

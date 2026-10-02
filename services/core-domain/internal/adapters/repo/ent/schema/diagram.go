@@ -112,10 +112,10 @@ func (Diagram) Edges() []ent.Edge {
 
 		edge.To("regions", DiagramRegion.Type),
 
-		edge.To("skills", Skill.Type).
+		edge.To("skills", KnowledgeNode.Type).
 			Through("diagram_skills", DiagramSkill.Type),
 
-		edge.To("concepts", Concept.Type).
+		edge.To("concepts", KnowledgeNode.Type).
 			Through("diagram_concepts", DiagramConcept.Type),
 	}
 }

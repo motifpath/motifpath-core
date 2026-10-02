@@ -16,8 +16,6 @@ type Tx struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
-	// Concept is the client for interacting with the Concept builders.
-	Concept *ConceptClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -58,6 +56,8 @@ type Tx struct {
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
 	ExerciseConcept *ExerciseConceptClient
+	// ExerciseInstrument is the client for interacting with the ExerciseInstrument builders.
+	ExerciseInstrument *ExerciseInstrumentClient
 	// ExerciseLanguage is the client for interacting with the ExerciseLanguage builders.
 	ExerciseLanguage *ExerciseLanguageClient
 	// ExerciseOption is the client for interacting with the ExerciseOption builders.
@@ -68,6 +68,12 @@ type Tx struct {
 	ExpandedContent *ExpandedContentClient
 	// Instrument is the client for interacting with the Instrument builders.
 	Instrument *InstrumentClient
+	// KnowledgeEdge is the client for interacting with the KnowledgeEdge builders.
+	KnowledgeEdge *KnowledgeEdgeClient
+	// KnowledgeNode is the client for interacting with the KnowledgeNode builders.
+	KnowledgeNode *KnowledgeNodeClient
+	// KnowledgeNodeInstrument is the client for interacting with the KnowledgeNodeInstrument builders.
+	KnowledgeNodeInstrument *KnowledgeNodeInstrumentClient
 	// Language is the client for interacting with the Language builders.
 	Language *LanguageClient
 	// LearningPath is the client for interacting with the LearningPath builders.
@@ -78,8 +84,6 @@ type Tx struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
-	// Skill is the client for interacting with the Skill builders.
-	Skill *SkillClient
 	// StudentLearningState is the client for interacting with the StudentLearningState builders.
 	StudentLearningState *StudentLearningStateClient
 	// StudentPath is the client for interacting with the StudentPath builders.
@@ -223,7 +227,6 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Challenge = NewChallengeClient(tx.config)
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
-	tx.Concept = NewConceptClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)
@@ -244,17 +247,20 @@ func (tx *Tx) init() {
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)
+	tx.ExerciseInstrument = NewExerciseInstrumentClient(tx.config)
 	tx.ExerciseLanguage = NewExerciseLanguageClient(tx.config)
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
 	tx.ExerciseSkill = NewExerciseSkillClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)
 	tx.Instrument = NewInstrumentClient(tx.config)
+	tx.KnowledgeEdge = NewKnowledgeEdgeClient(tx.config)
+	tx.KnowledgeNode = NewKnowledgeNodeClient(tx.config)
+	tx.KnowledgeNodeInstrument = NewKnowledgeNodeInstrumentClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LearningPath = NewLearningPathClient(tx.config)
 	tx.LearningPathInstrument = NewLearningPathInstrumentClient(tx.config)
 	tx.LearningPathItem = NewLearningPathItemClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
-	tx.Skill = NewSkillClient(tx.config)
 	tx.StudentLearningState = NewStudentLearningStateClient(tx.config)
 	tx.StudentPath = NewStudentPathClient(tx.config)
 	tx.StudentPathItem = NewStudentPathItemClient(tx.config)

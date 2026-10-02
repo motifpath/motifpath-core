@@ -11,16 +11,15 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // DiagramCreate is the builder for creating a Diagram entity.
@@ -236,14 +235,14 @@ func (_c *DiagramCreate) AddRegions(v ...*DiagramRegion) *DiagramCreate {
 	return _c.AddRegionIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_c *DiagramCreate) AddSkillIDs(ids ...uuid.UUID) *DiagramCreate {
 	_c.mutation.AddSkillIDs(ids...)
 	return _c
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_c *DiagramCreate) AddSkills(v ...*Skill) *DiagramCreate {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_c *DiagramCreate) AddSkills(v ...*KnowledgeNode) *DiagramCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -251,14 +250,14 @@ func (_c *DiagramCreate) AddSkills(v ...*Skill) *DiagramCreate {
 	return _c.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_c *DiagramCreate) AddConceptIDs(ids ...uuid.UUID) *DiagramCreate {
 	_c.mutation.AddConceptIDs(ids...)
 	return _c
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_c *DiagramCreate) AddConcepts(v ...*Concept) *DiagramCreate {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_c *DiagramCreate) AddConcepts(v ...*KnowledgeNode) *DiagramCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -579,7 +578,7 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -599,7 +598,7 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

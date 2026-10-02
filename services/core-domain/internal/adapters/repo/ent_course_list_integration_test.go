@@ -36,7 +36,7 @@ func newCourseListFixture(t *testing.T) courseListFixture {
 
 // pathWith seeds a learning path holding one content node classified with
 // the given skills and concepts.
-func (f courseListFixture) pathWith(skills []domain.Skill, concepts []domain.Concept) domain.LearningPath {
+func (f courseListFixture) pathWith(skills []domain.KnowledgeNode, concepts []domain.KnowledgeNode) domain.LearningPath {
 	f.t.Helper()
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
@@ -210,9 +210,9 @@ func TestEntCourseRepository_List_FiltersByClassification(t *testing.T) {
 	swing := seedConcept(t, f.ctx, client, "swing-"+uuid.NewString())
 	creator := uuid.NewString()
 
-	fingerpickingPath := f.pathWith([]domain.Skill{fingerpicking}, []domain.Concept{syncopation})
-	altPickingPath := f.pathWith([]domain.Skill{altPicking}, []domain.Concept{swing})
-	skillOnlyPath := f.pathWith([]domain.Skill{fingerpicking}, nil)
+	fingerpickingPath := f.pathWith([]domain.KnowledgeNode{fingerpicking}, []domain.KnowledgeNode{syncopation})
+	altPickingPath := f.pathWith([]domain.KnowledgeNode{altPicking}, []domain.KnowledgeNode{swing})
+	skillOnlyPath := f.pathWith([]domain.KnowledgeNode{fingerpicking}, nil)
 	unclassifiedPath := f.pathWith(nil, nil)
 
 	seedPublished := func(title string, paths ...domain.LearningPath) domain.Course {

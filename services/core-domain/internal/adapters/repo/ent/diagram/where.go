@@ -650,7 +650,7 @@ func HasSkills() predicate.Diagram {
 }
 
 // HasSkillsWith applies the HasEdge predicate on the "skills" edge with a given conditions (other predicates).
-func HasSkillsWith(preds ...predicate.Skill) predicate.Diagram {
+func HasSkillsWith(preds ...predicate.KnowledgeNode) predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {
 		step := newSkillsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
@@ -673,7 +673,7 @@ func HasConcepts() predicate.Diagram {
 }
 
 // HasConceptsWith applies the HasEdge predicate on the "concepts" edge with a given conditions (other predicates).
-func HasConceptsWith(preds ...predicate.Concept) predicate.Diagram {
+func HasConceptsWith(preds ...predicate.KnowledgeNode) predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {
 		step := newConceptsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {

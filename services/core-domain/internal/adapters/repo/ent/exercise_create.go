@@ -13,16 +13,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ExerciseCreate is the builder for creating a Exercise entity.
@@ -236,14 +237,14 @@ func (_c *ExerciseCreate) AddLanguages(v ...*Language) *ExerciseCreate {
 	return _c.AddLanguageIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_c *ExerciseCreate) AddSkillIDs(ids ...uuid.UUID) *ExerciseCreate {
 	_c.mutation.AddSkillIDs(ids...)
 	return _c
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_c *ExerciseCreate) AddSkills(v ...*Skill) *ExerciseCreate {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_c *ExerciseCreate) AddSkills(v ...*KnowledgeNode) *ExerciseCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -251,19 +252,34 @@ func (_c *ExerciseCreate) AddSkills(v ...*Skill) *ExerciseCreate {
 	return _c.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_c *ExerciseCreate) AddConceptIDs(ids ...uuid.UUID) *ExerciseCreate {
 	_c.mutation.AddConceptIDs(ids...)
 	return _c
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_c *ExerciseCreate) AddConcepts(v ...*Concept) *ExerciseCreate {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_c *ExerciseCreate) AddConcepts(v ...*KnowledgeNode) *ExerciseCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
 	return _c.AddConceptIDs(ids...)
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
+func (_c *ExerciseCreate) AddInstrumentIDs(ids ...uuid.UUID) *ExerciseCreate {
+	_c.mutation.AddInstrumentIDs(ids...)
+	return _c
+}
+
+// AddInstruments adds the "instruments" edges to the Instrument entity.
+func (_c *ExerciseCreate) AddInstruments(v ...*Instrument) *ExerciseCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInstrumentIDs(ids...)
 }
 
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by IDs.
@@ -339,6 +355,21 @@ func (_c *ExerciseCreate) AddExerciseConcepts(v ...*ExerciseConcept) *ExerciseCr
 		ids[i] = v[i].ID
 	}
 	return _c.AddExerciseConceptIDs(ids...)
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (_c *ExerciseCreate) AddExerciseInstrumentIDs(ids ...int) *ExerciseCreate {
+	_c.mutation.AddExerciseInstrumentIDs(ids...)
+	return _c
+}
+
+// AddExerciseInstruments adds the "exercise_instruments" edges to the ExerciseInstrument entity.
+func (_c *ExerciseCreate) AddExerciseInstruments(v ...*ExerciseInstrument) *ExerciseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddExerciseInstrumentIDs(ids...)
 }
 
 // Mutation returns the ExerciseMutation object of the builder.
@@ -568,7 +599,7 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Columns: exercise.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -588,13 +619,33 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Columns: exercise.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		createE := &ExerciseConceptCreate{config: _c.config, mutation: newExerciseConceptMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.InstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   exercise.InstrumentsTable,
+			Columns: exercise.InstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &ExerciseInstrumentCreate{config: _c.config, mutation: newExerciseInstrumentMutation(_c.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
@@ -673,6 +724,22 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(exerciseconcept.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ExerciseInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   exercise.ExerciseInstrumentsTable,
+			Columns: []string{exercise.ExerciseInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(exerciseinstrument.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

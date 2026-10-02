@@ -19,22 +19,25 @@ var fixedAt = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC).Truncate(time.Micros
 
 func strPtr(s string) *string { return &s }
 
-// seedSkill/seedConcept create a real Skill/Concept row via the ent
+// seedSkill/seedConcept create a real knowledge node via the ent
 // repository — ContentNode/Exercise's skill_ids/concept_ids reference these
 // by a real foreign key, so integration tests need actual rows to link
-// against, not just an arbitrary uuid.
-func seedSkill(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.Skill {
+// against, not just an arbitrary uuid. name doubles as the node's key.
+func seedSkill(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.KnowledgeNode {
 	t.Helper()
-	skill := domain.Skill{ID: uuid.NewString(), Name: name}
-	require.NoError(t, NewEntSkillRepository(client).Create(ctx, skill))
-	return skill
+	return seedKnowledgeNode(t, ctx, client, domain.KnowledgeNodeKindSkill, name)
 }
 
-func seedConcept(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.Concept {
+func seedConcept(t *testing.T, ctx context.Context, client *ent.Client, name string) domain.KnowledgeNode {
 	t.Helper()
-	concept := domain.Concept{ID: uuid.NewString(), Name: name}
-	require.NoError(t, NewEntConceptRepository(client).Create(ctx, concept))
-	return concept
+	return seedKnowledgeNode(t, ctx, client, domain.KnowledgeNodeKindConcept, name)
+}
+
+func seedKnowledgeNode(t *testing.T, ctx context.Context, client *ent.Client, kind domain.KnowledgeNodeKind, key string) domain.KnowledgeNode {
+	t.Helper()
+	node := knowledgeNode(kind, key, nil)
+	require.NoError(t, NewEntKnowledgeNodeRepository(client).Create(ctx, node))
+	return node
 }
 
 // seedDiagram creates a real Instrument and Diagram row via the ent
@@ -167,7 +170,7 @@ func TestEntContentNodeRepository_CreateAndGet(t *testing.T) {
 	teacherID := uuid.NewString()
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: teacherID, Title: "Intro", ContentType: domain.ContentTypeVideo,
-		Classification: domain.Classification{Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
+		Classification: domain.Classification{Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		Languages:      []domain.Language{{Code: "en"}, {Code: "pt_BR"}},
 		CreatedAt:      fixedAt,
 	}
@@ -235,8 +238,8 @@ func TestEntContentNodeRepository_Update_ReplacesLanguages(t *testing.T) {
 			node := domain.ContentNode{
 				ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
 				Classification: domain.Classification{
-					Skills:          []domain.Skill{seedSkill(t, ctx, client, "skill-"+uuid.NewString())},
-					Concepts:        []domain.Concept{seedConcept(t, ctx, client, "concept-"+uuid.NewString())},
+					Skills:          []domain.KnowledgeNode{seedSkill(t, ctx, client, "skill-"+uuid.NewString())},
+					Concepts:        []domain.KnowledgeNode{seedConcept(t, ctx, client, "concept-"+uuid.NewString())},
 					DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
 				},
 				Languages: tt.existing,
@@ -385,7 +388,7 @@ func TestEntExerciseRepository_CreateAndGet(t *testing.T) {
 
 	exercise := domain.Exercise{
 		ID: uuid.NewString(), Title: "Root position of a C major triad", Prompt: domain.NewPlainTextPrompt("Identify the chord"),
-		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, ImageURL: &imageURL,
+		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, ImageURL: &imageURL,
 		EstimatedDurationSeconds: &duration,
 		Options: []domain.Option{
 			{ID: uuid.NewString(), IsCorrect: true, Region: &domain.OptionRegion{X: 0.2, Y: 0.3, Width: 0.1, Height: 0.1, Shape: domain.OptionRegionShapeRectangle}},
@@ -424,7 +427,7 @@ func TestEntExerciseRepository_DiagramCellOptionsRoundTrip(t *testing.T) {
 
 	exercise := domain.Exercise{
 		ID: uuid.NewString(), Title: "Find the root", Prompt: domain.NewPlainTextPrompt("Tap the root"),
-		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept},
+		ExerciseType: domain.ExerciseTypeImageRecognition, Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept},
 		DiagramRef: &ref,
 		Options: []domain.Option{
 			{ID: uuid.NewString(), IsCorrect: true, DiagramID: &diagramID, DiagramPositionID: &positionID, FretCell: &domain.FretCell{String: 6, Fret: 5}},
@@ -693,9 +696,9 @@ func TestEntExerciseRepository_ListBySkillID(t *testing.T) {
 	skillB := seedSkill(t, ctx, client, "hybrid_picking-"+uuid.NewString())
 
 	label := "A major"
-	linked := domain.Exercise{ID: uuid.NewString(), Title: "Linked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.Skill{skillA}, Concepts: []domain.Concept{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	linked := domain.Exercise{ID: uuid.NewString(), Title: "Linked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.KnowledgeNode{skillA}, Concepts: []domain.KnowledgeNode{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, linked))
-	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Unlinked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.Skill{skillB}, Concepts: []domain.Concept{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
+	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Unlinked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.KnowledgeNode{skillB}, Concepts: []domain.KnowledgeNode{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
 	require.NoError(t, repo.Create(ctx, unlinked))
 
 	list, err := repo.ListBySkillID(ctx, skillA.ID)
@@ -1442,7 +1445,7 @@ func seedContentNode(t *testing.T, ctx context.Context, repo *EntContentNodeRepo
 	concept := seedConcept(t, ctx, repo.client, "concept-"+uuid.NewString())
 	node := domain.ContentNode{
 		ID: uuid.NewString(), TeacherID: uuid.NewString(), Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
-		Classification: domain.Classification{Skills: []domain.Skill{skill}, Concepts: []domain.Concept{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
+		Classification: domain.Classification{Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
 		CreatedAt:      fixedAt,
 	}
 	require.NoError(t, repo.Create(ctx, node))
@@ -1501,8 +1504,8 @@ func TestEntContentNodeVersionRepository_PersistsClassificationAndLanguagesSnaps
 	node := seedContentNode(t, ctx, nodeRepo)
 	parent := strPtr(uuid.NewString())
 	classification := domain.Classification{
-		Skills:          []domain.Skill{{ID: uuid.NewString(), Name: "Fingerpicking", ParentID: parent}},
-		Concepts:        []domain.Concept{{ID: uuid.NewString(), Name: "Syncopation"}},
+		Skills:          []domain.KnowledgeNode{{ID: uuid.NewString(), Kind: domain.KnowledgeNodeKindSkill, Key: "fingerpicking", Names: domain.LocalizedText{"en": "Fingerpicking", "pt_BR": "Dedilhado"}, Descriptions: domain.LocalizedText{"en": "d", "pt_BR": "d"}, ParentID: parent, InstrumentIDs: []string{uuid.NewString()}}},
+		Concepts:        []domain.KnowledgeNode{{ID: uuid.NewString(), Kind: domain.KnowledgeNodeKindConcept, Key: "syncopation", Names: domain.LocalizedText{"en": "Syncopation", "pt_BR": "Síncope"}}},
 		DifficultyLevel: domain.DifficultyLevelIntermediate,
 		ReviewState:     domain.ReviewStateConfirmed,
 	}

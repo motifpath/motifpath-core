@@ -200,8 +200,8 @@ type Exercise struct {
 	// Skills/Concepts carry only ID until this Exercise is read back from
 	// the repository with its Skill/Concept rows joined in — the same
 	// construct-then-refetch convention Languages already follows.
-	Skills   []Skill
-	Concepts []Concept
+	Skills   []KnowledgeNode
+	Concepts []KnowledgeNode
 	ImageURL *string
 	AudioURL *string
 	// DiagramRef and DiagramStackRef, when set, replace ImageURL as an
