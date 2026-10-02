@@ -3732,7 +3732,7 @@ type UpdateKnowledgeEdgeRequest struct {
 type UpdateKnowledgeNodeRequest struct {
 	// Descriptions The node's descriptions, replacing the current set — one for
 	// every language MotifPath offers — or null to remove them.
-	Descriptions *LocalizedDescription `json:"descriptions"`
+	Descriptions nullable.Nullable[LocalizedDescription] `json:"descriptions"`
 
 	// InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
 	// empty list means it suits every instrument (for example, music
@@ -3749,7 +3749,7 @@ type UpdateKnowledgeNodeRequest struct {
 	// ParentId The new parent's id, which must be an existing node of the same
 	// kind outside this node's subtree, or null to make the node a
 	// root.
-	ParentId *openapi_types.UUID `json:"parent_id"`
+	ParentId nullable.Nullable[openapi_types.UUID] `json:"parent_id"`
 }
 
 // UpdateMyLocaleRequest Payload for setting the authenticated user's locale preference.

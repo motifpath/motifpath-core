@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -25,6 +26,12 @@ func notFoundError(message string) generated.NotFoundError {
 
 func conflictError(message string) generated.ConflictError {
 	return generated.ConflictError{Message: message}
+}
+
+// conflictMessage is a domain.ErrConflict's own explanation, without the
+// sentinel's prefix.
+func conflictMessage(err error) string {
+	return strings.TrimPrefix(err.Error(), domain.ErrConflict.Error()+": ")
 }
 
 func validationErrorResponse(err *domain.ValidationError) generated.ValidationError {

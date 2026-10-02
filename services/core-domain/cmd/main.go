@@ -247,8 +247,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	contentNodeVersionRepo := repo.NewEntContentNodeVersionRepository(entClient)
 	studentLearningStateRepo := repo.NewEntStudentLearningStateRepository(entClient)
 	courseEnrollmentRepo := repo.NewEntCourseEnrollmentRepository(entClient)
-	skillRepo := repo.NewEntSkillRepository(entClient)
-	conceptRepo := repo.NewEntConceptRepository(entClient)
+	knowledgeNodeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
+	knowledgeEdgeRepo := repo.NewEntKnowledgeEdgeRepository(entClient)
 	instrumentRepo := repo.NewEntInstrumentRepository(entClient)
 	voiceRepo := repo.NewEntVoiceRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
@@ -259,11 +259,11 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	now := func() time.Time { return time.Now().UTC() }
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, mathrand.Shuffle)
-	skillService := application.NewSkillService(skillRepo, newID)
-	conceptService := application.NewConceptService(conceptRepo, newID)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, mathrand.Shuffle)
+	knowledgeNodeService := application.NewKnowledgeNodeService(knowledgeNodeRepo, instrumentRepo, languageRepo, newID)
+	knowledgeEdgeService := application.NewKnowledgeEdgeService(knowledgeEdgeRepo, knowledgeNodeRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
@@ -273,9 +273,9 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// Voice samples are served from the same public media address as
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
-	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, skillRepo, conceptRepo, languageRepo, userRepo, newID, now)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, newID, now)
 
-	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, skillService, conceptService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
+	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil
 }
 
