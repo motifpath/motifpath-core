@@ -641,7 +641,7 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
-			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, nil)
+			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
 		if err != nil {
 			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
 		}
@@ -936,7 +936,7 @@ func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challe
 	}
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
-			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, nil)
+			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
 		if err != nil {
 			return fmt.Errorf("create exercise %q: %w", s.title, err)
 		}

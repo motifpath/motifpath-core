@@ -45,7 +45,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		CorrectIntervals: &[]string{"R"},
 	}
 	tapRoots, err := exerciseSvc.CreateExercise(ctx, teacher, rootsTitle, domain.NewPlainTextPrompt(rootsTitle), domain.ExerciseTypeImageRecognition,
-		[]string{scalesID}, []string{pentatonicID}, nil, nil, roots, nil, nil, nil, nil, []string{"en"}, nil)
+		[]string{scalesID}, []string{pentatonicID}, nil, nil, roots, nil, nil, nil, nil, []string{"en"}, forGuitars())
 	if err != nil {
 		return fmt.Errorf("create exercise %q: %w", rootsTitle, err)
 	}
@@ -56,7 +56,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 			{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(diagrams.eMajorChord.ID)},
 			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.cMajorOpen.ID)},
 			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.pentatonicPos1.ID)},
-		}, nil, nil, []string{"en"}, nil)
+		}, nil, nil, []string{"en"}, forGuitars())
 	if err != nil {
 		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
 	}
@@ -99,7 +99,7 @@ func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc
 		CorrectPositionIDs: &[]string{third},
 	}
 	exercise, err := exerciseSvc.CreateExercise(ctx, teacher, title, domain.NewPlainTextPrompt(title), domain.ExerciseTypeImageRecognition,
-		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"}, nil)
+		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"}, forGuitars())
 	if err != nil {
 		return domain.Exercise{}, fmt.Errorf("create exercise %q: %w", title, err)
 	}
