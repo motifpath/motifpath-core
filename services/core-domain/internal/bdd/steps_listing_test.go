@@ -548,9 +548,9 @@ func (w *world) classifyFirstNodeOfPath(pathSlug, kind, name string) error {
 	}
 	switch kind {
 	case "skill":
-		node.Classification.Skills = append(node.Classification.Skills, domain.Skill{ID: w.skillIDFor(name).String(), Name: name})
+		node.Classification.Skills = append(node.Classification.Skills, domain.KnowledgeNode{ID: w.skillIDFor(name).String()})
 	case "concept":
-		node.Classification.Concepts = append(node.Classification.Concepts, domain.Concept{ID: w.conceptIDFor(name).String(), Name: name})
+		node.Classification.Concepts = append(node.Classification.Concepts, domain.KnowledgeNode{ID: w.conceptIDFor(name).String()})
 	}
 	w.nodes.put(node)
 	return nil

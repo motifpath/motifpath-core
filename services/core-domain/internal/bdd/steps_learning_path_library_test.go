@@ -91,9 +91,9 @@ func (w *world) classifyNode(nodeSlug, skill, concept string) error {
 	if err != nil {
 		return err
 	}
-	node.Classification.Skills = []domain.Skill{{ID: w.skillIDFor(skill).String(), Name: skill}}
+	node.Classification.Skills = []domain.KnowledgeNode{{ID: w.skillIDFor(skill).String()}}
 	if concept != "" {
-		node.Classification.Concepts = []domain.Concept{{ID: w.conceptIDFor(concept).String(), Name: concept}}
+		node.Classification.Concepts = []domain.KnowledgeNode{{ID: w.conceptIDFor(concept).String()}}
 	}
 	w.nodes.put(node)
 	return nil

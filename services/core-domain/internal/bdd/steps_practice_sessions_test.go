@@ -43,8 +43,8 @@ func (w *world) putNExercisesLinkedToSkill(countStr, skillName string) error {
 			Title:          "title-" + slug,
 			Prompt:         domain.NewPlainTextPrompt("prompt-" + slug),
 			ExerciseType:   domain.ExerciseTypeTextResponse,
-			Skills:         []domain.Skill{{ID: skillID.String(), Name: skillName}},
-			Concepts:       []domain.Concept{{ID: conceptID.String(), Name: "concept-for-" + skillName}},
+			Skills:         []domain.KnowledgeNode{{ID: skillID.String()}},
+			Concepts:       []domain.KnowledgeNode{{ID: conceptID.String()}},
 			Options:        []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}, {ID: uuid.NewString(), IsCorrect: false, Label: &label}},
 			ChallengeIDs:   []string{},
 			ContentNodeIDs: []string{},
@@ -128,7 +128,7 @@ func (w *world) everyExerciseInPracticeSessionLinkedToSkill(skillName string) er
 	for _, e := range resp.Exercises {
 		found := false
 		for _, s := range e.Skills {
-			if s.SkillId == want {
+			if s.NodeId == want {
 				found = true
 			}
 		}

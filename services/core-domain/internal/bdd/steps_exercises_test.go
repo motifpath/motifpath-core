@@ -460,7 +460,7 @@ func (w *world) putExerciseWithSkills(slug, namesCSV string) error {
 		Prompt:       domain.NewPlainTextPrompt("prompt-" + slug),
 		ExerciseType: domain.ExerciseTypeTextResponse,
 		Skills:       skillsFromUUIDs(w.skillIDsFor(namesCSV)),
-		Concepts:     []domain.Concept{{ID: w.conceptIDFor("concept-" + slug).String(), Name: "concept-" + slug}},
+		Concepts:     []domain.KnowledgeNode{{ID: w.conceptIDFor("concept-" + slug).String()}},
 		Options:      []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}},
 		ChallengeIDs: []string{},
 		CreatedAt:    fixedNow,
@@ -1107,7 +1107,7 @@ func (w *world) putExerciseWith(slug string, seed exerciseSeed) error {
 	if seed.concepts != "" {
 		ex.Concepts = nil
 		for _, id := range w.conceptIDsFor(seed.concepts) {
-			ex.Concepts = append(ex.Concepts, domain.Concept{ID: id.String()})
+			ex.Concepts = append(ex.Concepts, domain.KnowledgeNode{ID: id.String()})
 		}
 	}
 	if seed.language != "" {
@@ -1289,7 +1289,7 @@ func (w *world) exerciseNoLongerCarriesSkill(skillName string) error {
 	}
 	want := w.skillIDFor(skillName)
 	for _, s := range resp.Skills {
-		if s.SkillId == want {
+		if s.NodeId == want {
 			return fmt.Errorf("expected skills not to contain %q, got %+v", skillName, resp.Skills)
 		}
 	}
@@ -1356,7 +1356,7 @@ func (w *world) exerciseTypeRecorded(exerciseType string) error {
 }
 
 func (w *world) exerciseCarriesSkills(namesCSV string) error {
-	var skills []generated.Skill
+	var skills []generated.KnowledgeNode
 	switch resp := w.lastResp.(type) {
 	case generated.CreateExercise201JSONResponse:
 		skills = resp.Skills
@@ -1368,7 +1368,7 @@ func (w *world) exerciseCarriesSkills(namesCSV string) error {
 	for _, want := range splitCommaList(namesCSV) {
 		found := false
 		for _, s := range skills {
-			if s.Name == want {
+			if s.Key == slug(want) {
 				found = true
 			}
 		}
@@ -1380,7 +1380,7 @@ func (w *world) exerciseCarriesSkills(namesCSV string) error {
 }
 
 func (w *world) exerciseCarriesConcepts(namesCSV string) error {
-	var concepts []generated.Concept
+	var concepts []generated.KnowledgeNode
 	switch resp := w.lastResp.(type) {
 	case generated.CreateExercise201JSONResponse:
 		concepts = resp.Concepts
@@ -1392,7 +1392,7 @@ func (w *world) exerciseCarriesConcepts(namesCSV string) error {
 	for _, want := range splitCommaList(namesCSV) {
 		found := false
 		for _, c := range concepts {
-			if c.Name == want {
+			if c.Key == slug(want) {
 				found = true
 			}
 		}
