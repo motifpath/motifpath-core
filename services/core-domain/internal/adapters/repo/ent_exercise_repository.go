@@ -10,11 +10,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -55,7 +54,7 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
+	edges, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -77,9 +76,10 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 		SetNillableDiagramRef(diagramRefJSON).
 		SetNillableDiagramStackRef(diagramStackRefJSON).
 		SetCreatedAt(ex.CreatedAt).
-		AddLanguageIDs(langIDs...).
-		AddSkillIDs(skillIDs...).
-		AddConceptIDs(conceptIDs...)
+		AddLanguageIDs(edges.languages...).
+		AddSkillIDs(edges.skills...).
+		AddConceptIDs(edges.concepts...).
+		AddInstrumentIDs(edges.instruments...)
 	if _, err := builder.Save(ctx); err != nil {
 		return rollback(tx, err)
 	}
@@ -97,28 +97,35 @@ func (r *EntExerciseRepository) Create(ctx context.Context, ex domain.Exercise) 
 	return tx.Commit()
 }
 
+// resolveExerciseEdgeIDs resolves ex's languages, skills, concepts and
+// instruments to the row ids Create/Update need to (re)establish those
+// edges, shared by both since they resolve the same edges the same way.
+func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (exerciseEdgeIDs, error) {
+	var ids exerciseEdgeIDs
+	var err error
+	if ids.languages, err = languageIDsByCode(ctx, tx.Language, ex.Languages); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.skills, err = parseUUIDs(nodeIDsOf(ex.Skills)); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.concepts, err = parseUUIDs(nodeIDsOf(ex.Concepts)); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	if ids.instruments, err = parseUUIDs(ex.InstrumentIDs); err != nil {
+		return exerciseEdgeIDs{}, err
+	}
+	return ids, nil
+}
+
+// exerciseEdgeIDs are the rows an exercise links to.
+type exerciseEdgeIDs struct {
+	languages, skills, concepts, instruments []uuid.UUID
+}
+
 // buildExerciseOptionCreates prepares one ExerciseOptionCreate builder per
 // opt, shared by Create and Update since both fully (re)establish an
 // exercise's options the same way.
-// resolveExerciseEdgeIDs resolves ex's Languages/Skills/Concepts to the row
-// ids Create/Update need to (re)establish those edges, shared by both since
-// they resolve the same three edges the same way.
-func resolveExerciseEdgeIDs(ctx context.Context, tx *ent.Tx, ex domain.Exercise) (langIDs, skillIDs, conceptIDs []uuid.UUID, err error) {
-	langIDs, err = languageIDsByCode(ctx, tx.Language, ex.Languages)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	skillIDs, err = parseUUIDs(skillIDsOf(ex.Skills))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	conceptIDs, err = parseUUIDs(conceptIDsOf(ex.Concepts))
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return langIDs, skillIDs, conceptIDs, nil
-}
-
 func buildExerciseOptionCreates(tx *ent.Tx, exerciseID uuid.UUID, options []domain.Option) ([]*ent.ExerciseOptionCreate, error) {
 	builders := make([]*ent.ExerciseOptionCreate, len(options))
 	for i, opt := range options {
@@ -191,8 +198,9 @@ func (r *EntExerciseRepository) GetByID(ctx context.Context, id string) (domain.
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithInstruments().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -390,8 +398,9 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithInstruments().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -411,13 +420,14 @@ func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID strin
 		return nil, err
 	}
 	rows, err := r.client.Exercise.Query().
-		Where(exercise.HasSkillsWith(skill.ID(parsed))).
+		Where(exercise.HasSkillsWith(knowledgenode.ID(parsed))).
 		WithChallenges().
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithInstruments().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -443,8 +453,9 @@ func (r *EntExerciseRepository) List(ctx context.Context, filter domain.Exercise
 		WithContentNodes().
 		WithOptions().
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithInstruments().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		Order(exercise.ByID()).
 		Limit(page.Limit).
 		Offset(page.Offset).
@@ -493,8 +504,8 @@ func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercis
 		id    string
 		match func(uuid.UUID) predicate.Exercise
 	}{
-		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(skill.ID(id)) }},
-		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(concept.ID(id)) }},
+		{filter.SkillID, func(id uuid.UUID) predicate.Exercise { return exercise.HasSkillsWith(knowledgenode.ID(id)) }},
+		{filter.ConceptID, func(id uuid.UUID) predicate.Exercise { return exercise.HasConceptsWith(knowledgenode.ID(id)) }},
 		{filter.CreatedBy, exercise.CreatedBy},
 	}
 	for _, f := range byID {
@@ -542,7 +553,7 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		return err
 	}
 
-	langIDs, skillIDs, conceptIDs, err := resolveExerciseEdgeIDs(ctx, tx, ex)
+	edges, err := resolveExerciseEdgeIDs(ctx, tx, ex)
 	if err != nil {
 		return rollback(tx, err)
 	}
@@ -554,11 +565,13 @@ func (r *EntExerciseRepository) Update(ctx context.Context, ex domain.Exercise) 
 		SetNillableAudioURL(ex.AudioURL).
 		SetNillableEstimatedDurationSeconds(ex.EstimatedDurationSeconds).
 		ClearLanguages().
-		AddLanguageIDs(langIDs...).
+		AddLanguageIDs(edges.languages...).
 		ClearSkills().
-		AddSkillIDs(skillIDs...).
+		AddSkillIDs(edges.skills...).
 		ClearConcepts().
-		AddConceptIDs(conceptIDs...)
+		AddConceptIDs(edges.concepts...).
+		ClearInstruments().
+		AddInstrumentIDs(edges.instruments...)
 	applyExerciseUpdateNillableJSON(updateBuilder, remediationJSON, diagramRefJSON, diagramStackRefJSON)
 	_, err = updateBuilder.Save(ctx)
 	if err != nil {
@@ -640,8 +653,8 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		Title:                    row.Title,
 		Prompt:                   unmarshalPrompt(row.Prompt),
 		ExerciseType:             domain.ExerciseType(row.ExerciseType),
-		Skills:                   domainSkillsFromEdges(row.Edges.Skills),
-		Concepts:                 domainConceptsFromEdges(row.Edges.Concepts),
+		Skills:                   domainKnowledgeNodesFromEdges(row.Edges.Skills),
+		Concepts:                 domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 		ImageURL:                 row.ImageURL,
 		AudioURL:                 row.AudioURL,
 		EstimatedDurationSeconds: row.EstimatedDurationSeconds,
@@ -652,6 +665,7 @@ func toDomainExercise(row *ent.Exercise) domain.Exercise {
 		ChallengeIDs:             challengeIDs,
 		ContentNodeIDs:           contentNodeIDs,
 		Languages:                languages,
+		InstrumentIDs:            instrumentIDsOf(row.Edges.Instruments),
 		CreatedBy:                creatorIDString(row.CreatedBy),
 		CreatedAt:                row.CreatedAt,
 	}

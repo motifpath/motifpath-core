@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ContentNodeSkill is the model entity for the ContentNodeSkill schema.
@@ -37,7 +37,7 @@ type ContentNodeSkillEdges struct {
 	// ContentNode holds the value of the content_node edge.
 	ContentNode *ContentNode `json:"content_node,omitempty"`
 	// Skill holds the value of the skill edge.
-	Skill *Skill `json:"skill,omitempty"`
+	Skill *KnowledgeNode `json:"skill,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -56,11 +56,11 @@ func (e ContentNodeSkillEdges) ContentNodeOrErr() (*ContentNode, error) {
 
 // SkillOrErr returns the Skill value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e ContentNodeSkillEdges) SkillOrErr() (*Skill, error) {
+func (e ContentNodeSkillEdges) SkillOrErr() (*KnowledgeNode, error) {
 	if e.Skill != nil {
 		return e.Skill, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: skill.Label}
+		return nil, &NotFoundError{label: knowledgenode.Label}
 	}
 	return nil, &NotLoadedError{edge: "skill"}
 }
@@ -134,7 +134,7 @@ func (_m *ContentNodeSkill) QueryContentNode() *ContentNodeQuery {
 }
 
 // QuerySkill queries the "skill" edge of the ContentNodeSkill entity.
-func (_m *ContentNodeSkill) QuerySkill() *SkillQuery {
+func (_m *ContentNodeSkill) QuerySkill() *KnowledgeNodeQuery {
 	return NewContentNodeSkillClient(_m.config).QuerySkill(_m)
 }
 

@@ -11,14 +11,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -223,8 +222,8 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 		}},
 		{filter.CreatedBy, diagram.CreatedBy},
 		{filter.InstrumentID, func(id uuid.UUID) predicate.Diagram { return diagram.HasCompatibleInstrumentsWith(instrument.ID(id)) }},
-		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(skill.ID(id)) }},
-		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(concept.ID(id)) }},
+		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(knowledgenode.ID(id)) }},
+		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(knowledgenode.ID(id)) }},
 	}
 	if filter.RootNote != "" {
 		predicates = append(predicates, diagram.RootNoteEQ(filter.RootNote))
@@ -336,8 +335,8 @@ func withDiagramEdges(q *ent.DiagramQuery) *ent.DiagramQuery {
 		WithCompatibleInstruments().
 		WithPositions(func(pq *ent.PositionQuery) { pq.Order(ent.Asc(position.FieldOrdinal)) }).
 		WithRegions(func(rq *ent.DiagramRegionQuery) { rq.Order(ent.Asc(diagramregion.FieldOrdinal)) }).
-		WithSkills().
-		WithConcepts()
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments)
 }
 
 func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, positions []domain.Position) error {
@@ -462,8 +461,8 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		},
 		Sequence:  domainSequence(row.Sequence),
 		TempoBPM:  row.TempoBpm,
-		Skills:    domainSkillsFromEdges(row.Edges.Skills),
-		Concepts:  domainConceptsFromEdges(row.Edges.Concepts),
+		Skills:    domainKnowledgeNodesFromEdges(row.Edges.Skills),
+		Concepts:  domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 		CreatedAt: row.CreatedAt,
 	}
 }

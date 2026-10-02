@@ -15,17 +15,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ExerciseQuery is the builder for querying Exercise entities.
@@ -39,13 +40,15 @@ type ExerciseQuery struct {
 	withContentNodes         *ContentNodeQuery
 	withOptions              *ExerciseOptionQuery
 	withLanguages            *LanguageQuery
-	withSkills               *SkillQuery
-	withConcepts             *ConceptQuery
+	withSkills               *KnowledgeNodeQuery
+	withConcepts             *KnowledgeNodeQuery
+	withInstruments          *InstrumentQuery
 	withChallengeExercises   *ChallengeExerciseQuery
 	withContentNodeExercises *ContentNodeExerciseQuery
 	withExerciseLanguages    *ExerciseLanguageQuery
 	withExerciseSkills       *ExerciseSkillQuery
 	withExerciseConcepts     *ExerciseConceptQuery
+	withExerciseInstruments  *ExerciseInstrumentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -171,8 +174,8 @@ func (_q *ExerciseQuery) QueryLanguages() *LanguageQuery {
 }
 
 // QuerySkills chains the current query on the "skills" edge.
-func (_q *ExerciseQuery) QuerySkills() *SkillQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ExerciseQuery) QuerySkills() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -183,7 +186,7 @@ func (_q *ExerciseQuery) QuerySkills() *SkillQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, exercise.SkillsTable, exercise.SkillsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -193,8 +196,8 @@ func (_q *ExerciseQuery) QuerySkills() *SkillQuery {
 }
 
 // QueryConcepts chains the current query on the "concepts" edge.
-func (_q *ExerciseQuery) QueryConcepts() *ConceptQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ExerciseQuery) QueryConcepts() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -205,8 +208,30 @@ func (_q *ExerciseQuery) QueryConcepts() *ConceptQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
-			sqlgraph.To(concept.Table, concept.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, exercise.ConceptsTable, exercise.ConceptsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInstruments chains the current query on the "instruments" edge.
+func (_q *ExerciseQuery) QueryInstruments() *InstrumentQuery {
+	query := (&InstrumentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, exercise.InstrumentsTable, exercise.InstrumentsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -317,6 +342,28 @@ func (_q *ExerciseQuery) QueryExerciseConcepts() *ExerciseConceptQuery {
 			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
 			sqlgraph.To(exerciseconcept.Table, exerciseconcept.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ExerciseConceptsTable, exercise.ExerciseConceptsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryExerciseInstruments chains the current query on the "exercise_instruments" edge.
+func (_q *ExerciseQuery) QueryExerciseInstruments() *ExerciseInstrumentQuery {
+	query := (&ExerciseInstrumentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(exercise.Table, exercise.FieldID, selector),
+			sqlgraph.To(exerciseinstrument.Table, exerciseinstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, exercise.ExerciseInstrumentsTable, exercise.ExerciseInstrumentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -522,11 +569,13 @@ func (_q *ExerciseQuery) Clone() *ExerciseQuery {
 		withLanguages:            _q.withLanguages.Clone(),
 		withSkills:               _q.withSkills.Clone(),
 		withConcepts:             _q.withConcepts.Clone(),
+		withInstruments:          _q.withInstruments.Clone(),
 		withChallengeExercises:   _q.withChallengeExercises.Clone(),
 		withContentNodeExercises: _q.withContentNodeExercises.Clone(),
 		withExerciseLanguages:    _q.withExerciseLanguages.Clone(),
 		withExerciseSkills:       _q.withExerciseSkills.Clone(),
 		withExerciseConcepts:     _q.withExerciseConcepts.Clone(),
+		withExerciseInstruments:  _q.withExerciseInstruments.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -579,8 +628,8 @@ func (_q *ExerciseQuery) WithLanguages(opts ...func(*LanguageQuery)) *ExerciseQu
 
 // WithSkills tells the query-builder to eager-load the nodes that are connected to
 // the "skills" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ExerciseQuery) WithSkills(opts ...func(*SkillQuery)) *ExerciseQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ExerciseQuery) WithSkills(opts ...func(*KnowledgeNodeQuery)) *ExerciseQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -590,12 +639,23 @@ func (_q *ExerciseQuery) WithSkills(opts ...func(*SkillQuery)) *ExerciseQuery {
 
 // WithConcepts tells the query-builder to eager-load the nodes that are connected to
 // the "concepts" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ExerciseQuery) WithConcepts(opts ...func(*ConceptQuery)) *ExerciseQuery {
-	query := (&ConceptClient{config: _q.config}).Query()
+func (_q *ExerciseQuery) WithConcepts(opts ...func(*KnowledgeNodeQuery)) *ExerciseQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
 	_q.withConcepts = query
+	return _q
+}
+
+// WithInstruments tells the query-builder to eager-load the nodes that are connected to
+// the "instruments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ExerciseQuery) WithInstruments(opts ...func(*InstrumentQuery)) *ExerciseQuery {
+	query := (&InstrumentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInstruments = query
 	return _q
 }
 
@@ -651,6 +711,17 @@ func (_q *ExerciseQuery) WithExerciseConcepts(opts ...func(*ExerciseConceptQuery
 		opt(query)
 	}
 	_q.withExerciseConcepts = query
+	return _q
+}
+
+// WithExerciseInstruments tells the query-builder to eager-load the nodes that are connected to
+// the "exercise_instruments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ExerciseQuery) WithExerciseInstruments(opts ...func(*ExerciseInstrumentQuery)) *ExerciseQuery {
+	query := (&ExerciseInstrumentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withExerciseInstruments = query
 	return _q
 }
 
@@ -732,18 +803,20 @@ func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exe
 	var (
 		nodes       = []*Exercise{}
 		_spec       = _q.querySpec()
-		loadedTypes = [11]bool{
+		loadedTypes = [13]bool{
 			_q.withChallenges != nil,
 			_q.withContentNodes != nil,
 			_q.withOptions != nil,
 			_q.withLanguages != nil,
 			_q.withSkills != nil,
 			_q.withConcepts != nil,
+			_q.withInstruments != nil,
 			_q.withChallengeExercises != nil,
 			_q.withContentNodeExercises != nil,
 			_q.withExerciseLanguages != nil,
 			_q.withExerciseSkills != nil,
 			_q.withExerciseConcepts != nil,
+			_q.withExerciseInstruments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -794,15 +867,22 @@ func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exe
 	}
 	if query := _q.withSkills; query != nil {
 		if err := _q.loadSkills(ctx, query, nodes,
-			func(n *Exercise) { n.Edges.Skills = []*Skill{} },
-			func(n *Exercise, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			func(n *Exercise) { n.Edges.Skills = []*KnowledgeNode{} },
+			func(n *Exercise, e *KnowledgeNode) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
 			return nil, err
 		}
 	}
 	if query := _q.withConcepts; query != nil {
 		if err := _q.loadConcepts(ctx, query, nodes,
-			func(n *Exercise) { n.Edges.Concepts = []*Concept{} },
-			func(n *Exercise, e *Concept) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
+			func(n *Exercise) { n.Edges.Concepts = []*KnowledgeNode{} },
+			func(n *Exercise, e *KnowledgeNode) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withInstruments; query != nil {
+		if err := _q.loadInstruments(ctx, query, nodes,
+			func(n *Exercise) { n.Edges.Instruments = []*Instrument{} },
+			func(n *Exercise, e *Instrument) { n.Edges.Instruments = append(n.Edges.Instruments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -844,6 +924,15 @@ func (_q *ExerciseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exe
 		if err := _q.loadExerciseConcepts(ctx, query, nodes,
 			func(n *Exercise) { n.Edges.ExerciseConcepts = []*ExerciseConcept{} },
 			func(n *Exercise, e *ExerciseConcept) { n.Edges.ExerciseConcepts = append(n.Edges.ExerciseConcepts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withExerciseInstruments; query != nil {
+		if err := _q.loadExerciseInstruments(ctx, query, nodes,
+			func(n *Exercise) { n.Edges.ExerciseInstruments = []*ExerciseInstrument{} },
+			func(n *Exercise, e *ExerciseInstrument) {
+				n.Edges.ExerciseInstruments = append(n.Edges.ExerciseInstruments, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -1063,7 +1152,7 @@ func (_q *ExerciseQuery) loadLanguages(ctx context.Context, query *LanguageQuery
 	}
 	return nil
 }
-func (_q *ExerciseQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *Skill)) error {
+func (_q *ExerciseQuery) loadSkills(ctx context.Context, query *KnowledgeNodeQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Exercise)
 	nids := make(map[uuid.UUID]map[*Exercise]struct{})
@@ -1076,7 +1165,7 @@ func (_q *ExerciseQuery) loadSkills(ctx context.Context, query *SkillQuery, node
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(exercise.SkillsTable)
-		s.Join(joinT).On(s.C(skill.FieldID), joinT.C(exercise.SkillsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(exercise.SkillsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(exercise.SkillsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(exercise.SkillsPrimaryKey[0]))
@@ -1109,7 +1198,7 @@ func (_q *ExerciseQuery) loadSkills(ctx context.Context, query *SkillQuery, node
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Skill](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
@@ -1124,7 +1213,7 @@ func (_q *ExerciseQuery) loadSkills(ctx context.Context, query *SkillQuery, node
 	}
 	return nil
 }
-func (_q *ExerciseQuery) loadConcepts(ctx context.Context, query *ConceptQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *Concept)) error {
+func (_q *ExerciseQuery) loadConcepts(ctx context.Context, query *KnowledgeNodeQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *KnowledgeNode)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[uuid.UUID]*Exercise)
 	nids := make(map[uuid.UUID]map[*Exercise]struct{})
@@ -1137,7 +1226,7 @@ func (_q *ExerciseQuery) loadConcepts(ctx context.Context, query *ConceptQuery, 
 	}
 	query.Where(func(s *sql.Selector) {
 		joinT := sql.Table(exercise.ConceptsTable)
-		s.Join(joinT).On(s.C(concept.FieldID), joinT.C(exercise.ConceptsPrimaryKey[1]))
+		s.Join(joinT).On(s.C(knowledgenode.FieldID), joinT.C(exercise.ConceptsPrimaryKey[1]))
 		s.Where(sql.InValues(joinT.C(exercise.ConceptsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
 		s.Select(joinT.C(exercise.ConceptsPrimaryKey[0]))
@@ -1170,7 +1259,7 @@ func (_q *ExerciseQuery) loadConcepts(ctx context.Context, query *ConceptQuery, 
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Concept](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*KnowledgeNode](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
@@ -1178,6 +1267,67 @@ func (_q *ExerciseQuery) loadConcepts(ctx context.Context, query *ConceptQuery, 
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "concepts" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (_q *ExerciseQuery) loadInstruments(ctx context.Context, query *InstrumentQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *Instrument)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Exercise)
+	nids := make(map[uuid.UUID]map[*Exercise]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(exercise.InstrumentsTable)
+		s.Join(joinT).On(s.C(instrument.FieldID), joinT.C(exercise.InstrumentsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(exercise.InstrumentsPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(exercise.InstrumentsPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Exercise]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Instrument](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "instruments" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
@@ -1320,6 +1470,36 @@ func (_q *ExerciseQuery) loadExerciseConcepts(ctx context.Context, query *Exerci
 	}
 	query.Where(predicate.ExerciseConcept(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(exercise.ExerciseConceptsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ExerciseID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "exercise_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ExerciseQuery) loadExerciseInstruments(ctx context.Context, query *ExerciseInstrumentQuery, nodes []*Exercise, init func(*Exercise), assign func(*Exercise, *ExerciseInstrument)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Exercise)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(exerciseinstrument.FieldExerciseID)
+	}
+	query.Where(predicate.ExerciseInstrument(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(exercise.ExerciseInstrumentsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // DiagramConceptCreate is the builder for creating a DiagramConcept entity.
@@ -54,8 +54,8 @@ func (_c *DiagramConceptCreate) SetDiagram(v *Diagram) *DiagramConceptCreate {
 	return _c.SetDiagramID(v.ID)
 }
 
-// SetConcept sets the "concept" edge to the Concept entity.
-func (_c *DiagramConceptCreate) SetConcept(v *Concept) *DiagramConceptCreate {
+// SetConcept sets the "concept" edge to the KnowledgeNode entity.
+func (_c *DiagramConceptCreate) SetConcept(v *KnowledgeNode) *DiagramConceptCreate {
 	return _c.SetConceptID(v.ID)
 }
 
@@ -172,7 +172,7 @@ func (_c *DiagramConceptCreate) createSpec() (*DiagramConcept, *sqlgraph.CreateS
 			Columns: []string{diagramconcept.ConceptColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

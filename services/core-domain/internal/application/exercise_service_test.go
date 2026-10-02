@@ -36,7 +36,7 @@ func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises 
 }
 
 func newExerciseServiceWithDiagrams(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository, diagrams *fakeDiagramRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, seededSkillRepository(), seededConceptRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, seededKnowledgeNodeRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 }
 
 // exerciseUsers are the teachers whose display names name an exercise's
@@ -163,7 +163,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Root position of a C major triad", domain.NewPlainTextPrompt("Identify the root position of a C major triad"),
-			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, &imageURL, nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, &imageURL, nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Root position of a C major triad", exercise.Title)
@@ -176,7 +176,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Chord name", domain.NewPlainTextPrompt("Name this chord"),
-			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, teacherCaller().ID, exercise.CreatedBy)
@@ -187,7 +187,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), adminCaller(),
 			"Name the interval", domain.NewPlainTextPrompt("Name the interval between the open low E and the 5th fret"),
-			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 	})
@@ -198,7 +198,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Alternate picking — descending run", domain.NewPlainTextPrompt("Play the descending run cleanly"),
-			domain.ExerciseTypeImageRecognition, []string{"skill-1", "skill-2"}, []string{"concept-1"}, &imageURL, nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeImageRecognition, []string{"skill-1", "skill-2"}, []string{"concept-1"}, &imageURL, nil, nil, nil, imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"skill-1", "skill-2"}, exerciseSkillIDs(exercise))
@@ -210,7 +210,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Circle of fifths", richPrompt,
-			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, richPrompt, exercise.Prompt)
@@ -238,7 +238,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		}
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"Circle of fifths", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"Circle of fifths", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, prompt, exercise.Prompt)
@@ -249,7 +249,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"Name the note", domain.NewPlainTextPrompt("What note is this?"),
-			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.NewPlainTextPrompt("What note is this?"), exercise.Prompt)
@@ -259,7 +259,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.PromptDocument{Type: "not-a-doc"}, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.PromptDocument{Type: "not-a-doc"}, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -276,7 +276,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		}
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -298,7 +298,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 			}
 
 			_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-				"title", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+				"title", prompt, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 			var valErr *domain.ValidationError
 			require.True(t, errors.As(err, &valErr))
@@ -310,7 +310,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -321,7 +321,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.PromptDocument{}, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.PromptDocument{}, domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -332,7 +332,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), "", []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), "", []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -343,7 +343,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseType("multiple_choice"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseType("multiple_choice"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -356,7 +356,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil,
-			[]domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil, nil, []string{"en"})
+			[]domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -367,7 +367,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, nil, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, nil, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -378,7 +378,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, nil, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, nil, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -389,7 +389,18 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"missing-skill"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"missing-skill"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
+
+		var valErr *domain.ValidationError
+		require.True(t, errors.As(err, &valErr))
+		assertHasField(t, valErr, "skill_ids")
+	})
+
+	t.Run("creating an exercise with a concept given as a skill is rejected", func(t *testing.T) {
+		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
+
+		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"concept-2"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -400,7 +411,7 @@ func TestExerciseService_CreateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.CreateExercise(context.Background(), studentCaller(),
-			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -419,7 +430,7 @@ func richRemediationContent(caption string) domain.PromptDocument {
 
 func seedDiagram(t *testing.T, diagrams *fakeDiagramRepository, id, instrumentID string, positions []domain.Position) domain.Diagram {
 	t.Helper()
-	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Names: domain.LocalizedText{"en": id}, Positions: positions, Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}}
+	diagram := domain.Diagram{ID: id, InstrumentID: instrumentID, Names: domain.LocalizedText{"en": id}, Positions: positions, Skills: []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}}
 	require.NoError(t, diagrams.Create(context.Background(), diagram))
 	return diagram
 }
@@ -442,7 +453,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 		return svc.CreateExercise(context.Background(), teacherCaller(),
 			"Find the roots", domain.NewPlainTextPrompt("Tap every root"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
-			&ref, nil, nil, nil, nil, []string{"en"})
+			&ref, nil, nil, nil, nil, []string{"en"}, nil)
 	}
 	correctCells := func(exercise domain.Exercise) []domain.FretCell {
 		var cells []domain.FretCell
@@ -550,7 +561,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			"Find the root", domain.NewPlainTextPrompt("Tap the root"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
 			&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &[]string{"pos-a3"}}, nil,
-			nil, nil, nil, []string{"en"})
+			nil, nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.Options, 1)
@@ -571,7 +582,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
 				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"3"}},
 			}},
-			nil, nil, nil, []string{"en"})
+			nil, nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.Options, 2)
@@ -590,7 +601,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
 				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"3"}},
 			}},
-			nil, nil, nil, []string{"en"})
+			nil, nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -605,7 +616,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			"Name the root", domain.NewPlainTextPrompt("Which position is the root?"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
 			&domain.DiagramRef{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}}, nil,
-			nil, nil, nil, []string{"en"})
+			nil, nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -624,7 +635,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
 				{DiagramID: "missing", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}},
 			}},
-			nil, nil, nil, []string{"en"})
+			nil, nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -643,7 +654,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 				"Find the roots", domain.NewPlainTextPrompt("Tap every root"),
 				domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
-				&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+				&domain.DiagramRef{DiagramID: "diagram-1", CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"}, nil)
 			require.NoError(t, err)
 			return svc, exercise
 		}
@@ -652,7 +663,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			updated, err := svc.UpdateExercise(context.Background(), teacherCaller(), id,
 				"Find every root", domain.NewPlainTextPrompt("Tap every root"),
 				[]string{"skill-1"}, []string{"concept-1"}, nil, nil,
-				&domain.DiagramRef{DiagramID: diagramID, CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"})
+				&domain.DiagramRef{DiagramID: diagramID, CorrectPositionIDs: &correct}, nil, nil, nil, nil, []string{"en"}, nil)
 			require.NoError(t, err)
 			return updated
 		}
@@ -711,7 +722,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 			"Name the root", domain.NewPlainTextPrompt("Which position is the root?"),
 			domain.ExerciseTypeImageRecognition, []string{"skill-1"}, []string{"concept-1"}, nil, nil,
 			&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, CorrectIntervals: &[]string{"R"}}, nil,
-			imageRecognitionOptions(), nil, nil, []string{"en"})
+			imageRecognitionOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -728,7 +739,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{ContentNodeID: &nodeID}}, []string{"en"})
+			[]domain.RemediationTarget{{ContentNodeID: &nodeID}}, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.RemediationTargets, 1)
@@ -743,7 +754,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{RichContent: &rich, Caption: &caption}}, []string{"en"})
+			[]domain.RemediationTarget{{RichContent: &rich, Caption: &caption}}, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.RemediationTargets, 1)
@@ -762,7 +773,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		exercise, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{ContentNodeID: &nodeID}, {RichContent: &rich}}, []string{"en"})
+			[]domain.RemediationTarget{{ContentNodeID: &nodeID}, {RichContent: &rich}}, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.RemediationTargets, 2)
@@ -786,7 +797,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
 			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{ContentNodeID: &newTarget}}, []string{"en"})
+			[]domain.RemediationTarget{{ContentNodeID: &newTarget}}, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		require.Len(t, exercise.RemediationTargets, 1)
@@ -805,7 +816,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Empty(t, exercise.RemediationTargets)
@@ -820,7 +831,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{ContentNodeID: &nodeID, RichContent: &rich}}, []string{"en"})
+			[]domain.RemediationTarget{{ContentNodeID: &nodeID, RichContent: &rich}}, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -832,7 +843,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{}}, []string{"en"})
+			[]domain.RemediationTarget{{}}, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -845,7 +856,7 @@ func TestExerciseService_RemediationTargets(t *testing.T) {
 
 		_, err := svc.CreateExercise(context.Background(), teacherCaller(),
 			"title", domain.NewPlainTextPrompt("prompt"), domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil,
-			[]domain.RemediationTarget{{ContentNodeID: &missing}}, []string{"en"})
+			[]domain.RemediationTarget{{ContentNodeID: &missing}}, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -892,8 +903,8 @@ func TestExerciseService_ListExercises(t *testing.T) {
 
 	t.Run("a teacher filters the exercise list by skill", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
-		exercises.put(domain.Exercise{ID: "triad-exercise-01", Skills: []domain.Skill{{ID: "skill-1"}}})
-		exercises.put(domain.Exercise{ID: "picking-drill-01", Skills: []domain.Skill{{ID: "skill-2"}}})
+		exercises.put(domain.Exercise{ID: "triad-exercise-01", Skills: []domain.KnowledgeNode{{ID: "skill-1"}}})
+		exercises.put(domain.Exercise{ID: "picking-drill-01", Skills: []domain.KnowledgeNode{{ID: "skill-2"}}})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{SkillID: "skill-2"}, firstPage)
@@ -916,9 +927,9 @@ func TestExerciseService_ListExercises(t *testing.T) {
 
 	t.Run("the new filters each narrow the pool and combine with AND", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
-		exercises.put(domain.Exercise{ID: "bobs-triad", Title: "Major Triad Shapes", Concepts: []domain.Concept{{ID: "concept-1"}}, Languages: []domain.Language{{Code: "en"}}, CreatedBy: "teacher-1"})
-		exercises.put(domain.Exercise{ID: "carols-triad", Title: "Triad inversions", Concepts: []domain.Concept{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
-		exercises.put(domain.Exercise{ID: "carols-picking", Title: "Picking drill", Concepts: []domain.Concept{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
+		exercises.put(domain.Exercise{ID: "bobs-triad", Title: "Major Triad Shapes", Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}, Languages: []domain.Language{{Code: "en"}}, CreatedBy: "teacher-1"})
+		exercises.put(domain.Exercise{ID: "carols-triad", Title: "Triad inversions", Concepts: []domain.KnowledgeNode{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
+		exercises.put(domain.Exercise{ID: "carols-picking", Title: "Picking drill", Concepts: []domain.KnowledgeNode{{ID: "concept-2"}}, Languages: []domain.Language{{Code: "pt"}}, CreatedBy: "teacher-2"})
 		exercises.put(domain.Exercise{ID: "legacy-triad", Title: "Triad legacy", Languages: []domain.Language{{Code: "en"}}})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
@@ -1038,7 +1049,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 
 		revisedPrompt := domain.NewPlainTextPrompt("Identify the root position, now with a cleaner prompt")
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"Root position, revised", revisedPrompt, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"Root position, revised", revisedPrompt, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Root position, revised", exercise.Title)
@@ -1072,7 +1083,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		}
 
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"t", formatted, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"t", formatted, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, formatted, exercise.Prompt)
@@ -1080,11 +1091,11 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 
 	t.Run("a teacher replaces an exercise's skills", func(t *testing.T) {
 		exercises := newFakeExerciseRepository()
-		exercises.put(domain.Exercise{ID: "picking-drill-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: domain.NewPlainTextPrompt("p"), Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}, Options: textResponseOptions()})
+		exercises.put(domain.Exercise{ID: "picking-drill-01", ExerciseType: domain.ExerciseTypeTextResponse, Title: "t", Prompt: domain.NewPlainTextPrompt("p"), Skills: []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}, Options: textResponseOptions()})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "picking-drill-01",
-			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1", "skill-2"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1", "skill-2"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"skill-1", "skill-2"}, exerciseSkillIDs(exercise))
@@ -1096,7 +1107,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		exercise, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"Root position, revised", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"Root position, revised", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"triad-challenge"}, exercise.ChallengeIDs)
@@ -1108,7 +1119,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -1122,7 +1133,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		label := "A major"
 
 		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "triad-exercise-01",
-			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, []domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil, nil, []string{"en"})
+			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, []domain.Option{{ID: "opt-1", IsCorrect: false, Label: &label}}, nil, nil, []string{"en"}, nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
@@ -1133,7 +1144,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
 
 		_, err := svc.UpdateExercise(context.Background(), teacherCaller(), "missing",
-			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"t", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
@@ -1144,7 +1155,7 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
 		_, err := svc.UpdateExercise(context.Background(), studentCaller(), "triad-exercise-01",
-			"Hijacked title", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"})
+			"Hijacked title", domain.NewPlainTextPrompt("p"), []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
 
 		assert.ErrorIs(t, err, domain.ErrForbidden)
 	})
@@ -1308,7 +1319,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
 		require.NoError(t, err)
@@ -1327,7 +1338,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
 
@@ -1470,7 +1481,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
 		require.NoError(t, err)
@@ -1503,7 +1514,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 
 func TestExerciseService_StartPracticeSession(t *testing.T) {
 	putWithSkill := func(exercises *fakeExerciseRepository, id, skillID string) {
-		exercises.put(domain.Exercise{ID: id, Skills: []domain.Skill{{ID: skillID}}, Options: textResponseOptions()})
+		exercises.put(domain.Exercise{ID: id, Skills: []domain.KnowledgeNode{{ID: skillID}}, Options: textResponseOptions()})
 	}
 
 	t.Run("a student starts a practice session for a skill with enough linked exercises", func(t *testing.T) {
@@ -1599,7 +1610,7 @@ func TestExerciseService_StartPracticeSession(t *testing.T) {
 		putWithSkill(exercises, "ex-1", "skill-1")
 		putWithSkill(exercises, "ex-2", "skill-1")
 		putWithSkill(exercises, "ex-3", "skill-1")
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededSkillRepository(), seededConceptRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
 

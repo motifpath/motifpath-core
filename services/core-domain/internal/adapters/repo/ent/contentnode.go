@@ -49,9 +49,9 @@ type ContentNodeEdges struct {
 	// Languages holds the value of the languages edge.
 	Languages []*Language `json:"languages,omitempty"`
 	// Skills holds the value of the skills edge.
-	Skills []*Skill `json:"skills,omitempty"`
+	Skills []*KnowledgeNode `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
-	Concepts []*Concept `json:"concepts,omitempty"`
+	Concepts []*KnowledgeNode `json:"concepts,omitempty"`
 	// Instruments holds the value of the instruments edge.
 	Instruments []*Instrument `json:"instruments,omitempty"`
 	// ContentNodeExercises holds the value of the content_node_exercises edge.
@@ -89,7 +89,7 @@ func (e ContentNodeEdges) LanguagesOrErr() ([]*Language, error) {
 
 // SkillsOrErr returns the Skills value or an error if the edge
 // was not loaded in eager-loading.
-func (e ContentNodeEdges) SkillsOrErr() ([]*Skill, error) {
+func (e ContentNodeEdges) SkillsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[2] {
 		return e.Skills, nil
 	}
@@ -98,7 +98,7 @@ func (e ContentNodeEdges) SkillsOrErr() ([]*Skill, error) {
 
 // ConceptsOrErr returns the Concepts value or an error if the edge
 // was not loaded in eager-loading.
-func (e ContentNodeEdges) ConceptsOrErr() ([]*Concept, error) {
+func (e ContentNodeEdges) ConceptsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[3] {
 		return e.Concepts, nil
 	}
@@ -272,12 +272,12 @@ func (_m *ContentNode) QueryLanguages() *LanguageQuery {
 }
 
 // QuerySkills queries the "skills" edge of the ContentNode entity.
-func (_m *ContentNode) QuerySkills() *SkillQuery {
+func (_m *ContentNode) QuerySkills() *KnowledgeNodeQuery {
 	return NewContentNodeClient(_m.config).QuerySkills(_m)
 }
 
 // QueryConcepts queries the "concepts" edge of the ContentNode entity.
-func (_m *ContentNode) QueryConcepts() *ConceptQuery {
+func (_m *ContentNode) QueryConcepts() *KnowledgeNodeQuery {
 	return NewContentNodeClient(_m.config).QueryConcepts(_m)
 }
 

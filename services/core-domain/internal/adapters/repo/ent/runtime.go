@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -29,18 +28,21 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -75,12 +77,6 @@ func init() {
 	challengeexerciseDescLinkedAt := challengeexerciseFields[2].Descriptor()
 	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
-	conceptFields := schema.Concept{}.Fields()
-	_ = conceptFields
-	// conceptDescID is the schema descriptor for id field.
-	conceptDescID := conceptFields[0].Descriptor()
-	// concept.DefaultID holds the default value on creation for the id field.
-	concept.DefaultID = conceptDescID.Default.(func() uuid.UUID)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
@@ -253,6 +249,12 @@ func init() {
 	exerciseconceptDescLinkedAt := exerciseconceptFields[2].Descriptor()
 	// exerciseconcept.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	exerciseconcept.DefaultLinkedAt = exerciseconceptDescLinkedAt.Default.(func() time.Time)
+	exerciseinstrumentFields := schema.ExerciseInstrument{}.Fields()
+	_ = exerciseinstrumentFields
+	// exerciseinstrumentDescLinkedAt is the schema descriptor for linked_at field.
+	exerciseinstrumentDescLinkedAt := exerciseinstrumentFields[2].Descriptor()
+	// exerciseinstrument.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	exerciseinstrument.DefaultLinkedAt = exerciseinstrumentDescLinkedAt.Default.(func() time.Time)
 	exerciselanguageFields := schema.ExerciseLanguage{}.Fields()
 	_ = exerciselanguageFields
 	// exerciselanguageDescLinkedAt is the schema descriptor for linked_at field.
@@ -287,6 +289,24 @@ func init() {
 	instrumentDescID := instrumentFields[0].Descriptor()
 	// instrument.DefaultID holds the default value on creation for the id field.
 	instrument.DefaultID = instrumentDescID.Default.(func() uuid.UUID)
+	knowledgeedgeFields := schema.KnowledgeEdge{}.Fields()
+	_ = knowledgeedgeFields
+	// knowledgeedgeDescID is the schema descriptor for id field.
+	knowledgeedgeDescID := knowledgeedgeFields[0].Descriptor()
+	// knowledgeedge.DefaultID holds the default value on creation for the id field.
+	knowledgeedge.DefaultID = knowledgeedgeDescID.Default.(func() uuid.UUID)
+	knowledgenodeFields := schema.KnowledgeNode{}.Fields()
+	_ = knowledgenodeFields
+	// knowledgenodeDescID is the schema descriptor for id field.
+	knowledgenodeDescID := knowledgenodeFields[0].Descriptor()
+	// knowledgenode.DefaultID holds the default value on creation for the id field.
+	knowledgenode.DefaultID = knowledgenodeDescID.Default.(func() uuid.UUID)
+	knowledgenodeinstrumentFields := schema.KnowledgeNodeInstrument{}.Fields()
+	_ = knowledgenodeinstrumentFields
+	// knowledgenodeinstrumentDescLinkedAt is the schema descriptor for linked_at field.
+	knowledgenodeinstrumentDescLinkedAt := knowledgenodeinstrumentFields[0].Descriptor()
+	// knowledgenodeinstrument.DefaultLinkedAt holds the default value on creation for the linked_at field.
+	knowledgenodeinstrument.DefaultLinkedAt = knowledgenodeinstrumentDescLinkedAt.Default.(func() time.Time)
 	languageFields := schema.Language{}.Fields()
 	_ = languageFields
 	// languageDescID is the schema descriptor for id field.
@@ -325,12 +345,6 @@ func init() {
 	positionDescID := positionFields[0].Descriptor()
 	// position.DefaultID holds the default value on creation for the id field.
 	position.DefaultID = positionDescID.Default.(func() uuid.UUID)
-	skillFields := schema.Skill{}.Fields()
-	_ = skillFields
-	// skillDescID is the schema descriptor for id field.
-	skillDescID := skillFields[0].Descriptor()
-	// skill.DefaultID holds the default value on creation for the id field.
-	skill.DefaultID = skillDescID.Default.(func() uuid.UUID)
 	studentlearningstateFields := schema.StudentLearningState{}.Fields()
 	_ = studentlearningstateFields
 	// studentlearningstateDescID is the schema descriptor for id field.

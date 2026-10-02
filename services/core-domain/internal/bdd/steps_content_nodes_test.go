@@ -102,7 +102,7 @@ func (w *world) putContentNodeWithSkills(slug, skills string) error {
 		ContentType: domain.ContentTypeVideo,
 		Classification: domain.Classification{
 			Skills:          skillsFromUUIDs(w.skillIDsFor(skills)),
-			Concepts:        []domain.Concept{{ID: w.conceptIDFor("concept-" + slug).String(), Name: "concept-" + slug}},
+			Concepts:        []domain.KnowledgeNode{{ID: w.conceptIDFor("concept-" + slug).String()}},
 			DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
 		},
 		CreatedAt: fixedNow,
@@ -118,7 +118,7 @@ func (w *world) putContentNodeWithConcepts(slug, concepts string) error {
 		Title:       slug,
 		ContentType: domain.ContentTypeVideo,
 		Classification: domain.Classification{
-			Skills:          []domain.Skill{{ID: w.skillIDFor("skill-" + slug).String(), Name: "skill-" + slug}},
+			Skills:          []domain.KnowledgeNode{{ID: w.skillIDFor("skill-" + slug).String()}},
 			Concepts:        conceptsFromUUIDs(w.conceptIDsFor(concepts)),
 			DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
 		},
@@ -127,18 +127,18 @@ func (w *world) putContentNodeWithConcepts(slug, concepts string) error {
 	return nil
 }
 
-func skillsFromUUIDs(ids []uuid.UUID) []domain.Skill {
-	result := make([]domain.Skill, len(ids))
+func skillsFromUUIDs(ids []uuid.UUID) []domain.KnowledgeNode {
+	result := make([]domain.KnowledgeNode, len(ids))
 	for i, id := range ids {
-		result[i] = domain.Skill{ID: id.String()}
+		result[i] = domain.KnowledgeNode{ID: id.String()}
 	}
 	return result
 }
 
-func conceptsFromUUIDs(ids []uuid.UUID) []domain.Concept {
-	result := make([]domain.Concept, len(ids))
+func conceptsFromUUIDs(ids []uuid.UUID) []domain.KnowledgeNode {
+	result := make([]domain.KnowledgeNode, len(ids))
 	for i, id := range ids {
-		result[i] = domain.Concept{ID: id.String()}
+		result[i] = domain.KnowledgeNode{ID: id.String()}
 	}
 	return result
 }
@@ -240,7 +240,7 @@ func (w *world) updatesContentNodeSkillsOnly(name, slug, skills string) error {
 	return err
 }
 
-func idsOfSkills(skills []domain.Skill) []uuid.UUID {
+func idsOfSkills(skills []domain.KnowledgeNode) []uuid.UUID {
 	ids := make([]uuid.UUID, len(skills))
 	for i, s := range skills {
 		ids[i] = uuid.MustParse(s.ID)
@@ -248,7 +248,7 @@ func idsOfSkills(skills []domain.Skill) []uuid.UUID {
 	return ids
 }
 
-func idsOfConcepts(concepts []domain.Concept) []uuid.UUID {
+func idsOfConcepts(concepts []domain.KnowledgeNode) []uuid.UUID {
 	ids := make([]uuid.UUID, len(concepts))
 	for i, c := range concepts {
 		ids[i] = uuid.MustParse(c.ID)
@@ -378,7 +378,7 @@ func (w *world) classificationReviewStateStillIs(want string) error {
 }
 
 func (w *world) contentNodeClassificationCarriesSkills(names string) error {
-	var skills []generated.Skill
+	var skills []generated.KnowledgeNode
 	switch resp := w.lastResp.(type) {
 	case generated.CreateContentNode201JSONResponse:
 		skills = resp.Classification.Skills
@@ -390,7 +390,7 @@ func (w *world) contentNodeClassificationCarriesSkills(names string) error {
 	for _, want := range splitCommaList(names) {
 		found := false
 		for _, s := range skills {
-			if s.Name == want {
+			if s.Key == slug(want) {
 				found = true
 				break
 			}
@@ -417,14 +417,14 @@ func (w *world) putContentNode(slug string, contentType domain.ContentType) erro
 		Title:       slug,
 		ContentType: contentType,
 		Classification: domain.Classification{
-			Skills: []domain.Skill{
-				{ID: w.skillIDFor("skill-" + slug).String(), Name: "skill-" + slug},
-				{ID: w.skillIDFor("triad-shapes").String(), Name: "triad-shapes"},
-				{ID: w.skillIDFor("chord-theory").String(), Name: "chord-theory"},
+			Skills: []domain.KnowledgeNode{
+				{ID: w.skillIDFor("skill-" + slug).String()},
+				{ID: w.skillIDFor("triad-shapes").String()},
+				{ID: w.skillIDFor("chord-theory").String()},
 			},
-			Concepts: []domain.Concept{
-				{ID: w.conceptIDFor("concept-" + slug).String(), Name: "concept-" + slug},
-				{ID: w.conceptIDFor("chord-theory").String(), Name: "chord-theory"},
+			Concepts: []domain.KnowledgeNode{
+				{ID: w.conceptIDFor("concept-" + slug).String()},
+				{ID: w.conceptIDFor("chord-theory").String()},
 			},
 			DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending,
 		},

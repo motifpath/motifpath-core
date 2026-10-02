@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ExerciseSkill is the model entity for the ExerciseSkill schema.
@@ -37,7 +37,7 @@ type ExerciseSkillEdges struct {
 	// Exercise holds the value of the exercise edge.
 	Exercise *Exercise `json:"exercise,omitempty"`
 	// Skill holds the value of the skill edge.
-	Skill *Skill `json:"skill,omitempty"`
+	Skill *KnowledgeNode `json:"skill,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -56,11 +56,11 @@ func (e ExerciseSkillEdges) ExerciseOrErr() (*Exercise, error) {
 
 // SkillOrErr returns the Skill value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e ExerciseSkillEdges) SkillOrErr() (*Skill, error) {
+func (e ExerciseSkillEdges) SkillOrErr() (*KnowledgeNode, error) {
 	if e.Skill != nil {
 		return e.Skill, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: skill.Label}
+		return nil, &NotFoundError{label: knowledgenode.Label}
 	}
 	return nil, &NotLoadedError{edge: "skill"}
 }
@@ -134,7 +134,7 @@ func (_m *ExerciseSkill) QueryExercise() *ExerciseQuery {
 }
 
 // QuerySkill queries the "skill" edge of the ExerciseSkill entity.
-func (_m *ExerciseSkill) QuerySkill() *SkillQuery {
+func (_m *ExerciseSkill) QuerySkill() *KnowledgeNodeQuery {
 	return NewExerciseSkillClient(_m.config).QuerySkill(_m)
 }
 

@@ -1,9 +1,17 @@
 import json
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from collections import Counter
 import catalog
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'knowledge_map'))
+import knowledge_map  # noqa: E402
+
+SPECS_DIR = Path(os.environ.get('SPECS_DIR', Path(__file__).resolve().parents[3] / 'motifpath-specs'))
+KNOWLEDGE_MAP = SPECS_DIR / 'catalogs/knowledge-map.yaml'
 
 
 class CatalogTests(unittest.TestCase):
@@ -69,13 +77,33 @@ class CatalogTests(unittest.TestCase):
         self.assertIn(catalog.SYSTEM_CATALOG_USER_ID, sql)
         self.assertIn(catalog.SYSTEM_CATALOG_CLERK_USER_ID, sql)
         self.assertIn("'MotifPath Catalog'", sql)
-        self.assertIn('"en":"Electric guitar","pt_BR":"Guitarra elétrica"', sql)
+        self.assertIn(catalog.stable_id('instrument/electric-guitar'), sql)
         self.assertIn('INSERT INTO diagram_instruments', sql)
+        self.assertNotIn('INSERT INTO instruments', sql)
+        self.assertNotIn('INSERT INTO skills', sql)
+        self.assertNotIn('INSERT INTO concepts', sql)
         self.assertIn('sequence,created_at) VALUES (', sql)
         self.assertNotIn('sequence_index', sql)
         self.assertIn('linked_at', sql)
         self.assertNotIn('DELETE FROM', sql)
         self.assertNotIn('ON CONFLICT', sql)
+
+    def test_every_diagram_is_classified_by_map_key(self):
+        sql = catalog.render_sql(self.entries)
+        for e in self.entries:
+            skill, concept = catalog.DIAGRAM_CLASSIFICATION[e['family']]
+            self.assertIn(f"'{e['diagram_id']}','{catalog.stable_id('knowledge-node/' + skill)}'", sql)
+            self.assertIn(f"'{e['diagram_id']}','{catalog.stable_id('knowledge-node/' + concept)}'", sql)
+
+    @unittest.skipUnless(KNOWLEDGE_MAP.exists(), f'{KNOWLEDGE_MAP} not found; set SPECS_DIR')
+    def test_classification_nodes_exist_and_suit_both_guitars(self):
+        nodes = {n.key: n for n in knowledge_map.load(KNOWLEDGE_MAP).nodes}
+        for family, (skill, concept) in catalog.DIAGRAM_CLASSIFICATION.items():
+            for key, kind in ((skill, 'skill'), (concept, 'concept')):
+                node = nodes.get(key)
+                self.assertIsNotNone(node, f'{family}: {key}')
+                self.assertEqual(kind, node.kind, key)
+                self.assertTrue(not node.instruments or {'guitar', 'electric-guitar'} & set(node.instruments), key)
 
     def test_catalog_excludes_string_set_chord_templates(self):
         excluded = {'triad-inversion', 'seventh-inversion', 'drop-2', 'drop-3', 'drop-2-4', 'shell', 'interval', 'dyad'}

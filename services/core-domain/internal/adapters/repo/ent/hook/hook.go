@@ -33,18 +33,6 @@ func (f ChallengeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChallengeExerciseMutation", m)
 }
 
-// The ConceptFunc type is an adapter to allow the use of ordinary
-// function as Concept mutator.
-type ConceptFunc func(context.Context, *ent.ConceptMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f ConceptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ConceptMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ConceptMutation", m)
-}
-
 // The ContentNodeFunc type is an adapter to allow the use of ordinary
 // function as ContentNode mutator.
 type ContentNodeFunc func(context.Context, *ent.ContentNodeMutation) (ent.Value, error)
@@ -285,6 +273,18 @@ func (f ExerciseConceptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseConceptMutation", m)
 }
 
+// The ExerciseInstrumentFunc type is an adapter to allow the use of ordinary
+// function as ExerciseInstrument mutator.
+type ExerciseInstrumentFunc func(context.Context, *ent.ExerciseInstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ExerciseInstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ExerciseInstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExerciseInstrumentMutation", m)
+}
+
 // The ExerciseLanguageFunc type is an adapter to allow the use of ordinary
 // function as ExerciseLanguage mutator.
 type ExerciseLanguageFunc func(context.Context, *ent.ExerciseLanguageMutation) (ent.Value, error)
@@ -345,6 +345,42 @@ func (f InstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InstrumentMutation", m)
 }
 
+// The KnowledgeEdgeFunc type is an adapter to allow the use of ordinary
+// function as KnowledgeEdge mutator.
+type KnowledgeEdgeFunc func(context.Context, *ent.KnowledgeEdgeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f KnowledgeEdgeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.KnowledgeEdgeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KnowledgeEdgeMutation", m)
+}
+
+// The KnowledgeNodeFunc type is an adapter to allow the use of ordinary
+// function as KnowledgeNode mutator.
+type KnowledgeNodeFunc func(context.Context, *ent.KnowledgeNodeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f KnowledgeNodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.KnowledgeNodeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KnowledgeNodeMutation", m)
+}
+
+// The KnowledgeNodeInstrumentFunc type is an adapter to allow the use of ordinary
+// function as KnowledgeNodeInstrument mutator.
+type KnowledgeNodeInstrumentFunc func(context.Context, *ent.KnowledgeNodeInstrumentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f KnowledgeNodeInstrumentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.KnowledgeNodeInstrumentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.KnowledgeNodeInstrumentMutation", m)
+}
+
 // The LanguageFunc type is an adapter to allow the use of ordinary
 // function as Language mutator.
 type LanguageFunc func(context.Context, *ent.LanguageMutation) (ent.Value, error)
@@ -403,18 +439,6 @@ func (f PositionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PositionMutation", m)
-}
-
-// The SkillFunc type is an adapter to allow the use of ordinary
-// function as Skill mutator.
-type SkillFunc func(context.Context, *ent.SkillMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f SkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SkillMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillMutation", m)
 }
 
 // The StudentLearningStateFunc type is an adapter to allow the use of ordinary

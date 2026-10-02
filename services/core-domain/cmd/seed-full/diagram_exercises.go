@@ -21,19 +21,19 @@ import (
 //     plays reversed and loops, and the open high E sounds though it isn't
 //     drawn (it stays an empty answer cell). The major third is correct.
 func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
-	scalesID, err := classifier.skillID(ctx, "Scales")
+	scalesID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
 		return err
 	}
-	pentatonicID, err := classifier.conceptID(ctx, "Pentatonic scale shapes")
+	pentatonicID, err := classifier.conceptID(ctx, "pentatonic-shapes")
 	if err != nil {
 		return err
 	}
-	chordsID, err := classifier.skillID(ctx, "Chords")
+	chordsID, err := classifier.skillID(ctx, "play-open-chords")
 	if err != nil {
 		return err
 	}
-	openChordsID, err := classifier.conceptID(ctx, "Open chord shapes")
+	openChordsID, err := classifier.conceptID(ctx, "open-chord-shapes")
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		CorrectIntervals: &[]string{"R"},
 	}
 	tapRoots, err := exerciseSvc.CreateExercise(ctx, teacher, rootsTitle, domain.NewPlainTextPrompt(rootsTitle), domain.ExerciseTypeImageRecognition,
-		[]string{scalesID}, []string{pentatonicID}, nil, nil, roots, nil, nil, nil, nil, []string{"en"})
+		[]string{scalesID}, []string{pentatonicID}, nil, nil, roots, nil, nil, nil, nil, []string{"en"}, nil)
 	if err != nil {
 		return fmt.Errorf("create exercise %q: %w", rootsTitle, err)
 	}
@@ -56,7 +56,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 			{ID: uuid.NewString(), IsCorrect: true, DiagramRef: intervalsRef(diagrams.eMajorChord.ID)},
 			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.cMajorOpen.ID)},
 			{ID: uuid.NewString(), IsCorrect: false, DiagramRef: intervalsRef(diagrams.pentatonicPos1.ID)},
-		}, nil, nil, []string{"en"})
+		}, nil, nil, []string{"en"}, nil)
 	if err != nil {
 		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
 	}
@@ -99,7 +99,7 @@ func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc
 		CorrectPositionIDs: &[]string{third},
 	}
 	exercise, err := exerciseSvc.CreateExercise(ctx, teacher, title, domain.NewPlainTextPrompt(title), domain.ExerciseTypeImageRecognition,
-		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"})
+		[]string{skillID}, []string{conceptID}, nil, nil, stimulus, nil, nil, nil, nil, []string{"en"}, nil)
 	if err != nil {
 		return domain.Exercise{}, fmt.Errorf("create exercise %q: %w", title, err)
 	}

@@ -23,8 +23,8 @@ func newChallengeService(nodes *fakeContentNodeRepository, challenges *fakeChall
 func classifiedVideoNode(id, skillID, conceptID string) domain.ContentNode {
 	node := videoNode(id)
 	node.Classification = domain.Classification{
-		Skills:   []domain.Skill{{ID: skillID, Name: "skill"}},
-		Concepts: []domain.Concept{{ID: conceptID, Name: "concept"}},
+		Skills:   []domain.KnowledgeNode{{ID: skillID, Kind: domain.KnowledgeNodeKindSkill, Key: "skill"}},
+		Concepts: []domain.KnowledgeNode{{ID: conceptID, Kind: domain.KnowledgeNodeKindConcept, Key: "concept"}},
 	}
 	return node
 }

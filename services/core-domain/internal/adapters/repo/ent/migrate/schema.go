@@ -68,26 +68,6 @@ var (
 			},
 		},
 	}
-	// ConceptsColumns holds the columns for the "concepts" table.
-	ConceptsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "name", Type: field.TypeString},
-		{Name: "parent_id", Type: field.TypeUUID, Nullable: true},
-	}
-	// ConceptsTable holds the schema information for the "concepts" table.
-	ConceptsTable = &schema.Table{
-		Name:       "concepts",
-		Columns:    ConceptsColumns,
-		PrimaryKey: []*schema.Column{ConceptsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "concepts_concepts_parent",
-				Columns:    []*schema.Column{ConceptsColumns[2]},
-				RefColumns: []*schema.Column{ConceptsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-		},
-	}
 	// ContentNodesColumns holds the columns for the "content_nodes" table.
 	ContentNodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -127,9 +107,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "content_node_concepts_concepts_concept",
+				Symbol:     "content_node_concepts_knowledge_nodes_concept",
 				Columns:    []*schema.Column{ContentNodeConceptsColumns[3]},
-				RefColumns: []*schema.Column{ConceptsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -263,9 +243,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "content_node_skills_skills_skill",
+				Symbol:     "content_node_skills_knowledge_nodes_skill",
 				Columns:    []*schema.Column{ContentNodeSkillsColumns[3]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -497,9 +477,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "diagram_concepts_concepts_concept",
+				Symbol:     "diagram_concepts_knowledge_nodes_concept",
 				Columns:    []*schema.Column{DiagramConceptsColumns[3]},
-				RefColumns: []*schema.Column{ConceptsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -600,9 +580,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "diagram_skills_skills_skill",
+				Symbol:     "diagram_skills_knowledge_nodes_skill",
 				Columns:    []*schema.Column{DiagramSkillsColumns[3]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -655,9 +635,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "exercise_concepts_concepts_concept",
+				Symbol:     "exercise_concepts_knowledge_nodes_concept",
 				Columns:    []*schema.Column{ExerciseConceptsColumns[3]},
-				RefColumns: []*schema.Column{ConceptsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -666,6 +646,40 @@ var (
 				Name:    "exerciseconcept_exercise_id_concept_id",
 				Unique:  true,
 				Columns: []*schema.Column{ExerciseConceptsColumns[2], ExerciseConceptsColumns[3]},
+			},
+		},
+	}
+	// ExerciseInstrumentsColumns holds the columns for the "exercise_instruments" table.
+	ExerciseInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "exercise_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// ExerciseInstrumentsTable holds the schema information for the "exercise_instruments" table.
+	ExerciseInstrumentsTable = &schema.Table{
+		Name:       "exercise_instruments",
+		Columns:    ExerciseInstrumentsColumns,
+		PrimaryKey: []*schema.Column{ExerciseInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "exercise_instruments_exercises_exercise",
+				Columns:    []*schema.Column{ExerciseInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{ExercisesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "exercise_instruments_instruments_instrument",
+				Columns:    []*schema.Column{ExerciseInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "exerciseinstrument_exercise_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{ExerciseInstrumentsColumns[2], ExerciseInstrumentsColumns[3]},
 			},
 		},
 	}
@@ -763,9 +777,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "exercise_skills_skills_skill",
+				Symbol:     "exercise_skills_knowledge_nodes_skill",
 				Columns:    []*schema.Column{ExerciseSkillsColumns[3]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
@@ -828,6 +842,103 @@ var (
 				Columns:    []*schema.Column{InstrumentsColumns[7]},
 				RefColumns: []*schema.Column{VoicesColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// KnowledgeEdgesColumns holds the columns for the "knowledge_edges" table.
+	KnowledgeEdgesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"applies", "requires"}},
+		{Name: "level", Type: field.TypeEnum, Nullable: true, Enums: []string{"accurate", "fluent", "retained"}},
+		{Name: "from_id", Type: field.TypeUUID},
+		{Name: "to_id", Type: field.TypeUUID},
+	}
+	// KnowledgeEdgesTable holds the schema information for the "knowledge_edges" table.
+	KnowledgeEdgesTable = &schema.Table{
+		Name:       "knowledge_edges",
+		Columns:    KnowledgeEdgesColumns,
+		PrimaryKey: []*schema.Column{KnowledgeEdgesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "knowledge_edges_knowledge_nodes_from",
+				Columns:    []*schema.Column{KnowledgeEdgesColumns[3]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "knowledge_edges_knowledge_nodes_to",
+				Columns:    []*schema.Column{KnowledgeEdgesColumns[4]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "knowledgeedge_from_id_to_id_type",
+				Unique:  true,
+				Columns: []*schema.Column{KnowledgeEdgesColumns[3], KnowledgeEdgesColumns[4], KnowledgeEdgesColumns[1]},
+			},
+			{
+				Name:    "knowledgeedge_to_id",
+				Unique:  false,
+				Columns: []*schema.Column{KnowledgeEdgesColumns[4]},
+			},
+		},
+	}
+	// KnowledgeNodesColumns holds the columns for the "knowledge_nodes" table.
+	KnowledgeNodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"skill", "concept"}},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "names", Type: field.TypeJSON},
+		{Name: "descriptions", Type: field.TypeJSON, Nullable: true},
+		{Name: "parent_id", Type: field.TypeUUID, Nullable: true},
+	}
+	// KnowledgeNodesTable holds the schema information for the "knowledge_nodes" table.
+	KnowledgeNodesTable = &schema.Table{
+		Name:       "knowledge_nodes",
+		Columns:    KnowledgeNodesColumns,
+		PrimaryKey: []*schema.Column{KnowledgeNodesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "knowledge_nodes_knowledge_nodes_parent",
+				Columns:    []*schema.Column{KnowledgeNodesColumns[5]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// KnowledgeNodeInstrumentsColumns holds the columns for the "knowledge_node_instruments" table.
+	KnowledgeNodeInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "knowledge_node_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// KnowledgeNodeInstrumentsTable holds the schema information for the "knowledge_node_instruments" table.
+	KnowledgeNodeInstrumentsTable = &schema.Table{
+		Name:       "knowledge_node_instruments",
+		Columns:    KnowledgeNodeInstrumentsColumns,
+		PrimaryKey: []*schema.Column{KnowledgeNodeInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "knowledge_node_instruments_knowledge_nodes_knowledge_node",
+				Columns:    []*schema.Column{KnowledgeNodeInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "knowledge_node_instruments_instruments_instrument",
+				Columns:    []*schema.Column{KnowledgeNodeInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "knowledgenodeinstrument_knowledge_node_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{KnowledgeNodeInstrumentsColumns[2], KnowledgeNodeInstrumentsColumns[3]},
 			},
 		},
 	}
@@ -953,26 +1064,6 @@ var (
 			},
 		},
 	}
-	// SkillsColumns holds the columns for the "skills" table.
-	SkillsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "name", Type: field.TypeString},
-		{Name: "parent_id", Type: field.TypeUUID, Nullable: true},
-	}
-	// SkillsTable holds the schema information for the "skills" table.
-	SkillsTable = &schema.Table{
-		Name:       "skills",
-		Columns:    SkillsColumns,
-		PrimaryKey: []*schema.Column{SkillsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "skills_skills_parent",
-				Columns:    []*schema.Column{SkillsColumns[2]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-		},
-	}
 	// StudentLearningStatesColumns holds the columns for the "student_learning_states" table.
 	StudentLearningStatesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1081,7 +1172,6 @@ var (
 	Tables = []*schema.Table{
 		ChallengesTable,
 		ChallengeExercisesTable,
-		ConceptsTable,
 		ContentNodesTable,
 		ContentNodeConceptsTable,
 		ContentNodeExercisesTable,
@@ -1102,17 +1192,20 @@ var (
 		DiagramSkillsTable,
 		ExercisesTable,
 		ExerciseConceptsTable,
+		ExerciseInstrumentsTable,
 		ExerciseLanguagesTable,
 		ExerciseOptionsTable,
 		ExerciseSkillsTable,
 		ExpandedContentsTable,
 		InstrumentsTable,
+		KnowledgeEdgesTable,
+		KnowledgeNodesTable,
+		KnowledgeNodeInstrumentsTable,
 		LanguagesTable,
 		LearningPathsTable,
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
-		SkillsTable,
 		StudentLearningStatesTable,
 		StudentPathsTable,
 		StudentPathItemsTable,
@@ -1124,9 +1217,8 @@ var (
 func init() {
 	ChallengeExercisesTable.ForeignKeys[0].RefTable = ChallengesTable
 	ChallengeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
-	ConceptsTable.ForeignKeys[0].RefTable = ConceptsTable
 	ContentNodeConceptsTable.ForeignKeys[0].RefTable = ContentNodesTable
-	ContentNodeConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	ContentNodeConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
 	ContentNodeInstrumentsTable.ForeignKeys[0].RefTable = ContentNodesTable
@@ -1134,28 +1226,34 @@ func init() {
 	ContentNodeLanguagesTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
 	ContentNodeSkillsTable.ForeignKeys[0].RefTable = ContentNodesTable
-	ContentNodeSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	ContentNodeSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	CourseInstrumentsTable.ForeignKeys[0].RefTable = CoursesTable
 	CourseInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	DiagramsTable.ForeignKeys[0].RefTable = InstrumentsTable
 	DiagramConceptsTable.ForeignKeys[0].RefTable = DiagramsTable
-	DiagramConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	DiagramConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	DiagramInstrumentsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	DiagramRegionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
-	DiagramSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	DiagramSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	ExerciseConceptsTable.ForeignKeys[0].RefTable = ExercisesTable
-	ExerciseConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	ExerciseConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
+	ExerciseInstrumentsTable.ForeignKeys[0].RefTable = ExercisesTable
+	ExerciseInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	ExerciseLanguagesTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseLanguagesTable.ForeignKeys[1].RefTable = LanguagesTable
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[0].RefTable = ExercisesTable
-	ExerciseSkillsTable.ForeignKeys[1].RefTable = SkillsTable
+	ExerciseSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	InstrumentsTable.ForeignKeys[0].RefTable = VoicesTable
+	KnowledgeEdgesTable.ForeignKeys[0].RefTable = KnowledgeNodesTable
+	KnowledgeEdgesTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
+	KnowledgeNodesTable.ForeignKeys[0].RefTable = KnowledgeNodesTable
+	KnowledgeNodeInstrumentsTable.ForeignKeys[0].RefTable = KnowledgeNodesTable
+	KnowledgeNodeInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	LearningPathInstrumentsTable.ForeignKeys[0].RefTable = LearningPathsTable
 	LearningPathInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	PositionsTable.ForeignKeys[0].RefTable = DiagramsTable
-	SkillsTable.ForeignKeys[0].RefTable = SkillsTable
 	UsersTable.ForeignKeys[0].RefTable = LanguagesTable
 }

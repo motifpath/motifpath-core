@@ -14,7 +14,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -35,17 +34,20 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -113,7 +115,6 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			challenge.Table:               challenge.ValidColumn,
 			challengeexercise.Table:       challengeexercise.ValidColumn,
-			concept.Table:                 concept.ValidColumn,
 			contentnode.Table:             contentnode.ValidColumn,
 			contentnodeconcept.Table:      contentnodeconcept.ValidColumn,
 			contentnodeexercise.Table:     contentnodeexercise.ValidColumn,
@@ -134,17 +135,20 @@ func checkColumn(t, c string) error {
 			diagramskill.Table:            diagramskill.ValidColumn,
 			exercise.Table:                exercise.ValidColumn,
 			exerciseconcept.Table:         exerciseconcept.ValidColumn,
+			exerciseinstrument.Table:      exerciseinstrument.ValidColumn,
 			exerciselanguage.Table:        exerciselanguage.ValidColumn,
 			exerciseoption.Table:          exerciseoption.ValidColumn,
 			exerciseskill.Table:           exerciseskill.ValidColumn,
 			expandedcontent.Table:         expandedcontent.ValidColumn,
 			instrument.Table:              instrument.ValidColumn,
+			knowledgeedge.Table:           knowledgeedge.ValidColumn,
+			knowledgenode.Table:           knowledgenode.ValidColumn,
+			knowledgenodeinstrument.Table: knowledgenodeinstrument.ValidColumn,
 			language.Table:                language.ValidColumn,
 			learningpath.Table:            learningpath.ValidColumn,
 			learningpathinstrument.Table:  learningpathinstrument.ValidColumn,
 			learningpathitem.Table:        learningpathitem.ValidColumn,
 			position.Table:                position.ValidColumn,
-			skill.Table:                   skill.ValidColumn,
 			studentlearningstate.Table:    studentlearningstate.ValidColumn,
 			studentpath.Table:             studentpath.ValidColumn,
 			studentpathitem.Table:         studentpathitem.ValidColumn,

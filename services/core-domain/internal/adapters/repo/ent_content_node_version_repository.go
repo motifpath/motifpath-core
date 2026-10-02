@@ -127,21 +127,38 @@ func toDomainContentNodeVersion(row *ent.ContentNodeVersion) domain.ContentNodeV
 	}
 }
 
-// versionTaxonomyRefJSON is a skill or concept as frozen into a version's
-// classification snapshot: id and name as they were when published, plus
-// the parent link, so the snapshot never changes if the taxonomy is later
-// renamed or restructured.
-type versionTaxonomyRefJSON struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	ParentID *string `json:"parent_id,omitempty"`
+// versionKnowledgeNodeJSON is a skill or concept as frozen into a
+// version's classification snapshot, so the snapshot never changes if the
+// node is later renamed, moved or re-scoped.
+type versionKnowledgeNodeJSON struct {
+	ID            string            `json:"id"`
+	Kind          string            `json:"kind"`
+	Key           string            `json:"key"`
+	Names         map[string]string `json:"names"`
+	Descriptions  map[string]string `json:"descriptions,omitempty"`
+	ParentID      *string           `json:"parent_id,omitempty"`
+	InstrumentIDs []string          `json:"instrument_ids,omitempty"`
+}
+
+func toVersionKnowledgeNodeJSON(n domain.KnowledgeNode) versionKnowledgeNodeJSON {
+	return versionKnowledgeNodeJSON{
+		ID: n.ID, Kind: string(n.Kind), Key: n.Key, Names: n.Names, Descriptions: n.Descriptions,
+		ParentID: n.ParentID, InstrumentIDs: n.InstrumentIDs,
+	}
+}
+
+func (n versionKnowledgeNodeJSON) toDomain() domain.KnowledgeNode {
+	return domain.KnowledgeNode{
+		ID: n.ID, Kind: domain.KnowledgeNodeKind(n.Kind), Key: n.Key, Names: n.Names, Descriptions: n.Descriptions,
+		ParentID: n.ParentID, InstrumentIDs: n.InstrumentIDs,
+	}
 }
 
 type versionClassificationJSON struct {
-	Skills          []versionTaxonomyRefJSON `json:"skills"`
-	Concepts        []versionTaxonomyRefJSON `json:"concepts"`
-	DifficultyLevel string                   `json:"difficulty_level"`
-	ReviewState     string                   `json:"review_state"`
+	Skills          []versionKnowledgeNodeJSON `json:"skills"`
+	Concepts        []versionKnowledgeNodeJSON `json:"concepts"`
+	DifficultyLevel string                     `json:"difficulty_level"`
+	ReviewState     string                     `json:"review_state"`
 }
 
 type versionLanguageJSON struct {
@@ -151,16 +168,16 @@ type versionLanguageJSON struct {
 
 func marshalVersionClassification(c domain.Classification) (string, error) {
 	snapshot := versionClassificationJSON{
-		Skills:          make([]versionTaxonomyRefJSON, len(c.Skills)),
-		Concepts:        make([]versionTaxonomyRefJSON, len(c.Concepts)),
+		Skills:          make([]versionKnowledgeNodeJSON, len(c.Skills)),
+		Concepts:        make([]versionKnowledgeNodeJSON, len(c.Concepts)),
 		DifficultyLevel: string(c.DifficultyLevel),
 		ReviewState:     string(c.ReviewState),
 	}
 	for i, skill := range c.Skills {
-		snapshot.Skills[i] = versionTaxonomyRefJSON{ID: skill.ID, Name: skill.Name, ParentID: skill.ParentID}
+		snapshot.Skills[i] = toVersionKnowledgeNodeJSON(skill)
 	}
 	for i, concept := range c.Concepts {
-		snapshot.Concepts[i] = versionTaxonomyRefJSON{ID: concept.ID, Name: concept.Name, ParentID: concept.ParentID}
+		snapshot.Concepts[i] = toVersionKnowledgeNodeJSON(concept)
 	}
 	data, err := json.Marshal(snapshot)
 	return string(data), err
@@ -182,10 +199,10 @@ func unmarshalVersionClassification(raw *string) domain.Classification {
 		ReviewState:     domain.ReviewState(snapshot.ReviewState),
 	}
 	for _, skill := range snapshot.Skills {
-		result.Skills = append(result.Skills, domain.Skill{ID: skill.ID, Name: skill.Name, ParentID: skill.ParentID})
+		result.Skills = append(result.Skills, skill.toDomain())
 	}
 	for _, concept := range snapshot.Concepts {
-		result.Concepts = append(result.Concepts, domain.Concept{ID: concept.ID, Name: concept.Name, ParentID: concept.ParentID})
+		result.Concepts = append(result.Concepts, concept.toDomain())
 	}
 	return result
 }

@@ -798,11 +798,11 @@ func (w *world) saveCopy(slug string, names generated.LocalizedNames, kind *gene
 	}
 	skills := make([]uuid.UUID, len(source.Classification.Skills))
 	for i, sk := range source.Classification.Skills {
-		skills[i] = sk.SkillId
+		skills[i] = sk.NodeId
 	}
 	concepts := make([]uuid.UUID, len(source.Classification.Concepts))
 	for i, c := range source.Classification.Concepts {
-		concepts[i] = c.ConceptId
+		concepts[i] = c.NodeId
 	}
 	labelDisplay := generated.CreateDiagramRequestLabelDisplay(source.LabelDisplay)
 	return w.createDiagram(generated.CreateDiagramRequest{

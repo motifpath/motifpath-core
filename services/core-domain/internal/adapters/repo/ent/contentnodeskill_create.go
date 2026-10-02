@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ContentNodeSkillCreate is the builder for creating a ContentNodeSkill entity.
@@ -54,8 +54,8 @@ func (_c *ContentNodeSkillCreate) SetContentNode(v *ContentNode) *ContentNodeSki
 	return _c.SetContentNodeID(v.ID)
 }
 
-// SetSkill sets the "skill" edge to the Skill entity.
-func (_c *ContentNodeSkillCreate) SetSkill(v *Skill) *ContentNodeSkillCreate {
+// SetSkill sets the "skill" edge to the KnowledgeNode entity.
+func (_c *ContentNodeSkillCreate) SetSkill(v *KnowledgeNode) *ContentNodeSkillCreate {
 	return _c.SetSkillID(v.ID)
 }
 
@@ -172,7 +172,7 @@ func (_c *ContentNodeSkillCreate) createSpec() (*ContentNodeSkill, *sqlgraph.Cre
 			Columns: []string{contentnodeskill.SkillColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

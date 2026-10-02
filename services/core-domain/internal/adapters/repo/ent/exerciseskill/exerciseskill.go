@@ -35,9 +35,9 @@ const (
 	ExerciseColumn = "exercise_id"
 	// SkillTable is the table that holds the skill relation/edge.
 	SkillTable = "exercise_skills"
-	// SkillInverseTable is the table name for the Skill entity.
-	// It exists in this package in order to avoid circular dependency with the "skill" package.
-	SkillInverseTable = "skills"
+	// SkillInverseTable is the table name for the KnowledgeNode entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
+	SkillInverseTable = "knowledge_nodes"
 	// SkillColumn is the table column denoting the skill relation/edge.
 	SkillColumn = "skill_id"
 )

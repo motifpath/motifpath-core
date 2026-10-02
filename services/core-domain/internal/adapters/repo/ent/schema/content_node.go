@@ -72,10 +72,10 @@ func (ContentNode) Edges() []ent.Edge {
 		edge.To("languages", Language.Type).
 			Through("content_node_languages", ContentNodeLanguage.Type),
 
-		edge.To("skills", Skill.Type).
+		edge.To("skills", KnowledgeNode.Type).
 			Through("content_node_skills", ContentNodeSkill.Type),
 
-		edge.To("concepts", Concept.Type).
+		edge.To("concepts", KnowledgeNode.Type).
 			Through("content_node_concepts", ContentNodeConcept.Type),
 
 		edge.To("instruments", Instrument.Type).

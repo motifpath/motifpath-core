@@ -91,14 +91,14 @@ const (
 	RegionsColumn = "diagram_id"
 	// SkillsTable is the table that holds the skills relation/edge. The primary key declared below.
 	SkillsTable = "diagram_skills"
-	// SkillsInverseTable is the table name for the Skill entity.
-	// It exists in this package in order to avoid circular dependency with the "skill" package.
-	SkillsInverseTable = "skills"
+	// SkillsInverseTable is the table name for the KnowledgeNode entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
+	SkillsInverseTable = "knowledge_nodes"
 	// ConceptsTable is the table that holds the concepts relation/edge. The primary key declared below.
 	ConceptsTable = "diagram_concepts"
-	// ConceptsInverseTable is the table name for the Concept entity.
-	// It exists in this package in order to avoid circular dependency with the "concept" package.
-	ConceptsInverseTable = "concepts"
+	// ConceptsInverseTable is the table name for the KnowledgeNode entity.
+	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
+	ConceptsInverseTable = "knowledge_nodes"
 	// DiagramInstrumentsTable is the table that holds the diagram_instruments relation/edge.
 	DiagramInstrumentsTable = "diagram_instruments"
 	// DiagramInstrumentsInverseTable is the table name for the DiagramInstrument entity.

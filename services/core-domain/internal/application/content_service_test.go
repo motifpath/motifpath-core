@@ -16,37 +16,34 @@ import (
 var fixedCreatedAt = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
 
 func newContentService(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository) *application.ContentService {
-	return newContentServiceWithClassification(nodes, expanded, seededSkillRepository(), seededConceptRepository())
+	return newContentServiceWithClassification(nodes, expanded, seededKnowledgeNodeRepository())
 }
 
-func newContentServiceWithClassification(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository) *application.ContentService {
-	return newContentServiceWithVersions(nodes, expanded, skills, concepts, newFakeContentNodeVersionRepository())
+func newContentServiceWithClassification(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, knowledge *fakeKnowledgeNodeRepository) *application.ContentService {
+	return newContentServiceWithVersions(nodes, expanded, knowledge, newFakeContentNodeVersionRepository())
 }
 
-func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository) *application.ContentService {
-	return newContentServiceWithDiagrams(nodes, expanded, skills, concepts, versions, newFakeDiagramRepository())
+func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, knowledge *fakeKnowledgeNodeRepository, versions *fakeContentNodeVersionRepository) *application.ContentService {
+	return newContentServiceWithDiagrams(nodes, expanded, knowledge, versions, newFakeDiagramRepository())
 }
 
-func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, skills *fakeSkillRepository, concepts *fakeConceptRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, skills, concepts, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, knowledge *fakeKnowledgeNodeRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
+	return application.NewContentService(nodes, expanded, knowledge, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
-// seededSkillRepository/seededConceptRepository return fakes pre-populated
-// with the ids every classification-shaped test in this file references —
-// "skill-1"/"skill-2" and "concept-1"/"concept-2" — so existence checks pass
-// without every test needing to seed them individually.
-func seededSkillRepository() *fakeSkillRepository {
-	skills := newFakeSkillRepository()
-	skills.put(domain.Skill{ID: "skill-1", Name: "skill-1"})
-	skills.put(domain.Skill{ID: "skill-2", Name: "skill-2"})
-	return skills
-}
-
-func seededConceptRepository() *fakeConceptRepository {
-	concepts := newFakeConceptRepository()
-	concepts.put(domain.Concept{ID: "concept-1", Name: "concept-1"})
-	concepts.put(domain.Concept{ID: "concept-2", Name: "concept-2"})
-	return concepts
+// seededKnowledgeNodeRepository returns a fake pre-populated with the ids
+// every classification-shaped test references — skills "skill-1"/"skill-2"
+// and concepts "concept-1"/"concept-2", all for every instrument — so
+// existence checks pass without every test needing to seed them.
+func seededKnowledgeNodeRepository() *fakeKnowledgeNodeRepository {
+	nodes := newFakeKnowledgeNodeRepository()
+	for _, id := range []string{"skill-1", "skill-2"} {
+		nodes.put(domain.KnowledgeNode{ID: id, Kind: domain.KnowledgeNodeKindSkill, Key: id})
+	}
+	for _, id := range []string{"concept-1", "concept-2"} {
+		nodes.put(domain.KnowledgeNode{ID: id, Kind: domain.KnowledgeNodeKindConcept, Key: id})
+	}
+	return nodes
 }
 
 func teacherCaller() domain.User      { return domain.User{ID: "teacher-1", Role: domain.RoleTeacher} }
@@ -149,6 +146,56 @@ func TestContentService_CreateContentNode(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
 		assertHasField(t, valErr, "concept_ids")
+	})
+
+	classificationRules := []struct {
+		name        string
+		skillIDs    []string
+		conceptIDs  []string
+		instruments []string
+		wantField   string // empty means the node is created
+	}{
+		{name: "a concept given as a skill is rejected", skillIDs: []string{"concept-2"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
+		{name: "a skill given as a concept is rejected", skillIDs: []string{"skill-1"}, conceptIDs: []string{"skill-2"}, wantField: "concept_ids"},
+		{name: "guitar content may use an every-instrument skill", skillIDs: []string{"skill-1"}, conceptIDs: []string{"concept-1"}, instruments: []string{"guitar"}},
+		{name: "guitar-and-piano content may use a guitar skill", skillIDs: []string{"palm-muting"}, conceptIDs: []string{"concept-1"}, instruments: []string{"guitar", "piano"}},
+		{name: "piano content cannot use a guitar skill", skillIDs: []string{"palm-muting"}, conceptIDs: []string{"concept-1"}, instruments: []string{"piano"}, wantField: "skill_ids"},
+		{name: "every-instrument content cannot use a guitar skill", skillIDs: []string{"palm-muting"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
+		{name: "piano content cannot use a guitar concept", skillIDs: []string{"skill-1"}, conceptIDs: []string{"fretboard"}, instruments: []string{"piano"}, wantField: "concept_ids"},
+	}
+	for _, tt := range classificationRules {
+		t.Run(tt.name, func(t *testing.T) {
+			knowledge := seededKnowledgeNodeRepository()
+			knowledge.put(domain.KnowledgeNode{ID: "palm-muting", Kind: domain.KnowledgeNodeKindSkill, Key: "palm-muting", InstrumentIDs: []string{"guitar"}})
+			knowledge.put(domain.KnowledgeNode{ID: "fretboard", Kind: domain.KnowledgeNodeKindConcept, Key: "fretboard", InstrumentIDs: []string{"guitar"}})
+			svc := newContentServiceWithClassification(newFakeContentNodeRepository(), newFakeExpandedContentRepository(), knowledge)
+
+			_, err := svc.CreateContentNode(context.Background(), teacherCaller(), application.ContentNodeInput{Title: "Title", ContentType: domain.ContentTypeVideo, SkillIDs: tt.skillIDs, ConceptIDs: tt.conceptIDs, InstrumentIDs: tt.instruments, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: videoMediaURL()})
+
+			if tt.wantField == "" {
+				require.NoError(t, err)
+				return
+			}
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assertHasField(t, valErr, tt.wantField)
+		})
+	}
+
+	t.Run("updating a content node's instruments so a skill no longer suits them is rejected", func(t *testing.T) {
+		knowledge := seededKnowledgeNodeRepository()
+		knowledge.put(domain.KnowledgeNode{ID: "palm-muting", Kind: domain.KnowledgeNodeKindSkill, Key: "palm-muting", InstrumentIDs: []string{"guitar"}})
+		svc := newContentServiceWithClassification(newFakeContentNodeRepository(), newFakeExpandedContentRepository(), knowledge)
+		input := application.ContentNodeInput{Title: "Palm muting", ContentType: domain.ContentTypeVideo, SkillIDs: []string{"palm-muting"}, ConceptIDs: []string{"concept-1"}, InstrumentIDs: []string{"guitar"}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: videoMediaURL()}
+		node, err := svc.CreateContentNode(context.Background(), teacherCaller(), input)
+		require.NoError(t, err)
+
+		input.InstrumentIDs = []string{"piano"}
+		_, err = svc.UpdateContentNode(context.Background(), teacherCaller(), node.ID, input)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assertHasField(t, valErr, "skill_ids")
 	})
 }
 
@@ -306,8 +353,8 @@ func TestContentService_ListContentNodes(t *testing.T) {
 
 	t.Run("filters by skill", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
-		nodes.put(domain.ContentNode{ID: "node-1", Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-1"}}}})
-		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-2"}}}})
+		nodes.put(domain.ContentNode{ID: "node-1", Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-1"}}}})
+		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{SkillID: "skill-2"}, firstPage)
@@ -319,8 +366,8 @@ func TestContentService_ListContentNodes(t *testing.T) {
 
 	t.Run("filters by concept", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
-		nodes.put(domain.ContentNode{ID: "node-1", Classification: domain.Classification{Concepts: []domain.Concept{{ID: "concept-1"}}}})
-		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Concepts: []domain.Concept{{ID: "concept-2"}}}})
+		nodes.put(domain.ContentNode{ID: "node-1", Classification: domain.Classification{Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}}})
+		nodes.put(domain.ContentNode{ID: "node-2", Classification: domain.Classification{Concepts: []domain.KnowledgeNode{{ID: "concept-2"}}}})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		got, err := svc.ListContentNodes(context.Background(), teacherCaller(), domain.ContentNodeFilter{ConceptID: "concept-2"}, firstPage)
@@ -381,7 +428,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{
 			ID: "node-1", TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo,
-			Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
+			Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
@@ -396,7 +443,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{
 			ID: "node-1", TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo,
-			Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner},
+			Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner},
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
@@ -421,7 +468,7 @@ func TestContentService_UpdateContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(domain.ContentNode{
 			ID: "node-1", TeacherID: "teacher-1", ContentType: domain.ContentTypeVideo,
-			Classification: domain.Classification{Skills: []domain.Skill{{ID: "skill-1"}}, Concepts: []domain.Concept{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
+			Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}}, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStateConfirmed},
 		})
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
@@ -648,7 +695,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil,
@@ -665,7 +712,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
 		seedContentDiagram(t, diagrams, "diagram-2", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil, nil,
@@ -686,7 +733,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
 		seedContentDiagram(t, diagrams, "diagram-2", "piano")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil, nil,
@@ -704,7 +751,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 	t.Run("a diagram_ref pointing at a non-existent diagram is rejected", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-1"))
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository())
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), newFakeDiagramRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil,
@@ -721,7 +768,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil, nil,
@@ -755,7 +802,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 		playback := &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true}
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
@@ -777,7 +824,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 			nodes.put(videoNode("node-1"))
 			diagrams := newFakeDiagramRepository()
 			seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-			svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+			svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 			_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 				domain.ExpandedContentTypeDiagram, nil, nil,
@@ -796,7 +843,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
 		seedContentDiagram(t, diagrams, "diagram-2", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil, nil,
@@ -814,7 +861,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		nodes.put(videoNode("node-1"))
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
-		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), newFakeContentNodeVersionRepository(), diagrams)
+		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, strPtr("https://cdn.example.com/img.png"), nil,
@@ -1151,7 +1198,7 @@ func TestContentService_PublishContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-01"))
 		versions := newFakeContentNodeVersionRepository()
-		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), versions)
 
 		version, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
 
@@ -1179,7 +1226,7 @@ func TestContentService_PublishContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-01"))
 		versions := newFakeContentNodeVersionRepository()
-		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), versions)
 
 		_, err := svc.PublishContentNode(context.Background(), teacherCaller(), "node-01")
 		require.NoError(t, err)
@@ -1272,7 +1319,7 @@ func TestContentService_ListContentNodeVersions(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		node := videoNode("node-01")
 		node.Classification = domain.Classification{
-			Skills:          []domain.Skill{{ID: "skill-1", Name: "Fingerpicking"}},
+			Skills:          []domain.KnowledgeNode{{ID: "skill-1", Kind: domain.KnowledgeNodeKindSkill, Key: "fingerpicking"}},
 			DifficultyLevel: domain.DifficultyLevelIntermediate,
 			ReviewState:     domain.ReviewStateConfirmed,
 		}
@@ -1282,7 +1329,7 @@ func TestContentService_ListContentNodeVersions(t *testing.T) {
 		require.NoError(t, versions.Create(context.Background(), domain.ContentNodeVersion{
 			ID: "legacy", ContentNodeID: "node-01", VersionNumber: 1, Title: "Old title", ContentType: domain.ContentTypeVideo,
 		}))
-		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), versions)
 
 		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
 
@@ -1303,7 +1350,7 @@ func TestContentService_ListContentNodeVersions(t *testing.T) {
 		require.NoError(t, versions.Create(context.Background(), domain.ContentNodeVersion{
 			ID: "v1", ContentNodeID: "node-01", VersionNumber: 1, Classification: snapshot,
 		}))
-		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededSkillRepository(), seededConceptRepository(), versions)
+		svc := newContentServiceWithVersions(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), versions)
 
 		got, err := svc.ListContentNodeVersions(context.Background(), teacherCaller(), "node-01")
 

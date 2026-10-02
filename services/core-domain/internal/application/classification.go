@@ -2,83 +2,52 @@ package application
 
 import (
 	"context"
-	"errors"
-
-	"golang.org/x/sync/errgroup"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// checkSkillsAndConceptsExist reports a domain.ValidationError under
-// "skill_ids"/"concept_ids" if any id in skillIDs/conceptIDs does not
-// reference an existing Skill/Concept. The two checks hit independent
-// tables, so they run concurrently rather than as two sequential round
-// trips. A non-ValidationError (e.g. a DB failure) from either check is
-// returned as-is; if both checks report a ValidationError, skill_ids takes
-// precedence — a fixed order, rather than whichever goroutine happens to
-// finish first, so the same request always reports the same field.
-func checkSkillsAndConceptsExist(ctx context.Context, skills ports.SkillRepository, concepts ports.ConceptRepository, skillIDs, conceptIDs []string) error {
-	g, gCtx := errgroup.WithContext(ctx)
-	var skillErr, conceptErr error
-	g.Go(func() error {
-		err := checkSkillIDsExist(gCtx, skills, skillIDs)
-		var valErr *domain.ValidationError
-		if errors.As(err, &valErr) {
-			skillErr = err
-			return nil
-		}
-		return err
-	})
-	g.Go(func() error {
-		err := checkConceptIDsExist(gCtx, concepts, conceptIDs)
-		var valErr *domain.ValidationError
-		if errors.As(err, &valErr) {
-			conceptErr = err
-			return nil
-		}
-		return err
-	})
-	if err := g.Wait(); err != nil {
-		return err
-	}
-	if skillErr != nil {
-		return skillErr
-	}
-	return conceptErr
+// checkClassification reports a domain.ValidationError under "skill_ids"/
+// "concept_ids" if any id in skillIDs/conceptIDs does not reference an
+// existing skill/concept. skill_ids is checked first, so the same request
+// always reports the same field.
+func checkClassification(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs []string) error {
+	return checkClassificationFor(ctx, nodes, skillIDs, conceptIDs, nil)
 }
 
-// checkSkillIDsExist reports a domain.ValidationError under "skill_ids" if
-// any id in skillIDs does not reference an existing Skill. Looks up every
-// id in a single batched GetByIDs call rather than one GetByID per id.
-func checkSkillIDsExist(ctx context.Context, skills ports.SkillRepository, skillIDs []string) error {
-	if len(skillIDs) == 0 {
+// checkClassificationSuits is checkClassification for content meant for
+// instrumentIDs (empty meaning every instrument): each node must also suit
+// those instruments — see domain.KnowledgeNode.Suits.
+func checkClassificationSuits(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs, instrumentIDs []string) error {
+	return checkClassificationFor(ctx, nodes, skillIDs, conceptIDs, &instrumentIDs)
+}
+
+// checkClassificationFor looks every id up in one batched call, then checks
+// each field in turn; instrumentIDs nil skips the instrument rule.
+func checkClassificationFor(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs []string, instrumentIDs *[]string) error {
+	if len(skillIDs) == 0 && len(conceptIDs) == 0 {
 		return nil
 	}
-	found, err := skills.GetByIDs(ctx, skillIDs)
+	found, err := nodes.GetByIDs(ctx, append(append([]string{}, skillIDs...), conceptIDs...))
 	if err != nil {
 		return err
 	}
-	for _, id := range skillIDs {
-		if _, ok := found[id]; !ok {
-			return domain.NewValidationError("skill_ids", "references a skill that does not exist: "+id)
-		}
-	}
-	return nil
-}
-
-// checkConceptIDsExist is checkSkillIDsExist's counterpart for concept_ids.
-func checkConceptIDsExist(ctx context.Context, concepts ports.ConceptRepository, conceptIDs []string) error {
-	if len(conceptIDs) == 0 {
-		return nil
-	}
-	found, err := concepts.GetByIDs(ctx, conceptIDs)
-	if err != nil {
-		return err
-	}
-	for _, id := range conceptIDs {
-		if _, ok := found[id]; !ok {
-			return domain.NewValidationError("concept_ids", "references a concept that does not exist: "+id)
+	for _, field := range []struct {
+		name string
+		kind domain.KnowledgeNodeKind
+		ids  []string
+	}{
+		{"skill_ids", domain.KnowledgeNodeKindSkill, skillIDs},
+		{"concept_ids", domain.KnowledgeNodeKindConcept, conceptIDs},
+	} {
+		for _, id := range field.ids {
+			node, ok := found[id]
+			if !ok || node.Kind != field.kind {
+				return domain.NewValidationError(field.name, "references a "+string(field.kind)+" that does not exist: "+id)
+			}
+			if instrumentIDs != nil && !node.Suits(*instrumentIDs) {
+				return domain.NewValidationError(field.name, "references a "+string(field.kind)+" that is for none of this item's instruments: "+id)
+			}
 		}
 	}
 	return nil

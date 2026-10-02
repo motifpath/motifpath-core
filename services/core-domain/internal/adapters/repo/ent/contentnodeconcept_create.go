@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ContentNodeConceptCreate is the builder for creating a ContentNodeConcept entity.
@@ -54,8 +54,8 @@ func (_c *ContentNodeConceptCreate) SetContentNode(v *ContentNode) *ContentNodeC
 	return _c.SetContentNodeID(v.ID)
 }
 
-// SetConcept sets the "concept" edge to the Concept entity.
-func (_c *ContentNodeConceptCreate) SetConcept(v *Concept) *ContentNodeConceptCreate {
+// SetConcept sets the "concept" edge to the KnowledgeNode entity.
+func (_c *ContentNodeConceptCreate) SetConcept(v *KnowledgeNode) *ContentNodeConceptCreate {
 	return _c.SetConceptID(v.ID)
 }
 
@@ -172,7 +172,7 @@ func (_c *ContentNodeConceptCreate) createSpec() (*ContentNodeConcept, *sqlgraph
 			Columns: []string{contentnodeconcept.ConceptColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

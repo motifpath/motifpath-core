@@ -53,6 +53,10 @@ type InstrumentEdges struct {
 	LearningPaths []*LearningPath `json:"learning_paths,omitempty"`
 	// ContentNodes holds the value of the content_nodes edge.
 	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
+	// Exercises holds the value of the exercises edge.
+	Exercises []*Exercise `json:"exercises,omitempty"`
+	// KnowledgeNodes holds the value of the knowledge_nodes edge.
+	KnowledgeNodes []*KnowledgeNode `json:"knowledge_nodes,omitempty"`
 	// DiagramInstruments holds the value of the diagram_instruments edge.
 	DiagramInstruments []*DiagramInstrument `json:"diagram_instruments,omitempty"`
 	// CourseInstruments holds the value of the course_instruments edge.
@@ -61,9 +65,13 @@ type InstrumentEdges struct {
 	LearningPathInstruments []*LearningPathInstrument `json:"learning_path_instruments,omitempty"`
 	// ContentNodeInstruments holds the value of the content_node_instruments edge.
 	ContentNodeInstruments []*ContentNodeInstrument `json:"content_node_instruments,omitempty"`
+	// ExerciseInstruments holds the value of the exercise_instruments edge.
+	ExerciseInstruments []*ExerciseInstrument `json:"exercise_instruments,omitempty"`
+	// KnowledgeNodeInstruments holds the value of the knowledge_node_instruments edge.
+	KnowledgeNodeInstruments []*KnowledgeNodeInstrument `json:"knowledge_node_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [10]bool
+	loadedTypes [14]bool
 }
 
 // DefaultVoiceOrErr returns the DefaultVoice value or an error if the edge
@@ -122,10 +130,28 @@ func (e InstrumentEdges) ContentNodesOrErr() ([]*ContentNode, error) {
 	return nil, &NotLoadedError{edge: "content_nodes"}
 }
 
+// ExercisesOrErr returns the Exercises value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) ExercisesOrErr() ([]*Exercise, error) {
+	if e.loadedTypes[6] {
+		return e.Exercises, nil
+	}
+	return nil, &NotLoadedError{edge: "exercises"}
+}
+
+// KnowledgeNodesOrErr returns the KnowledgeNodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) KnowledgeNodesOrErr() ([]*KnowledgeNode, error) {
+	if e.loadedTypes[7] {
+		return e.KnowledgeNodes, nil
+	}
+	return nil, &NotLoadedError{edge: "knowledge_nodes"}
+}
+
 // DiagramInstrumentsOrErr returns the DiagramInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) DiagramInstrumentsOrErr() ([]*DiagramInstrument, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.DiagramInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_instruments"}
@@ -134,7 +160,7 @@ func (e InstrumentEdges) DiagramInstrumentsOrErr() ([]*DiagramInstrument, error)
 // CourseInstrumentsOrErr returns the CourseInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[9] {
 		return e.CourseInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "course_instruments"}
@@ -143,7 +169,7 @@ func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
 // LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[10] {
 		return e.LearningPathInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "learning_path_instruments"}
@@ -152,10 +178,28 @@ func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrume
 // ContentNodeInstrumentsOrErr returns the ContentNodeInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) ContentNodeInstrumentsOrErr() ([]*ContentNodeInstrument, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[11] {
 		return e.ContentNodeInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_instruments"}
+}
+
+// ExerciseInstrumentsOrErr returns the ExerciseInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) ExerciseInstrumentsOrErr() ([]*ExerciseInstrument, error) {
+	if e.loadedTypes[12] {
+		return e.ExerciseInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "exercise_instruments"}
+}
+
+// KnowledgeNodeInstrumentsOrErr returns the KnowledgeNodeInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) KnowledgeNodeInstrumentsOrErr() ([]*KnowledgeNodeInstrument, error) {
+	if e.loadedTypes[13] {
+		return e.KnowledgeNodeInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "knowledge_node_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -284,6 +328,16 @@ func (_m *Instrument) QueryContentNodes() *ContentNodeQuery {
 	return NewInstrumentClient(_m.config).QueryContentNodes(_m)
 }
 
+// QueryExercises queries the "exercises" edge of the Instrument entity.
+func (_m *Instrument) QueryExercises() *ExerciseQuery {
+	return NewInstrumentClient(_m.config).QueryExercises(_m)
+}
+
+// QueryKnowledgeNodes queries the "knowledge_nodes" edge of the Instrument entity.
+func (_m *Instrument) QueryKnowledgeNodes() *KnowledgeNodeQuery {
+	return NewInstrumentClient(_m.config).QueryKnowledgeNodes(_m)
+}
+
 // QueryDiagramInstruments queries the "diagram_instruments" edge of the Instrument entity.
 func (_m *Instrument) QueryDiagramInstruments() *DiagramInstrumentQuery {
 	return NewInstrumentClient(_m.config).QueryDiagramInstruments(_m)
@@ -302,6 +356,16 @@ func (_m *Instrument) QueryLearningPathInstruments() *LearningPathInstrumentQuer
 // QueryContentNodeInstruments queries the "content_node_instruments" edge of the Instrument entity.
 func (_m *Instrument) QueryContentNodeInstruments() *ContentNodeInstrumentQuery {
 	return NewInstrumentClient(_m.config).QueryContentNodeInstruments(_m)
+}
+
+// QueryExerciseInstruments queries the "exercise_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryExerciseInstruments() *ExerciseInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryExerciseInstruments(_m)
+}
+
+// QueryKnowledgeNodeInstruments queries the "knowledge_node_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryKnowledgeNodeInstruments() *KnowledgeNodeInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryKnowledgeNodeInstruments(_m)
 }
 
 // Update returns a builder for updating this Instrument.

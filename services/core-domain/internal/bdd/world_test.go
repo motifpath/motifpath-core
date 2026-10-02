@@ -42,8 +42,8 @@ type world struct {
 	versions          *fakeContentNodeVersionRepo
 	learningState     *fakeStudentLearningStateRepo
 	completion        *fakeCompletionReader
-	skills            *fakeSkillRepo
-	concepts          *fakeConceptRepo
+	knowledge         *fakeKnowledgeNodeRepo
+	knowledgeEdges    *fakeKnowledgeEdgeRepo
 	instruments       *fakeInstrumentRepo
 	voices            *fakeVoiceRepo
 	diagrams          *fakeDiagramRepo
@@ -61,17 +61,15 @@ type world struct {
 	// derived from its display name; it's assigned by IdentityService.
 	userMotifID map[string]uuid.UUID
 
-	// skillIDByName/conceptIDByName cache the id of every Skill/Concept
-	// created or seeded so far, keyed by name — the "current" id for that
-	// name, last-writer-wins. Two different branches may share a name (see
-	// skills.feature/concepts.feature), so a step that creates a
-	// same-named node under a different parent intentionally overwrites the
-	// prior entry; that scenario asserts on the two returned entities
-	// directly rather than re-resolving either by name afterward. Every
-	// other scenario has at most one node per name, so last-writer-wins
-	// never actually differs from "the one node with this name" for them.
+	// skillIDByName/conceptIDByName cache the id of every skill/concept
+	// knowledge node created or seeded so far, keyed by the name a scenario
+	// calls it — which is also the node's key, so it is unique.
 	skillIDByName   map[string]uuid.UUID
 	conceptIDByName map[string]uuid.UUID
+
+	// lastEdgeID is "that" knowledge edge: the one most recently seeded or
+	// created.
+	lastEdgeID uuid.UUID
 
 	hasToken bool
 	clerkSub string // the "sub" claim of whichever identity is currently authenticated
@@ -209,9 +207,8 @@ type world struct {
 }
 
 func newWorld() *world {
-	skills := newFakeSkillRepo()
-	concepts := newFakeConceptRepo()
-	nodes := newFakeContentNodeRepo(skills, concepts)
+	knowledge := newFakeKnowledgeNodeRepo()
+	nodes := newFakeContentNodeRepo(knowledge)
 	paths := newFakeLearningPathRepo()
 	paths.nodes = nodes
 	courseVersions := newFakeCourseVersionRepo()
@@ -219,7 +216,7 @@ func newWorld() *world {
 		users:             newFakeUserRepo(),
 		nodes:             nodes,
 		challenges:        newFakeChallengeRepo(),
-		exercises:         newFakeExerciseRepo(skills, concepts),
+		exercises:         newFakeExerciseRepo(knowledge),
 		expanded:          newFakeExpandedContentRepo(),
 		paths:             paths,
 		courses:           newFakeCourseRepo(paths, nodes, courseVersions),
@@ -229,11 +226,11 @@ func newWorld() *world {
 		versions:          newFakeContentNodeVersionRepo(),
 		learningState:     newFakeStudentLearningStateRepo(),
 		completion:        newFakeCompletionReader(),
-		skills:            skills,
-		concepts:          concepts,
+		knowledge:         knowledge,
+		knowledgeEdges:    newFakeKnowledgeEdgeRepo(),
 		instruments:       newFakeInstrumentRepo(),
 		voices:            newFakeVoiceRepo(),
-		diagrams:          newFakeDiagramRepo(skills, concepts),
+		diagrams:          newFakeDiagramRepo(knowledge),
 		pgPinger:          &fakePinger{},
 		mongoPinger:       &fakePinger{},
 		userMotifID:       map[string]uuid.UUID{},
@@ -248,15 +245,17 @@ func newWorld() *world {
 		standalonePathIDByKey:       map[string]string{},
 	}
 
+	knowledge.edges, knowledge.nodes, knowledge.exercises, knowledge.diagrams, knowledge.challenges = w.knowledgeEdges, w.nodes, w.exercises, w.diagrams, w.challenges
+
 	newID := idSequence()
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.skills, w.concepts, w.versions, w.diagrams, w.instruments, w.voices, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.knowledge, w.versions, w.diagrams, w.instruments, w.voices, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
-	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.skills, w.concepts, w.diagrams, w.instruments, w.voices, w.users, newID, now, noShuffle)
-	skill := application.NewSkillService(w.skills, newID)
-	concept := application.NewConceptService(w.concepts, newID)
+	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.knowledge, w.diagrams, w.instruments, w.voices, w.users, newID, now, noShuffle)
+	knowledgeNode := application.NewKnowledgeNodeService(w.knowledge, w.instruments, newFakeLanguageRepo(), newID)
+	knowledgeEdge := application.NewKnowledgeEdgeService(w.knowledgeEdges, w.knowledge, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
 	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
@@ -265,9 +264,9 @@ func newWorld() *world {
 
 	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), newID)
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
-	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.skills, w.concepts, newFakeLanguageRepo(), w.users, newID, now)
+	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, skill, concept, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
 	return w
 }
 
@@ -354,29 +353,44 @@ func expandedID(slug string) uuid.UUID   { return deterministicUUID("expanded", 
 func instrumentID(name string) uuid.UUID { return deterministicUUID("instrument", name) }
 func diagramID(slug string) uuid.UUID    { return deterministicUUID("diagram", slug) }
 
-// putSkill seeds a Skill directly into w.skills (mirroring how content nodes
-// are seeded via w.nodes.put rather than the real handler) and registers it
-// under name in w.skillIDByName. parentID nil means a root skill.
-func (w *world) putSkill(name string, parentID *uuid.UUID) uuid.UUID {
-	var id uuid.UUID
-	var parentIDStr *string
-	if parentID != nil {
-		id = deterministicUUID("skill", parentID.String(), name)
-		s := parentID.String()
-		parentIDStr = &s
-	} else {
-		id = deterministicUUID("skill", "root", name)
-	}
-	w.skills.put(domain.Skill{ID: id.String(), Name: name, ParentID: parentIDStr})
+// putSkill seeds a skill directly into w.knowledge (mirroring how content
+// nodes are seeded via w.nodes.put rather than the real handler) and
+// registers it under name in w.skillIDByName. name becomes the node's key,
+// slugged, and its name in every language; parentID nil means a root; no
+// instrumentIDs means every instrument.
+func (w *world) putSkill(name string, parentID *uuid.UUID, instrumentIDs ...string) uuid.UUID {
+	id := w.putKnowledgeNode(domain.KnowledgeNodeKindSkill, name, parentID, instrumentIDs)
 	w.skillIDByName[name] = id
 	return id
 }
 
-// skillIDFor resolves name to the id of the Skill previously created/seeded
-// under that name, auto-creating it as a root skill on first reference —
-// most content-node/exercise/challenge scenarios reference a skill by plain
-// name with no prior "a skill exists" step, since which specific tree node
-// it is doesn't matter to them.
+// putConcept is putSkill's counterpart for concepts.
+func (w *world) putConcept(name string, parentID *uuid.UUID, instrumentIDs ...string) uuid.UUID {
+	id := w.putKnowledgeNode(domain.KnowledgeNodeKindConcept, name, parentID, instrumentIDs)
+	w.conceptIDByName[name] = id
+	return id
+}
+
+func (w *world) putKnowledgeNode(kind domain.KnowledgeNodeKind, name string, parentID *uuid.UUID, instrumentIDs []string) uuid.UUID {
+	id := deterministicUUID(string(kind), name)
+	var parentIDStr *string
+	if parentID != nil {
+		s := parentID.String()
+		parentIDStr = &s
+	}
+	w.knowledge.put(domain.KnowledgeNode{
+		ID: id.String(), Kind: kind, Key: slug(name),
+		Names:    domain.LocalizedText{"en": name, "pt_BR": name},
+		ParentID: parentIDStr, InstrumentIDs: instrumentIDs,
+	})
+	return id
+}
+
+// skillIDFor resolves name to the id of the skill previously created or
+// seeded under that name, auto-creating it as a root skill for every
+// instrument on first reference — most content-node/exercise/challenge
+// scenarios reference a skill by plain name with no prior "a skill exists"
+// step, since which tree node it is doesn't matter to them.
 func (w *world) skillIDFor(name string) uuid.UUID {
 	if id, ok := w.skillIDByName[name]; ok {
 		return id
@@ -384,27 +398,20 @@ func (w *world) skillIDFor(name string) uuid.UUID {
 	return w.putSkill(name, nil)
 }
 
-// putConcept/conceptIDFor are putSkill/skillIDFor's counterparts for Concept.
-func (w *world) putConcept(name string, parentID *uuid.UUID) uuid.UUID {
-	var id uuid.UUID
-	var parentIDStr *string
-	if parentID != nil {
-		id = deterministicUUID("concept", parentID.String(), name)
-		s := parentID.String()
-		parentIDStr = &s
-	} else {
-		id = deterministicUUID("concept", "root", name)
-	}
-	w.concepts.put(domain.Concept{ID: id.String(), Name: name, ParentID: parentIDStr})
-	w.conceptIDByName[name] = id
-	return id
-}
-
+// conceptIDFor is skillIDFor's counterpart for concepts.
 func (w *world) conceptIDFor(name string) uuid.UUID {
 	if id, ok := w.conceptIDByName[name]; ok {
 		return id
 	}
 	return w.putConcept(name, nil)
+}
+
+// slug turns a scenario's name for a node into a key: lowercase words
+// joined by single hyphens.
+func slug(name string) string {
+	return strings.Join(strings.FieldsFunc(strings.ToLower(name), func(r rune) bool {
+		return !('a' <= r && r <= 'z' || '0' <= r && r <= '9')
+	}), "-")
 }
 
 // skillIDsFor/conceptIDsFor resolve a comma-separated Gherkin skill/concept

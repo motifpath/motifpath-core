@@ -74,9 +74,11 @@ NEVER access the database directly from the domain layer.
 - `make dev`           → start local dependencies via docker-compose (Redpanda, Postgres, MongoDB)
 - `make db:reset`      → wipe the local dev Postgres, re-migrate from scratch, and repopulate via
   `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
-  and archived, every `ExerciseType`, guitar/bass/piano instruments, a diagram library of basic
-  templates and two teachers' custom diagrams, and lessons with cues, pop-ups and a version
-  history). Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
+  and archived, every `ExerciseType`, a diagram library of demo basic templates and two
+  teachers' custom diagrams, and lessons with cues, pop-ups and a version history). Reference
+  data — languages, voices, the catalog instruments, the knowledge map and the basic guitar
+  diagram catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
+  nodes by key) and never create it. Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
   `pg_dump -t users --data-only --inserts` — since reset wipes them; restore by re-inserting with
@@ -97,8 +99,11 @@ NEVER access the database directly from the domain layer.
   (sign in once through the SPA first). Lighter than `db:reset` + `seed-full`; doesn't touch
   courses.
 - `go run ./cmd/seed-full`     → the comprehensive seeder `db:reset` runs; safe to run standalone
-  against an already-fresh database, but not idempotent against one with prior seed data (root
-  skill/concept names collide on a second run, by design — see its doc comment).
+  against an already-fresh, fully migrated database, but not idempotent against one with prior
+  seed data (its synthetic users collide on a second run).
+- Reference-data migrations are generated, never hand-edited: `scripts/knowledge_map` compiles
+  motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map) and
+  `scripts/diagram_catalog` the basic guitar catalog; run `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`

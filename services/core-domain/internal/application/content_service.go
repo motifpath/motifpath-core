@@ -15,8 +15,7 @@ import (
 type ContentService struct {
 	nodes       ports.ContentNodeRepository
 	expanded    ports.ExpandedContentRepository
-	skills      ports.SkillRepository
-	concepts    ports.ConceptRepository
+	knowledge   ports.KnowledgeNodeRepository
 	versions    ports.ContentNodeVersionRepository
 	diagrams    ports.DiagramRepository
 	newID       func() string
@@ -31,8 +30,8 @@ func (s *ContentService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, skills ports.SkillRepository, concepts ports.ConceptRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, skills: skills, concepts: concepts, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices}
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -141,7 +140,7 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 	if err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+	if err := checkClassificationSuits(ctx, s.knowledge, input.SkillIDs, input.ConceptIDs, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
@@ -198,7 +197,7 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, input.SkillIDs, input.ConceptIDs); err != nil {
+	if err := checkClassificationSuits(ctx, s.knowledge, input.SkillIDs, input.ConceptIDs, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {

@@ -10,9 +10,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // DiagramConcept is the model entity for the DiagramConcept schema.
@@ -37,7 +37,7 @@ type DiagramConceptEdges struct {
 	// Diagram holds the value of the diagram edge.
 	Diagram *Diagram `json:"diagram,omitempty"`
 	// Concept holds the value of the concept edge.
-	Concept *Concept `json:"concept,omitempty"`
+	Concept *KnowledgeNode `json:"concept,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -56,11 +56,11 @@ func (e DiagramConceptEdges) DiagramOrErr() (*Diagram, error) {
 
 // ConceptOrErr returns the Concept value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e DiagramConceptEdges) ConceptOrErr() (*Concept, error) {
+func (e DiagramConceptEdges) ConceptOrErr() (*KnowledgeNode, error) {
 	if e.Concept != nil {
 		return e.Concept, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: concept.Label}
+		return nil, &NotFoundError{label: knowledgenode.Label}
 	}
 	return nil, &NotLoadedError{edge: "concept"}
 }
@@ -134,7 +134,7 @@ func (_m *DiagramConcept) QueryDiagram() *DiagramQuery {
 }
 
 // QueryConcept queries the "concept" edge of the DiagramConcept entity.
-func (_m *DiagramConcept) QueryConcept() *ConceptQuery {
+func (_m *DiagramConcept) QueryConcept() *KnowledgeNodeQuery {
 	return NewDiagramConceptClient(_m.config).QueryConcept(_m)
 }
 

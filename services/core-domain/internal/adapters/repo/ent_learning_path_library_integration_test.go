@@ -19,7 +19,7 @@ func TestEntLearningPathRepository_Library(t *testing.T) {
 	syncopation := seedConcept(t, f.ctx, f.nodes.client, "syncopation-"+uuid.NewString())
 	bob, carol := uuid.NewString(), uuid.NewString()
 	levelOf := func(l domain.DifficultyLevel) *domain.DifficultyLevel { return &l }
-	path := func(title, teacher string, level *domain.DifficultyLevel, updated time.Time, skills []domain.Skill, concepts []domain.Concept) domain.LearningPath {
+	path := func(title, teacher string, level *domain.DifficultyLevel, updated time.Time, skills []domain.KnowledgeNode, concepts []domain.KnowledgeNode) domain.LearningPath {
 		node := domain.ContentNode{
 			ID: uuid.NewString(), TeacherID: teacher, Title: "Node " + uuid.NewString(), ContentType: domain.ContentTypeVideo,
 			Classification: domain.Classification{Skills: skills, Concepts: concepts, DifficultyLevel: domain.DifficultyLevelBeginner, ReviewState: domain.ReviewStatePending},
@@ -34,8 +34,8 @@ func TestEntLearningPathRepository_Library(t *testing.T) {
 		return created
 	}
 	day := func(d int) time.Time { return time.Date(2026, 9, d, 12, 0, 0, 0, time.UTC) }
-	alpha := path("Alpha", bob, levelOf(domain.DifficultyLevelBeginner), day(1), []domain.Skill{fingerpicking}, []domain.Concept{syncopation})
-	beta := path("Beta", carol, levelOf(domain.DifficultyLevelIntermediate), day(20), []domain.Skill{fingerpicking}, nil)
+	alpha := path("Alpha", bob, levelOf(domain.DifficultyLevelBeginner), day(1), []domain.KnowledgeNode{fingerpicking}, []domain.KnowledgeNode{syncopation})
+	beta := path("Beta", carol, levelOf(domain.DifficultyLevelIntermediate), day(20), []domain.KnowledgeNode{fingerpicking}, nil)
 	legacy := path("Gamma legacy", bob, nil, day(10), nil, nil)
 	ids := func(filter domain.LearningPathFilter) []string {
 		page, err := f.paths.List(f.ctx, filter, domain.PageRequest{Limit: 50})

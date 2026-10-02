@@ -12,17 +12,16 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // DiagramUpdate is the builder for updating Diagram entities.
@@ -244,14 +243,14 @@ func (_u *DiagramUpdate) AddRegions(v ...*DiagramRegion) *DiagramUpdate {
 	return _u.AddRegionIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_u *DiagramUpdate) AddSkillIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddSkillIDs(ids...)
 	return _u
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_u *DiagramUpdate) AddSkills(v ...*Skill) *DiagramUpdate {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_u *DiagramUpdate) AddSkills(v ...*KnowledgeNode) *DiagramUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -259,14 +258,14 @@ func (_u *DiagramUpdate) AddSkills(v ...*Skill) *DiagramUpdate {
 	return _u.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_u *DiagramUpdate) AddConceptIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddConceptIDs(ids...)
 	return _u
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_u *DiagramUpdate) AddConcepts(v ...*Concept) *DiagramUpdate {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_u *DiagramUpdate) AddConcepts(v ...*KnowledgeNode) *DiagramUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -387,20 +386,20 @@ func (_u *DiagramUpdate) RemoveRegions(v ...*DiagramRegion) *DiagramUpdate {
 	return _u.RemoveRegionIDs(ids...)
 }
 
-// ClearSkills clears all "skills" edges to the Skill entity.
+// ClearSkills clears all "skills" edges to the KnowledgeNode entity.
 func (_u *DiagramUpdate) ClearSkills() *DiagramUpdate {
 	_u.mutation.ClearSkills()
 	return _u
 }
 
-// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+// RemoveSkillIDs removes the "skills" edge to KnowledgeNode entities by IDs.
 func (_u *DiagramUpdate) RemoveSkillIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.RemoveSkillIDs(ids...)
 	return _u
 }
 
-// RemoveSkills removes "skills" edges to Skill entities.
-func (_u *DiagramUpdate) RemoveSkills(v ...*Skill) *DiagramUpdate {
+// RemoveSkills removes "skills" edges to KnowledgeNode entities.
+func (_u *DiagramUpdate) RemoveSkills(v ...*KnowledgeNode) *DiagramUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -408,20 +407,20 @@ func (_u *DiagramUpdate) RemoveSkills(v ...*Skill) *DiagramUpdate {
 	return _u.RemoveSkillIDs(ids...)
 }
 
-// ClearConcepts clears all "concepts" edges to the Concept entity.
+// ClearConcepts clears all "concepts" edges to the KnowledgeNode entity.
 func (_u *DiagramUpdate) ClearConcepts() *DiagramUpdate {
 	_u.mutation.ClearConcepts()
 	return _u
 }
 
-// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+// RemoveConceptIDs removes the "concepts" edge to KnowledgeNode entities by IDs.
 func (_u *DiagramUpdate) RemoveConceptIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.RemoveConceptIDs(ids...)
 	return _u
 }
 
-// RemoveConcepts removes "concepts" edges to Concept entities.
-func (_u *DiagramUpdate) RemoveConcepts(v ...*Concept) *DiagramUpdate {
+// RemoveConcepts removes "concepts" edges to KnowledgeNode entities.
+func (_u *DiagramUpdate) RemoveConcepts(v ...*KnowledgeNode) *DiagramUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -757,7 +756,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
@@ -774,7 +773,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -794,7 +793,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -814,7 +813,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
@@ -831,7 +830,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -851,7 +850,7 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1224,14 +1223,14 @@ func (_u *DiagramUpdateOne) AddRegions(v ...*DiagramRegion) *DiagramUpdateOne {
 	return _u.AddRegionIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_u *DiagramUpdateOne) AddSkillIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddSkillIDs(ids...)
 	return _u
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_u *DiagramUpdateOne) AddSkills(v ...*Skill) *DiagramUpdateOne {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_u *DiagramUpdateOne) AddSkills(v ...*KnowledgeNode) *DiagramUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1239,14 +1238,14 @@ func (_u *DiagramUpdateOne) AddSkills(v ...*Skill) *DiagramUpdateOne {
 	return _u.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_u *DiagramUpdateOne) AddConceptIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddConceptIDs(ids...)
 	return _u
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_u *DiagramUpdateOne) AddConcepts(v ...*Concept) *DiagramUpdateOne {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_u *DiagramUpdateOne) AddConcepts(v ...*KnowledgeNode) *DiagramUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1367,20 +1366,20 @@ func (_u *DiagramUpdateOne) RemoveRegions(v ...*DiagramRegion) *DiagramUpdateOne
 	return _u.RemoveRegionIDs(ids...)
 }
 
-// ClearSkills clears all "skills" edges to the Skill entity.
+// ClearSkills clears all "skills" edges to the KnowledgeNode entity.
 func (_u *DiagramUpdateOne) ClearSkills() *DiagramUpdateOne {
 	_u.mutation.ClearSkills()
 	return _u
 }
 
-// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+// RemoveSkillIDs removes the "skills" edge to KnowledgeNode entities by IDs.
 func (_u *DiagramUpdateOne) RemoveSkillIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.RemoveSkillIDs(ids...)
 	return _u
 }
 
-// RemoveSkills removes "skills" edges to Skill entities.
-func (_u *DiagramUpdateOne) RemoveSkills(v ...*Skill) *DiagramUpdateOne {
+// RemoveSkills removes "skills" edges to KnowledgeNode entities.
+func (_u *DiagramUpdateOne) RemoveSkills(v ...*KnowledgeNode) *DiagramUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1388,20 +1387,20 @@ func (_u *DiagramUpdateOne) RemoveSkills(v ...*Skill) *DiagramUpdateOne {
 	return _u.RemoveSkillIDs(ids...)
 }
 
-// ClearConcepts clears all "concepts" edges to the Concept entity.
+// ClearConcepts clears all "concepts" edges to the KnowledgeNode entity.
 func (_u *DiagramUpdateOne) ClearConcepts() *DiagramUpdateOne {
 	_u.mutation.ClearConcepts()
 	return _u
 }
 
-// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+// RemoveConceptIDs removes the "concepts" edge to KnowledgeNode entities by IDs.
 func (_u *DiagramUpdateOne) RemoveConceptIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.RemoveConceptIDs(ids...)
 	return _u
 }
 
-// RemoveConcepts removes "concepts" edges to Concept entities.
-func (_u *DiagramUpdateOne) RemoveConcepts(v ...*Concept) *DiagramUpdateOne {
+// RemoveConcepts removes "concepts" edges to KnowledgeNode entities.
+func (_u *DiagramUpdateOne) RemoveConcepts(v ...*KnowledgeNode) *DiagramUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1767,7 +1766,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &DiagramSkillCreate{config: _u.config, mutation: newDiagramSkillMutation(_u.config, OpCreate)}
@@ -1784,7 +1783,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1804,7 +1803,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1824,7 +1823,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &DiagramConceptCreate{config: _u.config, mutation: newDiagramConceptMutation(_u.config, OpCreate)}
@@ -1841,7 +1840,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1861,7 +1860,7 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 			Columns: diagram.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

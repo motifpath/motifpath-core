@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // The fakes below are minimal in-memory ports implementations local to the
@@ -144,39 +145,22 @@ func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Lan
 }
 
 type fakeContentNodeRepo struct {
-	mu       sync.Mutex
-	byID     map[string]domain.ContentNode
-	skills   *fakeSkillRepo
-	concepts *fakeConceptRepo
+	mu        sync.Mutex
+	byID      map[string]domain.ContentNode
+	knowledge *fakeKnowledgeNodeRepo
 }
 
-func newFakeContentNodeRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeContentNodeRepo {
-	return &fakeContentNodeRepo{byID: map[string]domain.ContentNode{}, skills: skills, concepts: concepts}
+func newFakeContentNodeRepo(knowledge *fakeKnowledgeNodeRepo) *fakeContentNodeRepo {
+	return &fakeContentNodeRepo{byID: map[string]domain.ContentNode{}, knowledge: knowledge}
 }
 
 // resolveClassification replaces n.Classification.Skills/Concepts (which
 // may carry only IDs, as domain.NewContentNode's placeholders do) with the
-// full Skill/Concept records from f.skills/f.concepts — mirroring the real
+// full records from f.knowledge — mirroring the real
 // ent adapter's WithSkills()/WithConcepts() join on read.
 func (f *fakeContentNodeRepo) resolveClassification(n domain.ContentNode) domain.ContentNode {
-	skills := make([]domain.Skill, len(n.Classification.Skills))
-	for i, s := range n.Classification.Skills {
-		if full, ok := f.skills.byID[s.ID]; ok {
-			skills[i] = full
-		} else {
-			skills[i] = s
-		}
-	}
-	concepts := make([]domain.Concept, len(n.Classification.Concepts))
-	for i, c := range n.Classification.Concepts {
-		if full, ok := f.concepts.byID[c.ID]; ok {
-			concepts[i] = full
-		} else {
-			concepts[i] = c
-		}
-	}
-	n.Classification.Skills = skills
-	n.Classification.Concepts = concepts
+	n.Classification.Skills = f.knowledge.resolve(n.Classification.Skills)
+	n.Classification.Concepts = f.knowledge.resolve(n.Classification.Concepts)
 	return n
 }
 
@@ -354,41 +338,23 @@ type fakeExerciseRepo struct {
 	byID             map[string]domain.Exercise
 	byChallengeOrder map[string][]string
 	byNodeOrder      map[string][]string
-	skills           *fakeSkillRepo
-	concepts         *fakeConceptRepo
+	knowledge        *fakeKnowledgeNodeRepo
 }
 
-func newFakeExerciseRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeExerciseRepo {
+func newFakeExerciseRepo(knowledge *fakeKnowledgeNodeRepo) *fakeExerciseRepo {
 	return &fakeExerciseRepo{
 		byID:             map[string]domain.Exercise{},
 		byChallengeOrder: map[string][]string{},
 		byNodeOrder:      map[string][]string{},
-		skills:           skills,
-		concepts:         concepts,
+		knowledge:        knowledge,
 	}
 }
 
 // resolveClassification is fakeContentNodeRepo.resolveClassification's
 // counterpart for Exercise.
 func (f *fakeExerciseRepo) resolveClassification(e domain.Exercise) domain.Exercise {
-	skills := make([]domain.Skill, len(e.Skills))
-	for i, s := range e.Skills {
-		if full, ok := f.skills.byID[s.ID]; ok {
-			skills[i] = full
-		} else {
-			skills[i] = s
-		}
-	}
-	concepts := make([]domain.Concept, len(e.Concepts))
-	for i, c := range e.Concepts {
-		if full, ok := f.concepts.byID[c.ID]; ok {
-			concepts[i] = full
-		} else {
-			concepts[i] = c
-		}
-	}
-	e.Skills = skills
-	e.Concepts = concepts
+	e.Skills = f.knowledge.resolve(e.Skills)
+	e.Concepts = f.knowledge.resolve(e.Concepts)
 	return e
 }
 
@@ -548,7 +514,7 @@ func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter,
 		if filter.SkillID != "" && !containsID(exerciseSkillIDs(e), filter.SkillID) {
 			continue
 		}
-		if filter.ConceptID != "" && !slices.ContainsFunc(e.Concepts, func(c domain.Concept) bool { return c.ID == filter.ConceptID }) {
+		if filter.ConceptID != "" && !slices.ContainsFunc(e.Concepts, func(c domain.KnowledgeNode) bool { return c.ID == filter.ConceptID }) {
 			continue
 		}
 		if filter.Language != "" && !slices.ContainsFunc(e.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
@@ -1529,143 +1495,323 @@ func (f *fakeMediaStorage) PresignUpload(_ context.Context, objectKey string, _ 
 	}, nil
 }
 
-type fakeSkillRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.Skill
+// fakeKnowledgeNodeRepo is an in-memory ports.KnowledgeNodeRepository.
+// Usage and ClassifiedInstrumentSets read the other fakes the world wires
+// in, the way the real adapter queries the link tables.
+type fakeKnowledgeNodeRepo struct {
+	mu         sync.Mutex
+	byID       map[string]domain.KnowledgeNode
+	edges      *fakeKnowledgeEdgeRepo
+	nodes      *fakeContentNodeRepo
+	exercises  *fakeExerciseRepo
+	diagrams   *fakeDiagramRepo
+	challenges *fakeChallengeRepo
 }
 
-func newFakeSkillRepo() *fakeSkillRepo {
-	return &fakeSkillRepo{byID: map[string]domain.Skill{}}
+func newFakeKnowledgeNodeRepo() *fakeKnowledgeNodeRepo {
+	return &fakeKnowledgeNodeRepo{byID: map[string]domain.KnowledgeNode{}}
 }
 
-func (f *fakeSkillRepo) Create(_ context.Context, s domain.Skill) error {
+func (f *fakeKnowledgeNodeRepo) Create(_ context.Context, n domain.KnowledgeNode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[s.ID] = s
+	for _, existing := range f.byID {
+		if existing.Key == n.Key {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[n.ID] = n
 	return nil
 }
 
-func (f *fakeSkillRepo) GetByID(_ context.Context, id string) (domain.Skill, error) {
+func (f *fakeKnowledgeNodeRepo) GetByID(_ context.Context, id string) (domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	s, ok := f.byID[id]
+	n, ok := f.byID[id]
 	if !ok {
-		return domain.Skill{}, domain.ErrNotFound
+		return domain.KnowledgeNode{}, domain.ErrNotFound
 	}
-	return s, nil
+	return n, nil
 }
 
-func (f *fakeSkillRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.Skill, error) {
+func (f *fakeKnowledgeNodeRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := map[string]domain.Skill{}
+	result := map[string]domain.KnowledgeNode{}
 	for _, id := range ids {
-		if s, ok := f.byID[id]; ok {
-			result[id] = s
+		if n, ok := f.byID[id]; ok {
+			result[id] = n
 		}
 	}
 	return result, nil
 }
 
-func (f *fakeSkillRepo) List(_ context.Context) ([]domain.Skill, error) {
+func (f *fakeKnowledgeNodeRepo) GetByKeys(_ context.Context, keys []string) (map[string]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := make([]domain.Skill, 0, len(f.byID))
-	for _, s := range f.byID {
-		result = append(result, s)
+	result := map[string]domain.KnowledgeNode{}
+	for _, n := range f.byID {
+		if slices.Contains(keys, n.Key) {
+			result[n.Key] = n
+		}
 	}
 	return result, nil
 }
 
-func (f *fakeSkillRepo) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+func (f *fakeKnowledgeNodeRepo) List(_ context.Context, filter ports.KnowledgeNodeFilter) ([]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, s := range f.byID {
-		if s.Name == name && samePointerValue(s.ParentID, parentID) {
-			return true, nil
+	result := []domain.KnowledgeNode{}
+	for _, n := range f.byID {
+		if filter.Kind != nil && n.Kind != *filter.Kind {
+			continue
 		}
+		if len(filter.InstrumentIDs) > 0 && !n.Suits(filter.InstrumentIDs) {
+			continue
+		}
+		result = append(result, n)
 	}
-	return false, nil
+	sort.Slice(result, func(i, j int) bool { return result[i].Key < result[j].Key })
+	return result, nil
 }
 
-func (f *fakeSkillRepo) put(s domain.Skill) {
+func (f *fakeKnowledgeNodeRepo) Update(_ context.Context, n domain.KnowledgeNode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[s.ID] = s
-}
-
-type fakeConceptRepo struct {
-	mu   sync.Mutex
-	byID map[string]domain.Concept
-}
-
-func newFakeConceptRepo() *fakeConceptRepo {
-	return &fakeConceptRepo{byID: map[string]domain.Concept{}}
-}
-
-func (f *fakeConceptRepo) Create(_ context.Context, c domain.Concept) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.byID[c.ID] = c
+	if _, ok := f.byID[n.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[n.ID] = n
 	return nil
 }
 
-func (f *fakeConceptRepo) GetByID(_ context.Context, id string) (domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepo) Delete(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	c, ok := f.byID[id]
-	if !ok {
-		return domain.Concept{}, domain.ErrNotFound
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
 	}
-	return c, nil
+	delete(f.byID, id)
+	return nil
 }
 
-func (f *fakeConceptRepo) GetByIDs(_ context.Context, ids []string) (map[string]domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepo) Children(_ context.Context, id string) ([]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := map[string]domain.Concept{}
-	for _, id := range ids {
-		if c, ok := f.byID[id]; ok {
-			result[id] = c
+	var children []domain.KnowledgeNode
+	for _, n := range f.byID {
+		if n.ParentID != nil && *n.ParentID == id {
+			children = append(children, n)
 		}
 	}
-	return result, nil
+	return children, nil
 }
 
-func (f *fakeConceptRepo) List(_ context.Context) ([]domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepo) InSubtree(_ context.Context, rootID, candidateID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := make([]domain.Concept, 0, len(f.byID))
-	for _, c := range f.byID {
-		result = append(result, c)
-	}
-	return result, nil
-}
-
-func (f *fakeConceptRepo) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, c := range f.byID {
-		if c.Name == name && samePointerValue(c.ParentID, parentID) {
+	for id := candidateID; ; {
+		if id == rootID {
 			return true, nil
+		}
+		n, ok := f.byID[id]
+		if !ok || n.ParentID == nil {
+			return false, nil
+		}
+		id = *n.ParentID
+	}
+}
+
+func (f *fakeKnowledgeNodeRepo) Usage(_ context.Context, id string) (ports.KnowledgeNodeUsage, error) {
+	var usage ports.KnowledgeNodeUsage
+	f.mu.Lock()
+	for _, n := range f.byID {
+		if n.ParentID != nil && *n.ParentID == id {
+			usage.Children++
+		}
+	}
+	f.mu.Unlock()
+
+	f.edges.mu.Lock()
+	for _, e := range f.edges.byID {
+		if e.FromID == id || e.ToID == id {
+			usage.Edges++
+		}
+	}
+	f.edges.mu.Unlock()
+
+	f.nodes.mu.Lock()
+	for _, n := range f.nodes.byID {
+		if classifiedBy(id, n.Classification.Skills, n.Classification.Concepts) {
+			usage.ContentNodes++
+		}
+	}
+	f.nodes.mu.Unlock()
+
+	f.exercises.mu.Lock()
+	for _, e := range f.exercises.byID {
+		if classifiedBy(id, e.Skills, e.Concepts) {
+			usage.Exercises++
+		}
+	}
+	f.exercises.mu.Unlock()
+
+	f.diagrams.mu.Lock()
+	for _, d := range f.diagrams.byID {
+		if classifiedBy(id, d.Skills, d.Concepts) {
+			usage.Diagrams++
+		}
+	}
+	f.diagrams.mu.Unlock()
+
+	f.challenges.mu.Lock()
+	for _, c := range f.challenges.byID {
+		if c.SubjectSkillID != nil && *c.SubjectSkillID == id || c.SubjectConceptID != nil && *c.SubjectConceptID == id {
+			usage.Challenges++
+		}
+	}
+	f.challenges.mu.Unlock()
+	return usage, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) ClassifiedInstrumentSets(_ context.Context, id string) ([][]string, error) {
+	var sets [][]string
+	f.nodes.mu.Lock()
+	for _, n := range f.nodes.byID {
+		if classifiedBy(id, n.Classification.Skills, n.Classification.Concepts) {
+			sets = append(sets, n.InstrumentIDs)
+		}
+	}
+	f.nodes.mu.Unlock()
+	f.diagrams.mu.Lock()
+	for _, d := range f.diagrams.byID {
+		if classifiedBy(id, d.Skills, d.Concepts) {
+			sets = append(sets, d.InstrumentIDs)
+		}
+	}
+	f.diagrams.mu.Unlock()
+	return sets, nil
+}
+
+func (f *fakeKnowledgeNodeRepo) put(n domain.KnowledgeNode) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[n.ID] = n
+}
+
+// resolve replaces each of nodes (which may carry only an id, as the domain
+// constructors' placeholders do) with its full record — mirroring the real
+// adapter's join on read.
+func (f *fakeKnowledgeNodeRepo) resolve(nodes []domain.KnowledgeNode) []domain.KnowledgeNode {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	resolved := make([]domain.KnowledgeNode, len(nodes))
+	for i, n := range nodes {
+		if full, ok := f.byID[n.ID]; ok {
+			resolved[i] = full
+		} else {
+			resolved[i] = n
+		}
+	}
+	return resolved
+}
+
+// classifiedBy reports whether id is among skills or concepts.
+func classifiedBy(id string, skills, concepts []domain.KnowledgeNode) bool {
+	has := func(n domain.KnowledgeNode) bool { return n.ID == id }
+	return slices.ContainsFunc(skills, has) || slices.ContainsFunc(concepts, has)
+}
+
+// fakeKnowledgeEdgeRepo is an in-memory ports.KnowledgeEdgeRepository.
+type fakeKnowledgeEdgeRepo struct {
+	mu   sync.Mutex
+	byID map[string]domain.KnowledgeEdge
+}
+
+func newFakeKnowledgeEdgeRepo() *fakeKnowledgeEdgeRepo {
+	return &fakeKnowledgeEdgeRepo{byID: map[string]domain.KnowledgeEdge{}}
+}
+
+func (f *fakeKnowledgeEdgeRepo) Create(_ context.Context, e domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, existing := range f.byID {
+		if existing.FromID == e.FromID && existing.ToID == e.ToID && existing.Type == e.Type {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) GetByID(_ context.Context, id string) (domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.byID[id]
+	if !ok {
+		return domain.KnowledgeEdge{}, domain.ErrNotFound
+	}
+	return e, nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) List(_ context.Context, filter ports.KnowledgeEdgeFilter) ([]domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.KnowledgeEdge{}
+	for _, e := range f.byID {
+		if filter.Type != nil && e.Type != *filter.Type ||
+			filter.FromID != nil && e.FromID != *filter.FromID ||
+			filter.ToID != nil && e.ToID != *filter.ToID {
+			continue
+		}
+		result = append(result, e)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) UpdateLevel(_ context.Context, e domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[e.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[e.ID] = e
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepo) RequiresPathExists(_ context.Context, fromID, toID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	frontier := []string{fromID}
+	for len(frontier) > 0 {
+		id := frontier[0]
+		frontier = frontier[1:]
+		if id == toID {
+			return true, nil
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		for _, e := range f.byID {
+			if e.Type == domain.KnowledgeEdgeTypeRequires && e.FromID == id {
+				frontier = append(frontier, e.ToID)
+			}
 		}
 	}
 	return false, nil
-}
-
-func (f *fakeConceptRepo) put(c domain.Concept) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.byID[c.ID] = c
-}
-
-// samePointerValue reports whether a and b are both nil, or both non-nil
-// and pointing at equal values.
-func samePointerValue(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }
 
 type fakeInstrumentRepo struct {
@@ -1728,6 +1874,8 @@ func newFakeVoiceRepo() *fakeVoiceRepo {
 	f := &fakeVoiceRepo{byID: map[string]domain.Voice{}}
 	f.put(domain.Voice{ID: "acoustic-guitar", Names: domain.LocalizedText{"en": "Acoustic guitar", "pt_BR": "Violão"}, Family: domain.InstrumentFamilyFretted,
 		Pitches: []int{46, 40, 43}, Attribution: "Acoustic guitar samples from tonejs-instruments, CC BY 3.0"})
+	f.put(domain.Voice{ID: "electric-bass", Names: domain.LocalizedText{"en": "Electric bass", "pt_BR": "Contrabaixo elétrico"}, Family: domain.InstrumentFamilyFretted,
+		Pitches: []int{28, 31, 34, 37}, Attribution: "Electric bass samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0"})
 	f.put(domain.Voice{ID: "piano", Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
 		Pitches: []int{21, 24, 27}, Attribution: "Piano samples from tonejs-instruments, CC BY 3.0"})
 	return f
@@ -1767,37 +1915,20 @@ func (f *fakeInstrumentRepo) put(i domain.Instrument) {
 }
 
 type fakeDiagramRepo struct {
-	mu       sync.Mutex
-	byID     map[string]domain.Diagram
-	skills   *fakeSkillRepo
-	concepts *fakeConceptRepo
+	mu        sync.Mutex
+	byID      map[string]domain.Diagram
+	knowledge *fakeKnowledgeNodeRepo
 }
 
-func newFakeDiagramRepo(skills *fakeSkillRepo, concepts *fakeConceptRepo) *fakeDiagramRepo {
-	return &fakeDiagramRepo{byID: map[string]domain.Diagram{}, skills: skills, concepts: concepts}
+func newFakeDiagramRepo(knowledge *fakeKnowledgeNodeRepo) *fakeDiagramRepo {
+	return &fakeDiagramRepo{byID: map[string]domain.Diagram{}, knowledge: knowledge}
 }
 
 // resolveClassification replaces d.Skills/Concepts (id-only until read
-// back) with the full records from f.skills/f.concepts — mirroring the real
+// back) with the full records from f.knowledge — mirroring the real
 // ent adapter's WithSkills()/WithConcepts() join on read.
 func (f *fakeDiagramRepo) resolveClassification(d domain.Diagram) domain.Diagram {
-	skills := make([]domain.Skill, len(d.Skills))
-	for i, s := range d.Skills {
-		if full, ok := f.skills.byID[s.ID]; ok {
-			skills[i] = full
-		} else {
-			skills[i] = s
-		}
-	}
-	concepts := make([]domain.Concept, len(d.Concepts))
-	for i, c := range d.Concepts {
-		if full, ok := f.concepts.byID[c.ID]; ok {
-			concepts[i] = full
-		} else {
-			concepts[i] = c
-		}
-	}
-	d.Skills, d.Concepts = skills, concepts
+	d.Skills, d.Concepts = f.knowledge.resolve(d.Skills), f.knowledge.resolve(d.Concepts)
 	return d
 }
 

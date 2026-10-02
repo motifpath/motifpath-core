@@ -90,10 +90,13 @@ func (Exercise) Edges() []ent.Edge {
 		edge.To("languages", Language.Type).
 			Through("exercise_languages", ExerciseLanguage.Type),
 
-		edge.To("skills", Skill.Type).
+		edge.To("skills", KnowledgeNode.Type).
 			Through("exercise_skills", ExerciseSkill.Type),
 
-		edge.To("concepts", Concept.Type).
+		edge.To("concepts", KnowledgeNode.Type).
 			Through("exercise_concepts", ExerciseConcept.Type),
+
+		edge.To("instruments", Instrument.Type).
+			Through("exercise_instruments", ExerciseInstrument.Type),
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -20,9 +19,9 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ContentNodeUpdate is the builder for updating ContentNode entities.
@@ -170,14 +169,14 @@ func (_u *ContentNodeUpdate) AddLanguages(v ...*Language) *ContentNodeUpdate {
 	return _u.AddLanguageIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_u *ContentNodeUpdate) AddSkillIDs(ids ...uuid.UUID) *ContentNodeUpdate {
 	_u.mutation.AddSkillIDs(ids...)
 	return _u
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_u *ContentNodeUpdate) AddSkills(v ...*Skill) *ContentNodeUpdate {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_u *ContentNodeUpdate) AddSkills(v ...*KnowledgeNode) *ContentNodeUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -185,14 +184,14 @@ func (_u *ContentNodeUpdate) AddSkills(v ...*Skill) *ContentNodeUpdate {
 	return _u.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_u *ContentNodeUpdate) AddConceptIDs(ids ...uuid.UUID) *ContentNodeUpdate {
 	_u.mutation.AddConceptIDs(ids...)
 	return _u
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_u *ContentNodeUpdate) AddConcepts(v ...*Concept) *ContentNodeUpdate {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_u *ContentNodeUpdate) AddConcepts(v ...*KnowledgeNode) *ContentNodeUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -337,20 +336,20 @@ func (_u *ContentNodeUpdate) RemoveLanguages(v ...*Language) *ContentNodeUpdate 
 	return _u.RemoveLanguageIDs(ids...)
 }
 
-// ClearSkills clears all "skills" edges to the Skill entity.
+// ClearSkills clears all "skills" edges to the KnowledgeNode entity.
 func (_u *ContentNodeUpdate) ClearSkills() *ContentNodeUpdate {
 	_u.mutation.ClearSkills()
 	return _u
 }
 
-// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+// RemoveSkillIDs removes the "skills" edge to KnowledgeNode entities by IDs.
 func (_u *ContentNodeUpdate) RemoveSkillIDs(ids ...uuid.UUID) *ContentNodeUpdate {
 	_u.mutation.RemoveSkillIDs(ids...)
 	return _u
 }
 
-// RemoveSkills removes "skills" edges to Skill entities.
-func (_u *ContentNodeUpdate) RemoveSkills(v ...*Skill) *ContentNodeUpdate {
+// RemoveSkills removes "skills" edges to KnowledgeNode entities.
+func (_u *ContentNodeUpdate) RemoveSkills(v ...*KnowledgeNode) *ContentNodeUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -358,20 +357,20 @@ func (_u *ContentNodeUpdate) RemoveSkills(v ...*Skill) *ContentNodeUpdate {
 	return _u.RemoveSkillIDs(ids...)
 }
 
-// ClearConcepts clears all "concepts" edges to the Concept entity.
+// ClearConcepts clears all "concepts" edges to the KnowledgeNode entity.
 func (_u *ContentNodeUpdate) ClearConcepts() *ContentNodeUpdate {
 	_u.mutation.ClearConcepts()
 	return _u
 }
 
-// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+// RemoveConceptIDs removes the "concepts" edge to KnowledgeNode entities by IDs.
 func (_u *ContentNodeUpdate) RemoveConceptIDs(ids ...uuid.UUID) *ContentNodeUpdate {
 	_u.mutation.RemoveConceptIDs(ids...)
 	return _u
 }
 
-// RemoveConcepts removes "concepts" edges to Concept entities.
-func (_u *ContentNodeUpdate) RemoveConcepts(v ...*Concept) *ContentNodeUpdate {
+// RemoveConcepts removes "concepts" edges to KnowledgeNode entities.
+func (_u *ContentNodeUpdate) RemoveConcepts(v ...*KnowledgeNode) *ContentNodeUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -708,7 +707,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &ContentNodeSkillCreate{config: _u.config, mutation: newContentNodeSkillMutation(_u.config, OpCreate)}
@@ -725,7 +724,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -745,7 +744,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -765,7 +764,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &ContentNodeConceptCreate{config: _u.config, mutation: newContentNodeConceptMutation(_u.config, OpCreate)}
@@ -782,7 +781,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -802,7 +801,7 @@ func (_u *ContentNodeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1248,14 +1247,14 @@ func (_u *ContentNodeUpdateOne) AddLanguages(v ...*Language) *ContentNodeUpdateO
 	return _u.AddLanguageIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_u *ContentNodeUpdateOne) AddSkillIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.AddSkillIDs(ids...)
 	return _u
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_u *ContentNodeUpdateOne) AddSkills(v ...*Skill) *ContentNodeUpdateOne {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_u *ContentNodeUpdateOne) AddSkills(v ...*KnowledgeNode) *ContentNodeUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1263,14 +1262,14 @@ func (_u *ContentNodeUpdateOne) AddSkills(v ...*Skill) *ContentNodeUpdateOne {
 	return _u.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_u *ContentNodeUpdateOne) AddConceptIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.AddConceptIDs(ids...)
 	return _u
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_u *ContentNodeUpdateOne) AddConcepts(v ...*Concept) *ContentNodeUpdateOne {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_u *ContentNodeUpdateOne) AddConcepts(v ...*KnowledgeNode) *ContentNodeUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1415,20 +1414,20 @@ func (_u *ContentNodeUpdateOne) RemoveLanguages(v ...*Language) *ContentNodeUpda
 	return _u.RemoveLanguageIDs(ids...)
 }
 
-// ClearSkills clears all "skills" edges to the Skill entity.
+// ClearSkills clears all "skills" edges to the KnowledgeNode entity.
 func (_u *ContentNodeUpdateOne) ClearSkills() *ContentNodeUpdateOne {
 	_u.mutation.ClearSkills()
 	return _u
 }
 
-// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+// RemoveSkillIDs removes the "skills" edge to KnowledgeNode entities by IDs.
 func (_u *ContentNodeUpdateOne) RemoveSkillIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.RemoveSkillIDs(ids...)
 	return _u
 }
 
-// RemoveSkills removes "skills" edges to Skill entities.
-func (_u *ContentNodeUpdateOne) RemoveSkills(v ...*Skill) *ContentNodeUpdateOne {
+// RemoveSkills removes "skills" edges to KnowledgeNode entities.
+func (_u *ContentNodeUpdateOne) RemoveSkills(v ...*KnowledgeNode) *ContentNodeUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1436,20 +1435,20 @@ func (_u *ContentNodeUpdateOne) RemoveSkills(v ...*Skill) *ContentNodeUpdateOne 
 	return _u.RemoveSkillIDs(ids...)
 }
 
-// ClearConcepts clears all "concepts" edges to the Concept entity.
+// ClearConcepts clears all "concepts" edges to the KnowledgeNode entity.
 func (_u *ContentNodeUpdateOne) ClearConcepts() *ContentNodeUpdateOne {
 	_u.mutation.ClearConcepts()
 	return _u
 }
 
-// RemoveConceptIDs removes the "concepts" edge to Concept entities by IDs.
+// RemoveConceptIDs removes the "concepts" edge to KnowledgeNode entities by IDs.
 func (_u *ContentNodeUpdateOne) RemoveConceptIDs(ids ...uuid.UUID) *ContentNodeUpdateOne {
 	_u.mutation.RemoveConceptIDs(ids...)
 	return _u
 }
 
-// RemoveConcepts removes "concepts" edges to Concept entities.
-func (_u *ContentNodeUpdateOne) RemoveConcepts(v ...*Concept) *ContentNodeUpdateOne {
+// RemoveConcepts removes "concepts" edges to KnowledgeNode entities.
+func (_u *ContentNodeUpdateOne) RemoveConcepts(v ...*KnowledgeNode) *ContentNodeUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -1816,7 +1815,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &ContentNodeSkillCreate{config: _u.config, mutation: newContentNodeSkillMutation(_u.config, OpCreate)}
@@ -1833,7 +1832,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1853,7 +1852,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1873,7 +1872,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		createE := &ContentNodeConceptCreate{config: _u.config, mutation: newContentNodeConceptMutation(_u.config, OpCreate)}
@@ -1890,7 +1889,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -1910,7 +1909,7 @@ func (_u *ContentNodeUpdateOne) sqlSave(ctx context.Context) (_node *ContentNode
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

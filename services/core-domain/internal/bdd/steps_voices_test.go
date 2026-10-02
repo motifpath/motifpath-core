@@ -33,6 +33,7 @@ func registerVoiceSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the voices are ordered "([^"]+)"$`, w.voicesAreOrdered)
 	sc.Step(`^every sample of voice "([^"]+)" has a download address$`, w.everySampleHasAddress)
 	sc.Step(`^the samples of voice "([^"]+)" are in ascending pitch$`, w.samplesAscend)
+	sc.Step(`^the lowest sample of voice "([^"]+)" is at or below "([^"]+)"$`, w.lowestSampleAtOrBelow)
 	sc.Step(`^every voice has a non-empty attribution$`, w.everyVoiceHasAttribution)
 	sc.Step(`^every voice has a name in "([^"]+)" and in "([^"]+)"$`, w.everyVoiceNamedIn)
 
@@ -147,6 +148,21 @@ func (w *world) samplesAscend(id string) error {
 	}
 	if !slices.IsSorted(pitches) {
 		return fmt.Errorf("expected voice %q's samples in ascending pitch, got %v", id, pitches)
+	}
+	return nil
+}
+
+func (w *world) lowestSampleAtOrBelow(id, pitch string) error {
+	voice, err := w.listedVoice(id)
+	if err != nil {
+		return err
+	}
+	want, ok := domain.ParsePitch(pitch)
+	if !ok {
+		return fmt.Errorf("%q is not a pitch", pitch)
+	}
+	if len(voice.Samples) == 0 || voice.Samples[0].Pitch > want {
+		return fmt.Errorf("expected voice %q's lowest sample at or below %s (MIDI %d), got %+v", id, pitch, want, voice.Samples)
 	}
 	return nil
 }

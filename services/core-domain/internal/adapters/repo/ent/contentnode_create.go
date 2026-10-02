@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -20,8 +19,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ContentNodeCreate is the builder for creating a ContentNode entity.
@@ -169,14 +168,14 @@ func (_c *ContentNodeCreate) AddLanguages(v ...*Language) *ContentNodeCreate {
 	return _c.AddLanguageIDs(ids...)
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by IDs.
 func (_c *ContentNodeCreate) AddSkillIDs(ids ...uuid.UUID) *ContentNodeCreate {
 	_c.mutation.AddSkillIDs(ids...)
 	return _c
 }
 
-// AddSkills adds the "skills" edges to the Skill entity.
-func (_c *ContentNodeCreate) AddSkills(v ...*Skill) *ContentNodeCreate {
+// AddSkills adds the "skills" edges to the KnowledgeNode entity.
+func (_c *ContentNodeCreate) AddSkills(v ...*KnowledgeNode) *ContentNodeCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -184,14 +183,14 @@ func (_c *ContentNodeCreate) AddSkills(v ...*Skill) *ContentNodeCreate {
 	return _c.AddSkillIDs(ids...)
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by IDs.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by IDs.
 func (_c *ContentNodeCreate) AddConceptIDs(ids ...uuid.UUID) *ContentNodeCreate {
 	_c.mutation.AddConceptIDs(ids...)
 	return _c
 }
 
-// AddConcepts adds the "concepts" edges to the Concept entity.
-func (_c *ContentNodeCreate) AddConcepts(v ...*Concept) *ContentNodeCreate {
+// AddConcepts adds the "concepts" edges to the KnowledgeNode entity.
+func (_c *ContentNodeCreate) AddConcepts(v ...*KnowledgeNode) *ContentNodeCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -492,7 +491,7 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 			Columns: contentnode.SkillsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -512,7 +511,7 @@ func (_c *ContentNodeCreate) createSpec() (*ContentNode, *sqlgraph.CreateSpec) {
 			Columns: contentnode.ConceptsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

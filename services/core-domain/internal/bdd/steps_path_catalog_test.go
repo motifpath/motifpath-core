@@ -229,7 +229,7 @@ func (w *world) putPathSplitClassification(slug, skill, concept string) error {
 	if err != nil {
 		return err
 	}
-	node.Classification.Concepts = append(node.Classification.Concepts, domain.Concept{ID: w.conceptIDFor(concept).String(), Name: concept})
+	node.Classification.Concepts = append(node.Classification.Concepts, domain.KnowledgeNode{ID: w.conceptIDFor(concept).String()})
 	w.nodes.put(node)
 	return nil
 }

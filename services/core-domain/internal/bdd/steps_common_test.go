@@ -209,13 +209,9 @@ func (w *world) responseIsEmptyList() error {
 		if len(resp.Items) != 0 {
 			return fmt.Errorf("expected an empty list, got %d learning paths", len(resp.Items))
 		}
-	case generated.ListSkills200JSONResponse:
+	case generated.ListKnowledgeNodes200JSONResponse:
 		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d skills", len(resp))
-		}
-	case generated.ListConcepts200JSONResponse:
-		if len(resp) != 0 {
-			return fmt.Errorf("expected an empty list, got %d concepts", len(resp))
+			return fmt.Errorf("expected an empty list, got %d knowledge nodes", len(resp))
 		}
 	case generated.ListInstruments200JSONResponse:
 		if len(resp) != 0 {
@@ -292,8 +288,12 @@ func (w *world) requestRefusedForbidden() error {
 		generated.ListLearningPaths403JSONResponse,
 		generated.ReplaceLearningPath403JSONResponse,
 		generated.DeleteLearningPath403JSONResponse,
-		generated.CreateSkill403JSONResponse,
-		generated.CreateConcept403JSONResponse,
+		generated.CreateKnowledgeNode403JSONResponse,
+		generated.UpdateKnowledgeNode403JSONResponse,
+		generated.DeleteKnowledgeNode403JSONResponse,
+		generated.CreateKnowledgeEdge403JSONResponse,
+		generated.UpdateKnowledgeEdge403JSONResponse,
+		generated.DeleteKnowledgeEdge403JSONResponse,
 		generated.CreateInstrument403JSONResponse,
 		generated.CreateDiagram403JSONResponse,
 		generated.UpdateDiagram403JSONResponse,
@@ -361,7 +361,8 @@ func (w *world) requestRefusedNotFound() error {
 		generated.PublishLearningPath404JSONResponse,
 		generated.UnpublishLearningPath404JSONResponse,
 		generated.GetCatalogPath404JSONResponse,
-		generated.EnrollInLearningPath404JSONResponse:
+		generated.EnrollInLearningPath404JSONResponse,
+		generated.GetKnowledgeNode404JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 404 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -381,7 +382,11 @@ func (w *world) requestRefusedConflict() error {
 		generated.PublishCourse409JSONResponse,
 		generated.PublishLearningPath409JSONResponse,
 		generated.UnpublishLearningPath409JSONResponse,
-		generated.ReplaceLearningPath409JSONResponse:
+		generated.ReplaceLearningPath409JSONResponse,
+		generated.CreateKnowledgeNode409JSONResponse,
+		generated.UpdateKnowledgeNode409JSONResponse,
+		generated.DeleteKnowledgeNode409JSONResponse,
+		generated.CreateKnowledgeEdge409JSONResponse:
 		return nil
 	default:
 		return fmt.Errorf("expected a 409 response, got %#v (err=%v)", w.lastResp, w.lastErr)
@@ -435,10 +440,10 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ReplaceLearningPath401JSONResponse,
 		generated.DeleteLearningPath401JSONResponse,
 		generated.UpdateMyLocale401JSONResponse,
-		generated.ListSkills401JSONResponse,
-		generated.CreateSkill401JSONResponse,
-		generated.ListConcepts401JSONResponse,
-		generated.CreateConcept401JSONResponse,
+		generated.ListKnowledgeNodes401JSONResponse,
+		generated.CreateKnowledgeNode401JSONResponse,
+		generated.ListKnowledgeEdges401JSONResponse,
+		generated.CreateKnowledgeEdge401JSONResponse,
 		generated.ListInstruments401JSONResponse,
 		generated.ListVoices401JSONResponse,
 		generated.CreateInstrument401JSONResponse,
@@ -523,9 +528,17 @@ func (w *world) validationErrors() ([]struct {
 		return resp.Errors, nil
 	case generated.UpdateMyLocale400JSONResponse:
 		return resp.Errors, nil
-	case generated.CreateSkill400JSONResponse:
+	case generated.CreateKnowledgeNode400JSONResponse:
 		return resp.Errors, nil
-	case generated.CreateConcept400JSONResponse:
+	case generated.ListKnowledgeNodes400JSONResponse:
+		return resp.Errors, nil
+	case generated.ListKnowledgeEdges400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateKnowledgeNode400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateKnowledgeEdge400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateKnowledgeEdge400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateInstrument400JSONResponse:
 		return resp.Errors, nil

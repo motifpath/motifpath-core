@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 )
 
 // ExerciseSkillQuery is the builder for querying ExerciseSkill entities.
@@ -26,7 +26,7 @@ type ExerciseSkillQuery struct {
 	inters       []Interceptor
 	predicates   []predicate.ExerciseSkill
 	withExercise *ExerciseQuery
-	withSkill    *SkillQuery
+	withSkill    *KnowledgeNodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -86,8 +86,8 @@ func (_q *ExerciseSkillQuery) QueryExercise() *ExerciseQuery {
 }
 
 // QuerySkill chains the current query on the "skill" edge.
-func (_q *ExerciseSkillQuery) QuerySkill() *SkillQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ExerciseSkillQuery) QuerySkill() *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -98,7 +98,7 @@ func (_q *ExerciseSkillQuery) QuerySkill() *SkillQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(exerciseskill.Table, exerciseskill.FieldID, selector),
-			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, exerciseskill.SkillTable, exerciseskill.SkillColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -320,8 +320,8 @@ func (_q *ExerciseSkillQuery) WithExercise(opts ...func(*ExerciseQuery)) *Exerci
 
 // WithSkill tells the query-builder to eager-load the nodes that are connected to
 // the "skill" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ExerciseSkillQuery) WithSkill(opts ...func(*SkillQuery)) *ExerciseSkillQuery {
-	query := (&SkillClient{config: _q.config}).Query()
+func (_q *ExerciseSkillQuery) WithSkill(opts ...func(*KnowledgeNodeQuery)) *ExerciseSkillQuery {
+	query := (&KnowledgeNodeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -438,7 +438,7 @@ func (_q *ExerciseSkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	}
 	if query := _q.withSkill; query != nil {
 		if err := _q.loadSkill(ctx, query, nodes, nil,
-			func(n *ExerciseSkill, e *Skill) { n.Edges.Skill = e }); err != nil {
+			func(n *ExerciseSkill, e *KnowledgeNode) { n.Edges.Skill = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -474,7 +474,7 @@ func (_q *ExerciseSkillQuery) loadExercise(ctx context.Context, query *ExerciseQ
 	}
 	return nil
 }
-func (_q *ExerciseSkillQuery) loadSkill(ctx context.Context, query *SkillQuery, nodes []*ExerciseSkill, init func(*ExerciseSkill), assign func(*ExerciseSkill, *Skill)) error {
+func (_q *ExerciseSkillQuery) loadSkill(ctx context.Context, query *KnowledgeNodeQuery, nodes []*ExerciseSkill, init func(*ExerciseSkill), assign func(*ExerciseSkill, *KnowledgeNode)) error {
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*ExerciseSkill)
 	for i := range nodes {
@@ -487,7 +487,7 @@ func (_q *ExerciseSkillQuery) loadSkill(ctx context.Context, query *SkillQuery, 
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(skill.IDIn(ids...))
+	query.Where(knowledgenode.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err

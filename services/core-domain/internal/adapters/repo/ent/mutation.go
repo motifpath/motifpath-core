@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -35,11 +34,15 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciselanguage"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenodeinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
@@ -47,7 +50,6 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -66,7 +68,6 @@ const (
 	// Node types.
 	TypeChallenge               = "Challenge"
 	TypeChallengeExercise       = "ChallengeExercise"
-	TypeConcept                 = "Concept"
 	TypeContentNode             = "ContentNode"
 	TypeContentNodeConcept      = "ContentNodeConcept"
 	TypeContentNodeExercise     = "ContentNodeExercise"
@@ -87,17 +88,20 @@ const (
 	TypeDiagramSkill            = "DiagramSkill"
 	TypeExercise                = "Exercise"
 	TypeExerciseConcept         = "ExerciseConcept"
+	TypeExerciseInstrument      = "ExerciseInstrument"
 	TypeExerciseLanguage        = "ExerciseLanguage"
 	TypeExerciseOption          = "ExerciseOption"
 	TypeExerciseSkill           = "ExerciseSkill"
 	TypeExpandedContent         = "ExpandedContent"
 	TypeInstrument              = "Instrument"
+	TypeKnowledgeEdge           = "KnowledgeEdge"
+	TypeKnowledgeNode           = "KnowledgeNode"
+	TypeKnowledgeNodeInstrument = "KnowledgeNodeInstrument"
 	TypeLanguage                = "Language"
 	TypeLearningPath            = "LearningPath"
 	TypeLearningPathInstrument  = "LearningPathInstrument"
 	TypeLearningPathItem        = "LearningPathItem"
 	TypePosition                = "Position"
-	TypeSkill                   = "Skill"
 	TypeStudentLearningState    = "StudentLearningState"
 	TypeStudentPath             = "StudentPath"
 	TypeStudentPathItem         = "StudentPathItem"
@@ -1655,1051 +1659,6 @@ func (m *ChallengeExerciseMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ChallengeExercise edge %s", name)
 }
 
-// ConceptMutation represents an operation that mutates the Concept nodes in the graph.
-type ConceptMutation struct {
-	config
-	op                           Op
-	typ                          string
-	id                           *uuid.UUID
-	name                         *string
-	clearedFields                map[string]struct{}
-	children                     map[uuid.UUID]struct{}
-	removedchildren              map[uuid.UUID]struct{}
-	clearedchildren              bool
-	parent                       *uuid.UUID
-	clearedparent                bool
-	content_nodes                map[uuid.UUID]struct{}
-	removedcontent_nodes         map[uuid.UUID]struct{}
-	clearedcontent_nodes         bool
-	exercises                    map[uuid.UUID]struct{}
-	removedexercises             map[uuid.UUID]struct{}
-	clearedexercises             bool
-	diagrams                     map[uuid.UUID]struct{}
-	removeddiagrams              map[uuid.UUID]struct{}
-	cleareddiagrams              bool
-	content_node_concepts        map[int]struct{}
-	removedcontent_node_concepts map[int]struct{}
-	clearedcontent_node_concepts bool
-	exercise_concepts            map[int]struct{}
-	removedexercise_concepts     map[int]struct{}
-	clearedexercise_concepts     bool
-	diagram_concepts             map[int]struct{}
-	removeddiagram_concepts      map[int]struct{}
-	cleareddiagram_concepts      bool
-	done                         bool
-	oldValue                     func(context.Context) (*Concept, error)
-	predicates                   []predicate.Concept
-}
-
-var _ ent.Mutation = (*ConceptMutation)(nil)
-
-// conceptOption allows management of the mutation configuration using functional options.
-type conceptOption func(*ConceptMutation)
-
-// newConceptMutation creates new mutation for the Concept entity.
-func newConceptMutation(c config, op Op, opts ...conceptOption) *ConceptMutation {
-	m := &ConceptMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeConcept,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withConceptID sets the ID field of the mutation.
-func withConceptID(id uuid.UUID) conceptOption {
-	return func(m *ConceptMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *Concept
-		)
-		m.oldValue = func(ctx context.Context) (*Concept, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().Concept.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withConcept sets the old Concept of the mutation.
-func withConcept(node *Concept) conceptOption {
-	return func(m *ConceptMutation) {
-		m.oldValue = func(context.Context) (*Concept, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m ConceptMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m ConceptMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of Concept entities.
-func (m *ConceptMutation) SetID(id uuid.UUID) {
-	m.id = &id
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *ConceptMutation) ID() (id uuid.UUID, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *ConceptMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []uuid.UUID{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().Concept.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetName sets the "name" field.
-func (m *ConceptMutation) SetName(s string) {
-	m.name = &s
-}
-
-// Name returns the value of the "name" field in the mutation.
-func (m *ConceptMutation) Name() (r string, exists bool) {
-	v := m.name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldName returns the old "name" field's value of the Concept entity.
-// If the Concept object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ConceptMutation) OldName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
-	}
-	return oldValue.Name, nil
-}
-
-// ResetName resets all changes to the "name" field.
-func (m *ConceptMutation) ResetName() {
-	m.name = nil
-}
-
-// SetParentID sets the "parent_id" field.
-func (m *ConceptMutation) SetParentID(u uuid.UUID) {
-	m.parent = &u
-}
-
-// ParentID returns the value of the "parent_id" field in the mutation.
-func (m *ConceptMutation) ParentID() (r uuid.UUID, exists bool) {
-	v := m.parent
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldParentID returns the old "parent_id" field's value of the Concept entity.
-// If the Concept object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ConceptMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldParentID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
-	}
-	return oldValue.ParentID, nil
-}
-
-// ClearParentID clears the value of the "parent_id" field.
-func (m *ConceptMutation) ClearParentID() {
-	m.parent = nil
-	m.clearedFields[concept.FieldParentID] = struct{}{}
-}
-
-// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
-func (m *ConceptMutation) ParentIDCleared() bool {
-	_, ok := m.clearedFields[concept.FieldParentID]
-	return ok
-}
-
-// ResetParentID resets all changes to the "parent_id" field.
-func (m *ConceptMutation) ResetParentID() {
-	m.parent = nil
-	delete(m.clearedFields, concept.FieldParentID)
-}
-
-// AddChildIDs adds the "children" edge to the Concept entity by ids.
-func (m *ConceptMutation) AddChildIDs(ids ...uuid.UUID) {
-	if m.children == nil {
-		m.children = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.children[ids[i]] = struct{}{}
-	}
-}
-
-// ClearChildren clears the "children" edge to the Concept entity.
-func (m *ConceptMutation) ClearChildren() {
-	m.clearedchildren = true
-}
-
-// ChildrenCleared reports if the "children" edge to the Concept entity was cleared.
-func (m *ConceptMutation) ChildrenCleared() bool {
-	return m.clearedchildren
-}
-
-// RemoveChildIDs removes the "children" edge to the Concept entity by IDs.
-func (m *ConceptMutation) RemoveChildIDs(ids ...uuid.UUID) {
-	if m.removedchildren == nil {
-		m.removedchildren = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.children, ids[i])
-		m.removedchildren[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedChildren returns the removed IDs of the "children" edge to the Concept entity.
-func (m *ConceptMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
-	for id := range m.removedchildren {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ChildrenIDs returns the "children" edge IDs in the mutation.
-func (m *ConceptMutation) ChildrenIDs() (ids []uuid.UUID) {
-	for id := range m.children {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetChildren resets all changes to the "children" edge.
-func (m *ConceptMutation) ResetChildren() {
-	m.children = nil
-	m.clearedchildren = false
-	m.removedchildren = nil
-}
-
-// ClearParent clears the "parent" edge to the Concept entity.
-func (m *ConceptMutation) ClearParent() {
-	m.clearedparent = true
-	m.clearedFields[concept.FieldParentID] = struct{}{}
-}
-
-// ParentCleared reports if the "parent" edge to the Concept entity was cleared.
-func (m *ConceptMutation) ParentCleared() bool {
-	return m.ParentIDCleared() || m.clearedparent
-}
-
-// ParentIDs returns the "parent" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// ParentID instead. It exists only for internal usage by the builders.
-func (m *ConceptMutation) ParentIDs() (ids []uuid.UUID) {
-	if id := m.parent; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetParent resets all changes to the "parent" edge.
-func (m *ConceptMutation) ResetParent() {
-	m.parent = nil
-	m.clearedparent = false
-}
-
-// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
-func (m *ConceptMutation) AddContentNodeIDs(ids ...uuid.UUID) {
-	if m.content_nodes == nil {
-		m.content_nodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.content_nodes[ids[i]] = struct{}{}
-	}
-}
-
-// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
-func (m *ConceptMutation) ClearContentNodes() {
-	m.clearedcontent_nodes = true
-}
-
-// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
-func (m *ConceptMutation) ContentNodesCleared() bool {
-	return m.clearedcontent_nodes
-}
-
-// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
-func (m *ConceptMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
-	if m.removedcontent_nodes == nil {
-		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.content_nodes, ids[i])
-		m.removedcontent_nodes[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
-func (m *ConceptMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
-	for id := range m.removedcontent_nodes {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
-func (m *ConceptMutation) ContentNodesIDs() (ids []uuid.UUID) {
-	for id := range m.content_nodes {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetContentNodes resets all changes to the "content_nodes" edge.
-func (m *ConceptMutation) ResetContentNodes() {
-	m.content_nodes = nil
-	m.clearedcontent_nodes = false
-	m.removedcontent_nodes = nil
-}
-
-// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
-func (m *ConceptMutation) AddExerciseIDs(ids ...uuid.UUID) {
-	if m.exercises == nil {
-		m.exercises = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.exercises[ids[i]] = struct{}{}
-	}
-}
-
-// ClearExercises clears the "exercises" edge to the Exercise entity.
-func (m *ConceptMutation) ClearExercises() {
-	m.clearedexercises = true
-}
-
-// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
-func (m *ConceptMutation) ExercisesCleared() bool {
-	return m.clearedexercises
-}
-
-// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
-func (m *ConceptMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
-	if m.removedexercises == nil {
-		m.removedexercises = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.exercises, ids[i])
-		m.removedexercises[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
-func (m *ConceptMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
-	for id := range m.removedexercises {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ExercisesIDs returns the "exercises" edge IDs in the mutation.
-func (m *ConceptMutation) ExercisesIDs() (ids []uuid.UUID) {
-	for id := range m.exercises {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetExercises resets all changes to the "exercises" edge.
-func (m *ConceptMutation) ResetExercises() {
-	m.exercises = nil
-	m.clearedexercises = false
-	m.removedexercises = nil
-}
-
-// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
-func (m *ConceptMutation) AddDiagramIDs(ids ...uuid.UUID) {
-	if m.diagrams == nil {
-		m.diagrams = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.diagrams[ids[i]] = struct{}{}
-	}
-}
-
-// ClearDiagrams clears the "diagrams" edge to the Diagram entity.
-func (m *ConceptMutation) ClearDiagrams() {
-	m.cleareddiagrams = true
-}
-
-// DiagramsCleared reports if the "diagrams" edge to the Diagram entity was cleared.
-func (m *ConceptMutation) DiagramsCleared() bool {
-	return m.cleareddiagrams
-}
-
-// RemoveDiagramIDs removes the "diagrams" edge to the Diagram entity by IDs.
-func (m *ConceptMutation) RemoveDiagramIDs(ids ...uuid.UUID) {
-	if m.removeddiagrams == nil {
-		m.removeddiagrams = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.diagrams, ids[i])
-		m.removeddiagrams[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedDiagrams returns the removed IDs of the "diagrams" edge to the Diagram entity.
-func (m *ConceptMutation) RemovedDiagramsIDs() (ids []uuid.UUID) {
-	for id := range m.removeddiagrams {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// DiagramsIDs returns the "diagrams" edge IDs in the mutation.
-func (m *ConceptMutation) DiagramsIDs() (ids []uuid.UUID) {
-	for id := range m.diagrams {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetDiagrams resets all changes to the "diagrams" edge.
-func (m *ConceptMutation) ResetDiagrams() {
-	m.diagrams = nil
-	m.cleareddiagrams = false
-	m.removeddiagrams = nil
-}
-
-// AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by ids.
-func (m *ConceptMutation) AddContentNodeConceptIDs(ids ...int) {
-	if m.content_node_concepts == nil {
-		m.content_node_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.content_node_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// ClearContentNodeConcepts clears the "content_node_concepts" edge to the ContentNodeConcept entity.
-func (m *ConceptMutation) ClearContentNodeConcepts() {
-	m.clearedcontent_node_concepts = true
-}
-
-// ContentNodeConceptsCleared reports if the "content_node_concepts" edge to the ContentNodeConcept entity was cleared.
-func (m *ConceptMutation) ContentNodeConceptsCleared() bool {
-	return m.clearedcontent_node_concepts
-}
-
-// RemoveContentNodeConceptIDs removes the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
-func (m *ConceptMutation) RemoveContentNodeConceptIDs(ids ...int) {
-	if m.removedcontent_node_concepts == nil {
-		m.removedcontent_node_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.content_node_concepts, ids[i])
-		m.removedcontent_node_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedContentNodeConcepts returns the removed IDs of the "content_node_concepts" edge to the ContentNodeConcept entity.
-func (m *ConceptMutation) RemovedContentNodeConceptsIDs() (ids []int) {
-	for id := range m.removedcontent_node_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ContentNodeConceptsIDs returns the "content_node_concepts" edge IDs in the mutation.
-func (m *ConceptMutation) ContentNodeConceptsIDs() (ids []int) {
-	for id := range m.content_node_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetContentNodeConcepts resets all changes to the "content_node_concepts" edge.
-func (m *ConceptMutation) ResetContentNodeConcepts() {
-	m.content_node_concepts = nil
-	m.clearedcontent_node_concepts = false
-	m.removedcontent_node_concepts = nil
-}
-
-// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by ids.
-func (m *ConceptMutation) AddExerciseConceptIDs(ids ...int) {
-	if m.exercise_concepts == nil {
-		m.exercise_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.exercise_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// ClearExerciseConcepts clears the "exercise_concepts" edge to the ExerciseConcept entity.
-func (m *ConceptMutation) ClearExerciseConcepts() {
-	m.clearedexercise_concepts = true
-}
-
-// ExerciseConceptsCleared reports if the "exercise_concepts" edge to the ExerciseConcept entity was cleared.
-func (m *ConceptMutation) ExerciseConceptsCleared() bool {
-	return m.clearedexercise_concepts
-}
-
-// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
-func (m *ConceptMutation) RemoveExerciseConceptIDs(ids ...int) {
-	if m.removedexercise_concepts == nil {
-		m.removedexercise_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.exercise_concepts, ids[i])
-		m.removedexercise_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedExerciseConcepts returns the removed IDs of the "exercise_concepts" edge to the ExerciseConcept entity.
-func (m *ConceptMutation) RemovedExerciseConceptsIDs() (ids []int) {
-	for id := range m.removedexercise_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ExerciseConceptsIDs returns the "exercise_concepts" edge IDs in the mutation.
-func (m *ConceptMutation) ExerciseConceptsIDs() (ids []int) {
-	for id := range m.exercise_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetExerciseConcepts resets all changes to the "exercise_concepts" edge.
-func (m *ConceptMutation) ResetExerciseConcepts() {
-	m.exercise_concepts = nil
-	m.clearedexercise_concepts = false
-	m.removedexercise_concepts = nil
-}
-
-// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by ids.
-func (m *ConceptMutation) AddDiagramConceptIDs(ids ...int) {
-	if m.diagram_concepts == nil {
-		m.diagram_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.diagram_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// ClearDiagramConcepts clears the "diagram_concepts" edge to the DiagramConcept entity.
-func (m *ConceptMutation) ClearDiagramConcepts() {
-	m.cleareddiagram_concepts = true
-}
-
-// DiagramConceptsCleared reports if the "diagram_concepts" edge to the DiagramConcept entity was cleared.
-func (m *ConceptMutation) DiagramConceptsCleared() bool {
-	return m.cleareddiagram_concepts
-}
-
-// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to the DiagramConcept entity by IDs.
-func (m *ConceptMutation) RemoveDiagramConceptIDs(ids ...int) {
-	if m.removeddiagram_concepts == nil {
-		m.removeddiagram_concepts = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.diagram_concepts, ids[i])
-		m.removeddiagram_concepts[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedDiagramConcepts returns the removed IDs of the "diagram_concepts" edge to the DiagramConcept entity.
-func (m *ConceptMutation) RemovedDiagramConceptsIDs() (ids []int) {
-	for id := range m.removeddiagram_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// DiagramConceptsIDs returns the "diagram_concepts" edge IDs in the mutation.
-func (m *ConceptMutation) DiagramConceptsIDs() (ids []int) {
-	for id := range m.diagram_concepts {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetDiagramConcepts resets all changes to the "diagram_concepts" edge.
-func (m *ConceptMutation) ResetDiagramConcepts() {
-	m.diagram_concepts = nil
-	m.cleareddiagram_concepts = false
-	m.removeddiagram_concepts = nil
-}
-
-// Where appends a list predicates to the ConceptMutation builder.
-func (m *ConceptMutation) Where(ps ...predicate.Concept) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the ConceptMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *ConceptMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.Concept, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *ConceptMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *ConceptMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (Concept).
-func (m *ConceptMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *ConceptMutation) Fields() []string {
-	fields := make([]string, 0, 2)
-	if m.name != nil {
-		fields = append(fields, concept.FieldName)
-	}
-	if m.parent != nil {
-		fields = append(fields, concept.FieldParentID)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *ConceptMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case concept.FieldName:
-		return m.Name()
-	case concept.FieldParentID:
-		return m.ParentID()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *ConceptMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case concept.FieldName:
-		return m.OldName(ctx)
-	case concept.FieldParentID:
-		return m.OldParentID(ctx)
-	}
-	return nil, fmt.Errorf("unknown Concept field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *ConceptMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case concept.FieldName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetName(v)
-		return nil
-	case concept.FieldParentID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetParentID(v)
-		return nil
-	}
-	return fmt.Errorf("unknown Concept field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *ConceptMutation) AddedFields() []string {
-	return nil
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *ConceptMutation) AddedField(name string) (ent.Value, bool) {
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *ConceptMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	}
-	return fmt.Errorf("unknown Concept numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *ConceptMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(concept.FieldParentID) {
-		fields = append(fields, concept.FieldParentID)
-	}
-	return fields
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *ConceptMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *ConceptMutation) ClearField(name string) error {
-	switch name {
-	case concept.FieldParentID:
-		m.ClearParentID()
-		return nil
-	}
-	return fmt.Errorf("unknown Concept nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *ConceptMutation) ResetField(name string) error {
-	switch name {
-	case concept.FieldName:
-		m.ResetName()
-		return nil
-	case concept.FieldParentID:
-		m.ResetParentID()
-		return nil
-	}
-	return fmt.Errorf("unknown Concept field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *ConceptMutation) AddedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.children != nil {
-		edges = append(edges, concept.EdgeChildren)
-	}
-	if m.parent != nil {
-		edges = append(edges, concept.EdgeParent)
-	}
-	if m.content_nodes != nil {
-		edges = append(edges, concept.EdgeContentNodes)
-	}
-	if m.exercises != nil {
-		edges = append(edges, concept.EdgeExercises)
-	}
-	if m.diagrams != nil {
-		edges = append(edges, concept.EdgeDiagrams)
-	}
-	if m.content_node_concepts != nil {
-		edges = append(edges, concept.EdgeContentNodeConcepts)
-	}
-	if m.exercise_concepts != nil {
-		edges = append(edges, concept.EdgeExerciseConcepts)
-	}
-	if m.diagram_concepts != nil {
-		edges = append(edges, concept.EdgeDiagramConcepts)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *ConceptMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case concept.EdgeChildren:
-		ids := make([]ent.Value, 0, len(m.children))
-		for id := range m.children {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeParent:
-		if id := m.parent; id != nil {
-			return []ent.Value{*id}
-		}
-	case concept.EdgeContentNodes:
-		ids := make([]ent.Value, 0, len(m.content_nodes))
-		for id := range m.content_nodes {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeExercises:
-		ids := make([]ent.Value, 0, len(m.exercises))
-		for id := range m.exercises {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeDiagrams:
-		ids := make([]ent.Value, 0, len(m.diagrams))
-		for id := range m.diagrams {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeContentNodeConcepts:
-		ids := make([]ent.Value, 0, len(m.content_node_concepts))
-		for id := range m.content_node_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeExerciseConcepts:
-		ids := make([]ent.Value, 0, len(m.exercise_concepts))
-		for id := range m.exercise_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeDiagramConcepts:
-		ids := make([]ent.Value, 0, len(m.diagram_concepts))
-		for id := range m.diagram_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *ConceptMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.removedchildren != nil {
-		edges = append(edges, concept.EdgeChildren)
-	}
-	if m.removedcontent_nodes != nil {
-		edges = append(edges, concept.EdgeContentNodes)
-	}
-	if m.removedexercises != nil {
-		edges = append(edges, concept.EdgeExercises)
-	}
-	if m.removeddiagrams != nil {
-		edges = append(edges, concept.EdgeDiagrams)
-	}
-	if m.removedcontent_node_concepts != nil {
-		edges = append(edges, concept.EdgeContentNodeConcepts)
-	}
-	if m.removedexercise_concepts != nil {
-		edges = append(edges, concept.EdgeExerciseConcepts)
-	}
-	if m.removeddiagram_concepts != nil {
-		edges = append(edges, concept.EdgeDiagramConcepts)
-	}
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *ConceptMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case concept.EdgeChildren:
-		ids := make([]ent.Value, 0, len(m.removedchildren))
-		for id := range m.removedchildren {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeContentNodes:
-		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
-		for id := range m.removedcontent_nodes {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeExercises:
-		ids := make([]ent.Value, 0, len(m.removedexercises))
-		for id := range m.removedexercises {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeDiagrams:
-		ids := make([]ent.Value, 0, len(m.removeddiagrams))
-		for id := range m.removeddiagrams {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeContentNodeConcepts:
-		ids := make([]ent.Value, 0, len(m.removedcontent_node_concepts))
-		for id := range m.removedcontent_node_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeExerciseConcepts:
-		ids := make([]ent.Value, 0, len(m.removedexercise_concepts))
-		for id := range m.removedexercise_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	case concept.EdgeDiagramConcepts:
-		ids := make([]ent.Value, 0, len(m.removeddiagram_concepts))
-		for id := range m.removeddiagram_concepts {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *ConceptMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.clearedchildren {
-		edges = append(edges, concept.EdgeChildren)
-	}
-	if m.clearedparent {
-		edges = append(edges, concept.EdgeParent)
-	}
-	if m.clearedcontent_nodes {
-		edges = append(edges, concept.EdgeContentNodes)
-	}
-	if m.clearedexercises {
-		edges = append(edges, concept.EdgeExercises)
-	}
-	if m.cleareddiagrams {
-		edges = append(edges, concept.EdgeDiagrams)
-	}
-	if m.clearedcontent_node_concepts {
-		edges = append(edges, concept.EdgeContentNodeConcepts)
-	}
-	if m.clearedexercise_concepts {
-		edges = append(edges, concept.EdgeExerciseConcepts)
-	}
-	if m.cleareddiagram_concepts {
-		edges = append(edges, concept.EdgeDiagramConcepts)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *ConceptMutation) EdgeCleared(name string) bool {
-	switch name {
-	case concept.EdgeChildren:
-		return m.clearedchildren
-	case concept.EdgeParent:
-		return m.clearedparent
-	case concept.EdgeContentNodes:
-		return m.clearedcontent_nodes
-	case concept.EdgeExercises:
-		return m.clearedexercises
-	case concept.EdgeDiagrams:
-		return m.cleareddiagrams
-	case concept.EdgeContentNodeConcepts:
-		return m.clearedcontent_node_concepts
-	case concept.EdgeExerciseConcepts:
-		return m.clearedexercise_concepts
-	case concept.EdgeDiagramConcepts:
-		return m.cleareddiagram_concepts
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *ConceptMutation) ClearEdge(name string) error {
-	switch name {
-	case concept.EdgeParent:
-		m.ClearParent()
-		return nil
-	}
-	return fmt.Errorf("unknown Concept unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *ConceptMutation) ResetEdge(name string) error {
-	switch name {
-	case concept.EdgeChildren:
-		m.ResetChildren()
-		return nil
-	case concept.EdgeParent:
-		m.ResetParent()
-		return nil
-	case concept.EdgeContentNodes:
-		m.ResetContentNodes()
-		return nil
-	case concept.EdgeExercises:
-		m.ResetExercises()
-		return nil
-	case concept.EdgeDiagrams:
-		m.ResetDiagrams()
-		return nil
-	case concept.EdgeContentNodeConcepts:
-		m.ResetContentNodeConcepts()
-		return nil
-	case concept.EdgeExerciseConcepts:
-		m.ResetExerciseConcepts()
-		return nil
-	case concept.EdgeDiagramConcepts:
-		m.ResetDiagramConcepts()
-		return nil
-	}
-	return fmt.Errorf("unknown Concept edge %s", name)
-}
-
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.
 type ContentNodeMutation struct {
 	config
@@ -3326,7 +2285,7 @@ func (m *ContentNodeMutation) ResetLanguages() {
 	m.removedlanguages = nil
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by ids.
 func (m *ContentNodeMutation) AddSkillIDs(ids ...uuid.UUID) {
 	if m.skills == nil {
 		m.skills = make(map[uuid.UUID]struct{})
@@ -3336,17 +2295,17 @@ func (m *ContentNodeMutation) AddSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearSkills clears the "skills" edge to the Skill entity.
+// ClearSkills clears the "skills" edge to the KnowledgeNode entity.
 func (m *ContentNodeMutation) ClearSkills() {
 	m.clearedskills = true
 }
 
-// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+// SkillsCleared reports if the "skills" edge to the KnowledgeNode entity was cleared.
 func (m *ContentNodeMutation) SkillsCleared() bool {
 	return m.clearedskills
 }
 
-// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+// RemoveSkillIDs removes the "skills" edge to the KnowledgeNode entity by IDs.
 func (m *ContentNodeMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	if m.removedskills == nil {
 		m.removedskills = make(map[uuid.UUID]struct{})
@@ -3357,7 +2316,7 @@ func (m *ContentNodeMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+// RemovedSkills returns the removed IDs of the "skills" edge to the KnowledgeNode entity.
 func (m *ContentNodeMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
 	for id := range m.removedskills {
 		ids = append(ids, id)
@@ -3380,7 +2339,7 @@ func (m *ContentNodeMutation) ResetSkills() {
 	m.removedskills = nil
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by ids.
 func (m *ContentNodeMutation) AddConceptIDs(ids ...uuid.UUID) {
 	if m.concepts == nil {
 		m.concepts = make(map[uuid.UUID]struct{})
@@ -3390,17 +2349,17 @@ func (m *ContentNodeMutation) AddConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearConcepts clears the "concepts" edge to the Concept entity.
+// ClearConcepts clears the "concepts" edge to the KnowledgeNode entity.
 func (m *ContentNodeMutation) ClearConcepts() {
 	m.clearedconcepts = true
 }
 
-// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+// ConceptsCleared reports if the "concepts" edge to the KnowledgeNode entity was cleared.
 func (m *ContentNodeMutation) ConceptsCleared() bool {
 	return m.clearedconcepts
 }
 
-// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+// RemoveConceptIDs removes the "concepts" edge to the KnowledgeNode entity by IDs.
 func (m *ContentNodeMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	if m.removedconcepts == nil {
 		m.removedconcepts = make(map[uuid.UUID]struct{})
@@ -3411,7 +2370,7 @@ func (m *ContentNodeMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the KnowledgeNode entity.
 func (m *ContentNodeMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
 	for id := range m.removedconcepts {
 		ids = append(ids, id)
@@ -4614,13 +3573,13 @@ func (m *ContentNodeConceptMutation) ResetContentNode() {
 	m.clearedcontent_node = false
 }
 
-// ClearConcept clears the "concept" edge to the Concept entity.
+// ClearConcept clears the "concept" edge to the KnowledgeNode entity.
 func (m *ContentNodeConceptMutation) ClearConcept() {
 	m.clearedconcept = true
 	m.clearedFields[contentnodeconcept.FieldConceptID] = struct{}{}
 }
 
-// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+// ConceptCleared reports if the "concept" edge to the KnowledgeNode entity was cleared.
 func (m *ContentNodeConceptMutation) ConceptCleared() bool {
 	return m.clearedconcept
 }
@@ -6750,13 +5709,13 @@ func (m *ContentNodeSkillMutation) ResetContentNode() {
 	m.clearedcontent_node = false
 }
 
-// ClearSkill clears the "skill" edge to the Skill entity.
+// ClearSkill clears the "skill" edge to the KnowledgeNode entity.
 func (m *ContentNodeSkillMutation) ClearSkill() {
 	m.clearedskill = true
 	m.clearedFields[contentnodeskill.FieldSkillID] = struct{}{}
 }
 
-// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+// SkillCleared reports if the "skill" edge to the KnowledgeNode entity was cleared.
 func (m *ContentNodeSkillMutation) SkillCleared() bool {
 	return m.clearedskill
 }
@@ -13403,7 +12362,7 @@ func (m *DiagramMutation) ResetRegions() {
 	m.removedregions = nil
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by ids.
 func (m *DiagramMutation) AddSkillIDs(ids ...uuid.UUID) {
 	if m.skills == nil {
 		m.skills = make(map[uuid.UUID]struct{})
@@ -13413,17 +12372,17 @@ func (m *DiagramMutation) AddSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearSkills clears the "skills" edge to the Skill entity.
+// ClearSkills clears the "skills" edge to the KnowledgeNode entity.
 func (m *DiagramMutation) ClearSkills() {
 	m.clearedskills = true
 }
 
-// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+// SkillsCleared reports if the "skills" edge to the KnowledgeNode entity was cleared.
 func (m *DiagramMutation) SkillsCleared() bool {
 	return m.clearedskills
 }
 
-// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+// RemoveSkillIDs removes the "skills" edge to the KnowledgeNode entity by IDs.
 func (m *DiagramMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	if m.removedskills == nil {
 		m.removedskills = make(map[uuid.UUID]struct{})
@@ -13434,7 +12393,7 @@ func (m *DiagramMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+// RemovedSkills returns the removed IDs of the "skills" edge to the KnowledgeNode entity.
 func (m *DiagramMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
 	for id := range m.removedskills {
 		ids = append(ids, id)
@@ -13457,7 +12416,7 @@ func (m *DiagramMutation) ResetSkills() {
 	m.removedskills = nil
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by ids.
 func (m *DiagramMutation) AddConceptIDs(ids ...uuid.UUID) {
 	if m.concepts == nil {
 		m.concepts = make(map[uuid.UUID]struct{})
@@ -13467,17 +12426,17 @@ func (m *DiagramMutation) AddConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearConcepts clears the "concepts" edge to the Concept entity.
+// ClearConcepts clears the "concepts" edge to the KnowledgeNode entity.
 func (m *DiagramMutation) ClearConcepts() {
 	m.clearedconcepts = true
 }
 
-// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+// ConceptsCleared reports if the "concepts" edge to the KnowledgeNode entity was cleared.
 func (m *DiagramMutation) ConceptsCleared() bool {
 	return m.clearedconcepts
 }
 
-// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+// RemoveConceptIDs removes the "concepts" edge to the KnowledgeNode entity by IDs.
 func (m *DiagramMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	if m.removedconcepts == nil {
 		m.removedconcepts = make(map[uuid.UUID]struct{})
@@ -13488,7 +12447,7 @@ func (m *DiagramMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the KnowledgeNode entity.
 func (m *DiagramMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
 	for id := range m.removedconcepts {
 		ids = append(ids, id)
@@ -14608,13 +13567,13 @@ func (m *DiagramConceptMutation) ResetDiagram() {
 	m.cleareddiagram = false
 }
 
-// ClearConcept clears the "concept" edge to the Concept entity.
+// ClearConcept clears the "concept" edge to the KnowledgeNode entity.
 func (m *DiagramConceptMutation) ClearConcept() {
 	m.clearedconcept = true
 	m.clearedFields[diagramconcept.FieldConceptID] = struct{}{}
 }
 
-// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+// ConceptCleared reports if the "concept" edge to the KnowledgeNode entity was cleared.
 func (m *DiagramConceptMutation) ConceptCleared() bool {
 	return m.clearedconcept
 }
@@ -16856,13 +15815,13 @@ func (m *DiagramSkillMutation) ResetDiagram() {
 	m.cleareddiagram = false
 }
 
-// ClearSkill clears the "skill" edge to the Skill entity.
+// ClearSkill clears the "skill" edge to the KnowledgeNode entity.
 func (m *DiagramSkillMutation) ClearSkill() {
 	m.clearedskill = true
 	m.clearedFields[diagramskill.FieldSkillID] = struct{}{}
 }
 
-// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+// SkillCleared reports if the "skill" edge to the KnowledgeNode entity was cleared.
 func (m *DiagramSkillMutation) SkillCleared() bool {
 	return m.clearedskill
 }
@@ -17177,6 +16136,9 @@ type ExerciseMutation struct {
 	concepts                      map[uuid.UUID]struct{}
 	removedconcepts               map[uuid.UUID]struct{}
 	clearedconcepts               bool
+	instruments                   map[uuid.UUID]struct{}
+	removedinstruments            map[uuid.UUID]struct{}
+	clearedinstruments            bool
 	challenge_exercises           map[int]struct{}
 	removedchallenge_exercises    map[int]struct{}
 	clearedchallenge_exercises    bool
@@ -17192,6 +16154,9 @@ type ExerciseMutation struct {
 	exercise_concepts             map[int]struct{}
 	removedexercise_concepts      map[int]struct{}
 	clearedexercise_concepts      bool
+	exercise_instruments          map[int]struct{}
+	removedexercise_instruments   map[int]struct{}
+	clearedexercise_instruments   bool
 	done                          bool
 	oldValue                      func(context.Context) (*Exercise, error)
 	predicates                    []predicate.Exercise
@@ -18025,7 +16990,7 @@ func (m *ExerciseMutation) ResetLanguages() {
 	m.removedlanguages = nil
 }
 
-// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+// AddSkillIDs adds the "skills" edge to the KnowledgeNode entity by ids.
 func (m *ExerciseMutation) AddSkillIDs(ids ...uuid.UUID) {
 	if m.skills == nil {
 		m.skills = make(map[uuid.UUID]struct{})
@@ -18035,17 +17000,17 @@ func (m *ExerciseMutation) AddSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearSkills clears the "skills" edge to the Skill entity.
+// ClearSkills clears the "skills" edge to the KnowledgeNode entity.
 func (m *ExerciseMutation) ClearSkills() {
 	m.clearedskills = true
 }
 
-// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+// SkillsCleared reports if the "skills" edge to the KnowledgeNode entity was cleared.
 func (m *ExerciseMutation) SkillsCleared() bool {
 	return m.clearedskills
 }
 
-// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+// RemoveSkillIDs removes the "skills" edge to the KnowledgeNode entity by IDs.
 func (m *ExerciseMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	if m.removedskills == nil {
 		m.removedskills = make(map[uuid.UUID]struct{})
@@ -18056,7 +17021,7 @@ func (m *ExerciseMutation) RemoveSkillIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+// RemovedSkills returns the removed IDs of the "skills" edge to the KnowledgeNode entity.
 func (m *ExerciseMutation) RemovedSkillsIDs() (ids []uuid.UUID) {
 	for id := range m.removedskills {
 		ids = append(ids, id)
@@ -18079,7 +17044,7 @@ func (m *ExerciseMutation) ResetSkills() {
 	m.removedskills = nil
 }
 
-// AddConceptIDs adds the "concepts" edge to the Concept entity by ids.
+// AddConceptIDs adds the "concepts" edge to the KnowledgeNode entity by ids.
 func (m *ExerciseMutation) AddConceptIDs(ids ...uuid.UUID) {
 	if m.concepts == nil {
 		m.concepts = make(map[uuid.UUID]struct{})
@@ -18089,17 +17054,17 @@ func (m *ExerciseMutation) AddConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// ClearConcepts clears the "concepts" edge to the Concept entity.
+// ClearConcepts clears the "concepts" edge to the KnowledgeNode entity.
 func (m *ExerciseMutation) ClearConcepts() {
 	m.clearedconcepts = true
 }
 
-// ConceptsCleared reports if the "concepts" edge to the Concept entity was cleared.
+// ConceptsCleared reports if the "concepts" edge to the KnowledgeNode entity was cleared.
 func (m *ExerciseMutation) ConceptsCleared() bool {
 	return m.clearedconcepts
 }
 
-// RemoveConceptIDs removes the "concepts" edge to the Concept entity by IDs.
+// RemoveConceptIDs removes the "concepts" edge to the KnowledgeNode entity by IDs.
 func (m *ExerciseMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	if m.removedconcepts == nil {
 		m.removedconcepts = make(map[uuid.UUID]struct{})
@@ -18110,7 +17075,7 @@ func (m *ExerciseMutation) RemoveConceptIDs(ids ...uuid.UUID) {
 	}
 }
 
-// RemovedConcepts returns the removed IDs of the "concepts" edge to the Concept entity.
+// RemovedConcepts returns the removed IDs of the "concepts" edge to the KnowledgeNode entity.
 func (m *ExerciseMutation) RemovedConceptsIDs() (ids []uuid.UUID) {
 	for id := range m.removedconcepts {
 		ids = append(ids, id)
@@ -18131,6 +17096,60 @@ func (m *ExerciseMutation) ResetConcepts() {
 	m.concepts = nil
 	m.clearedconcepts = false
 	m.removedconcepts = nil
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *ExerciseMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *ExerciseMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *ExerciseMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *ExerciseMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *ExerciseMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *ExerciseMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *ExerciseMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
 }
 
 // AddChallengeExerciseIDs adds the "challenge_exercises" edge to the ChallengeExercise entity by ids.
@@ -18401,6 +17420,60 @@ func (m *ExerciseMutation) ResetExerciseConcepts() {
 	m.exercise_concepts = nil
 	m.clearedexercise_concepts = false
 	m.removedexercise_concepts = nil
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by ids.
+func (m *ExerciseMutation) AddExerciseInstrumentIDs(ids ...int) {
+	if m.exercise_instruments == nil {
+		m.exercise_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseInstruments clears the "exercise_instruments" edge to the ExerciseInstrument entity.
+func (m *ExerciseMutation) ClearExerciseInstruments() {
+	m.clearedexercise_instruments = true
+}
+
+// ExerciseInstrumentsCleared reports if the "exercise_instruments" edge to the ExerciseInstrument entity was cleared.
+func (m *ExerciseMutation) ExerciseInstrumentsCleared() bool {
+	return m.clearedexercise_instruments
+}
+
+// RemoveExerciseInstrumentIDs removes the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (m *ExerciseMutation) RemoveExerciseInstrumentIDs(ids ...int) {
+	if m.removedexercise_instruments == nil {
+		m.removedexercise_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_instruments, ids[i])
+		m.removedexercise_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseInstruments returns the removed IDs of the "exercise_instruments" edge to the ExerciseInstrument entity.
+func (m *ExerciseMutation) RemovedExerciseInstrumentsIDs() (ids []int) {
+	for id := range m.removedexercise_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseInstrumentsIDs returns the "exercise_instruments" edge IDs in the mutation.
+func (m *ExerciseMutation) ExerciseInstrumentsIDs() (ids []int) {
+	for id := range m.exercise_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseInstruments resets all changes to the "exercise_instruments" edge.
+func (m *ExerciseMutation) ResetExerciseInstruments() {
+	m.exercise_instruments = nil
+	m.clearedexercise_instruments = false
+	m.removedexercise_instruments = nil
 }
 
 // Where appends a list predicates to the ExerciseMutation builder.
@@ -18766,7 +17839,7 @@ func (m *ExerciseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ExerciseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.challenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -18785,6 +17858,9 @@ func (m *ExerciseMutation) AddedEdges() []string {
 	if m.concepts != nil {
 		edges = append(edges, exercise.EdgeConcepts)
 	}
+	if m.instruments != nil {
+		edges = append(edges, exercise.EdgeInstruments)
+	}
 	if m.challenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -18799,6 +17875,9 @@ func (m *ExerciseMutation) AddedEdges() []string {
 	}
 	if m.exercise_concepts != nil {
 		edges = append(edges, exercise.EdgeExerciseConcepts)
+	}
+	if m.exercise_instruments != nil {
+		edges = append(edges, exercise.EdgeExerciseInstruments)
 	}
 	return edges
 }
@@ -18843,6 +17922,12 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.challenge_exercises))
 		for id := range m.challenge_exercises {
@@ -18873,13 +17958,19 @@ func (m *ExerciseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseInstruments:
+		ids := make([]ent.Value, 0, len(m.exercise_instruments))
+		for id := range m.exercise_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ExerciseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.removedchallenges != nil {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -18898,6 +17989,9 @@ func (m *ExerciseMutation) RemovedEdges() []string {
 	if m.removedconcepts != nil {
 		edges = append(edges, exercise.EdgeConcepts)
 	}
+	if m.removedinstruments != nil {
+		edges = append(edges, exercise.EdgeInstruments)
+	}
 	if m.removedchallenge_exercises != nil {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -18912,6 +18006,9 @@ func (m *ExerciseMutation) RemovedEdges() []string {
 	}
 	if m.removedexercise_concepts != nil {
 		edges = append(edges, exercise.EdgeExerciseConcepts)
+	}
+	if m.removedexercise_instruments != nil {
+		edges = append(edges, exercise.EdgeExerciseInstruments)
 	}
 	return edges
 }
@@ -18956,6 +18053,12 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case exercise.EdgeChallengeExercises:
 		ids := make([]ent.Value, 0, len(m.removedchallenge_exercises))
 		for id := range m.removedchallenge_exercises {
@@ -18986,13 +18089,19 @@ func (m *ExerciseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case exercise.EdgeExerciseInstruments:
+		ids := make([]ent.Value, 0, len(m.removedexercise_instruments))
+		for id := range m.removedexercise_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ExerciseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 11)
+	edges := make([]string, 0, 13)
 	if m.clearedchallenges {
 		edges = append(edges, exercise.EdgeChallenges)
 	}
@@ -19011,6 +18120,9 @@ func (m *ExerciseMutation) ClearedEdges() []string {
 	if m.clearedconcepts {
 		edges = append(edges, exercise.EdgeConcepts)
 	}
+	if m.clearedinstruments {
+		edges = append(edges, exercise.EdgeInstruments)
+	}
 	if m.clearedchallenge_exercises {
 		edges = append(edges, exercise.EdgeChallengeExercises)
 	}
@@ -19025,6 +18137,9 @@ func (m *ExerciseMutation) ClearedEdges() []string {
 	}
 	if m.clearedexercise_concepts {
 		edges = append(edges, exercise.EdgeExerciseConcepts)
+	}
+	if m.clearedexercise_instruments {
+		edges = append(edges, exercise.EdgeExerciseInstruments)
 	}
 	return edges
 }
@@ -19045,6 +18160,8 @@ func (m *ExerciseMutation) EdgeCleared(name string) bool {
 		return m.clearedskills
 	case exercise.EdgeConcepts:
 		return m.clearedconcepts
+	case exercise.EdgeInstruments:
+		return m.clearedinstruments
 	case exercise.EdgeChallengeExercises:
 		return m.clearedchallenge_exercises
 	case exercise.EdgeContentNodeExercises:
@@ -19055,6 +18172,8 @@ func (m *ExerciseMutation) EdgeCleared(name string) bool {
 		return m.clearedexercise_skills
 	case exercise.EdgeExerciseConcepts:
 		return m.clearedexercise_concepts
+	case exercise.EdgeExerciseInstruments:
+		return m.clearedexercise_instruments
 	}
 	return false
 }
@@ -19089,6 +18208,9 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 	case exercise.EdgeConcepts:
 		m.ResetConcepts()
 		return nil
+	case exercise.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
 	case exercise.EdgeChallengeExercises:
 		m.ResetChallengeExercises()
 		return nil
@@ -19103,6 +18225,9 @@ func (m *ExerciseMutation) ResetEdge(name string) error {
 		return nil
 	case exercise.EdgeExerciseConcepts:
 		m.ResetExerciseConcepts()
+		return nil
+	case exercise.EdgeExerciseInstruments:
+		m.ResetExerciseInstruments()
 		return nil
 	}
 	return fmt.Errorf("unknown Exercise edge %s", name)
@@ -19358,13 +18483,13 @@ func (m *ExerciseConceptMutation) ResetExercise() {
 	m.clearedexercise = false
 }
 
-// ClearConcept clears the "concept" edge to the Concept entity.
+// ClearConcept clears the "concept" edge to the KnowledgeNode entity.
 func (m *ExerciseConceptMutation) ClearConcept() {
 	m.clearedconcept = true
 	m.clearedFields[exerciseconcept.FieldConceptID] = struct{}{}
 }
 
-// ConceptCleared reports if the "concept" edge to the Concept entity was cleared.
+// ConceptCleared reports if the "concept" edge to the KnowledgeNode entity was cleared.
 func (m *ExerciseConceptMutation) ConceptCleared() bool {
 	return m.clearedconcept
 }
@@ -19640,6 +18765,540 @@ func (m *ExerciseConceptMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ExerciseConcept edge %s", name)
+}
+
+// ExerciseInstrumentMutation represents an operation that mutates the ExerciseInstrument nodes in the graph.
+type ExerciseInstrumentMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	linked_at         *time.Time
+	clearedFields     map[string]struct{}
+	exercise          *uuid.UUID
+	clearedexercise   bool
+	instrument        *uuid.UUID
+	clearedinstrument bool
+	done              bool
+	oldValue          func(context.Context) (*ExerciseInstrument, error)
+	predicates        []predicate.ExerciseInstrument
+}
+
+var _ ent.Mutation = (*ExerciseInstrumentMutation)(nil)
+
+// exerciseinstrumentOption allows management of the mutation configuration using functional options.
+type exerciseinstrumentOption func(*ExerciseInstrumentMutation)
+
+// newExerciseInstrumentMutation creates new mutation for the ExerciseInstrument entity.
+func newExerciseInstrumentMutation(c config, op Op, opts ...exerciseinstrumentOption) *ExerciseInstrumentMutation {
+	m := &ExerciseInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeExerciseInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withExerciseInstrumentID sets the ID field of the mutation.
+func withExerciseInstrumentID(id int) exerciseinstrumentOption {
+	return func(m *ExerciseInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ExerciseInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*ExerciseInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ExerciseInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withExerciseInstrument sets the old ExerciseInstrument of the mutation.
+func withExerciseInstrument(node *ExerciseInstrument) exerciseinstrumentOption {
+	return func(m *ExerciseInstrumentMutation) {
+		m.oldValue = func(context.Context) (*ExerciseInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ExerciseInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ExerciseInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ExerciseInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ExerciseInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ExerciseInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetExerciseID sets the "exercise_id" field.
+func (m *ExerciseInstrumentMutation) SetExerciseID(u uuid.UUID) {
+	m.exercise = &u
+}
+
+// ExerciseID returns the value of the "exercise_id" field in the mutation.
+func (m *ExerciseInstrumentMutation) ExerciseID() (r uuid.UUID, exists bool) {
+	v := m.exercise
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExerciseID returns the old "exercise_id" field's value of the ExerciseInstrument entity.
+// If the ExerciseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseInstrumentMutation) OldExerciseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExerciseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExerciseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExerciseID: %w", err)
+	}
+	return oldValue.ExerciseID, nil
+}
+
+// ResetExerciseID resets all changes to the "exercise_id" field.
+func (m *ExerciseInstrumentMutation) ResetExerciseID() {
+	m.exercise = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *ExerciseInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *ExerciseInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the ExerciseInstrument entity.
+// If the ExerciseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *ExerciseInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *ExerciseInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *ExerciseInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the ExerciseInstrument entity.
+// If the ExerciseInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ExerciseInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *ExerciseInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// ClearExercise clears the "exercise" edge to the Exercise entity.
+func (m *ExerciseInstrumentMutation) ClearExercise() {
+	m.clearedexercise = true
+	m.clearedFields[exerciseinstrument.FieldExerciseID] = struct{}{}
+}
+
+// ExerciseCleared reports if the "exercise" edge to the Exercise entity was cleared.
+func (m *ExerciseInstrumentMutation) ExerciseCleared() bool {
+	return m.clearedexercise
+}
+
+// ExerciseIDs returns the "exercise" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExerciseID instead. It exists only for internal usage by the builders.
+func (m *ExerciseInstrumentMutation) ExerciseIDs() (ids []uuid.UUID) {
+	if id := m.exercise; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExercise resets all changes to the "exercise" edge.
+func (m *ExerciseInstrumentMutation) ResetExercise() {
+	m.exercise = nil
+	m.clearedexercise = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *ExerciseInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[exerciseinstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *ExerciseInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *ExerciseInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *ExerciseInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the ExerciseInstrumentMutation builder.
+func (m *ExerciseInstrumentMutation) Where(ps ...predicate.ExerciseInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ExerciseInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ExerciseInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ExerciseInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ExerciseInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ExerciseInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ExerciseInstrument).
+func (m *ExerciseInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ExerciseInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.exercise != nil {
+		fields = append(fields, exerciseinstrument.FieldExerciseID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, exerciseinstrument.FieldInstrumentID)
+	}
+	if m.linked_at != nil {
+		fields = append(fields, exerciseinstrument.FieldLinkedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ExerciseInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case exerciseinstrument.FieldExerciseID:
+		return m.ExerciseID()
+	case exerciseinstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	case exerciseinstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ExerciseInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case exerciseinstrument.FieldExerciseID:
+		return m.OldExerciseID(ctx)
+	case exerciseinstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case exerciseinstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ExerciseInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case exerciseinstrument.FieldExerciseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExerciseID(v)
+		return nil
+	case exerciseinstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case exerciseinstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ExerciseInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ExerciseInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ExerciseInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ExerciseInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ExerciseInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ExerciseInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ExerciseInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ExerciseInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ExerciseInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case exerciseinstrument.FieldExerciseID:
+		m.ResetExerciseID()
+		return nil
+	case exerciseinstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case exerciseinstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ExerciseInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.exercise != nil {
+		edges = append(edges, exerciseinstrument.EdgeExercise)
+	}
+	if m.instrument != nil {
+		edges = append(edges, exerciseinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ExerciseInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case exerciseinstrument.EdgeExercise:
+		if id := m.exercise; id != nil {
+			return []ent.Value{*id}
+		}
+	case exerciseinstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ExerciseInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ExerciseInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ExerciseInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedexercise {
+		edges = append(edges, exerciseinstrument.EdgeExercise)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, exerciseinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ExerciseInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case exerciseinstrument.EdgeExercise:
+		return m.clearedexercise
+	case exerciseinstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ExerciseInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case exerciseinstrument.EdgeExercise:
+		m.ClearExercise()
+		return nil
+	case exerciseinstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ExerciseInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case exerciseinstrument.EdgeExercise:
+		m.ResetExercise()
+		return nil
+	case exerciseinstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ExerciseInstrument edge %s", name)
 }
 
 // ExerciseLanguageMutation represents an operation that mutates the ExerciseLanguage nodes in the graph.
@@ -22025,13 +21684,13 @@ func (m *ExerciseSkillMutation) ResetExercise() {
 	m.clearedexercise = false
 }
 
-// ClearSkill clears the "skill" edge to the Skill entity.
+// ClearSkill clears the "skill" edge to the KnowledgeNode entity.
 func (m *ExerciseSkillMutation) ClearSkill() {
 	m.clearedskill = true
 	m.clearedFields[exerciseskill.FieldSkillID] = struct{}{}
 }
 
-// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
+// SkillCleared reports if the "skill" edge to the KnowledgeNode entity was cleared.
 func (m *ExerciseSkillMutation) SkillCleared() bool {
 	return m.clearedskill
 }
@@ -23551,50 +23210,62 @@ func (m *ExpandedContentMutation) ResetEdge(name string) error {
 // InstrumentMutation represents an operation that mutates the Instrument nodes in the graph.
 type InstrumentMutation struct {
 	config
-	op                               Op
-	typ                              string
-	id                               *uuid.UUID
-	names                            *map[string]string
-	family                           *instrument.Family
-	string_count                     *int
-	addstring_count                  *int
-	tuning                           *[]string
-	appendtuning                     []string
-	key_range_lowest                 *string
-	key_range_highest                *string
-	clearedFields                    map[string]struct{}
-	default_voice                    *string
-	cleareddefault_voice             bool
-	diagrams                         map[uuid.UUID]struct{}
-	removeddiagrams                  map[uuid.UUID]struct{}
-	cleareddiagrams                  bool
-	compatible_diagrams              map[uuid.UUID]struct{}
-	removedcompatible_diagrams       map[uuid.UUID]struct{}
-	clearedcompatible_diagrams       bool
-	courses                          map[uuid.UUID]struct{}
-	removedcourses                   map[uuid.UUID]struct{}
-	clearedcourses                   bool
-	learning_paths                   map[uuid.UUID]struct{}
-	removedlearning_paths            map[uuid.UUID]struct{}
-	clearedlearning_paths            bool
-	content_nodes                    map[uuid.UUID]struct{}
-	removedcontent_nodes             map[uuid.UUID]struct{}
-	clearedcontent_nodes             bool
-	diagram_instruments              map[int]struct{}
-	removeddiagram_instruments       map[int]struct{}
-	cleareddiagram_instruments       bool
-	course_instruments               map[int]struct{}
-	removedcourse_instruments        map[int]struct{}
-	clearedcourse_instruments        bool
-	learning_path_instruments        map[int]struct{}
-	removedlearning_path_instruments map[int]struct{}
-	clearedlearning_path_instruments bool
-	content_node_instruments         map[int]struct{}
-	removedcontent_node_instruments  map[int]struct{}
-	clearedcontent_node_instruments  bool
-	done                             bool
-	oldValue                         func(context.Context) (*Instrument, error)
-	predicates                       []predicate.Instrument
+	op                                Op
+	typ                               string
+	id                                *uuid.UUID
+	names                             *map[string]string
+	family                            *instrument.Family
+	string_count                      *int
+	addstring_count                   *int
+	tuning                            *[]string
+	appendtuning                      []string
+	key_range_lowest                  *string
+	key_range_highest                 *string
+	clearedFields                     map[string]struct{}
+	default_voice                     *string
+	cleareddefault_voice              bool
+	diagrams                          map[uuid.UUID]struct{}
+	removeddiagrams                   map[uuid.UUID]struct{}
+	cleareddiagrams                   bool
+	compatible_diagrams               map[uuid.UUID]struct{}
+	removedcompatible_diagrams        map[uuid.UUID]struct{}
+	clearedcompatible_diagrams        bool
+	courses                           map[uuid.UUID]struct{}
+	removedcourses                    map[uuid.UUID]struct{}
+	clearedcourses                    bool
+	learning_paths                    map[uuid.UUID]struct{}
+	removedlearning_paths             map[uuid.UUID]struct{}
+	clearedlearning_paths             bool
+	content_nodes                     map[uuid.UUID]struct{}
+	removedcontent_nodes              map[uuid.UUID]struct{}
+	clearedcontent_nodes              bool
+	exercises                         map[uuid.UUID]struct{}
+	removedexercises                  map[uuid.UUID]struct{}
+	clearedexercises                  bool
+	knowledge_nodes                   map[uuid.UUID]struct{}
+	removedknowledge_nodes            map[uuid.UUID]struct{}
+	clearedknowledge_nodes            bool
+	diagram_instruments               map[int]struct{}
+	removeddiagram_instruments        map[int]struct{}
+	cleareddiagram_instruments        bool
+	course_instruments                map[int]struct{}
+	removedcourse_instruments         map[int]struct{}
+	clearedcourse_instruments         bool
+	learning_path_instruments         map[int]struct{}
+	removedlearning_path_instruments  map[int]struct{}
+	clearedlearning_path_instruments  bool
+	content_node_instruments          map[int]struct{}
+	removedcontent_node_instruments   map[int]struct{}
+	clearedcontent_node_instruments   bool
+	exercise_instruments              map[int]struct{}
+	removedexercise_instruments       map[int]struct{}
+	clearedexercise_instruments       bool
+	knowledge_node_instruments        map[int]struct{}
+	removedknowledge_node_instruments map[int]struct{}
+	clearedknowledge_node_instruments bool
+	done                              bool
+	oldValue                          func(context.Context) (*Instrument, error)
+	predicates                        []predicate.Instrument
 }
 
 var _ ent.Mutation = (*InstrumentMutation)(nil)
@@ -24339,6 +24010,114 @@ func (m *InstrumentMutation) ResetContentNodes() {
 	m.removedcontent_nodes = nil
 }
 
+// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
+func (m *InstrumentMutation) AddExerciseIDs(ids ...uuid.UUID) {
+	if m.exercises == nil {
+		m.exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExercises clears the "exercises" edge to the Exercise entity.
+func (m *InstrumentMutation) ClearExercises() {
+	m.clearedexercises = true
+}
+
+// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
+func (m *InstrumentMutation) ExercisesCleared() bool {
+	return m.clearedexercises
+}
+
+// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
+func (m *InstrumentMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
+	if m.removedexercises == nil {
+		m.removedexercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.exercises, ids[i])
+		m.removedexercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
+func (m *InstrumentMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedexercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExercisesIDs returns the "exercises" edge IDs in the mutation.
+func (m *InstrumentMutation) ExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExercises resets all changes to the "exercises" edge.
+func (m *InstrumentMutation) ResetExercises() {
+	m.exercises = nil
+	m.clearedexercises = false
+	m.removedexercises = nil
+}
+
+// AddKnowledgeNodeIDs adds the "knowledge_nodes" edge to the KnowledgeNode entity by ids.
+func (m *InstrumentMutation) AddKnowledgeNodeIDs(ids ...uuid.UUID) {
+	if m.knowledge_nodes == nil {
+		m.knowledge_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.knowledge_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearKnowledgeNodes clears the "knowledge_nodes" edge to the KnowledgeNode entity.
+func (m *InstrumentMutation) ClearKnowledgeNodes() {
+	m.clearedknowledge_nodes = true
+}
+
+// KnowledgeNodesCleared reports if the "knowledge_nodes" edge to the KnowledgeNode entity was cleared.
+func (m *InstrumentMutation) KnowledgeNodesCleared() bool {
+	return m.clearedknowledge_nodes
+}
+
+// RemoveKnowledgeNodeIDs removes the "knowledge_nodes" edge to the KnowledgeNode entity by IDs.
+func (m *InstrumentMutation) RemoveKnowledgeNodeIDs(ids ...uuid.UUID) {
+	if m.removedknowledge_nodes == nil {
+		m.removedknowledge_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.knowledge_nodes, ids[i])
+		m.removedknowledge_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedKnowledgeNodes returns the removed IDs of the "knowledge_nodes" edge to the KnowledgeNode entity.
+func (m *InstrumentMutation) RemovedKnowledgeNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedknowledge_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// KnowledgeNodesIDs returns the "knowledge_nodes" edge IDs in the mutation.
+func (m *InstrumentMutation) KnowledgeNodesIDs() (ids []uuid.UUID) {
+	for id := range m.knowledge_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetKnowledgeNodes resets all changes to the "knowledge_nodes" edge.
+func (m *InstrumentMutation) ResetKnowledgeNodes() {
+	m.knowledge_nodes = nil
+	m.clearedknowledge_nodes = false
+	m.removedknowledge_nodes = nil
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by ids.
 func (m *InstrumentMutation) AddDiagramInstrumentIDs(ids ...int) {
 	if m.diagram_instruments == nil {
@@ -24553,6 +24332,114 @@ func (m *InstrumentMutation) ResetContentNodeInstruments() {
 	m.content_node_instruments = nil
 	m.clearedcontent_node_instruments = false
 	m.removedcontent_node_instruments = nil
+}
+
+// AddExerciseInstrumentIDs adds the "exercise_instruments" edge to the ExerciseInstrument entity by ids.
+func (m *InstrumentMutation) AddExerciseInstrumentIDs(ids ...int) {
+	if m.exercise_instruments == nil {
+		m.exercise_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseInstruments clears the "exercise_instruments" edge to the ExerciseInstrument entity.
+func (m *InstrumentMutation) ClearExerciseInstruments() {
+	m.clearedexercise_instruments = true
+}
+
+// ExerciseInstrumentsCleared reports if the "exercise_instruments" edge to the ExerciseInstrument entity was cleared.
+func (m *InstrumentMutation) ExerciseInstrumentsCleared() bool {
+	return m.clearedexercise_instruments
+}
+
+// RemoveExerciseInstrumentIDs removes the "exercise_instruments" edge to the ExerciseInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveExerciseInstrumentIDs(ids ...int) {
+	if m.removedexercise_instruments == nil {
+		m.removedexercise_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_instruments, ids[i])
+		m.removedexercise_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseInstruments returns the removed IDs of the "exercise_instruments" edge to the ExerciseInstrument entity.
+func (m *InstrumentMutation) RemovedExerciseInstrumentsIDs() (ids []int) {
+	for id := range m.removedexercise_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseInstrumentsIDs returns the "exercise_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) ExerciseInstrumentsIDs() (ids []int) {
+	for id := range m.exercise_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseInstruments resets all changes to the "exercise_instruments" edge.
+func (m *InstrumentMutation) ResetExerciseInstruments() {
+	m.exercise_instruments = nil
+	m.clearedexercise_instruments = false
+	m.removedexercise_instruments = nil
+}
+
+// AddKnowledgeNodeInstrumentIDs adds the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by ids.
+func (m *InstrumentMutation) AddKnowledgeNodeInstrumentIDs(ids ...int) {
+	if m.knowledge_node_instruments == nil {
+		m.knowledge_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.knowledge_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearKnowledgeNodeInstruments clears the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity.
+func (m *InstrumentMutation) ClearKnowledgeNodeInstruments() {
+	m.clearedknowledge_node_instruments = true
+}
+
+// KnowledgeNodeInstrumentsCleared reports if the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity was cleared.
+func (m *InstrumentMutation) KnowledgeNodeInstrumentsCleared() bool {
+	return m.clearedknowledge_node_instruments
+}
+
+// RemoveKnowledgeNodeInstrumentIDs removes the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveKnowledgeNodeInstrumentIDs(ids ...int) {
+	if m.removedknowledge_node_instruments == nil {
+		m.removedknowledge_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.knowledge_node_instruments, ids[i])
+		m.removedknowledge_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedKnowledgeNodeInstruments returns the removed IDs of the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity.
+func (m *InstrumentMutation) RemovedKnowledgeNodeInstrumentsIDs() (ids []int) {
+	for id := range m.removedknowledge_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// KnowledgeNodeInstrumentsIDs returns the "knowledge_node_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) KnowledgeNodeInstrumentsIDs() (ids []int) {
+	for id := range m.knowledge_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetKnowledgeNodeInstruments resets all changes to the "knowledge_node_instruments" edge.
+func (m *InstrumentMutation) ResetKnowledgeNodeInstruments() {
+	m.knowledge_node_instruments = nil
+	m.clearedknowledge_node_instruments = false
+	m.removedknowledge_node_instruments = nil
 }
 
 // Where appends a list predicates to the InstrumentMutation builder.
@@ -24832,7 +24719,7 @@ func (m *InstrumentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *InstrumentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 14)
 	if m.default_voice != nil {
 		edges = append(edges, instrument.EdgeDefaultVoice)
 	}
@@ -24851,6 +24738,12 @@ func (m *InstrumentMutation) AddedEdges() []string {
 	if m.content_nodes != nil {
 		edges = append(edges, instrument.EdgeContentNodes)
 	}
+	if m.exercises != nil {
+		edges = append(edges, instrument.EdgeExercises)
+	}
+	if m.knowledge_nodes != nil {
+		edges = append(edges, instrument.EdgeKnowledgeNodes)
+	}
 	if m.diagram_instruments != nil {
 		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
@@ -24862,6 +24755,12 @@ func (m *InstrumentMutation) AddedEdges() []string {
 	}
 	if m.content_node_instruments != nil {
 		edges = append(edges, instrument.EdgeContentNodeInstruments)
+	}
+	if m.exercise_instruments != nil {
+		edges = append(edges, instrument.EdgeExerciseInstruments)
+	}
+	if m.knowledge_node_instruments != nil {
+		edges = append(edges, instrument.EdgeKnowledgeNodeInstruments)
 	}
 	return edges
 }
@@ -24904,6 +24803,18 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.exercises))
+		for id := range m.exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeKnowledgeNodes:
+		ids := make([]ent.Value, 0, len(m.knowledge_nodes))
+		for id := range m.knowledge_nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	case instrument.EdgeDiagramInstruments:
 		ids := make([]ent.Value, 0, len(m.diagram_instruments))
 		for id := range m.diagram_instruments {
@@ -24928,13 +24839,25 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeExerciseInstruments:
+		ids := make([]ent.Value, 0, len(m.exercise_instruments))
+		for id := range m.exercise_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeKnowledgeNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.knowledge_node_instruments))
+		for id := range m.knowledge_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *InstrumentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 14)
 	if m.removeddiagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
 	}
@@ -24950,6 +24873,12 @@ func (m *InstrumentMutation) RemovedEdges() []string {
 	if m.removedcontent_nodes != nil {
 		edges = append(edges, instrument.EdgeContentNodes)
 	}
+	if m.removedexercises != nil {
+		edges = append(edges, instrument.EdgeExercises)
+	}
+	if m.removedknowledge_nodes != nil {
+		edges = append(edges, instrument.EdgeKnowledgeNodes)
+	}
 	if m.removeddiagram_instruments != nil {
 		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
@@ -24961,6 +24890,12 @@ func (m *InstrumentMutation) RemovedEdges() []string {
 	}
 	if m.removedcontent_node_instruments != nil {
 		edges = append(edges, instrument.EdgeContentNodeInstruments)
+	}
+	if m.removedexercise_instruments != nil {
+		edges = append(edges, instrument.EdgeExerciseInstruments)
+	}
+	if m.removedknowledge_node_instruments != nil {
+		edges = append(edges, instrument.EdgeKnowledgeNodeInstruments)
 	}
 	return edges
 }
@@ -24999,6 +24934,18 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeExercises:
+		ids := make([]ent.Value, 0, len(m.removedexercises))
+		for id := range m.removedexercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeKnowledgeNodes:
+		ids := make([]ent.Value, 0, len(m.removedknowledge_nodes))
+		for id := range m.removedknowledge_nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	case instrument.EdgeDiagramInstruments:
 		ids := make([]ent.Value, 0, len(m.removeddiagram_instruments))
 		for id := range m.removeddiagram_instruments {
@@ -25023,13 +24970,25 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeExerciseInstruments:
+		ids := make([]ent.Value, 0, len(m.removedexercise_instruments))
+		for id := range m.removedexercise_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeKnowledgeNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedknowledge_node_instruments))
+		for id := range m.removedknowledge_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *InstrumentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 14)
 	if m.cleareddefault_voice {
 		edges = append(edges, instrument.EdgeDefaultVoice)
 	}
@@ -25048,6 +25007,12 @@ func (m *InstrumentMutation) ClearedEdges() []string {
 	if m.clearedcontent_nodes {
 		edges = append(edges, instrument.EdgeContentNodes)
 	}
+	if m.clearedexercises {
+		edges = append(edges, instrument.EdgeExercises)
+	}
+	if m.clearedknowledge_nodes {
+		edges = append(edges, instrument.EdgeKnowledgeNodes)
+	}
 	if m.cleareddiagram_instruments {
 		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
@@ -25059,6 +25024,12 @@ func (m *InstrumentMutation) ClearedEdges() []string {
 	}
 	if m.clearedcontent_node_instruments {
 		edges = append(edges, instrument.EdgeContentNodeInstruments)
+	}
+	if m.clearedexercise_instruments {
+		edges = append(edges, instrument.EdgeExerciseInstruments)
+	}
+	if m.clearedknowledge_node_instruments {
+		edges = append(edges, instrument.EdgeKnowledgeNodeInstruments)
 	}
 	return edges
 }
@@ -25079,6 +25050,10 @@ func (m *InstrumentMutation) EdgeCleared(name string) bool {
 		return m.clearedlearning_paths
 	case instrument.EdgeContentNodes:
 		return m.clearedcontent_nodes
+	case instrument.EdgeExercises:
+		return m.clearedexercises
+	case instrument.EdgeKnowledgeNodes:
+		return m.clearedknowledge_nodes
 	case instrument.EdgeDiagramInstruments:
 		return m.cleareddiagram_instruments
 	case instrument.EdgeCourseInstruments:
@@ -25087,6 +25062,10 @@ func (m *InstrumentMutation) EdgeCleared(name string) bool {
 		return m.clearedlearning_path_instruments
 	case instrument.EdgeContentNodeInstruments:
 		return m.clearedcontent_node_instruments
+	case instrument.EdgeExerciseInstruments:
+		return m.clearedexercise_instruments
+	case instrument.EdgeKnowledgeNodeInstruments:
+		return m.clearedknowledge_node_instruments
 	}
 	return false
 }
@@ -25124,6 +25103,12 @@ func (m *InstrumentMutation) ResetEdge(name string) error {
 	case instrument.EdgeContentNodes:
 		m.ResetContentNodes()
 		return nil
+	case instrument.EdgeExercises:
+		m.ResetExercises()
+		return nil
+	case instrument.EdgeKnowledgeNodes:
+		m.ResetKnowledgeNodes()
+		return nil
 	case instrument.EdgeDiagramInstruments:
 		m.ResetDiagramInstruments()
 		return nil
@@ -25136,8 +25121,3220 @@ func (m *InstrumentMutation) ResetEdge(name string) error {
 	case instrument.EdgeContentNodeInstruments:
 		m.ResetContentNodeInstruments()
 		return nil
+	case instrument.EdgeExerciseInstruments:
+		m.ResetExerciseInstruments()
+		return nil
+	case instrument.EdgeKnowledgeNodeInstruments:
+		m.ResetKnowledgeNodeInstruments()
+		return nil
 	}
 	return fmt.Errorf("unknown Instrument edge %s", name)
+}
+
+// KnowledgeEdgeMutation represents an operation that mutates the KnowledgeEdge nodes in the graph.
+type KnowledgeEdgeMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	_type         *knowledgeedge.Type
+	level         *knowledgeedge.Level
+	clearedFields map[string]struct{}
+	from          *uuid.UUID
+	clearedfrom   bool
+	to            *uuid.UUID
+	clearedto     bool
+	done          bool
+	oldValue      func(context.Context) (*KnowledgeEdge, error)
+	predicates    []predicate.KnowledgeEdge
+}
+
+var _ ent.Mutation = (*KnowledgeEdgeMutation)(nil)
+
+// knowledgeedgeOption allows management of the mutation configuration using functional options.
+type knowledgeedgeOption func(*KnowledgeEdgeMutation)
+
+// newKnowledgeEdgeMutation creates new mutation for the KnowledgeEdge entity.
+func newKnowledgeEdgeMutation(c config, op Op, opts ...knowledgeedgeOption) *KnowledgeEdgeMutation {
+	m := &KnowledgeEdgeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeKnowledgeEdge,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withKnowledgeEdgeID sets the ID field of the mutation.
+func withKnowledgeEdgeID(id uuid.UUID) knowledgeedgeOption {
+	return func(m *KnowledgeEdgeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *KnowledgeEdge
+		)
+		m.oldValue = func(ctx context.Context) (*KnowledgeEdge, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().KnowledgeEdge.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withKnowledgeEdge sets the old KnowledgeEdge of the mutation.
+func withKnowledgeEdge(node *KnowledgeEdge) knowledgeedgeOption {
+	return func(m *KnowledgeEdgeMutation) {
+		m.oldValue = func(context.Context) (*KnowledgeEdge, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m KnowledgeEdgeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m KnowledgeEdgeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of KnowledgeEdge entities.
+func (m *KnowledgeEdgeMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *KnowledgeEdgeMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *KnowledgeEdgeMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().KnowledgeEdge.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetFromID sets the "from_id" field.
+func (m *KnowledgeEdgeMutation) SetFromID(u uuid.UUID) {
+	m.from = &u
+}
+
+// FromID returns the value of the "from_id" field in the mutation.
+func (m *KnowledgeEdgeMutation) FromID() (r uuid.UUID, exists bool) {
+	v := m.from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFromID returns the old "from_id" field's value of the KnowledgeEdge entity.
+// If the KnowledgeEdge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeEdgeMutation) OldFromID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFromID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFromID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFromID: %w", err)
+	}
+	return oldValue.FromID, nil
+}
+
+// ResetFromID resets all changes to the "from_id" field.
+func (m *KnowledgeEdgeMutation) ResetFromID() {
+	m.from = nil
+}
+
+// SetToID sets the "to_id" field.
+func (m *KnowledgeEdgeMutation) SetToID(u uuid.UUID) {
+	m.to = &u
+}
+
+// ToID returns the value of the "to_id" field in the mutation.
+func (m *KnowledgeEdgeMutation) ToID() (r uuid.UUID, exists bool) {
+	v := m.to
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToID returns the old "to_id" field's value of the KnowledgeEdge entity.
+// If the KnowledgeEdge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeEdgeMutation) OldToID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToID: %w", err)
+	}
+	return oldValue.ToID, nil
+}
+
+// ResetToID resets all changes to the "to_id" field.
+func (m *KnowledgeEdgeMutation) ResetToID() {
+	m.to = nil
+}
+
+// SetType sets the "type" field.
+func (m *KnowledgeEdgeMutation) SetType(k knowledgeedge.Type) {
+	m._type = &k
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *KnowledgeEdgeMutation) GetType() (r knowledgeedge.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the KnowledgeEdge entity.
+// If the KnowledgeEdge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeEdgeMutation) OldType(ctx context.Context) (v knowledgeedge.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *KnowledgeEdgeMutation) ResetType() {
+	m._type = nil
+}
+
+// SetLevel sets the "level" field.
+func (m *KnowledgeEdgeMutation) SetLevel(k knowledgeedge.Level) {
+	m.level = &k
+}
+
+// Level returns the value of the "level" field in the mutation.
+func (m *KnowledgeEdgeMutation) Level() (r knowledgeedge.Level, exists bool) {
+	v := m.level
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLevel returns the old "level" field's value of the KnowledgeEdge entity.
+// If the KnowledgeEdge object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeEdgeMutation) OldLevel(ctx context.Context) (v *knowledgeedge.Level, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLevel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLevel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLevel: %w", err)
+	}
+	return oldValue.Level, nil
+}
+
+// ClearLevel clears the value of the "level" field.
+func (m *KnowledgeEdgeMutation) ClearLevel() {
+	m.level = nil
+	m.clearedFields[knowledgeedge.FieldLevel] = struct{}{}
+}
+
+// LevelCleared returns if the "level" field was cleared in this mutation.
+func (m *KnowledgeEdgeMutation) LevelCleared() bool {
+	_, ok := m.clearedFields[knowledgeedge.FieldLevel]
+	return ok
+}
+
+// ResetLevel resets all changes to the "level" field.
+func (m *KnowledgeEdgeMutation) ResetLevel() {
+	m.level = nil
+	delete(m.clearedFields, knowledgeedge.FieldLevel)
+}
+
+// ClearFrom clears the "from" edge to the KnowledgeNode entity.
+func (m *KnowledgeEdgeMutation) ClearFrom() {
+	m.clearedfrom = true
+	m.clearedFields[knowledgeedge.FieldFromID] = struct{}{}
+}
+
+// FromCleared reports if the "from" edge to the KnowledgeNode entity was cleared.
+func (m *KnowledgeEdgeMutation) FromCleared() bool {
+	return m.clearedfrom
+}
+
+// FromIDs returns the "from" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FromID instead. It exists only for internal usage by the builders.
+func (m *KnowledgeEdgeMutation) FromIDs() (ids []uuid.UUID) {
+	if id := m.from; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFrom resets all changes to the "from" edge.
+func (m *KnowledgeEdgeMutation) ResetFrom() {
+	m.from = nil
+	m.clearedfrom = false
+}
+
+// ClearTo clears the "to" edge to the KnowledgeNode entity.
+func (m *KnowledgeEdgeMutation) ClearTo() {
+	m.clearedto = true
+	m.clearedFields[knowledgeedge.FieldToID] = struct{}{}
+}
+
+// ToCleared reports if the "to" edge to the KnowledgeNode entity was cleared.
+func (m *KnowledgeEdgeMutation) ToCleared() bool {
+	return m.clearedto
+}
+
+// ToIDs returns the "to" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ToID instead. It exists only for internal usage by the builders.
+func (m *KnowledgeEdgeMutation) ToIDs() (ids []uuid.UUID) {
+	if id := m.to; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTo resets all changes to the "to" edge.
+func (m *KnowledgeEdgeMutation) ResetTo() {
+	m.to = nil
+	m.clearedto = false
+}
+
+// Where appends a list predicates to the KnowledgeEdgeMutation builder.
+func (m *KnowledgeEdgeMutation) Where(ps ...predicate.KnowledgeEdge) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the KnowledgeEdgeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *KnowledgeEdgeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.KnowledgeEdge, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *KnowledgeEdgeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *KnowledgeEdgeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (KnowledgeEdge).
+func (m *KnowledgeEdgeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *KnowledgeEdgeMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.from != nil {
+		fields = append(fields, knowledgeedge.FieldFromID)
+	}
+	if m.to != nil {
+		fields = append(fields, knowledgeedge.FieldToID)
+	}
+	if m._type != nil {
+		fields = append(fields, knowledgeedge.FieldType)
+	}
+	if m.level != nil {
+		fields = append(fields, knowledgeedge.FieldLevel)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *KnowledgeEdgeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case knowledgeedge.FieldFromID:
+		return m.FromID()
+	case knowledgeedge.FieldToID:
+		return m.ToID()
+	case knowledgeedge.FieldType:
+		return m.GetType()
+	case knowledgeedge.FieldLevel:
+		return m.Level()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *KnowledgeEdgeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case knowledgeedge.FieldFromID:
+		return m.OldFromID(ctx)
+	case knowledgeedge.FieldToID:
+		return m.OldToID(ctx)
+	case knowledgeedge.FieldType:
+		return m.OldType(ctx)
+	case knowledgeedge.FieldLevel:
+		return m.OldLevel(ctx)
+	}
+	return nil, fmt.Errorf("unknown KnowledgeEdge field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeEdgeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case knowledgeedge.FieldFromID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFromID(v)
+		return nil
+	case knowledgeedge.FieldToID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToID(v)
+		return nil
+	case knowledgeedge.FieldType:
+		v, ok := value.(knowledgeedge.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case knowledgeedge.FieldLevel:
+		v, ok := value.(knowledgeedge.Level)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLevel(v)
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeEdge field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *KnowledgeEdgeMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *KnowledgeEdgeMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeEdgeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown KnowledgeEdge numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *KnowledgeEdgeMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(knowledgeedge.FieldLevel) {
+		fields = append(fields, knowledgeedge.FieldLevel)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *KnowledgeEdgeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *KnowledgeEdgeMutation) ClearField(name string) error {
+	switch name {
+	case knowledgeedge.FieldLevel:
+		m.ClearLevel()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeEdge nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *KnowledgeEdgeMutation) ResetField(name string) error {
+	switch name {
+	case knowledgeedge.FieldFromID:
+		m.ResetFromID()
+		return nil
+	case knowledgeedge.FieldToID:
+		m.ResetToID()
+		return nil
+	case knowledgeedge.FieldType:
+		m.ResetType()
+		return nil
+	case knowledgeedge.FieldLevel:
+		m.ResetLevel()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeEdge field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *KnowledgeEdgeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.from != nil {
+		edges = append(edges, knowledgeedge.EdgeFrom)
+	}
+	if m.to != nil {
+		edges = append(edges, knowledgeedge.EdgeTo)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *KnowledgeEdgeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case knowledgeedge.EdgeFrom:
+		if id := m.from; id != nil {
+			return []ent.Value{*id}
+		}
+	case knowledgeedge.EdgeTo:
+		if id := m.to; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *KnowledgeEdgeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *KnowledgeEdgeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *KnowledgeEdgeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedfrom {
+		edges = append(edges, knowledgeedge.EdgeFrom)
+	}
+	if m.clearedto {
+		edges = append(edges, knowledgeedge.EdgeTo)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *KnowledgeEdgeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case knowledgeedge.EdgeFrom:
+		return m.clearedfrom
+	case knowledgeedge.EdgeTo:
+		return m.clearedto
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *KnowledgeEdgeMutation) ClearEdge(name string) error {
+	switch name {
+	case knowledgeedge.EdgeFrom:
+		m.ClearFrom()
+		return nil
+	case knowledgeedge.EdgeTo:
+		m.ClearTo()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeEdge unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *KnowledgeEdgeMutation) ResetEdge(name string) error {
+	switch name {
+	case knowledgeedge.EdgeFrom:
+		m.ResetFrom()
+		return nil
+	case knowledgeedge.EdgeTo:
+		m.ResetTo()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeEdge edge %s", name)
+}
+
+// KnowledgeNodeMutation represents an operation that mutates the KnowledgeNode nodes in the graph.
+type KnowledgeNodeMutation struct {
+	config
+	op                                Op
+	typ                               string
+	id                                *uuid.UUID
+	kind                              *knowledgenode.Kind
+	key                               *string
+	names                             *map[string]string
+	descriptions                      *map[string]string
+	clearedFields                     map[string]struct{}
+	children                          map[uuid.UUID]struct{}
+	removedchildren                   map[uuid.UUID]struct{}
+	clearedchildren                   bool
+	parent                            *uuid.UUID
+	clearedparent                     bool
+	instruments                       map[uuid.UUID]struct{}
+	removedinstruments                map[uuid.UUID]struct{}
+	clearedinstruments                bool
+	outgoing_edges                    map[uuid.UUID]struct{}
+	removedoutgoing_edges             map[uuid.UUID]struct{}
+	clearedoutgoing_edges             bool
+	incoming_edges                    map[uuid.UUID]struct{}
+	removedincoming_edges             map[uuid.UUID]struct{}
+	clearedincoming_edges             bool
+	skill_content_nodes               map[uuid.UUID]struct{}
+	removedskill_content_nodes        map[uuid.UUID]struct{}
+	clearedskill_content_nodes        bool
+	concept_content_nodes             map[uuid.UUID]struct{}
+	removedconcept_content_nodes      map[uuid.UUID]struct{}
+	clearedconcept_content_nodes      bool
+	skill_exercises                   map[uuid.UUID]struct{}
+	removedskill_exercises            map[uuid.UUID]struct{}
+	clearedskill_exercises            bool
+	concept_exercises                 map[uuid.UUID]struct{}
+	removedconcept_exercises          map[uuid.UUID]struct{}
+	clearedconcept_exercises          bool
+	skill_diagrams                    map[uuid.UUID]struct{}
+	removedskill_diagrams             map[uuid.UUID]struct{}
+	clearedskill_diagrams             bool
+	concept_diagrams                  map[uuid.UUID]struct{}
+	removedconcept_diagrams           map[uuid.UUID]struct{}
+	clearedconcept_diagrams           bool
+	knowledge_node_instruments        map[int]struct{}
+	removedknowledge_node_instruments map[int]struct{}
+	clearedknowledge_node_instruments bool
+	content_node_skills               map[int]struct{}
+	removedcontent_node_skills        map[int]struct{}
+	clearedcontent_node_skills        bool
+	content_node_concepts             map[int]struct{}
+	removedcontent_node_concepts      map[int]struct{}
+	clearedcontent_node_concepts      bool
+	exercise_skills                   map[int]struct{}
+	removedexercise_skills            map[int]struct{}
+	clearedexercise_skills            bool
+	exercise_concepts                 map[int]struct{}
+	removedexercise_concepts          map[int]struct{}
+	clearedexercise_concepts          bool
+	diagram_skills                    map[int]struct{}
+	removeddiagram_skills             map[int]struct{}
+	cleareddiagram_skills             bool
+	diagram_concepts                  map[int]struct{}
+	removeddiagram_concepts           map[int]struct{}
+	cleareddiagram_concepts           bool
+	done                              bool
+	oldValue                          func(context.Context) (*KnowledgeNode, error)
+	predicates                        []predicate.KnowledgeNode
+}
+
+var _ ent.Mutation = (*KnowledgeNodeMutation)(nil)
+
+// knowledgenodeOption allows management of the mutation configuration using functional options.
+type knowledgenodeOption func(*KnowledgeNodeMutation)
+
+// newKnowledgeNodeMutation creates new mutation for the KnowledgeNode entity.
+func newKnowledgeNodeMutation(c config, op Op, opts ...knowledgenodeOption) *KnowledgeNodeMutation {
+	m := &KnowledgeNodeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeKnowledgeNode,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withKnowledgeNodeID sets the ID field of the mutation.
+func withKnowledgeNodeID(id uuid.UUID) knowledgenodeOption {
+	return func(m *KnowledgeNodeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *KnowledgeNode
+		)
+		m.oldValue = func(ctx context.Context) (*KnowledgeNode, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().KnowledgeNode.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withKnowledgeNode sets the old KnowledgeNode of the mutation.
+func withKnowledgeNode(node *KnowledgeNode) knowledgenodeOption {
+	return func(m *KnowledgeNodeMutation) {
+		m.oldValue = func(context.Context) (*KnowledgeNode, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m KnowledgeNodeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m KnowledgeNodeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of KnowledgeNode entities.
+func (m *KnowledgeNodeMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *KnowledgeNodeMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *KnowledgeNodeMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().KnowledgeNode.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetKind sets the "kind" field.
+func (m *KnowledgeNodeMutation) SetKind(k knowledgenode.Kind) {
+	m.kind = &k
+}
+
+// Kind returns the value of the "kind" field in the mutation.
+func (m *KnowledgeNodeMutation) Kind() (r knowledgenode.Kind, exists bool) {
+	v := m.kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKind returns the old "kind" field's value of the KnowledgeNode entity.
+// If the KnowledgeNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeMutation) OldKind(ctx context.Context) (v knowledgenode.Kind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+	}
+	return oldValue.Kind, nil
+}
+
+// ResetKind resets all changes to the "kind" field.
+func (m *KnowledgeNodeMutation) ResetKind() {
+	m.kind = nil
+}
+
+// SetKey sets the "key" field.
+func (m *KnowledgeNodeMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *KnowledgeNodeMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the KnowledgeNode entity.
+// If the KnowledgeNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *KnowledgeNodeMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetNames sets the "names" field.
+func (m *KnowledgeNodeMutation) SetNames(value map[string]string) {
+	m.names = &value
+}
+
+// Names returns the value of the "names" field in the mutation.
+func (m *KnowledgeNodeMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNames returns the old "names" field's value of the KnowledgeNode entity.
+// If the KnowledgeNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
+	}
+	return oldValue.Names, nil
+}
+
+// ResetNames resets all changes to the "names" field.
+func (m *KnowledgeNodeMutation) ResetNames() {
+	m.names = nil
+}
+
+// SetDescriptions sets the "descriptions" field.
+func (m *KnowledgeNodeMutation) SetDescriptions(value map[string]string) {
+	m.descriptions = &value
+}
+
+// Descriptions returns the value of the "descriptions" field in the mutation.
+func (m *KnowledgeNodeMutation) Descriptions() (r map[string]string, exists bool) {
+	v := m.descriptions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescriptions returns the old "descriptions" field's value of the KnowledgeNode entity.
+// If the KnowledgeNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeMutation) OldDescriptions(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescriptions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescriptions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescriptions: %w", err)
+	}
+	return oldValue.Descriptions, nil
+}
+
+// ClearDescriptions clears the value of the "descriptions" field.
+func (m *KnowledgeNodeMutation) ClearDescriptions() {
+	m.descriptions = nil
+	m.clearedFields[knowledgenode.FieldDescriptions] = struct{}{}
+}
+
+// DescriptionsCleared returns if the "descriptions" field was cleared in this mutation.
+func (m *KnowledgeNodeMutation) DescriptionsCleared() bool {
+	_, ok := m.clearedFields[knowledgenode.FieldDescriptions]
+	return ok
+}
+
+// ResetDescriptions resets all changes to the "descriptions" field.
+func (m *KnowledgeNodeMutation) ResetDescriptions() {
+	m.descriptions = nil
+	delete(m.clearedFields, knowledgenode.FieldDescriptions)
+}
+
+// SetParentID sets the "parent_id" field.
+func (m *KnowledgeNodeMutation) SetParentID(u uuid.UUID) {
+	m.parent = &u
+}
+
+// ParentID returns the value of the "parent_id" field in the mutation.
+func (m *KnowledgeNodeMutation) ParentID() (r uuid.UUID, exists bool) {
+	v := m.parent
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldParentID returns the old "parent_id" field's value of the KnowledgeNode entity.
+// If the KnowledgeNode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldParentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
+	}
+	return oldValue.ParentID, nil
+}
+
+// ClearParentID clears the value of the "parent_id" field.
+func (m *KnowledgeNodeMutation) ClearParentID() {
+	m.parent = nil
+	m.clearedFields[knowledgenode.FieldParentID] = struct{}{}
+}
+
+// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
+func (m *KnowledgeNodeMutation) ParentIDCleared() bool {
+	_, ok := m.clearedFields[knowledgenode.FieldParentID]
+	return ok
+}
+
+// ResetParentID resets all changes to the "parent_id" field.
+func (m *KnowledgeNodeMutation) ResetParentID() {
+	m.parent = nil
+	delete(m.clearedFields, knowledgenode.FieldParentID)
+}
+
+// AddChildIDs adds the "children" edge to the KnowledgeNode entity by ids.
+func (m *KnowledgeNodeMutation) AddChildIDs(ids ...uuid.UUID) {
+	if m.children == nil {
+		m.children = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.children[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChildren clears the "children" edge to the KnowledgeNode entity.
+func (m *KnowledgeNodeMutation) ClearChildren() {
+	m.clearedchildren = true
+}
+
+// ChildrenCleared reports if the "children" edge to the KnowledgeNode entity was cleared.
+func (m *KnowledgeNodeMutation) ChildrenCleared() bool {
+	return m.clearedchildren
+}
+
+// RemoveChildIDs removes the "children" edge to the KnowledgeNode entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveChildIDs(ids ...uuid.UUID) {
+	if m.removedchildren == nil {
+		m.removedchildren = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.children, ids[i])
+		m.removedchildren[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChildren returns the removed IDs of the "children" edge to the KnowledgeNode entity.
+func (m *KnowledgeNodeMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.removedchildren {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChildrenIDs returns the "children" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ChildrenIDs() (ids []uuid.UUID) {
+	for id := range m.children {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChildren resets all changes to the "children" edge.
+func (m *KnowledgeNodeMutation) ResetChildren() {
+	m.children = nil
+	m.clearedchildren = false
+	m.removedchildren = nil
+}
+
+// ClearParent clears the "parent" edge to the KnowledgeNode entity.
+func (m *KnowledgeNodeMutation) ClearParent() {
+	m.clearedparent = true
+	m.clearedFields[knowledgenode.FieldParentID] = struct{}{}
+}
+
+// ParentCleared reports if the "parent" edge to the KnowledgeNode entity was cleared.
+func (m *KnowledgeNodeMutation) ParentCleared() bool {
+	return m.ParentIDCleared() || m.clearedparent
+}
+
+// ParentIDs returns the "parent" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ParentID instead. It exists only for internal usage by the builders.
+func (m *KnowledgeNodeMutation) ParentIDs() (ids []uuid.UUID) {
+	if id := m.parent; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetParent resets all changes to the "parent" edge.
+func (m *KnowledgeNodeMutation) ResetParent() {
+	m.parent = nil
+	m.clearedparent = false
+}
+
+// AddInstrumentIDs adds the "instruments" edge to the Instrument entity by ids.
+func (m *KnowledgeNodeMutation) AddInstrumentIDs(ids ...uuid.UUID) {
+	if m.instruments == nil {
+		m.instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInstruments clears the "instruments" edge to the Instrument entity.
+func (m *KnowledgeNodeMutation) ClearInstruments() {
+	m.clearedinstruments = true
+}
+
+// InstrumentsCleared reports if the "instruments" edge to the Instrument entity was cleared.
+func (m *KnowledgeNodeMutation) InstrumentsCleared() bool {
+	return m.clearedinstruments
+}
+
+// RemoveInstrumentIDs removes the "instruments" edge to the Instrument entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedinstruments == nil {
+		m.removedinstruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.instruments, ids[i])
+		m.removedinstruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInstruments returns the removed IDs of the "instruments" edge to the Instrument entity.
+func (m *KnowledgeNodeMutation) RemovedInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedinstruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InstrumentsIDs returns the "instruments" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) InstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInstruments resets all changes to the "instruments" edge.
+func (m *KnowledgeNodeMutation) ResetInstruments() {
+	m.instruments = nil
+	m.clearedinstruments = false
+	m.removedinstruments = nil
+}
+
+// AddOutgoingEdgeIDs adds the "outgoing_edges" edge to the KnowledgeEdge entity by ids.
+func (m *KnowledgeNodeMutation) AddOutgoingEdgeIDs(ids ...uuid.UUID) {
+	if m.outgoing_edges == nil {
+		m.outgoing_edges = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.outgoing_edges[ids[i]] = struct{}{}
+	}
+}
+
+// ClearOutgoingEdges clears the "outgoing_edges" edge to the KnowledgeEdge entity.
+func (m *KnowledgeNodeMutation) ClearOutgoingEdges() {
+	m.clearedoutgoing_edges = true
+}
+
+// OutgoingEdgesCleared reports if the "outgoing_edges" edge to the KnowledgeEdge entity was cleared.
+func (m *KnowledgeNodeMutation) OutgoingEdgesCleared() bool {
+	return m.clearedoutgoing_edges
+}
+
+// RemoveOutgoingEdgeIDs removes the "outgoing_edges" edge to the KnowledgeEdge entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveOutgoingEdgeIDs(ids ...uuid.UUID) {
+	if m.removedoutgoing_edges == nil {
+		m.removedoutgoing_edges = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.outgoing_edges, ids[i])
+		m.removedoutgoing_edges[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedOutgoingEdges returns the removed IDs of the "outgoing_edges" edge to the KnowledgeEdge entity.
+func (m *KnowledgeNodeMutation) RemovedOutgoingEdgesIDs() (ids []uuid.UUID) {
+	for id := range m.removedoutgoing_edges {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// OutgoingEdgesIDs returns the "outgoing_edges" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) OutgoingEdgesIDs() (ids []uuid.UUID) {
+	for id := range m.outgoing_edges {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetOutgoingEdges resets all changes to the "outgoing_edges" edge.
+func (m *KnowledgeNodeMutation) ResetOutgoingEdges() {
+	m.outgoing_edges = nil
+	m.clearedoutgoing_edges = false
+	m.removedoutgoing_edges = nil
+}
+
+// AddIncomingEdgeIDs adds the "incoming_edges" edge to the KnowledgeEdge entity by ids.
+func (m *KnowledgeNodeMutation) AddIncomingEdgeIDs(ids ...uuid.UUID) {
+	if m.incoming_edges == nil {
+		m.incoming_edges = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.incoming_edges[ids[i]] = struct{}{}
+	}
+}
+
+// ClearIncomingEdges clears the "incoming_edges" edge to the KnowledgeEdge entity.
+func (m *KnowledgeNodeMutation) ClearIncomingEdges() {
+	m.clearedincoming_edges = true
+}
+
+// IncomingEdgesCleared reports if the "incoming_edges" edge to the KnowledgeEdge entity was cleared.
+func (m *KnowledgeNodeMutation) IncomingEdgesCleared() bool {
+	return m.clearedincoming_edges
+}
+
+// RemoveIncomingEdgeIDs removes the "incoming_edges" edge to the KnowledgeEdge entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveIncomingEdgeIDs(ids ...uuid.UUID) {
+	if m.removedincoming_edges == nil {
+		m.removedincoming_edges = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.incoming_edges, ids[i])
+		m.removedincoming_edges[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedIncomingEdges returns the removed IDs of the "incoming_edges" edge to the KnowledgeEdge entity.
+func (m *KnowledgeNodeMutation) RemovedIncomingEdgesIDs() (ids []uuid.UUID) {
+	for id := range m.removedincoming_edges {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// IncomingEdgesIDs returns the "incoming_edges" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) IncomingEdgesIDs() (ids []uuid.UUID) {
+	for id := range m.incoming_edges {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetIncomingEdges resets all changes to the "incoming_edges" edge.
+func (m *KnowledgeNodeMutation) ResetIncomingEdges() {
+	m.incoming_edges = nil
+	m.clearedincoming_edges = false
+	m.removedincoming_edges = nil
+}
+
+// AddSkillContentNodeIDs adds the "skill_content_nodes" edge to the ContentNode entity by ids.
+func (m *KnowledgeNodeMutation) AddSkillContentNodeIDs(ids ...uuid.UUID) {
+	if m.skill_content_nodes == nil {
+		m.skill_content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skill_content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkillContentNodes clears the "skill_content_nodes" edge to the ContentNode entity.
+func (m *KnowledgeNodeMutation) ClearSkillContentNodes() {
+	m.clearedskill_content_nodes = true
+}
+
+// SkillContentNodesCleared reports if the "skill_content_nodes" edge to the ContentNode entity was cleared.
+func (m *KnowledgeNodeMutation) SkillContentNodesCleared() bool {
+	return m.clearedskill_content_nodes
+}
+
+// RemoveSkillContentNodeIDs removes the "skill_content_nodes" edge to the ContentNode entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveSkillContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedskill_content_nodes == nil {
+		m.removedskill_content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skill_content_nodes, ids[i])
+		m.removedskill_content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkillContentNodes returns the removed IDs of the "skill_content_nodes" edge to the ContentNode entity.
+func (m *KnowledgeNodeMutation) RemovedSkillContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedskill_content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillContentNodesIDs returns the "skill_content_nodes" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) SkillContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.skill_content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkillContentNodes resets all changes to the "skill_content_nodes" edge.
+func (m *KnowledgeNodeMutation) ResetSkillContentNodes() {
+	m.skill_content_nodes = nil
+	m.clearedskill_content_nodes = false
+	m.removedskill_content_nodes = nil
+}
+
+// AddConceptContentNodeIDs adds the "concept_content_nodes" edge to the ContentNode entity by ids.
+func (m *KnowledgeNodeMutation) AddConceptContentNodeIDs(ids ...uuid.UUID) {
+	if m.concept_content_nodes == nil {
+		m.concept_content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concept_content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConceptContentNodes clears the "concept_content_nodes" edge to the ContentNode entity.
+func (m *KnowledgeNodeMutation) ClearConceptContentNodes() {
+	m.clearedconcept_content_nodes = true
+}
+
+// ConceptContentNodesCleared reports if the "concept_content_nodes" edge to the ContentNode entity was cleared.
+func (m *KnowledgeNodeMutation) ConceptContentNodesCleared() bool {
+	return m.clearedconcept_content_nodes
+}
+
+// RemoveConceptContentNodeIDs removes the "concept_content_nodes" edge to the ContentNode entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveConceptContentNodeIDs(ids ...uuid.UUID) {
+	if m.removedconcept_content_nodes == nil {
+		m.removedconcept_content_nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concept_content_nodes, ids[i])
+		m.removedconcept_content_nodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConceptContentNodes returns the removed IDs of the "concept_content_nodes" edge to the ContentNode entity.
+func (m *KnowledgeNodeMutation) RemovedConceptContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcept_content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptContentNodesIDs returns the "concept_content_nodes" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ConceptContentNodesIDs() (ids []uuid.UUID) {
+	for id := range m.concept_content_nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConceptContentNodes resets all changes to the "concept_content_nodes" edge.
+func (m *KnowledgeNodeMutation) ResetConceptContentNodes() {
+	m.concept_content_nodes = nil
+	m.clearedconcept_content_nodes = false
+	m.removedconcept_content_nodes = nil
+}
+
+// AddSkillExerciseIDs adds the "skill_exercises" edge to the Exercise entity by ids.
+func (m *KnowledgeNodeMutation) AddSkillExerciseIDs(ids ...uuid.UUID) {
+	if m.skill_exercises == nil {
+		m.skill_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skill_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkillExercises clears the "skill_exercises" edge to the Exercise entity.
+func (m *KnowledgeNodeMutation) ClearSkillExercises() {
+	m.clearedskill_exercises = true
+}
+
+// SkillExercisesCleared reports if the "skill_exercises" edge to the Exercise entity was cleared.
+func (m *KnowledgeNodeMutation) SkillExercisesCleared() bool {
+	return m.clearedskill_exercises
+}
+
+// RemoveSkillExerciseIDs removes the "skill_exercises" edge to the Exercise entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveSkillExerciseIDs(ids ...uuid.UUID) {
+	if m.removedskill_exercises == nil {
+		m.removedskill_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skill_exercises, ids[i])
+		m.removedskill_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkillExercises returns the removed IDs of the "skill_exercises" edge to the Exercise entity.
+func (m *KnowledgeNodeMutation) RemovedSkillExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedskill_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillExercisesIDs returns the "skill_exercises" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) SkillExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.skill_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkillExercises resets all changes to the "skill_exercises" edge.
+func (m *KnowledgeNodeMutation) ResetSkillExercises() {
+	m.skill_exercises = nil
+	m.clearedskill_exercises = false
+	m.removedskill_exercises = nil
+}
+
+// AddConceptExerciseIDs adds the "concept_exercises" edge to the Exercise entity by ids.
+func (m *KnowledgeNodeMutation) AddConceptExerciseIDs(ids ...uuid.UUID) {
+	if m.concept_exercises == nil {
+		m.concept_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concept_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConceptExercises clears the "concept_exercises" edge to the Exercise entity.
+func (m *KnowledgeNodeMutation) ClearConceptExercises() {
+	m.clearedconcept_exercises = true
+}
+
+// ConceptExercisesCleared reports if the "concept_exercises" edge to the Exercise entity was cleared.
+func (m *KnowledgeNodeMutation) ConceptExercisesCleared() bool {
+	return m.clearedconcept_exercises
+}
+
+// RemoveConceptExerciseIDs removes the "concept_exercises" edge to the Exercise entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveConceptExerciseIDs(ids ...uuid.UUID) {
+	if m.removedconcept_exercises == nil {
+		m.removedconcept_exercises = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concept_exercises, ids[i])
+		m.removedconcept_exercises[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConceptExercises returns the removed IDs of the "concept_exercises" edge to the Exercise entity.
+func (m *KnowledgeNodeMutation) RemovedConceptExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcept_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptExercisesIDs returns the "concept_exercises" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ConceptExercisesIDs() (ids []uuid.UUID) {
+	for id := range m.concept_exercises {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConceptExercises resets all changes to the "concept_exercises" edge.
+func (m *KnowledgeNodeMutation) ResetConceptExercises() {
+	m.concept_exercises = nil
+	m.clearedconcept_exercises = false
+	m.removedconcept_exercises = nil
+}
+
+// AddSkillDiagramIDs adds the "skill_diagrams" edge to the Diagram entity by ids.
+func (m *KnowledgeNodeMutation) AddSkillDiagramIDs(ids ...uuid.UUID) {
+	if m.skill_diagrams == nil {
+		m.skill_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.skill_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkillDiagrams clears the "skill_diagrams" edge to the Diagram entity.
+func (m *KnowledgeNodeMutation) ClearSkillDiagrams() {
+	m.clearedskill_diagrams = true
+}
+
+// SkillDiagramsCleared reports if the "skill_diagrams" edge to the Diagram entity was cleared.
+func (m *KnowledgeNodeMutation) SkillDiagramsCleared() bool {
+	return m.clearedskill_diagrams
+}
+
+// RemoveSkillDiagramIDs removes the "skill_diagrams" edge to the Diagram entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveSkillDiagramIDs(ids ...uuid.UUID) {
+	if m.removedskill_diagrams == nil {
+		m.removedskill_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.skill_diagrams, ids[i])
+		m.removedskill_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkillDiagrams returns the removed IDs of the "skill_diagrams" edge to the Diagram entity.
+func (m *KnowledgeNodeMutation) RemovedSkillDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removedskill_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillDiagramsIDs returns the "skill_diagrams" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) SkillDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.skill_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkillDiagrams resets all changes to the "skill_diagrams" edge.
+func (m *KnowledgeNodeMutation) ResetSkillDiagrams() {
+	m.skill_diagrams = nil
+	m.clearedskill_diagrams = false
+	m.removedskill_diagrams = nil
+}
+
+// AddConceptDiagramIDs adds the "concept_diagrams" edge to the Diagram entity by ids.
+func (m *KnowledgeNodeMutation) AddConceptDiagramIDs(ids ...uuid.UUID) {
+	if m.concept_diagrams == nil {
+		m.concept_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.concept_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearConceptDiagrams clears the "concept_diagrams" edge to the Diagram entity.
+func (m *KnowledgeNodeMutation) ClearConceptDiagrams() {
+	m.clearedconcept_diagrams = true
+}
+
+// ConceptDiagramsCleared reports if the "concept_diagrams" edge to the Diagram entity was cleared.
+func (m *KnowledgeNodeMutation) ConceptDiagramsCleared() bool {
+	return m.clearedconcept_diagrams
+}
+
+// RemoveConceptDiagramIDs removes the "concept_diagrams" edge to the Diagram entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveConceptDiagramIDs(ids ...uuid.UUID) {
+	if m.removedconcept_diagrams == nil {
+		m.removedconcept_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.concept_diagrams, ids[i])
+		m.removedconcept_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedConceptDiagrams returns the removed IDs of the "concept_diagrams" edge to the Diagram entity.
+func (m *KnowledgeNodeMutation) RemovedConceptDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removedconcept_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ConceptDiagramsIDs returns the "concept_diagrams" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ConceptDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.concept_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetConceptDiagrams resets all changes to the "concept_diagrams" edge.
+func (m *KnowledgeNodeMutation) ResetConceptDiagrams() {
+	m.concept_diagrams = nil
+	m.clearedconcept_diagrams = false
+	m.removedconcept_diagrams = nil
+}
+
+// AddKnowledgeNodeInstrumentIDs adds the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by ids.
+func (m *KnowledgeNodeMutation) AddKnowledgeNodeInstrumentIDs(ids ...int) {
+	if m.knowledge_node_instruments == nil {
+		m.knowledge_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.knowledge_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearKnowledgeNodeInstruments clears the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity.
+func (m *KnowledgeNodeMutation) ClearKnowledgeNodeInstruments() {
+	m.clearedknowledge_node_instruments = true
+}
+
+// KnowledgeNodeInstrumentsCleared reports if the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity was cleared.
+func (m *KnowledgeNodeMutation) KnowledgeNodeInstrumentsCleared() bool {
+	return m.clearedknowledge_node_instruments
+}
+
+// RemoveKnowledgeNodeInstrumentIDs removes the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveKnowledgeNodeInstrumentIDs(ids ...int) {
+	if m.removedknowledge_node_instruments == nil {
+		m.removedknowledge_node_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.knowledge_node_instruments, ids[i])
+		m.removedknowledge_node_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedKnowledgeNodeInstruments returns the removed IDs of the "knowledge_node_instruments" edge to the KnowledgeNodeInstrument entity.
+func (m *KnowledgeNodeMutation) RemovedKnowledgeNodeInstrumentsIDs() (ids []int) {
+	for id := range m.removedknowledge_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// KnowledgeNodeInstrumentsIDs returns the "knowledge_node_instruments" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) KnowledgeNodeInstrumentsIDs() (ids []int) {
+	for id := range m.knowledge_node_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetKnowledgeNodeInstruments resets all changes to the "knowledge_node_instruments" edge.
+func (m *KnowledgeNodeMutation) ResetKnowledgeNodeInstruments() {
+	m.knowledge_node_instruments = nil
+	m.clearedknowledge_node_instruments = false
+	m.removedknowledge_node_instruments = nil
+}
+
+// AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by ids.
+func (m *KnowledgeNodeMutation) AddContentNodeSkillIDs(ids ...int) {
+	if m.content_node_skills == nil {
+		m.content_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeSkills clears the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *KnowledgeNodeMutation) ClearContentNodeSkills() {
+	m.clearedcontent_node_skills = true
+}
+
+// ContentNodeSkillsCleared reports if the "content_node_skills" edge to the ContentNodeSkill entity was cleared.
+func (m *KnowledgeNodeMutation) ContentNodeSkillsCleared() bool {
+	return m.clearedcontent_node_skills
+}
+
+// RemoveContentNodeSkillIDs removes the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveContentNodeSkillIDs(ids ...int) {
+	if m.removedcontent_node_skills == nil {
+		m.removedcontent_node_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_skills, ids[i])
+		m.removedcontent_node_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeSkills returns the removed IDs of the "content_node_skills" edge to the ContentNodeSkill entity.
+func (m *KnowledgeNodeMutation) RemovedContentNodeSkillsIDs() (ids []int) {
+	for id := range m.removedcontent_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeSkillsIDs returns the "content_node_skills" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ContentNodeSkillsIDs() (ids []int) {
+	for id := range m.content_node_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeSkills resets all changes to the "content_node_skills" edge.
+func (m *KnowledgeNodeMutation) ResetContentNodeSkills() {
+	m.content_node_skills = nil
+	m.clearedcontent_node_skills = false
+	m.removedcontent_node_skills = nil
+}
+
+// AddContentNodeConceptIDs adds the "content_node_concepts" edge to the ContentNodeConcept entity by ids.
+func (m *KnowledgeNodeMutation) AddContentNodeConceptIDs(ids ...int) {
+	if m.content_node_concepts == nil {
+		m.content_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.content_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContentNodeConcepts clears the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *KnowledgeNodeMutation) ClearContentNodeConcepts() {
+	m.clearedcontent_node_concepts = true
+}
+
+// ContentNodeConceptsCleared reports if the "content_node_concepts" edge to the ContentNodeConcept entity was cleared.
+func (m *KnowledgeNodeMutation) ContentNodeConceptsCleared() bool {
+	return m.clearedcontent_node_concepts
+}
+
+// RemoveContentNodeConceptIDs removes the "content_node_concepts" edge to the ContentNodeConcept entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveContentNodeConceptIDs(ids ...int) {
+	if m.removedcontent_node_concepts == nil {
+		m.removedcontent_node_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.content_node_concepts, ids[i])
+		m.removedcontent_node_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContentNodeConcepts returns the removed IDs of the "content_node_concepts" edge to the ContentNodeConcept entity.
+func (m *KnowledgeNodeMutation) RemovedContentNodeConceptsIDs() (ids []int) {
+	for id := range m.removedcontent_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContentNodeConceptsIDs returns the "content_node_concepts" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ContentNodeConceptsIDs() (ids []int) {
+	for id := range m.content_node_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContentNodeConcepts resets all changes to the "content_node_concepts" edge.
+func (m *KnowledgeNodeMutation) ResetContentNodeConcepts() {
+	m.content_node_concepts = nil
+	m.clearedcontent_node_concepts = false
+	m.removedcontent_node_concepts = nil
+}
+
+// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by ids.
+func (m *KnowledgeNodeMutation) AddExerciseSkillIDs(ids ...int) {
+	if m.exercise_skills == nil {
+		m.exercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseSkills clears the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *KnowledgeNodeMutation) ClearExerciseSkills() {
+	m.clearedexercise_skills = true
+}
+
+// ExerciseSkillsCleared reports if the "exercise_skills" edge to the ExerciseSkill entity was cleared.
+func (m *KnowledgeNodeMutation) ExerciseSkillsCleared() bool {
+	return m.clearedexercise_skills
+}
+
+// RemoveExerciseSkillIDs removes the "exercise_skills" edge to the ExerciseSkill entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveExerciseSkillIDs(ids ...int) {
+	if m.removedexercise_skills == nil {
+		m.removedexercise_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_skills, ids[i])
+		m.removedexercise_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseSkills returns the removed IDs of the "exercise_skills" edge to the ExerciseSkill entity.
+func (m *KnowledgeNodeMutation) RemovedExerciseSkillsIDs() (ids []int) {
+	for id := range m.removedexercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseSkillsIDs returns the "exercise_skills" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ExerciseSkillsIDs() (ids []int) {
+	for id := range m.exercise_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseSkills resets all changes to the "exercise_skills" edge.
+func (m *KnowledgeNodeMutation) ResetExerciseSkills() {
+	m.exercise_skills = nil
+	m.clearedexercise_skills = false
+	m.removedexercise_skills = nil
+}
+
+// AddExerciseConceptIDs adds the "exercise_concepts" edge to the ExerciseConcept entity by ids.
+func (m *KnowledgeNodeMutation) AddExerciseConceptIDs(ids ...int) {
+	if m.exercise_concepts == nil {
+		m.exercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.exercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExerciseConcepts clears the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *KnowledgeNodeMutation) ClearExerciseConcepts() {
+	m.clearedexercise_concepts = true
+}
+
+// ExerciseConceptsCleared reports if the "exercise_concepts" edge to the ExerciseConcept entity was cleared.
+func (m *KnowledgeNodeMutation) ExerciseConceptsCleared() bool {
+	return m.clearedexercise_concepts
+}
+
+// RemoveExerciseConceptIDs removes the "exercise_concepts" edge to the ExerciseConcept entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveExerciseConceptIDs(ids ...int) {
+	if m.removedexercise_concepts == nil {
+		m.removedexercise_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.exercise_concepts, ids[i])
+		m.removedexercise_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExerciseConcepts returns the removed IDs of the "exercise_concepts" edge to the ExerciseConcept entity.
+func (m *KnowledgeNodeMutation) RemovedExerciseConceptsIDs() (ids []int) {
+	for id := range m.removedexercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExerciseConceptsIDs returns the "exercise_concepts" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) ExerciseConceptsIDs() (ids []int) {
+	for id := range m.exercise_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExerciseConcepts resets all changes to the "exercise_concepts" edge.
+func (m *KnowledgeNodeMutation) ResetExerciseConcepts() {
+	m.exercise_concepts = nil
+	m.clearedexercise_concepts = false
+	m.removedexercise_concepts = nil
+}
+
+// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by ids.
+func (m *KnowledgeNodeMutation) AddDiagramSkillIDs(ids ...int) {
+	if m.diagram_skills == nil {
+		m.diagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramSkills clears the "diagram_skills" edge to the DiagramSkill entity.
+func (m *KnowledgeNodeMutation) ClearDiagramSkills() {
+	m.cleareddiagram_skills = true
+}
+
+// DiagramSkillsCleared reports if the "diagram_skills" edge to the DiagramSkill entity was cleared.
+func (m *KnowledgeNodeMutation) DiagramSkillsCleared() bool {
+	return m.cleareddiagram_skills
+}
+
+// RemoveDiagramSkillIDs removes the "diagram_skills" edge to the DiagramSkill entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveDiagramSkillIDs(ids ...int) {
+	if m.removeddiagram_skills == nil {
+		m.removeddiagram_skills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_skills, ids[i])
+		m.removeddiagram_skills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramSkills returns the removed IDs of the "diagram_skills" edge to the DiagramSkill entity.
+func (m *KnowledgeNodeMutation) RemovedDiagramSkillsIDs() (ids []int) {
+	for id := range m.removeddiagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramSkillsIDs returns the "diagram_skills" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) DiagramSkillsIDs() (ids []int) {
+	for id := range m.diagram_skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramSkills resets all changes to the "diagram_skills" edge.
+func (m *KnowledgeNodeMutation) ResetDiagramSkills() {
+	m.diagram_skills = nil
+	m.cleareddiagram_skills = false
+	m.removeddiagram_skills = nil
+}
+
+// AddDiagramConceptIDs adds the "diagram_concepts" edge to the DiagramConcept entity by ids.
+func (m *KnowledgeNodeMutation) AddDiagramConceptIDs(ids ...int) {
+	if m.diagram_concepts == nil {
+		m.diagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramConcepts clears the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *KnowledgeNodeMutation) ClearDiagramConcepts() {
+	m.cleareddiagram_concepts = true
+}
+
+// DiagramConceptsCleared reports if the "diagram_concepts" edge to the DiagramConcept entity was cleared.
+func (m *KnowledgeNodeMutation) DiagramConceptsCleared() bool {
+	return m.cleareddiagram_concepts
+}
+
+// RemoveDiagramConceptIDs removes the "diagram_concepts" edge to the DiagramConcept entity by IDs.
+func (m *KnowledgeNodeMutation) RemoveDiagramConceptIDs(ids ...int) {
+	if m.removeddiagram_concepts == nil {
+		m.removeddiagram_concepts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_concepts, ids[i])
+		m.removeddiagram_concepts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramConcepts returns the removed IDs of the "diagram_concepts" edge to the DiagramConcept entity.
+func (m *KnowledgeNodeMutation) RemovedDiagramConceptsIDs() (ids []int) {
+	for id := range m.removeddiagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramConceptsIDs returns the "diagram_concepts" edge IDs in the mutation.
+func (m *KnowledgeNodeMutation) DiagramConceptsIDs() (ids []int) {
+	for id := range m.diagram_concepts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramConcepts resets all changes to the "diagram_concepts" edge.
+func (m *KnowledgeNodeMutation) ResetDiagramConcepts() {
+	m.diagram_concepts = nil
+	m.cleareddiagram_concepts = false
+	m.removeddiagram_concepts = nil
+}
+
+// Where appends a list predicates to the KnowledgeNodeMutation builder.
+func (m *KnowledgeNodeMutation) Where(ps ...predicate.KnowledgeNode) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the KnowledgeNodeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *KnowledgeNodeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.KnowledgeNode, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *KnowledgeNodeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *KnowledgeNodeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (KnowledgeNode).
+func (m *KnowledgeNodeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *KnowledgeNodeMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.kind != nil {
+		fields = append(fields, knowledgenode.FieldKind)
+	}
+	if m.key != nil {
+		fields = append(fields, knowledgenode.FieldKey)
+	}
+	if m.names != nil {
+		fields = append(fields, knowledgenode.FieldNames)
+	}
+	if m.descriptions != nil {
+		fields = append(fields, knowledgenode.FieldDescriptions)
+	}
+	if m.parent != nil {
+		fields = append(fields, knowledgenode.FieldParentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *KnowledgeNodeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case knowledgenode.FieldKind:
+		return m.Kind()
+	case knowledgenode.FieldKey:
+		return m.Key()
+	case knowledgenode.FieldNames:
+		return m.Names()
+	case knowledgenode.FieldDescriptions:
+		return m.Descriptions()
+	case knowledgenode.FieldParentID:
+		return m.ParentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *KnowledgeNodeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case knowledgenode.FieldKind:
+		return m.OldKind(ctx)
+	case knowledgenode.FieldKey:
+		return m.OldKey(ctx)
+	case knowledgenode.FieldNames:
+		return m.OldNames(ctx)
+	case knowledgenode.FieldDescriptions:
+		return m.OldDescriptions(ctx)
+	case knowledgenode.FieldParentID:
+		return m.OldParentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown KnowledgeNode field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeNodeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case knowledgenode.FieldKind:
+		v, ok := value.(knowledgenode.Kind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKind(v)
+		return nil
+	case knowledgenode.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case knowledgenode.FieldNames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNames(v)
+		return nil
+	case knowledgenode.FieldDescriptions:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescriptions(v)
+		return nil
+	case knowledgenode.FieldParentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetParentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNode field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *KnowledgeNodeMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *KnowledgeNodeMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeNodeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown KnowledgeNode numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *KnowledgeNodeMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(knowledgenode.FieldDescriptions) {
+		fields = append(fields, knowledgenode.FieldDescriptions)
+	}
+	if m.FieldCleared(knowledgenode.FieldParentID) {
+		fields = append(fields, knowledgenode.FieldParentID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *KnowledgeNodeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *KnowledgeNodeMutation) ClearField(name string) error {
+	switch name {
+	case knowledgenode.FieldDescriptions:
+		m.ClearDescriptions()
+		return nil
+	case knowledgenode.FieldParentID:
+		m.ClearParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNode nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *KnowledgeNodeMutation) ResetField(name string) error {
+	switch name {
+	case knowledgenode.FieldKind:
+		m.ResetKind()
+		return nil
+	case knowledgenode.FieldKey:
+		m.ResetKey()
+		return nil
+	case knowledgenode.FieldNames:
+		m.ResetNames()
+		return nil
+	case knowledgenode.FieldDescriptions:
+		m.ResetDescriptions()
+		return nil
+	case knowledgenode.FieldParentID:
+		m.ResetParentID()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNode field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *KnowledgeNodeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 18)
+	if m.children != nil {
+		edges = append(edges, knowledgenode.EdgeChildren)
+	}
+	if m.parent != nil {
+		edges = append(edges, knowledgenode.EdgeParent)
+	}
+	if m.instruments != nil {
+		edges = append(edges, knowledgenode.EdgeInstruments)
+	}
+	if m.outgoing_edges != nil {
+		edges = append(edges, knowledgenode.EdgeOutgoingEdges)
+	}
+	if m.incoming_edges != nil {
+		edges = append(edges, knowledgenode.EdgeIncomingEdges)
+	}
+	if m.skill_content_nodes != nil {
+		edges = append(edges, knowledgenode.EdgeSkillContentNodes)
+	}
+	if m.concept_content_nodes != nil {
+		edges = append(edges, knowledgenode.EdgeConceptContentNodes)
+	}
+	if m.skill_exercises != nil {
+		edges = append(edges, knowledgenode.EdgeSkillExercises)
+	}
+	if m.concept_exercises != nil {
+		edges = append(edges, knowledgenode.EdgeConceptExercises)
+	}
+	if m.skill_diagrams != nil {
+		edges = append(edges, knowledgenode.EdgeSkillDiagrams)
+	}
+	if m.concept_diagrams != nil {
+		edges = append(edges, knowledgenode.EdgeConceptDiagrams)
+	}
+	if m.knowledge_node_instruments != nil {
+		edges = append(edges, knowledgenode.EdgeKnowledgeNodeInstruments)
+	}
+	if m.content_node_skills != nil {
+		edges = append(edges, knowledgenode.EdgeContentNodeSkills)
+	}
+	if m.content_node_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeContentNodeConcepts)
+	}
+	if m.exercise_skills != nil {
+		edges = append(edges, knowledgenode.EdgeExerciseSkills)
+	}
+	if m.exercise_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeExerciseConcepts)
+	}
+	if m.diagram_skills != nil {
+		edges = append(edges, knowledgenode.EdgeDiagramSkills)
+	}
+	if m.diagram_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *KnowledgeNodeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case knowledgenode.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.children))
+		for id := range m.children {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeParent:
+		if id := m.parent; id != nil {
+			return []ent.Value{*id}
+		}
+	case knowledgenode.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.instruments))
+		for id := range m.instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeOutgoingEdges:
+		ids := make([]ent.Value, 0, len(m.outgoing_edges))
+		for id := range m.outgoing_edges {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeIncomingEdges:
+		ids := make([]ent.Value, 0, len(m.incoming_edges))
+		for id := range m.incoming_edges {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillContentNodes:
+		ids := make([]ent.Value, 0, len(m.skill_content_nodes))
+		for id := range m.skill_content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptContentNodes:
+		ids := make([]ent.Value, 0, len(m.concept_content_nodes))
+		for id := range m.concept_content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillExercises:
+		ids := make([]ent.Value, 0, len(m.skill_exercises))
+		for id := range m.skill_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptExercises:
+		ids := make([]ent.Value, 0, len(m.concept_exercises))
+		for id := range m.concept_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillDiagrams:
+		ids := make([]ent.Value, 0, len(m.skill_diagrams))
+		for id := range m.skill_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptDiagrams:
+		ids := make([]ent.Value, 0, len(m.concept_diagrams))
+		for id := range m.concept_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeKnowledgeNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.knowledge_node_instruments))
+		for id := range m.knowledge_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.content_node_skills))
+		for id := range m.content_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.content_node_concepts))
+		for id := range m.content_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.exercise_skills))
+		for id := range m.exercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.exercise_concepts))
+		for id := range m.exercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.diagram_skills))
+		for id := range m.diagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.diagram_concepts))
+		for id := range m.diagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *KnowledgeNodeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 18)
+	if m.removedchildren != nil {
+		edges = append(edges, knowledgenode.EdgeChildren)
+	}
+	if m.removedinstruments != nil {
+		edges = append(edges, knowledgenode.EdgeInstruments)
+	}
+	if m.removedoutgoing_edges != nil {
+		edges = append(edges, knowledgenode.EdgeOutgoingEdges)
+	}
+	if m.removedincoming_edges != nil {
+		edges = append(edges, knowledgenode.EdgeIncomingEdges)
+	}
+	if m.removedskill_content_nodes != nil {
+		edges = append(edges, knowledgenode.EdgeSkillContentNodes)
+	}
+	if m.removedconcept_content_nodes != nil {
+		edges = append(edges, knowledgenode.EdgeConceptContentNodes)
+	}
+	if m.removedskill_exercises != nil {
+		edges = append(edges, knowledgenode.EdgeSkillExercises)
+	}
+	if m.removedconcept_exercises != nil {
+		edges = append(edges, knowledgenode.EdgeConceptExercises)
+	}
+	if m.removedskill_diagrams != nil {
+		edges = append(edges, knowledgenode.EdgeSkillDiagrams)
+	}
+	if m.removedconcept_diagrams != nil {
+		edges = append(edges, knowledgenode.EdgeConceptDiagrams)
+	}
+	if m.removedknowledge_node_instruments != nil {
+		edges = append(edges, knowledgenode.EdgeKnowledgeNodeInstruments)
+	}
+	if m.removedcontent_node_skills != nil {
+		edges = append(edges, knowledgenode.EdgeContentNodeSkills)
+	}
+	if m.removedcontent_node_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeContentNodeConcepts)
+	}
+	if m.removedexercise_skills != nil {
+		edges = append(edges, knowledgenode.EdgeExerciseSkills)
+	}
+	if m.removedexercise_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeExerciseConcepts)
+	}
+	if m.removeddiagram_skills != nil {
+		edges = append(edges, knowledgenode.EdgeDiagramSkills)
+	}
+	if m.removeddiagram_concepts != nil {
+		edges = append(edges, knowledgenode.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *KnowledgeNodeMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case knowledgenode.EdgeChildren:
+		ids := make([]ent.Value, 0, len(m.removedchildren))
+		for id := range m.removedchildren {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedinstruments))
+		for id := range m.removedinstruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeOutgoingEdges:
+		ids := make([]ent.Value, 0, len(m.removedoutgoing_edges))
+		for id := range m.removedoutgoing_edges {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeIncomingEdges:
+		ids := make([]ent.Value, 0, len(m.removedincoming_edges))
+		for id := range m.removedincoming_edges {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedskill_content_nodes))
+		for id := range m.removedskill_content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptContentNodes:
+		ids := make([]ent.Value, 0, len(m.removedconcept_content_nodes))
+		for id := range m.removedconcept_content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillExercises:
+		ids := make([]ent.Value, 0, len(m.removedskill_exercises))
+		for id := range m.removedskill_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptExercises:
+		ids := make([]ent.Value, 0, len(m.removedconcept_exercises))
+		for id := range m.removedconcept_exercises {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeSkillDiagrams:
+		ids := make([]ent.Value, 0, len(m.removedskill_diagrams))
+		for id := range m.removedskill_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeConceptDiagrams:
+		ids := make([]ent.Value, 0, len(m.removedconcept_diagrams))
+		for id := range m.removedconcept_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeKnowledgeNodeInstruments:
+		ids := make([]ent.Value, 0, len(m.removedknowledge_node_instruments))
+		for id := range m.removedknowledge_node_instruments {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeContentNodeSkills:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_skills))
+		for id := range m.removedcontent_node_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeContentNodeConcepts:
+		ids := make([]ent.Value, 0, len(m.removedcontent_node_concepts))
+		for id := range m.removedcontent_node_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeExerciseSkills:
+		ids := make([]ent.Value, 0, len(m.removedexercise_skills))
+		for id := range m.removedexercise_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeExerciseConcepts:
+		ids := make([]ent.Value, 0, len(m.removedexercise_concepts))
+		for id := range m.removedexercise_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeDiagramSkills:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_skills))
+		for id := range m.removeddiagram_skills {
+			ids = append(ids, id)
+		}
+		return ids
+	case knowledgenode.EdgeDiagramConcepts:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_concepts))
+		for id := range m.removeddiagram_concepts {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *KnowledgeNodeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 18)
+	if m.clearedchildren {
+		edges = append(edges, knowledgenode.EdgeChildren)
+	}
+	if m.clearedparent {
+		edges = append(edges, knowledgenode.EdgeParent)
+	}
+	if m.clearedinstruments {
+		edges = append(edges, knowledgenode.EdgeInstruments)
+	}
+	if m.clearedoutgoing_edges {
+		edges = append(edges, knowledgenode.EdgeOutgoingEdges)
+	}
+	if m.clearedincoming_edges {
+		edges = append(edges, knowledgenode.EdgeIncomingEdges)
+	}
+	if m.clearedskill_content_nodes {
+		edges = append(edges, knowledgenode.EdgeSkillContentNodes)
+	}
+	if m.clearedconcept_content_nodes {
+		edges = append(edges, knowledgenode.EdgeConceptContentNodes)
+	}
+	if m.clearedskill_exercises {
+		edges = append(edges, knowledgenode.EdgeSkillExercises)
+	}
+	if m.clearedconcept_exercises {
+		edges = append(edges, knowledgenode.EdgeConceptExercises)
+	}
+	if m.clearedskill_diagrams {
+		edges = append(edges, knowledgenode.EdgeSkillDiagrams)
+	}
+	if m.clearedconcept_diagrams {
+		edges = append(edges, knowledgenode.EdgeConceptDiagrams)
+	}
+	if m.clearedknowledge_node_instruments {
+		edges = append(edges, knowledgenode.EdgeKnowledgeNodeInstruments)
+	}
+	if m.clearedcontent_node_skills {
+		edges = append(edges, knowledgenode.EdgeContentNodeSkills)
+	}
+	if m.clearedcontent_node_concepts {
+		edges = append(edges, knowledgenode.EdgeContentNodeConcepts)
+	}
+	if m.clearedexercise_skills {
+		edges = append(edges, knowledgenode.EdgeExerciseSkills)
+	}
+	if m.clearedexercise_concepts {
+		edges = append(edges, knowledgenode.EdgeExerciseConcepts)
+	}
+	if m.cleareddiagram_skills {
+		edges = append(edges, knowledgenode.EdgeDiagramSkills)
+	}
+	if m.cleareddiagram_concepts {
+		edges = append(edges, knowledgenode.EdgeDiagramConcepts)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *KnowledgeNodeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case knowledgenode.EdgeChildren:
+		return m.clearedchildren
+	case knowledgenode.EdgeParent:
+		return m.clearedparent
+	case knowledgenode.EdgeInstruments:
+		return m.clearedinstruments
+	case knowledgenode.EdgeOutgoingEdges:
+		return m.clearedoutgoing_edges
+	case knowledgenode.EdgeIncomingEdges:
+		return m.clearedincoming_edges
+	case knowledgenode.EdgeSkillContentNodes:
+		return m.clearedskill_content_nodes
+	case knowledgenode.EdgeConceptContentNodes:
+		return m.clearedconcept_content_nodes
+	case knowledgenode.EdgeSkillExercises:
+		return m.clearedskill_exercises
+	case knowledgenode.EdgeConceptExercises:
+		return m.clearedconcept_exercises
+	case knowledgenode.EdgeSkillDiagrams:
+		return m.clearedskill_diagrams
+	case knowledgenode.EdgeConceptDiagrams:
+		return m.clearedconcept_diagrams
+	case knowledgenode.EdgeKnowledgeNodeInstruments:
+		return m.clearedknowledge_node_instruments
+	case knowledgenode.EdgeContentNodeSkills:
+		return m.clearedcontent_node_skills
+	case knowledgenode.EdgeContentNodeConcepts:
+		return m.clearedcontent_node_concepts
+	case knowledgenode.EdgeExerciseSkills:
+		return m.clearedexercise_skills
+	case knowledgenode.EdgeExerciseConcepts:
+		return m.clearedexercise_concepts
+	case knowledgenode.EdgeDiagramSkills:
+		return m.cleareddiagram_skills
+	case knowledgenode.EdgeDiagramConcepts:
+		return m.cleareddiagram_concepts
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *KnowledgeNodeMutation) ClearEdge(name string) error {
+	switch name {
+	case knowledgenode.EdgeParent:
+		m.ClearParent()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNode unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *KnowledgeNodeMutation) ResetEdge(name string) error {
+	switch name {
+	case knowledgenode.EdgeChildren:
+		m.ResetChildren()
+		return nil
+	case knowledgenode.EdgeParent:
+		m.ResetParent()
+		return nil
+	case knowledgenode.EdgeInstruments:
+		m.ResetInstruments()
+		return nil
+	case knowledgenode.EdgeOutgoingEdges:
+		m.ResetOutgoingEdges()
+		return nil
+	case knowledgenode.EdgeIncomingEdges:
+		m.ResetIncomingEdges()
+		return nil
+	case knowledgenode.EdgeSkillContentNodes:
+		m.ResetSkillContentNodes()
+		return nil
+	case knowledgenode.EdgeConceptContentNodes:
+		m.ResetConceptContentNodes()
+		return nil
+	case knowledgenode.EdgeSkillExercises:
+		m.ResetSkillExercises()
+		return nil
+	case knowledgenode.EdgeConceptExercises:
+		m.ResetConceptExercises()
+		return nil
+	case knowledgenode.EdgeSkillDiagrams:
+		m.ResetSkillDiagrams()
+		return nil
+	case knowledgenode.EdgeConceptDiagrams:
+		m.ResetConceptDiagrams()
+		return nil
+	case knowledgenode.EdgeKnowledgeNodeInstruments:
+		m.ResetKnowledgeNodeInstruments()
+		return nil
+	case knowledgenode.EdgeContentNodeSkills:
+		m.ResetContentNodeSkills()
+		return nil
+	case knowledgenode.EdgeContentNodeConcepts:
+		m.ResetContentNodeConcepts()
+		return nil
+	case knowledgenode.EdgeExerciseSkills:
+		m.ResetExerciseSkills()
+		return nil
+	case knowledgenode.EdgeExerciseConcepts:
+		m.ResetExerciseConcepts()
+		return nil
+	case knowledgenode.EdgeDiagramSkills:
+		m.ResetDiagramSkills()
+		return nil
+	case knowledgenode.EdgeDiagramConcepts:
+		m.ResetDiagramConcepts()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNode edge %s", name)
+}
+
+// KnowledgeNodeInstrumentMutation represents an operation that mutates the KnowledgeNodeInstrument nodes in the graph.
+type KnowledgeNodeInstrumentMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *int
+	linked_at             *time.Time
+	clearedFields         map[string]struct{}
+	knowledge_node        *uuid.UUID
+	clearedknowledge_node bool
+	instrument            *uuid.UUID
+	clearedinstrument     bool
+	done                  bool
+	oldValue              func(context.Context) (*KnowledgeNodeInstrument, error)
+	predicates            []predicate.KnowledgeNodeInstrument
+}
+
+var _ ent.Mutation = (*KnowledgeNodeInstrumentMutation)(nil)
+
+// knowledgenodeinstrumentOption allows management of the mutation configuration using functional options.
+type knowledgenodeinstrumentOption func(*KnowledgeNodeInstrumentMutation)
+
+// newKnowledgeNodeInstrumentMutation creates new mutation for the KnowledgeNodeInstrument entity.
+func newKnowledgeNodeInstrumentMutation(c config, op Op, opts ...knowledgenodeinstrumentOption) *KnowledgeNodeInstrumentMutation {
+	m := &KnowledgeNodeInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeKnowledgeNodeInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withKnowledgeNodeInstrumentID sets the ID field of the mutation.
+func withKnowledgeNodeInstrumentID(id int) knowledgenodeinstrumentOption {
+	return func(m *KnowledgeNodeInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *KnowledgeNodeInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*KnowledgeNodeInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().KnowledgeNodeInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withKnowledgeNodeInstrument sets the old KnowledgeNodeInstrument of the mutation.
+func withKnowledgeNodeInstrument(node *KnowledgeNodeInstrument) knowledgenodeinstrumentOption {
+	return func(m *KnowledgeNodeInstrumentMutation) {
+		m.oldValue = func(context.Context) (*KnowledgeNodeInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m KnowledgeNodeInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m KnowledgeNodeInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *KnowledgeNodeInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *KnowledgeNodeInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().KnowledgeNodeInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *KnowledgeNodeInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *KnowledgeNodeInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the KnowledgeNodeInstrument entity.
+// If the KnowledgeNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *KnowledgeNodeInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// SetKnowledgeNodeID sets the "knowledge_node_id" field.
+func (m *KnowledgeNodeInstrumentMutation) SetKnowledgeNodeID(u uuid.UUID) {
+	m.knowledge_node = &u
+}
+
+// KnowledgeNodeID returns the value of the "knowledge_node_id" field in the mutation.
+func (m *KnowledgeNodeInstrumentMutation) KnowledgeNodeID() (r uuid.UUID, exists bool) {
+	v := m.knowledge_node
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKnowledgeNodeID returns the old "knowledge_node_id" field's value of the KnowledgeNodeInstrument entity.
+// If the KnowledgeNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeInstrumentMutation) OldKnowledgeNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKnowledgeNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKnowledgeNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKnowledgeNodeID: %w", err)
+	}
+	return oldValue.KnowledgeNodeID, nil
+}
+
+// ResetKnowledgeNodeID resets all changes to the "knowledge_node_id" field.
+func (m *KnowledgeNodeInstrumentMutation) ResetKnowledgeNodeID() {
+	m.knowledge_node = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *KnowledgeNodeInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *KnowledgeNodeInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the KnowledgeNodeInstrument entity.
+// If the KnowledgeNodeInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *KnowledgeNodeInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *KnowledgeNodeInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// ClearKnowledgeNode clears the "knowledge_node" edge to the KnowledgeNode entity.
+func (m *KnowledgeNodeInstrumentMutation) ClearKnowledgeNode() {
+	m.clearedknowledge_node = true
+	m.clearedFields[knowledgenodeinstrument.FieldKnowledgeNodeID] = struct{}{}
+}
+
+// KnowledgeNodeCleared reports if the "knowledge_node" edge to the KnowledgeNode entity was cleared.
+func (m *KnowledgeNodeInstrumentMutation) KnowledgeNodeCleared() bool {
+	return m.clearedknowledge_node
+}
+
+// KnowledgeNodeIDs returns the "knowledge_node" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// KnowledgeNodeID instead. It exists only for internal usage by the builders.
+func (m *KnowledgeNodeInstrumentMutation) KnowledgeNodeIDs() (ids []uuid.UUID) {
+	if id := m.knowledge_node; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetKnowledgeNode resets all changes to the "knowledge_node" edge.
+func (m *KnowledgeNodeInstrumentMutation) ResetKnowledgeNode() {
+	m.knowledge_node = nil
+	m.clearedknowledge_node = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *KnowledgeNodeInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[knowledgenodeinstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *KnowledgeNodeInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *KnowledgeNodeInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *KnowledgeNodeInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the KnowledgeNodeInstrumentMutation builder.
+func (m *KnowledgeNodeInstrumentMutation) Where(ps ...predicate.KnowledgeNodeInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the KnowledgeNodeInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *KnowledgeNodeInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.KnowledgeNodeInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *KnowledgeNodeInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *KnowledgeNodeInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (KnowledgeNodeInstrument).
+func (m *KnowledgeNodeInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *KnowledgeNodeInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.linked_at != nil {
+		fields = append(fields, knowledgenodeinstrument.FieldLinkedAt)
+	}
+	if m.knowledge_node != nil {
+		fields = append(fields, knowledgenodeinstrument.FieldKnowledgeNodeID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, knowledgenodeinstrument.FieldInstrumentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *KnowledgeNodeInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case knowledgenodeinstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	case knowledgenodeinstrument.FieldKnowledgeNodeID:
+		return m.KnowledgeNodeID()
+	case knowledgenodeinstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *KnowledgeNodeInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case knowledgenodeinstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	case knowledgenodeinstrument.FieldKnowledgeNodeID:
+		return m.OldKnowledgeNodeID(ctx)
+	case knowledgenodeinstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown KnowledgeNodeInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeNodeInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case knowledgenodeinstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	case knowledgenodeinstrument.FieldKnowledgeNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKnowledgeNodeID(v)
+		return nil
+	case knowledgenodeinstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNodeInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *KnowledgeNodeInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *KnowledgeNodeInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *KnowledgeNodeInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown KnowledgeNodeInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *KnowledgeNodeInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *KnowledgeNodeInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown KnowledgeNodeInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *KnowledgeNodeInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case knowledgenodeinstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	case knowledgenodeinstrument.FieldKnowledgeNodeID:
+		m.ResetKnowledgeNodeID()
+		return nil
+	case knowledgenodeinstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNodeInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.knowledge_node != nil {
+		edges = append(edges, knowledgenodeinstrument.EdgeKnowledgeNode)
+	}
+	if m.instrument != nil {
+		edges = append(edges, knowledgenodeinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case knowledgenodeinstrument.EdgeKnowledgeNode:
+		if id := m.knowledge_node; id != nil {
+			return []ent.Value{*id}
+		}
+	case knowledgenodeinstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedknowledge_node {
+		edges = append(edges, knowledgenodeinstrument.EdgeKnowledgeNode)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, knowledgenodeinstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *KnowledgeNodeInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case knowledgenodeinstrument.EdgeKnowledgeNode:
+		return m.clearedknowledge_node
+	case knowledgenodeinstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *KnowledgeNodeInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case knowledgenodeinstrument.EdgeKnowledgeNode:
+		m.ClearKnowledgeNode()
+		return nil
+	case knowledgenodeinstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNodeInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *KnowledgeNodeInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case knowledgenodeinstrument.EdgeKnowledgeNode:
+		m.ResetKnowledgeNode()
+		return nil
+	case knowledgenodeinstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown KnowledgeNodeInstrument edge %s", name)
 }
 
 // LanguageMutation represents an operation that mutates the Language nodes in the graph.
@@ -29118,1051 +32315,6 @@ func (m *PositionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Position edge %s", name)
-}
-
-// SkillMutation represents an operation that mutates the Skill nodes in the graph.
-type SkillMutation struct {
-	config
-	op                         Op
-	typ                        string
-	id                         *uuid.UUID
-	name                       *string
-	clearedFields              map[string]struct{}
-	children                   map[uuid.UUID]struct{}
-	removedchildren            map[uuid.UUID]struct{}
-	clearedchildren            bool
-	parent                     *uuid.UUID
-	clearedparent              bool
-	content_nodes              map[uuid.UUID]struct{}
-	removedcontent_nodes       map[uuid.UUID]struct{}
-	clearedcontent_nodes       bool
-	exercises                  map[uuid.UUID]struct{}
-	removedexercises           map[uuid.UUID]struct{}
-	clearedexercises           bool
-	diagrams                   map[uuid.UUID]struct{}
-	removeddiagrams            map[uuid.UUID]struct{}
-	cleareddiagrams            bool
-	content_node_skills        map[int]struct{}
-	removedcontent_node_skills map[int]struct{}
-	clearedcontent_node_skills bool
-	exercise_skills            map[int]struct{}
-	removedexercise_skills     map[int]struct{}
-	clearedexercise_skills     bool
-	diagram_skills             map[int]struct{}
-	removeddiagram_skills      map[int]struct{}
-	cleareddiagram_skills      bool
-	done                       bool
-	oldValue                   func(context.Context) (*Skill, error)
-	predicates                 []predicate.Skill
-}
-
-var _ ent.Mutation = (*SkillMutation)(nil)
-
-// skillOption allows management of the mutation configuration using functional options.
-type skillOption func(*SkillMutation)
-
-// newSkillMutation creates new mutation for the Skill entity.
-func newSkillMutation(c config, op Op, opts ...skillOption) *SkillMutation {
-	m := &SkillMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeSkill,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withSkillID sets the ID field of the mutation.
-func withSkillID(id uuid.UUID) skillOption {
-	return func(m *SkillMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *Skill
-		)
-		m.oldValue = func(ctx context.Context) (*Skill, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().Skill.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withSkill sets the old Skill of the mutation.
-func withSkill(node *Skill) skillOption {
-	return func(m *SkillMutation) {
-		m.oldValue = func(context.Context) (*Skill, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m SkillMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m SkillMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of Skill entities.
-func (m *SkillMutation) SetID(id uuid.UUID) {
-	m.id = &id
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *SkillMutation) ID() (id uuid.UUID, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *SkillMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []uuid.UUID{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().Skill.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetName sets the "name" field.
-func (m *SkillMutation) SetName(s string) {
-	m.name = &s
-}
-
-// Name returns the value of the "name" field in the mutation.
-func (m *SkillMutation) Name() (r string, exists bool) {
-	v := m.name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldName returns the old "name" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldName: %w", err)
-	}
-	return oldValue.Name, nil
-}
-
-// ResetName resets all changes to the "name" field.
-func (m *SkillMutation) ResetName() {
-	m.name = nil
-}
-
-// SetParentID sets the "parent_id" field.
-func (m *SkillMutation) SetParentID(u uuid.UUID) {
-	m.parent = &u
-}
-
-// ParentID returns the value of the "parent_id" field in the mutation.
-func (m *SkillMutation) ParentID() (r uuid.UUID, exists bool) {
-	v := m.parent
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldParentID returns the old "parent_id" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldParentID(ctx context.Context) (v *uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldParentID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldParentID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldParentID: %w", err)
-	}
-	return oldValue.ParentID, nil
-}
-
-// ClearParentID clears the value of the "parent_id" field.
-func (m *SkillMutation) ClearParentID() {
-	m.parent = nil
-	m.clearedFields[skill.FieldParentID] = struct{}{}
-}
-
-// ParentIDCleared returns if the "parent_id" field was cleared in this mutation.
-func (m *SkillMutation) ParentIDCleared() bool {
-	_, ok := m.clearedFields[skill.FieldParentID]
-	return ok
-}
-
-// ResetParentID resets all changes to the "parent_id" field.
-func (m *SkillMutation) ResetParentID() {
-	m.parent = nil
-	delete(m.clearedFields, skill.FieldParentID)
-}
-
-// AddChildIDs adds the "children" edge to the Skill entity by ids.
-func (m *SkillMutation) AddChildIDs(ids ...uuid.UUID) {
-	if m.children == nil {
-		m.children = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.children[ids[i]] = struct{}{}
-	}
-}
-
-// ClearChildren clears the "children" edge to the Skill entity.
-func (m *SkillMutation) ClearChildren() {
-	m.clearedchildren = true
-}
-
-// ChildrenCleared reports if the "children" edge to the Skill entity was cleared.
-func (m *SkillMutation) ChildrenCleared() bool {
-	return m.clearedchildren
-}
-
-// RemoveChildIDs removes the "children" edge to the Skill entity by IDs.
-func (m *SkillMutation) RemoveChildIDs(ids ...uuid.UUID) {
-	if m.removedchildren == nil {
-		m.removedchildren = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.children, ids[i])
-		m.removedchildren[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedChildren returns the removed IDs of the "children" edge to the Skill entity.
-func (m *SkillMutation) RemovedChildrenIDs() (ids []uuid.UUID) {
-	for id := range m.removedchildren {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ChildrenIDs returns the "children" edge IDs in the mutation.
-func (m *SkillMutation) ChildrenIDs() (ids []uuid.UUID) {
-	for id := range m.children {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetChildren resets all changes to the "children" edge.
-func (m *SkillMutation) ResetChildren() {
-	m.children = nil
-	m.clearedchildren = false
-	m.removedchildren = nil
-}
-
-// ClearParent clears the "parent" edge to the Skill entity.
-func (m *SkillMutation) ClearParent() {
-	m.clearedparent = true
-	m.clearedFields[skill.FieldParentID] = struct{}{}
-}
-
-// ParentCleared reports if the "parent" edge to the Skill entity was cleared.
-func (m *SkillMutation) ParentCleared() bool {
-	return m.ParentIDCleared() || m.clearedparent
-}
-
-// ParentIDs returns the "parent" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// ParentID instead. It exists only for internal usage by the builders.
-func (m *SkillMutation) ParentIDs() (ids []uuid.UUID) {
-	if id := m.parent; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetParent resets all changes to the "parent" edge.
-func (m *SkillMutation) ResetParent() {
-	m.parent = nil
-	m.clearedparent = false
-}
-
-// AddContentNodeIDs adds the "content_nodes" edge to the ContentNode entity by ids.
-func (m *SkillMutation) AddContentNodeIDs(ids ...uuid.UUID) {
-	if m.content_nodes == nil {
-		m.content_nodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.content_nodes[ids[i]] = struct{}{}
-	}
-}
-
-// ClearContentNodes clears the "content_nodes" edge to the ContentNode entity.
-func (m *SkillMutation) ClearContentNodes() {
-	m.clearedcontent_nodes = true
-}
-
-// ContentNodesCleared reports if the "content_nodes" edge to the ContentNode entity was cleared.
-func (m *SkillMutation) ContentNodesCleared() bool {
-	return m.clearedcontent_nodes
-}
-
-// RemoveContentNodeIDs removes the "content_nodes" edge to the ContentNode entity by IDs.
-func (m *SkillMutation) RemoveContentNodeIDs(ids ...uuid.UUID) {
-	if m.removedcontent_nodes == nil {
-		m.removedcontent_nodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.content_nodes, ids[i])
-		m.removedcontent_nodes[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedContentNodes returns the removed IDs of the "content_nodes" edge to the ContentNode entity.
-func (m *SkillMutation) RemovedContentNodesIDs() (ids []uuid.UUID) {
-	for id := range m.removedcontent_nodes {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ContentNodesIDs returns the "content_nodes" edge IDs in the mutation.
-func (m *SkillMutation) ContentNodesIDs() (ids []uuid.UUID) {
-	for id := range m.content_nodes {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetContentNodes resets all changes to the "content_nodes" edge.
-func (m *SkillMutation) ResetContentNodes() {
-	m.content_nodes = nil
-	m.clearedcontent_nodes = false
-	m.removedcontent_nodes = nil
-}
-
-// AddExerciseIDs adds the "exercises" edge to the Exercise entity by ids.
-func (m *SkillMutation) AddExerciseIDs(ids ...uuid.UUID) {
-	if m.exercises == nil {
-		m.exercises = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.exercises[ids[i]] = struct{}{}
-	}
-}
-
-// ClearExercises clears the "exercises" edge to the Exercise entity.
-func (m *SkillMutation) ClearExercises() {
-	m.clearedexercises = true
-}
-
-// ExercisesCleared reports if the "exercises" edge to the Exercise entity was cleared.
-func (m *SkillMutation) ExercisesCleared() bool {
-	return m.clearedexercises
-}
-
-// RemoveExerciseIDs removes the "exercises" edge to the Exercise entity by IDs.
-func (m *SkillMutation) RemoveExerciseIDs(ids ...uuid.UUID) {
-	if m.removedexercises == nil {
-		m.removedexercises = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.exercises, ids[i])
-		m.removedexercises[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedExercises returns the removed IDs of the "exercises" edge to the Exercise entity.
-func (m *SkillMutation) RemovedExercisesIDs() (ids []uuid.UUID) {
-	for id := range m.removedexercises {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ExercisesIDs returns the "exercises" edge IDs in the mutation.
-func (m *SkillMutation) ExercisesIDs() (ids []uuid.UUID) {
-	for id := range m.exercises {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetExercises resets all changes to the "exercises" edge.
-func (m *SkillMutation) ResetExercises() {
-	m.exercises = nil
-	m.clearedexercises = false
-	m.removedexercises = nil
-}
-
-// AddDiagramIDs adds the "diagrams" edge to the Diagram entity by ids.
-func (m *SkillMutation) AddDiagramIDs(ids ...uuid.UUID) {
-	if m.diagrams == nil {
-		m.diagrams = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.diagrams[ids[i]] = struct{}{}
-	}
-}
-
-// ClearDiagrams clears the "diagrams" edge to the Diagram entity.
-func (m *SkillMutation) ClearDiagrams() {
-	m.cleareddiagrams = true
-}
-
-// DiagramsCleared reports if the "diagrams" edge to the Diagram entity was cleared.
-func (m *SkillMutation) DiagramsCleared() bool {
-	return m.cleareddiagrams
-}
-
-// RemoveDiagramIDs removes the "diagrams" edge to the Diagram entity by IDs.
-func (m *SkillMutation) RemoveDiagramIDs(ids ...uuid.UUID) {
-	if m.removeddiagrams == nil {
-		m.removeddiagrams = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.diagrams, ids[i])
-		m.removeddiagrams[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedDiagrams returns the removed IDs of the "diagrams" edge to the Diagram entity.
-func (m *SkillMutation) RemovedDiagramsIDs() (ids []uuid.UUID) {
-	for id := range m.removeddiagrams {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// DiagramsIDs returns the "diagrams" edge IDs in the mutation.
-func (m *SkillMutation) DiagramsIDs() (ids []uuid.UUID) {
-	for id := range m.diagrams {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetDiagrams resets all changes to the "diagrams" edge.
-func (m *SkillMutation) ResetDiagrams() {
-	m.diagrams = nil
-	m.cleareddiagrams = false
-	m.removeddiagrams = nil
-}
-
-// AddContentNodeSkillIDs adds the "content_node_skills" edge to the ContentNodeSkill entity by ids.
-func (m *SkillMutation) AddContentNodeSkillIDs(ids ...int) {
-	if m.content_node_skills == nil {
-		m.content_node_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.content_node_skills[ids[i]] = struct{}{}
-	}
-}
-
-// ClearContentNodeSkills clears the "content_node_skills" edge to the ContentNodeSkill entity.
-func (m *SkillMutation) ClearContentNodeSkills() {
-	m.clearedcontent_node_skills = true
-}
-
-// ContentNodeSkillsCleared reports if the "content_node_skills" edge to the ContentNodeSkill entity was cleared.
-func (m *SkillMutation) ContentNodeSkillsCleared() bool {
-	return m.clearedcontent_node_skills
-}
-
-// RemoveContentNodeSkillIDs removes the "content_node_skills" edge to the ContentNodeSkill entity by IDs.
-func (m *SkillMutation) RemoveContentNodeSkillIDs(ids ...int) {
-	if m.removedcontent_node_skills == nil {
-		m.removedcontent_node_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.content_node_skills, ids[i])
-		m.removedcontent_node_skills[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedContentNodeSkills returns the removed IDs of the "content_node_skills" edge to the ContentNodeSkill entity.
-func (m *SkillMutation) RemovedContentNodeSkillsIDs() (ids []int) {
-	for id := range m.removedcontent_node_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ContentNodeSkillsIDs returns the "content_node_skills" edge IDs in the mutation.
-func (m *SkillMutation) ContentNodeSkillsIDs() (ids []int) {
-	for id := range m.content_node_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetContentNodeSkills resets all changes to the "content_node_skills" edge.
-func (m *SkillMutation) ResetContentNodeSkills() {
-	m.content_node_skills = nil
-	m.clearedcontent_node_skills = false
-	m.removedcontent_node_skills = nil
-}
-
-// AddExerciseSkillIDs adds the "exercise_skills" edge to the ExerciseSkill entity by ids.
-func (m *SkillMutation) AddExerciseSkillIDs(ids ...int) {
-	if m.exercise_skills == nil {
-		m.exercise_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.exercise_skills[ids[i]] = struct{}{}
-	}
-}
-
-// ClearExerciseSkills clears the "exercise_skills" edge to the ExerciseSkill entity.
-func (m *SkillMutation) ClearExerciseSkills() {
-	m.clearedexercise_skills = true
-}
-
-// ExerciseSkillsCleared reports if the "exercise_skills" edge to the ExerciseSkill entity was cleared.
-func (m *SkillMutation) ExerciseSkillsCleared() bool {
-	return m.clearedexercise_skills
-}
-
-// RemoveExerciseSkillIDs removes the "exercise_skills" edge to the ExerciseSkill entity by IDs.
-func (m *SkillMutation) RemoveExerciseSkillIDs(ids ...int) {
-	if m.removedexercise_skills == nil {
-		m.removedexercise_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.exercise_skills, ids[i])
-		m.removedexercise_skills[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedExerciseSkills returns the removed IDs of the "exercise_skills" edge to the ExerciseSkill entity.
-func (m *SkillMutation) RemovedExerciseSkillsIDs() (ids []int) {
-	for id := range m.removedexercise_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ExerciseSkillsIDs returns the "exercise_skills" edge IDs in the mutation.
-func (m *SkillMutation) ExerciseSkillsIDs() (ids []int) {
-	for id := range m.exercise_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetExerciseSkills resets all changes to the "exercise_skills" edge.
-func (m *SkillMutation) ResetExerciseSkills() {
-	m.exercise_skills = nil
-	m.clearedexercise_skills = false
-	m.removedexercise_skills = nil
-}
-
-// AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by ids.
-func (m *SkillMutation) AddDiagramSkillIDs(ids ...int) {
-	if m.diagram_skills == nil {
-		m.diagram_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.diagram_skills[ids[i]] = struct{}{}
-	}
-}
-
-// ClearDiagramSkills clears the "diagram_skills" edge to the DiagramSkill entity.
-func (m *SkillMutation) ClearDiagramSkills() {
-	m.cleareddiagram_skills = true
-}
-
-// DiagramSkillsCleared reports if the "diagram_skills" edge to the DiagramSkill entity was cleared.
-func (m *SkillMutation) DiagramSkillsCleared() bool {
-	return m.cleareddiagram_skills
-}
-
-// RemoveDiagramSkillIDs removes the "diagram_skills" edge to the DiagramSkill entity by IDs.
-func (m *SkillMutation) RemoveDiagramSkillIDs(ids ...int) {
-	if m.removeddiagram_skills == nil {
-		m.removeddiagram_skills = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.diagram_skills, ids[i])
-		m.removeddiagram_skills[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedDiagramSkills returns the removed IDs of the "diagram_skills" edge to the DiagramSkill entity.
-func (m *SkillMutation) RemovedDiagramSkillsIDs() (ids []int) {
-	for id := range m.removeddiagram_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// DiagramSkillsIDs returns the "diagram_skills" edge IDs in the mutation.
-func (m *SkillMutation) DiagramSkillsIDs() (ids []int) {
-	for id := range m.diagram_skills {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetDiagramSkills resets all changes to the "diagram_skills" edge.
-func (m *SkillMutation) ResetDiagramSkills() {
-	m.diagram_skills = nil
-	m.cleareddiagram_skills = false
-	m.removeddiagram_skills = nil
-}
-
-// Where appends a list predicates to the SkillMutation builder.
-func (m *SkillMutation) Where(ps ...predicate.Skill) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the SkillMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *SkillMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.Skill, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *SkillMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *SkillMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (Skill).
-func (m *SkillMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 2)
-	if m.name != nil {
-		fields = append(fields, skill.FieldName)
-	}
-	if m.parent != nil {
-		fields = append(fields, skill.FieldParentID)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *SkillMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case skill.FieldName:
-		return m.Name()
-	case skill.FieldParentID:
-		return m.ParentID()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case skill.FieldName:
-		return m.OldName(ctx)
-	case skill.FieldParentID:
-		return m.OldParentID(ctx)
-	}
-	return nil, fmt.Errorf("unknown Skill field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SkillMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case skill.FieldName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetName(v)
-		return nil
-	case skill.FieldParentID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetParentID(v)
-		return nil
-	}
-	return fmt.Errorf("unknown Skill field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *SkillMutation) AddedFields() []string {
-	return nil
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *SkillMutation) AddedField(name string) (ent.Value, bool) {
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SkillMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	}
-	return fmt.Errorf("unknown Skill numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *SkillMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(skill.FieldParentID) {
-		fields = append(fields, skill.FieldParentID)
-	}
-	return fields
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *SkillMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *SkillMutation) ClearField(name string) error {
-	switch name {
-	case skill.FieldParentID:
-		m.ClearParentID()
-		return nil
-	}
-	return fmt.Errorf("unknown Skill nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *SkillMutation) ResetField(name string) error {
-	switch name {
-	case skill.FieldName:
-		m.ResetName()
-		return nil
-	case skill.FieldParentID:
-		m.ResetParentID()
-		return nil
-	}
-	return fmt.Errorf("unknown Skill field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *SkillMutation) AddedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.children != nil {
-		edges = append(edges, skill.EdgeChildren)
-	}
-	if m.parent != nil {
-		edges = append(edges, skill.EdgeParent)
-	}
-	if m.content_nodes != nil {
-		edges = append(edges, skill.EdgeContentNodes)
-	}
-	if m.exercises != nil {
-		edges = append(edges, skill.EdgeExercises)
-	}
-	if m.diagrams != nil {
-		edges = append(edges, skill.EdgeDiagrams)
-	}
-	if m.content_node_skills != nil {
-		edges = append(edges, skill.EdgeContentNodeSkills)
-	}
-	if m.exercise_skills != nil {
-		edges = append(edges, skill.EdgeExerciseSkills)
-	}
-	if m.diagram_skills != nil {
-		edges = append(edges, skill.EdgeDiagramSkills)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *SkillMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case skill.EdgeChildren:
-		ids := make([]ent.Value, 0, len(m.children))
-		for id := range m.children {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeParent:
-		if id := m.parent; id != nil {
-			return []ent.Value{*id}
-		}
-	case skill.EdgeContentNodes:
-		ids := make([]ent.Value, 0, len(m.content_nodes))
-		for id := range m.content_nodes {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeExercises:
-		ids := make([]ent.Value, 0, len(m.exercises))
-		for id := range m.exercises {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeDiagrams:
-		ids := make([]ent.Value, 0, len(m.diagrams))
-		for id := range m.diagrams {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeContentNodeSkills:
-		ids := make([]ent.Value, 0, len(m.content_node_skills))
-		for id := range m.content_node_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeExerciseSkills:
-		ids := make([]ent.Value, 0, len(m.exercise_skills))
-		for id := range m.exercise_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeDiagramSkills:
-		ids := make([]ent.Value, 0, len(m.diagram_skills))
-		for id := range m.diagram_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *SkillMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.removedchildren != nil {
-		edges = append(edges, skill.EdgeChildren)
-	}
-	if m.removedcontent_nodes != nil {
-		edges = append(edges, skill.EdgeContentNodes)
-	}
-	if m.removedexercises != nil {
-		edges = append(edges, skill.EdgeExercises)
-	}
-	if m.removeddiagrams != nil {
-		edges = append(edges, skill.EdgeDiagrams)
-	}
-	if m.removedcontent_node_skills != nil {
-		edges = append(edges, skill.EdgeContentNodeSkills)
-	}
-	if m.removedexercise_skills != nil {
-		edges = append(edges, skill.EdgeExerciseSkills)
-	}
-	if m.removeddiagram_skills != nil {
-		edges = append(edges, skill.EdgeDiagramSkills)
-	}
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case skill.EdgeChildren:
-		ids := make([]ent.Value, 0, len(m.removedchildren))
-		for id := range m.removedchildren {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeContentNodes:
-		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
-		for id := range m.removedcontent_nodes {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeExercises:
-		ids := make([]ent.Value, 0, len(m.removedexercises))
-		for id := range m.removedexercises {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeDiagrams:
-		ids := make([]ent.Value, 0, len(m.removeddiagrams))
-		for id := range m.removeddiagrams {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeContentNodeSkills:
-		ids := make([]ent.Value, 0, len(m.removedcontent_node_skills))
-		for id := range m.removedcontent_node_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeExerciseSkills:
-		ids := make([]ent.Value, 0, len(m.removedexercise_skills))
-		for id := range m.removedexercise_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	case skill.EdgeDiagramSkills:
-		ids := make([]ent.Value, 0, len(m.removeddiagram_skills))
-		for id := range m.removeddiagram_skills {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *SkillMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 8)
-	if m.clearedchildren {
-		edges = append(edges, skill.EdgeChildren)
-	}
-	if m.clearedparent {
-		edges = append(edges, skill.EdgeParent)
-	}
-	if m.clearedcontent_nodes {
-		edges = append(edges, skill.EdgeContentNodes)
-	}
-	if m.clearedexercises {
-		edges = append(edges, skill.EdgeExercises)
-	}
-	if m.cleareddiagrams {
-		edges = append(edges, skill.EdgeDiagrams)
-	}
-	if m.clearedcontent_node_skills {
-		edges = append(edges, skill.EdgeContentNodeSkills)
-	}
-	if m.clearedexercise_skills {
-		edges = append(edges, skill.EdgeExerciseSkills)
-	}
-	if m.cleareddiagram_skills {
-		edges = append(edges, skill.EdgeDiagramSkills)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *SkillMutation) EdgeCleared(name string) bool {
-	switch name {
-	case skill.EdgeChildren:
-		return m.clearedchildren
-	case skill.EdgeParent:
-		return m.clearedparent
-	case skill.EdgeContentNodes:
-		return m.clearedcontent_nodes
-	case skill.EdgeExercises:
-		return m.clearedexercises
-	case skill.EdgeDiagrams:
-		return m.cleareddiagrams
-	case skill.EdgeContentNodeSkills:
-		return m.clearedcontent_node_skills
-	case skill.EdgeExerciseSkills:
-		return m.clearedexercise_skills
-	case skill.EdgeDiagramSkills:
-		return m.cleareddiagram_skills
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *SkillMutation) ClearEdge(name string) error {
-	switch name {
-	case skill.EdgeParent:
-		m.ClearParent()
-		return nil
-	}
-	return fmt.Errorf("unknown Skill unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *SkillMutation) ResetEdge(name string) error {
-	switch name {
-	case skill.EdgeChildren:
-		m.ResetChildren()
-		return nil
-	case skill.EdgeParent:
-		m.ResetParent()
-		return nil
-	case skill.EdgeContentNodes:
-		m.ResetContentNodes()
-		return nil
-	case skill.EdgeExercises:
-		m.ResetExercises()
-		return nil
-	case skill.EdgeDiagrams:
-		m.ResetDiagrams()
-		return nil
-	case skill.EdgeContentNodeSkills:
-		m.ResetContentNodeSkills()
-		return nil
-	case skill.EdgeExerciseSkills:
-		m.ResetExerciseSkills()
-		return nil
-	case skill.EdgeDiagramSkills:
-		m.ResetDiagramSkills()
-		return nil
-	}
-	return fmt.Errorf("unknown Skill edge %s", name)
 }
 
 // StudentLearningStateMutation represents an operation that mutates the StudentLearningState nodes in the graph.

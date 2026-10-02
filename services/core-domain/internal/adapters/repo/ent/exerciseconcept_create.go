@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ExerciseConceptCreate is the builder for creating a ExerciseConcept entity.
@@ -54,8 +54,8 @@ func (_c *ExerciseConceptCreate) SetExercise(v *Exercise) *ExerciseConceptCreate
 	return _c.SetExerciseID(v.ID)
 }
 
-// SetConcept sets the "concept" edge to the Concept entity.
-func (_c *ExerciseConceptCreate) SetConcept(v *Concept) *ExerciseConceptCreate {
+// SetConcept sets the "concept" edge to the KnowledgeNode entity.
+func (_c *ExerciseConceptCreate) SetConcept(v *KnowledgeNode) *ExerciseConceptCreate {
 	return _c.SetConceptID(v.ID)
 }
 
@@ -172,7 +172,7 @@ func (_c *ExerciseConceptCreate) createSpec() (*ExerciseConcept, *sqlgraph.Creat
 			Columns: []string{exerciseconcept.ConceptColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(concept.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

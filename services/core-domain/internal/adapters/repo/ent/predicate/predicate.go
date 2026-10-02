@@ -12,9 +12,6 @@ type Challenge func(*sql.Selector)
 // ChallengeExercise is the predicate function for challengeexercise builders.
 type ChallengeExercise func(*sql.Selector)
 
-// Concept is the predicate function for concept builders.
-type Concept func(*sql.Selector)
-
 // ContentNode is the predicate function for contentnode builders.
 type ContentNode func(*sql.Selector)
 
@@ -75,6 +72,9 @@ type Exercise func(*sql.Selector)
 // ExerciseConcept is the predicate function for exerciseconcept builders.
 type ExerciseConcept func(*sql.Selector)
 
+// ExerciseInstrument is the predicate function for exerciseinstrument builders.
+type ExerciseInstrument func(*sql.Selector)
+
 // ExerciseLanguage is the predicate function for exerciselanguage builders.
 type ExerciseLanguage func(*sql.Selector)
 
@@ -90,6 +90,15 @@ type ExpandedContent func(*sql.Selector)
 // Instrument is the predicate function for instrument builders.
 type Instrument func(*sql.Selector)
 
+// KnowledgeEdge is the predicate function for knowledgeedge builders.
+type KnowledgeEdge func(*sql.Selector)
+
+// KnowledgeNode is the predicate function for knowledgenode builders.
+type KnowledgeNode func(*sql.Selector)
+
+// KnowledgeNodeInstrument is the predicate function for knowledgenodeinstrument builders.
+type KnowledgeNodeInstrument func(*sql.Selector)
+
 // Language is the predicate function for language builders.
 type Language func(*sql.Selector)
 
@@ -104,9 +113,6 @@ type LearningPathItem func(*sql.Selector)
 
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)
-
-// Skill is the predicate function for skill builders.
-type Skill func(*sql.Selector)
 
 // StudentLearningState is the predicate function for studentlearningstate builders.
 type StudentLearningState func(*sql.Selector)

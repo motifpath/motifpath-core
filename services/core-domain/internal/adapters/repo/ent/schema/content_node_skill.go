@@ -41,7 +41,7 @@ func (ContentNodeSkill) Edges() []ent.Edge {
 			Immutable().
 			Field("content_node_id"),
 
-		edge.To("skill", Skill.Type).
+		edge.To("skill", KnowledgeNode.Type).
 			Unique().
 			Required().
 			Immutable().

@@ -24,6 +24,16 @@ func uuidsToStrings(ids []openapi_types.UUID) []string {
 
 // uuidPtrToStringPtr converts an optional request UUID to an optional
 // string id, preserving nil.
+// optionalInstrumentIDs is an instrument_ids field that may be left out:
+// nil when it was, the ids otherwise.
+func optionalInstrumentIDs(ids *generated.InstrumentIds) *[]string {
+	if ids == nil {
+		return nil
+	}
+	strs := uuidsToStrings(*ids)
+	return &strs
+}
+
 func uuidPtrToStringPtr(id *openapi_types.UUID) *string {
 	if id == nil {
 		return nil
@@ -40,8 +50,8 @@ type Handler struct {
 	content          *application.ContentService
 	challenge        *application.ChallengeService
 	exercise         *application.ExerciseService
-	skill            *application.SkillService
-	concept          *application.ConceptService
+	knowledgeNode    *application.KnowledgeNodeService
+	knowledgeEdge    *application.KnowledgeEdgeService
 	media            *application.MediaService
 	path             *application.LearningPathService
 	pathCatalog      *application.PathCatalogService
@@ -65,8 +75,8 @@ func NewHandler(
 	content *application.ContentService,
 	challenge *application.ChallengeService,
 	exercise *application.ExerciseService,
-	skill *application.SkillService,
-	concept *application.ConceptService,
+	knowledgeNode *application.KnowledgeNodeService,
+	knowledgeEdge *application.KnowledgeEdgeService,
 	media *application.MediaService,
 	path *application.LearningPathService,
 	pathCatalog *application.PathCatalogService,
@@ -84,8 +94,8 @@ func NewHandler(
 		content:               content,
 		challenge:             challenge,
 		exercise:              exercise,
-		skill:                 skill,
-		concept:               concept,
+		knowledgeNode:         knowledgeNode,
+		knowledgeEdge:         knowledgeEdge,
 		media:                 media,
 		path:                  path,
 		pathCatalog:           pathCatalog,
@@ -413,7 +423,7 @@ func (h *Handler) CreateExercise(ctx context.Context, request generated.CreateEx
 		domain.ExerciseType(body.ExerciseType), uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
 		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
 		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
-		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes, optionalInstrumentIDs(body.InstrumentIds))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -520,7 +530,7 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 		uuidsToStrings(body.SkillIds), uuidsToStrings(body.ConceptIds),
 		body.ImageUrl, body.AudioUrl, toDomainDiagramRefPtr(body.DiagramRef), toDomainDiagramStackRefPtr(body.DiagramStackRef),
 		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
-		toDomainRemediationTargets(remediationTargets), body.LanguageCodes)
+		toDomainRemediationTargets(remediationTargets), body.LanguageCodes, optionalInstrumentIDs(body.InstrumentIds))
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -1751,74 +1761,227 @@ func (h *Handler) StartPracticeSession(ctx context.Context, request generated.St
 	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session, names)), nil
 }
 
-func (h *Handler) ListSkills(ctx context.Context, _ generated.ListSkillsRequestObject) (generated.ListSkillsResponseObject, error) {
+func (h *Handler) ListKnowledgeNodes(ctx context.Context, request generated.ListKnowledgeNodesRequestObject) (generated.ListKnowledgeNodesResponseObject, error) {
 	if _, ok := h.resolveCaller(ctx); !ok {
-		return generated.ListSkills401JSONResponse(unauthorizedError()), nil
+		return generated.ListKnowledgeNodes401JSONResponse(unauthorizedError()), nil
 	}
 
-	skills, err := h.skill.ListSkills(ctx)
+	var filter ports.KnowledgeNodeFilter
+	if request.Params.Kind != nil {
+		kind := domain.KnowledgeNodeKind(*request.Params.Kind)
+		filter.Kind = &kind
+	}
+	if request.Params.InstrumentId != nil {
+		filter.InstrumentIDs = uuidsToStrings(*request.Params.InstrumentId)
+	}
+	nodes, err := h.knowledgeNode.List(ctx, filter)
 	if err != nil {
-		return nil, err
+		return listValidationFailure[generated.ListKnowledgeNodesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeNodesResponseObject {
+			return generated.ListKnowledgeNodes400JSONResponse(e)
+		})
 	}
 
-	return generated.ListSkills200JSONResponse(toGeneratedSkills(skills)), nil
+	return generated.ListKnowledgeNodes200JSONResponse(toGeneratedKnowledgeNodes(nodes)), nil
 }
 
-func (h *Handler) CreateSkill(ctx context.Context, request generated.CreateSkillRequestObject) (generated.CreateSkillResponseObject, error) {
+func (h *Handler) CreateKnowledgeNode(ctx context.Context, request generated.CreateKnowledgeNodeRequestObject) (generated.CreateKnowledgeNodeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
-		return generated.CreateSkill401JSONResponse(unauthorizedError()), nil
+		return generated.CreateKnowledgeNode401JSONResponse(unauthorizedError()), nil
 	}
 
-	skill, err := h.skill.CreateSkill(ctx, caller, request.Body.Name, uuidPtrToStringPtr(request.Body.ParentId))
+	body := request.Body
+	input := application.CreateKnowledgeNodeInput{
+		Kind:     domain.KnowledgeNodeKind(body.Kind),
+		Key:      body.Key,
+		Names:    body.Names,
+		ParentID: uuidPtrToStringPtr(body.ParentId),
+	}
+	if body.Descriptions != nil {
+		input.Descriptions = *body.Descriptions
+	}
+	if body.InstrumentIds != nil {
+		input.InstrumentIDs = uuidsToStrings(*body.InstrumentIds)
+	}
+	node, err := h.knowledgeNode.Create(ctx, caller, input)
 	if err != nil {
-		kind, valErr := classify(err)
-		switch kind {
-		case errKindValidation:
-			return generated.CreateSkill400JSONResponse(validationErrorResponse(valErr)), nil
-		case errKindForbidden:
-			return generated.CreateSkill403JSONResponse(forbiddenError("only teachers and admins may create a skill")), nil
-		case errKindNotFound, errKindOther:
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.CreateKnowledgeNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.CreateKnowledgeNode403JSONResponse(forbiddenError("only admins may create a knowledge node")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
 			return nil, err
 		}
 	}
 
-	return generated.CreateSkill201JSONResponse(toGeneratedSkill(skill)), nil
+	return generated.CreateKnowledgeNode201JSONResponse(toGeneratedKnowledgeNode(node)), nil
 }
 
-func (h *Handler) ListConcepts(ctx context.Context, _ generated.ListConceptsRequestObject) (generated.ListConceptsResponseObject, error) {
+func (h *Handler) GetKnowledgeNode(ctx context.Context, request generated.GetKnowledgeNodeRequestObject) (generated.GetKnowledgeNodeResponseObject, error) {
 	if _, ok := h.resolveCaller(ctx); !ok {
-		return generated.ListConcepts401JSONResponse(unauthorizedError()), nil
+		return generated.GetKnowledgeNode401JSONResponse(unauthorizedError()), nil
 	}
 
-	concepts, err := h.concept.ListConcepts(ctx)
+	node, err := h.knowledgeNode.Get(ctx, request.NodeId.String())
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return generated.GetKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		}
 		return nil, err
 	}
 
-	return generated.ListConcepts200JSONResponse(toGeneratedConcepts(concepts)), nil
+	return generated.GetKnowledgeNode200JSONResponse(toGeneratedKnowledgeNode(node)), nil
 }
 
-func (h *Handler) CreateConcept(ctx context.Context, request generated.CreateConceptRequestObject) (generated.CreateConceptResponseObject, error) {
+func (h *Handler) UpdateKnowledgeNode(ctx context.Context, request generated.UpdateKnowledgeNodeRequestObject) (generated.UpdateKnowledgeNodeResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
-		return generated.CreateConcept401JSONResponse(unauthorizedError()), nil
+		return generated.UpdateKnowledgeNode401JSONResponse(unauthorizedError()), nil
 	}
 
-	concept, err := h.concept.CreateConcept(ctx, caller, request.Body.Name, uuidPtrToStringPtr(request.Body.ParentId))
+	node, err := h.knowledgeNode.Update(ctx, caller, request.NodeId.String(), toUpdateKnowledgeNodeInput(*request.Body))
 	if err != nil {
-		kind, valErr := classify(err)
-		switch kind {
-		case errKindValidation:
-			return generated.CreateConcept400JSONResponse(validationErrorResponse(valErr)), nil
-		case errKindForbidden:
-			return generated.CreateConcept403JSONResponse(forbiddenError("only teachers and admins may create a concept")), nil
-		case errKindNotFound, errKindOther:
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.UpdateKnowledgeNode400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.UpdateKnowledgeNode403JSONResponse(forbiddenError("only admins may update a knowledge node")), nil
+		case kind == errKindNotFound:
+			return generated.UpdateKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.UpdateKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
 			return nil, err
 		}
 	}
 
-	return generated.CreateConcept201JSONResponse(toGeneratedConcept(concept)), nil
+	return generated.UpdateKnowledgeNode200JSONResponse(toGeneratedKnowledgeNode(node)), nil
+}
+
+func (h *Handler) DeleteKnowledgeNode(ctx context.Context, request generated.DeleteKnowledgeNodeRequestObject) (generated.DeleteKnowledgeNodeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteKnowledgeNode401JSONResponse(unauthorizedError()), nil
+	}
+
+	if err := h.knowledgeNode.Delete(ctx, caller, request.NodeId.String()); err != nil {
+		switch kind, _ := classify(err); {
+		case kind == errKindForbidden:
+			return generated.DeleteKnowledgeNode403JSONResponse(forbiddenError("only admins may delete a knowledge node")), nil
+		case kind == errKindNotFound:
+			return generated.DeleteKnowledgeNode404JSONResponse(notFoundError("no knowledge node exists with the given id")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.DeleteKnowledgeNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteKnowledgeNode204Response{}, nil
+}
+
+func (h *Handler) ListKnowledgeEdges(ctx context.Context, request generated.ListKnowledgeEdgesRequestObject) (generated.ListKnowledgeEdgesResponseObject, error) {
+	if _, ok := h.resolveCaller(ctx); !ok {
+		return generated.ListKnowledgeEdges401JSONResponse(unauthorizedError()), nil
+	}
+
+	filter := ports.KnowledgeEdgeFilter{
+		FromID: uuidPtrToStringPtr(request.Params.FromId),
+		ToID:   uuidPtrToStringPtr(request.Params.ToId),
+	}
+	if request.Params.Type != nil {
+		edgeType := domain.KnowledgeEdgeType(*request.Params.Type)
+		filter.Type = &edgeType
+	}
+	edges, err := h.knowledgeEdge.List(ctx, filter)
+	if err != nil {
+		return listValidationFailure[generated.ListKnowledgeEdgesResponseObject](err, func(e generated.ValidationError) generated.ListKnowledgeEdgesResponseObject {
+			return generated.ListKnowledgeEdges400JSONResponse(e)
+		})
+	}
+
+	return generated.ListKnowledgeEdges200JSONResponse(toGeneratedKnowledgeEdges(edges)), nil
+}
+
+func (h *Handler) CreateKnowledgeEdge(ctx context.Context, request generated.CreateKnowledgeEdgeRequestObject) (generated.CreateKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.CreateKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	body := request.Body
+	input := application.CreateKnowledgeEdgeInput{
+		FromID: body.FromId.String(),
+		ToID:   body.ToId.String(),
+		Type:   domain.KnowledgeEdgeType(body.Type),
+	}
+	if body.Level != nil {
+		level := domain.MasteryLevel(*body.Level)
+		input.Level = &level
+	}
+	edge, err := h.knowledgeEdge.Create(ctx, caller, input)
+	if err != nil {
+		switch kind, valErr := classify(err); {
+		case kind == errKindValidation:
+			return generated.CreateKnowledgeEdge400JSONResponse(validationErrorResponse(valErr)), nil
+		case kind == errKindForbidden:
+			return generated.CreateKnowledgeEdge403JSONResponse(forbiddenError("only admins may create a knowledge edge")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.CreateKnowledgeEdge409JSONResponse(conflictError(conflictMessage(err))), nil
+		default:
+			return nil, err
+		}
+	}
+
+	return generated.CreateKnowledgeEdge201JSONResponse(toGeneratedKnowledgeEdge(edge)), nil
+}
+
+func (h *Handler) UpdateKnowledgeEdge(ctx context.Context, request generated.UpdateKnowledgeEdgeRequestObject) (generated.UpdateKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.UpdateKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	edge, err := h.knowledgeEdge.UpdateLevel(ctx, caller, request.EdgeId.String(), domain.MasteryLevel(request.Body.Level))
+	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.UpdateKnowledgeEdge400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.UpdateKnowledgeEdge403JSONResponse(forbiddenError("only admins may update a knowledge edge")), nil
+		case errKindNotFound:
+			return generated.UpdateKnowledgeEdge404JSONResponse(notFoundError("no knowledge edge exists with the given id")), nil
+		case errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.UpdateKnowledgeEdge200JSONResponse(toGeneratedKnowledgeEdge(edge)), nil
+}
+
+func (h *Handler) DeleteKnowledgeEdge(ctx context.Context, request generated.DeleteKnowledgeEdgeRequestObject) (generated.DeleteKnowledgeEdgeResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.DeleteKnowledgeEdge401JSONResponse(unauthorizedError()), nil
+	}
+
+	if err := h.knowledgeEdge.Delete(ctx, caller, request.EdgeId.String()); err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.DeleteKnowledgeEdge403JSONResponse(forbiddenError("only admins may delete a knowledge edge")), nil
+		case errKindNotFound:
+			return generated.DeleteKnowledgeEdge404JSONResponse(notFoundError("no knowledge edge exists with the given id")), nil
+		case errKindValidation, errKindOther:
+			return nil, err
+		}
+	}
+
+	return generated.DeleteKnowledgeEdge204Response{}, nil
 }
 
 func (h *Handler) ListInstruments(ctx context.Context, _ generated.ListInstrumentsRequestObject) (generated.ListInstrumentsResponseObject, error) {

@@ -34,6 +34,16 @@ $spec =~ s{(^    UpdateDiagramRequest:\n(?:(?!    \S).*\n)*)}{
     $block;
 }me;
 
+# UpdateKnowledgeNodeRequest's descriptions and parent_id have the same
+# three states, so they decode into nullable.Nullable the same way.
+$spec =~ s{(^    UpdateKnowledgeNodeRequest:\n(?:(?!    \S).*\n)*)}{
+    my $block = $1;
+    $block =~ s/^(\s+)allOf:\n\s+- \$ref: '#\/components\/schemas\/LocalizedDescription'\n/$1type: object\n/m;
+    my %go_type = (descriptions => 'LocalizedDescription', parent_id => 'openapi_types.UUID');
+    $block =~ s/^(\s+)(descriptions|parent_id):\n/$1$2:\n$1  x-go-type: nullable.Nullable[$go_type{$2}]\n$1  x-go-type-import:\n$1    path: github.com\/oapi-codegen\/nullable\n$1  x-go-type-skip-optional-pointer: true\n/mg;
+    $block;
+}me;
+
 open(my $out, '>', $path) or die "write $path: $!\n";
 print $out $spec;
 close($out);

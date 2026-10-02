@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 // fakeUserRepository is a minimal in-memory ports.UserRepository.
@@ -524,7 +525,7 @@ func (f *fakeExerciseRepository) List(_ context.Context, filter domain.ExerciseF
 		if filter.SkillID != "" && !containsID(exerciseSkillIDs(ex), filter.SkillID) {
 			continue
 		}
-		if filter.ConceptID != "" && !slices.ContainsFunc(ex.Concepts, func(c domain.Concept) bool { return c.ID == filter.ConceptID }) {
+		if filter.ConceptID != "" && !slices.ContainsFunc(ex.Concepts, func(c domain.KnowledgeNode) bool { return c.ID == filter.ConceptID }) {
 			continue
 		}
 		if filter.Language != "" && !slices.ContainsFunc(ex.Languages, func(l domain.Language) bool { return l.Code == filter.Language }) {
@@ -1369,152 +1370,276 @@ func idSequence() func() string {
 	}
 }
 
-// fakeSkillRepository is a minimal in-memory ports.SkillRepository.
-type fakeSkillRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.Skill
+// fakeKnowledgeNodeRepository is a minimal in-memory
+// ports.KnowledgeNodeRepository. Children and edges (when edges is set) are
+// counted from its own state; the rest of a node's usage, and the
+// instruments of the items classified under it, are whatever a test puts in
+// usage and classified.
+type fakeKnowledgeNodeRepository struct {
+	mu         sync.Mutex
+	byID       map[string]domain.KnowledgeNode
+	edges      *fakeKnowledgeEdgeRepository
+	usage      map[string]ports.KnowledgeNodeUsage
+	classified map[string][][]string
 }
 
-func newFakeSkillRepository() *fakeSkillRepository {
-	return &fakeSkillRepository{byID: map[string]domain.Skill{}}
+func newFakeKnowledgeNodeRepository() *fakeKnowledgeNodeRepository {
+	return &fakeKnowledgeNodeRepository{
+		byID:       map[string]domain.KnowledgeNode{},
+		usage:      map[string]ports.KnowledgeNodeUsage{},
+		classified: map[string][][]string{},
+	}
 }
 
-func (f *fakeSkillRepository) Create(_ context.Context, skill domain.Skill) error {
+func (f *fakeKnowledgeNodeRepository) Create(_ context.Context, node domain.KnowledgeNode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[skill.ID] = skill
+	for _, existing := range f.byID {
+		if existing.Key == node.Key {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[node.ID] = node
 	return nil
 }
 
-func (f *fakeSkillRepository) GetByID(_ context.Context, id string) (domain.Skill, error) {
+func (f *fakeKnowledgeNodeRepository) GetByID(_ context.Context, id string) (domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	skill, ok := f.byID[id]
+	node, ok := f.byID[id]
 	if !ok {
-		return domain.Skill{}, domain.ErrNotFound
+		return domain.KnowledgeNode{}, domain.ErrNotFound
 	}
-	return skill, nil
+	return node, nil
 }
 
-func (f *fakeSkillRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Skill, error) {
+// joined returns each of nodes as stored here, keeping one this repository
+// doesn't hold as given.
+func (f *fakeKnowledgeNodeRepository) joined(nodes []domain.KnowledgeNode) []domain.KnowledgeNode {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := map[string]domain.Skill{}
+	result := make([]domain.KnowledgeNode, len(nodes))
+	for i, node := range nodes {
+		if stored, ok := f.byID[node.ID]; ok {
+			node = stored
+		}
+		result[i] = node
+	}
+	return result
+}
+
+func (f *fakeKnowledgeNodeRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.KnowledgeNode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.KnowledgeNode{}
 	for _, id := range ids {
-		if skill, ok := f.byID[id]; ok {
-			result[id] = skill
+		if node, ok := f.byID[id]; ok {
+			result[id] = node
 		}
 	}
 	return result, nil
 }
 
-func (f *fakeSkillRepository) List(_ context.Context) ([]domain.Skill, error) {
+func (f *fakeKnowledgeNodeRepository) GetByKeys(_ context.Context, keys []string) (map[string]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := make([]domain.Skill, 0, len(f.byID))
-	for _, skill := range f.byID {
-		result = append(result, skill)
+	result := map[string]domain.KnowledgeNode{}
+	for _, node := range f.byID {
+		if slices.Contains(keys, node.Key) {
+			result[node.Key] = node
+		}
 	}
 	return result, nil
 }
 
-func (f *fakeSkillRepository) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+func (f *fakeKnowledgeNodeRepository) List(_ context.Context, filter ports.KnowledgeNodeFilter) ([]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, skill := range f.byID {
-		if skill.Name != name {
+	result := []domain.KnowledgeNode{}
+	for _, node := range f.byID {
+		if filter.Kind != nil && node.Kind != *filter.Kind {
 			continue
 		}
-		if samePointerValue(skill.ParentID, parentID) {
-			return true, nil
+		if len(filter.InstrumentIDs) > 0 && !node.Suits(filter.InstrumentIDs) {
+			continue
 		}
+		result = append(result, node)
 	}
-	return false, nil
+	slices.SortFunc(result, func(a, b domain.KnowledgeNode) int { return strings.Compare(a.Key, b.Key) })
+	return result, nil
 }
 
-func (f *fakeSkillRepository) put(skill domain.Skill) {
+func (f *fakeKnowledgeNodeRepository) Update(_ context.Context, node domain.KnowledgeNode) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.byID[skill.ID] = skill
-}
-
-// fakeConceptRepository is a minimal in-memory ports.ConceptRepository.
-type fakeConceptRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.Concept
-}
-
-func newFakeConceptRepository() *fakeConceptRepository {
-	return &fakeConceptRepository{byID: map[string]domain.Concept{}}
-}
-
-func (f *fakeConceptRepository) Create(_ context.Context, concept domain.Concept) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.byID[concept.ID] = concept
+	if _, ok := f.byID[node.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[node.ID] = node
 	return nil
 }
 
-func (f *fakeConceptRepository) GetByID(_ context.Context, id string) (domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepository) Delete(_ context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	concept, ok := f.byID[id]
-	if !ok {
-		return domain.Concept{}, domain.ErrNotFound
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
 	}
-	return concept, nil
+	delete(f.byID, id)
+	return nil
 }
 
-func (f *fakeConceptRepository) GetByIDs(_ context.Context, ids []string) (map[string]domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepository) Children(_ context.Context, id string) ([]domain.KnowledgeNode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := map[string]domain.Concept{}
-	for _, id := range ids {
-		if concept, ok := f.byID[id]; ok {
-			result[id] = concept
+	var children []domain.KnowledgeNode
+	for _, node := range f.byID {
+		if node.ParentID != nil && *node.ParentID == id {
+			children = append(children, node)
 		}
 	}
-	return result, nil
+	return children, nil
 }
 
-func (f *fakeConceptRepository) List(_ context.Context) ([]domain.Concept, error) {
+func (f *fakeKnowledgeNodeRepository) InSubtree(_ context.Context, rootID, candidateID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	result := make([]domain.Concept, 0, len(f.byID))
-	for _, concept := range f.byID {
-		result = append(result, concept)
+	for id := candidateID; ; {
+		if id == rootID {
+			return true, nil
+		}
+		node, ok := f.byID[id]
+		if !ok || node.ParentID == nil {
+			return false, nil
+		}
+		id = *node.ParentID
 	}
-	return result, nil
 }
 
-func (f *fakeConceptRepository) ExistsSibling(_ context.Context, parentID *string, name string) (bool, error) {
+func (f *fakeKnowledgeNodeRepository) Usage(ctx context.Context, id string) (ports.KnowledgeNodeUsage, error) {
+	f.mu.Lock()
+	usage := f.usage[id]
+	for _, node := range f.byID {
+		if node.ParentID != nil && *node.ParentID == id {
+			usage.Children++
+		}
+	}
+	f.mu.Unlock()
+	if f.edges != nil {
+		for _, filter := range []ports.KnowledgeEdgeFilter{{FromID: &id}, {ToID: &id}} {
+			edges, err := f.edges.List(ctx, filter)
+			if err != nil {
+				return ports.KnowledgeNodeUsage{}, err
+			}
+			usage.Edges += len(edges)
+		}
+	}
+	return usage, nil
+}
+
+func (f *fakeKnowledgeNodeRepository) ClassifiedInstrumentSets(_ context.Context, id string) ([][]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, concept := range f.byID {
-		if concept.Name != name {
+	return f.classified[id], nil
+}
+
+func (f *fakeKnowledgeNodeRepository) put(node domain.KnowledgeNode) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.byID[node.ID] = node
+}
+
+// fakeKnowledgeEdgeRepository is a minimal in-memory
+// ports.KnowledgeEdgeRepository.
+type fakeKnowledgeEdgeRepository struct {
+	mu   sync.Mutex
+	byID map[string]domain.KnowledgeEdge
+}
+
+func newFakeKnowledgeEdgeRepository() *fakeKnowledgeEdgeRepository {
+	return &fakeKnowledgeEdgeRepository{byID: map[string]domain.KnowledgeEdge{}}
+}
+
+func (f *fakeKnowledgeEdgeRepository) Create(_ context.Context, edge domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, existing := range f.byID {
+		if existing.FromID == edge.FromID && existing.ToID == edge.ToID && existing.Type == edge.Type {
+			return domain.ErrAlreadyExists
+		}
+	}
+	f.byID[edge.ID] = edge
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepository) GetByID(_ context.Context, id string) (domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	edge, ok := f.byID[id]
+	if !ok {
+		return domain.KnowledgeEdge{}, domain.ErrNotFound
+	}
+	return edge, nil
+}
+
+func (f *fakeKnowledgeEdgeRepository) List(_ context.Context, filter ports.KnowledgeEdgeFilter) ([]domain.KnowledgeEdge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := []domain.KnowledgeEdge{}
+	for _, edge := range f.byID {
+		if filter.Type != nil && edge.Type != *filter.Type ||
+			filter.FromID != nil && edge.FromID != *filter.FromID ||
+			filter.ToID != nil && edge.ToID != *filter.ToID {
 			continue
 		}
-		if samePointerValue(concept.ParentID, parentID) {
+		result = append(result, edge)
+	}
+	slices.SortFunc(result, func(a, b domain.KnowledgeEdge) int { return strings.Compare(a.ID, b.ID) })
+	return result, nil
+}
+
+func (f *fakeKnowledgeEdgeRepository) UpdateLevel(_ context.Context, edge domain.KnowledgeEdge) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[edge.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.byID[edge.ID] = edge
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepository) Delete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.byID[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(f.byID, id)
+	return nil
+}
+
+func (f *fakeKnowledgeEdgeRepository) RequiresPathExists(_ context.Context, fromID, toID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	frontier := []string{fromID}
+	for len(frontier) > 0 {
+		id := frontier[0]
+		frontier = frontier[1:]
+		if id == toID {
 			return true, nil
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		for _, edge := range f.byID {
+			if edge.Type == domain.KnowledgeEdgeTypeRequires && edge.FromID == id {
+				frontier = append(frontier, edge.ToID)
+			}
 		}
 	}
 	return false, nil
-}
-
-func (f *fakeConceptRepository) put(concept domain.Concept) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.byID[concept.ID] = concept
-}
-
-// samePointerValue reports whether a and b are both nil, or both non-nil
-// and pointing at equal values — the "same parent_id" comparison
-// ExistsSibling needs on plain *string ids.
-func samePointerValue(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }
 
 // fakeInstrumentRepository is a minimal in-memory ports.InstrumentRepository.
@@ -1613,9 +1738,12 @@ func (f *fakeVoiceRepository) List(_ context.Context) ([]domain.Voice, error) {
 }
 
 // fakeDiagramRepository is a minimal in-memory ports.DiagramRepository.
+// With knowledge set, GetByID joins each skill and concept in from it, as the
+// real repository does; otherwise they stay as stored.
 type fakeDiagramRepository struct {
-	mu   sync.Mutex
-	byID map[string]domain.Diagram
+	mu        sync.Mutex
+	byID      map[string]domain.Diagram
+	knowledge *fakeKnowledgeNodeRepository
 }
 
 func newFakeDiagramRepository() *fakeDiagramRepository {
@@ -1635,6 +1763,10 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	diagram, ok := f.byID[id]
 	if !ok {
 		return domain.Diagram{}, domain.ErrNotFound
+	}
+	if f.knowledge != nil {
+		diagram.Skills = f.knowledge.joined(diagram.Skills)
+		diagram.Concepts = f.knowledge.joined(diagram.Concepts)
 	}
 	return diagram, nil
 }

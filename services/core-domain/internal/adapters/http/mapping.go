@@ -22,6 +22,15 @@ func mustUUID(id string) uuid.UUID {
 	return uuid.MustParse(id)
 }
 
+// uuidPtrFromStringPtr is mustUUID for an optional id.
+func uuidPtrFromStringPtr(id *string) *uuid.UUID {
+	if id == nil {
+		return nil
+	}
+	parsed := mustUUID(*id)
+	return &parsed
+}
+
 func toGeneratedLanguage(l domain.Language) generated.Language {
 	return generated.Language{Code: l.Code, Name: l.Name}
 }
@@ -44,36 +53,77 @@ func toUserProfile(u domain.User) generated.UserProfile {
 	}
 }
 
-func toGeneratedSkill(s domain.Skill) generated.Skill {
-	skill := generated.Skill{SkillId: mustUUID(s.ID), Name: s.Name}
-	if s.ParentID != nil {
-		id := mustUUID(*s.ParentID)
-		skill.ParentId = &id
+func toGeneratedKnowledgeNode(n domain.KnowledgeNode) generated.KnowledgeNode {
+	node := generated.KnowledgeNode{
+		NodeId:        mustUUID(n.ID),
+		Kind:          generated.KnowledgeNodeKind(n.Kind),
+		Key:           n.Key,
+		Names:         generated.LocalizedNames(n.Names),
+		Languages:     n.Names.Languages(),
+		ParentId:      uuidPtrFromStringPtr(n.ParentID),
+		InstrumentIds: toUUIDs(n.InstrumentIDs),
 	}
-	return skill
+	if n.Descriptions != nil {
+		descriptions := generated.LocalizedDescription(n.Descriptions)
+		node.Descriptions = &descriptions
+	}
+	return node
 }
 
-func toGeneratedSkills(skills []domain.Skill) []generated.Skill {
-	result := make([]generated.Skill, len(skills))
-	for i, s := range skills {
-		result[i] = toGeneratedSkill(s)
+func toGeneratedKnowledgeNodes(nodes []domain.KnowledgeNode) []generated.KnowledgeNode {
+	result := make([]generated.KnowledgeNode, len(nodes))
+	for i, n := range nodes {
+		result[i] = toGeneratedKnowledgeNode(n)
 	}
 	return result
 }
 
-func toGeneratedConcept(c domain.Concept) generated.Concept {
-	concept := generated.Concept{ConceptId: mustUUID(c.ID), Name: c.Name}
-	if c.ParentID != nil {
-		id := mustUUID(*c.ParentID)
-		concept.ParentId = &id
+// toUpdateKnowledgeNodeInput keeps the PATCH body's three states apart: a
+// field left out is unchanged, an explicit null clears it.
+func toUpdateKnowledgeNodeInput(body generated.UpdateKnowledgeNodeRequest) application.UpdateKnowledgeNodeInput {
+	var input application.UpdateKnowledgeNodeInput
+	if body.Names != nil {
+		input.Names = *body.Names
 	}
-	return concept
+	if body.Descriptions.IsSpecified() {
+		input.Descriptions.Set = true
+		if !body.Descriptions.IsNull() {
+			descriptions := map[string]string(body.Descriptions.MustGet())
+			input.Descriptions.Value = &descriptions
+		}
+	}
+	if body.ParentId.IsSpecified() {
+		input.ParentID.Set = true
+		if !body.ParentId.IsNull() {
+			parentID := body.ParentId.MustGet().String()
+			input.ParentID.Value = &parentID
+		}
+	}
+	if body.InstrumentIds != nil {
+		ids := uuidsToStrings(*body.InstrumentIds)
+		input.InstrumentIDs = &ids
+	}
+	return input
 }
 
-func toGeneratedConcepts(concepts []domain.Concept) []generated.Concept {
-	result := make([]generated.Concept, len(concepts))
-	for i, c := range concepts {
-		result[i] = toGeneratedConcept(c)
+func toGeneratedKnowledgeEdge(e domain.KnowledgeEdge) generated.KnowledgeEdge {
+	edge := generated.KnowledgeEdge{
+		EdgeId: mustUUID(e.ID),
+		FromId: mustUUID(e.FromID),
+		ToId:   mustUUID(e.ToID),
+		Type:   generated.KnowledgeEdgeType(e.Type),
+	}
+	if e.Level != nil {
+		level := generated.MasteryLevel(*e.Level)
+		edge.Level = &level
+	}
+	return edge
+}
+
+func toGeneratedKnowledgeEdges(edges []domain.KnowledgeEdge) []generated.KnowledgeEdge {
+	result := make([]generated.KnowledgeEdge, len(edges))
+	for i, e := range edges {
+		result[i] = toGeneratedKnowledgeEdge(e)
 	}
 	return result
 }
@@ -84,8 +134,8 @@ func toContentNodeVersion(v domain.ContentNodeVersion) generated.ContentNodeVers
 		VersionNumber: v.VersionNumber,
 		TitleSnapshot: v.Title,
 		ClassificationSnapshot: generated.Classification{
-			Skills:          toGeneratedSkills(v.Classification.Skills),
-			Concepts:        toGeneratedConcepts(v.Classification.Concepts),
+			Skills:          toGeneratedKnowledgeNodes(v.Classification.Skills),
+			Concepts:        toGeneratedKnowledgeNodes(v.Classification.Concepts),
 			DifficultyLevel: generated.ClassificationDifficultyLevel(v.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(v.Classification.ReviewState),
 		},
@@ -109,8 +159,8 @@ func toContentNode(n domain.ContentNode, names userNames) generated.ContentNode 
 		Title:         n.Title,
 		ContentType:   generated.ContentNodeContentType(n.ContentType),
 		Classification: generated.Classification{
-			Skills:          toGeneratedSkills(n.Classification.Skills),
-			Concepts:        toGeneratedConcepts(n.Classification.Concepts),
+			Skills:          toGeneratedKnowledgeNodes(n.Classification.Skills),
+			Concepts:        toGeneratedKnowledgeNodes(n.Classification.Concepts),
 			DifficultyLevel: generated.ClassificationDifficultyLevel(n.Classification.DifficultyLevel),
 			ReviewState:     generated.ClassificationReviewState(n.Classification.ReviewState),
 		},
@@ -229,14 +279,15 @@ func toExercise(e domain.Exercise, names userNames) generated.Exercise {
 		Title:                    e.Title,
 		Prompt:                   toGeneratedPromptDocument(e.Prompt),
 		ExerciseType:             generated.ExerciseExerciseType(e.ExerciseType),
-		Skills:                   toGeneratedSkills(e.Skills),
-		Concepts:                 toGeneratedConcepts(e.Concepts),
+		Skills:                   toGeneratedKnowledgeNodes(e.Skills),
+		Concepts:                 toGeneratedKnowledgeNodes(e.Concepts),
 		ImageUrl:                 e.ImageURL,
 		AudioUrl:                 e.AudioURL,
 		Options:                  options,
 		ChallengeIds:             challengeIDs,
 		ContentNodeIds:           contentNodeIDs,
 		Languages:                toGeneratedLanguages(e.Languages),
+		InstrumentIds:            toUUIDs(e.InstrumentIDs),
 		EstimatedDurationSeconds: e.EstimatedDurationSeconds,
 		RemediationTargets:       toRemediationTargets(e.RemediationTargets),
 		CreatedAt:                e.CreatedAt,
@@ -810,8 +861,8 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		Positions:     positions,
 		Regions:       toGeneratedRegions(d.Regions),
 		Classification: generated.DiagramClassification{
-			Skills:   toGeneratedSkills(d.Skills),
-			Concepts: toGeneratedConcepts(d.Concepts),
+			Skills:   toGeneratedKnowledgeNodes(d.Skills),
+			Concepts: toGeneratedKnowledgeNodes(d.Concepts),
 		},
 		Mode:          toGeneratedMode(d.Mode),
 		TempoBpm:      d.TempoBPM,

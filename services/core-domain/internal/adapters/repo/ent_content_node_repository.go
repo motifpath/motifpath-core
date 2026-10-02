@@ -6,11 +6,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -79,8 +78,8 @@ func (r *EntContentNodeRepository) GetByID(ctx context.Context, id string) (doma
 	row, err := r.client.ContentNode.Query().
 		Where(contentnode.ID(parsed)).
 		WithLanguages().
-		WithSkills().
-		WithConcepts().
+		WithSkills(withNodeInstruments).
+		WithConcepts(withNodeInstruments).
 		WithInstruments().
 		Only(ctx)
 	if err != nil {
@@ -99,7 +98,7 @@ func (r *EntContentNodeRepository) GetByIDs(ctx context.Context, ids []string) (
 	}
 
 	rows, err := r.client.ContentNode.Query().Where(contentnode.IDIn(parseUUIDsSkippingInvalid(ids)...)).
-		WithLanguages().WithSkills().WithConcepts().WithInstruments().All(ctx)
+		WithLanguages().WithSkills(withNodeInstruments).WithConcepts(withNodeInstruments).WithInstruments().All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -119,14 +118,14 @@ func (r *EntContentNodeRepository) List(ctx context.Context, filter domain.Conte
 		if err != nil {
 			return domain.Page[domain.ContentNode]{}, err
 		}
-		query = query.Where(contentnode.HasSkillsWith(skill.ID(parsed)))
+		query = query.Where(contentnode.HasSkillsWith(knowledgenode.ID(parsed)))
 	}
 	if filter.ConceptID != "" {
 		parsed, err := uuid.Parse(filter.ConceptID)
 		if err != nil {
 			return domain.Page[domain.ContentNode]{}, err
 		}
-		query = query.Where(contentnode.HasConceptsWith(concept.ID(parsed)))
+		query = query.Where(contentnode.HasConceptsWith(knowledgenode.ID(parsed)))
 	}
 	if filter.Difficulty != "" {
 		query = query.Where(contentnode.DifficultyLevelEQ(contentnode.DifficultyLevel(filter.Difficulty)))
@@ -150,7 +149,7 @@ func (r *EntContentNodeRepository) List(ctx context.Context, filter domain.Conte
 		return domain.Page[domain.ContentNode]{}, err
 	}
 	rows, err := query.
-		WithLanguages().WithSkills().WithConcepts().WithInstruments().
+		WithLanguages().WithSkills(withNodeInstruments).WithConcepts(withNodeInstruments).WithInstruments().
 		Order(contentnode.ByTitle(), contentnode.ByID()).
 		Limit(page.Limit).
 		Offset(page.Offset).
@@ -237,8 +236,8 @@ func toDomainContentNode(row *ent.ContentNode) domain.ContentNode {
 		Title:       row.Title,
 		ContentType: domain.ContentType(row.ContentType),
 		Classification: domain.Classification{
-			Skills:          domainSkillsFromEdges(row.Edges.Skills),
-			Concepts:        domainConceptsFromEdges(row.Edges.Concepts),
+			Skills:          domainKnowledgeNodesFromEdges(row.Edges.Skills),
+			Concepts:        domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 			DifficultyLevel: domain.DifficultyLevel(row.DifficultyLevel),
 			ReviewState:     domain.ReviewState(row.ReviewState),
 		},

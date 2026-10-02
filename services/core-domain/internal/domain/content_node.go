@@ -54,8 +54,8 @@ const (
 // the repository with its Skill/Concept rows joined in — the same
 // construct-then-refetch convention Languages already follows.
 type Classification struct {
-	Skills          []Skill
-	Concepts        []Concept
+	Skills          []KnowledgeNode
+	Concepts        []KnowledgeNode
 	DifficultyLevel DifficultyLevel
 	ReviewState     ReviewState
 }
@@ -255,25 +255,25 @@ func isHTTPURL(raw string) bool {
 // Languages. The full Skill objects are populated only once the owning
 // ContentNode/Exercise is read back from the repository with its Skill rows
 // joined in.
-func skillsFromIDs(ids []string) []Skill {
+func skillsFromIDs(ids []string) []KnowledgeNode {
 	if len(ids) == 0 {
 		return nil
 	}
-	skills := make([]Skill, len(ids))
+	skills := make([]KnowledgeNode, len(ids))
 	for i, id := range ids {
-		skills[i] = Skill{ID: id}
+		skills[i] = KnowledgeNode{ID: id}
 	}
 	return skills
 }
 
 // conceptsFromIDs is skillsFromIDs' counterpart for concept_ids.
-func conceptsFromIDs(ids []string) []Concept {
+func conceptsFromIDs(ids []string) []KnowledgeNode {
 	if len(ids) == 0 {
 		return nil
 	}
-	concepts := make([]Concept, len(ids))
+	concepts := make([]KnowledgeNode, len(ids))
 	for i, id := range ids {
-		concepts[i] = Concept{ID: id}
+		concepts[i] = KnowledgeNode{ID: id}
 	}
 	return concepts
 }

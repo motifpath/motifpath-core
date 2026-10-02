@@ -71,7 +71,7 @@ func (w *world) nodeAlsoClassifiedUnderSkill(slug, skillName string) error {
 		return err
 	}
 	id := w.skillIDFor(skillName)
-	node.Classification.Skills = append(node.Classification.Skills, domain.Skill{ID: id.String(), Name: skillName})
+	node.Classification.Skills = append(node.Classification.Skills, domain.KnowledgeNode{ID: id.String()})
 	w.nodes.put(node)
 	return nil
 }

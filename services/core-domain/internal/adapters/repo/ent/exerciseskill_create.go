@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/skill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 )
 
 // ExerciseSkillCreate is the builder for creating a ExerciseSkill entity.
@@ -54,8 +54,8 @@ func (_c *ExerciseSkillCreate) SetExercise(v *Exercise) *ExerciseSkillCreate {
 	return _c.SetExerciseID(v.ID)
 }
 
-// SetSkill sets the "skill" edge to the Skill entity.
-func (_c *ExerciseSkillCreate) SetSkill(v *Skill) *ExerciseSkillCreate {
+// SetSkill sets the "skill" edge to the KnowledgeNode entity.
+func (_c *ExerciseSkillCreate) SetSkill(v *KnowledgeNode) *ExerciseSkillCreate {
 	return _c.SetSkillID(v.ID)
 }
 
@@ -172,7 +172,7 @@ func (_c *ExerciseSkillCreate) createSpec() (*ExerciseSkill, *sqlgraph.CreateSpe
 			Columns: []string{exerciseskill.SkillColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(knowledgenode.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

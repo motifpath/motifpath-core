@@ -57,9 +57,11 @@ type ExerciseEdges struct {
 	// Languages holds the value of the languages edge.
 	Languages []*Language `json:"languages,omitempty"`
 	// Skills holds the value of the skills edge.
-	Skills []*Skill `json:"skills,omitempty"`
+	Skills []*KnowledgeNode `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
-	Concepts []*Concept `json:"concepts,omitempty"`
+	Concepts []*KnowledgeNode `json:"concepts,omitempty"`
+	// Instruments holds the value of the instruments edge.
+	Instruments []*Instrument `json:"instruments,omitempty"`
 	// ChallengeExercises holds the value of the challenge_exercises edge.
 	ChallengeExercises []*ChallengeExercise `json:"challenge_exercises,omitempty"`
 	// ContentNodeExercises holds the value of the content_node_exercises edge.
@@ -70,9 +72,11 @@ type ExerciseEdges struct {
 	ExerciseSkills []*ExerciseSkill `json:"exercise_skills,omitempty"`
 	// ExerciseConcepts holds the value of the exercise_concepts edge.
 	ExerciseConcepts []*ExerciseConcept `json:"exercise_concepts,omitempty"`
+	// ExerciseInstruments holds the value of the exercise_instruments edge.
+	ExerciseInstruments []*ExerciseInstrument `json:"exercise_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [11]bool
+	loadedTypes [13]bool
 }
 
 // ChallengesOrErr returns the Challenges value or an error if the edge
@@ -113,7 +117,7 @@ func (e ExerciseEdges) LanguagesOrErr() ([]*Language, error) {
 
 // SkillsOrErr returns the Skills value or an error if the edge
 // was not loaded in eager-loading.
-func (e ExerciseEdges) SkillsOrErr() ([]*Skill, error) {
+func (e ExerciseEdges) SkillsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[4] {
 		return e.Skills, nil
 	}
@@ -122,17 +126,26 @@ func (e ExerciseEdges) SkillsOrErr() ([]*Skill, error) {
 
 // ConceptsOrErr returns the Concepts value or an error if the edge
 // was not loaded in eager-loading.
-func (e ExerciseEdges) ConceptsOrErr() ([]*Concept, error) {
+func (e ExerciseEdges) ConceptsOrErr() ([]*KnowledgeNode, error) {
 	if e.loadedTypes[5] {
 		return e.Concepts, nil
 	}
 	return nil, &NotLoadedError{edge: "concepts"}
 }
 
+// InstrumentsOrErr returns the Instruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) InstrumentsOrErr() ([]*Instrument, error) {
+	if e.loadedTypes[6] {
+		return e.Instruments, nil
+	}
+	return nil, &NotLoadedError{edge: "instruments"}
+}
+
 // ChallengeExercisesOrErr returns the ChallengeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.ChallengeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "challenge_exercises"}
@@ -141,7 +154,7 @@ func (e ExerciseEdges) ChallengeExercisesOrErr() ([]*ChallengeExercise, error) {
 // ContentNodeExercisesOrErr returns the ContentNodeExercises value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.ContentNodeExercises, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_exercises"}
@@ -150,7 +163,7 @@ func (e ExerciseEdges) ContentNodeExercisesOrErr() ([]*ContentNodeExercise, erro
 // ExerciseLanguagesOrErr returns the ExerciseLanguages value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ExerciseLanguagesOrErr() ([]*ExerciseLanguage, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.ExerciseLanguages, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_languages"}
@@ -159,7 +172,7 @@ func (e ExerciseEdges) ExerciseLanguagesOrErr() ([]*ExerciseLanguage, error) {
 // ExerciseSkillsOrErr returns the ExerciseSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ExerciseSkillsOrErr() ([]*ExerciseSkill, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[10] {
 		return e.ExerciseSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_skills"}
@@ -168,10 +181,19 @@ func (e ExerciseEdges) ExerciseSkillsOrErr() ([]*ExerciseSkill, error) {
 // ExerciseConceptsOrErr returns the ExerciseConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e ExerciseEdges) ExerciseConceptsOrErr() ([]*ExerciseConcept, error) {
-	if e.loadedTypes[10] {
+	if e.loadedTypes[11] {
 		return e.ExerciseConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "exercise_concepts"}
+}
+
+// ExerciseInstrumentsOrErr returns the ExerciseInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExerciseEdges) ExerciseInstrumentsOrErr() ([]*ExerciseInstrument, error) {
+	if e.loadedTypes[12] {
+		return e.ExerciseInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "exercise_instruments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -317,13 +339,18 @@ func (_m *Exercise) QueryLanguages() *LanguageQuery {
 }
 
 // QuerySkills queries the "skills" edge of the Exercise entity.
-func (_m *Exercise) QuerySkills() *SkillQuery {
+func (_m *Exercise) QuerySkills() *KnowledgeNodeQuery {
 	return NewExerciseClient(_m.config).QuerySkills(_m)
 }
 
 // QueryConcepts queries the "concepts" edge of the Exercise entity.
-func (_m *Exercise) QueryConcepts() *ConceptQuery {
+func (_m *Exercise) QueryConcepts() *KnowledgeNodeQuery {
 	return NewExerciseClient(_m.config).QueryConcepts(_m)
+}
+
+// QueryInstruments queries the "instruments" edge of the Exercise entity.
+func (_m *Exercise) QueryInstruments() *InstrumentQuery {
+	return NewExerciseClient(_m.config).QueryInstruments(_m)
 }
 
 // QueryChallengeExercises queries the "challenge_exercises" edge of the Exercise entity.
@@ -349,6 +376,11 @@ func (_m *Exercise) QueryExerciseSkills() *ExerciseSkillQuery {
 // QueryExerciseConcepts queries the "exercise_concepts" edge of the Exercise entity.
 func (_m *Exercise) QueryExerciseConcepts() *ExerciseConceptQuery {
 	return NewExerciseClient(_m.config).QueryExerciseConcepts(_m)
+}
+
+// QueryExerciseInstruments queries the "exercise_instruments" edge of the Exercise entity.
+func (_m *Exercise) QueryExerciseInstruments() *ExerciseInstrumentQuery {
+	return NewExerciseClient(_m.config).QueryExerciseInstruments(_m)
 }
 
 // Update returns a builder for updating this Exercise.
