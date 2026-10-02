@@ -511,6 +511,40 @@ var (
 			},
 		},
 	}
+	// DiagramInstrumentsColumns holds the columns for the "diagram_instruments" table.
+	DiagramInstrumentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "linked_at", Type: field.TypeTime},
+		{Name: "diagram_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// DiagramInstrumentsTable holds the schema information for the "diagram_instruments" table.
+	DiagramInstrumentsTable = &schema.Table{
+		Name:       "diagram_instruments",
+		Columns:    DiagramInstrumentsColumns,
+		PrimaryKey: []*schema.Column{DiagramInstrumentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagram_instruments_diagrams_diagram",
+				Columns:    []*schema.Column{DiagramInstrumentsColumns[2]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "diagram_instruments_instruments_instrument",
+				Columns:    []*schema.Column{DiagramInstrumentsColumns[3]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "diagraminstrument_diagram_id_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{DiagramInstrumentsColumns[2], DiagramInstrumentsColumns[3]},
+			},
+		},
+	}
 	// DiagramRegionsColumns holds the columns for the "diagram_regions" table.
 	DiagramRegionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1063,6 +1097,7 @@ var (
 		CourseVersionCheckpointsTable,
 		DiagramsTable,
 		DiagramConceptsTable,
+		DiagramInstrumentsTable,
 		DiagramRegionsTable,
 		DiagramSkillsTable,
 		ExercisesTable,
@@ -1105,6 +1140,8 @@ func init() {
 	DiagramsTable.ForeignKeys[0].RefTable = InstrumentsTable
 	DiagramConceptsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramConceptsTable.ForeignKeys[1].RefTable = ConceptsTable
+	DiagramInstrumentsTable.ForeignKeys[0].RefTable = DiagramsTable
+	DiagramInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	DiagramRegionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[1].RefTable = SkillsTable

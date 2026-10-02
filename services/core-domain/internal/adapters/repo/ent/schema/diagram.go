@@ -105,6 +105,9 @@ func (Diagram) Edges() []ent.Edge {
 			Immutable().
 			Field("instrument_id"),
 
+		edge.To("compatible_instruments", Instrument.Type).
+			Through("diagram_instruments", DiagramInstrument.Type),
+
 		edge.To("positions", Position.Type),
 
 		edge.To("regions", DiagramRegion.Type),

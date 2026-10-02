@@ -33,12 +33,16 @@ const (
 	EdgeDefaultVoice = "default_voice"
 	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
 	EdgeDiagrams = "diagrams"
+	// EdgeCompatibleDiagrams holds the string denoting the compatible_diagrams edge name in mutations.
+	EdgeCompatibleDiagrams = "compatible_diagrams"
 	// EdgeCourses holds the string denoting the courses edge name in mutations.
 	EdgeCourses = "courses"
 	// EdgeLearningPaths holds the string denoting the learning_paths edge name in mutations.
 	EdgeLearningPaths = "learning_paths"
 	// EdgeContentNodes holds the string denoting the content_nodes edge name in mutations.
 	EdgeContentNodes = "content_nodes"
+	// EdgeDiagramInstruments holds the string denoting the diagram_instruments edge name in mutations.
+	EdgeDiagramInstruments = "diagram_instruments"
 	// EdgeCourseInstruments holds the string denoting the course_instruments edge name in mutations.
 	EdgeCourseInstruments = "course_instruments"
 	// EdgeLearningPathInstruments holds the string denoting the learning_path_instruments edge name in mutations.
@@ -61,6 +65,11 @@ const (
 	DiagramsInverseTable = "diagrams"
 	// DiagramsColumn is the table column denoting the diagrams relation/edge.
 	DiagramsColumn = "instrument_id"
+	// CompatibleDiagramsTable is the table that holds the compatible_diagrams relation/edge. The primary key declared below.
+	CompatibleDiagramsTable = "diagram_instruments"
+	// CompatibleDiagramsInverseTable is the table name for the Diagram entity.
+	// It exists in this package in order to avoid circular dependency with the "diagram" package.
+	CompatibleDiagramsInverseTable = "diagrams"
 	// CoursesTable is the table that holds the courses relation/edge. The primary key declared below.
 	CoursesTable = "course_instruments"
 	// CoursesInverseTable is the table name for the Course entity.
@@ -76,6 +85,13 @@ const (
 	// ContentNodesInverseTable is the table name for the ContentNode entity.
 	// It exists in this package in order to avoid circular dependency with the "contentnode" package.
 	ContentNodesInverseTable = "content_nodes"
+	// DiagramInstrumentsTable is the table that holds the diagram_instruments relation/edge.
+	DiagramInstrumentsTable = "diagram_instruments"
+	// DiagramInstrumentsInverseTable is the table name for the DiagramInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "diagraminstrument" package.
+	DiagramInstrumentsInverseTable = "diagram_instruments"
+	// DiagramInstrumentsColumn is the table column denoting the diagram_instruments relation/edge.
+	DiagramInstrumentsColumn = "instrument_id"
 	// CourseInstrumentsTable is the table that holds the course_instruments relation/edge.
 	CourseInstrumentsTable = "course_instruments"
 	// CourseInstrumentsInverseTable is the table name for the CourseInstrument entity.
@@ -112,6 +128,9 @@ var Columns = []string{
 }
 
 var (
+	// CompatibleDiagramsPrimaryKey and CompatibleDiagramsColumn2 are the table columns denoting the
+	// primary key for the compatible_diagrams relation (M2M).
+	CompatibleDiagramsPrimaryKey = []string{"diagram_id", "instrument_id"}
 	// CoursesPrimaryKey and CoursesColumn2 are the table columns denoting the
 	// primary key for the courses relation (M2M).
 	CoursesPrimaryKey = []string{"course_id", "instrument_id"}
@@ -215,6 +234,20 @@ func ByDiagrams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByCompatibleDiagramsCount orders the results by compatible_diagrams count.
+func ByCompatibleDiagramsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCompatibleDiagramsStep(), opts...)
+	}
+}
+
+// ByCompatibleDiagrams orders the results by compatible_diagrams terms.
+func ByCompatibleDiagrams(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCompatibleDiagramsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByCoursesCount orders the results by courses count.
 func ByCoursesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -254,6 +287,20 @@ func ByContentNodesCount(opts ...sql.OrderTermOption) OrderOption {
 func ByContentNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newContentNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByDiagramInstrumentsCount orders the results by diagram_instruments count.
+func ByDiagramInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramInstrumentsStep(), opts...)
+	}
+}
+
+// ByDiagramInstruments orders the results by diagram_instruments terms.
+func ByDiagramInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -312,6 +359,13 @@ func newDiagramsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, true, DiagramsTable, DiagramsColumn),
 	)
 }
+func newCompatibleDiagramsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CompatibleDiagramsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, CompatibleDiagramsTable, CompatibleDiagramsPrimaryKey...),
+	)
+}
 func newCoursesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -331,6 +385,13 @@ func newContentNodesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ContentNodesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, ContentNodesTable, ContentNodesPrimaryKey...),
+	)
+}
+func newDiagramInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, DiagramInstrumentsTable, DiagramInstrumentsColumn),
 	)
 }
 func newCourseInstrumentsStep() *sqlgraph.Step {

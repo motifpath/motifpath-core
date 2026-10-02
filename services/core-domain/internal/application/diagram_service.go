@@ -44,6 +44,7 @@ const (
 // Per-position colors, custom labels and notes travel with Positions and so
 // can be cleared by resending Positions without them.
 type DiagramUpdate struct {
+	InstrumentIDs []string
 	// Names replaces every name when non-nil; nil keeps the current ones.
 	Names     map[string]string
 	Positions []domain.Position
@@ -80,6 +81,12 @@ type Nullable[T any] struct {
 // without an id are assigned one; a client-supplied id is kept. See
 // domain.DiagramOptions for the other optional settings.
 func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
+	return s.CreateDiagramWithInstruments(ctx, caller, []string{instrumentID}, names, positions, skillIDs, conceptIDs, opts)
+}
+
+// CreateDiagramWithInstruments creates one diagram available through every
+// listed instrument. The first id supplies its immutable coordinate layout.
+func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, caller domain.User, instrumentIDs []string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
 	}
@@ -87,11 +94,17 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, domain.ErrForbidden
 	}
 
-	instrument, err := s.instruments.GetByID(ctx, instrumentID)
+	if len(instrumentIDs) == 0 {
+		return domain.Diagram{}, domain.NewValidationError("instrument_ids", "must contain at least one instrument")
+	}
+	instrument, err := s.instruments.GetByID(ctx, instrumentIDs[0])
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			return domain.Diagram{}, domain.NewValidationError("instrument_id", "does not reference an existing instrument")
+			return domain.Diagram{}, domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
 		}
+		return domain.Diagram{}, err
+	}
+	if err := s.validateCompatibleInstruments(ctx, instrument, instrumentIDs); err != nil {
 		return domain.Diagram{}, err
 	}
 
@@ -104,6 +117,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
+	diagram.InstrumentIDs = domain.LayoutFirst(instrument.ID, instrumentIDs)
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
 		return domain.Diagram{}, err
 	}
@@ -112,6 +126,72 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 	return diagram, nil
+}
+
+// updatedInstrumentIDs returns update's compatible instruments once they pass
+// validation, or current's when update leaves them out.
+func (s *DiagramService) updatedInstrumentIDs(ctx context.Context, layout domain.Instrument, current domain.Diagram, update DiagramUpdate) ([]string, error) {
+	if update.InstrumentIDs == nil {
+		return domain.LayoutFirst(layout.ID, current.InstrumentIDs), nil
+	}
+	if err := s.validateCompatibleInstruments(ctx, layout, update.InstrumentIDs); err != nil {
+		return nil, err
+	}
+	return domain.LayoutFirst(layout.ID, update.InstrumentIDs), nil
+}
+
+// validateCompatibleInstruments checks that ids lists the layout instrument,
+// once, alongside instruments that share its coordinate geometry, so every
+// position stays valid on each of them. The order is free: callers store the
+// result through domain.LayoutFirst.
+func (s *DiagramService) validateCompatibleInstruments(ctx context.Context, layout domain.Instrument, ids []string) error {
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		seen[id] = struct{}{}
+	}
+	if _, ok := seen[layout.ID]; !ok || len(seen) != len(ids) {
+		return domain.NewValidationError("instrument_ids", "must include the layout instrument and contain no duplicates")
+	}
+	for _, id := range ids {
+		if id == layout.ID {
+			continue
+		}
+		instrument, err := s.instruments.GetByID(ctx, id)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
+			}
+			return err
+		}
+		if !sameGeometry(instrument, layout) {
+			return domain.NewValidationError("instrument_ids", "must have the same coordinate geometry as the layout instrument")
+		}
+	}
+	return nil
+}
+
+// sameGeometry reports whether a diagram's coordinates mean the same notes on
+// both instruments: same family, and the same strings and tuning (fretted) or
+// the same key range (keyboard).
+func sameGeometry(a, b domain.Instrument) bool {
+	return a.Family == b.Family &&
+		slices.Equal(a.Tuning, b.Tuning) &&
+		sameStringCount(a.StringCount, b.StringCount) &&
+		sameKeyRange(a.KeyRange, b.KeyRange)
+}
+
+func sameStringCount(left, right *int) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func sameKeyRange(left, right *domain.KeyRange) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }
 
 // GetDiagram returns the diagram with the given id, or domain.ErrNotFound.
@@ -217,10 +297,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 
-	names := map[string]string(current.Names)
-	if update.Names != nil {
-		names = update.Names
-	}
+	names := updatedNames(current, update)
 	positions := current.Positions
 	if update.Positions != nil {
 		positions = s.withPositionIDs(update.Positions)
@@ -242,6 +319,9 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
+	if updated.InstrumentIDs, err = s.updatedInstrumentIDs(ctx, instrument, current, update); err != nil {
+		return domain.Diagram{}, err
+	}
 	if classificationChanged {
 		if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
 			return domain.Diagram{}, err
@@ -252,6 +332,14 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 	return updated, nil
+}
+
+// updatedNames returns update's names, or current's when update leaves them out.
+func updatedNames(current domain.Diagram, update DiagramUpdate) map[string]string {
+	if update.Names != nil {
+		return update.Names
+	}
+	return current.Names
 }
 
 // updatedDiagramOptions returns current's options with update's given root

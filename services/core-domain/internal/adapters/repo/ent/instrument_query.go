@@ -18,6 +18,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
@@ -34,9 +35,11 @@ type InstrumentQuery struct {
 	predicates                  []predicate.Instrument
 	withDefaultVoice            *VoiceQuery
 	withDiagrams                *DiagramQuery
+	withCompatibleDiagrams      *DiagramQuery
 	withCourses                 *CourseQuery
 	withLearningPaths           *LearningPathQuery
 	withContentNodes            *ContentNodeQuery
+	withDiagramInstruments      *DiagramInstrumentQuery
 	withCourseInstruments       *CourseInstrumentQuery
 	withLearningPathInstruments *LearningPathInstrumentQuery
 	withContentNodeInstruments  *ContentNodeInstrumentQuery
@@ -120,6 +123,28 @@ func (_q *InstrumentQuery) QueryDiagrams() *DiagramQuery {
 	return query
 }
 
+// QueryCompatibleDiagrams chains the current query on the "compatible_diagrams" edge.
+func (_q *InstrumentQuery) QueryCompatibleDiagrams() *DiagramQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, selector),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, instrument.CompatibleDiagramsTable, instrument.CompatibleDiagramsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryCourses chains the current query on the "courses" edge.
 func (_q *InstrumentQuery) QueryCourses() *CourseQuery {
 	query := (&CourseClient{config: _q.config}).Query()
@@ -179,6 +204,28 @@ func (_q *InstrumentQuery) QueryContentNodes() *ContentNodeQuery {
 			sqlgraph.From(instrument.Table, instrument.FieldID, selector),
 			sqlgraph.To(contentnode.Table, contentnode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, instrument.ContentNodesTable, instrument.ContentNodesPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDiagramInstruments chains the current query on the "diagram_instruments" edge.
+func (_q *InstrumentQuery) QueryDiagramInstruments() *DiagramInstrumentQuery {
+	query := (&DiagramInstrumentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, selector),
+			sqlgraph.To(diagraminstrument.Table, diagraminstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, instrument.DiagramInstrumentsTable, instrument.DiagramInstrumentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -446,9 +493,11 @@ func (_q *InstrumentQuery) Clone() *InstrumentQuery {
 		predicates:                  append([]predicate.Instrument{}, _q.predicates...),
 		withDefaultVoice:            _q.withDefaultVoice.Clone(),
 		withDiagrams:                _q.withDiagrams.Clone(),
+		withCompatibleDiagrams:      _q.withCompatibleDiagrams.Clone(),
 		withCourses:                 _q.withCourses.Clone(),
 		withLearningPaths:           _q.withLearningPaths.Clone(),
 		withContentNodes:            _q.withContentNodes.Clone(),
+		withDiagramInstruments:      _q.withDiagramInstruments.Clone(),
 		withCourseInstruments:       _q.withCourseInstruments.Clone(),
 		withLearningPathInstruments: _q.withLearningPathInstruments.Clone(),
 		withContentNodeInstruments:  _q.withContentNodeInstruments.Clone(),
@@ -477,6 +526,17 @@ func (_q *InstrumentQuery) WithDiagrams(opts ...func(*DiagramQuery)) *Instrument
 		opt(query)
 	}
 	_q.withDiagrams = query
+	return _q
+}
+
+// WithCompatibleDiagrams tells the query-builder to eager-load the nodes that are connected to
+// the "compatible_diagrams" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InstrumentQuery) WithCompatibleDiagrams(opts ...func(*DiagramQuery)) *InstrumentQuery {
+	query := (&DiagramClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withCompatibleDiagrams = query
 	return _q
 }
 
@@ -510,6 +570,17 @@ func (_q *InstrumentQuery) WithContentNodes(opts ...func(*ContentNodeQuery)) *In
 		opt(query)
 	}
 	_q.withContentNodes = query
+	return _q
+}
+
+// WithDiagramInstruments tells the query-builder to eager-load the nodes that are connected to
+// the "diagram_instruments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InstrumentQuery) WithDiagramInstruments(opts ...func(*DiagramInstrumentQuery)) *InstrumentQuery {
+	query := (&DiagramInstrumentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDiagramInstruments = query
 	return _q
 }
 
@@ -624,12 +695,14 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 	var (
 		nodes       = []*Instrument{}
 		_spec       = _q.querySpec()
-		loadedTypes = [8]bool{
+		loadedTypes = [10]bool{
 			_q.withDefaultVoice != nil,
 			_q.withDiagrams != nil,
+			_q.withCompatibleDiagrams != nil,
 			_q.withCourses != nil,
 			_q.withLearningPaths != nil,
 			_q.withContentNodes != nil,
+			_q.withDiagramInstruments != nil,
 			_q.withCourseInstruments != nil,
 			_q.withLearningPathInstruments != nil,
 			_q.withContentNodeInstruments != nil,
@@ -666,6 +739,13 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 			return nil, err
 		}
 	}
+	if query := _q.withCompatibleDiagrams; query != nil {
+		if err := _q.loadCompatibleDiagrams(ctx, query, nodes,
+			func(n *Instrument) { n.Edges.CompatibleDiagrams = []*Diagram{} },
+			func(n *Instrument, e *Diagram) { n.Edges.CompatibleDiagrams = append(n.Edges.CompatibleDiagrams, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withCourses; query != nil {
 		if err := _q.loadCourses(ctx, query, nodes,
 			func(n *Instrument) { n.Edges.Courses = []*Course{} },
@@ -684,6 +764,15 @@ func (_q *InstrumentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*I
 		if err := _q.loadContentNodes(ctx, query, nodes,
 			func(n *Instrument) { n.Edges.ContentNodes = []*ContentNode{} },
 			func(n *Instrument, e *ContentNode) { n.Edges.ContentNodes = append(n.Edges.ContentNodes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDiagramInstruments; query != nil {
+		if err := _q.loadDiagramInstruments(ctx, query, nodes,
+			func(n *Instrument) { n.Edges.DiagramInstruments = []*DiagramInstrument{} },
+			func(n *Instrument, e *DiagramInstrument) {
+				n.Edges.DiagramInstruments = append(n.Edges.DiagramInstruments, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -773,6 +862,67 @@ func (_q *InstrumentQuery) loadDiagrams(ctx context.Context, query *DiagramQuery
 			return fmt.Errorf(`unexpected referenced foreign-key "instrument_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
+	}
+	return nil
+}
+func (_q *InstrumentQuery) loadCompatibleDiagrams(ctx context.Context, query *DiagramQuery, nodes []*Instrument, init func(*Instrument), assign func(*Instrument, *Diagram)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[uuid.UUID]*Instrument)
+	nids := make(map[uuid.UUID]map[*Instrument]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(instrument.CompatibleDiagramsTable)
+		s.Join(joinT).On(s.C(diagram.FieldID), joinT.C(instrument.CompatibleDiagramsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(instrument.CompatibleDiagramsPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(instrument.CompatibleDiagramsPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(uuid.UUID)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := *values[0].(*uuid.UUID)
+				inValue := *values[1].(*uuid.UUID)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Instrument]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Diagram](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "compatible_diagrams" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
 	}
 	return nil
 }
@@ -956,6 +1106,36 @@ func (_q *InstrumentQuery) loadContentNodes(ctx context.Context, query *ContentN
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *InstrumentQuery) loadDiagramInstruments(ctx context.Context, query *DiagramInstrumentQuery, nodes []*Instrument, init func(*Instrument), assign func(*Instrument, *DiagramInstrument)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Instrument)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(diagraminstrument.FieldInstrumentID)
+	}
+	query.Where(predicate.DiagramInstrument(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(instrument.DiagramInstrumentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.InstrumentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "instrument_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

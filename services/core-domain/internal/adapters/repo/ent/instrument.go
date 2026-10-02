@@ -45,12 +45,16 @@ type InstrumentEdges struct {
 	DefaultVoice *Voice `json:"default_voice,omitempty"`
 	// Diagrams holds the value of the diagrams edge.
 	Diagrams []*Diagram `json:"diagrams,omitempty"`
+	// CompatibleDiagrams holds the value of the compatible_diagrams edge.
+	CompatibleDiagrams []*Diagram `json:"compatible_diagrams,omitempty"`
 	// Courses holds the value of the courses edge.
 	Courses []*Course `json:"courses,omitempty"`
 	// LearningPaths holds the value of the learning_paths edge.
 	LearningPaths []*LearningPath `json:"learning_paths,omitempty"`
 	// ContentNodes holds the value of the content_nodes edge.
 	ContentNodes []*ContentNode `json:"content_nodes,omitempty"`
+	// DiagramInstruments holds the value of the diagram_instruments edge.
+	DiagramInstruments []*DiagramInstrument `json:"diagram_instruments,omitempty"`
 	// CourseInstruments holds the value of the course_instruments edge.
 	CourseInstruments []*CourseInstrument `json:"course_instruments,omitempty"`
 	// LearningPathInstruments holds the value of the learning_path_instruments edge.
@@ -59,7 +63,7 @@ type InstrumentEdges struct {
 	ContentNodeInstruments []*ContentNodeInstrument `json:"content_node_instruments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [8]bool
+	loadedTypes [10]bool
 }
 
 // DefaultVoiceOrErr returns the DefaultVoice value or an error if the edge
@@ -82,10 +86,19 @@ func (e InstrumentEdges) DiagramsOrErr() ([]*Diagram, error) {
 	return nil, &NotLoadedError{edge: "diagrams"}
 }
 
+// CompatibleDiagramsOrErr returns the CompatibleDiagrams value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) CompatibleDiagramsOrErr() ([]*Diagram, error) {
+	if e.loadedTypes[2] {
+		return e.CompatibleDiagrams, nil
+	}
+	return nil, &NotLoadedError{edge: "compatible_diagrams"}
+}
+
 // CoursesOrErr returns the Courses value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) CoursesOrErr() ([]*Course, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Courses, nil
 	}
 	return nil, &NotLoadedError{edge: "courses"}
@@ -94,7 +107,7 @@ func (e InstrumentEdges) CoursesOrErr() ([]*Course, error) {
 // LearningPathsOrErr returns the LearningPaths value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) LearningPathsOrErr() ([]*LearningPath, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.LearningPaths, nil
 	}
 	return nil, &NotLoadedError{edge: "learning_paths"}
@@ -103,16 +116,25 @@ func (e InstrumentEdges) LearningPathsOrErr() ([]*LearningPath, error) {
 // ContentNodesOrErr returns the ContentNodes value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) ContentNodesOrErr() ([]*ContentNode, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.ContentNodes, nil
 	}
 	return nil, &NotLoadedError{edge: "content_nodes"}
 }
 
+// DiagramInstrumentsOrErr returns the DiagramInstruments value or an error if the edge
+// was not loaded in eager-loading.
+func (e InstrumentEdges) DiagramInstrumentsOrErr() ([]*DiagramInstrument, error) {
+	if e.loadedTypes[6] {
+		return e.DiagramInstruments, nil
+	}
+	return nil, &NotLoadedError{edge: "diagram_instruments"}
+}
+
 // CourseInstrumentsOrErr returns the CourseInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[7] {
 		return e.CourseInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "course_instruments"}
@@ -121,7 +143,7 @@ func (e InstrumentEdges) CourseInstrumentsOrErr() ([]*CourseInstrument, error) {
 // LearningPathInstrumentsOrErr returns the LearningPathInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrument, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[8] {
 		return e.LearningPathInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "learning_path_instruments"}
@@ -130,7 +152,7 @@ func (e InstrumentEdges) LearningPathInstrumentsOrErr() ([]*LearningPathInstrume
 // ContentNodeInstrumentsOrErr returns the ContentNodeInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e InstrumentEdges) ContentNodeInstrumentsOrErr() ([]*ContentNodeInstrument, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[9] {
 		return e.ContentNodeInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "content_node_instruments"}
@@ -242,6 +264,11 @@ func (_m *Instrument) QueryDiagrams() *DiagramQuery {
 	return NewInstrumentClient(_m.config).QueryDiagrams(_m)
 }
 
+// QueryCompatibleDiagrams queries the "compatible_diagrams" edge of the Instrument entity.
+func (_m *Instrument) QueryCompatibleDiagrams() *DiagramQuery {
+	return NewInstrumentClient(_m.config).QueryCompatibleDiagrams(_m)
+}
+
 // QueryCourses queries the "courses" edge of the Instrument entity.
 func (_m *Instrument) QueryCourses() *CourseQuery {
 	return NewInstrumentClient(_m.config).QueryCourses(_m)
@@ -255,6 +282,11 @@ func (_m *Instrument) QueryLearningPaths() *LearningPathQuery {
 // QueryContentNodes queries the "content_nodes" edge of the Instrument entity.
 func (_m *Instrument) QueryContentNodes() *ContentNodeQuery {
 	return NewInstrumentClient(_m.config).QueryContentNodes(_m)
+}
+
+// QueryDiagramInstruments queries the "diagram_instruments" edge of the Instrument entity.
+func (_m *Instrument) QueryDiagramInstruments() *DiagramInstrumentQuery {
+	return NewInstrumentClient(_m.config).QueryDiagramInstruments(_m)
 }
 
 // QueryCourseInstruments queries the "course_instruments" edge of the Instrument entity.

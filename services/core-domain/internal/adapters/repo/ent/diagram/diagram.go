@@ -45,6 +45,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// EdgeInstrument holds the string denoting the instrument edge name in mutations.
 	EdgeInstrument = "instrument"
+	// EdgeCompatibleInstruments holds the string denoting the compatible_instruments edge name in mutations.
+	EdgeCompatibleInstruments = "compatible_instruments"
 	// EdgePositions holds the string denoting the positions edge name in mutations.
 	EdgePositions = "positions"
 	// EdgeRegions holds the string denoting the regions edge name in mutations.
@@ -53,6 +55,8 @@ const (
 	EdgeSkills = "skills"
 	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
 	EdgeConcepts = "concepts"
+	// EdgeDiagramInstruments holds the string denoting the diagram_instruments edge name in mutations.
+	EdgeDiagramInstruments = "diagram_instruments"
 	// EdgeDiagramSkills holds the string denoting the diagram_skills edge name in mutations.
 	EdgeDiagramSkills = "diagram_skills"
 	// EdgeDiagramConcepts holds the string denoting the diagram_concepts edge name in mutations.
@@ -66,6 +70,11 @@ const (
 	InstrumentInverseTable = "instruments"
 	// InstrumentColumn is the table column denoting the instrument relation/edge.
 	InstrumentColumn = "instrument_id"
+	// CompatibleInstrumentsTable is the table that holds the compatible_instruments relation/edge. The primary key declared below.
+	CompatibleInstrumentsTable = "diagram_instruments"
+	// CompatibleInstrumentsInverseTable is the table name for the Instrument entity.
+	// It exists in this package in order to avoid circular dependency with the "instrument" package.
+	CompatibleInstrumentsInverseTable = "instruments"
 	// PositionsTable is the table that holds the positions relation/edge.
 	PositionsTable = "positions"
 	// PositionsInverseTable is the table name for the Position entity.
@@ -90,6 +99,13 @@ const (
 	// ConceptsInverseTable is the table name for the Concept entity.
 	// It exists in this package in order to avoid circular dependency with the "concept" package.
 	ConceptsInverseTable = "concepts"
+	// DiagramInstrumentsTable is the table that holds the diagram_instruments relation/edge.
+	DiagramInstrumentsTable = "diagram_instruments"
+	// DiagramInstrumentsInverseTable is the table name for the DiagramInstrument entity.
+	// It exists in this package in order to avoid circular dependency with the "diagraminstrument" package.
+	DiagramInstrumentsInverseTable = "diagram_instruments"
+	// DiagramInstrumentsColumn is the table column denoting the diagram_instruments relation/edge.
+	DiagramInstrumentsColumn = "diagram_id"
 	// DiagramSkillsTable is the table that holds the diagram_skills relation/edge.
 	DiagramSkillsTable = "diagram_skills"
 	// DiagramSkillsInverseTable is the table name for the DiagramSkill entity.
@@ -125,6 +141,9 @@ var Columns = []string{
 }
 
 var (
+	// CompatibleInstrumentsPrimaryKey and CompatibleInstrumentsColumn2 are the table columns denoting the
+	// primary key for the compatible_instruments relation (M2M).
+	CompatibleInstrumentsPrimaryKey = []string{"diagram_id", "instrument_id"}
 	// SkillsPrimaryKey and SkillsColumn2 are the table columns denoting the
 	// primary key for the skills relation (M2M).
 	SkillsPrimaryKey = []string{"diagram_id", "skill_id"}
@@ -304,6 +323,20 @@ func ByInstrumentField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByCompatibleInstrumentsCount orders the results by compatible_instruments count.
+func ByCompatibleInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCompatibleInstrumentsStep(), opts...)
+	}
+}
+
+// ByCompatibleInstruments orders the results by compatible_instruments terms.
+func ByCompatibleInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCompatibleInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByPositionsCount orders the results by positions count.
 func ByPositionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -360,6 +393,20 @@ func ByConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByDiagramInstrumentsCount orders the results by diagram_instruments count.
+func ByDiagramInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDiagramInstrumentsStep(), opts...)
+	}
+}
+
+// ByDiagramInstruments orders the results by diagram_instruments terms.
+func ByDiagramInstruments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDiagramInstrumentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByDiagramSkillsCount orders the results by diagram_skills count.
 func ByDiagramSkillsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -394,6 +441,13 @@ func newInstrumentStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, false, InstrumentTable, InstrumentColumn),
 	)
 }
+func newCompatibleInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CompatibleInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, CompatibleInstrumentsTable, CompatibleInstrumentsPrimaryKey...),
+	)
+}
 func newPositionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -420,6 +474,13 @@ func newConceptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ConceptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+	)
+}
+func newDiagramInstrumentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DiagramInstrumentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, true, DiagramInstrumentsTable, DiagramInstrumentsColumn),
 	)
 }
 func newDiagramSkillsStep() *sqlgraph.Step {

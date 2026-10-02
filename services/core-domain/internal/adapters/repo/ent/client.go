@@ -34,6 +34,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
@@ -97,6 +98,8 @@ type Client struct {
 	Diagram *DiagramClient
 	// DiagramConcept is the client for interacting with the DiagramConcept builders.
 	DiagramConcept *DiagramConceptClient
+	// DiagramInstrument is the client for interacting with the DiagramInstrument builders.
+	DiagramInstrument *DiagramInstrumentClient
 	// DiagramRegion is the client for interacting with the DiagramRegion builders.
 	DiagramRegion *DiagramRegionClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
@@ -166,6 +169,7 @@ func (c *Client) init() {
 	c.CourseVersionCheckpoint = NewCourseVersionCheckpointClient(c.config)
 	c.Diagram = NewDiagramClient(c.config)
 	c.DiagramConcept = NewDiagramConceptClient(c.config)
+	c.DiagramInstrument = NewDiagramInstrumentClient(c.config)
 	c.DiagramRegion = NewDiagramRegionClient(c.config)
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
@@ -296,6 +300,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		CourseVersionCheckpoint: NewCourseVersionCheckpointClient(cfg),
 		Diagram:                 NewDiagramClient(cfg),
 		DiagramConcept:          NewDiagramConceptClient(cfg),
+		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
@@ -353,6 +358,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		CourseVersionCheckpoint: NewCourseVersionCheckpointClient(cfg),
 		Diagram:                 NewDiagramClient(cfg),
 		DiagramConcept:          NewDiagramConceptClient(cfg),
+		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
@@ -406,12 +412,12 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
 		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
 		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramRegion,
-		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
-		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
-		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
-		c.Voice,
+		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
+		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.Instrument, c.Language, c.LearningPath, c.LearningPathInstrument,
+		c.LearningPathItem, c.Position, c.Skill, c.StudentLearningState, c.StudentPath,
+		c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -425,12 +431,12 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ContentNodeConcept, c.ContentNodeExercise, c.ContentNodeInstrument,
 		c.ContentNodeLanguage, c.ContentNodeSkill, c.ContentNodeVersion, c.Course,
 		c.CourseCheckpoint, c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramRegion,
-		c.DiagramSkill, c.Exercise, c.ExerciseConcept, c.ExerciseLanguage,
-		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.Language,
-		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
-		c.Skill, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
-		c.Voice,
+		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
+		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
+		c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent,
+		c.Instrument, c.Language, c.LearningPath, c.LearningPathInstrument,
+		c.LearningPathItem, c.Position, c.Skill, c.StudentLearningState, c.StudentPath,
+		c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -475,6 +481,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Diagram.mutate(ctx, m)
 	case *DiagramConceptMutation:
 		return c.DiagramConcept.mutate(ctx, m)
+	case *DiagramInstrumentMutation:
+		return c.DiagramInstrument.mutate(ctx, m)
 	case *DiagramRegionMutation:
 		return c.DiagramRegion.mutate(ctx, m)
 	case *DiagramSkillMutation:
@@ -3348,6 +3356,22 @@ func (c *DiagramClient) QueryInstrument(_m *Diagram) *InstrumentQuery {
 	return query
 }
 
+// QueryCompatibleInstruments queries the compatible_instruments edge of a Diagram.
+func (c *DiagramClient) QueryCompatibleInstruments(_m *Diagram) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, diagram.CompatibleInstrumentsTable, diagram.CompatibleInstrumentsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryPositions queries the positions edge of a Diagram.
 func (c *DiagramClient) QueryPositions(_m *Diagram) *PositionQuery {
 	query := (&PositionClient{config: c.config}).Query()
@@ -3405,6 +3429,22 @@ func (c *DiagramClient) QueryConcepts(_m *Diagram) *ConceptQuery {
 			sqlgraph.From(diagram.Table, diagram.FieldID, id),
 			sqlgraph.To(concept.Table, concept.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.ConceptsTable, diagram.ConceptsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramInstruments queries the diagram_instruments edge of a Diagram.
+func (c *DiagramClient) QueryDiagramInstruments(_m *Diagram) *DiagramInstrumentQuery {
+	query := (&DiagramInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(diagraminstrument.Table, diagraminstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, diagram.DiagramInstrumentsTable, diagram.DiagramInstrumentsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -3631,6 +3671,171 @@ func (c *DiagramConceptClient) mutate(ctx context.Context, m *DiagramConceptMuta
 		return (&DiagramConceptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DiagramConcept mutation op: %q", m.Op())
+	}
+}
+
+// DiagramInstrumentClient is a client for the DiagramInstrument schema.
+type DiagramInstrumentClient struct {
+	config
+}
+
+// NewDiagramInstrumentClient returns a client for the DiagramInstrument from the given config.
+func NewDiagramInstrumentClient(c config) *DiagramInstrumentClient {
+	return &DiagramInstrumentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagraminstrument.Hooks(f(g(h())))`.
+func (c *DiagramInstrumentClient) Use(hooks ...Hook) {
+	c.hooks.DiagramInstrument = append(c.hooks.DiagramInstrument, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagraminstrument.Intercept(f(g(h())))`.
+func (c *DiagramInstrumentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramInstrument = append(c.inters.DiagramInstrument, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramInstrument entity.
+func (c *DiagramInstrumentClient) Create() *DiagramInstrumentCreate {
+	mutation := newDiagramInstrumentMutation(c.config, OpCreate)
+	return &DiagramInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramInstrument entities.
+func (c *DiagramInstrumentClient) CreateBulk(builders ...*DiagramInstrumentCreate) *DiagramInstrumentCreateBulk {
+	return &DiagramInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramInstrumentClient) MapCreateBulk(slice any, setFunc func(*DiagramInstrumentCreate, int)) *DiagramInstrumentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramInstrumentCreateBulk{err: fmt.Errorf("calling to DiagramInstrumentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramInstrumentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramInstrumentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramInstrument.
+func (c *DiagramInstrumentClient) Update() *DiagramInstrumentUpdate {
+	mutation := newDiagramInstrumentMutation(c.config, OpUpdate)
+	return &DiagramInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramInstrumentClient) UpdateOne(_m *DiagramInstrument) *DiagramInstrumentUpdateOne {
+	mutation := newDiagramInstrumentMutation(c.config, OpUpdateOne, withDiagramInstrument(_m))
+	return &DiagramInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramInstrumentClient) UpdateOneID(id int) *DiagramInstrumentUpdateOne {
+	mutation := newDiagramInstrumentMutation(c.config, OpUpdateOne, withDiagramInstrumentID(id))
+	return &DiagramInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramInstrument.
+func (c *DiagramInstrumentClient) Delete() *DiagramInstrumentDelete {
+	mutation := newDiagramInstrumentMutation(c.config, OpDelete)
+	return &DiagramInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramInstrumentClient) DeleteOne(_m *DiagramInstrument) *DiagramInstrumentDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramInstrumentClient) DeleteOneID(id int) *DiagramInstrumentDeleteOne {
+	builder := c.Delete().Where(diagraminstrument.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramInstrumentDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramInstrument.
+func (c *DiagramInstrumentClient) Query() *DiagramInstrumentQuery {
+	return &DiagramInstrumentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramInstrument},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramInstrument entity by its id.
+func (c *DiagramInstrumentClient) Get(ctx context.Context, id int) (*DiagramInstrument, error) {
+	return c.Query().Where(diagraminstrument.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramInstrumentClient) GetX(ctx context.Context, id int) *DiagramInstrument {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a DiagramInstrument.
+func (c *DiagramInstrumentClient) QueryDiagram(_m *DiagramInstrument) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagraminstrument.Table, diagraminstrument.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagraminstrument.DiagramTable, diagraminstrument.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstrument queries the instrument edge of a DiagramInstrument.
+func (c *DiagramInstrumentClient) QueryInstrument(_m *DiagramInstrument) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagraminstrument.Table, diagraminstrument.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagraminstrument.InstrumentTable, diagraminstrument.InstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramInstrumentClient) Hooks() []Hook {
+	return c.hooks.DiagramInstrument
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramInstrumentClient) Interceptors() []Interceptor {
+	return c.inters.DiagramInstrument
+}
+
+func (c *DiagramInstrumentClient) mutate(ctx context.Context, m *DiagramInstrumentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramInstrumentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramInstrumentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramInstrumentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramInstrumentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramInstrument mutation op: %q", m.Op())
 	}
 }
 
@@ -5174,6 +5379,22 @@ func (c *InstrumentClient) QueryDiagrams(_m *Instrument) *DiagramQuery {
 	return query
 }
 
+// QueryCompatibleDiagrams queries the compatible_diagrams edge of a Instrument.
+func (c *InstrumentClient) QueryCompatibleDiagrams(_m *Instrument) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, instrument.CompatibleDiagramsTable, instrument.CompatibleDiagramsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryCourses queries the courses edge of a Instrument.
 func (c *InstrumentClient) QueryCourses(_m *Instrument) *CourseQuery {
 	query := (&CourseClient{config: c.config}).Query()
@@ -5215,6 +5436,22 @@ func (c *InstrumentClient) QueryContentNodes(_m *Instrument) *ContentNodeQuery {
 			sqlgraph.From(instrument.Table, instrument.FieldID, id),
 			sqlgraph.To(contentnode.Table, contentnode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, instrument.ContentNodesTable, instrument.ContentNodesPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagramInstruments queries the diagram_instruments edge of a Instrument.
+func (c *InstrumentClient) QueryDiagramInstruments(_m *Instrument) *DiagramInstrumentQuery {
+	query := (&DiagramInstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(instrument.Table, instrument.FieldID, id),
+			sqlgraph.To(diagraminstrument.Table, diagraminstrument.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, instrument.DiagramInstrumentsTable, instrument.DiagramInstrumentsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -7069,8 +7306,8 @@ type (
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramRegion, DiagramSkill, Exercise,
-		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
+		Exercise, ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
 		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
 		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
 		StudentPathItem, User, Voice []ent.Hook
@@ -7080,8 +7317,8 @@ type (
 		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramRegion, DiagramSkill, Exercise,
-		ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
+		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
+		Exercise, ExerciseConcept, ExerciseLanguage, ExerciseOption, ExerciseSkill,
 		ExpandedContent, Instrument, Language, LearningPath, LearningPathInstrument,
 		LearningPathItem, Position, Skill, StudentLearningState, StudentPath,
 		StudentPathItem, User, Voice []ent.Interceptor

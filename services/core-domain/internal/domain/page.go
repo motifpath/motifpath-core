@@ -199,7 +199,11 @@ func (f DiagramListFilter) matchesScope(d Diagram) bool {
 // matchesContent checks what d is: its instrument, classification and the
 // languages it is named in.
 func (f DiagramListFilter) matchesContent(d Diagram) bool {
-	if f.InstrumentID != "" && d.InstrumentID != f.InstrumentID {
+	instrumentIDs := d.InstrumentIDs
+	if len(instrumentIDs) == 0 && d.InstrumentID != "" {
+		instrumentIDs = []string{d.InstrumentID}
+	}
+	if f.InstrumentID != "" && !slices.Contains(instrumentIDs, f.InstrumentID) {
 		return false
 	}
 	if f.SkillID != "" && !slices.Contains(d.SkillIDs(), f.SkillID) {

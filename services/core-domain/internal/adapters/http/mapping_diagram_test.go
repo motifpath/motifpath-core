@@ -21,7 +21,7 @@ func TestDiagramColorMapping(t *testing.T) {
 	diagram := domain.Diagram{
 		ID:           uuid.NewString(),
 		InstrumentID: uuid.NewString(),
-		Names: domain.LocalizedText{"en": "Colored"},
+		Names:        domain.LocalizedText{"en": "Colored"},
 		Kind:         domain.DiagramKindCustom,
 		CreatedBy:    uuid.NewString(),
 		LabelDisplay: domain.LabelDisplayInterval,
@@ -128,6 +128,19 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 			assert.Equal(t, field, valErr.Fields[0].Field)
 		}
 	})
+}
+
+func TestDiagramCompatibleInstrumentsMapping(t *testing.T) {
+	layout, compatible := uuid.NewString(), uuid.NewString()
+	diagram := domain.Diagram{
+		ID: uuid.NewString(), InstrumentID: layout, InstrumentIDs: []string{layout, compatible},
+		Names: domain.LocalizedText{"en": "Shared"}, Kind: domain.DiagramKindBasic,
+		CreatedBy: uuid.NewString(), LabelDisplay: domain.LabelDisplayInterval,
+	}
+
+	got := toGeneratedDiagram(diagram, userNames{})
+
+	assert.ElementsMatch(t, []uuid.UUID{mustUUID(layout), mustUUID(compatible)}, got.InstrumentIds)
 }
 
 func TestDiagramLocalizationMapping(t *testing.T) {

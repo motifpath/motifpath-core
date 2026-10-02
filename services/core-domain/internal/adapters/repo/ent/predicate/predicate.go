@@ -60,6 +60,9 @@ type Diagram func(*sql.Selector)
 // DiagramConcept is the predicate function for diagramconcept builders.
 type DiagramConcept func(*sql.Selector)
 
+// DiagramInstrument is the predicate function for diagraminstrument builders.
+type DiagramInstrument func(*sql.Selector)
+
 // DiagramRegion is the predicate function for diagramregion builders.
 type DiagramRegion func(*sql.Selector)
 

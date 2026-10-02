@@ -30,6 +30,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
@@ -128,6 +129,7 @@ func checkColumn(t, c string) error {
 			courseversioncheckpoint.Table: courseversioncheckpoint.ValidColumn,
 			diagram.Table:                 diagram.ValidColumn,
 			diagramconcept.Table:          diagramconcept.ValidColumn,
+			diagraminstrument.Table:       diagraminstrument.ValidColumn,
 			diagramregion.Table:           diagramregion.ValidColumn,
 			diagramskill.Table:            diagramskill.ValidColumn,
 			exercise.Table:                exercise.ValidColumn,

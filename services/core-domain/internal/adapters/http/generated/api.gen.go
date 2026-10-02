@@ -1321,8 +1321,8 @@ type CreateDiagramRequest struct {
 	// leaves it unrecorded.
 	Color *string `json:"color"`
 
-	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
-	InstrumentId openapi_types.UUID `json:"instrument_id"`
+	// InstrumentIds Compatible instruments; the first is the layout instrument.
+	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind Whether the new diagram is a curated basic template or the
 	// caller's own custom diagram. Omitted defaults to custom. Only an
@@ -1708,8 +1708,12 @@ type Diagram struct {
 	// DiagramId Stable identifier for this diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 
-	// InstrumentId The instrument this diagram is authored against.
+	// InstrumentId The immutable layout instrument this diagram is authored against.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// InstrumentIds Every instrument through which this diagram is available,
+	// including InstrumentId.
+	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind basic diagrams are curated templates: every teacher can find and
 	// use them, and only an admin may create or update one. custom
@@ -3356,6 +3360,9 @@ type UpdateDiagramRequest struct {
 	// colors are replaced together with positions and can be cleared
 	// by omitting them.
 	Color *string `json:"color,omitempty"`
+
+	// InstrumentIds Replaces the compatible instruments.
+	InstrumentIds *[]openapi_types.UUID `json:"instrument_ids,omitempty"`
 
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
 	// default when reopened for authoring, replacing the current

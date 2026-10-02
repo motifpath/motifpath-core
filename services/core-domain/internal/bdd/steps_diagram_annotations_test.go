@@ -9,6 +9,7 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -61,7 +62,7 @@ func (w *world) createOnePositionDiagram(name, instrumentName string, withPositi
 		withPosition(&position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrumentName), Names: english(name), Positions: []generated.DiagramPosition{position},
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrumentName)}, Names: english(name), Positions: []generated.DiagramPosition{position},
 		Regions:        regions,
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
