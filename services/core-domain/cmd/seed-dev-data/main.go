@@ -164,6 +164,14 @@ func (c *classificationSeeder) skillID(ctx context.Context, name string) (string
 	if id, ok := c.skillIDs[name]; ok {
 		return id, nil
 	}
+	skills, err := c.skills.ListSkills(ctx)
+	if err != nil {
+		return "", fmt.Errorf("list skills: %w", err)
+	}
+	if id, ok := rootSkillID(skills, name); ok {
+		c.skillIDs[name] = id
+		return id, nil
+	}
 	skill, err := c.skills.CreateSkill(ctx, c.teacher, name, nil)
 	if err != nil {
 		return "", fmt.Errorf("create skill %q: %w", name, err)
@@ -179,12 +187,38 @@ func (c *classificationSeeder) conceptID(ctx context.Context, name string) (stri
 	if id, ok := c.conceptIDs[name]; ok {
 		return id, nil
 	}
+	concepts, err := c.concepts.ListConcepts(ctx)
+	if err != nil {
+		return "", fmt.Errorf("list concepts: %w", err)
+	}
+	if id, ok := rootConceptID(concepts, name); ok {
+		c.conceptIDs[name] = id
+		return id, nil
+	}
 	concept, err := c.concepts.CreateConcept(ctx, c.teacher, name, nil)
 	if err != nil {
 		return "", fmt.Errorf("create concept %q: %w", name, err)
 	}
 	c.conceptIDs[name] = concept.ID
 	return concept.ID, nil
+}
+
+func rootSkillID(skills []domain.Skill, name string) (string, bool) {
+	for _, skill := range skills {
+		if skill.Name == name && skill.ParentID == nil {
+			return skill.ID, true
+		}
+	}
+	return "", false
+}
+
+func rootConceptID(concepts []domain.Concept, name string) (string, bool) {
+	for _, concept := range concepts {
+		if concept.Name == name && concept.ParentID == nil {
+			return concept.ID, true
+		}
+	}
+	return "", false
 }
 
 // seedPathAndProgress creates the six-node learning path, assigns it to
