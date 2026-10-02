@@ -121,7 +121,7 @@ type Diagram struct {
 	// diagram's coordinates and supplies its fallback playback voice.
 	InstrumentID string
 	// InstrumentIDs lists every instrument through which this diagram is
-	// available. It always includes InstrumentID.
+	// available. It always starts with InstrumentID; see LayoutFirst.
 	InstrumentIDs []string
 	// Names is the diagram's name per language: every offered language for
 	// a basic diagram, at least one for a custom one.
@@ -585,4 +585,18 @@ func keyPitch(key string) (int, bool) {
 	}
 	octave := int(match[3][0] - '0')
 	return octave*12 + letterSemitones[match[1]] + accidentalSemitones[match[2]], true
+}
+
+// LayoutFirst returns the layout instrument followed by every other id in
+// ids, in their given order and without repeats. A diagram's instrument list
+// always has this shape, so clients can tell the layout instrument apart and
+// resend the list unchanged.
+func LayoutFirst(layout string, ids []string) []string {
+	result := []string{layout}
+	for _, id := range ids {
+		if !slices.Contains(result, id) {
+			result = append(result, id)
+		}
+	}
+	return result
 }

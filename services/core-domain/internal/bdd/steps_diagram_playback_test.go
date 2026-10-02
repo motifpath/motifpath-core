@@ -11,6 +11,7 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/oapi-codegen/nullable"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
@@ -66,7 +67,7 @@ func (w *world) startsDiagramWithTempo(_, name, instrument string, tempo, beats,
 		positions[i].PositionId = &id
 	}
 	w.pendingDiagram = &generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		Classification: w.diagramClassification("seeded-skill", "seeded-concept"),
 		TempoBpm:       &tempo,
 		TimeSignature:  &generated.TimeSignature{Beats: beats, BeatValue: generated.TimeSignatureBeatValue(beatValue)},
@@ -151,7 +152,7 @@ func (w *world) createsDiagramWithKey(_, name, instrument, root, mode, skills, c
 	}
 	diagramMode := generated.DiagramMode(mode)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		Classification: w.diagramClassification(skills, concepts), RootNote: &root, Mode: &diagramMode,
 	})
 }
@@ -174,7 +175,7 @@ func (w *world) playableDiagramRequest(instrument string) generated.CreateDiagra
 	}
 	tempo := 90
 	return generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		Classification: w.diagramClassification("seeded-skill", "seeded-concept"),
 		TempoBpm:       &tempo, Sequence: &sequence,
 	}

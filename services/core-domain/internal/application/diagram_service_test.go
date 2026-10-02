@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -150,6 +151,146 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 			list, listErr := f.diagrams.List(ctx, domain.DiagramListFilter{}, domain.PageRequest{Limit: domain.MaxPageLimit})
 			require.NoError(t, listErr)
 			assert.Empty(t, list.Items)
+		})
+	}
+}
+
+func TestDiagramService_CompatibleInstruments(t *testing.T) {
+	ctx := context.Background()
+	four := 4
+	six := 6
+	fixture := func() diagramFixture {
+		f := newDiagramFixture()
+		f.instruments.put(domain.Instrument{ID: "electric", Names: domain.LocalizedText{"en": "Electric guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: guitarTuning, DefaultVoiceID: "acoustic-guitar"})
+		f.instruments.put(domain.Instrument{ID: "drop-d", Names: domain.LocalizedText{"en": "Drop D guitar"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"D2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: "acoustic-guitar"})
+		f.instruments.put(domain.Instrument{ID: "bass", Names: domain.LocalizedText{"en": "Bass"}, Family: domain.InstrumentFamilyFretted, StringCount: &four, Tuning: []string{"E1", "A1", "D2", "G2"}, DefaultVoiceID: "acoustic-guitar"})
+		f.instruments.put(domain.Instrument{ID: "grand", Names: domain.LocalizedText{"en": "Grand piano"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: "piano"})
+		f.instruments.put(domain.Instrument{ID: "keyboard-61", Names: domain.LocalizedText{"en": "61-key keyboard"}, Family: domain.InstrumentFamilyKeyboard, KeyRange: &domain.KeyRange{Lowest: "C2", Highest: "C7"}, DefaultVoiceID: "piano"})
+		return f
+	}
+	create := func(f diagramFixture, instrumentIDs []string) (domain.Diagram, error) {
+		positions := []domain.Position{frettedPos(6, 5)}
+		if len(instrumentIDs) > 0 && (instrumentIDs[0] == "piano" || instrumentIDs[0] == "grand") {
+			key := "A3"
+			positions = []domain.Position{{Interval: "R", NoteName: "A", Key: &key}}
+		}
+		return f.svc.CreateDiagramWithInstruments(ctx, teacherCaller(), instrumentIDs, names("D"), positions, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{LabelDisplay: domain.LabelDisplayInterval})
+	}
+
+	t.Run("create shares a diagram with every instrument of the same geometry", func(t *testing.T) {
+		f := fixture()
+
+		got, err := create(f, []string{"guitar", "electric"})
+
+		require.NoError(t, err)
+		assert.Equal(t, "guitar", got.InstrumentID)
+		assert.Equal(t, []string{"guitar", "electric"}, got.InstrumentIDs)
+	})
+
+	t.Run("create shares a keyboard diagram with a keyboard of the same range", func(t *testing.T) {
+		f := fixture()
+
+		got, err := create(f, []string{"piano", "grand"})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"piano", "grand"}, got.InstrumentIDs)
+	})
+
+	rejected := []struct {
+		name          string
+		instrumentIDs []string
+	}{
+		{name: "no instruments", instrumentIDs: []string{}},
+		{name: "a duplicate instrument", instrumentIDs: []string{"guitar", "electric", "guitar"}},
+		{name: "an unknown compatible instrument", instrumentIDs: []string{"guitar", "nope"}},
+		{name: "a different string count", instrumentIDs: []string{"guitar", "bass"}},
+		{name: "a different tuning", instrumentIDs: []string{"guitar", "drop-d"}},
+		{name: "a different family", instrumentIDs: []string{"guitar", "piano"}},
+		{name: "a keyboard with a different key range", instrumentIDs: []string{"piano", "keyboard-61"}},
+	}
+	for _, tt := range rejected {
+		t.Run("create rejects "+tt.name, func(t *testing.T) {
+			f := fixture()
+
+			_, err := create(f, tt.instrumentIDs)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, "instrument_ids", valErr.Fields[0].Field)
+		})
+	}
+
+	t.Run("a failed compatible-instrument lookup is not reported as a validation error", func(t *testing.T) {
+		f := fixture()
+		lookupFailed := errors.New("connection reset")
+		f.instruments.getErrs["electric"] = lookupFailed
+
+		_, err := create(f, []string{"guitar", "electric"})
+
+		require.ErrorIs(t, err, lookupFailed)
+		var valErr *domain.ValidationError
+		assert.False(t, errors.As(err, &valErr))
+	})
+
+	t.Run("update without instrument ids keeps the current ones", func(t *testing.T) {
+		f := fixture()
+		d, err := create(f, []string{"guitar", "electric"})
+		require.NoError(t, err)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names("Renamed")})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"guitar", "electric"}, got.InstrumentIDs)
+	})
+
+	t.Run("update replaces the compatible instruments", func(t *testing.T) {
+		f := fixture()
+		d, err := create(f, []string{"guitar", "electric"})
+		require.NoError(t, err)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{InstrumentIDs: []string{"guitar"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"guitar"}, got.InstrumentIDs)
+		stored, err := f.diagrams.GetByID(ctx, d.ID)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"guitar"}, stored.InstrumentIDs)
+	})
+
+	t.Run("update accepts the layout instrument anywhere in the list and returns it first", func(t *testing.T) {
+		f := fixture()
+		d, err := create(f, []string{"guitar"})
+		require.NoError(t, err)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{InstrumentIDs: []string{"electric", "guitar"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, "guitar", got.InstrumentID)
+		assert.Equal(t, []string{"guitar", "electric"}, got.InstrumentIDs)
+	})
+
+	updateRejected := []struct {
+		name          string
+		instrumentIDs []string
+	}{
+		{name: "a list without the layout instrument", instrumentIDs: []string{"electric"}},
+		{name: "an incompatible instrument", instrumentIDs: []string{"guitar", "bass"}},
+		{name: "a duplicate instrument", instrumentIDs: []string{"guitar", "electric", "electric"}},
+	}
+	for _, tt := range updateRejected {
+		t.Run("update rejects "+tt.name, func(t *testing.T) {
+			f := fixture()
+			d, err := create(f, []string{"guitar", "electric"})
+			require.NoError(t, err)
+
+			_, err = f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{InstrumentIDs: tt.instrumentIDs})
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, "instrument_ids", valErr.Fields[0].Field)
+			stored, err := f.diagrams.GetByID(ctx, d.ID)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"guitar", "electric"}, stored.InstrumentIDs)
 		})
 	}
 }

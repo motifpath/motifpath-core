@@ -1521,10 +1521,13 @@ func samePointerValue(a, b *string) bool {
 type fakeInstrumentRepository struct {
 	mu   sync.Mutex
 	byID map[string]domain.Instrument
+	// getErrs makes GetByID fail with the given error for an id, standing in
+	// for a database failure.
+	getErrs map[string]error
 }
 
 func newFakeInstrumentRepository() *fakeInstrumentRepository {
-	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}}
+	return &fakeInstrumentRepository{byID: map[string]domain.Instrument{}, getErrs: map[string]error{}}
 }
 
 func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.Instrument) error {
@@ -1537,6 +1540,9 @@ func (f *fakeInstrumentRepository) Create(_ context.Context, instrument domain.I
 func (f *fakeInstrumentRepository) GetByID(_ context.Context, id string) (domain.Instrument, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if err, ok := f.getErrs[id]; ok {
+		return domain.Instrument{}, err
+	}
 	instrument, ok := f.byID[id]
 	if !ok {
 		return domain.Instrument{}, domain.ErrNotFound

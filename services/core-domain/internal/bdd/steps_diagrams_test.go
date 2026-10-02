@@ -12,6 +12,7 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -335,7 +336,7 @@ func (w *world) createsDiagramWithFrettedPositions(_, name, instrument, skills, 
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -366,7 +367,7 @@ func (w *world) createsDiagramWithColor(_, name, instrument, color, skills, conc
 		positions = append(positions, position)
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions, Color: &color,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions, Color: &color,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -463,7 +464,7 @@ func (w *world) createsDiagramWithRootAndLabelDisplay(_, name, instrument, rootN
 	}
 	display := generated.CreateDiagramRequestLabelDisplay(labelDisplay)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		RootNote: &rootNote, LabelDisplay: &display,
 		Classification: w.diagramClassification(skills, concepts),
 	})
@@ -631,7 +632,7 @@ func (w *world) createsDiagramWithKeyboardPositions(_, name, instrument, skills,
 		positions = append(positions, generated.DiagramPosition{Interval: generated.DiagramPositionInterval(interval), NoteName: note, Key: &key})
 	}
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -643,21 +644,21 @@ func onePositionOnGuitar() []generated.DiagramPosition {
 
 func (w *world) submitsDiagramWithoutSkills(_, instrument string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english("No skills"), Positions: onePositionOnGuitar(),
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english("No skills"), Positions: onePositionOnGuitar(),
 		Classification: generated.DiagramClassificationInput{ConceptIds: w.conceptIDsFor("scale-construction")},
 	})
 }
 
 func (w *world) submitsDiagramOnMissingInstrument(string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: deterministicUUID("instrument", "does-not-exist"), Names: english("Orphan"), Positions: onePositionOnGuitar(),
+		InstrumentIds: []openapi_types.UUID{deterministicUUID("instrument", "does-not-exist")}, Names: english("Orphan"), Positions: onePositionOnGuitar(),
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
 
 func (w *world) attemptsCreateDiagram(string) error {
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID("guitar"), Names: english("Attempted"), Positions: onePositionOnGuitar(),
+		InstrumentIds: []openapi_types.UUID{instrumentID("guitar")}, Names: english("Attempted"), Positions: onePositionOnGuitar(),
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
@@ -753,7 +754,7 @@ func (w *world) createsDiagramWithKind(_, name, instrument, kind, skills, concep
 	}
 	k := generated.CreateDiagramRequestKind(kind)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: english(name), Positions: positions, Kind: &k,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: english(name), Positions: positions, Kind: &k,
 		Classification: w.diagramClassification(skills, concepts),
 	})
 }
@@ -761,7 +762,7 @@ func (w *world) createsDiagramWithKind(_, name, instrument, kind, skills, concep
 func (w *world) attemptsCreateBasicDiagram(string) error {
 	basic := generated.CreateDiagramRequestKindBasic
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: instrumentID("guitar"), Names: english("Attempted template"), Positions: onePositionOnGuitar(), Kind: &basic,
+		InstrumentIds: []openapi_types.UUID{instrumentID("guitar")}, Names: english("Attempted template"), Positions: onePositionOnGuitar(), Kind: &basic,
 		Classification: w.diagramClassification("minor-pentatonic-scale", "scale-construction"),
 	})
 }
@@ -805,7 +806,7 @@ func (w *world) saveCopy(slug string, names generated.LocalizedNames, kind *gene
 	}
 	labelDisplay := generated.CreateDiagramRequestLabelDisplay(source.LabelDisplay)
 	return w.createDiagram(generated.CreateDiagramRequest{
-		InstrumentId: source.InstrumentId, Names: names, Kind: kind, Positions: positions,
+		InstrumentIds: source.InstrumentIds, Names: names, Kind: kind, Positions: positions,
 		RootNote: source.RootNote, LabelDisplay: &labelDisplay, Color: source.Color,
 		Classification: generated.DiagramClassificationInput{SkillIds: skills, ConceptIds: concepts},
 	})
@@ -1014,7 +1015,7 @@ func (w *world) createDiagramNamed(names generated.LocalizedNames, basic bool, i
 		return err
 	}
 	body := generated.CreateDiagramRequest{
-		InstrumentId: instrumentID(instrument), Names: names, Positions: positions,
+		InstrumentIds: []openapi_types.UUID{instrumentID(instrument)}, Names: names, Positions: positions,
 		Classification: w.diagramClassification(skills, concepts),
 	}
 	if basic {

@@ -41,7 +41,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 	if err != nil {
 		return err
 	}
-	compatibleInstrumentIDs, err := parseUUIDs(d.InstrumentIDs)
+	compatibleInstrumentIDs, err := parseUUIDs(domain.LayoutFirst(d.InstrumentID, d.InstrumentIDs))
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	if err != nil {
 		return domain.ErrNotFound
 	}
-	compatibleInstrumentIDs, err := parseUUIDs(d.InstrumentIDs)
+	compatibleInstrumentIDs, err := parseUUIDs(domain.LayoutFirst(d.InstrumentID, d.InstrumentIDs))
 	if err != nil {
 		return err
 	}
@@ -287,17 +287,7 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 		SetTimeSignatureBeats(d.TimeSignature.Beats).
 		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
 		SetSequence(entSequence(d.Sequence))
-	// Unlike root note and color, mode and tempo can be cleared.
-	if d.Mode != nil {
-		update.SetMode(*entMode(d.Mode))
-	} else {
-		update.ClearMode()
-	}
-	if d.TempoBPM != nil {
-		update.SetTempoBpm(*d.TempoBPM)
-	} else {
-		update.ClearTempoBpm()
-	}
+	setOrClearPlayback(update, d)
 	if _, err := update.
 		ClearCompatibleInstruments().
 		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
@@ -321,6 +311,21 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 		return rollback(tx, err)
 	}
 	return tx.Commit()
+}
+
+// setOrClearPlayback sets d's mode and tempo on update. Unlike root note and
+// color, mode and tempo can be cleared.
+func setOrClearPlayback(update *ent.DiagramUpdateOne, d domain.Diagram) {
+	if d.Mode != nil {
+		update.SetMode(*entMode(d.Mode))
+	} else {
+		update.ClearMode()
+	}
+	if d.TempoBPM != nil {
+		update.SetTempoBpm(*d.TempoBPM)
+	} else {
+		update.ClearTempoBpm()
+	}
 }
 
 // withDiagramEdges eager-loads everything toDomainDiagram reads, with
@@ -438,6 +443,7 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		instrumentIDs[i] = instrument.ID.String()
 	}
 	slices.Sort(instrumentIDs)
+	instrumentIDs = domain.LayoutFirst(row.InstrumentID.String(), instrumentIDs)
 	return domain.Diagram{
 		ID:            row.ID.String(),
 		InstrumentID:  row.InstrumentID.String(),
