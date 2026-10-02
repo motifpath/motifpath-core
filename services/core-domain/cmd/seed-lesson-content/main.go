@@ -46,10 +46,12 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 const (
@@ -180,8 +182,7 @@ func run(completed int, current string) error {
 	contentService := application.NewContentService(
 		repo.NewEntContentNodeRepository(conns.ent),
 		repo.NewEntExpandedContentRepository(conns.ent),
-		repo.NewEntSkillRepository(conns.ent),
-		repo.NewEntConceptRepository(conns.ent),
+		repo.NewEntKnowledgeNodeRepository(conns.ent),
 		repo.NewEntContentNodeVersionRepository(conns.ent),
 		repo.NewEntDiagramRepository(conns.ent),
 		repo.NewEntInstrumentRepository(conns.ent),
@@ -189,7 +190,7 @@ func run(completed int, current string) error {
 		newID, now,
 	)
 
-	defaults, err := loadDefaults(ctx, conns.ent, application.NewSkillService(repo.NewEntSkillRepository(conns.ent), newID), application.NewConceptService(repo.NewEntConceptRepository(conns.ent), newID))
+	defaults, err := loadDefaults(ctx, conns.ent, repo.NewEntKnowledgeNodeRepository(conns.ent))
 	if err != nil {
 		return err
 	}
@@ -397,19 +398,18 @@ func exercisesMissingLanguage(ctx context.Context, sqlDB *sql.DB, nodeIDs []stri
 	return ids, rows.Err()
 }
 
-func loadDefaults(ctx context.Context, client *ent.Client, skills *application.SkillService, concepts *application.ConceptService) (classificationDefaults, error) {
-	skillList, err := skills.ListSkills(ctx)
+func loadDefaults(ctx context.Context, client *ent.Client, nodes ports.KnowledgeNodeRepository) (classificationDefaults, error) {
+	// Both are for every instrument, so they suit any legacy node.
+	found, err := nodes.GetByKeys(ctx, []string{"improvisation", "scales"})
 	if err != nil {
-		return classificationDefaults{}, fmt.Errorf("list skills: %w", err)
+		return classificationDefaults{}, fmt.Errorf("look up default classification: %w", err)
 	}
-	conceptList, err := concepts.ListConcepts(ctx)
-	if err != nil {
-		return classificationDefaults{}, fmt.Errorf("list concepts: %w", err)
+	skill, okSkill := found["improvisation"]
+	concept, okConcept := found["scales"]
+	if !okSkill || !okConcept {
+		return classificationDefaults{}, fmt.Errorf("the knowledge map is missing; run every migration first")
 	}
-	if len(skillList) == 0 || len(conceptList) == 0 {
-		return classificationDefaults{}, fmt.Errorf("the database has no skills or concepts to tag legacy nodes with; run seed-dev-data first")
-	}
-	return classificationDefaults{skillID: skillList[0].ID, conceptID: conceptList[0].ID, client: client}, nil
+	return classificationDefaults{skillID: skill.ID, conceptID: concept.ID, client: client}, nil
 }
 
 // applyLessonSpec sets the node's media URL (when the spec has one) and
@@ -447,7 +447,7 @@ func setMedia(ctx context.Context, svc *application.ContentService, admin domain
 		conceptIDs = orDefault(conceptIDs, defaults.conceptID)
 		languages = orDefault(languages, defaultLanguageCode)
 	}
-	if _, err := svc.UpdateContentNode(ctx, admin, node.ID, application.ContentNodeInput{Title: node.Title, SkillIDs: skillIDs, ConceptIDs: conceptIDs, Difficulty: node.Classification.DifficultyLevel, Languages: languages, MediaURL: &mediaURL, RichContent: node.RichContent}); err != nil {
+	if _, err := svc.UpdateContentNode(ctx, admin, node.ID, application.ContentNodeInput{Title: node.Title, SkillIDs: skillIDs, ConceptIDs: conceptIDs, Difficulty: node.Classification.DifficultyLevel, Languages: languages, MediaURL: &mediaURL, RichContent: node.RichContent, InstrumentIDs: node.InstrumentIDs}); err != nil {
 		return fmt.Errorf("set media URL on %s: %w", node.ID, err)
 	}
 	return nil
@@ -550,8 +550,12 @@ func resetProgress(ctx context.Context, db *mongo.Database, studentID string, it
 	return nil
 }
 
+// systemCatalogClerkUserID is the profile the migrations install to own the
+// basic diagram catalog; it never signs in, so it never has a path.
+const systemCatalogClerkUserID = "system:catalog"
+
 func firstUserID(ctx context.Context, client *ent.Client) (string, error) {
-	row, err := client.User.Query().First(ctx)
+	row, err := client.User.Query().Where(user.ClerkUserIDNEQ(systemCatalogClerkUserID)).First(ctx)
 	if err != nil {
 		return "", fmt.Errorf("find a registered user (sign in once through the SPA first): %w", err)
 	}

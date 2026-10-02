@@ -48,11 +48,11 @@ type seededLessons struct {
 // Neither node is placed in a learning path, so no seeded progress depends
 // on them.
 func seedDiagramLessons(ctx context.Context, teacher domain.User, content *application.ContentService, classifier *classificationSeeder, diagrams seededDiagrams) (seededLessons, error) {
-	skillID, err := classifier.skillID(ctx, "Scales")
+	skillID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
 		return seededLessons{}, err
 	}
-	conceptID, err := classifier.conceptID(ctx, "Pentatonic scale shapes")
+	conceptID, err := classifier.conceptID(ctx, "pentatonic-shapes")
 	if err != nil {
 		return seededLessons{}, err
 	}

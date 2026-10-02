@@ -21,19 +21,19 @@ import (
 //     plays reversed and loops, and the open high E sounds though it isn't
 //     drawn (it stays an empty answer cell). The major third is correct.
 func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, diagrams seededDiagrams, challengeID string) error {
-	scalesID, err := classifier.skillID(ctx, "Scales")
+	scalesID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
 		return err
 	}
-	pentatonicID, err := classifier.conceptID(ctx, "Pentatonic scale shapes")
+	pentatonicID, err := classifier.conceptID(ctx, "pentatonic-shapes")
 	if err != nil {
 		return err
 	}
-	chordsID, err := classifier.skillID(ctx, "Chords")
+	chordsID, err := classifier.skillID(ctx, "play-open-chords")
 	if err != nil {
 		return err
 	}
-	openChordsID, err := classifier.conceptID(ctx, "Open chord shapes")
+	openChordsID, err := classifier.conceptID(ctx, "open-chord-shapes")
 	if err != nil {
 		return err
 	}

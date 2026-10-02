@@ -32,6 +32,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/user"
 	"github.com/motifpath/core-domain/internal/application"
 	"github.com/motifpath/core-domain/internal/domain"
+	"github.com/motifpath/core-domain/internal/ports"
 )
 
 func getenvDefault(name, def string) string {
@@ -94,20 +95,17 @@ func run() error {
 	courseVersionRepo := repo.NewEntCourseVersionRepository(entClient)
 	challengeRepo := repo.NewEntChallengeRepository(entClient)
 	exerciseRepo := repo.NewEntExerciseRepository(entClient)
-	skillRepo := repo.NewEntSkillRepository(entClient)
-	conceptRepo := repo.NewEntConceptRepository(entClient)
+	knowledgeRepo := repo.NewEntKnowledgeNodeRepository(entClient)
 	diagramRepo := repo.NewEntDiagramRepository(entClient)
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
 
-	contentService := application.NewContentService(nodeRepo, expandedRepo, skillRepo, conceptRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, skillRepo, conceptRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, rand.Shuffle)
-	skillService := application.NewSkillService(skillRepo, newID)
-	conceptService := application.NewConceptService(conceptRepo, newID)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {
@@ -121,7 +119,7 @@ func run() error {
 		return err
 	}
 
-	classifier := &classificationSeeder{skills: skillService, concepts: conceptService, teacher: teacher}
+	classifier := &classificationSeeder{nodes: knowledgeRepo}
 	nodeIDs, err := seedPathAndProgress(ctx, teacher, student, contentService, pathService, studentPathService, classifier, mongoClient.Database(mongoDatabase))
 	if err != nil {
 		return err
@@ -139,87 +137,37 @@ func run() error {
 	return nil
 }
 
-// classificationSeeder resolves plain skill/concept names to real Skill/
-// Concept tree node ids, creating a fresh root node the first time a given
-// name is seen in this run and reusing it thereafter. The API deliberately
-// has no find-or-create endpoint (an ambiguous operation once names aren't
-// globally unique across the tree), but this script isn't the API: it seeds
-// a known, disjoint set of root-level names it fully controls, so a
-// same-run cache is enough. Re-running this script against a database that
-// already has these root names would fail on the sibling-uniqueness check —
-// a real limitation, left as-is since this tool targets a fresh dev
-// database.
+// classificationSeeder resolves knowledge map keys to the ids of the nodes
+// the migrations installed. Seeds never create nodes: a key the map doesn't
+// have is an error, not a new node.
 type classificationSeeder struct {
-	skills     *application.SkillService
-	concepts   *application.ConceptService
-	teacher    domain.User
-	skillIDs   map[string]string
-	conceptIDs map[string]string
+	nodes ports.KnowledgeNodeRepository
 }
 
-func (c *classificationSeeder) skillID(ctx context.Context, name string) (string, error) {
-	if c.skillIDs == nil {
-		c.skillIDs = map[string]string{}
-	}
-	if id, ok := c.skillIDs[name]; ok {
-		return id, nil
-	}
-	skills, err := c.skills.ListSkills(ctx)
-	if err != nil {
-		return "", fmt.Errorf("list skills: %w", err)
-	}
-	if id, ok := rootSkillID(skills, name); ok {
-		c.skillIDs[name] = id
-		return id, nil
-	}
-	skill, err := c.skills.CreateSkill(ctx, c.teacher, name, nil)
-	if err != nil {
-		return "", fmt.Errorf("create skill %q: %w", name, err)
-	}
-	c.skillIDs[name] = skill.ID
-	return skill.ID, nil
+func (c *classificationSeeder) skillID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindSkill, key)
 }
 
-func (c *classificationSeeder) conceptID(ctx context.Context, name string) (string, error) {
-	if c.conceptIDs == nil {
-		c.conceptIDs = map[string]string{}
-	}
-	if id, ok := c.conceptIDs[name]; ok {
-		return id, nil
-	}
-	concepts, err := c.concepts.ListConcepts(ctx)
-	if err != nil {
-		return "", fmt.Errorf("list concepts: %w", err)
-	}
-	if id, ok := rootConceptID(concepts, name); ok {
-		c.conceptIDs[name] = id
-		return id, nil
-	}
-	concept, err := c.concepts.CreateConcept(ctx, c.teacher, name, nil)
-	if err != nil {
-		return "", fmt.Errorf("create concept %q: %w", name, err)
-	}
-	c.conceptIDs[name] = concept.ID
-	return concept.ID, nil
+func (c *classificationSeeder) conceptID(ctx context.Context, key string) (string, error) {
+	return c.nodeID(ctx, domain.KnowledgeNodeKindConcept, key)
 }
 
-func rootSkillID(skills []domain.KnowledgeNode, name string) (string, bool) {
-	for _, skill := range skills {
-		if skill.Name == name && skill.ParentID == nil {
-			return skill.ID, true
-		}
+func (c *classificationSeeder) nodeID(ctx context.Context, kind domain.KnowledgeNodeKind, key string) (string, error) {
+	found, err := c.nodes.GetByKeys(ctx, []string{key})
+	if err != nil {
+		return "", fmt.Errorf("look up knowledge node %q: %w", key, err)
 	}
-	return "", false
+	node, ok := found[key]
+	if !ok || node.Kind != kind {
+		return "", fmt.Errorf("the knowledge map has no %s %q — run every migration before seeding", kind, key)
+	}
+	return node.ID, nil
 }
 
-func rootConceptID(concepts []domain.KnowledgeNode, name string) (string, bool) {
-	for _, concept := range concepts {
-		if concept.Name == name && concept.ParentID == nil {
-			return concept.ID, true
-		}
-	}
-	return "", false
-}
+// guitars are the catalog instruments (fixed IDs, installed by the
+// migrations) seeded guitar lessons are for, so they may be classified under
+// guitar-only skills and concepts.
+var guitars = []string{"6ea2d087-ab9c-59dc-9657-8546025414d2", "e6fac4f3-7d52-5f46-8f44-4de1b239ebdd"}
 
 // seedPathAndProgress creates the six-node learning path, assigns it to
 // student, and seeds Mongo completion aggregates so the first two nodes show
@@ -240,12 +188,12 @@ func seedPathAndProgress(
 		section               string
 	}
 	specs := []nodeSpec{
-		{"Open position C major scale", "Scales", "Major scale fingerings", domain.DifficultyLevelBeginner, "Fundamentals"},
-		{"Alternate picking basics", "Picking technique", "Alternate picking", domain.DifficultyLevelBeginner, "Fundamentals"},
-		{"Minor pentatonic shape 1", "Scales", "Pentatonic fingerings", domain.DifficultyLevelIntermediate, "Fundamentals"},
-		{"Call-and-response phrasing", "Improvisation", "Phrasing", domain.DifficultyLevelIntermediate, "Improvisation"},
-		{"Bending into the blue note", "Improvisation", "String bending", domain.DifficultyLevelIntermediate, "Improvisation"},
-		{"12-bar blues solo, backing track", "Improvisation", "Full-length solo", domain.DifficultyLevelAdvanced, "Improvisation"},
+		{"Open position C major scale", "play-major-scale-open", "major-scale", domain.DifficultyLevelBeginner, "Fundamentals"},
+		{"Alternate picking basics", "alternate-picking", "note-values", domain.DifficultyLevelBeginner, "Fundamentals"},
+		{"Minor pentatonic shape 1", "play-pentatonic-position-1", "pentatonic-shapes", domain.DifficultyLevelIntermediate, "Fundamentals"},
+		{"Call-and-response phrasing", "phrase-call-response", "call-and-response", domain.DifficultyLevelIntermediate, "Improvisation"},
+		{"Bending into the blue note", "bend-to-pitch", "tones-and-semitones", domain.DifficultyLevelIntermediate, "Improvisation"},
+		{"12-bar blues solo, backing track", "improvise-blues", "blues-form", domain.DifficultyLevelAdvanced, "Improvisation"},
 	}
 
 	// A real, publicly reachable sample video — cdn.motifpath.io doesn't
@@ -263,7 +211,7 @@ func seedPathAndProgress(
 		if err != nil {
 			return nil, err
 		}
-		node, err := contentService.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: spec.title, ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: spec.difficulty, Languages: []string{"en"}, MediaURL: &seedVideoURL, RichContent: nil})
+		node, err := contentService.CreateContentNode(ctx, teacher, application.ContentNodeInput{Title: spec.title, ContentType: domain.ContentTypeVideo, SkillIDs: []string{skillID}, ConceptIDs: []string{conceptID}, Difficulty: spec.difficulty, Languages: []string{"en"}, MediaURL: &seedVideoURL, RichContent: nil, InstrumentIDs: guitars})
 		if err != nil {
 			return nil, fmt.Errorf("create content node %q: %w", spec.title, err)
 		}
@@ -311,10 +259,10 @@ func seedPathAndProgress(
 }
 
 func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeService *application.ChallengeService, exerciseService *application.ExerciseService, classifier *classificationSeeder, contentNodeID string) error {
-	// "Scales" was already created as a root skill while seeding nodeIDs[2]
-	// (the practice node) above — classifier.skillID returns that same id
-	// rather than creating a second one, since it caches by name for this run.
-	subjectSkillID, err := classifier.skillID(ctx, "Scales")
+	// The practice node, nodeIDs[2], is classified under
+	// "play-pentatonic-position-1", and a challenge's subject must be one of
+	// its node's skills.
+	subjectSkillID, err := classifier.skillID(ctx, "play-pentatonic-position-1")
 	if err != nil {
 		return err
 	}
@@ -354,11 +302,11 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 		},
 	}
 
-	pentatonicSkillID, err := classifier.skillID(ctx, "Pentatonic shapes")
+	pentatonicSkillID, err := classifier.skillID(ctx, "play-pentatonic-position-1")
 	if err != nil {
 		return err
 	}
-	pentatonicConceptID, err := classifier.conceptID(ctx, "Pentatonic fingerings")
+	pentatonicConceptID, err := classifier.conceptID(ctx, "pentatonic-shapes")
 	if err != nil {
 		return err
 	}

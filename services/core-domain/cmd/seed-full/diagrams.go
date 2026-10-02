@@ -15,7 +15,6 @@ import (
 type seededDiagrams struct {
 	guitar domain.Instrument
 	bass   domain.Instrument
-	piano  domain.Instrument
 
 	// Basic templates, owned by the template curator and written in every
 	// offered language, text annotations included.
@@ -106,48 +105,35 @@ func joinedCells() []fretted {
 	return cells
 }
 
-// The voices the platform provides with its migrations.
+// The catalog instruments the migrations install, by their fixed IDs (UUID v5
+// of instrument/<key>). Seeds use them and never create instruments.
 const (
-	acousticGuitarVoice = "acoustic-guitar"
-	pianoVoice          = "piano"
+	acousticGuitarID = "6ea2d087-ab9c-59dc-9657-8546025414d2"
+	electricGuitarID = "e6fac4f3-7d52-5f46-8f44-4de1b239ebdd"
+	electricBassID   = "14fe11ad-efdb-589a-b713-2e81ec041cbe"
 )
 
-// seedInstruments creates the guitar, bass and piano Instruments.
-func seedInstruments(ctx context.Context, teacher domain.User, instrumentSvc *application.InstrumentService) (guitar, bass, piano domain.Instrument, err error) {
-	six, four := 6, 4
-	existing, err := instrumentSvc.ListInstruments(ctx)
-	if err != nil {
-		return guitar, bass, piano, fmt.Errorf("list instruments: %w", err)
-	}
-	var found bool
-	if guitar, found = instrumentNamed(existing, "Guitar"); !found {
-		if guitar, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
-			&six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, acousticGuitarVoice); err != nil {
-			return guitar, bass, piano, fmt.Errorf("create guitar: %w", err)
-		}
-	}
-	if bass, found = instrumentNamed(existing, "Bass"); !found {
-		if bass, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Bass", "pt_BR": "Contrabaixo"}, domain.InstrumentFamilyFretted,
-			&four, []string{"E1", "A1", "D2", "G2"}, nil, acousticGuitarVoice); err != nil {
-			return guitar, bass, piano, fmt.Errorf("create bass: %w", err)
-		}
-	}
-	if piano, found = instrumentNamed(existing, "Piano"); !found {
-		if piano, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard,
-			nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice); err != nil {
-			return guitar, bass, piano, fmt.Errorf("create piano: %w", err)
-		}
-	}
-	return guitar, bass, piano, nil
-}
+// guitars are the instruments seeded guitar lessons are for, so they may be
+// classified under guitar-only skills and concepts.
+var guitars = []string{acousticGuitarID, electricGuitarID}
 
-func instrumentNamed(instruments []domain.Instrument, name string) (domain.Instrument, bool) {
-	for _, instrument := range instruments {
-		if instrument.Names["en"] == name {
-			return instrument, true
-		}
+// installedInstruments returns the acoustic guitar and electric bass the
+// migrations install.
+func installedInstruments(ctx context.Context, instrumentSvc *application.InstrumentService) (guitar, bass domain.Instrument, err error) {
+	all, err := instrumentSvc.ListInstruments(ctx)
+	if err != nil {
+		return guitar, bass, fmt.Errorf("list instruments: %w", err)
 	}
-	return domain.Instrument{}, false
+	byID := make(map[string]domain.Instrument, len(all))
+	for _, instrument := range all {
+		byID[instrument.ID] = instrument
+	}
+	guitar, okGuitar := byID[acousticGuitarID]
+	bass, okBass := byID[electricBassID]
+	if !okGuitar || !okBass {
+		return guitar, bass, fmt.Errorf("the catalog instruments are missing — run every migration before seeding")
+	}
+	return guitar, bass, nil
 }
 
 // diagramSpec is one diagram to seed, and where to keep it once created.
@@ -226,18 +212,17 @@ func withPositionIDs(positions []domain.Position) []domain.Position {
 	return positions
 }
 
-// seedInstrumentsAndDiagrams creates the guitar, bass and piano Instruments
-// and a library of diagrams covering what the diagram editor and viewer
+// seedInstrumentsAndDiagrams finds the installed acoustic guitar and electric
+// bass and creates a library of diagrams covering what the diagram editor and viewer
 // support: basic templates (owned by curator, in every language) and custom
 // diagrams (owned by the teacher who made them), with colours, every marker
 // shape and label display, custom labels, notes, regions and a playback
 // order. otherTeacher owns one custom diagram so a teacher can open another
-// teacher's diagram and see it read-only. The piano gets no diagram: only
-// fretted diagrams can be drawn yet.
+// teacher's diagram and see it read-only.
 func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, curator domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (seededDiagrams, error) {
 	var seeded seededDiagrams
 	var err error
-	if seeded.guitar, seeded.bass, seeded.piano, err = seedInstruments(ctx, teacher, instrumentSvc); err != nil {
+	if seeded.guitar, seeded.bass, err = installedInstruments(ctx, instrumentSvc); err != nil {
 		return seededDiagrams{}, err
 	}
 
@@ -259,15 +244,15 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 	specs := []diagramSpec{
 		{&seeded.pentatonicPos1, curator, seeded.guitar,
 			map[string]string{"en": "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor de Lá — Posição 1"},
-			frettedPositions(pentatonicPos1Cells, domain.PositionShapeDot), "Scales", "Pentatonic scale shapes",
+			frettedPositions(pentatonicPos1Cells, domain.PositionShapeDot), "play-pentatonic-positions", "pentatonic-shapes",
 			basicOptions("A", domain.LabelDisplayInterval, blue, fretBand(5, 8, "Position 1", "Posição 1", nil))},
 		{&seeded.pentatonicPos2, curator, seeded.guitar,
 			map[string]string{"en": "A Minor Pentatonic — Position 2", "pt_BR": "Pentatônica menor de Lá — Posição 2"},
-			frettedPositions(pentatonicPos2Cells, domain.PositionShapeDot), "Scales", "Pentatonic scale shapes",
+			frettedPositions(pentatonicPos2Cells, domain.PositionShapeDot), "play-pentatonic-positions", "pentatonic-shapes",
 			basicOptions("A", domain.LabelDisplayInterval, green)},
 		{&seeded.pentatonicJoined, curator, seeded.guitar,
 			map[string]string{"en": "A Minor Pentatonic — Positions 1 and 2", "pt_BR": "Pentatônica menor de Lá — Posições 1 e 2"},
-			frettedPositions(joinedCells(), domain.PositionShapeDot), "Scales", "Pentatonic scale shapes",
+			frettedPositions(joinedCells(), domain.PositionShapeDot), "play-pentatonic-positions", "pentatonic-shapes",
 			basicOptions("A", domain.LabelDisplayInterval, blue,
 				fretBand(5, 8, "Shape 1", "Desenho 1", blue),
 				fretBand(7, 10, "Shape 2", "Desenho 2", green))},
@@ -277,26 +262,26 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 				{5, 3, "R", "C", nil, nil}, {4, 0, "2", "D", nil, nil}, {4, 2, "3", "E", nil, nil},
 				{4, 3, "4", "F", nil, nil}, {3, 0, "5", "G", nil, nil}, {3, 2, "6", "A", nil, nil},
 				{2, 0, "7", "B", nil, nil}, {2, 1, "R", "C", nil, both("The octave: same note, one octave up.", "A oitava: a mesma nota, uma oitava acima.")},
-			}, domain.PositionShapeSquare), "Scales", "Major scale fingerings",
+			}, domain.PositionShapeSquare), "play-major-scale-open", "major-scale",
 			basicOptions("C", domain.LabelDisplayNote, amber)},
 		{&seeded.eMajorChord, curator, seeded.guitar,
 			map[string]string{"en": "E Major Chord — Open Shape", "pt_BR": "Acorde de Mi maior — Forma aberta"},
-			eMajor, "Chords", "Open chord shapes", eMajorOptions},
+			eMajor, "play-open-chords", "open-chord-shapes", eMajorOptions},
 		{&seeded.bassEMajor, curator, seeded.bass,
 			map[string]string{"en": "E Major Scale — Bass, Open Position", "pt_BR": "Escala de Mi maior — Baixo, posição aberta"},
 			frettedPositions([]fretted{
 				{4, 0, "R", "E", nil, nil}, {4, 2, "2", "F#", nil, nil}, {4, 4, "3", "G#", nil, nil},
 				{3, 0, "4", "A", nil, nil}, {3, 2, "5", "B", nil, nil}, {3, 4, "6", "C#", nil, nil},
 				{2, 1, "7", "D#", nil, nil}, {2, 2, "R", "E", nil, nil},
-			}, domain.PositionShapeDot), "Scales", "Major scale fingerings",
+			}, domain.PositionShapeDot), "find-notes", "major-scale",
 			basicOptions("E", domain.LabelDisplayInterval, blue)},
-		{&seeded.teacherLick, teacher, seeded.guitar, map[string]string{"en": "Blues Lick in A"}, lick, "Improvisation", "Phrasing", lickOptions},
+		{&seeded.teacherLick, teacher, seeded.guitar, map[string]string{"en": "Blues Lick in A"}, lick, "learn-lick", "lick", lickOptions},
 		{&seeded.otherTeacherArp, otherTeacher, seeded.guitar,
 			map[string]string{"en": "G Major Arpeggio — Open", "pt_BR": "Arpejo de Sol maior — Aberto"},
 			frettedPositions([]fretted{
 				{6, 3, "R", "G", nil, nil}, {5, 2, "3", "B", nil, nil}, {4, 0, "5", "D", nil, nil},
 				{3, 0, "R", "G", nil, nil}, {2, 0, "3", "B", nil, nil}, {1, 3, "R", "G", nil, nil},
-			}, domain.PositionShapeDot), "Arpeggios", "Major triads",
+			}, domain.PositionShapeDot), "play-triad-arpeggios", "major-triads",
 			domain.DiagramOptions{RootNote: &arpeggioRoot, LabelDisplay: domain.LabelDisplayInterval, Color: green, Kind: domain.DiagramKindCustom}},
 	}
 	for _, spec := range specs {
