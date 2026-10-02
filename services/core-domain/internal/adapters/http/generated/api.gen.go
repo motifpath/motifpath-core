@@ -1396,6 +1396,12 @@ type CreateDiagramRequestKind string
 type CreateDiagramRequestLabelDisplay string
 
 // CreateExerciseRequest Payload for creating a standalone, reusable exercise.
+// Every skill and concept must suit the exercise's instruments: it is
+// for every instrument, or for at least one of the exercise's
+// instrument_ids. An exercise for every instrument (empty
+// instrument_ids) may use only nodes for every instrument. A violation
+// is rejected with the offending skill_ids or concept_ids identified —
+// the same rule content nodes and diagrams follow (ADR-043).
 type CreateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
 	// is audio_recognition; absent otherwise.
@@ -3568,6 +3574,15 @@ type UpdateDiagramRequestLabelDisplay string
 // creation. options fully replaces the exercise's current options, the
 // same way CreateExerciseRequest.options establishes them initially; a
 // caller that only wants to change one option must resend the full set.
+// Every skill and concept must suit the exercise's instruments: it is
+// for every instrument, or for at least one of the exercise's
+// instrument_ids. An exercise for every instrument (empty
+// instrument_ids) may use only nodes for every instrument. A violation
+// is rejected with the offending skill_ids or concept_ids identified —
+// the same rule content nodes and diagrams follow (ADR-043).
+// The rule is checked against the instruments the exercise has after
+// the update — the current ones when instrument_ids is omitted — so
+// changing only the instruments can be rejected too.
 type UpdateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when the
 	// exercise's exercise_type is audio_recognition; absent otherwise.
@@ -4115,6 +4130,12 @@ type ListExercisesParams struct {
 
 	// ExerciseType When given, only exercises of this type are returned.
 	ExerciseType *ListExercisesParamsExerciseType `form:"exercise_type,omitempty" json:"exercise_type,omitempty"`
+
+	// InstrumentId Return only exercises for at least one of these instruments —
+	// those that list any of them in instrument_ids, plus those for
+	// every instrument (an empty instrument_ids). Repeat the parameter
+	// for several instruments. Omit for exercises of every scope.
+	InstrumentId *[]openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
 }
 
 // ListExercisesParamsExerciseType defines parameters for ListExercises.
@@ -6622,6 +6643,14 @@ func (siw *ServerInterfaceWrapper) ListExercises(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListExercises(w, r, params)
 	}))
@@ -8844,6 +8873,15 @@ func (response UpdateContentNode404JSONResponse) VisitUpdateContentNodeResponse(
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateContentNode409JSONResponse ConflictError
+
+func (response UpdateContentNode409JSONResponse) VisitUpdateContentNodeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListContentNodeChallengesRequestObject struct {
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
 }
@@ -10093,6 +10131,15 @@ type UpdateExercise404JSONResponse NotFoundError
 func (response UpdateExercise404JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateExercise409JSONResponse ConflictError
+
+func (response UpdateExercise409JSONResponse) VisitUpdateExerciseResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
