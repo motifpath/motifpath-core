@@ -10,6 +10,7 @@ from pathlib import Path
 
 NAMESPACE = uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a')
 TUNING = [40, 45, 50, 55, 59, 64]
+MAX_FRET = 12
 ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 LETTERS = 'CDEFGAB'
 NATURAL = [0, 2, 4, 5, 7, 9, 11]
@@ -78,6 +79,10 @@ def stable_id(key):
 SYSTEM_CATALOG_USER_ID = stable_id('user/system-catalog')
 SYSTEM_CATALOG_CLERK_USER_ID = 'system:catalog'
 SYSTEM_CATALOG_DISPLAY_NAME = 'MotifPath Catalog'
+INSTRUMENTS = {
+    'guitar': {'en': 'Guitar', 'pt_BR': 'Violão'},
+    'electric-guitar': {'en': 'Electric guitar', 'pt_BR': 'Guitarra elétrica'},
+}
 
 
 def semitones(interval):
@@ -106,7 +111,7 @@ def root_pt(root):
     return PT[root[0]] + (' sustenido'*root.count('#')) + (' bemol'*root.count('b'))
 
 
-def cells(root, intervals, lo=0, hi=24):
+def cells(root, intervals, lo=0, hi=MAX_FRET):
     by_pitch = {(pitch_class(root)+semitones(i)) % 12: i for i in intervals}
     return [(s, f, by_pitch[(TUNING[6-s]+f) % 12]) for s in range(6,0,-1) for f in range(lo,hi+1) if (TUNING[6-s]+f) % 12 in by_pitch]
 
@@ -137,6 +142,21 @@ def entry(key, root, intervals, coordinates, en, pt, family, tier, formula='', m
                 time_signature=dict(beats=4,beat_value=4))
 
 
+def bind_instrument(template, instrument):
+    result = json.loads(json.dumps(template))
+    key = f'{instrument}/{template["key"]}'
+    position_ids = {}
+    for position in result['positions']:
+        position_ids[position['position_id']] = stable_id(f'{key}/s{position["string"]}/f{position["fret"]}')
+        position['position_id'] = position_ids[position['position_id']]
+    for step in result['sequence']:
+        step['position_ids'] = [position_ids[position_id] for position_id in step['position_ids']]
+    result['key'] = key
+    result['diagram_id'] = stable_id(key)
+    result['instrument'] = instrument
+    return result
+
+
 def voicings(root, intervals, strings, drop=()):
     """Realize closed chords and exact octave-drop transformations on fixed strings."""
     offsets = [semitones(i) for i in intervals]
@@ -149,7 +169,7 @@ def voicings(root, intervals, strings, drop=()):
             if base % 12 != pitch_class(root): continue
             out = [(s,base+v-TUNING[6-s],intervals[i]) for s,(v,i) in zip(strings,voices)]
             frets = [f for _,f,_ in out]
-            if all(0<=f<=24 for f in frets) and max(frets)-min(frets)<=5:
+            if all(0<=f<=MAX_FRET for f in frets) and max(frets)-min(frets)<=5:
                 yield inversion, base, out
 
 
@@ -158,35 +178,35 @@ def generate():
     for root in ROOTS:
         rp = root_pt(root)
         for family, intervals, en, pt in [('chromatic',CHROMATIC,'Chromatic map','Mapa cromático'),('root',['R'],'Root map','Mapa de fundamentais')]:
-            result.append(entry(f'{family}/{root}',root,intervals,cells(root,intervals),f'{root} {en} — Full neck',f'{pt} de {rp} — Braço completo',family,'A'))
+            result.append(entry(f'{family}/{root}',root,intervals,cells(root,intervals),f'{root} {en} — Frets 0–12',f'{pt} de {rp} — Casas 0–12',family,'A'))
         for interval in INTERVALS[1:]:
             for family, ints, en, pt in [('interval',[interval],'Interval map','Mapa de intervalos'),('dyad',['R',interval],'Dyad map','Mapa de díades')]:
                 result.append(entry(f'{family}/{interval}/{root}',root,ints,cells(root,ints),f'{root} {en} — {interval}',f'{pt} de {rp} — {interval}',family,'A'))
         for fk,(en,pt,formula,tier,mode) in FORMULAS.items():
             ints = formula.split()
             family = 'arpeggio' if fk in TRIADS+SEVENTHS or fk.startswith(('maj','dom','min')) and fk[-1].isdigit() else 'scale'
-            result.append(entry(f'{family}/{fk}/{root}/full',root,ints,cells(root,ints),f'{root} {en} — Full neck',f'{pt} de {rp} — Braço completo',family,tier,fk,mode))
+            result.append(entry(f'{family}/{fk}/{root}/frets-0-12',root,ints,cells(root,ints),f'{root} {en} — Frets 0–12',f'{pt} de {rp} — Casas 0–12',family,tier,fk,mode))
         # Pentatonic box coordinates in A minor / C major, transposed by complete octaves.
         for fk, reference in [('minor-pentatonic','A'),('major-pentatonic','C')]:
             en,pt,formula,tier,mode = FORMULAS[fk]; ints=formula.split()
             for box, template in enumerate(PENT_BOXES,1):
-                for shift in range(-24,25):
+                for shift in range(-MAX_FRET,MAX_FRET+1):
                     if shift%12 != (pitch_class(root)-pitch_class(reference))%12: continue
                     coords=[(6-index,f+shift) for index,pair in enumerate(template) for f in pair]
-                    if min(f for _,f in coords)<0 or max(f for _,f in coords)>24: continue
+                    if min(f for _,f in coords)<0 or max(f for _,f in coords)>MAX_FRET: continue
                     lo=min(f for _,f in coords)
                     result.append(entry(f'pentatonic-box/{fk}/{root}/{box}/{lo}',root,ints,tagged(root,ints,coords),f'{root} {en} — Box {box}, fret {lo}',f'{pt} de {rp} — Desenho {box}, casa {lo}','pentatonic-box','A',fk,mode,'run'))
         for fk in ['major','harmonic-minor','melodic-minor']:
             en,pt,formula,tier,mode=FORMULAS[fk]; ints=formula.split()
             pcmap={(pitch_class(root)+semitones(i))%12:i for i in ints}
             for degree, interval in enumerate(ints,1):
-                for start in range(0,25):
+                for start in range(0,MAX_FRET+1):
                     first=TUNING[0]+start
                     if first%12 != (pitch_class(root)+semitones(interval))%12: continue
                     coords=[]; previous=first-1
                     for string in range(6,0,-1):
                         found=[]
-                        for fret in range(25):
+                        for fret in range(MAX_FRET+1):
                             pitch=TUNING[6-string]+fret
                             if pitch>previous and pitch%12 in pcmap:
                                 found.append((string,fret,pcmap[pitch%12]))
@@ -196,45 +216,16 @@ def generate():
                     if len(coords)!=18: continue
                     result.append(entry(f'3nps/{fk}/{root}/{degree}/{start}',root,ints,coords,f'{root} {en} — 3NPS {degree}, fret {start}',f'{pt} de {rp} — 3 notas por corda, padrão {degree}, casa {start}','3nps','B',fk,mode,'run'))
         for shape,(reference,template) in CAGED.items():
-            for shift in range(25):
+            for shift in range(MAX_FRET+1):
                 if shift%12 != (pitch_class(root)-pitch_class(reference))%12: continue
                 coords=[(s,f+shift) for s,f in template]
-                if max(f for _,f in coords)>24: continue
+                if max(f for _,f in coords)>MAX_FRET: continue
                 ints=FORMULAS['major-triad'][2].split()
                 result.append(entry(f'caged/{root}/{shape}/{shift}',root,ints,tagged(root,ints,coords),f'{root} major — CAGED {shape}, shift {shift}',f'Acorde maior de {rp} — CAGED {shape}, deslocamento {shift}','caged','A','major-triad','major','chord'))
                 lo=min(f for _,f in coords); hi=max(f for _,f in coords)
                 for fk in ['major','natural-minor','major-triad','minor-triad']:
                     en,pt,formula,tier,mode=FORMULAS[fk]; ints=formula.split()
                     result.append(entry(f'caged-window/{fk}/{root}/{shape}/{shift}',root,ints,cells(root,ints,lo,hi),f'{root} {en} — CAGED {shape} window, frets {lo}–{hi}',f'{pt} de {rp} — Região CAGED {shape}, casas {lo}–{hi}','caged-window','A',fk,mode))
-        for fk in TRIADS+SEVENTHS:
-            en,pt,formula,tier,mode=FORMULAS[fk]; ints=formula.split(); n=len(ints)
-            systems=[('triad-inversion' if n==3 else 'seventh-inversion',(), 'A')]
-            if n==4: systems += [('drop-2',(2,),'B'),('drop-3',(3,),'B'),('drop-2-4',(2,4),'B')]
-            for system,drop,tier in systems:
-                stringsets=[list(range(low,low-n,-1)) for low in range(n,7)] if not drop else [list(reversed(ss)) for ss in itertools.combinations(range(1,7),4)]
-                for strings in stringsets:
-                    for inv,base,coords in voicings(root,ints,strings,drop):
-                        ss=''.join(map(str,sorted(strings)))
-                        bass=coords[0][2]
-                        description=f'{system}, strings {ss}, bass {bass}, fret {coords[0][1]}'
-                        pt_system={'triad-inversion':'Inversão de tríade','seventh-inversion':'Inversão de tétrade','drop-2':'Drop 2','drop-3':'Drop 3','drop-2-4':'Drop 2 e 4'}[system]
-                        e=entry(f'{system}/{fk}/{root}/{ss}/{inv}/{base}',root,ints,coords,f'{root} {en} — {description}',f'{pt} de {rp} — {pt_system}, cordas {ss}, baixo {bass}, casa {coords[0][1]}',system,tier,fk,mode,'chord')
-                        e['source_inversion']=inv; e['bass_interval']=bass
-                        result.append(e)
-            if n==4:
-                for order in [(ints[0],ints[1],ints[3]),(ints[0],ints[3],ints[1])]:
-                    for strings in [(6,4,3),(5,4,3),(6,3,2),(5,3,2)]:
-                        for fret in range(25):
-                            bass=TUNING[6-strings[0]]+fret
-                            if bass%12!=pitch_class(root): continue
-                            coords=[(strings[0],fret,'R')]; previous=bass
-                            for s,i in zip(strings[1:],order[1:]):
-                                candidates=[f for f in range(25) if (TUNING[6-s]+f)%12==(pitch_class(root)+semitones(i))%12 and TUNING[6-s]+f>previous and abs(f-fret)<=4]
-                                if not candidates: break
-                                f=min(candidates,key=lambda x:(abs(x-fret),x)); coords.append((s,f,i)); previous=TUNING[6-s]+f
-                            if len(coords)==3:
-                                ss=''.join(map(str,strings)); degrees='-'.join(order)
-                                result.append(entry(f'shell/{fk}/{root}/{ss}/{degrees}/{fret}',root,list(order),coords,f'{root} {en} — Shell {degrees}, strings {ss}, fret {fret}',f'{pt} de {rp} — Acorde essencial {degrees}, cordas {ss}, casa {fret}','shell','B',fk,mode,'chord'))
         for system,ints in [('quartal-3','R 4 b7'),('quartal-4','R 4 b7 b3'),('quintal-3','R 5 9'),('quintal-4','R 5 9 13')]:
             degrees=ints.split()
             result.append(entry(f'structure/{system}/{root}',root,degrees,cells(root,degrees),f'{root} {system} — Interval map',f'Estrutura de {"quartas" if system.startswith("quartal") else "quintas"} de {rp} — {len(degrees)} notas, mapa de intervalos','interval-structure','C',system))
@@ -256,6 +247,7 @@ def generate():
         for degrees in [('R','2','3','5'),('R','3','4','5')]:
             key='-'.join(degrees)
             result.append(entry(f'digital/{root}/{key}',root,list(degrees),cells(root,list(degrees)),f'{root} major — Digital pattern {key}, note map',f'Escala maior de {rp} — Padrão {key}, mapa de notas','digital-pattern','C'))
+    result = [bind_instrument(template, instrument) for instrument in INSTRUMENTS for template in result]
     result.sort(key=lambda e:e['key'])
     validate(result)
     return result
@@ -271,7 +263,7 @@ def validate(entries):
         if not e['positions']: raise ValueError('Empty diagram')
         for p in e['positions']:
             cell=(p['string'],p['fret'])
-            if cell in coords or not 1<=cell[0]<=6 or not 0<=cell[1]<=24: raise ValueError(f'Invalid cell {e["key"]}: {cell}')
+            if cell in coords or not 1<=cell[0]<=6 or not 0<=cell[1]<=MAX_FRET: raise ValueError(f'Invalid cell {e["key"]}: {cell}')
             coords.add(cell); ids.add(p['position_id'])
             if p['interval'] not in INTERVALS: raise ValueError('Unsupported interval')
             expected=(TUNING[6-p['string']]+p['fret'])%12
@@ -302,11 +294,13 @@ def render_sql(entries):
          "SELECT 1 / (SELECT CASE WHEN EXISTS (SELECT 1 FROM languages WHERE code='en') AND EXISTS (SELECT 1 FROM languages WHERE code='pt_BR') AND NOT EXISTS (SELECT 1 FROM languages WHERE code NOT IN ('en','pt_BR','any')) THEN 1 ELSE 0 END) AS catalog_translations_required;",
          "SELECT 1 / (SELECT CASE WHEN (NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+" OR clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+")) OR EXISTS (SELECT 1 FROM users u JOIN languages l ON l.id=u.locale_id WHERE u.id="+sql_text(SYSTEM_CATALOG_USER_ID)+" AND u.clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+" AND u.role='admin' AND u.display_name="+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+" AND l.code='en') THEN 1 ELSE 0 END) AS system_catalog_profile_compatible;",
          "INSERT INTO users (id,clerk_user_id,role,display_name,locale_id,registered_at) SELECT "+sql_text(SYSTEM_CATALOG_USER_ID)+","+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+",'admin',"+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+",id,'2026-10-01T00:00:00Z' FROM languages WHERE code='en' AND NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+");",
-         "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb) <= 1 THEN 1 ELSE 0 END) AS unambiguous_standard_guitar_required;",
-         "INSERT INTO instruments (id,names,family,string_count,tuning,default_voice_id) SELECT '"+stable_id('instrument/guitar')+"','{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}','fretted',6,'[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]','acoustic-guitar' WHERE NOT EXISTS (SELECT 1 FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb);",
+         "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM instruments WHERE names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)) <= 2 THEN 1 ELSE 0 END) AS unambiguous_catalog_instruments_required;",
          "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name='Scales' AND parent_id IS NULL) <= 1 AND (SELECT count(*) FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_catalog_classification_required;",
          "INSERT INTO skills (id,name) SELECT '"+stable_id('skill/scales')+"','Scales' WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name='Scales' AND parent_id IS NULL);",
          "INSERT INTO concepts (id,name) SELECT '"+stable_id('concept/fretboard-patterns')+"','Fretboard patterns' WHERE NOT EXISTS (SELECT 1 FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL);"]
+    for key, names in INSTRUMENTS.items():
+        names_json = sql_text(compact(names)) + '::jsonb'
+        sql.append("INSERT INTO instruments (id,names,family,string_count,tuning,default_voice_id) SELECT "+sql_text(stable_id('instrument/'+key))+","+names_json+",'fretted',6,'[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]','acoustic-guitar' WHERE NOT EXISTS (SELECT 1 FROM instruments WHERE names="+names_json+");")
     for skill in ['Chords', 'Arpeggios', 'Improvisation', 'Fretboard navigation']:
         sql.append("SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_skill_required;")
         sql.append("INSERT INTO skills (id,name) SELECT "+sql_text(stable_id('skill/'+skill))+","+sql_text(skill)+" WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL);")
@@ -315,7 +309,9 @@ def render_sql(entries):
     positions = []
     classifications = []
     for e in entries:
-        values=[sql_text(e['diagram_id']), "(SELECT id FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)",sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
+        instrument_names = sql_text(compact(INSTRUMENTS[e['instrument']])) + '::jsonb'
+        instrument_id = "(SELECT id FROM instruments WHERE names="+instrument_names+" AND family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)"
+        values=[sql_text(e['diagram_id']), instrument_id,sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
         diagrams.append('('+','.join(values)+')')
         for ordinal,p in enumerate(e['positions']):
             positions.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')

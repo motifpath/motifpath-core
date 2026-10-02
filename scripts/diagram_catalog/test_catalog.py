@@ -35,7 +35,9 @@ class CatalogTests(unittest.TestCase):
 
     def test_shape_cardinalities(self):
         for e in self.entries:
-            if e['family'] == 'chromatic': self.assertEqual(len(e['positions']), 150)
+            self.assertIn(e['instrument'], {'guitar', 'electric-guitar'})
+            self.assertTrue(all(p['fret'] <= 12 for p in e['positions']), e['key'])
+            if e['family'] == 'chromatic': self.assertEqual(len(e['positions']), 78)
             if e['family'] == 'pentatonic-box': self.assertEqual(len(e['positions']), 12)
             if e['family'] == '3nps': self.assertEqual(Counter(p['string'] for p in e['positions']), {s: 3 for s in range(1, 7)})
 
@@ -45,13 +47,11 @@ class CatalogTests(unittest.TestCase):
             self.assertNotEqual(e['names']['en'], e['names']['pt_BR'])
             self.assertNotIn('Position', e['names']['pt_BR'])
             self.assertNotIn('Minor', e['names']['pt_BR'])
-        cm = next(e for e in self.entries if e['key'] == 'scale/major/C/full')
-        self.assertEqual(cm['names']['pt_BR'], 'Escala maior de Dó — Braço completo')
+        cm = next(e for e in self.entries if e['key'] == 'guitar/scale/major/C/frets-0-12')
+        self.assertEqual(cm['names']['pt_BR'], 'Escala maior de Dó — Casas 0–12')
 
-    def test_c_major_voicing_and_diminished_seventh(self):
-        chords = [e for e in self.entries if e['family'] == 'triad-inversion' and e['root_note'] == 'C' and e['formula'] == 'major-triad']
-        self.assertTrue(any({(p['string'], p['fret']) for p in e['positions']} == {(3, 5), (2, 5), (1, 3)} for e in chords))
-        d = next(e for e in self.entries if e['key'] == 'arpeggio/dim7/C/full')
+    def test_c_diminished_seventh_map(self):
+        d = next(e for e in self.entries if e['key'] == 'guitar/arpeggio/dim7/C/frets-0-12')
         self.assertEqual({p['note_name'] for p in d['positions']}, {'C', 'Eb', 'Gb', 'Bbb'})
 
     def test_validation_rejects_broken_translation_and_pitch(self):
@@ -67,11 +67,16 @@ class CatalogTests(unittest.TestCase):
         self.assertIn(catalog.SYSTEM_CATALOG_USER_ID, sql)
         self.assertIn(catalog.SYSTEM_CATALOG_CLERK_USER_ID, sql)
         self.assertIn("'MotifPath Catalog'", sql)
+        self.assertIn('"en":"Electric guitar","pt_BR":"Guitarra elétrica"', sql)
         self.assertIn('sequence,created_at) VALUES (', sql)
         self.assertNotIn('sequence_index', sql)
         self.assertIn('linked_at', sql)
         self.assertNotIn('DELETE FROM', sql)
         self.assertNotIn('ON CONFLICT', sql)
+
+    def test_catalog_excludes_string_set_chord_templates(self):
+        excluded = {'triad-inversion', 'seventh-inversion', 'drop-2', 'drop-3', 'drop-2-4', 'shell'}
+        self.assertFalse({e['family'] for e in self.entries} & excluded)
 
     def test_sql_batches_catalog_rows_for_production(self):
         sql = catalog.render_sql(self.entries)

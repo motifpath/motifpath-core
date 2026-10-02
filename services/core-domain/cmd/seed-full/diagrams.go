@@ -115,19 +115,39 @@ const (
 // seedInstruments creates the guitar, bass and piano Instruments.
 func seedInstruments(ctx context.Context, teacher domain.User, instrumentSvc *application.InstrumentService) (guitar, bass, piano domain.Instrument, err error) {
 	six, four := 6, 4
-	if guitar, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
-		&six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, acousticGuitarVoice); err != nil {
-		return guitar, bass, piano, fmt.Errorf("create guitar: %w", err)
+	existing, err := instrumentSvc.ListInstruments(ctx)
+	if err != nil {
+		return guitar, bass, piano, fmt.Errorf("list instruments: %w", err)
 	}
-	if bass, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Bass", "pt_BR": "Contrabaixo"}, domain.InstrumentFamilyFretted,
-		&four, []string{"E1", "A1", "D2", "G2"}, nil, acousticGuitarVoice); err != nil {
-		return guitar, bass, piano, fmt.Errorf("create bass: %w", err)
+	var found bool
+	if guitar, found = instrumentNamed(existing, "Guitar"); !found {
+		if guitar, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Guitar", "pt_BR": "Violão"}, domain.InstrumentFamilyFretted,
+			&six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, acousticGuitarVoice); err != nil {
+			return guitar, bass, piano, fmt.Errorf("create guitar: %w", err)
+		}
 	}
-	if piano, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard,
-		nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice); err != nil {
-		return guitar, bass, piano, fmt.Errorf("create piano: %w", err)
+	if bass, found = instrumentNamed(existing, "Bass"); !found {
+		if bass, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Bass", "pt_BR": "Contrabaixo"}, domain.InstrumentFamilyFretted,
+			&four, []string{"E1", "A1", "D2", "G2"}, nil, acousticGuitarVoice); err != nil {
+			return guitar, bass, piano, fmt.Errorf("create bass: %w", err)
+		}
+	}
+	if piano, found = instrumentNamed(existing, "Piano"); !found {
+		if piano, err = instrumentSvc.CreateInstrument(ctx, teacher, map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard,
+			nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice); err != nil {
+			return guitar, bass, piano, fmt.Errorf("create piano: %w", err)
+		}
 	}
 	return guitar, bass, piano, nil
+}
+
+func instrumentNamed(instruments []domain.Instrument, name string) (domain.Instrument, bool) {
+	for _, instrument := range instruments {
+		if instrument.Names["en"] == name {
+			return instrument, true
+		}
+	}
+	return domain.Instrument{}, false
 }
 
 // diagramSpec is one diagram to seed, and where to keep it once created.
