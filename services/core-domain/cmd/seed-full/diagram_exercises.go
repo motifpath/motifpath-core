@@ -61,7 +61,7 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 		return fmt.Errorf("create exercise %q: %w", chordTitle, err)
 	}
 
-	listen, err := seedListeningExercise(ctx, teacher, exerciseSvc, diagrams.eMajorChord, chordsID, openChordsID)
+	listen, err := seedListeningExercise(ctx, teacher, exerciseSvc, classifier, diagrams.eMajorChord)
 	if err != nil {
 		return err
 	}
@@ -74,10 +74,21 @@ func seedDiagramExercises(ctx context.Context, teacher domain.User, exerciseSvc 
 	return nil
 }
 
+// listeningTitle is the listening exercise's title and prompt.
+const listeningTitle = "Listen to the E major chord, then tap its major third"
+
+// listeningClassification is what the listening exercise asks: recognising
+// the chord by ear and finding a tone of its major triad, not playing it.
+var listeningClassification = exerciseClassification{skill: "hear-chord-quality", concept: "major-triads"}
+
 // seedListeningExercise asks for the E major chord's major third on a
 // diagram the student can hear: labels off, the chord's sequence reversed
 // and looping, and the open high E hidden but still sounding.
-func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, eMajor domain.Diagram, skillID, conceptID string) (domain.Exercise, error) {
+func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, eMajor domain.Diagram) (domain.Exercise, error) {
+	skillID, conceptID, err := classifier.ids(ctx, listeningClassification)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
 	var third, highE string
 	for _, p := range eMajor.Positions {
 		switch {
@@ -91,7 +102,7 @@ func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc
 		return domain.Exercise{}, fmt.Errorf("the E major chord has no major third or high E position")
 	}
 
-	title := "Listen to the E major chord, then tap its major third"
+	title := listeningTitle
 	stimulus := &domain.DiagramRef{
 		DiagramID:          eMajor.ID,
 		Layers:             domain.DiagramLayers{Intervals: false, HiddenPositionIDs: &[]string{highE}},
