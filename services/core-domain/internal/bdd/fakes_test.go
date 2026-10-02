@@ -148,6 +148,37 @@ type fakeContentNodeRepo struct {
 	mu        sync.Mutex
 	byID      map[string]domain.ContentNode
 	knowledge *fakeKnowledgeNodeRepo
+	// exercises and challenges are read by LinkedExerciseInstrumentSets,
+	// the way the real adapter queries the link tables.
+	exercises  *fakeExerciseRepo
+	challenges *fakeChallengeRepo
+}
+
+func (f *fakeContentNodeRepo) LinkedExerciseInstrumentSets(_ context.Context, id string) ([][]string, error) {
+	var challengeIDs []string
+	f.challenges.mu.Lock()
+	for _, c := range f.challenges.byID {
+		if c.ContentNodeID == id {
+			challengeIDs = append(challengeIDs, c.ID)
+		}
+	}
+	f.challenges.mu.Unlock()
+	f.exercises.mu.Lock()
+	defer f.exercises.mu.Unlock()
+	linked := map[string]bool{}
+	for _, exerciseID := range f.exercises.byNodeOrder[id] {
+		linked[exerciseID] = true
+	}
+	for _, challengeID := range challengeIDs {
+		for _, exerciseID := range f.exercises.byChallengeOrder[challengeID] {
+			linked[exerciseID] = true
+		}
+	}
+	var sets [][]string
+	for exerciseID := range linked {
+		sets = append(sets, f.exercises.byID[exerciseID].InstrumentIDs)
+	}
+	return sets, nil
 }
 
 func newFakeContentNodeRepo(knowledge *fakeKnowledgeNodeRepo) *fakeContentNodeRepo {
@@ -1690,6 +1721,13 @@ func (f *fakeKnowledgeNodeRepo) ClassifiedInstrumentSets(_ context.Context, id s
 		}
 	}
 	f.diagrams.mu.Unlock()
+	f.exercises.mu.Lock()
+	for _, e := range f.exercises.byID {
+		if classifiedBy(id, e.Skills, e.Concepts) {
+			sets = append(sets, e.InstrumentIDs)
+		}
+	}
+	f.exercises.mu.Unlock()
 	return sets, nil
 }
 

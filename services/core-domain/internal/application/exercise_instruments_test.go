@@ -172,3 +172,33 @@ func TestExerciseService_InstrumentFit(t *testing.T) {
 		})
 	}
 }
+
+func TestContentService_UpdateContentNode_LinkedExerciseFit(t *testing.T) {
+	tests := []struct {
+		name    string
+		linked  [][]string
+		wantErr error
+	}{
+		{name: "changing a node's instruments so a linked exercise no longer suits it is refused", linked: [][]string{{"piano"}}, wantErr: domain.ErrConflict},
+		{name: "changing a node's instruments while its exercises still suit it succeeds", linked: [][]string{{"guitar", "piano"}, {}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodes := newFakeContentNodeRepository()
+			svc := newContentService(nodes, newFakeExpandedContentRepository())
+			input := application.ContentNodeInput{Title: "Root notes", ContentType: domain.ContentTypeVideo, SkillIDs: []string{"skill-1"}, ConceptIDs: []string{"concept-1"}, InstrumentIDs: []string{"piano"}, Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, MediaURL: videoMediaURL()}
+			node, err := svc.CreateContentNode(context.Background(), teacherCaller(), input)
+			require.NoError(t, err)
+			nodes.linkedExercises = map[string][][]string{node.ID: tt.linked}
+
+			input.InstrumentIDs = []string{"guitar"}
+			_, err = svc.UpdateContentNode(context.Background(), teacherCaller(), node.ID, input)
+
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}

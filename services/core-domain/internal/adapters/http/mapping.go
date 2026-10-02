@@ -490,6 +490,9 @@ func exerciseListFilter(params generated.ListExercisesParams) domain.ExerciseFil
 	if params.Language != nil {
 		filter.Language = *params.Language
 	}
+	if params.InstrumentId != nil {
+		filter.InstrumentIDs = uuidsToStrings(*params.InstrumentId)
+	}
 	return filter
 }
 

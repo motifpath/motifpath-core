@@ -304,6 +304,9 @@ func (h *Handler) UpdateContentNode(ctx context.Context, request generated.Updat
 	body := request.Body
 	node, err := h.content.UpdateContentNode(ctx, caller, request.ContentNodeId.String(), application.ContentNodeInput{Title: body.Title, SkillIDs: uuidsToStrings(body.Classification.SkillIds), ConceptIDs: uuidsToStrings(body.Classification.ConceptIds), Difficulty: domain.DifficultyLevel(body.Classification.DifficultyLevel), Languages: body.LanguageCodes, MediaURL: body.MediaUrl, RichContent: toDomainPromptDocumentPtr(body.RichContent), InstrumentIDs: uuidsToStrings(body.InstrumentIds), ThumbnailURL: body.ThumbnailUrl})
 	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateContentNode409JSONResponse(conflictError(conflictMessage(err))), nil
+		}
 		kind, valErr := classify(err)
 		switch kind {
 		case errKindValidation:
@@ -532,6 +535,9 @@ func (h *Handler) UpdateExercise(ctx context.Context, request generated.UpdateEx
 		toDomainOptions(derefOptions(body.Options)), body.EstimatedDurationSeconds,
 		toDomainRemediationTargets(remediationTargets), body.LanguageCodes, optionalInstrumentIDs(body.InstrumentIds))
 	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateExercise409JSONResponse(conflictError(conflictMessage(err))), nil
+		}
 		kind, valErr := classify(err)
 		switch kind {
 		case errKindValidation:
@@ -567,6 +573,8 @@ func (h *Handler) LinkExerciseToChallenge(ctx context.Context, request generated
 			return generated.LinkExerciseToChallenge404JSONResponse(notFoundError("no challenge exists with challenge_id, or no exercise exists with exercise_id")), nil
 		case errors.Is(err, domain.ErrAlreadyExists):
 			return generated.LinkExerciseToChallenge409JSONResponse(conflictError("the exercise is already linked to this challenge")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.LinkExerciseToChallenge409JSONResponse(conflictError(conflictMessage(err))), nil
 		default:
 			return nil, err
 		}
@@ -1693,6 +1701,8 @@ func (h *Handler) LinkExerciseToContentNode(ctx context.Context, request generat
 			return generated.LinkExerciseToContentNode404JSONResponse(notFoundError("no content node exists with content_node_id, or no exercise exists with exercise_id")), nil
 		case errors.Is(err, domain.ErrAlreadyExists):
 			return generated.LinkExerciseToContentNode409JSONResponse(conflictError("the exercise is already linked to this content node")), nil
+		case errors.Is(err, domain.ErrConflict):
+			return generated.LinkExerciseToContentNode409JSONResponse(conflictError(conflictMessage(err))), nil
 		default:
 			return nil, err
 		}

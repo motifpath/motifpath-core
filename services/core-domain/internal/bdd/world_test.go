@@ -246,6 +246,7 @@ func newWorld() *world {
 	}
 
 	knowledge.edges, knowledge.nodes, knowledge.exercises, knowledge.diagrams, knowledge.challenges = w.knowledgeEdges, w.nodes, w.exercises, w.diagrams, w.challenges
+	w.nodes.exercises, w.nodes.challenges = w.exercises, w.challenges
 
 	newID := idSequence()
 	now := func() time.Time { return fixedNow }

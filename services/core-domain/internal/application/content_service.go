@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
@@ -206,6 +207,9 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
 		return domain.ContentNode{}, err
 	}
+	if err := s.checkLinkedExercisesFit(ctx, updated); err != nil {
+		return domain.ContentNode{}, err
+	}
 
 	if err := s.nodes.Update(ctx, updated); err != nil {
 		return domain.ContentNode{}, err
@@ -214,6 +218,22 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	// only carry the request-supplied ids until read back with their rows
 	// (Name/ParentID) joined in — same convention CreateContentNode follows.
 	return s.nodes.GetByID(ctx, updated.ID)
+}
+
+// checkLinkedExercisesFit returns a domain.ErrConflict unless every exercise
+// linked to node, as a path exercise or through one of its challenges,
+// still suits node's instruments — see domain.Exercise.Suits.
+func (s *ContentService) checkLinkedExercisesFit(ctx context.Context, node domain.ContentNode) error {
+	sets, err := s.nodes.LinkedExerciseInstrumentSets(ctx, node.ID)
+	if err != nil {
+		return err
+	}
+	for _, set := range sets {
+		if !(domain.Exercise{InstrumentIDs: set}).Suits(node.InstrumentIDs) {
+			return fmt.Errorf("%w: an exercise linked to this content node is for none of the new instruments", domain.ErrConflict)
+		}
+	}
+	return nil
 }
 
 // CreateExpandedContent attaches an expositive media item to the content

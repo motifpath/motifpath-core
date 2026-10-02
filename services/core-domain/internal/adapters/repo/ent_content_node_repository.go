@@ -6,7 +6,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
@@ -271,4 +273,26 @@ func languageIDsByCode(ctx context.Context, languageClient *ent.LanguageClient, 
 		ids[i] = row.ID
 	}
 	return ids, nil
+}
+
+func (r *EntContentNodeRepository) LinkedExerciseInstrumentSets(ctx context.Context, id string) ([][]string, error) {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.client.Exercise.Query().
+		Where(exercise.Or(
+			exercise.HasContentNodesWith(contentnode.ID(parsed)),
+			exercise.HasChallengesWith(challenge.ContentNodeID(parsed)),
+		)).
+		WithInstruments().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sets := make([][]string, 0, len(rows))
+	for _, row := range rows {
+		sets = append(sets, instrumentIDsOf(row.Edges.Instruments))
+	}
+	return sets, nil
 }
