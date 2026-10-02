@@ -320,14 +320,28 @@ def render_sql(entries):
     return '\n'.join(sql)+'\n'
 
 
-def main():
-    parser=argparse.ArgumentParser(); parser.add_argument('--output',type=Path,required=True)
-    args=parser.parse_args(); entries=generate(); args.output.mkdir(parents=True,exist_ok=True)
-    payload=compact(entries)+'\n'; sql=render_sql(entries)
-    (args.output/'catalog.json').write_text(payload)
-    (args.output/'20261001000000_basic_guitar_catalog.up.sql').write_text(sql)
+MIGRATION_FILE='20261001000000_basic_guitar_catalog.up.sql'
+MIGRATIONS_DIR=Path(__file__).resolve().parents[2]/'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
+
+
+def write_outputs(entries, output, migrations):
+    """Write the catalog payload and its coverage report to output, and the
+    migration that installs it to migrations, so only one copy of the SQL exists."""
+    output.mkdir(parents=True,exist_ok=True)
+    payload=compact(entries)+'\n'
+    (output/'catalog.json').write_text(payload)
+    (migrations/MIGRATION_FILE).write_text(render_sql(entries))
     report=dict(diagrams=len(entries),positions=sum(len(e['positions']) for e in entries),tiers=dict(sorted(Counter(e['tier'] for e in entries).items())),families=dict(sorted(Counter(e['family'] for e in entries).items())),sha256=hashlib.sha256(payload.encode()).hexdigest())
-    (args.output/'coverage.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    (output/'coverage.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    return report
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--migrations',type=Path,default=MIGRATIONS_DIR,help='Atlas migrations directory; run `atlas migrate hash` afterwards')
+    args=parser.parse_args()
+    report=write_outputs(generate(),args.output,args.migrations)
     print(json.dumps(report,ensure_ascii=False,indent=2))
 
 
