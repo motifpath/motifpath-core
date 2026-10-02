@@ -1401,7 +1401,7 @@ type CreateDiagramRequestLabelDisplay string
 // instrument_ids. An exercise for every instrument (empty
 // instrument_ids) may use only nodes for every instrument. A violation
 // is rejected with the offending skill_ids or concept_ids identified —
-// the same rule content nodes and diagrams follow (ADR-043).
+// the same rule content nodes and diagrams follow.
 type CreateExerciseRequest struct {
 	// AudioUrl The stimulus audio for this exercise. Required when exercise_type
 	// is audio_recognition; absent otherwise.
@@ -3579,7 +3579,7 @@ type UpdateDiagramRequestLabelDisplay string
 // instrument_ids. An exercise for every instrument (empty
 // instrument_ids) may use only nodes for every instrument. A violation
 // is rejected with the offending skill_ids or concept_ids identified —
-// the same rule content nodes and diagrams follow (ADR-043).
+// the same rule content nodes and diagrams follow.
 // The rule is checked against the instruments the exercise has after
 // the update — the current ones when instrument_ids is omitted — so
 // changing only the instruments can be rejected too.
