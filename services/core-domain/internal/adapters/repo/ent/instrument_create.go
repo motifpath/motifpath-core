@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/course"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
@@ -128,6 +129,21 @@ func (_c *InstrumentCreate) AddDiagrams(v ...*Diagram) *InstrumentCreate {
 	return _c.AddDiagramIDs(ids...)
 }
 
+// AddCompatibleDiagramIDs adds the "compatible_diagrams" edge to the Diagram entity by IDs.
+func (_c *InstrumentCreate) AddCompatibleDiagramIDs(ids ...uuid.UUID) *InstrumentCreate {
+	_c.mutation.AddCompatibleDiagramIDs(ids...)
+	return _c
+}
+
+// AddCompatibleDiagrams adds the "compatible_diagrams" edges to the Diagram entity.
+func (_c *InstrumentCreate) AddCompatibleDiagrams(v ...*Diagram) *InstrumentCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCompatibleDiagramIDs(ids...)
+}
+
 // AddCourseIDs adds the "courses" edge to the Course entity by IDs.
 func (_c *InstrumentCreate) AddCourseIDs(ids ...uuid.UUID) *InstrumentCreate {
 	_c.mutation.AddCourseIDs(ids...)
@@ -171,6 +187,21 @@ func (_c *InstrumentCreate) AddContentNodes(v ...*ContentNode) *InstrumentCreate
 		ids[i] = v[i].ID
 	}
 	return _c.AddContentNodeIDs(ids...)
+}
+
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (_c *InstrumentCreate) AddDiagramInstrumentIDs(ids ...int) *InstrumentCreate {
+	_c.mutation.AddDiagramInstrumentIDs(ids...)
+	return _c
+}
+
+// AddDiagramInstruments adds the "diagram_instruments" edges to the DiagramInstrument entity.
+func (_c *InstrumentCreate) AddDiagramInstruments(v ...*DiagramInstrument) *InstrumentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramInstrumentIDs(ids...)
 }
 
 // AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by IDs.
@@ -370,6 +401,26 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.CompatibleDiagramsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   instrument.CompatibleDiagramsTable,
+			Columns: instrument.CompatibleDiagramsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagram.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _c.config, mutation: newDiagramInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.CoursesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -428,6 +479,22 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   instrument.DiagramInstrumentsTable,
+			Columns: []string{instrument.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.CourseInstrumentsIDs(); len(nodes) > 0 {

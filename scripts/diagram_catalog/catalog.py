@@ -139,22 +139,8 @@ def entry(key, root, intervals, coordinates, en, pt, family, tier, formula='', m
                 names=dict(en=en,pt_BR=pt), root_note=root, mode=mode,
                 label_display='interval', color='#3B82F6', positions=positions,
                 regions=[], sequence=sequence, tempo_bpm=60 if sequence else None,
-                time_signature=dict(beats=4,beat_value=4))
-
-
-def bind_instrument(template, instrument):
-    result = json.loads(json.dumps(template))
-    key = f'{instrument}/{template["key"]}'
-    position_ids = {}
-    for position in result['positions']:
-        position_ids[position['position_id']] = stable_id(f'{key}/s{position["string"]}/f{position["fret"]}')
-        position['position_id'] = position_ids[position['position_id']]
-    for step in result['sequence']:
-        step['position_ids'] = [position_ids[position_id] for position_id in step['position_ids']]
-    result['key'] = key
-    result['diagram_id'] = stable_id(key)
-    result['instrument'] = instrument
-    return result
+                time_signature=dict(beats=4,beat_value=4),
+                instruments=['guitar', 'electric-guitar'])
 
 
 def voicings(root, intervals, strings, drop=()):
@@ -247,7 +233,6 @@ def generate():
         for degrees in [('R','2','3','5'),('R','3','4','5')]:
             key='-'.join(degrees)
             result.append(entry(f'digital/{root}/{key}',root,list(degrees),cells(root,list(degrees)),f'{root} major — Digital pattern {key}, note map',f'Escala maior de {rp} — Padrão {key}, mapa de notas','digital-pattern','C'))
-    result = [bind_instrument(template, instrument) for instrument in INSTRUMENTS for template in result]
     result.sort(key=lambda e:e['key'])
     validate(result)
     return result
@@ -258,6 +243,7 @@ def validate(entries):
     for e in entries:
         if e['diagram_id'] in seen: raise ValueError('Duplicate diagram ID')
         seen.add(e['diagram_id'])
+        if e['instruments'] != ['guitar', 'electric-guitar']: raise ValueError('Invalid compatible instruments')
         if set(e['names'])!={'en','pt_BR'} or any(not s or len(s)>200 for s in e['names'].values()): raise ValueError('Incomplete localized names')
         coords=set(); ids=set()
         if not e['positions']: raise ValueError('Empty diagram')
@@ -306,19 +292,26 @@ def render_sql(entries):
         sql.append("INSERT INTO skills (id,name) SELECT "+sql_text(stable_id('skill/'+skill))+","+sql_text(skill)+" WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL);")
 
     diagrams = []
+    diagram_instruments = []
     positions = []
     classifications = []
     for e in entries:
-        instrument_names = sql_text(compact(INSTRUMENTS[e['instrument']])) + '::jsonb'
+        instrument_names = sql_text(compact(INSTRUMENTS['guitar'])) + '::jsonb'
         instrument_id = "(SELECT id FROM instruments WHERE names="+instrument_names+" AND family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)"
         values=[sql_text(e['diagram_id']), instrument_id,sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
         diagrams.append('('+','.join(values)+')')
+        for key in e['instruments']:
+            compatible_names = sql_text(compact(INSTRUMENTS[key])) + '::jsonb'
+            compatible_id = "(SELECT id FROM instruments WHERE names="+compatible_names+" AND family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)"
+            diagram_instruments.append('('+sql_text(e['diagram_id'])+'::uuid,'+compatible_id+')')
         for ordinal,p in enumerate(e['positions']):
             positions.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
         skill = 'Chords' if e['family'] in ['caged','triad-inversion','seventh-inversion','drop-2','drop-3','drop-2-4','shell'] else 'Arpeggios' if e['family']=='arpeggio' else 'Improvisation' if e['tier']=='C' else 'Fretboard navigation' if e['family'] in ['root','chromatic','interval','dyad'] else 'Scales'
         classifications.append((e['diagram_id'], skill))
     for group in batches(diagrams, 250):
         sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(group)+';')
+    for group in batches(diagram_instruments, 1000):
+        sql.append('INSERT INTO diagram_instruments (diagram_id,instrument_id) VALUES '+','.join(group)+';')
     for group in batches(positions, 1000):
         sql.append('INSERT INTO positions (id,diagram_id,ordinal,interval,note_name,shape,color,string_number,fret) VALUES '+','.join(group)+';')
     for group in batches(classifications, 1000):

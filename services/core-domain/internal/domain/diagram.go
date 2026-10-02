@@ -116,8 +116,13 @@ func (k DiagramKind) Valid() bool {
 // repository with its Skill/Concept rows joined in — the same
 // construct-then-refetch convention ContentNode's Classification follows.
 type Diagram struct {
-	ID           string
+	ID string
+	// InstrumentID is the immutable layout instrument that validates this
+	// diagram's coordinates and supplies its fallback playback voice.
 	InstrumentID string
+	// InstrumentIDs lists every instrument through which this diagram is
+	// available. It always includes InstrumentID.
+	InstrumentIDs []string
 	// Names is the diagram's name per language: every offered language for
 	// a basic diagram, at least one for a custom one.
 	Names LocalizedText
@@ -301,6 +306,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 	return Diagram{
 		ID:            id,
 		InstrumentID:  instrument.ID,
+		InstrumentIDs: []string{instrument.ID},
 		Names:         localizedNames,
 		Kind:          kind,
 		CreatedBy:     createdBy,

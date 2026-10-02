@@ -1,26 +1,26 @@
 {
-  "diagrams": 4994,
-  "positions": 121526,
+  "diagrams": 2497,
+  "positions": 60763,
   "tiers": {
-    "A": 2172,
-    "B": 710,
-    "C": 2112
+    "A": 1086,
+    "B": 355,
+    "C": 1056
   },
   "families": {
-    "3nps": 326,
-    "arpeggio": 432,
-    "caged": 104,
-    "caged-window": 416,
-    "chromatic": 24,
-    "digital-pattern": 48,
-    "dyad": 528,
-    "interval": 528,
-    "interval-structure": 96,
-    "pentatonic-box": 188,
-    "root": 24,
-    "scale": 384,
-    "substitution": 1728,
-    "triad-pair": 168
+    "3nps": 163,
+    "arpeggio": 216,
+    "caged": 52,
+    "caged-window": 208,
+    "chromatic": 12,
+    "digital-pattern": 24,
+    "dyad": 264,
+    "interval": 264,
+    "interval-structure": 48,
+    "pentatonic-box": 94,
+    "root": 12,
+    "scale": 192,
+    "substitution": 864,
+    "triad-pair": 84
   },
-  "sha256": "65c7e33be06e59ad0cefeb85d7dacda1de3ad0231d7647c911aa2cd0ea169b49"
+  "sha256": "ec3f6816bdb49f14aa3339c6ded826c114753ea91b51741e61f16e5272e2b1c9"
 }

@@ -1708,8 +1708,12 @@ type Diagram struct {
 	// DiagramId Stable identifier for this diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 
-	// InstrumentId The instrument this diagram is authored against.
+	// InstrumentId The immutable layout instrument this diagram is authored against.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// InstrumentIds Every instrument through which this diagram is available,
+	// including InstrumentId.
+	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind basic diagrams are curated templates: every teacher can find and
 	// use them, and only an admin may create or update one. custom

@@ -61,6 +61,10 @@ func (Instrument) Edges() []ent.Edge {
 		edge.From("diagrams", Diagram.Type).
 			Ref("instrument"),
 
+		edge.From("compatible_diagrams", Diagram.Type).
+			Ref("compatible_instruments").
+			Through("diagram_instruments", DiagramInstrument.Type),
+
 		edge.From("courses", Course.Type).
 			Ref("instruments").
 			Through("course_instruments", CourseInstrument.Type),

@@ -14,6 +14,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
@@ -190,6 +191,21 @@ func (_c *DiagramCreate) SetInstrument(v *Instrument) *DiagramCreate {
 	return _c.SetInstrumentID(v.ID)
 }
 
+// AddCompatibleInstrumentIDs adds the "compatible_instruments" edge to the Instrument entity by IDs.
+func (_c *DiagramCreate) AddCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramCreate {
+	_c.mutation.AddCompatibleInstrumentIDs(ids...)
+	return _c
+}
+
+// AddCompatibleInstruments adds the "compatible_instruments" edges to the Instrument entity.
+func (_c *DiagramCreate) AddCompatibleInstruments(v ...*Instrument) *DiagramCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCompatibleInstrumentIDs(ids...)
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_c *DiagramCreate) AddPositionIDs(ids ...uuid.UUID) *DiagramCreate {
 	_c.mutation.AddPositionIDs(ids...)
@@ -248,6 +264,21 @@ func (_c *DiagramCreate) AddConcepts(v ...*Concept) *DiagramCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddConceptIDs(ids...)
+}
+
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (_c *DiagramCreate) AddDiagramInstrumentIDs(ids ...int) *DiagramCreate {
+	_c.mutation.AddDiagramInstrumentIDs(ids...)
+	return _c
+}
+
+// AddDiagramInstruments adds the "diagram_instruments" edges to the DiagramInstrument entity.
+func (_c *DiagramCreate) AddDiagramInstruments(v ...*DiagramInstrument) *DiagramCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDiagramInstrumentIDs(ids...)
 }
 
 // AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
@@ -488,6 +519,26 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 		_node.InstrumentID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.CompatibleInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _c.config, mutation: newDiagramInstrumentMutation(_c.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	if nodes := _c.mutation.PositionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -558,6 +609,22 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.DiagramSkillsIDs(); len(nodes) > 0 {

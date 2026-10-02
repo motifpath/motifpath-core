@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"regexp"
+	"slices"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqljson"
@@ -13,6 +14,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
@@ -71,6 +73,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
 		SetSequence(entSequence(d.Sequence)).
 		SetCreatedAt(d.CreatedAt).
+		AddCompatibleInstrumentIDs(instrumentID).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
 		Save(ctx); err != nil {
@@ -215,7 +218,7 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 			return diagram.Or(diagram.KindEQ(diagram.KindBasic), diagram.CreatedBy(viewer))
 		}},
 		{filter.CreatedBy, diagram.CreatedBy},
-		{filter.InstrumentID, diagram.InstrumentID},
+		{filter.InstrumentID, func(id uuid.UUID) predicate.Diagram { return diagram.HasCompatibleInstrumentsWith(instrument.ID(id)) }},
 		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(skill.ID(id)) }},
 		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(concept.ID(id)) }},
 	}
@@ -315,6 +318,7 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 // order.
 func withDiagramEdges(q *ent.DiagramQuery) *ent.DiagramQuery {
 	return q.
+		WithCompatibleInstruments().
 		WithPositions(func(pq *ent.PositionQuery) { pq.Order(ent.Asc(position.FieldOrdinal)) }).
 		WithRegions(func(rq *ent.DiagramRegionQuery) { rq.Order(ent.Asc(diagramregion.FieldOrdinal)) }).
 		WithSkills().
@@ -419,18 +423,24 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 			Color:       r.Color,
 		})
 	}
+	instrumentIDs := make([]string, len(row.Edges.CompatibleInstruments))
+	for i, instrument := range row.Edges.CompatibleInstruments {
+		instrumentIDs[i] = instrument.ID.String()
+	}
+	slices.Sort(instrumentIDs)
 	return domain.Diagram{
-		ID:           row.ID.String(),
-		InstrumentID: row.InstrumentID.String(),
-		Names:        domain.LocalizedText(row.Names),
-		Kind:         domain.DiagramKind(row.Kind),
-		CreatedBy:    row.CreatedBy.String(),
-		RootNote:     row.RootNote,
-		LabelDisplay: domain.LabelDisplay(row.LabelDisplay),
-		Color:        row.Color,
-		Positions:    positions,
-		Regions:      regions,
-		Mode:         domainMode(row.Mode),
+		ID:            row.ID.String(),
+		InstrumentID:  row.InstrumentID.String(),
+		InstrumentIDs: instrumentIDs,
+		Names:         domain.LocalizedText(row.Names),
+		Kind:          domain.DiagramKind(row.Kind),
+		CreatedBy:     row.CreatedBy.String(),
+		RootNote:      row.RootNote,
+		LabelDisplay:  domain.LabelDisplay(row.LabelDisplay),
+		Color:         row.Color,
+		Positions:     positions,
+		Regions:       regions,
+		Mode:          domainMode(row.Mode),
 		TimeSignature: domain.TimeSignature{
 			Beats: row.TimeSignatureBeats, BeatValue: row.TimeSignatureBeatValue,
 		},

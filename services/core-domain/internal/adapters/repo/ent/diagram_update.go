@@ -15,8 +15,10 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/concept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
@@ -197,6 +199,21 @@ func (_u *DiagramUpdate) AppendSequence(v []schema.SequenceStep) *DiagramUpdate 
 	return _u
 }
 
+// AddCompatibleInstrumentIDs adds the "compatible_instruments" edge to the Instrument entity by IDs.
+func (_u *DiagramUpdate) AddCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramUpdate {
+	_u.mutation.AddCompatibleInstrumentIDs(ids...)
+	return _u
+}
+
+// AddCompatibleInstruments adds the "compatible_instruments" edges to the Instrument entity.
+func (_u *DiagramUpdate) AddCompatibleInstruments(v ...*Instrument) *DiagramUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCompatibleInstrumentIDs(ids...)
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdate) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdate {
 	_u.mutation.AddPositionIDs(ids...)
@@ -257,6 +274,21 @@ func (_u *DiagramUpdate) AddConcepts(v ...*Concept) *DiagramUpdate {
 	return _u.AddConceptIDs(ids...)
 }
 
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (_u *DiagramUpdate) AddDiagramInstrumentIDs(ids ...int) *DiagramUpdate {
+	_u.mutation.AddDiagramInstrumentIDs(ids...)
+	return _u
+}
+
+// AddDiagramInstruments adds the "diagram_instruments" edges to the DiagramInstrument entity.
+func (_u *DiagramUpdate) AddDiagramInstruments(v ...*DiagramInstrument) *DiagramUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramInstrumentIDs(ids...)
+}
+
 // AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
 func (_u *DiagramUpdate) AddDiagramSkillIDs(ids ...int) *DiagramUpdate {
 	_u.mutation.AddDiagramSkillIDs(ids...)
@@ -290,6 +322,27 @@ func (_u *DiagramUpdate) AddDiagramConcepts(v ...*DiagramConcept) *DiagramUpdate
 // Mutation returns the DiagramMutation object of the builder.
 func (_u *DiagramUpdate) Mutation() *DiagramMutation {
 	return _u.mutation
+}
+
+// ClearCompatibleInstruments clears all "compatible_instruments" edges to the Instrument entity.
+func (_u *DiagramUpdate) ClearCompatibleInstruments() *DiagramUpdate {
+	_u.mutation.ClearCompatibleInstruments()
+	return _u
+}
+
+// RemoveCompatibleInstrumentIDs removes the "compatible_instruments" edge to Instrument entities by IDs.
+func (_u *DiagramUpdate) RemoveCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramUpdate {
+	_u.mutation.RemoveCompatibleInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveCompatibleInstruments removes "compatible_instruments" edges to Instrument entities.
+func (_u *DiagramUpdate) RemoveCompatibleInstruments(v ...*Instrument) *DiagramUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCompatibleInstrumentIDs(ids...)
 }
 
 // ClearPositions clears all "positions" edges to the Position entity.
@@ -374,6 +427,27 @@ func (_u *DiagramUpdate) RemoveConcepts(v ...*Concept) *DiagramUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveConceptIDs(ids...)
+}
+
+// ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
+func (_u *DiagramUpdate) ClearDiagramInstruments() *DiagramUpdate {
+	_u.mutation.ClearDiagramInstruments()
+	return _u
+}
+
+// RemoveDiagramInstrumentIDs removes the "diagram_instruments" edge to DiagramInstrument entities by IDs.
+func (_u *DiagramUpdate) RemoveDiagramInstrumentIDs(ids ...int) *DiagramUpdate {
+	_u.mutation.RemoveDiagramInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramInstruments removes "diagram_instruments" edges to DiagramInstrument entities.
+func (_u *DiagramUpdate) RemoveDiagramInstruments(v ...*DiagramInstrument) *DiagramUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramInstrumentIDs(ids...)
 }
 
 // ClearDiagramSkills clears all "diagram_skills" edges to the DiagramSkill entity.
@@ -527,6 +601,63 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, diagram.FieldSequence, value)
 		})
+	}
+	if _u.mutation.CompatibleInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCompatibleInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.CompatibleInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CompatibleInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -730,6 +861,51 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.DiagramInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.DiagramSkillsCleared() {
@@ -1003,6 +1179,21 @@ func (_u *DiagramUpdateOne) AppendSequence(v []schema.SequenceStep) *DiagramUpda
 	return _u
 }
 
+// AddCompatibleInstrumentIDs adds the "compatible_instruments" edge to the Instrument entity by IDs.
+func (_u *DiagramUpdateOne) AddCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramUpdateOne {
+	_u.mutation.AddCompatibleInstrumentIDs(ids...)
+	return _u
+}
+
+// AddCompatibleInstruments adds the "compatible_instruments" edges to the Instrument entity.
+func (_u *DiagramUpdateOne) AddCompatibleInstruments(v ...*Instrument) *DiagramUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCompatibleInstrumentIDs(ids...)
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by IDs.
 func (_u *DiagramUpdateOne) AddPositionIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddPositionIDs(ids...)
@@ -1063,6 +1254,21 @@ func (_u *DiagramUpdateOne) AddConcepts(v ...*Concept) *DiagramUpdateOne {
 	return _u.AddConceptIDs(ids...)
 }
 
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (_u *DiagramUpdateOne) AddDiagramInstrumentIDs(ids ...int) *DiagramUpdateOne {
+	_u.mutation.AddDiagramInstrumentIDs(ids...)
+	return _u
+}
+
+// AddDiagramInstruments adds the "diagram_instruments" edges to the DiagramInstrument entity.
+func (_u *DiagramUpdateOne) AddDiagramInstruments(v ...*DiagramInstrument) *DiagramUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDiagramInstrumentIDs(ids...)
+}
+
 // AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by IDs.
 func (_u *DiagramUpdateOne) AddDiagramSkillIDs(ids ...int) *DiagramUpdateOne {
 	_u.mutation.AddDiagramSkillIDs(ids...)
@@ -1096,6 +1302,27 @@ func (_u *DiagramUpdateOne) AddDiagramConcepts(v ...*DiagramConcept) *DiagramUpd
 // Mutation returns the DiagramMutation object of the builder.
 func (_u *DiagramUpdateOne) Mutation() *DiagramMutation {
 	return _u.mutation
+}
+
+// ClearCompatibleInstruments clears all "compatible_instruments" edges to the Instrument entity.
+func (_u *DiagramUpdateOne) ClearCompatibleInstruments() *DiagramUpdateOne {
+	_u.mutation.ClearCompatibleInstruments()
+	return _u
+}
+
+// RemoveCompatibleInstrumentIDs removes the "compatible_instruments" edge to Instrument entities by IDs.
+func (_u *DiagramUpdateOne) RemoveCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramUpdateOne {
+	_u.mutation.RemoveCompatibleInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveCompatibleInstruments removes "compatible_instruments" edges to Instrument entities.
+func (_u *DiagramUpdateOne) RemoveCompatibleInstruments(v ...*Instrument) *DiagramUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCompatibleInstrumentIDs(ids...)
 }
 
 // ClearPositions clears all "positions" edges to the Position entity.
@@ -1180,6 +1407,27 @@ func (_u *DiagramUpdateOne) RemoveConcepts(v ...*Concept) *DiagramUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveConceptIDs(ids...)
+}
+
+// ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
+func (_u *DiagramUpdateOne) ClearDiagramInstruments() *DiagramUpdateOne {
+	_u.mutation.ClearDiagramInstruments()
+	return _u
+}
+
+// RemoveDiagramInstrumentIDs removes the "diagram_instruments" edge to DiagramInstrument entities by IDs.
+func (_u *DiagramUpdateOne) RemoveDiagramInstrumentIDs(ids ...int) *DiagramUpdateOne {
+	_u.mutation.RemoveDiagramInstrumentIDs(ids...)
+	return _u
+}
+
+// RemoveDiagramInstruments removes "diagram_instruments" edges to DiagramInstrument entities.
+func (_u *DiagramUpdateOne) RemoveDiagramInstruments(v ...*DiagramInstrument) *DiagramUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDiagramInstrumentIDs(ids...)
 }
 
 // ClearDiagramSkills clears all "diagram_skills" edges to the DiagramSkill entity.
@@ -1363,6 +1611,63 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, diagram.FieldSequence, value)
 		})
+	}
+	if _u.mutation.CompatibleInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCompatibleInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.CompatibleInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CompatibleInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   diagram.CompatibleInstrumentsTable,
+			Columns: diagram.CompatibleInstrumentsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(instrument.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		createE := &DiagramInstrumentCreate{config: _u.config, mutation: newDiagramInstrumentMutation(_u.config, OpCreate)}
+		createE.defaults()
+		_, specE := createE.createSpec()
+		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.PositionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1566,6 +1871,51 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DiagramInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDiagramInstrumentsIDs(); len(nodes) > 0 && !_u.mutation.DiagramInstrumentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: true,
+			Table:   diagram.DiagramInstrumentsTable,
+			Columns: []string{diagram.DiagramInstrumentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagraminstrument.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.DiagramSkillsCleared() {

@@ -30,6 +30,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/courseversioncheckpoint"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
@@ -81,6 +82,7 @@ const (
 	TypeCourseVersionCheckpoint = "CourseVersionCheckpoint"
 	TypeDiagram                 = "Diagram"
 	TypeDiagramConcept          = "DiagramConcept"
+	TypeDiagramInstrument       = "DiagramInstrument"
 	TypeDiagramRegion           = "DiagramRegion"
 	TypeDiagramSkill            = "DiagramSkill"
 	TypeExercise                = "Exercise"
@@ -12461,49 +12463,55 @@ func (m *CourseVersionCheckpointMutation) ResetEdge(name string) error {
 // DiagramMutation represents an operation that mutates the Diagram nodes in the graph.
 type DiagramMutation struct {
 	config
-	op                           Op
-	typ                          string
-	id                           *uuid.UUID
-	names                        *map[string]string
-	kind                         *diagram.Kind
-	created_by                   *uuid.UUID
-	root_note                    *string
-	label_display                *diagram.LabelDisplay
-	color                        *string
-	mode                         *diagram.Mode
-	tempo_bpm                    *int
-	addtempo_bpm                 *int
-	time_signature_beats         *int
-	addtime_signature_beats      *int
-	time_signature_beat_value    *int
-	addtime_signature_beat_value *int
-	sequence                     *[]schema.SequenceStep
-	appendsequence               []schema.SequenceStep
-	created_at                   *time.Time
-	clearedFields                map[string]struct{}
-	instrument                   *uuid.UUID
-	clearedinstrument            bool
-	positions                    map[uuid.UUID]struct{}
-	removedpositions             map[uuid.UUID]struct{}
-	clearedpositions             bool
-	regions                      map[uuid.UUID]struct{}
-	removedregions               map[uuid.UUID]struct{}
-	clearedregions               bool
-	skills                       map[uuid.UUID]struct{}
-	removedskills                map[uuid.UUID]struct{}
-	clearedskills                bool
-	concepts                     map[uuid.UUID]struct{}
-	removedconcepts              map[uuid.UUID]struct{}
-	clearedconcepts              bool
-	diagram_skills               map[int]struct{}
-	removeddiagram_skills        map[int]struct{}
-	cleareddiagram_skills        bool
-	diagram_concepts             map[int]struct{}
-	removeddiagram_concepts      map[int]struct{}
-	cleareddiagram_concepts      bool
-	done                         bool
-	oldValue                     func(context.Context) (*Diagram, error)
-	predicates                   []predicate.Diagram
+	op                            Op
+	typ                           string
+	id                            *uuid.UUID
+	names                         *map[string]string
+	kind                          *diagram.Kind
+	created_by                    *uuid.UUID
+	root_note                     *string
+	label_display                 *diagram.LabelDisplay
+	color                         *string
+	mode                          *diagram.Mode
+	tempo_bpm                     *int
+	addtempo_bpm                  *int
+	time_signature_beats          *int
+	addtime_signature_beats       *int
+	time_signature_beat_value     *int
+	addtime_signature_beat_value  *int
+	sequence                      *[]schema.SequenceStep
+	appendsequence                []schema.SequenceStep
+	created_at                    *time.Time
+	clearedFields                 map[string]struct{}
+	instrument                    *uuid.UUID
+	clearedinstrument             bool
+	compatible_instruments        map[uuid.UUID]struct{}
+	removedcompatible_instruments map[uuid.UUID]struct{}
+	clearedcompatible_instruments bool
+	positions                     map[uuid.UUID]struct{}
+	removedpositions              map[uuid.UUID]struct{}
+	clearedpositions              bool
+	regions                       map[uuid.UUID]struct{}
+	removedregions                map[uuid.UUID]struct{}
+	clearedregions                bool
+	skills                        map[uuid.UUID]struct{}
+	removedskills                 map[uuid.UUID]struct{}
+	clearedskills                 bool
+	concepts                      map[uuid.UUID]struct{}
+	removedconcepts               map[uuid.UUID]struct{}
+	clearedconcepts               bool
+	diagram_instruments           map[int]struct{}
+	removeddiagram_instruments    map[int]struct{}
+	cleareddiagram_instruments    bool
+	diagram_skills                map[int]struct{}
+	removeddiagram_skills         map[int]struct{}
+	cleareddiagram_skills         bool
+	diagram_concepts              map[int]struct{}
+	removeddiagram_concepts       map[int]struct{}
+	cleareddiagram_concepts       bool
+	done                          bool
+	oldValue                      func(context.Context) (*Diagram, error)
+	predicates                    []predicate.Diagram
 }
 
 var _ ent.Mutation = (*DiagramMutation)(nil)
@@ -13233,6 +13241,60 @@ func (m *DiagramMutation) ResetInstrument() {
 	m.clearedinstrument = false
 }
 
+// AddCompatibleInstrumentIDs adds the "compatible_instruments" edge to the Instrument entity by ids.
+func (m *DiagramMutation) AddCompatibleInstrumentIDs(ids ...uuid.UUID) {
+	if m.compatible_instruments == nil {
+		m.compatible_instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.compatible_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCompatibleInstruments clears the "compatible_instruments" edge to the Instrument entity.
+func (m *DiagramMutation) ClearCompatibleInstruments() {
+	m.clearedcompatible_instruments = true
+}
+
+// CompatibleInstrumentsCleared reports if the "compatible_instruments" edge to the Instrument entity was cleared.
+func (m *DiagramMutation) CompatibleInstrumentsCleared() bool {
+	return m.clearedcompatible_instruments
+}
+
+// RemoveCompatibleInstrumentIDs removes the "compatible_instruments" edge to the Instrument entity by IDs.
+func (m *DiagramMutation) RemoveCompatibleInstrumentIDs(ids ...uuid.UUID) {
+	if m.removedcompatible_instruments == nil {
+		m.removedcompatible_instruments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.compatible_instruments, ids[i])
+		m.removedcompatible_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCompatibleInstruments returns the removed IDs of the "compatible_instruments" edge to the Instrument entity.
+func (m *DiagramMutation) RemovedCompatibleInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedcompatible_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CompatibleInstrumentsIDs returns the "compatible_instruments" edge IDs in the mutation.
+func (m *DiagramMutation) CompatibleInstrumentsIDs() (ids []uuid.UUID) {
+	for id := range m.compatible_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCompatibleInstruments resets all changes to the "compatible_instruments" edge.
+func (m *DiagramMutation) ResetCompatibleInstruments() {
+	m.compatible_instruments = nil
+	m.clearedcompatible_instruments = false
+	m.removedcompatible_instruments = nil
+}
+
 // AddPositionIDs adds the "positions" edge to the Position entity by ids.
 func (m *DiagramMutation) AddPositionIDs(ids ...uuid.UUID) {
 	if m.positions == nil {
@@ -13447,6 +13509,60 @@ func (m *DiagramMutation) ResetConcepts() {
 	m.concepts = nil
 	m.clearedconcepts = false
 	m.removedconcepts = nil
+}
+
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by ids.
+func (m *DiagramMutation) AddDiagramInstrumentIDs(ids ...int) {
+	if m.diagram_instruments == nil {
+		m.diagram_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramInstruments clears the "diagram_instruments" edge to the DiagramInstrument entity.
+func (m *DiagramMutation) ClearDiagramInstruments() {
+	m.cleareddiagram_instruments = true
+}
+
+// DiagramInstrumentsCleared reports if the "diagram_instruments" edge to the DiagramInstrument entity was cleared.
+func (m *DiagramMutation) DiagramInstrumentsCleared() bool {
+	return m.cleareddiagram_instruments
+}
+
+// RemoveDiagramInstrumentIDs removes the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (m *DiagramMutation) RemoveDiagramInstrumentIDs(ids ...int) {
+	if m.removeddiagram_instruments == nil {
+		m.removeddiagram_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_instruments, ids[i])
+		m.removeddiagram_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramInstruments returns the removed IDs of the "diagram_instruments" edge to the DiagramInstrument entity.
+func (m *DiagramMutation) RemovedDiagramInstrumentsIDs() (ids []int) {
+	for id := range m.removeddiagram_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramInstrumentsIDs returns the "diagram_instruments" edge IDs in the mutation.
+func (m *DiagramMutation) DiagramInstrumentsIDs() (ids []int) {
+	for id := range m.diagram_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramInstruments resets all changes to the "diagram_instruments" edge.
+func (m *DiagramMutation) ResetDiagramInstruments() {
+	m.diagram_instruments = nil
+	m.cleareddiagram_instruments = false
+	m.removeddiagram_instruments = nil
 }
 
 // AddDiagramSkillIDs adds the "diagram_skills" edge to the DiagramSkill entity by ids.
@@ -13960,9 +14076,12 @@ func (m *DiagramMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DiagramMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.instrument != nil {
 		edges = append(edges, diagram.EdgeInstrument)
+	}
+	if m.compatible_instruments != nil {
+		edges = append(edges, diagram.EdgeCompatibleInstruments)
 	}
 	if m.positions != nil {
 		edges = append(edges, diagram.EdgePositions)
@@ -13975,6 +14094,9 @@ func (m *DiagramMutation) AddedEdges() []string {
 	}
 	if m.concepts != nil {
 		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.diagram_instruments != nil {
+		edges = append(edges, diagram.EdgeDiagramInstruments)
 	}
 	if m.diagram_skills != nil {
 		edges = append(edges, diagram.EdgeDiagramSkills)
@@ -13993,6 +14115,12 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 		if id := m.instrument; id != nil {
 			return []ent.Value{*id}
 		}
+	case diagram.EdgeCompatibleInstruments:
+		ids := make([]ent.Value, 0, len(m.compatible_instruments))
+		for id := range m.compatible_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case diagram.EdgePositions:
 		ids := make([]ent.Value, 0, len(m.positions))
 		for id := range m.positions {
@@ -14017,6 +14145,12 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case diagram.EdgeDiagramInstruments:
+		ids := make([]ent.Value, 0, len(m.diagram_instruments))
+		for id := range m.diagram_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case diagram.EdgeDiagramSkills:
 		ids := make([]ent.Value, 0, len(m.diagram_skills))
 		for id := range m.diagram_skills {
@@ -14035,7 +14169,10 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DiagramMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
+	if m.removedcompatible_instruments != nil {
+		edges = append(edges, diagram.EdgeCompatibleInstruments)
+	}
 	if m.removedpositions != nil {
 		edges = append(edges, diagram.EdgePositions)
 	}
@@ -14047,6 +14184,9 @@ func (m *DiagramMutation) RemovedEdges() []string {
 	}
 	if m.removedconcepts != nil {
 		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.removeddiagram_instruments != nil {
+		edges = append(edges, diagram.EdgeDiagramInstruments)
 	}
 	if m.removeddiagram_skills != nil {
 		edges = append(edges, diagram.EdgeDiagramSkills)
@@ -14061,6 +14201,12 @@ func (m *DiagramMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
+	case diagram.EdgeCompatibleInstruments:
+		ids := make([]ent.Value, 0, len(m.removedcompatible_instruments))
+		for id := range m.removedcompatible_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case diagram.EdgePositions:
 		ids := make([]ent.Value, 0, len(m.removedpositions))
 		for id := range m.removedpositions {
@@ -14085,6 +14231,12 @@ func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case diagram.EdgeDiagramInstruments:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_instruments))
+		for id := range m.removeddiagram_instruments {
+			ids = append(ids, id)
+		}
+		return ids
 	case diagram.EdgeDiagramSkills:
 		ids := make([]ent.Value, 0, len(m.removeddiagram_skills))
 		for id := range m.removeddiagram_skills {
@@ -14103,9 +14255,12 @@ func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DiagramMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 9)
 	if m.clearedinstrument {
 		edges = append(edges, diagram.EdgeInstrument)
+	}
+	if m.clearedcompatible_instruments {
+		edges = append(edges, diagram.EdgeCompatibleInstruments)
 	}
 	if m.clearedpositions {
 		edges = append(edges, diagram.EdgePositions)
@@ -14118,6 +14273,9 @@ func (m *DiagramMutation) ClearedEdges() []string {
 	}
 	if m.clearedconcepts {
 		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.cleareddiagram_instruments {
+		edges = append(edges, diagram.EdgeDiagramInstruments)
 	}
 	if m.cleareddiagram_skills {
 		edges = append(edges, diagram.EdgeDiagramSkills)
@@ -14134,6 +14292,8 @@ func (m *DiagramMutation) EdgeCleared(name string) bool {
 	switch name {
 	case diagram.EdgeInstrument:
 		return m.clearedinstrument
+	case diagram.EdgeCompatibleInstruments:
+		return m.clearedcompatible_instruments
 	case diagram.EdgePositions:
 		return m.clearedpositions
 	case diagram.EdgeRegions:
@@ -14142,6 +14302,8 @@ func (m *DiagramMutation) EdgeCleared(name string) bool {
 		return m.clearedskills
 	case diagram.EdgeConcepts:
 		return m.clearedconcepts
+	case diagram.EdgeDiagramInstruments:
+		return m.cleareddiagram_instruments
 	case diagram.EdgeDiagramSkills:
 		return m.cleareddiagram_skills
 	case diagram.EdgeDiagramConcepts:
@@ -14168,6 +14330,9 @@ func (m *DiagramMutation) ResetEdge(name string) error {
 	case diagram.EdgeInstrument:
 		m.ResetInstrument()
 		return nil
+	case diagram.EdgeCompatibleInstruments:
+		m.ResetCompatibleInstruments()
+		return nil
 	case diagram.EdgePositions:
 		m.ResetPositions()
 		return nil
@@ -14179,6 +14344,9 @@ func (m *DiagramMutation) ResetEdge(name string) error {
 		return nil
 	case diagram.EdgeConcepts:
 		m.ResetConcepts()
+		return nil
+	case diagram.EdgeDiagramInstruments:
+		m.ResetDiagramInstruments()
 		return nil
 	case diagram.EdgeDiagramSkills:
 		m.ResetDiagramSkills()
@@ -14722,6 +14890,540 @@ func (m *DiagramConceptMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown DiagramConcept edge %s", name)
+}
+
+// DiagramInstrumentMutation represents an operation that mutates the DiagramInstrument nodes in the graph.
+type DiagramInstrumentMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	linked_at         *time.Time
+	clearedFields     map[string]struct{}
+	diagram           *uuid.UUID
+	cleareddiagram    bool
+	instrument        *uuid.UUID
+	clearedinstrument bool
+	done              bool
+	oldValue          func(context.Context) (*DiagramInstrument, error)
+	predicates        []predicate.DiagramInstrument
+}
+
+var _ ent.Mutation = (*DiagramInstrumentMutation)(nil)
+
+// diagraminstrumentOption allows management of the mutation configuration using functional options.
+type diagraminstrumentOption func(*DiagramInstrumentMutation)
+
+// newDiagramInstrumentMutation creates new mutation for the DiagramInstrument entity.
+func newDiagramInstrumentMutation(c config, op Op, opts ...diagraminstrumentOption) *DiagramInstrumentMutation {
+	m := &DiagramInstrumentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramInstrument,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramInstrumentID sets the ID field of the mutation.
+func withDiagramInstrumentID(id int) diagraminstrumentOption {
+	return func(m *DiagramInstrumentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramInstrument
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramInstrument, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramInstrument.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramInstrument sets the old DiagramInstrument of the mutation.
+func withDiagramInstrument(node *DiagramInstrument) diagraminstrumentOption {
+	return func(m *DiagramInstrumentMutation) {
+		m.oldValue = func(context.Context) (*DiagramInstrument, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramInstrumentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramInstrumentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramInstrumentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramInstrumentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramInstrument.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetLinkedAt sets the "linked_at" field.
+func (m *DiagramInstrumentMutation) SetLinkedAt(t time.Time) {
+	m.linked_at = &t
+}
+
+// LinkedAt returns the value of the "linked_at" field in the mutation.
+func (m *DiagramInstrumentMutation) LinkedAt() (r time.Time, exists bool) {
+	v := m.linked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLinkedAt returns the old "linked_at" field's value of the DiagramInstrument entity.
+// If the DiagramInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramInstrumentMutation) OldLinkedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLinkedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLinkedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLinkedAt: %w", err)
+	}
+	return oldValue.LinkedAt, nil
+}
+
+// ResetLinkedAt resets all changes to the "linked_at" field.
+func (m *DiagramInstrumentMutation) ResetLinkedAt() {
+	m.linked_at = nil
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *DiagramInstrumentMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *DiagramInstrumentMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the DiagramInstrument entity.
+// If the DiagramInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramInstrumentMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *DiagramInstrumentMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *DiagramInstrumentMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *DiagramInstrumentMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the DiagramInstrument entity.
+// If the DiagramInstrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramInstrumentMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *DiagramInstrumentMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *DiagramInstrumentMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[diagraminstrument.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *DiagramInstrumentMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *DiagramInstrumentMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *DiagramInstrumentMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *DiagramInstrumentMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[diagraminstrument.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *DiagramInstrumentMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *DiagramInstrumentMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *DiagramInstrumentMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the DiagramInstrumentMutation builder.
+func (m *DiagramInstrumentMutation) Where(ps ...predicate.DiagramInstrument) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramInstrumentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramInstrumentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramInstrument, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramInstrumentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramInstrumentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramInstrument).
+func (m *DiagramInstrumentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramInstrumentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.linked_at != nil {
+		fields = append(fields, diagraminstrument.FieldLinkedAt)
+	}
+	if m.diagram != nil {
+		fields = append(fields, diagraminstrument.FieldDiagramID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, diagraminstrument.FieldInstrumentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramInstrumentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagraminstrument.FieldLinkedAt:
+		return m.LinkedAt()
+	case diagraminstrument.FieldDiagramID:
+		return m.DiagramID()
+	case diagraminstrument.FieldInstrumentID:
+		return m.InstrumentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramInstrumentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagraminstrument.FieldLinkedAt:
+		return m.OldLinkedAt(ctx)
+	case diagraminstrument.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case diagraminstrument.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramInstrument field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramInstrumentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagraminstrument.FieldLinkedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLinkedAt(v)
+		return nil
+	case diagraminstrument.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case diagraminstrument.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramInstrument field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramInstrumentMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramInstrumentMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramInstrumentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramInstrument numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramInstrumentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramInstrumentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramInstrumentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DiagramInstrument nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramInstrumentMutation) ResetField(name string) error {
+	switch name {
+	case diagraminstrument.FieldLinkedAt:
+		m.ResetLinkedAt()
+		return nil
+	case diagraminstrument.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case diagraminstrument.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramInstrument field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramInstrumentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.diagram != nil {
+		edges = append(edges, diagraminstrument.EdgeDiagram)
+	}
+	if m.instrument != nil {
+		edges = append(edges, diagraminstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramInstrumentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagraminstrument.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	case diagraminstrument.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramInstrumentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramInstrumentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramInstrumentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareddiagram {
+		edges = append(edges, diagraminstrument.EdgeDiagram)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, diagraminstrument.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramInstrumentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagraminstrument.EdgeDiagram:
+		return m.cleareddiagram
+	case diagraminstrument.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramInstrumentMutation) ClearEdge(name string) error {
+	switch name {
+	case diagraminstrument.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	case diagraminstrument.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramInstrument unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramInstrumentMutation) ResetEdge(name string) error {
+	switch name {
+	case diagraminstrument.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	case diagraminstrument.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramInstrument edge %s", name)
 }
 
 // DiagramRegionMutation represents an operation that mutates the DiagramRegion nodes in the graph.
@@ -22866,6 +23568,9 @@ type InstrumentMutation struct {
 	diagrams                         map[uuid.UUID]struct{}
 	removeddiagrams                  map[uuid.UUID]struct{}
 	cleareddiagrams                  bool
+	compatible_diagrams              map[uuid.UUID]struct{}
+	removedcompatible_diagrams       map[uuid.UUID]struct{}
+	clearedcompatible_diagrams       bool
 	courses                          map[uuid.UUID]struct{}
 	removedcourses                   map[uuid.UUID]struct{}
 	clearedcourses                   bool
@@ -22875,6 +23580,9 @@ type InstrumentMutation struct {
 	content_nodes                    map[uuid.UUID]struct{}
 	removedcontent_nodes             map[uuid.UUID]struct{}
 	clearedcontent_nodes             bool
+	diagram_instruments              map[int]struct{}
+	removeddiagram_instruments       map[int]struct{}
+	cleareddiagram_instruments       bool
 	course_instruments               map[int]struct{}
 	removedcourse_instruments        map[int]struct{}
 	clearedcourse_instruments        bool
@@ -23415,6 +24123,60 @@ func (m *InstrumentMutation) ResetDiagrams() {
 	m.removeddiagrams = nil
 }
 
+// AddCompatibleDiagramIDs adds the "compatible_diagrams" edge to the Diagram entity by ids.
+func (m *InstrumentMutation) AddCompatibleDiagramIDs(ids ...uuid.UUID) {
+	if m.compatible_diagrams == nil {
+		m.compatible_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.compatible_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCompatibleDiagrams clears the "compatible_diagrams" edge to the Diagram entity.
+func (m *InstrumentMutation) ClearCompatibleDiagrams() {
+	m.clearedcompatible_diagrams = true
+}
+
+// CompatibleDiagramsCleared reports if the "compatible_diagrams" edge to the Diagram entity was cleared.
+func (m *InstrumentMutation) CompatibleDiagramsCleared() bool {
+	return m.clearedcompatible_diagrams
+}
+
+// RemoveCompatibleDiagramIDs removes the "compatible_diagrams" edge to the Diagram entity by IDs.
+func (m *InstrumentMutation) RemoveCompatibleDiagramIDs(ids ...uuid.UUID) {
+	if m.removedcompatible_diagrams == nil {
+		m.removedcompatible_diagrams = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.compatible_diagrams, ids[i])
+		m.removedcompatible_diagrams[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCompatibleDiagrams returns the removed IDs of the "compatible_diagrams" edge to the Diagram entity.
+func (m *InstrumentMutation) RemovedCompatibleDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.removedcompatible_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CompatibleDiagramsIDs returns the "compatible_diagrams" edge IDs in the mutation.
+func (m *InstrumentMutation) CompatibleDiagramsIDs() (ids []uuid.UUID) {
+	for id := range m.compatible_diagrams {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCompatibleDiagrams resets all changes to the "compatible_diagrams" edge.
+func (m *InstrumentMutation) ResetCompatibleDiagrams() {
+	m.compatible_diagrams = nil
+	m.clearedcompatible_diagrams = false
+	m.removedcompatible_diagrams = nil
+}
+
 // AddCourseIDs adds the "courses" edge to the Course entity by ids.
 func (m *InstrumentMutation) AddCourseIDs(ids ...uuid.UUID) {
 	if m.courses == nil {
@@ -23575,6 +24337,60 @@ func (m *InstrumentMutation) ResetContentNodes() {
 	m.content_nodes = nil
 	m.clearedcontent_nodes = false
 	m.removedcontent_nodes = nil
+}
+
+// AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by ids.
+func (m *InstrumentMutation) AddDiagramInstrumentIDs(ids ...int) {
+	if m.diagram_instruments == nil {
+		m.diagram_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.diagram_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDiagramInstruments clears the "diagram_instruments" edge to the DiagramInstrument entity.
+func (m *InstrumentMutation) ClearDiagramInstruments() {
+	m.cleareddiagram_instruments = true
+}
+
+// DiagramInstrumentsCleared reports if the "diagram_instruments" edge to the DiagramInstrument entity was cleared.
+func (m *InstrumentMutation) DiagramInstrumentsCleared() bool {
+	return m.cleareddiagram_instruments
+}
+
+// RemoveDiagramInstrumentIDs removes the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
+func (m *InstrumentMutation) RemoveDiagramInstrumentIDs(ids ...int) {
+	if m.removeddiagram_instruments == nil {
+		m.removeddiagram_instruments = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.diagram_instruments, ids[i])
+		m.removeddiagram_instruments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDiagramInstruments returns the removed IDs of the "diagram_instruments" edge to the DiagramInstrument entity.
+func (m *InstrumentMutation) RemovedDiagramInstrumentsIDs() (ids []int) {
+	for id := range m.removeddiagram_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DiagramInstrumentsIDs returns the "diagram_instruments" edge IDs in the mutation.
+func (m *InstrumentMutation) DiagramInstrumentsIDs() (ids []int) {
+	for id := range m.diagram_instruments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDiagramInstruments resets all changes to the "diagram_instruments" edge.
+func (m *InstrumentMutation) ResetDiagramInstruments() {
+	m.diagram_instruments = nil
+	m.cleareddiagram_instruments = false
+	m.removeddiagram_instruments = nil
 }
 
 // AddCourseInstrumentIDs adds the "course_instruments" edge to the CourseInstrument entity by ids.
@@ -24016,12 +24832,15 @@ func (m *InstrumentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *InstrumentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.default_voice != nil {
 		edges = append(edges, instrument.EdgeDefaultVoice)
 	}
 	if m.diagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.compatible_diagrams != nil {
+		edges = append(edges, instrument.EdgeCompatibleDiagrams)
 	}
 	if m.courses != nil {
 		edges = append(edges, instrument.EdgeCourses)
@@ -24031,6 +24850,9 @@ func (m *InstrumentMutation) AddedEdges() []string {
 	}
 	if m.content_nodes != nil {
 		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.diagram_instruments != nil {
+		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
 	if m.course_instruments != nil {
 		edges = append(edges, instrument.EdgeCourseInstruments)
@@ -24058,6 +24880,12 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeCompatibleDiagrams:
+		ids := make([]ent.Value, 0, len(m.compatible_diagrams))
+		for id := range m.compatible_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case instrument.EdgeCourses:
 		ids := make([]ent.Value, 0, len(m.courses))
 		for id := range m.courses {
@@ -24073,6 +24901,12 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 	case instrument.EdgeContentNodes:
 		ids := make([]ent.Value, 0, len(m.content_nodes))
 		for id := range m.content_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeDiagramInstruments:
+		ids := make([]ent.Value, 0, len(m.diagram_instruments))
+		for id := range m.diagram_instruments {
 			ids = append(ids, id)
 		}
 		return ids
@@ -24100,9 +24934,12 @@ func (m *InstrumentMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *InstrumentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.removeddiagrams != nil {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.removedcompatible_diagrams != nil {
+		edges = append(edges, instrument.EdgeCompatibleDiagrams)
 	}
 	if m.removedcourses != nil {
 		edges = append(edges, instrument.EdgeCourses)
@@ -24112,6 +24949,9 @@ func (m *InstrumentMutation) RemovedEdges() []string {
 	}
 	if m.removedcontent_nodes != nil {
 		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.removeddiagram_instruments != nil {
+		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
 	if m.removedcourse_instruments != nil {
 		edges = append(edges, instrument.EdgeCourseInstruments)
@@ -24135,6 +24975,12 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case instrument.EdgeCompatibleDiagrams:
+		ids := make([]ent.Value, 0, len(m.removedcompatible_diagrams))
+		for id := range m.removedcompatible_diagrams {
+			ids = append(ids, id)
+		}
+		return ids
 	case instrument.EdgeCourses:
 		ids := make([]ent.Value, 0, len(m.removedcourses))
 		for id := range m.removedcourses {
@@ -24150,6 +24996,12 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 	case instrument.EdgeContentNodes:
 		ids := make([]ent.Value, 0, len(m.removedcontent_nodes))
 		for id := range m.removedcontent_nodes {
+			ids = append(ids, id)
+		}
+		return ids
+	case instrument.EdgeDiagramInstruments:
+		ids := make([]ent.Value, 0, len(m.removeddiagram_instruments))
+		for id := range m.removeddiagram_instruments {
 			ids = append(ids, id)
 		}
 		return ids
@@ -24177,12 +25029,15 @@ func (m *InstrumentMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *InstrumentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 8)
+	edges := make([]string, 0, 10)
 	if m.cleareddefault_voice {
 		edges = append(edges, instrument.EdgeDefaultVoice)
 	}
 	if m.cleareddiagrams {
 		edges = append(edges, instrument.EdgeDiagrams)
+	}
+	if m.clearedcompatible_diagrams {
+		edges = append(edges, instrument.EdgeCompatibleDiagrams)
 	}
 	if m.clearedcourses {
 		edges = append(edges, instrument.EdgeCourses)
@@ -24192,6 +25047,9 @@ func (m *InstrumentMutation) ClearedEdges() []string {
 	}
 	if m.clearedcontent_nodes {
 		edges = append(edges, instrument.EdgeContentNodes)
+	}
+	if m.cleareddiagram_instruments {
+		edges = append(edges, instrument.EdgeDiagramInstruments)
 	}
 	if m.clearedcourse_instruments {
 		edges = append(edges, instrument.EdgeCourseInstruments)
@@ -24213,12 +25071,16 @@ func (m *InstrumentMutation) EdgeCleared(name string) bool {
 		return m.cleareddefault_voice
 	case instrument.EdgeDiagrams:
 		return m.cleareddiagrams
+	case instrument.EdgeCompatibleDiagrams:
+		return m.clearedcompatible_diagrams
 	case instrument.EdgeCourses:
 		return m.clearedcourses
 	case instrument.EdgeLearningPaths:
 		return m.clearedlearning_paths
 	case instrument.EdgeContentNodes:
 		return m.clearedcontent_nodes
+	case instrument.EdgeDiagramInstruments:
+		return m.cleareddiagram_instruments
 	case instrument.EdgeCourseInstruments:
 		return m.clearedcourse_instruments
 	case instrument.EdgeLearningPathInstruments:
@@ -24250,6 +25112,9 @@ func (m *InstrumentMutation) ResetEdge(name string) error {
 	case instrument.EdgeDiagrams:
 		m.ResetDiagrams()
 		return nil
+	case instrument.EdgeCompatibleDiagrams:
+		m.ResetCompatibleDiagrams()
+		return nil
 	case instrument.EdgeCourses:
 		m.ResetCourses()
 		return nil
@@ -24258,6 +25123,9 @@ func (m *InstrumentMutation) ResetEdge(name string) error {
 		return nil
 	case instrument.EdgeContentNodes:
 		m.ResetContentNodes()
+		return nil
+	case instrument.EdgeDiagramInstruments:
+		m.ResetDiagramInstruments()
 		return nil
 	case instrument.EdgeCourseInstruments:
 		m.ResetCourseInstruments()

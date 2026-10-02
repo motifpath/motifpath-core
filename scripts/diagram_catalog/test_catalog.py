@@ -35,7 +35,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_shape_cardinalities(self):
         for e in self.entries:
-            self.assertIn(e['instrument'], {'guitar', 'electric-guitar'})
+            self.assertEqual(e['instruments'], ['guitar', 'electric-guitar'])
             self.assertTrue(all(p['fret'] <= 12 for p in e['positions']), e['key'])
             if e['family'] == 'chromatic': self.assertEqual(len(e['positions']), 78)
             if e['family'] == 'pentatonic-box': self.assertEqual(len(e['positions']), 12)
@@ -47,11 +47,11 @@ class CatalogTests(unittest.TestCase):
             self.assertNotEqual(e['names']['en'], e['names']['pt_BR'])
             self.assertNotIn('Position', e['names']['pt_BR'])
             self.assertNotIn('Minor', e['names']['pt_BR'])
-        cm = next(e for e in self.entries if e['key'] == 'guitar/scale/major/C/frets-0-12')
+        cm = next(e for e in self.entries if e['key'] == 'scale/major/C/frets-0-12')
         self.assertEqual(cm['names']['pt_BR'], 'Escala maior de Dó — Casas 0–12')
 
     def test_c_diminished_seventh_map(self):
-        d = next(e for e in self.entries if e['key'] == 'guitar/arpeggio/dim7/C/frets-0-12')
+        d = next(e for e in self.entries if e['key'] == 'arpeggio/dim7/C/frets-0-12')
         self.assertEqual({p['note_name'] for p in d['positions']}, {'C', 'Eb', 'Gb', 'Bbb'})
 
     def test_validation_rejects_broken_translation_and_pitch(self):
@@ -68,6 +68,7 @@ class CatalogTests(unittest.TestCase):
         self.assertIn(catalog.SYSTEM_CATALOG_CLERK_USER_ID, sql)
         self.assertIn("'MotifPath Catalog'", sql)
         self.assertIn('"en":"Electric guitar","pt_BR":"Guitarra elétrica"', sql)
+        self.assertIn('INSERT INTO diagram_instruments', sql)
         self.assertIn('sequence,created_at) VALUES (', sql)
         self.assertNotIn('sequence_index', sql)
         self.assertIn('linked_at', sql)

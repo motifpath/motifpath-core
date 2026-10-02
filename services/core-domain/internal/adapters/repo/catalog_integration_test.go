@@ -94,7 +94,10 @@ func TestBasicCatalog(t *testing.T) {
 	require.Equal(t, "en", locale)
 	var catalogInstruments int
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(DISTINCT d.instrument_id) FROM diagrams d JOIN instruments i ON i.id=d.instrument_id WHERE i.names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)").Scan(&catalogInstruments))
-	require.Equal(t, 2, catalogInstruments)
+	require.Equal(t, 1, catalogInstruments)
+	var linkedInstruments int
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagram_instruments di JOIN instruments i ON i.id=di.instrument_id WHERE i.names IN ('{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}'::jsonb,'{\"en\":\"Electric guitar\",\"pt_BR\":\"Guitarra elétrica\"}'::jsonb)").Scan(&linkedInstruments))
+	require.Equal(t, len(entries)*2, linkedInstruments)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagrams").Scan(&count))
 	require.Equal(t, len(entries), count)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM positions").Scan(&count))

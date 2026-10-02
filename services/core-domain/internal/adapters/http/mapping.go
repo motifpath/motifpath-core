@@ -765,6 +765,14 @@ func diagramListFilter(params generated.ListDiagramsParams) (domain.DiagramListF
 }
 
 func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
+	instrumentIDs := d.InstrumentIDs
+	if len(instrumentIDs) == 0 && d.InstrumentID != "" {
+		instrumentIDs = []string{d.InstrumentID}
+	}
+	generatedInstrumentIDs := make([]openapi_types.UUID, len(instrumentIDs))
+	for i, id := range instrumentIDs {
+		generatedInstrumentIDs[i] = mustUUID(id)
+	}
 	positions := make([]generated.DiagramPosition, len(d.Positions))
 	for i, p := range d.Positions {
 		id := mustUUID(p.ID)
@@ -789,17 +797,18 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		}
 	}
 	return generated.Diagram{
-		DiagramId:    mustUUID(d.ID),
-		InstrumentId: mustUUID(d.InstrumentID),
-		Names:        generated.LocalizedNames(d.Names),
-		Languages:    d.Names.Languages(),
-		Kind:         generated.DiagramKind(d.Kind),
-		CreatedBy:    names.ref(d.CreatedBy),
-		RootNote:     d.RootNote,
-		LabelDisplay: generated.DiagramLabelDisplay(d.LabelDisplay),
-		Color:        d.Color,
-		Positions:    positions,
-		Regions:      toGeneratedRegions(d.Regions),
+		DiagramId:     mustUUID(d.ID),
+		InstrumentId:  mustUUID(d.InstrumentID),
+		InstrumentIds: generatedInstrumentIDs,
+		Names:         generated.LocalizedNames(d.Names),
+		Languages:     d.Names.Languages(),
+		Kind:          generated.DiagramKind(d.Kind),
+		CreatedBy:     names.ref(d.CreatedBy),
+		RootNote:      d.RootNote,
+		LabelDisplay:  generated.DiagramLabelDisplay(d.LabelDisplay),
+		Color:         d.Color,
+		Positions:     positions,
+		Regions:       toGeneratedRegions(d.Regions),
 		Classification: generated.DiagramClassification{
 			Skills:   toGeneratedSkills(d.Skills),
 			Concepts: toGeneratedConcepts(d.Concepts),

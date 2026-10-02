@@ -569,6 +569,29 @@ func HasInstrumentWith(preds ...predicate.Instrument) predicate.Diagram {
 	})
 }
 
+// HasCompatibleInstruments applies the HasEdge predicate on the "compatible_instruments" edge.
+func HasCompatibleInstruments() predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, CompatibleInstrumentsTable, CompatibleInstrumentsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCompatibleInstrumentsWith applies the HasEdge predicate on the "compatible_instruments" edge with a given conditions (other predicates).
+func HasCompatibleInstrumentsWith(preds ...predicate.Instrument) predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := newCompatibleInstrumentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasPositions applies the HasEdge predicate on the "positions" edge.
 func HasPositions() predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {
@@ -653,6 +676,29 @@ func HasConcepts() predicate.Diagram {
 func HasConceptsWith(preds ...predicate.Concept) predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {
 		step := newConceptsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDiagramInstruments applies the HasEdge predicate on the "diagram_instruments" edge.
+func HasDiagramInstruments() predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, DiagramInstrumentsTable, DiagramInstrumentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDiagramInstrumentsWith applies the HasEdge predicate on the "diagram_instruments" edge with a given conditions (other predicates).
+func HasDiagramInstrumentsWith(preds ...predicate.DiagramInstrument) predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := newDiagramInstrumentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
