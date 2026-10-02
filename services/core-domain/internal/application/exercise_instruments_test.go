@@ -133,6 +133,9 @@ func TestExerciseService_InstrumentFit(t *testing.T) {
 		_, err := svc.LinkExerciseToContentNode(context.Background(), teacherCaller(), "node-1", "exercise-1")
 
 		assert.ErrorIs(t, err, domain.ErrConflict)
+		// The message reaches the teacher as-is, so it names the lesson in words, not by id.
+		assert.Contains(t, err.Error(), "for none of this lesson's instruments")
+		assert.NotContains(t, err.Error(), "node-1")
 	})
 
 	retarget := []struct {
@@ -169,6 +172,7 @@ func TestExerciseService_InstrumentFit(t *testing.T) {
 				return
 			}
 			assert.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), "a lesson it is linked to")
 		})
 	}
 }

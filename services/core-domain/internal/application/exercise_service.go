@@ -472,7 +472,7 @@ func checkFit(exercise domain.Exercise, node domain.ContentNode) error {
 	if exercise.Suits(node.InstrumentIDs) {
 		return nil
 	}
-	return fmt.Errorf("%w: the exercise is for none of content node %s's instruments", domain.ErrConflict, node.ID)
+	return fmt.Errorf("%w: the exercise is for none of this lesson's instruments", domain.ErrConflict)
 }
 
 // checkLinkedNodesFit returns a domain.ErrConflict unless exercise still
@@ -495,8 +495,8 @@ func (s *ExerciseService) checkLinkedNodesFit(ctx context.Context, exercise doma
 		return err
 	}
 	for _, node := range nodes {
-		if err := checkFit(exercise, node); err != nil {
-			return err
+		if !exercise.Suits(node.InstrumentIDs) {
+			return fmt.Errorf("%w: the exercise would be for none of the instruments of a lesson it is linked to", domain.ErrConflict)
 		}
 	}
 	return nil
