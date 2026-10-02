@@ -185,7 +185,8 @@ func (w *world) putNodeFor(slug string, instruments []string) error {
 }
 
 // lastItemIsFor checks the instruments of the course, learning path or
-// content node the last step created; want nil means every instrument.
+// content node the last step created or updated; want nil means every
+// instrument.
 func (w *world) lastItemIsFor(want []uuid.UUID) error {
 	var got []uuid.UUID
 	switch resp := w.lastResp.(type) {
@@ -195,8 +196,10 @@ func (w *world) lastItemIsFor(want []uuid.UUID) error {
 		got = resp.InstrumentIds
 	case generated.CreateContentNode201JSONResponse:
 		got = resp.InstrumentIds
+	case generated.UpdateContentNode200JSONResponse:
+		got = resp.InstrumentIds
 	default:
-		return fmt.Errorf("expected a created course, learning path or content node, got %#v (err=%v)", w.lastResp, w.lastErr)
+		return fmt.Errorf("expected a created course, learning path or content node, or an updated content node, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
 	sort := func(ids []uuid.UUID) []string {
 		out := make([]string, len(ids))

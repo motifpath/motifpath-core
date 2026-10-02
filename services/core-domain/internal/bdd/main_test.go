@@ -72,6 +72,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerKnowledgeNodeSteps(sc, w)
 	registerKnowledgeEdgeSteps(sc, w)
 	registerClassificationInstrumentSteps(sc, w)
+	registerExerciseInstrumentSteps(sc, w)
 	registerInstrumentSteps(sc, w)
 	registerDiagramSteps(sc, w)
 	registerDiagramPlaybackSteps(sc, w)

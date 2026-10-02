@@ -374,6 +374,8 @@ func (w *world) requestRefusedConflict() error {
 	case generated.RegisterUser409JSONResponse,
 		generated.LinkExerciseToChallenge409JSONResponse,
 		generated.LinkExerciseToContentNode409JSONResponse,
+		generated.UpdateExercise409JSONResponse,
+		generated.UpdateContentNode409JSONResponse,
 		generated.ArchiveStandaloneStudentPath409JSONResponse,
 		generated.DeleteLearningPath409JSONResponse,
 		generated.CreateCourseEnrollment409JSONResponse,

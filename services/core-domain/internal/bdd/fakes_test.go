@@ -557,6 +557,9 @@ func (f *fakeExerciseRepo) List(_ context.Context, filter domain.ExerciseFilter,
 		if filter.Query != "" && !strings.Contains(strings.ToLower(e.Title), strings.ToLower(filter.Query)) {
 			continue
 		}
+		if len(filter.InstrumentIDs) > 0 && len(e.InstrumentIDs) > 0 && !slices.ContainsFunc(filter.InstrumentIDs, func(id string) bool { return slices.Contains(e.InstrumentIDs, id) }) {
+			continue
+		}
 		result = append(result, e)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
