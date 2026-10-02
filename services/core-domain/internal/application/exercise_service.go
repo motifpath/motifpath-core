@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -107,7 +108,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
-	if err := checkClassification(ctx, s.knowledge, skillIDs, conceptIDs); err != nil {
+	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, exercise.InstrumentIDs); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := s.exercises.Create(ctx, exercise); err != nil {
@@ -448,8 +449,13 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
 		return domain.Exercise{}, err
 	}
-	if err := checkClassification(ctx, s.knowledge, skillIDs, conceptIDs); err != nil {
+	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, updated.InstrumentIDs); err != nil {
 		return domain.Exercise{}, err
+	}
+	if instrumentIDs != nil {
+		if err := s.checkLinkedNodesFit(ctx, updated); err != nil {
+			return domain.Exercise{}, err
+		}
 	}
 
 	if err := s.exercises.Update(ctx, updated); err != nil {
@@ -460,6 +466,42 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	return s.exercises.GetByID(ctx, updated.ID)
 }
 
+// checkFit returns a domain.ErrConflict unless exercise suits node's
+// instruments — see domain.Exercise.Suits.
+func checkFit(exercise domain.Exercise, node domain.ContentNode) error {
+	if exercise.Suits(node.InstrumentIDs) {
+		return nil
+	}
+	return fmt.Errorf("%w: the exercise is for none of content node %s's instruments", domain.ErrConflict, node.ID)
+}
+
+// checkLinkedNodesFit returns a domain.ErrConflict unless exercise still
+// suits every content node it is linked to, as a path exercise or through
+// one of the node's challenges.
+func (s *ExerciseService) checkLinkedNodesFit(ctx context.Context, exercise domain.Exercise) error {
+	nodeIDs := slices.Clone(exercise.ContentNodeIDs)
+	for _, challengeID := range exercise.ChallengeIDs {
+		challenge, err := s.challenges.GetByID(ctx, challengeID)
+		if err != nil {
+			return err
+		}
+		nodeIDs = append(nodeIDs, challenge.ContentNodeID)
+	}
+	if len(nodeIDs) == 0 {
+		return nil
+	}
+	nodes, err := s.nodes.GetByIDs(ctx, nodeIDs)
+	if err != nil {
+		return err
+	}
+	for _, node := range nodes {
+		if err := checkFit(exercise, node); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // LinkExerciseToChallenge links an existing exercise into a challenge. Only
 // teachers and admins may link exercises. Returns domain.ErrAlreadyExists if
 // the exercise is already linked to the challenge.
@@ -468,7 +510,8 @@ func (s *ExerciseService) LinkExerciseToChallenge(ctx context.Context, caller do
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	if _, err := s.challenges.GetByID(ctx, challengeID); err != nil {
+	challenge, err := s.challenges.GetByID(ctx, challengeID)
+	if err != nil {
 		return domain.Exercise{}, err
 	}
 	exercise, err := s.exercises.GetByID(ctx, exerciseID)
@@ -479,6 +522,13 @@ func (s *ExerciseService) LinkExerciseToChallenge(ctx context.Context, caller do
 		if id == challengeID {
 			return domain.Exercise{}, domain.ErrAlreadyExists
 		}
+	}
+	node, err := s.nodes.GetByID(ctx, challenge.ContentNodeID)
+	if err != nil {
+		return domain.Exercise{}, err
+	}
+	if err := checkFit(exercise, node); err != nil {
+		return domain.Exercise{}, err
 	}
 
 	if err := s.exercises.LinkChallenge(ctx, exerciseID, challengeID); err != nil {
@@ -552,7 +602,8 @@ func (s *ExerciseService) LinkExerciseToContentNode(ctx context.Context, caller 
 		return domain.Exercise{}, domain.ErrForbidden
 	}
 
-	if _, err := s.nodes.GetByID(ctx, contentNodeID); err != nil {
+	node, err := s.nodes.GetByID(ctx, contentNodeID)
+	if err != nil {
 		return domain.Exercise{}, err
 	}
 	exercise, err := s.exercises.GetByID(ctx, exerciseID)
@@ -563,6 +614,9 @@ func (s *ExerciseService) LinkExerciseToContentNode(ctx context.Context, caller 
 		if id == contentNodeID {
 			return domain.Exercise{}, domain.ErrAlreadyExists
 		}
+	}
+	if err := checkFit(exercise, node); err != nil {
+		return domain.Exercise{}, err
 	}
 
 	if err := s.exercises.LinkContentNode(ctx, exerciseID, contentNodeID); err != nil {

@@ -1163,11 +1163,13 @@ func TestExerciseService_UpdateExercise(t *testing.T) {
 
 func TestExerciseService_LinkExerciseToChallenge(t *testing.T) {
 	t.Run("a teacher links an existing exercise into a challenge", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1"})
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1"})
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "exercise-1", ChallengeIDs: []string{}})
-		svc := newExerciseService(challenges, exercises)
+		svc := newExerciseServiceWithNodes(challenges, exercises, nodes)
 
 		exercise, err := svc.LinkExerciseToChallenge(context.Background(), teacherCaller(), "challenge-1", "exercise-1")
 
@@ -1176,12 +1178,14 @@ func TestExerciseService_LinkExerciseToChallenge(t *testing.T) {
 	})
 
 	t.Run("the same exercise is linked into a second challenge without duplication", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1"})
-		challenges.put(domain.Challenge{ID: "challenge-2"})
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1"})
+		challenges.put(domain.Challenge{ID: "challenge-2", ContentNodeID: "node-1"})
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "exercise-1", ChallengeIDs: []string{}})
-		svc := newExerciseService(challenges, exercises)
+		svc := newExerciseServiceWithNodes(challenges, exercises, nodes)
 		_, err := svc.LinkExerciseToChallenge(context.Background(), teacherCaller(), "challenge-1", "exercise-1")
 		require.NoError(t, err)
 
@@ -1374,7 +1378,7 @@ func TestExerciseService_LinkExerciseToContentNode(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(videoNode("node-1"))
 		challenges := newFakeChallengeRepository()
-		challenges.put(domain.Challenge{ID: "challenge-1"})
+		challenges.put(domain.Challenge{ID: "challenge-1", ContentNodeID: "node-1"})
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "exercise-1", ChallengeIDs: []string{}, ContentNodeIDs: []string{}})
 		svc := newExerciseServiceWithNodes(challenges, exercises, nodes)
