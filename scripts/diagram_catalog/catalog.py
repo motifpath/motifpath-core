@@ -291,6 +291,11 @@ def compact(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'))
 
 
+def batches(values, size):
+    for start in range(0, len(values), size):
+        yield values[start:start + size]
+
+
 def render_sql(entries):
     sql=["-- Frozen bilingual guitar catalog. The fixed system profile owns every basic diagram.",
          "-- Each assertion deliberately divides by zero when its precondition is false.",
@@ -305,17 +310,27 @@ def render_sql(entries):
     for skill in ['Chords', 'Arpeggios', 'Improvisation', 'Fretboard navigation']:
         sql.append("SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_skill_required;")
         sql.append("INSERT INTO skills (id,name) SELECT "+sql_text(stable_id('skill/'+skill))+","+sql_text(skill)+" WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL);")
+
+    diagrams = []
+    positions = []
+    classifications = []
     for e in entries:
-        sql.append('-- '+e['key'])
         values=[sql_text(e['diagram_id']), "(SELECT id FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)",sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
-        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES ('+','.join(values)+');')
-        rows=[]
+        diagrams.append('('+','.join(values)+')')
         for ordinal,p in enumerate(e['positions']):
-            rows.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
-        sql.append('INSERT INTO positions (id,diagram_id,ordinal,interval,note_name,shape,color,string_number,fret) VALUES '+','.join(rows)+';')
+            positions.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
         skill = 'Chords' if e['family'] in ['caged','triad-inversion','seventh-inversion','drop-2','drop-3','drop-2-4','shell'] else 'Arpeggios' if e['family']=='arpeggio' else 'Improvisation' if e['tier']=='C' else 'Fretboard navigation' if e['family'] in ['root','chromatic','interval','dyad'] else 'Scales'
-        sql.append('INSERT INTO diagram_skills (diagram_id,skill_id,linked_at) SELECT '+sql_text(e['diagram_id'])+",id,'2026-10-01T00:00:00Z' FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL;")
-        sql.append('INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) SELECT '+sql_text(e['diagram_id'])+",id,'2026-10-01T00:00:00Z' FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL;")
+        classifications.append((e['diagram_id'], skill))
+    for group in batches(diagrams, 250):
+        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(group)+';')
+    for group in batches(positions, 1000):
+        sql.append('INSERT INTO positions (id,diagram_id,ordinal,interval,note_name,shape,color,string_number,fret) VALUES '+','.join(group)+';')
+    for group in batches(classifications, 1000):
+        values=','.join('('+sql_text(diagram_id)+'::uuid,'+sql_text(skill)+')' for diagram_id,skill in group)
+        sql.append("INSERT INTO diagram_skills (diagram_id,skill_id,linked_at) SELECT v.diagram_id,s.id,'2026-10-01T00:00:00Z' FROM (VALUES "+values+") AS v(diagram_id,skill_name) JOIN skills s ON s.name=v.skill_name AND s.parent_id IS NULL;")
+    for group in batches(classifications, 1000):
+        values=','.join('('+sql_text(diagram_id)+'::uuid)' for diagram_id,_ in group)
+        sql.append("INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) SELECT v.diagram_id,c.id,'2026-10-01T00:00:00Z' FROM (VALUES "+values+") AS v(diagram_id) JOIN concepts c ON c.name='Fretboard patterns' AND c.parent_id IS NULL;")
     return '\n'.join(sql)+'\n'
 
 

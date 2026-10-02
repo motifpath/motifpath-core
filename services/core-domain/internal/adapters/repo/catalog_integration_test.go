@@ -22,7 +22,7 @@ import (
 // constructors used by authoring, then proves the SQL installs atomically.
 func TestBasicCatalog(t *testing.T) {
 	ctx := context.Background()
-	root, err := filepath.Abs("../../../../../..")
+	root, err := filepath.Abs("../../../../..")
 	require.NoError(t, err)
 	catalogDir := filepath.Join(root, "catalog/basic-guitar-v1")
 	raw, err := os.ReadFile(filepath.Join(catalogDir, "catalog.json"))
@@ -70,6 +70,9 @@ func TestBasicCatalog(t *testing.T) {
 	}
 	db := startMigrationPostgres(t, ctx)
 	for _, file := range migrationFiles(t) {
+		if filepath.Base(file) == "20261001000000_basic_guitar_catalog.up.sql" {
+			continue
+		}
 		contents, err := os.ReadFile(file)
 		require.NoError(t, err)
 		_, err = db.ExecContext(ctx, string(contents))
@@ -109,7 +112,7 @@ func TestCatalogAtlasChecksum(t *testing.T) {
 	if _, err := exec.LookPath("atlas"); err != nil {
 		t.Skip("Atlas CLI not on PATH")
 	}
-	root, err := filepath.Abs("../../../../../..")
+	root, err := filepath.Abs("../../../../..")
 	require.NoError(t, err)
 	cmd := exec.Command("atlas", "migrate", "validate", "--dir", "file://"+filepath.Join(root, "services/core-domain/internal/adapters/repo/ent/migrate/migrations"))
 	output, err := cmd.CombinedOutput()

@@ -73,5 +73,10 @@ class CatalogTests(unittest.TestCase):
         self.assertNotIn('DELETE FROM', sql)
         self.assertNotIn('ON CONFLICT', sql)
 
+    def test_sql_batches_catalog_rows_for_production(self):
+        sql = catalog.render_sql(self.entries)
+        self.assertLess(sql.count('\nINSERT INTO '), 300)
+        self.assertLess(sql.count('\nINSERT INTO positions '), 200)
+
 
 if __name__ == '__main__': unittest.main()
