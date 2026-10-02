@@ -67,6 +67,7 @@ class CatalogTests(unittest.TestCase):
         self.assertIn(catalog.SYSTEM_CATALOG_USER_ID, sql)
         self.assertIn(catalog.SYSTEM_CATALOG_CLERK_USER_ID, sql)
         self.assertIn("'MotifPath Catalog'", sql)
+        self.assertIn('sequence,created_at) VALUES (', sql)
         self.assertNotIn('sequence_index', sql)
         self.assertIn('linked_at', sql)
         self.assertNotIn('DELETE FROM', sql)

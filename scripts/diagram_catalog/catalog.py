@@ -308,7 +308,7 @@ def render_sql(entries):
     for e in entries:
         sql.append('-- '+e['key'])
         values=[sql_text(e['diagram_id']), "(SELECT id FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)",sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
-        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(values)+';')
+        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES ('+','.join(values)+');')
         rows=[]
         for ordinal,p in enumerate(e['positions']):
             rows.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
