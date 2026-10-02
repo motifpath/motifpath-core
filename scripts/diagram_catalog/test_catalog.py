@@ -63,7 +63,10 @@ class CatalogTests(unittest.TestCase):
     def test_sql_is_escaped_and_has_preconditions(self):
         self.assertEqual(catalog.sql_text("d'água"), "'d''água'")
         sql = catalog.render_sql(self.entries[:1])
-        self.assertIn('bootstrap_admin_required', sql)
+        self.assertIn('system_catalog_profile_compatible', sql)
+        self.assertIn(catalog.SYSTEM_CATALOG_USER_ID, sql)
+        self.assertIn(catalog.SYSTEM_CATALOG_CLERK_USER_ID, sql)
+        self.assertIn("'MotifPath Catalog'", sql)
         self.assertNotIn('sequence_index', sql)
         self.assertIn('linked_at', sql)
         self.assertNotIn('DELETE FROM', sql)

@@ -13,6 +13,10 @@ const (
 	RoleStudent Role = "student"
 	RoleTeacher Role = "teacher"
 	RoleAdmin   Role = "admin"
+
+	// SystemClerkUserIDPrefix is reserved for database-owned system profiles.
+	// Clerk never issues these identifiers, so callers must not self-register one.
+	SystemClerkUserIDPrefix = "system:"
 )
 
 // MaxDisplayNameLength is the longest display name, in characters (not
@@ -32,8 +36,8 @@ func NormalizeDisplayName(raw string) (name string, ok bool) {
 	return name, name != ""
 }
 
-// User is a registered MotifPath identity, mapped 1:1 to a Clerk identity
-// via ClerkUserID.
+// User is a MotifPath identity. Human users map 1:1 to a Clerk identity via
+// ClerkUserID; database-owned system profiles use a reserved non-Clerk value.
 type User struct {
 	ID          string
 	ClerkUserID string
@@ -62,6 +66,9 @@ type User struct {
 // Accept-Language) before calling this constructor.
 func NewUser(id, clerkUserID string, role Role, displayName string, locale Language, registeredAt time.Time) (User, error) {
 	var errs []FieldError
+	if strings.HasPrefix(clerkUserID, SystemClerkUserIDPrefix) {
+		errs = append(errs, FieldError{Field: "clerk_user_id", Reason: "is reserved for system profiles"})
+	}
 
 	switch role {
 	case RoleStudent, RoleTeacher:

@@ -53,7 +53,7 @@ func TestBasicCatalog(t *testing.T) {
 	six := 6
 	instrument, err := domain.NewInstrument(uuid.NewString(), map[string]string{"en": "Guitar", "pt_BR": "Violão"}, []string{"en", "pt_BR"}, domain.InstrumentFamilyFretted, &six, []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, domain.Voice{ID: "acoustic-guitar", Family: domain.InstrumentFamilyFretted})
 	require.NoError(t, err)
-	owner := uuid.NewString()
+	owner := "77d0239a-8d28-5c95-bc6e-53d59f7f84a8"
 	positionsCount := 0
 	for _, e := range entries {
 		ps := make([]domain.Position, len(e.Positions))
@@ -80,17 +80,15 @@ func TestBasicCatalog(t *testing.T) {
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
 	_, err = tx.ExecContext(ctx, string(sqlBytes))
-	require.Error(t, err, "the catalog must refuse installation before a bootstrap admin exists")
-	require.NoError(t, tx.Rollback())
-	var count int
-	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagrams").Scan(&count))
-	require.Zero(t, count)
-	mustExec(t, ctx, db, "INSERT INTO users (id,clerk_user_id,role,registered_at,locale_id,display_name) SELECT '"+owner+"','user_catalog_test_admin','admin',now(),id,'Catalog test admin' FROM languages WHERE code='en'")
-	tx, err = db.BeginTx(ctx, nil)
-	require.NoError(t, err)
-	_, err = tx.ExecContext(ctx, string(sqlBytes))
 	require.NoError(t, err)
 	require.NoError(t, tx.Commit())
+	var count int
+	var clerkUserID, role, displayName, locale string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT u.clerk_user_id,u.role,u.display_name,l.code FROM users u JOIN languages l ON l.id=u.locale_id WHERE u.id=$1", owner).Scan(&clerkUserID, &role, &displayName, &locale))
+	require.Equal(t, "system:catalog", clerkUserID)
+	require.Equal(t, "admin", role)
+	require.Equal(t, "MotifPath Catalog", displayName)
+	require.Equal(t, "en", locale)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM diagrams").Scan(&count))
 	require.Equal(t, len(entries), count)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM positions").Scan(&count))

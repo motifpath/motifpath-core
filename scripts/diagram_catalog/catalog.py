@@ -75,6 +75,11 @@ def stable_id(key):
     return str(uuid.uuid5(NAMESPACE, key))
 
 
+SYSTEM_CATALOG_USER_ID = stable_id('user/system-catalog')
+SYSTEM_CATALOG_CLERK_USER_ID = 'system:catalog'
+SYSTEM_CATALOG_DISPLAY_NAME = 'MotifPath Catalog'
+
+
 def semitones(interval):
     if interval == 'R': return 0
     match = re.fullmatch(r'(bb|b|##|#)?(\d+)', interval)
@@ -287,9 +292,11 @@ def compact(value):
 
 
 def render_sql(entries):
-    sql=["-- Frozen bilingual guitar catalog. Apply after schema migration and admin provisioning.",
-         "-- Each assertion deliberately divides by zero when its precondition is false.\nSELECT 1 / (SELECT CASE WHEN EXISTS (SELECT 1 FROM users WHERE role='admin') THEN 1 ELSE 0 END) AS bootstrap_admin_required;",
-         "SELECT 1 / (SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM languages WHERE code NOT IN ('en','pt_BR','any')) THEN 1 ELSE 0 END) AS catalog_translations_required;",
+    sql=["-- Frozen bilingual guitar catalog. The fixed system profile owns every basic diagram.",
+         "-- Each assertion deliberately divides by zero when its precondition is false.",
+         "SELECT 1 / (SELECT CASE WHEN EXISTS (SELECT 1 FROM languages WHERE code='en') AND EXISTS (SELECT 1 FROM languages WHERE code='pt_BR') AND NOT EXISTS (SELECT 1 FROM languages WHERE code NOT IN ('en','pt_BR','any')) THEN 1 ELSE 0 END) AS catalog_translations_required;",
+         "SELECT 1 / (SELECT CASE WHEN (NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+" OR clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+")) OR EXISTS (SELECT 1 FROM users u JOIN languages l ON l.id=u.locale_id WHERE u.id="+sql_text(SYSTEM_CATALOG_USER_ID)+" AND u.clerk_user_id="+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+" AND u.role='admin' AND u.display_name="+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+" AND l.code='en') THEN 1 ELSE 0 END) AS system_catalog_profile_compatible;",
+         "INSERT INTO users (id,clerk_user_id,role,display_name,locale_id,registered_at) SELECT "+sql_text(SYSTEM_CATALOG_USER_ID)+","+sql_text(SYSTEM_CATALOG_CLERK_USER_ID)+",'admin',"+sql_text(SYSTEM_CATALOG_DISPLAY_NAME)+",id,'2026-10-01T00:00:00Z' FROM languages WHERE code='en' AND NOT EXISTS (SELECT 1 FROM users WHERE id="+sql_text(SYSTEM_CATALOG_USER_ID)+");",
          "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb) <= 1 THEN 1 ELSE 0 END) AS unambiguous_standard_guitar_required;",
          "INSERT INTO instruments (id,names,family,string_count,tuning,default_voice_id) SELECT '"+stable_id('instrument/guitar')+"','{\"en\":\"Guitar\",\"pt_BR\":\"Violão\"}','fretted',6,'[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]','acoustic-guitar' WHERE NOT EXISTS (SELECT 1 FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb);",
          "SELECT 1 / (SELECT CASE WHEN (SELECT count(*) FROM skills WHERE name='Scales' AND parent_id IS NULL) <= 1 AND (SELECT count(*) FROM concepts WHERE name='Fretboard patterns' AND parent_id IS NULL) <= 1 THEN 1 ELSE 0 END) AS unambiguous_catalog_classification_required;",
@@ -300,7 +307,7 @@ def render_sql(entries):
         sql.append("INSERT INTO skills (id,name) SELECT "+sql_text(stable_id('skill/'+skill))+","+sql_text(skill)+" WHERE NOT EXISTS (SELECT 1 FROM skills WHERE name="+sql_text(skill)+" AND parent_id IS NULL);")
     for e in entries:
         sql.append('-- '+e['key'])
-        values=[sql_text(e['diagram_id']), "(SELECT id FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)",sql_text(compact(e['names'])),"'basic'","(SELECT id FROM users WHERE role='admin' ORDER BY registered_at,id LIMIT 1)",sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
+        values=[sql_text(e['diagram_id']), "(SELECT id FROM instruments WHERE family='fretted' AND string_count=6 AND tuning='[\"E2\",\"A2\",\"D3\",\"G3\",\"B3\",\"E4\"]'::jsonb)",sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
         sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(values)+';')
         rows=[]
         for ordinal,p in enumerate(e['positions']):
