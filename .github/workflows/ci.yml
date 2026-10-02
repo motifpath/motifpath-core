@@ -145,13 +145,17 @@ jobs:
         run: docker compose -f compose.images.yaml up --wait --wait-timeout 180
 
       # Proves the real image boots, applies migrations, and serves — not just
-      # that `go run` works (ADR-016 §Decision.3).
+      # that `go run` works (ADR-016 §Decision.3). `--wait` only waits for the
+      # containers to run (the images carry no healthcheck), and core-domain
+      # applies every migration before it listens, so the probes retry until
+      # each service answers instead of failing on the first connection reset.
       - name: Probe liveness and readiness
         run: |
           set -euo pipefail
+          probe() { curl -fsS --retry 30 --retry-delay 2 --retry-all-errors "$1" > /dev/null; }
           for port in 8080 8081 8082; do
-            curl -fsS "localhost:$port/healthz" > /dev/null
-            curl -fsS "localhost:$port/readyz"  > /dev/null
+            probe "localhost:$port/healthz"
+            probe "localhost:$port/readyz"
             echo "port $port: /healthz + /readyz OK"
           done
 
