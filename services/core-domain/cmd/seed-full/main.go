@@ -489,7 +489,7 @@ func (c *classificationSeeder) conceptID(ctx context.Context, name string) (stri
 	return concept.ID, nil
 }
 
-func rootSkillID(skills []domain.Skill, name string) (string, bool) {
+func rootSkillID(skills []domain.KnowledgeNode, name string) (string, bool) {
 	for _, skill := range skills {
 		if skill.Name == name && skill.ParentID == nil {
 			return skill.ID, true
@@ -498,7 +498,7 @@ func rootSkillID(skills []domain.Skill, name string) (string, bool) {
 	return "", false
 }
 
-func rootConceptID(concepts []domain.Concept, name string) (string, bool) {
+func rootConceptID(concepts []domain.KnowledgeNode, name string) (string, bool) {
 	for _, concept := range concepts {
 		if concept.Name == name && concept.ParentID == nil {
 			return concept.ID, true
@@ -692,7 +692,7 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
-			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"})
+			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, nil)
 		if err != nil {
 			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
 		}
@@ -987,7 +987,7 @@ func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challe
 	}
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
-			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"})
+			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, nil)
 		if err != nil {
 			return fmt.Errorf("create exercise %q: %w", s.title, err)
 		}

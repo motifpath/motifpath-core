@@ -203,7 +203,7 @@ func (c *classificationSeeder) conceptID(ctx context.Context, name string) (stri
 	return concept.ID, nil
 }
 
-func rootSkillID(skills []domain.Skill, name string) (string, bool) {
+func rootSkillID(skills []domain.KnowledgeNode, name string) (string, bool) {
 	for _, skill := range skills {
 		if skill.Name == name && skill.ParentID == nil {
 			return skill.ID, true
@@ -212,7 +212,7 @@ func rootSkillID(skills []domain.Skill, name string) (string, bool) {
 	return "", false
 }
 
-func rootConceptID(concepts []domain.Concept, name string) (string, bool) {
+func rootConceptID(concepts []domain.KnowledgeNode, name string) (string, bool) {
 	for _, concept := range concepts {
 		if concept.Name == name && concept.ParentID == nil {
 			return concept.ID, true
@@ -364,7 +364,7 @@ func seedPracticeChallenge(ctx context.Context, teacher domain.User, challengeSe
 	}
 	for _, spec := range specs {
 		exercise, err := exerciseService.CreateExercise(ctx, teacher, "Pentatonic shape 1 — "+spec.prompt, domain.NewPlainTextPrompt(spec.prompt), domain.ExerciseTypeTextResponse,
-			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, nil, nil, spec.options, nil, nil, []string{"en"})
+			[]string{pentatonicSkillID}, []string{pentatonicConceptID}, nil, nil, nil, nil, spec.options, nil, nil, []string{"en"}, nil)
 		if err != nil {
 			return fmt.Errorf("create exercise: %w", err)
 		}

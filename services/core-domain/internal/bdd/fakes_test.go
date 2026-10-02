@@ -145,8 +145,8 @@ func (f *fakeLanguageRepo) GetByCode(_ context.Context, code string) (domain.Lan
 }
 
 type fakeContentNodeRepo struct {
-	mu       sync.Mutex
-	byID     map[string]domain.ContentNode
+	mu        sync.Mutex
+	byID      map[string]domain.ContentNode
 	knowledge *fakeKnowledgeNodeRepo
 }
 
@@ -1901,8 +1901,8 @@ func (f *fakeInstrumentRepo) put(i domain.Instrument) {
 }
 
 type fakeDiagramRepo struct {
-	mu       sync.Mutex
-	byID     map[string]domain.Diagram
+	mu        sync.Mutex
+	byID      map[string]domain.Diagram
 	knowledge *fakeKnowledgeNodeRepo
 }
 

@@ -17,7 +17,7 @@ func TestRootSkillIDPrefersTheExistingRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id, found := rootSkillID([]domain.Skill{child, root}, "Scales")
+	id, found := rootSkillID([]domain.KnowledgeNode{child, root}, "Scales")
 	if !found || id != root.ID {
 		t.Fatalf("got (%q, %t), want (%q, true)", id, found, root.ID)
 	}
@@ -29,7 +29,7 @@ func TestRootConceptIDPrefersTheExistingRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	id, found := rootConceptID([]domain.Concept{root}, "Fretboard patterns")
+	id, found := rootConceptID([]domain.KnowledgeNode{root}, "Fretboard patterns")
 	if !found || id != root.ID {
 		t.Fatalf("got (%q, %t), want (%q, true)", id, found, root.ID)
 	}
