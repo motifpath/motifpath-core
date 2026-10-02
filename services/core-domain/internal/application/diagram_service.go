@@ -44,6 +44,7 @@ const (
 // Per-position colors, custom labels and notes travel with Positions and so
 // can be cleared by resending Positions without them.
 type DiagramUpdate struct {
+	InstrumentIDs []string
 	// Names replaces every name when non-nil; nil keeps the current ones.
 	Names     map[string]string
 	Positions []domain.Position
@@ -80,6 +81,12 @@ type Nullable[T any] struct {
 // without an id are assigned one; a client-supplied id is kept. See
 // domain.DiagramOptions for the other optional settings.
 func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, instrumentID string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
+	return s.CreateDiagramWithInstruments(ctx, caller, []string{instrumentID}, names, positions, skillIDs, conceptIDs, opts)
+}
+
+// CreateDiagramWithInstruments creates one diagram available through every
+// listed instrument. The first id supplies its immutable coordinate layout.
+func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, caller domain.User, instrumentIDs []string, names map[string]string, positions []domain.Position, skillIDs, conceptIDs []string, opts domain.DiagramOptions) (domain.Diagram, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Diagram{}, domain.ErrForbidden
 	}
@@ -87,11 +94,17 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, domain.ErrForbidden
 	}
 
-	instrument, err := s.instruments.GetByID(ctx, instrumentID)
+	if len(instrumentIDs) == 0 {
+		return domain.Diagram{}, domain.NewValidationError("instrument_ids", "must contain at least one instrument")
+	}
+	instrument, err := s.instruments.GetByID(ctx, instrumentIDs[0])
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			return domain.Diagram{}, domain.NewValidationError("instrument_id", "does not reference an existing instrument")
+			return domain.Diagram{}, domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
 		}
+		return domain.Diagram{}, err
+	}
+	if err := s.validateCompatibleInstruments(ctx, instrument, instrumentIDs); err != nil {
 		return domain.Diagram{}, err
 	}
 
@@ -104,6 +117,7 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
+	diagram.InstrumentIDs = append([]string(nil), instrumentIDs...)
 	if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {
 		return domain.Diagram{}, err
 	}
@@ -112,6 +126,33 @@ func (s *DiagramService) CreateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, err
 	}
 	return diagram, nil
+}
+
+func (s *DiagramService) validateCompatibleInstruments(ctx context.Context, layout domain.Instrument, ids []string) error {
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		seen[id] = struct{}{}
+	}
+	if len(ids) == 0 || ids[0] != layout.ID || len(seen) != len(ids) {
+		return domain.NewValidationError("instrument_ids", "must start with the layout instrument and contain no duplicates")
+	}
+	for _, id := range ids[1:] {
+		instrument, err := s.instruments.GetByID(ctx, id)
+		if err != nil {
+			return domain.NewValidationError("instrument_ids", "does not reference an existing instrument")
+		}
+		if instrument.Family != layout.Family || !slices.Equal(instrument.Tuning, layout.Tuning) || !sameStringCount(instrument.StringCount, layout.StringCount) {
+			return domain.NewValidationError("instrument_ids", "must have the same coordinate geometry as the layout instrument")
+		}
+	}
+	return nil
+}
+
+func sameStringCount(left, right *int) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }
 
 // GetDiagram returns the diagram with the given id, or domain.ErrNotFound.
@@ -241,6 +282,14 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, opts, current.CreatedAt)
 	if err != nil {
 		return domain.Diagram{}, err
+	}
+	if update.InstrumentIDs != nil {
+		if err := s.validateCompatibleInstruments(ctx, instrument, update.InstrumentIDs); err != nil {
+			return domain.Diagram{}, err
+		}
+		updated.InstrumentIDs = append([]string(nil), update.InstrumentIDs...)
+	} else {
+		updated.InstrumentIDs = append([]string(nil), current.InstrumentIDs...)
 	}
 	if classificationChanged {
 		if err := checkSkillsAndConceptsExist(ctx, s.skills, s.concepts, skillIDs, conceptIDs); err != nil {

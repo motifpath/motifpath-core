@@ -1,8 +1,8 @@
 {
-  "diagrams": 2497,
-  "positions": 60763,
+  "diagrams": 1969,
+  "positions": 55615,
   "tiers": {
-    "A": 1086,
+    "A": 558,
     "B": 355,
     "C": 1056
   },
@@ -13,8 +13,6 @@
     "caged-window": 208,
     "chromatic": 12,
     "digital-pattern": 24,
-    "dyad": 264,
-    "interval": 264,
     "interval-structure": 48,
     "pentatonic-box": 94,
     "root": 12,
@@ -22,5 +20,5 @@
     "substitution": 864,
     "triad-pair": 84
   },
-  "sha256": "ec3f6816bdb49f14aa3339c6ded826c114753ea91b51741e61f16e5272e2b1c9"
+  "sha256": "b3da2442713b49cf00940e2edee610605c0458d93d5aba2a6dfc789191053047"
 }

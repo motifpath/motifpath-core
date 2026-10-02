@@ -1321,8 +1321,8 @@ type CreateDiagramRequest struct {
 	// leaves it unrecorded.
 	Color *string `json:"color"`
 
-	// InstrumentId The instrument this diagram is authored against. Must reference an existing instrument.
-	InstrumentId openapi_types.UUID `json:"instrument_id"`
+	// InstrumentIds Compatible instruments; the first is the layout instrument.
+	InstrumentIds []openapi_types.UUID `json:"instrument_ids"`
 
 	// Kind Whether the new diagram is a curated basic template or the
 	// caller's own custom diagram. Omitted defaults to custom. Only an
@@ -3360,6 +3360,9 @@ type UpdateDiagramRequest struct {
 	// colors are replaced together with positions and can be cleared
 	// by omitting them.
 	Color *string `json:"color,omitempty"`
+
+	// InstrumentIds Replaces the compatible instruments.
+	InstrumentIds *[]openapi_types.UUID `json:"instrument_ids,omitempty"`
 
 	// LabelDisplay Which of a position's interval or note_name its marker shows by
 	// default when reopened for authoring, replacing the current

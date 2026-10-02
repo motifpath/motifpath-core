@@ -76,7 +76,7 @@ class CatalogTests(unittest.TestCase):
         self.assertNotIn('ON CONFLICT', sql)
 
     def test_catalog_excludes_string_set_chord_templates(self):
-        excluded = {'triad-inversion', 'seventh-inversion', 'drop-2', 'drop-3', 'drop-2-4', 'shell'}
+        excluded = {'triad-inversion', 'seventh-inversion', 'drop-2', 'drop-3', 'drop-2-4', 'shell', 'interval', 'dyad'}
         self.assertFalse({e['family'] for e in self.entries} & excluded)
 
     def test_sql_batches_catalog_rows_for_production(self):

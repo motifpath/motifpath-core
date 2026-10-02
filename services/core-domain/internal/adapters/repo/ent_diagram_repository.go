@@ -41,6 +41,10 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 	if err != nil {
 		return err
 	}
+	compatibleInstrumentIDs, err := parseUUIDs(d.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 	createdBy, err := uuid.Parse(d.CreatedBy)
 	if err != nil {
 		return err
@@ -73,7 +77,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
 		SetSequence(entSequence(d.Sequence)).
 		SetCreatedAt(d.CreatedAt).
-		AddCompatibleInstrumentIDs(instrumentID).
+		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
 		Save(ctx); err != nil {
@@ -249,6 +253,10 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	if err != nil {
 		return domain.ErrNotFound
 	}
+	compatibleInstrumentIDs, err := parseUUIDs(d.InstrumentIDs)
+	if err != nil {
+		return err
+	}
 	skillIDs, err := parseUUIDs(d.SkillIDs())
 	if err != nil {
 		return err
@@ -291,6 +299,8 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 		update.ClearTempoBpm()
 	}
 	if _, err := update.
+		ClearCompatibleInstruments().
+		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
 		ClearSkills().
 		AddSkillIDs(skillIDs...).
 		ClearConcepts().

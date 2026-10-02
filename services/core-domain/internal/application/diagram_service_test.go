@@ -132,7 +132,7 @@ func TestDiagramService_CreateDiagram(t *testing.T) {
 		conceptIDs []string
 		wantField  string
 	}{
-		{name: "instrument does not exist", instrument: "nope", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"skill-1"}, conceptIDs: []string{"concept-1"}, wantField: "instrument_id"},
+		{name: "instrument does not exist", instrument: "nope", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"skill-1"}, conceptIDs: []string{"concept-1"}, wantField: "instrument_ids"},
 		{name: "keyboard positions on a fretted instrument", instrument: "guitar", positions: []domain.Position{{Interval: "R", NoteName: "A", Key: func() *string { k := "A3"; return &k }()}}, skillIDs: []string{"skill-1"}, conceptIDs: []string{"concept-1"}, wantField: "positions"},
 		{name: "no skills", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},
 		{name: "unknown skill", instrument: "guitar", positions: []domain.Position{frettedPos(6, 5)}, skillIDs: []string{"missing"}, conceptIDs: []string{"concept-1"}, wantField: "skill_ids"},

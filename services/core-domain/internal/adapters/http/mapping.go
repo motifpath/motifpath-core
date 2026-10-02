@@ -848,6 +848,9 @@ func toDiagramUpdate(body *generated.UpdateDiagramRequest) application.DiagramUp
 		signature := toDomainTimeSignature(body.TimeSignature)
 		update.TimeSignature = &signature
 	}
+	if body.InstrumentIds != nil {
+		update.InstrumentIDs = uuidsToStrings(*body.InstrumentIds)
+	}
 	return update
 }
 

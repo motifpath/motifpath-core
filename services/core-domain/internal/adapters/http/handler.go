@@ -1977,7 +1977,7 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 	}
 
 	body := request.Body
-	diagram, err := h.diagram.CreateDiagram(ctx, caller, body.InstrumentId.String(), body.Names, toDomainPositions(body.Positions),
+	diagram, err := h.diagram.CreateDiagramWithInstruments(ctx, caller, uuidsToStrings(body.InstrumentIds), body.Names, toDomainPositions(body.Positions),
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
 		domain.DiagramOptions{
 			RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind), Regions: toDomainRegions(body.Regions),

@@ -165,9 +165,6 @@ def generate():
         rp = root_pt(root)
         for family, intervals, en, pt in [('chromatic',CHROMATIC,'Chromatic map','Mapa cromático'),('root',['R'],'Root map','Mapa de fundamentais')]:
             result.append(entry(f'{family}/{root}',root,intervals,cells(root,intervals),f'{root} {en} — Frets 0–12',f'{pt} de {rp} — Casas 0–12',family,'A'))
-        for interval in INTERVALS[1:]:
-            for family, ints, en, pt in [('interval',[interval],'Interval map','Mapa de intervalos'),('dyad',['R',interval],'Dyad map','Mapa de díades')]:
-                result.append(entry(f'{family}/{interval}/{root}',root,ints,cells(root,ints),f'{root} {en} — {interval}',f'{pt} de {rp} — {interval}',family,'A'))
         for fk,(en,pt,formula,tier,mode) in FORMULAS.items():
             ints = formula.split()
             family = 'arpeggio' if fk in TRIADS+SEVENTHS or fk.startswith(('maj','dom','min')) and fk[-1].isdigit() else 'scale'
@@ -306,7 +303,7 @@ def render_sql(entries):
             diagram_instruments.append('('+sql_text(e['diagram_id'])+'::uuid,'+compatible_id+')')
         for ordinal,p in enumerate(e['positions']):
             positions.append('('+','.join([sql_text(p['position_id']),sql_text(e['diagram_id']),str(ordinal),sql_text(p['interval']),sql_text(p['note_name']),sql_text(p['shape']),sql_text(p['color']) if p['color'] else 'NULL',str(p['string']),str(p['fret'])])+')')
-        skill = 'Chords' if e['family'] in ['caged','triad-inversion','seventh-inversion','drop-2','drop-3','drop-2-4','shell'] else 'Arpeggios' if e['family']=='arpeggio' else 'Improvisation' if e['tier']=='C' else 'Fretboard navigation' if e['family'] in ['root','chromatic','interval','dyad'] else 'Scales'
+        skill = 'Chords' if e['family'] in ['caged','triad-inversion','seventh-inversion','drop-2','drop-3','drop-2-4','shell'] else 'Arpeggios' if e['family']=='arpeggio' else 'Improvisation' if e['tier']=='C' else 'Fretboard navigation' if e['family'] in ['root','chromatic'] else 'Scales'
         classifications.append((e['diagram_id'], skill))
     for group in batches(diagrams, 250):
         sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(group)+';')
