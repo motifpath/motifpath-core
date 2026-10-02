@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
@@ -52,6 +53,7 @@ func (KnowledgeNode) Edges() []ent.Edge {
 		edge.To("parent", KnowledgeNode.Type).
 			Unique().
 			Field("parent_id").
+			Annotations(entsql.OnDelete(entsql.NoAction)).
 			From("children"),
 
 		// Empty means the node is for every instrument.

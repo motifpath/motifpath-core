@@ -23,6 +23,7 @@ FFMPEG="${FFMPEG:-ffmpeg}"
 # The tonejs-instruments folder each voice is rendered from.
 declare -A UPSTREAM=(
   [acoustic-guitar]="guitar-acoustic"
+  [electric-bass]="bass-electric"
   [piano]="piano"
 )
 

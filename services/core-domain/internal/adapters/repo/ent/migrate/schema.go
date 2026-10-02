@@ -904,7 +904,7 @@ var (
 				Symbol:     "knowledge_nodes_knowledge_nodes_parent",
 				Columns:    []*schema.Column{KnowledgeNodesColumns[5]},
 				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}

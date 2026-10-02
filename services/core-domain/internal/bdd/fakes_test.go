@@ -1862,6 +1862,8 @@ func newFakeVoiceRepo() *fakeVoiceRepo {
 	f := &fakeVoiceRepo{byID: map[string]domain.Voice{}}
 	f.put(domain.Voice{ID: "acoustic-guitar", Names: domain.LocalizedText{"en": "Acoustic guitar", "pt_BR": "Violão"}, Family: domain.InstrumentFamilyFretted,
 		Pitches: []int{46, 40, 43}, Attribution: "Acoustic guitar samples from tonejs-instruments, CC BY 3.0"})
+	f.put(domain.Voice{ID: "electric-bass", Names: domain.LocalizedText{"en": "Electric bass", "pt_BR": "Contrabaixo elétrico"}, Family: domain.InstrumentFamilyFretted,
+		Pitches: []int{28, 31, 34, 37}, Attribution: "Electric bass samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0"})
 	f.put(domain.Voice{ID: "piano", Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
 		Pitches: []int{21, 24, 27}, Attribution: "Piano samples from tonejs-instruments, CC BY 3.0"})
 	return f
