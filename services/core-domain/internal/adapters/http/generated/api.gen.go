@@ -2185,7 +2185,7 @@ type Exercise struct {
 	// ContentNodeIds The content nodes this exercise is currently linked to as a path
 	// exercise. May be empty. Independent of challenge_ids — an exercise
 	// can be a path exercise on a node, part of a challenge, both, or
-	// neither (practice-session-only).
+	// neither (practice only).
 	ContentNodeIds []openapi_types.UUID `json:"content_node_ids"`
 
 	// CreatedAt Timestamp at which the exercise was created.
@@ -2964,25 +2964,6 @@ type PathDetailLevel string
 // Pitch A pitch in scientific pitch notation: a note name with its octave,
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
-
-// PracticeSession A generated, skill-targeted set of exercises for self-directed
-// practice, returned by GET /practice-sessions. Not a stored resource —
-// exists only in the response that generated it.
-type PracticeSession struct {
-	// Exercises The session's exercises, in randomized order, each with its
-	// options also randomized. May contain fewer than the requested
-	// count if the linked pool is smaller.
-	Exercises []Exercise `json:"exercises"`
-
-	// PracticeSessionId Identifier for this generated session. Carried as
-	// practice_session_id in trigger_context on the exercise.* tracking
-	// events emitted while attempting it, so outcomes can be grouped
-	// back to the session and skill that produced them.
-	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
-
-	// SkillId The skill-kind KnowledgeNode this session was generated for.
-	SkillId openapi_types.UUID `json:"skill_id"`
-}
 
 // PromptDocument A structured rich-text document, authored with MotifPath's
 // Tiptap-based content-authoring editor and persisted exactly as the
@@ -4223,16 +4204,6 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
-// StartPracticeSessionParams defines parameters for StartPracticeSession.
-type StartPracticeSessionParams struct {
-	// SkillId The skill-kind KnowledgeNode to select exercises for.
-	SkillId openapi_types.UUID `form:"skill_id" json:"skill_id"`
-
-	// Count The number of exercises requested. The response may contain fewer
-	// if the exercise pool linked to skill_id is smaller than count.
-	Count *int `form:"count,omitempty" json:"count,omitempty"`
-}
-
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
 
@@ -4517,9 +4488,6 @@ type ServerInterface interface {
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request)
-	// Start a randomized, skill-targeted practice session
-	// (GET /practice-sessions)
-	StartPracticeSession(w http.ResponseWriter, r *http.Request, params StartPracticeSessionParams)
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
@@ -4967,12 +4935,6 @@ func (_ Unimplemented) UnpublishLearningPath(w http.ResponseWriter, r *http.Requ
 // Request a presigned URL to upload a content-authoring media asset
 // (POST /media/upload-url)
 func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Start a randomized, skill-targeted practice session
-// (GET /practice-sessions)
-func (_ Unimplemented) StartPracticeSession(w http.ResponseWriter, r *http.Request, params StartPracticeSessionParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7581,54 +7543,6 @@ func (siw *ServerInterfaceWrapper) CreateMediaUploadUrl(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
-// StartPracticeSession operation middleware
-func (siw *ServerInterfaceWrapper) StartPracticeSession(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params StartPracticeSessionParams
-
-	// ------------- Required query parameter "skill_id" -------------
-
-	if paramValue := r.URL.Query().Get("skill_id"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "skill_id"})
-		return
-	}
-
-	err = runtime.BindQueryParameter("form", true, true, "skill_id", r.URL.Query(), &params.SkillId)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "skill_id", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "count" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "count", r.URL.Query(), &params.Count)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "count", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.StartPracticeSession(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // ReadinessCheck operation middleware
 func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
 
@@ -8249,9 +8163,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/media/upload-url", wrapper.CreateMediaUploadUrl)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/practice-sessions", wrapper.StartPracticeSession)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
@@ -11306,41 +11217,6 @@ func (response CreateMediaUploadUrl404JSONResponse) VisitCreateMediaUploadUrlRes
 	return json.NewEncoder(w).Encode(response)
 }
 
-type StartPracticeSessionRequestObject struct {
-	Params StartPracticeSessionParams
-}
-
-type StartPracticeSessionResponseObject interface {
-	VisitStartPracticeSessionResponse(w http.ResponseWriter) error
-}
-
-type StartPracticeSession200JSONResponse PracticeSession
-
-func (response StartPracticeSession200JSONResponse) VisitStartPracticeSessionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type StartPracticeSession400JSONResponse ValidationError
-
-func (response StartPracticeSession400JSONResponse) VisitStartPracticeSessionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type StartPracticeSession401JSONResponse UnauthorizedError
-
-func (response StartPracticeSession401JSONResponse) VisitStartPracticeSessionResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type ReadinessCheckRequestObject struct {
 }
 
@@ -12119,9 +11995,6 @@ type StrictServerInterface interface {
 	// Request a presigned URL to upload a content-authoring media asset
 	// (POST /media/upload-url)
 	CreateMediaUploadUrl(ctx context.Context, request CreateMediaUploadUrlRequestObject) (CreateMediaUploadUrlResponseObject, error)
-	// Start a randomized, skill-targeted practice session
-	// (GET /practice-sessions)
-	StartPracticeSession(ctx context.Context, request StartPracticeSessionRequestObject) (StartPracticeSessionResponseObject, error)
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
@@ -14059,32 +13932,6 @@ func (sh *strictHandler) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Req
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateMediaUploadUrlResponseObject); ok {
 		if err := validResponse.VisitCreateMediaUploadUrlResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// StartPracticeSession operation middleware
-func (sh *strictHandler) StartPracticeSession(w http.ResponseWriter, r *http.Request, params StartPracticeSessionParams) {
-	var request StartPracticeSessionRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.StartPracticeSession(ctx, request.(StartPracticeSessionRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "StartPracticeSession")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(StartPracticeSessionResponseObject); ok {
-		if err := validResponse.VisitStartPracticeSessionResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

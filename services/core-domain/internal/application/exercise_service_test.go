@@ -3,7 +3,6 @@ package application_test
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 	"time"
 
@@ -1513,112 +1512,5 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		_, err := svc.ListPathExercisesForContentNode(context.Background(), "missing")
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
-	})
-}
-
-func TestExerciseService_StartPracticeSession(t *testing.T) {
-	putWithSkill := func(exercises *fakeExerciseRepository, id, skillID string) {
-		exercises.put(domain.Exercise{ID: id, Skills: []domain.KnowledgeNode{{ID: skillID}}, Options: textResponseOptions()})
-	}
-
-	t.Run("a student starts a practice session for a skill with enough linked exercises", func(t *testing.T) {
-		exercises := newFakeExerciseRepository()
-		for i := 1; i <= 12; i++ {
-			putWithSkill(exercises, "ex-"+strconv.Itoa(i), "skill-1")
-		}
-		svc := newExerciseService(newFakeChallengeRepository(), exercises)
-
-		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-
-		require.NoError(t, err)
-		assert.Len(t, session.Exercises, 10)
-		assert.Equal(t, "skill-1", session.SkillID)
-		assert.NotEmpty(t, session.ID)
-		for _, e := range session.Exercises {
-			assert.Contains(t, exerciseSkillIDs(e), "skill-1")
-		}
-	})
-
-	t.Run("a practice session returns fewer exercises when the linked pool is smaller than requested", func(t *testing.T) {
-		exercises := newFakeExerciseRepository()
-		for i := 1; i <= 3; i++ {
-			putWithSkill(exercises, "ex-"+strconv.Itoa(i), "skill-2")
-		}
-		svc := newExerciseService(newFakeChallengeRepository(), exercises)
-
-		session, err := svc.StartPracticeSession(context.Background(), "skill-2", 10)
-
-		require.NoError(t, err)
-		assert.Len(t, session.Exercises, 3)
-	})
-
-	t.Run("a practice session defaults its count when none is given", func(t *testing.T) {
-		exercises := newFakeExerciseRepository()
-		for i := 1; i <= 12; i++ {
-			putWithSkill(exercises, "ex-"+strconv.Itoa(i), "skill-1")
-		}
-		svc := newExerciseService(newFakeChallengeRepository(), exercises)
-
-		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-
-		require.NoError(t, err)
-		assert.Len(t, session.Exercises, 10)
-	})
-
-	t.Run("starting a practice session for a skill with no matching exercises returns an empty session", func(t *testing.T) {
-		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
-
-		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-
-		require.NoError(t, err)
-		assert.Empty(t, session.Exercises)
-	})
-
-	t.Run("two practice sessions for the same skill may differ in composition and order", func(t *testing.T) {
-		exercises := newFakeExerciseRepository()
-		for i := 1; i <= 12; i++ {
-			putWithSkill(exercises, "ex-"+strconv.Itoa(i), "skill-1")
-		}
-		svc := newExerciseService(newFakeChallengeRepository(), exercises)
-
-		first, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-		require.NoError(t, err)
-		second, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-		require.NoError(t, err)
-
-		assert.NotEqual(t, first.ID, second.ID)
-	})
-
-	t.Run("starting a practice session without a skill is rejected", func(t *testing.T) {
-		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
-
-		_, err := svc.StartPracticeSession(context.Background(), "", 10)
-
-		var valErr *domain.ValidationError
-		require.True(t, errors.As(err, &valErr))
-		assertHasField(t, valErr, "skill_id")
-	})
-
-	t.Run("starting a practice session with a count above the maximum is rejected", func(t *testing.T) {
-		svc := newExerciseService(newFakeChallengeRepository(), newFakeExerciseRepository())
-
-		_, err := svc.StartPracticeSession(context.Background(), "skill-1", 51)
-
-		var valErr *domain.ValidationError
-		require.True(t, errors.As(err, &valErr))
-		assertHasField(t, valErr, "count")
-	})
-
-	t.Run("a practice session shuffles exercise and option order per the injected shuffle", func(t *testing.T) {
-		exercises := newFakeExerciseRepository()
-		putWithSkill(exercises, "ex-1", "skill-1")
-		putWithSkill(exercises, "ex-2", "skill-1")
-		putWithSkill(exercises, "ex-3", "skill-1")
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
-
-		session, err := svc.StartPracticeSession(context.Background(), "skill-1", 10)
-
-		require.NoError(t, err)
-		assert.Equal(t, "opt-2", session.Exercises[0].Options[0].ID)
 	})
 }

@@ -55,12 +55,6 @@ type ExerciseRepository interface {
 	// none. Does not itself verify the content node exists.
 	ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Exercise, error)
 
-	// ListBySkillID returns every exercise linked to the skill identified by
-	// skillID, in no particular order — the practice-session pool for that
-	// skill. Selecting and randomizing a subset is an application-layer
-	// concern.
-	ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error)
-
 	// List returns one page of the exercises in the whole pool matching
 	// filter, ordered by id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error)

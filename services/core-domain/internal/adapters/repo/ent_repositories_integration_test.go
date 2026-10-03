@@ -711,31 +711,6 @@ func TestEntExerciseRepository_ListByContentNodeID_PreservesLinkOrder(t *testing
 	assert.Equal(t, wantOrder, gotOrder)
 }
 
-func TestEntExerciseRepository_ListBySkillID(t *testing.T) {
-	ctx := context.Background()
-	client := setupPostgres(t)
-	repo := NewEntExerciseRepository(client)
-	concept := seedConcept(t, ctx, client, "concept-"+uuid.NewString())
-
-	skillA := seedSkill(t, ctx, client, "alternate_picking-"+uuid.NewString())
-	skillB := seedSkill(t, ctx, client, "hybrid_picking-"+uuid.NewString())
-
-	label := "A major"
-	linked := domain.Exercise{ID: uuid.NewString(), Title: "Linked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.KnowledgeNode{skillA}, Concepts: []domain.KnowledgeNode{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, linked))
-	unlinked := domain.Exercise{ID: uuid.NewString(), Title: "Unlinked", Prompt: domain.NewPlainTextPrompt("Prompt"), ExerciseType: domain.ExerciseTypeTextResponse, Skills: []domain.KnowledgeNode{skillB}, Concepts: []domain.KnowledgeNode{concept}, Options: []domain.Option{{ID: uuid.NewString(), IsCorrect: true, Label: &label}}, ChallengeIDs: []string{}, CreatedAt: fixedAt}
-	require.NoError(t, repo.Create(ctx, unlinked))
-
-	list, err := repo.ListBySkillID(ctx, skillA.ID)
-	require.NoError(t, err)
-	require.Len(t, list, 1)
-	assert.Equal(t, linked.ID, list[0].ID)
-
-	empty, err := repo.ListBySkillID(ctx, uuid.NewString())
-	require.NoError(t, err)
-	assert.Empty(t, empty)
-}
-
 func TestEntExerciseRepository_LinkAndUnlinkChallenge(t *testing.T) {
 	client := setupPostgres(t)
 	ctx := context.Background()

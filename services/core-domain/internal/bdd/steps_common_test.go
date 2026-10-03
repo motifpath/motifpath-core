@@ -424,7 +424,6 @@ func (w *world) requestRefusedAuthError() error {
 		generated.ListContentNodePathExercises401JSONResponse,
 		generated.LinkExerciseToContentNode401JSONResponse,
 		generated.UnlinkExerciseFromContentNode401JSONResponse,
-		generated.StartPracticeSession401JSONResponse,
 		generated.CreateMediaUploadUrl401JSONResponse,
 		generated.CreateExpandedContent401JSONResponse,
 		generated.ListExpandedContent401JSONResponse,
@@ -501,8 +500,6 @@ func (w *world) validationErrors() ([]struct {
 	case generated.ListCatalogPaths400JSONResponse:
 		return resp.Errors, nil
 	case generated.EnrollInLearningPath400JSONResponse:
-		return resp.Errors, nil
-	case generated.StartPracticeSession400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreateContentNode400JSONResponse:
 		return resp.Errors, nil

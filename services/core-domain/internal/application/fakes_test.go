@@ -510,18 +510,6 @@ func (f *fakeExerciseRepository) ListByContentNodeID(_ context.Context, contentN
 	return result, nil
 }
 
-func (f *fakeExerciseRepository) ListBySkillID(_ context.Context, skillID string) ([]domain.Exercise, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var result []domain.Exercise
-	for _, ex := range f.byID {
-		if containsID(exerciseSkillIDs(ex), skillID) {
-			result = append(result, ex)
-		}
-	}
-	return result, nil
-}
-
 func (f *fakeExerciseRepository) List(_ context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -1736,41 +1736,6 @@ func (h *Handler) UnlinkExerciseFromContentNode(ctx context.Context, request gen
 	return generated.UnlinkExerciseFromContentNode204Response{}, nil
 }
 
-func (h *Handler) StartPracticeSession(ctx context.Context, request generated.StartPracticeSessionRequestObject) (generated.StartPracticeSessionResponseObject, error) {
-	if _, ok := h.resolveCaller(ctx); !ok {
-		return generated.StartPracticeSession401JSONResponse(unauthorizedError()), nil
-	}
-
-	count := 10
-	if request.Params.Count != nil {
-		count = *request.Params.Count
-	}
-
-	// SkillId is a required, non-pointer field: the generated chi router
-	// rejects a request that omits skill_id before this handler ever runs,
-	// but request objects built directly (as this package's own tests do)
-	// bypass that layer and land here with the zero uuid.UUID — treated the
-	// same as "" so ExerciseService's own validation still catches it.
-	var skillID string
-	if request.Params.SkillId != (openapi_types.UUID{}) {
-		skillID = request.Params.SkillId.String()
-	}
-
-	session, err := h.exercise.StartPracticeSession(ctx, skillID, count)
-	if err != nil {
-		if kind, valErr := classify(err); kind == errKindValidation {
-			return generated.StartPracticeSession400JSONResponse(validationErrorResponse(valErr)), nil
-		}
-		return nil, err
-	}
-
-	names, err := h.loadUserNames(ctx, exerciseUserIDs(session.Exercises...))
-	if err != nil {
-		return nil, err
-	}
-	return generated.StartPracticeSession200JSONResponse(toPracticeSession(session, names)), nil
-}
-
 func (h *Handler) ListKnowledgeNodes(ctx context.Context, request generated.ListKnowledgeNodesRequestObject) (generated.ListKnowledgeNodesResponseObject, error) {
 	if _, ok := h.resolveCaller(ctx); !ok {
 		return generated.ListKnowledgeNodes401JSONResponse(unauthorizedError()), nil

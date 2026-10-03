@@ -665,47 +665,6 @@ func (s *ExerciseService) ListPathExercisesForContentNode(ctx context.Context, c
 	return s.exercises.ListByContentNodeID(ctx, contentNodeID)
 }
 
-// PracticeSession is a generated, skill-targeted set of exercises for
-// self-directed practice. It is never persisted — StartPracticeSession
-// returns a fresh selection and ID on every call.
-type PracticeSession struct {
-	ID        string
-	SkillID   string
-	Exercises []domain.Exercise
-}
-
-// StartPracticeSession selects up to count exercises linked to skillID, in
-// random order with each exercise's options also randomized, under a fresh
-// session ID. Returns fewer than count exercises if the linked pool is
-// smaller. Any authenticated user may start a practice session.
-func (s *ExerciseService) StartPracticeSession(ctx context.Context, skillID string, count int) (PracticeSession, error) {
-	var errs []domain.FieldError
-	if skillID == "" {
-		errs = append(errs, domain.FieldError{Field: "skill_id", Reason: "must not be empty"})
-	}
-	if count < 1 || count > 50 {
-		errs = append(errs, domain.FieldError{Field: "count", Reason: "must be between 1 and 50"})
-	}
-	if len(errs) > 0 {
-		return PracticeSession{}, &domain.ValidationError{Fields: errs}
-	}
-
-	pool, err := s.exercises.ListBySkillID(ctx, skillID)
-	if err != nil {
-		return PracticeSession{}, err
-	}
-
-	s.shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
-	if len(pool) > count {
-		pool = pool[:count]
-	}
-	for i := range pool {
-		s.shuffleOptions(pool[i].Options)
-	}
-
-	return PracticeSession{ID: s.newID(), SkillID: skillID, Exercises: pool}, nil
-}
-
 func (s *ExerciseService) shuffleOptions(options []domain.Option) {
 	s.shuffle(len(options), func(i, j int) { options[i], options[j] = options[j], options[i] })
 }
