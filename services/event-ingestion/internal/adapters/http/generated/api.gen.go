@@ -257,7 +257,6 @@ const (
 	ChallengeSequence TriggerContextSource = "challenge_sequence"
 	FreePractice      TriggerContextSource = "free_practice"
 	PathExercise      TriggerContextSource = "path_exercise"
-	PracticeSession   TriggerContextSource = "practice_session"
 	Remediation       TriggerContextSource = "remediation"
 )
 
@@ -269,8 +268,6 @@ func (e TriggerContextSource) Valid() bool {
 	case FreePractice:
 		return true
 	case PathExercise:
-		return true
-	case PracticeSession:
 		return true
 	case Remediation:
 		return true
@@ -711,26 +708,12 @@ type TriggerContext struct {
 
 	// ContentNodeId ID of the ContentNode in whose context the exercise was triggered. Present when
 	// source is challenge_sequence, path_exercise, or remediation. Absent for
-	// practice_session and free_practice, which are not tied to a single node.
+	// free_practice, which is not tied to a single node.
 	ContentNodeId *openapi_types.UUID `json:"content_node_id,omitempty"`
-
-	// PracticeSessionId ID of the generated practice session this exercise belongs to.
-	// Present only when source is practice_session. Groups the exercise.*
-	// events emitted for one GET /practice-sessions call, since the
-	// session itself is not a stored resource.
-	PracticeSessionId *openapi_types.UUID `json:"practice_session_id,omitempty"`
-
-	// SkillId ID of the Skill this exercise was selected for. Present only when
-	// source is practice_session — the skill_id passed to
-	// GET /practice-sessions. Lets the Aggregation Worker compute
-	// per-skill accuracy for the recommendation engine.
-	SkillId *openapi_types.UUID `json:"skill_id,omitempty"`
 
 	// Source What triggered this exercise session. challenge_sequence = part of a
 	// node's challenge; path_exercise = one of a node's static,
-	// teacher-curated introductory exercises; practice_session = a
-	// randomized, skill-targeted session started via GET /practice-sessions
-	// — the primary between-lessons practice loop; free_practice = student
+	// teacher-curated introductory exercises; free_practice = student
 	// initiated independently, outside any of the above; remediation =
 	// surfaced by the recommendation engine as a remediation target.
 	Source TriggerContextSource `json:"source"`
@@ -738,9 +721,7 @@ type TriggerContext struct {
 
 // TriggerContextSource What triggered this exercise session. challenge_sequence = part of a
 // node's challenge; path_exercise = one of a node's static,
-// teacher-curated introductory exercises; practice_session = a
-// randomized, skill-targeted session started via GET /practice-sessions
-// — the primary between-lessons practice loop; free_practice = student
+// teacher-curated introductory exercises; free_practice = student
 // initiated independently, outside any of the above; remediation =
 // surfaced by the recommendation engine as a remediation target.
 type TriggerContextSource string

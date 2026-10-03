@@ -343,14 +343,6 @@ func toExercises(exercises []domain.Exercise, names userNames) []generated.Exerc
 	return result
 }
 
-func toPracticeSession(session application.PracticeSession, names userNames) generated.PracticeSession {
-	return generated.PracticeSession{
-		PracticeSessionId: mustUUID(session.ID),
-		SkillId:           mustUUID(session.SkillID),
-		Exercises:         toExercises(session.Exercises, names),
-	}
-}
-
 func toOption(o domain.Option) generated.Option {
 	option := generated.Option{
 		OptionId:  mustUUID(o.ID),

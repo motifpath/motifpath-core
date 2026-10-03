@@ -413,29 +413,6 @@ func (r *EntExerciseRepository) exercisesByID(ctx context.Context, ids []uuid.UU
 	return byID, nil
 }
 
-// ListBySkillID returns every exercise linked to the skill identified by
-// skillID, via the skills edge.
-func (r *EntExerciseRepository) ListBySkillID(ctx context.Context, skillID string) ([]domain.Exercise, error) {
-	parsed, err := uuid.Parse(skillID)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := r.client.Exercise.Query().
-		Where(exercise.HasSkillsWith(knowledgenode.ID(parsed))).
-		WithChallenges().
-		WithContentNodes().
-		WithOptions().
-		WithLanguages().
-		WithInstruments().
-		WithSkills(withNodeInstruments).
-		WithConcepts(withNodeInstruments).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return toDomainExercises(rows), nil
-}
-
 // List returns exercises from the whole pool narrowed by filter, every
 // filter applied in the query itself.
 func (r *EntExerciseRepository) List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error) {
