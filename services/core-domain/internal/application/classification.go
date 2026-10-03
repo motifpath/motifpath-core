@@ -7,24 +7,14 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// checkClassification reports a domain.ValidationError under "skill_ids"/
-// "concept_ids" if any id in skillIDs/conceptIDs does not reference an
-// existing skill/concept. skill_ids is checked first, so the same request
-// always reports the same field.
-func checkClassification(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs []string) error {
-	return checkClassificationFor(ctx, nodes, skillIDs, conceptIDs, nil)
-}
-
-// checkClassificationSuits is checkClassification for content meant for
-// instrumentIDs (empty meaning every instrument): each node must also suit
-// those instruments — see domain.KnowledgeNode.Suits.
+// checkClassificationSuits reports a domain.ValidationError under
+// "skill_ids"/"concept_ids" if any id in skillIDs/conceptIDs does not
+// reference an existing skill/concept, or references one that does not suit
+// instrumentIDs (empty meaning every instrument) — see
+// domain.KnowledgeNode.Suits. Every id is looked up in one batched call;
+// skill_ids is checked first, so the same request always reports the same
+// field.
 func checkClassificationSuits(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs, instrumentIDs []string) error {
-	return checkClassificationFor(ctx, nodes, skillIDs, conceptIDs, &instrumentIDs)
-}
-
-// checkClassificationFor looks every id up in one batched call, then checks
-// each field in turn; instrumentIDs nil skips the instrument rule.
-func checkClassificationFor(ctx context.Context, nodes ports.KnowledgeNodeRepository, skillIDs, conceptIDs []string, instrumentIDs *[]string) error {
 	if len(skillIDs) == 0 && len(conceptIDs) == 0 {
 		return nil
 	}
@@ -45,7 +35,7 @@ func checkClassificationFor(ctx context.Context, nodes ports.KnowledgeNodeReposi
 			if !ok || node.Kind != field.kind {
 				return domain.NewValidationError(field.name, "references a "+string(field.kind)+" that does not exist: "+id)
 			}
-			if instrumentIDs != nil && !node.Suits(*instrumentIDs) {
+			if !node.Suits(instrumentIDs) {
 				return domain.NewValidationError(field.name, "references a "+string(field.kind)+" that is for none of this item's instruments: "+id)
 			}
 		}

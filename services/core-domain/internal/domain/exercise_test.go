@@ -160,3 +160,26 @@ func imageRecognitionRegionOptions() []domain.Option {
 		{ID: "opt-1", IsCorrect: true, Region: &domain.OptionRegion{X: 0.2, Y: 0.3, Width: 0.1, Height: 0.1, Shape: domain.OptionRegionShapeRectangle}},
 	}
 }
+
+func TestExerciseSuits(t *testing.T) {
+	everyInstrument := domain.Exercise{}
+	guitar := domain.Exercise{InstrumentIDs: []string{"guitar"}}
+
+	tests := []struct {
+		name     string
+		exercise domain.Exercise
+		node     []string
+		want     bool
+	}{
+		{name: "an every-instrument exercise suits a bass node", exercise: everyInstrument, node: []string{"bass"}, want: true},
+		{name: "an every-instrument exercise suits an every-instrument node", exercise: everyInstrument, want: true},
+		{name: "a guitar exercise suits a guitar-and-bass node", exercise: guitar, node: []string{"guitar", "bass"}, want: true},
+		{name: "a guitar exercise does not suit a bass node", exercise: guitar, node: []string{"bass"}, want: false},
+		{name: "a guitar exercise does not suit an every-instrument node", exercise: guitar, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.exercise.Suits(tt.node))
+		})
+	}
+}

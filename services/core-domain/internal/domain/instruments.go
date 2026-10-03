@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // instrumentIDsProblem returns why ids can't be the instruments an item is
 // for, or "" if they can. An empty list is valid: it means the item suits
@@ -18,4 +21,21 @@ func instrumentIDsProblem(ids []string) string {
 		seen[id] = struct{}{}
 	}
 	return ""
+}
+
+// scopeSuits reports whether an item for scope (empty meaning every
+// instrument) may serve content for instrumentIDs (likewise): an item for
+// every instrument serves any content; an item for specific instruments
+// serves content for at least one of them, never content for every
+// instrument.
+func scopeSuits(scope, instrumentIDs []string) bool {
+	if len(scope) == 0 {
+		return true
+	}
+	for _, id := range instrumentIDs {
+		if slices.Contains(scope, id) {
+			return true
+		}
+	}
+	return false
 }

@@ -444,6 +444,17 @@ func (c *classificationSeeder) conceptID(ctx context.Context, key string) (strin
 	return c.nodeID(ctx, domain.KnowledgeNodeKindConcept, key)
 }
 
+// ids resolves both keys of an exercise's classification.
+func (c *classificationSeeder) ids(ctx context.Context, keys exerciseClassification) (skillID, conceptID string, err error) {
+	if skillID, err = c.skillID(ctx, keys.skill); err != nil {
+		return "", "", err
+	}
+	if conceptID, err = c.conceptID(ctx, keys.concept); err != nil {
+		return "", "", err
+	}
+	return skillID, conceptID, nil
+}
+
 func (c *classificationSeeder) nodeID(ctx context.Context, kind domain.KnowledgeNodeKind, key string) (string, error) {
 	found, err := c.nodes.GetByKeys(ctx, []string{key})
 	if err != nil {
@@ -575,37 +586,56 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		return domain.Challenge{}, fmt.Errorf("create shared practice challenge: %w", err)
 	}
 
-	skillID, err := classifier.skillID(ctx, "hear-intervals")
-	if err != nil {
-		return domain.Challenge{}, err
-	}
-	conceptID, err := classifier.conceptID(ctx, "interval-names")
-	if err != nil {
-		return domain.Challenge{}, err
-	}
-	label := func(s string) *string { return &s }
 	// Real, publicly reachable sample media — see seedContentNodes' video URL
 	// comment above for why cdn.motifpath.io can't be used here.
-	imageURL := "https://placehold.co/640x360/png?text=Fretboard"
-	audioURL := "https://samplelib.com/lib/preview/mp3/sample-3s.mp3"
-
-	type spec struct {
-		title        string
-		exerciseType domain.ExerciseType
-		imageURL     *string
-		audioURL     *string
-		options      []domain.Option
+	for _, s := range exerciseTypeSpecs("https://placehold.co/640x360/png?text=Fretboard", "https://samplelib.com/lib/preview/mp3/sample-3s.mp3") {
+		skillID, conceptID, err := classifier.ids(ctx, s.classification)
+		if err != nil {
+			return domain.Challenge{}, err
+		}
+		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
+			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
+		if err != nil {
+			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
+		}
+		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
+			return domain.Challenge{}, fmt.Errorf("link %s exercise to challenge: %w", s.exerciseType, err)
+		}
 	}
-	specs := []spec{
+	return challenge, nil
+}
+
+// exerciseClassification is the skill and concept a seeded exercise is
+// classified under, by knowledge map key.
+type exerciseClassification struct {
+	skill, concept string
+}
+
+// exerciseTypeSpec is one exercise of exerciseTypeSpecs.
+type exerciseTypeSpec struct {
+	title          string
+	exerciseType   domain.ExerciseType
+	imageURL       *string
+	audioURL       *string
+	options        []domain.Option
+	classification exerciseClassification
+}
+
+// exerciseTypeSpecs is one exercise of every exercise_type, each classified
+// under what it actually asks — not the challenge's subject.
+func exerciseTypeSpecs(imageURL, audioURL string) []exerciseTypeSpec {
+	label := func(s string) *string { return &s }
+	intervals := exerciseClassification{skill: "hear-intervals", concept: "interval-names"}
+	return []exerciseTypeSpec{
 		{
-			title: "Name the interval — text response", exerciseType: domain.ExerciseTypeTextResponse,
+			title: "Name the interval — text response", exerciseType: domain.ExerciseTypeTextResponse, classification: intervals,
 			options: []domain.Option{
 				{ID: uuid.NewString(), IsCorrect: true, Label: label("Perfect fifth")},
 				{ID: uuid.NewString(), IsCorrect: false, Label: label("Major third")},
 			},
 		},
 		{
-			title: "Identify the recorded interval", exerciseType: domain.ExerciseTypeAudioRecognition, audioURL: &audioURL,
+			title: "Identify the recorded interval", exerciseType: domain.ExerciseTypeAudioRecognition, audioURL: &audioURL, classification: intervals,
 			options: []domain.Option{
 				{ID: uuid.NewString(), IsCorrect: true, Label: label("Minor third")},
 				{ID: uuid.NewString(), IsCorrect: false, Label: label("Major sixth")},
@@ -613,6 +643,7 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		},
 		{
 			title: "Tap the root note on the fretboard", exerciseType: domain.ExerciseTypeImageRecognition, imageURL: &imageURL,
+			classification: exerciseClassification{skill: "find-notes", concept: "root-note"},
 			// Four regions, one per image quadrant, each 18% of the image's
 			// width/height — big, easy-to-hit tap targets rather than the
 			// tiny 6% markers a real diagram's precise hotspots would use.
@@ -625,6 +656,7 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		},
 		{
 			title: "Pick the matching chord shape", exerciseType: domain.ExerciseTypeImageChoice,
+			classification: exerciseClassification{skill: "play-open-chords", concept: "open-chord-shapes"},
 			options: []domain.Option{
 				{ID: uuid.NewString(), IsCorrect: true, ImageURL: &imageURL},
 				{ID: uuid.NewString(), IsCorrect: false, ImageURL: &imageURL},
@@ -632,24 +664,13 @@ func seedExercisesAllTypes(ctx context.Context, teacher domain.User, challengeSv
 		},
 		{
 			title: "Pick the matching recorded lick", exerciseType: domain.ExerciseTypeAudioSelection,
+			classification: exerciseClassification{skill: "hear-licks", concept: "lick"},
 			options: []domain.Option{
 				{ID: uuid.NewString(), IsCorrect: true, AudioURL: &audioURL},
 				{ID: uuid.NewString(), IsCorrect: false, AudioURL: &audioURL},
 			},
 		},
 	}
-
-	for _, s := range specs {
-		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), s.exerciseType,
-			[]string{skillID}, []string{conceptID}, s.imageURL, s.audioURL, nil, nil, s.options, nil, nil, []string{"en"}, nil)
-		if err != nil {
-			return domain.Challenge{}, fmt.Errorf("create %s exercise: %w", s.exerciseType, err)
-		}
-		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
-			return domain.Challenge{}, fmt.Errorf("link %s exercise to challenge: %w", s.exerciseType, err)
-		}
-	}
-	return challenge, nil
 }
 
 // seededCourses is the four courses seedCourses creates, one per
@@ -936,7 +957,7 @@ func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challe
 	}
 	for _, s := range specs {
 		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
-			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, nil)
+			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
 		if err != nil {
 			return fmt.Errorf("create exercise %q: %w", s.title, err)
 		}

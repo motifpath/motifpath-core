@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
@@ -288,12 +289,22 @@ func (r *EntKnowledgeNodeRepository) ClassifiedInstrumentSets(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	sets := make([][]string, 0, len(contentNodes)+len(diagrams))
+	exercises, err := r.client.Exercise.Query().
+		Where(exercise.Or(exercise.HasSkillsWith(classifiedBy), exercise.HasConceptsWith(classifiedBy))).
+		WithInstruments().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sets := make([][]string, 0, len(contentNodes)+len(diagrams)+len(exercises))
 	for _, row := range contentNodes {
 		sets = append(sets, instrumentIDsOf(row.Edges.Instruments))
 	}
 	for _, row := range diagrams {
 		sets = append(sets, instrumentIDsOf(row.Edges.CompatibleInstruments))
+	}
+	for _, row := range exercises {
+		sets = append(sets, instrumentIDsOf(row.Edges.Instruments))
 	}
 	return sets, nil
 }

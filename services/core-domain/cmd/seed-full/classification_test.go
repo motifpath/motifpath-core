@@ -41,3 +41,20 @@ func TestClassificationSeederResolvesMapKeys(t *testing.T) {
 	_, err = c.conceptID(ctx, "never-installed")
 	assert.ErrorContains(t, err, "no concept")
 }
+
+func TestSeededExercisesAreClassifiedByWhatTheyAsk(t *testing.T) {
+	got := map[string]exerciseClassification{}
+	for _, s := range exerciseTypeSpecs("https://example.test/image.png", "https://example.test/audio.mp3") {
+		got[s.title] = s.classification
+	}
+	got[listeningTitle] = listeningClassification
+
+	assert.Equal(t, map[string]exerciseClassification{
+		"Name the interval — text response":                     {skill: "hear-intervals", concept: "interval-names"},
+		"Identify the recorded interval":                        {skill: "hear-intervals", concept: "interval-names"},
+		"Tap the root note on the fretboard":                    {skill: "find-notes", concept: "root-note"},
+		"Pick the matching chord shape":                         {skill: "play-open-chords", concept: "open-chord-shapes"},
+		"Pick the matching recorded lick":                       {skill: "hear-licks", concept: "lick"},
+		"Listen to the E major chord, then tap its major third": {skill: "hear-chord-quality", concept: "major-triads"},
+	}, got)
+}

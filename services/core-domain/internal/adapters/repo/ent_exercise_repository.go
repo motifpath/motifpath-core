@@ -11,6 +11,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/language"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
@@ -517,6 +518,16 @@ func exerciseFilterPredicates(filter domain.ExerciseFilter) ([]predicate.Exercis
 			return nil, err
 		}
 		predicates = append(predicates, f.match(parsed))
+	}
+	if len(filter.InstrumentIDs) > 0 {
+		instrumentIDs, err := parseUUIDs(filter.InstrumentIDs)
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, exercise.Or(
+			exercise.Not(exercise.HasInstruments()),
+			exercise.HasInstrumentsWith(instrument.IDIn(instrumentIDs...)),
+		))
 	}
 	return predicates, nil
 }

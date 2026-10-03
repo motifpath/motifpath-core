@@ -163,6 +163,8 @@ type fakeContentNodeRepository struct {
 	byID      map[string]domain.ContentNode
 	createErr error
 	getErr    error
+	// linkedExercises is what LinkedExerciseInstrumentSets returns per node.
+	linkedExercises map[string][][]string
 }
 
 func newFakeContentNodeRepository() *fakeContentNodeRepository {
@@ -205,6 +207,12 @@ func (f *fakeContentNodeRepository) GetByIDs(_ context.Context, ids []string) (m
 		}
 	}
 	return result, nil
+}
+
+func (f *fakeContentNodeRepository) LinkedExerciseInstrumentSets(_ context.Context, id string) ([][]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.linkedExercises[id], nil
 }
 
 func (f *fakeContentNodeRepository) put(node domain.ContentNode) {
@@ -535,6 +543,9 @@ func (f *fakeExerciseRepository) List(_ context.Context, filter domain.ExerciseF
 			continue
 		}
 		if filter.Query != "" && !strings.Contains(strings.ToLower(ex.Title), strings.ToLower(filter.Query)) {
+			continue
+		}
+		if len(filter.InstrumentIDs) > 0 && len(ex.InstrumentIDs) > 0 && !slices.ContainsFunc(filter.InstrumentIDs, func(id string) bool { return slices.Contains(ex.InstrumentIDs, id) }) {
 			continue
 		}
 		result = append(result, ex)

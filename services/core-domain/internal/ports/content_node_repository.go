@@ -26,4 +26,8 @@ type ContentNodeRepository interface {
 
 	// Update returns domain.ErrNotFound if no node exists with the given id.
 	Update(ctx context.Context, node domain.ContentNode) error
+	// LinkedExerciseInstrumentSets returns the instruments of every exercise
+	// linked to the node, as a path exercise or through one of its
+	// challenges — one set per link, empty meaning every instrument.
+	LinkedExerciseInstrumentSets(ctx context.Context, id string) ([][]string, error)
 }

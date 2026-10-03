@@ -132,15 +132,7 @@ func (n *KnowledgeNode) setInstrumentIDs(instrumentIDs []string) error {
 // instrument suits any content; a node for specific instruments suits
 // content for at least one of them, never content for every instrument.
 func (n KnowledgeNode) Suits(instrumentIDs []string) bool {
-	if len(n.InstrumentIDs) == 0 {
-		return true
-	}
-	for _, id := range instrumentIDs {
-		if slices.Contains(n.InstrumentIDs, id) {
-			return true
-		}
-	}
-	return false
+	return scopeSuits(n.InstrumentIDs, instrumentIDs)
 }
 
 // Within reports whether n's instruments fit inside parent's: a child is

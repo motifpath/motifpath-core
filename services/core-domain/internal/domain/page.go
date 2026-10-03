@@ -78,6 +78,9 @@ type ExerciseFilter struct {
 	CreatedBy string
 	// Query is a case-insensitive substring match against the title.
 	Query string
+	// InstrumentIDs keeps exercises for at least one of these instruments,
+	// plus exercises for every instrument; empty applies no filter.
+	InstrumentIDs []string
 }
 
 // LearningPathFilter narrows a learning path listing. Query is a

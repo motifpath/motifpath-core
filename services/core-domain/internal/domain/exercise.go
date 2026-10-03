@@ -615,3 +615,12 @@ func (e Exercise) ForInstruments(instrumentIDs []string) (Exercise, error) {
 	e.InstrumentIDs = instrumentIDs
 	return e, nil
 }
+
+// Suits reports whether the exercise may be linked to a content node for
+// nodeInstrumentIDs (empty meaning every instrument), as a path exercise or
+// through one of its challenges: an exercise for every instrument suits any
+// node; an exercise for specific instruments suits a node for at least one
+// of them, never a node for every instrument.
+func (e Exercise) Suits(nodeInstrumentIDs []string) bool {
+	return scopeSuits(e.InstrumentIDs, nodeInstrumentIDs)
+}

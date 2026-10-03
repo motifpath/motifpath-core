@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -116,6 +117,14 @@ const (
 // guitars are the instruments seeded guitar lessons are for, so they may be
 // classified under guitar-only skills and concepts.
 var guitars = []string{acousticGuitarID, electricGuitarID}
+
+// forGuitars is guitars as an exercise's instruments: seeded exercises
+// drill the guitar lessons they are linked to, so they share those lessons'
+// instruments and may use guitar-only skills and concepts.
+func forGuitars() *[]string {
+	ids := slices.Clone(guitars)
+	return &ids
+}
 
 // installedInstruments returns the acoustic guitar and electric bass the
 // migrations install.
