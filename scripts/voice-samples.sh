@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # voice-samples.sh — renders every voice's samples and uploads them to the
-# LOCAL dev MinIO, where the voice list says players download them from
+# LOCAL dev object store, where the voice list says players download them from
 # (audio/voices/{voice_id}/{midi}.mp3 under the content-media bucket).
 #
 # Which pitches a voice has is read from the local database's voices table,
@@ -9,8 +9,8 @@
 # (CC BY 3.0, github.com/nbrosowsky/tonejs-instruments), re-pitched to match,
 # then trimmed to 3 s with a 0.6 s fade, mono, MP3 96 kbps.
 #
-# Rendering needs ffmpeg (not part of devbox; e.g. `nix shell
-# nixpkgs#ffmpeg-headless`). Rendered files are cached in .voice-samples/
+# Rendering needs ffmpeg and Bash 4+ (neither is provided by mise; see the
+# README). Rendered files are cached in .voice-samples/
 # (gitignored), so later runs upload without ffmpeg or network access.
 #
 # Usage: scripts/voice-samples.sh   (make db:reset runs it after seeding)
@@ -139,13 +139,11 @@ while IFS='|' read -r voice pitches; do
 done < <(docker compose exec -T postgres psql -U motifpath -d core_domain -tA \
   -c "SELECT id || '|' || string_agg(p::text, ' ') FROM voices, jsonb_array_elements_text(pitches) AS p GROUP BY id")
 
-echo "==> Uploading voice samples to local MinIO"
-docker compose up -d minio >/dev/null
-docker compose run --rm --no-deps -v "$(pwd)/$CACHE_DIR:/samples:ro" --entrypoint sh minio-init -c "
-  mc alias set local http://minio:9000 motifpath motifpath >/dev/null &&
-  mc mb --ignore-existing local/$BUCKET >/dev/null &&
-  mc anonymous set download local/$BUCKET >/dev/null &&
-  mc mirror --overwrite --exclude '.originals/*' --exclude '*.partial.mp3' /samples local/$BUCKET/audio/voices
-" >/dev/null
+echo "==> Uploading voice samples to the local object store"
+docker compose up -d objectstore >/dev/null
+docker compose run --rm -v "$(pwd)/$CACHE_DIR:/samples:ro" --entrypoint sh objectstore-init -c "
+  aws s3api head-bucket --bucket $BUCKET 2>/dev/null || aws s3 mb s3://$BUCKET >/dev/null
+  aws s3 sync /samples s3://$BUCKET/audio/voices --exclude '.originals/*' --exclude '*.partial.mp3' --only-show-errors
+"
 echo "==> voice samples done"
 exit "$failed"

@@ -43,8 +43,11 @@ test\:int:
 lint:
 	golangci-lint run ./services/event-ingestion/... ./services/core-domain/... ./services/aggregation-worker/...
 
+# --remove-orphans: a container left over from a service that was removed
+# from docker-compose.yml keeps running and holding its host ports, which
+# blocks a replacement service published on the same port.
 dev:
-	docker compose up -d
+	docker compose up -d --remove-orphans
 	@echo "Waiting for services to be healthy..."
 	@docker compose ps
 

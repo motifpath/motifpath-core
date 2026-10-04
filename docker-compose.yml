@@ -30,40 +30,64 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: quay.io/minio/minio:RELEASE.2024-08-29T01-40-52Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: motifpath
-      MINIO_ROOT_PASSWORD: motifpath
+  # Local stand-in for S3 (content media). SeaweedFS replaces MinIO, whose
+  # public images were withdrawn from Docker Hub and quay.io in 2026. Same
+  # port, credentials and bucket as before, so service .env files are
+  # unchanged. Only the S3 API (9000) is published; SeaweedFS's master,
+  # volume and filer ports stay inside the container.
+  objectstore:
+    image: chrislusf/seaweedfs:4.48
+    command:
+      - server
+      - -s3
+      - -s3.port=9000
+      - -s3.config=/etc/seaweedfs/s3.json
+      # Browser uploads go straight to the presigned PUT URL, so the S3
+      # gateway has to answer CORS itself. Dev-only: any origin.
+      - -s3.allowedOrigins=*
+    configs:
+      - source: objectstore_s3
+        target: /etc/seaweedfs/s3.json
     ports:
       - "9000:9000"   # S3 API
-      - "9001:9001"   # web console
     volumes:
-      - minio_data:/data
+      - objectstore_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9000"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
 
   # One-shot: creates the content-media bucket MediaService uploads into,
-  # then exits. MinIO itself doesn't auto-create buckets — a real S3 bucket
-  # in production is provisioned by motifpath-infra instead, read through a
-  # CDN rather than a public bucket policy. Public-read here is a dev-only
-  # stand-in for that so object_url is fetchable without signing, matching
-  # what MEDIA_PUBLIC_BASE_URL promises.
-  minio-init:
-    image: quay.io/minio/mc:latest
+  # then exits. A real S3 bucket in production is provisioned by
+  # motifpath-infra instead, read through a CDN rather than a public bucket
+  # policy. Public-read here is a dev-only stand-in for that so object_url
+  # is fetchable without signing, matching what MEDIA_PUBLIC_BASE_URL
+  # promises.
+  objectstore-init:
+    image: amazon/aws-cli:2.37.9
     depends_on:
-      minio:
+      objectstore:
         condition: service_healthy
-    entrypoint: >
-      sh -c "
-        mc alias set local http://minio:9000 motifpath motifpath &&
-        mc mb --ignore-existing local/motifpath-content-media &&
-        mc anonymous set download local/motifpath-content-media
-      "
+    environment:
+      AWS_ACCESS_KEY_ID: motifpath
+      AWS_SECRET_ACCESS_KEY: motifpath
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://objectstore:9000
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        B=motifpath-content-media
+        # The port opens slightly before the gateway answers requests.
+        n=0
+        until aws s3api list-buckets >/dev/null 2>&1; do
+          n=$$((n+1)); [ $$n -lt 30 ] || { echo "objectstore not answering" >&2; exit 1; }
+          sleep 2
+        done
+        aws s3api head-bucket --bucket $$B 2>/dev/null || aws s3 mb s3://$$B
+        aws s3api put-bucket-policy --bucket $$B --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::motifpath-content-media/*"}]}'
 
   redpanda:
     image: redpandadata/redpanda:v24.2.7
@@ -87,4 +111,24 @@ services:
 volumes:
   postgres_data:
   mongo_data:
-  minio_data:
+  objectstore_data:
+
+configs:
+  # S3 identities for the local object store: one admin key pair (what the
+  # services and objectstore-init use) and anonymous read on the media
+  # bucket.
+  objectstore_s3:
+    content: |
+      {
+        "identities": [
+          {
+            "name": "motifpath",
+            "credentials": [{ "accessKey": "motifpath", "secretKey": "motifpath" }],
+            "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+          },
+          {
+            "name": "anonymous",
+            "actions": ["Read:motifpath-content-media"]
+          }
+        ]
+      }

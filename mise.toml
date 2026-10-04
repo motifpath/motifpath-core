@@ -1,0 +1,44 @@
+# mise — the pinned toolchain and task shortcuts for motifpath-core.
+#
+#   curl https://mise.run | sh        # install mise (once per machine)
+#   mise trust && mise install        # install the tools pinned below
+#   mise run dev                      # start the dependency containers
+#   mise run services                 # backend inner loop (process-compose)
+#   mise run full                     # backend + aggregation-worker + web
+#
+# Not managed here: atlas, GNU `timeout`, Bash 4+, ffmpeg — see the README.
+
+[tools]
+go = "1.27"
+node = "26"
+# Built from source with `go install`, so they work on every platform.
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.13.1"
+"go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen" = "2.4.1"
+"go:github.com/bokwoon95/wgo" = "0.7.1"
+"go:github.com/f1bonacc1/process-compose" = "1.122.0"
+
+[env]
+# process-compose's own API defaults to port 8080, which collides with
+# core-domain and makes its readiness probe hit the wrong server.
+PC_PORT_NUM = "8099"
+
+[tasks.dev]
+description = "Start Postgres, MongoDB, Redpanda and the object store"
+run = "make dev"
+
+[tasks.services]
+description = "Backend inner loop: core-domain + event-ingestion"
+run = "process-compose up"
+
+[tasks.full]
+description = "Full stack: backend + aggregation-worker + web SPA"
+run = "process-compose up core-domain event-ingestion aggregation-worker web"
+
+[tasks.generate]
+run = "make generate"
+
+[tasks.test]
+run = "make test"
+
+[tasks.lint]
+run = "make lint"
