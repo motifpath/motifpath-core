@@ -104,6 +104,9 @@ NEVER access the database directly from the domain layer.
 - `go run ./cmd/seed-full`     → the comprehensive seeder `db:reset` runs; safe to run standalone
   against an already-fresh, fully migrated database, but not idempotent against one with prior
   seed data (its synthetic users collide on a second run).
+- `go run ./cmd/sync-practice-reference` → rebuilds MongoDB's `practice_reference` snapshot the
+  worker's practice graders read (ADR-047). The service already runs it on every start; diagram
+  create/update keep it current. Every new write path for a snapshotted kind must call the writer.
 - Reference-data migrations are generated, never hand-edited: `scripts/knowledge_map` compiles
   motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map) and
   `scripts/diagram_catalog` the basic guitar catalog; run `atlas migrate hash` afterwards.
