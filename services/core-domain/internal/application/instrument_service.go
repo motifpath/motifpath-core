@@ -23,11 +23,12 @@ func NewInstrumentService(instruments ports.InstrumentRepository, voices ports.V
 	return &InstrumentService{instruments: instruments, voices: voices, languages: languages, newID: newID}
 }
 
-// CreateInstrument creates a new instrument played by defaultVoiceID. Only
+// CreateInstrument creates a new instrument played by defaultVoiceID and
+// drawn with icon, or with its family's generic icon when icon is nil. Only
 // teachers and admins may create one — instruments are an authoring surface.
 // names must cover every language MotifPath offers, since every user sees
 // the instrument, and the voice must exist and play the instrument's family.
-func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.User, names map[string]string, family domain.InstrumentFamily, stringCount *int, tuning []string, keyRange *domain.KeyRange, defaultVoiceID string) (domain.Instrument, error) {
+func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.User, names map[string]string, family domain.InstrumentFamily, stringCount *int, tuning []string, keyRange *domain.KeyRange, defaultVoiceID string, icon *string) (domain.Instrument, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Instrument{}, domain.ErrForbidden
 	}
@@ -44,17 +45,22 @@ func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.
 	if err != nil {
 		return domain.Instrument{}, err
 	}
+	if icon != nil {
+		if instrument, err = instrument.WithIcon(*icon); err != nil {
+			return domain.Instrument{}, err
+		}
+	}
 	if err := s.instruments.Create(ctx, instrument); err != nil {
 		return domain.Instrument{}, err
 	}
 	return instrument, nil
 }
 
-// UpdateInstrument replaces an instrument's names and, when defaultVoiceID
-// is non-nil, its default voice — the only parts of an instrument that can
+// UpdateInstrument replaces an instrument's names and, when non-nil, its
+// default voice and its icon — the only parts of an instrument that can
 // change. Only admins may, since instruments are shared by every user; the
 // new names must cover every language MotifPath offers.
-func (s *InstrumentService) UpdateInstrument(ctx context.Context, caller domain.User, id string, names map[string]string, defaultVoiceID *string) (domain.Instrument, error) {
+func (s *InstrumentService) UpdateInstrument(ctx context.Context, caller domain.User, id string, names map[string]string, defaultVoiceID *string, icon *string) (domain.Instrument, error) {
 	if caller.Role != domain.RoleAdmin {
 		return domain.Instrument{}, domain.ErrForbidden
 	}
@@ -76,6 +82,16 @@ func (s *InstrumentService) UpdateInstrument(ctx context.Context, caller domain.
 	}
 
 	updated, err := domain.NewInstrument(current.ID, names, offered, current.Family, current.StringCount, current.Tuning, current.KeyRange, voice)
+	if err != nil {
+		return domain.Instrument{}, err
+	}
+	// An instrument stored without an icon keeps the family's generic one updated starts with.
+	switch {
+	case icon != nil:
+		updated, err = updated.WithIcon(*icon)
+	case current.Icon != "":
+		updated, err = updated.WithIcon(current.Icon)
+	}
 	if err != nil {
 		return domain.Instrument{}, err
 	}

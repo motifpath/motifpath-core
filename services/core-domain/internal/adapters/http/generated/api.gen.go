@@ -1617,8 +1617,8 @@ type CreateExpandedContentRequest struct {
 // mutually exclusive with the others.
 type CreateExpandedContentRequestContentType string
 
-// CreateInstrumentRequest Payload for creating a new instrument. Only its names can change
-// afterwards (see updateInstrument); there is no delete endpoint, and
+// CreateInstrumentRequest Payload for creating a new instrument. Only its names, default voice
+// and icon can change afterwards (see updateInstrument); there is no delete endpoint, and
 // changing family or string/key shape after Diagrams exist against it
 // is a deliberately open question.
 type CreateInstrumentRequest struct {
@@ -1628,6 +1628,13 @@ type CreateInstrumentRequest struct {
 
 	// Family Which coordinate shape Diagrams against this instrument will use.
 	Family CreateInstrumentRequestFamily `json:"family"`
+
+	// Icon Which picture stands for an instrument, as a key a client draws its
+	// own icon for. Known keys: acoustic_guitar, electric_guitar,
+	// electric_bass, piano, and the generic fretted and keyboard. The set
+	// is open: a client that doesn't know a key draws the generic icon of
+	// the instrument's family.
+	Icon *InstrumentIcon `json:"icon,omitempty"`
 
 	// KeyRange Required when family is keyboard; must be absent when family is fretted.
 	KeyRange *struct {
@@ -2444,6 +2451,13 @@ type Instrument struct {
 	// positions[].key. A single Diagram cannot mix families.
 	Family InstrumentFamily `json:"family"`
 
+	// Icon Which picture stands for an instrument, as a key a client draws its
+	// own icon for. Known keys: acoustic_guitar, electric_guitar,
+	// electric_bass, piano, and the generic fretted and keyboard. The set
+	// is open: a client that doesn't know a key draws the generic icon of
+	// the instrument's family.
+	Icon InstrumentIcon `json:"icon"`
+
 	// InstrumentId Stable identifier for this instrument.
 	InstrumentId openapi_types.UUID `json:"instrument_id"`
 
@@ -2485,6 +2499,13 @@ type Instrument struct {
 // positions[].string/positions[].fret; keyboard diagrams populate
 // positions[].key. A single Diagram cannot mix families.
 type InstrumentFamily string
+
+// InstrumentIcon Which picture stands for an instrument, as a key a client draws its
+// own icon for. Known keys: acoustic_guitar, electric_guitar,
+// electric_bass, piano, and the generic fretted and keyboard. The set
+// is open: a client that doesn't know a key draws the generic icon of
+// the instrument's family.
+type InstrumentIcon = string
 
 // InstrumentIds The instruments this item is for, by Instrument.instrument_id. An
 // empty list means it suits every instrument (for example, music
@@ -3145,7 +3166,8 @@ type PracticeNodeProgress struct {
 // PracticePickReason Why the session composer put an item in a session, shown to the student.
 // teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
 // practised but not yet secure; new = it has not been practised yet; warm_up = something
-// already known, played first with the instrument in hand; application = applying the
+// already known, played first with the instrument in hand, below the student's edge and
+// outside the evidence: its takes are not sent as practice.item_answered; application = applying the
 // skill to music; review_ahead = a known item reviewed before it falls due, when nothing
 // else is due; stretch = an unseen item of a node the student is ready to start, when
 // nothing else is due.
@@ -3231,7 +3253,8 @@ type PracticeSessionItem struct {
 	// Reason Why the session composer put an item in a session, shown to the student.
 	// teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
 	// practised but not yet secure; new = it has not been practised yet; warm_up = something
-	// already known, played first with the instrument in hand; application = applying the
+	// already known, played first with the instrument in hand, below the student's edge and
+	// outside the evidence: its takes are not sent as practice.item_answered; application = applying the
 	// skill to music; review_ahead = a known item reviewed before it falls due, when nothing
 	// else is due; stretch = an unseen item of a node the student is ready to start, when
 	// nothing else is due.
@@ -4045,12 +4068,19 @@ type UpdateExpandedContentRequest struct {
 type UpdateExpandedContentRequestContentType string
 
 // UpdateInstrumentRequest Payload for replacing an instrument's names and, optionally, its
-// default voice.
+// default voice and icon.
 type UpdateInstrumentRequest struct {
 	// DefaultVoiceId The voice that plays this instrument's diagrams by default,
 	// replacing the current one. Must be an existing voice of the
 	// instrument's family. Omitted leaves it unchanged.
 	DefaultVoiceId *string `json:"default_voice_id,omitempty"`
+
+	// Icon Which picture stands for an instrument, as a key a client draws its
+	// own icon for. Known keys: acoustic_guitar, electric_guitar,
+	// electric_bass, piano, and the generic fretted and keyboard. The set
+	// is open: a client that doesn't know a key draws the generic icon of
+	// the instrument's family.
+	Icon *InstrumentIcon `json:"icon,omitempty"`
 
 	// Names Text in one or more languages, keyed by Language.code — for example
 	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
@@ -4788,7 +4818,7 @@ type ServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(w http.ResponseWriter, r *http.Request)
-	// Replace an instrument's names and default voice
+	// Replace an instrument's names, default voice and icon
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID)
 	// List knowledge edges
@@ -5187,7 +5217,7 @@ func (_ Unimplemented) CreateInstrument(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Replace an instrument's names and default voice
+// Replace an instrument's names, default voice and icon
 // (PATCH /instruments/{instrument_id})
 func (_ Unimplemented) UpdateInstrument(w http.ResponseWriter, r *http.Request, instrumentId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -12468,7 +12498,7 @@ type StrictServerInterface interface {
 	// Create an instrument
 	// (POST /instruments)
 	CreateInstrument(ctx context.Context, request CreateInstrumentRequestObject) (CreateInstrumentResponseObject, error)
-	// Replace an instrument's names and default voice
+	// Replace an instrument's names, default voice and icon
 	// (PATCH /instruments/{instrument_id})
 	UpdateInstrument(ctx context.Context, request UpdateInstrumentRequestObject) (UpdateInstrumentResponseObject, error)
 	// List knowledge edges

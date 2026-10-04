@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+)
 
 // InstrumentFamily decides which coordinate shape every Diagram authored
 // against an Instrument uses. Guitar and bass share the fretted shape;
@@ -42,7 +45,16 @@ type Instrument struct {
 	// DefaultVoiceID is the Voice that plays this instrument's diagrams
 	// unless a usage picks another; always a voice of Family.
 	DefaultVoiceID string
+	// Icon is the key of the picture a client draws for the instrument
+	// (e.g. "electric_bass"). The set is open: a client draws an unknown key
+	// as its family's generic icon, which is the key a new instrument starts
+	// with ("fretted" or "keyboard").
+	Icon string
 }
+
+// iconKey is the shape of an instrument icon key: lowercase words joined by
+// underscores, starting with a letter.
+var iconKey = regexp.MustCompile(`^[a-z][a-z_]*$`)
 
 // MaxInstrumentNameLength is the longest an instrument's name may be, in
 // characters, in any one language.
@@ -82,6 +94,7 @@ func NewInstrument(id string, names map[string]string, languages []string, famil
 		StringCount: stringCount,
 		Tuning:      tuning,
 		KeyRange:    keyRange,
+		Icon:        string(family),
 	}.WithDefaultVoice(defaultVoice)
 }
 
@@ -95,6 +108,16 @@ func (i Instrument) WithDefaultVoice(voice Voice) (Instrument, error) {
 		return Instrument{}, NewValidationError("default_voice_id", "must be a voice of the instrument's family")
 	}
 	i.DefaultVoiceID = voice.ID
+	return i, nil
+}
+
+// WithIcon returns a copy of i drawn with the picture icon names, or an
+// error if icon is not a key.
+func (i Instrument) WithIcon(icon string) (Instrument, error) {
+	if !iconKey.MatchString(icon) {
+		return Instrument{}, NewValidationError("icon", "must be lowercase words joined by underscores, such as electric_bass")
+	}
+	i.Icon = icon
 	return i, nil
 }
 

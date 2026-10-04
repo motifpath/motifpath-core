@@ -65,6 +65,16 @@ class ValidationTests(unittest.TestCase):
                 self.assertRejected(raw, fragment)
 
 
+class InstrumentIconTests(unittest.TestCase):
+    def test_every_catalog_instrument_gets_its_icon_by_its_fixed_id(self):
+        sql = km.render_instrument_icons_sql()
+        for key, icon in (('guitar', 'acoustic_guitar'), ('electric-guitar', 'electric_guitar'), ('electric-bass', 'electric_bass')):
+            self.assertIn(f"""UPDATE "instruments" SET "icon" = '{icon}' WHERE "id" = '{km.instrument_id(key)}';""", sql)
+
+    def test_icons_install_after_the_column_they_fill(self):
+        self.assertGreater(km.INSTRUMENT_ICONS_FILE, km.INSTRUMENTS_FILE)
+
+
 @unittest.skipUnless(MAP.exists(), f'{MAP} not found; set SPECS_DIR')
 class CatalogTests(unittest.TestCase):
     def test_the_reviewed_map_builds_with_its_counts(self):

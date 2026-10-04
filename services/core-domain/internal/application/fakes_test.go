@@ -1692,7 +1692,7 @@ func (f *fakeInstrumentRepository) Update(_ context.Context, instrument domain.I
 	if !ok {
 		return domain.ErrNotFound
 	}
-	current.Names, current.DefaultVoiceID = instrument.Names, instrument.DefaultVoiceID
+	current.Names, current.DefaultVoiceID, current.Icon = instrument.Names, instrument.DefaultVoiceID, instrument.Icon
 	f.byID[instrument.ID] = current
 	return nil
 }

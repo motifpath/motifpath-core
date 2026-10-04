@@ -18,14 +18,14 @@ func intPtr(n int) *int { return &n }
 func frettedInstrument() domain.Instrument {
 	return domain.Instrument{
 		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "6-string guitar", "pt_BR": "Violão de 6 cordas"}, Family: domain.InstrumentFamilyFretted,
-		StringCount: intPtr(6), Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: "acoustic-guitar",
+		StringCount: intPtr(6), Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: "acoustic-guitar", Icon: "acoustic_guitar",
 	}
 }
 
 func keyboardInstrument() domain.Instrument {
 	return domain.Instrument{
 		ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Piano", "pt_BR": "Piano"}, Family: domain.InstrumentFamilyKeyboard,
-		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: "piano",
+		KeyRange: &domain.KeyRange{Lowest: "A0", Highest: "C8"}, DefaultVoiceID: "piano", Icon: "piano",
 	}
 }
 
@@ -67,6 +67,7 @@ func TestEntInstrumentRepository_Update(t *testing.T) {
 	updated := guitar
 	updated.Names = domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}
 	updated.DefaultVoiceID = "electric-guitar"
+	updated.Icon = "electric_guitar"
 	require.NoError(t, repo.Update(ctx, updated))
 
 	got, err := repo.GetByID(ctx, guitar.ID)

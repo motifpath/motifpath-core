@@ -829,6 +829,7 @@ var (
 		{Name: "tuning", Type: field.TypeJSON, Nullable: true},
 		{Name: "key_range_lowest", Type: field.TypeString, Nullable: true},
 		{Name: "key_range_highest", Type: field.TypeString, Nullable: true},
+		{Name: "icon", Type: field.TypeString, Default: "fretted"},
 		{Name: "default_voice_id", Type: field.TypeString},
 	}
 	// InstrumentsTable holds the schema information for the "instruments" table.
@@ -839,7 +840,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "instruments_voices_default_voice",
-				Columns:    []*schema.Column{InstrumentsColumns[7]},
+				Columns:    []*schema.Column{InstrumentsColumns[8]},
 				RefColumns: []*schema.Column{VoicesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

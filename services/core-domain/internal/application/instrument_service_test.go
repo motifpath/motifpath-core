@@ -27,7 +27,7 @@ func TestInstrumentService_CreateInstrument(t *testing.T) {
 		repo := newFakeInstrumentRepository()
 		svc := newInstrumentService(repo)
 
-		got, err := svc.CreateInstrument(context.Background(), teacherCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar")
+		got, err := svc.CreateInstrument(context.Background(), teacherCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar", nil)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, got.ID)
@@ -42,7 +42,7 @@ func TestInstrumentService_CreateInstrument(t *testing.T) {
 	t.Run("an admin creates a keyboard instrument", func(t *testing.T) {
 		svc := newInstrumentService(newFakeInstrumentRepository())
 
-		got, err := svc.CreateInstrument(context.Background(), adminCaller(), map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, "piano")
+		got, err := svc.CreateInstrument(context.Background(), adminCaller(), map[string]string{"en": "Piano", "pt_BR": "Piano"}, domain.InstrumentFamilyKeyboard, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, "piano", nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.InstrumentFamilyKeyboard, got.Family)
@@ -72,7 +72,7 @@ func TestInstrumentService_CreateInstrument(t *testing.T) {
 			repo := newFakeInstrumentRepository()
 			svc := newInstrumentService(repo)
 
-			_, err := svc.CreateInstrument(context.Background(), teacherCaller(), tt.names, tt.family, tt.stringCount, tt.tuning, tt.keyRange, tt.defaultVoiceID)
+			_, err := svc.CreateInstrument(context.Background(), teacherCaller(), tt.names, tt.family, tt.stringCount, tt.tuning, tt.keyRange, tt.defaultVoiceID, nil)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)
@@ -87,7 +87,7 @@ func TestInstrumentService_CreateInstrument(t *testing.T) {
 		repo := newFakeInstrumentRepository()
 		svc := newInstrumentService(repo)
 
-		_, err := svc.CreateInstrument(context.Background(), studentCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar")
+		_, err := svc.CreateInstrument(context.Background(), studentCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar", nil)
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
 		list, listErr := repo.List(context.Background())
@@ -112,13 +112,14 @@ func TestInstrumentService_UpdateInstrument(t *testing.T) {
 		original := seed(t, repo)
 		svc := newInstrumentService(repo)
 
-		got, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, bilingualGuitar, nil)
+		got, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, bilingualGuitar, nil, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}, got.Names)
 		assert.Equal(t, original.Family, got.Family)
 		assert.Equal(t, original.Tuning, got.Tuning)
 		assert.Equal(t, "acoustic-guitar", got.DefaultVoiceID)
+		assert.Equal(t, "fretted", got.Icon, "an instrument stored without an icon gets its family's")
 		stored, err := repo.GetByID(ctx, original.ID)
 		require.NoError(t, err)
 		assert.Equal(t, got, stored)
@@ -130,7 +131,7 @@ func TestInstrumentService_UpdateInstrument(t *testing.T) {
 		svc := newInstrumentService(repo)
 		electric := "electric-guitar"
 
-		got, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, bilingualGuitar, &electric)
+		got, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, bilingualGuitar, &electric, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "electric-guitar", got.DefaultVoiceID)
@@ -155,7 +156,7 @@ func TestInstrumentService_UpdateInstrument(t *testing.T) {
 			original := seed(t, repo)
 			svc := newInstrumentService(repo)
 
-			_, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, tt.names, &tt.defaultVoiceID)
+			_, err := svc.UpdateInstrument(ctx, adminCaller(), original.ID, tt.names, &tt.defaultVoiceID, nil)
 
 			var valErr *domain.ValidationError
 			require.ErrorAs(t, err, &valErr)
@@ -172,7 +173,7 @@ func TestInstrumentService_UpdateInstrument(t *testing.T) {
 			original := seed(t, repo)
 			svc := newInstrumentService(repo)
 
-			_, err := svc.UpdateInstrument(ctx, caller, original.ID, bilingualGuitar, nil)
+			_, err := svc.UpdateInstrument(ctx, caller, original.ID, bilingualGuitar, nil, nil)
 
 			require.ErrorIs(t, err, domain.ErrForbidden, "role %s", caller.Role)
 		}
@@ -181,9 +182,94 @@ func TestInstrumentService_UpdateInstrument(t *testing.T) {
 	t.Run("an unknown instrument is not found", func(t *testing.T) {
 		svc := newInstrumentService(newFakeInstrumentRepository())
 
-		_, err := svc.UpdateInstrument(ctx, adminCaller(), "nope", bilingualGuitar, nil)
+		_, err := svc.UpdateInstrument(ctx, adminCaller(), "nope", bilingualGuitar, nil, nil)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+// requireValidationField asserts err is a validation error naming field first.
+func requireValidationField(t *testing.T, err error, field string) {
+	t.Helper()
+	var valErr *domain.ValidationError
+	require.ErrorAs(t, err, &valErr)
+	assert.Equal(t, field, valErr.Fields[0].Field)
+}
+
+func TestInstrumentService_InstrumentIcon(t *testing.T) {
+	ctx := context.Background()
+	six := 6
+	icon := func(key string) *string { return &key }
+
+	t.Run("an instrument is created with the icon given", func(t *testing.T) {
+		svc := newInstrumentService(newFakeInstrumentRepository())
+
+		got, err := svc.CreateInstrument(ctx, teacherCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar", icon("acoustic_guitar"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "acoustic_guitar", got.Icon)
+	})
+
+	t.Run("an instrument created without an icon gets its family's", func(t *testing.T) {
+		svc := newInstrumentService(newFakeInstrumentRepository())
+
+		got, err := svc.CreateInstrument(ctx, teacherCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar", nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, "fretted", got.Icon)
+	})
+
+	t.Run("an icon that is not a key is rejected without persisting", func(t *testing.T) {
+		repo := newFakeInstrumentRepository()
+		svc := newInstrumentService(repo)
+
+		_, err := svc.CreateInstrument(ctx, teacherCaller(), bilingualGuitar, domain.InstrumentFamilyFretted, &six, guitarTuning, nil, "acoustic-guitar", icon("Electric Bass!"))
+
+		requireValidationField(t, err, "icon")
+		list, listErr := repo.List(ctx)
+		require.NoError(t, listErr)
+		assert.Empty(t, list)
+	})
+
+	electricGuitar := domain.Instrument{ID: "guitar", Names: domain.LocalizedText{"en": "Guitar", "pt_BR": "Violão"}, Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: guitarTuning, DefaultVoiceID: "acoustic-guitar", Icon: "electric_guitar"}
+
+	t.Run("an admin changes the icon", func(t *testing.T) {
+		repo := newFakeInstrumentRepository()
+		repo.put(electricGuitar)
+		svc := newInstrumentService(repo)
+
+		got, err := svc.UpdateInstrument(ctx, adminCaller(), "guitar", bilingualGuitar, nil, icon("acoustic_guitar"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "acoustic_guitar", got.Icon)
+		stored, err := repo.GetByID(ctx, "guitar")
+		require.NoError(t, err)
+		assert.Equal(t, "acoustic_guitar", stored.Icon)
+	})
+
+	t.Run("an update without an icon leaves it as it was", func(t *testing.T) {
+		repo := newFakeInstrumentRepository()
+		repo.put(electricGuitar)
+		svc := newInstrumentService(repo)
+
+		got, err := svc.UpdateInstrument(ctx, adminCaller(), "guitar", bilingualGuitar, nil, nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, "electric_guitar", got.Icon)
+	})
+
+	t.Run("an update with an icon that is not a key is rejected", func(t *testing.T) {
+		repo := newFakeInstrumentRepository()
+		repo.put(electricGuitar)
+		svc := newInstrumentService(repo)
+
+		_, err := svc.UpdateInstrument(ctx, adminCaller(), "guitar", bilingualGuitar, nil, icon("Bass"))
+		requireValidationField(t, err, "icon")
+		_, err = svc.UpdateInstrument(ctx, adminCaller(), "guitar", bilingualGuitar, nil, icon(""))
+		requireValidationField(t, err, "icon")
+		stored, getErr := repo.GetByID(ctx, "guitar")
+		require.NoError(t, getErr)
+		assert.Equal(t, "electric_guitar", stored.Icon)
 	})
 }
 
