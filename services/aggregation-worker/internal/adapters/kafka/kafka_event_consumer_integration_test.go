@@ -155,3 +155,54 @@ func TestKafkaEventConsumer_Run_DoesNotCommitOnHandlerFailure(t *testing.T) {
 
 	assert.Equal(t, "student-2", succeedingHandler.handled[0].StudentID)
 }
+
+// failOnceHandler fails the first attempt at each listed content node, then
+// succeeds, recording the nodes it handled in order.
+type failOnceHandler struct {
+	mu       sync.Mutex
+	failNext map[string]bool
+	handled  []string
+}
+
+func (f *failOnceHandler) Handle(_ context.Context, event domain.TrackingEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failNext[event.ContentNodeID] {
+		f.failNext[event.ContentNodeID] = false
+		return errors.New("simulated transient failure")
+	}
+	f.handled = append(f.handled, event.ContentNodeID)
+	return nil
+}
+
+func (f *failOnceHandler) snapshot() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.handled...)
+}
+
+func TestKafkaEventConsumer_Run_RetriesAFailedMessageBeforeTheNext(t *testing.T) {
+	broker := setupBroker(t)
+	for _, node := range []string{"node-a", "node-b"} {
+		publishRaw(t, broker, "student-3", map[string]any{
+			"event_type":      "lesson.started",
+			"student_id":      "student-3",
+			"content_context": map[string]any{"content_node_id": node},
+		})
+	}
+
+	handler := &failOnceHandler{failNext: map[string]bool{"node-a": true}}
+	consumer := NewKafkaEventConsumer([]string{broker}, handler, testLogger())
+	t.Cleanup(func() { assert.NoError(t, consumer.Close()) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	go func() { _ = consumer.Run(ctx) }()
+
+	// A failed message must not be skipped: committing the next one would move the
+	// group's offset past it, and it would never be delivered again.
+	require.Eventually(t, func() bool {
+		return len(handler.snapshot()) == 2
+	}, 20*time.Second, 200*time.Millisecond, "both messages must be handled")
+	assert.Equal(t, []string{"node-a", "node-b"}, handler.snapshot(), "a student's events must be handled in order")
+}
