@@ -288,6 +288,12 @@ const (
 	ExpandedContentContentTypeRichText ExpandedContentContentType = "rich_text"
 )
 
+// Defines values for FretboardDrill.
+const (
+	FindTheNote FretboardDrill = "find_the_note"
+	NameTheNote FretboardDrill = "name_the_note"
+)
+
 // Defines values for HealthStatusChecks.
 const (
 	HealthStatusChecksFail HealthStatusChecks = "fail"
@@ -310,6 +316,15 @@ const (
 const (
 	Applies  KnowledgeEdgeType = "applies"
 	Requires KnowledgeEdgeType = "requires"
+)
+
+// Defines values for KnowledgeLevel.
+const (
+	KnowledgeLevelAccurate KnowledgeLevel = "accurate"
+	KnowledgeLevelFluent   KnowledgeLevel = "fluent"
+	KnowledgeLevelLearning KnowledgeLevel = "learning"
+	KnowledgeLevelNew      KnowledgeLevel = "new"
+	KnowledgeLevelRetained KnowledgeLevel = "retained"
 )
 
 // Defines values for KnowledgeNodeKind.
@@ -350,9 +365,9 @@ const (
 
 // Defines values for MasteryLevel.
 const (
-	Accurate MasteryLevel = "accurate"
-	Fluent   MasteryLevel = "fluent"
-	Retained MasteryLevel = "retained"
+	MasteryLevelAccurate MasteryLevel = "accurate"
+	MasteryLevelFluent   MasteryLevel = "fluent"
+	MasteryLevelRetained MasteryLevel = "retained"
 )
 
 // Defines values for OptionRegionShape.
@@ -377,6 +392,33 @@ const (
 	PathDetailLevelEarlyIntermediate PathDetailLevel = "early_intermediate"
 	PathDetailLevelExpert            PathDetailLevel = "expert"
 	PathDetailLevelIntermediate      PathDetailLevel = "intermediate"
+)
+
+// Defines values for PracticeItemKind.
+const (
+	PracticeItemKindChordChange   PracticeItemKind = "chord_change"
+	PracticeItemKindExercise      PracticeItemKind = "exercise"
+	PracticeItemKindFretboardCell PracticeItemKind = "fretboard_cell"
+	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
+)
+
+// Defines values for PracticeNextStepKind.
+const (
+	ReadyToStart PracticeNextStepKind = "ready_to_start"
+	Refresh      PracticeNextStepKind = "refresh"
+	Strengthen   PracticeNextStepKind = "strengthen"
+)
+
+// Defines values for PracticePickReason.
+const (
+	Application      PracticePickReason = "application"
+	Due              PracticePickReason = "due"
+	New              PracticePickReason = "new"
+	ReviewAhead      PracticePickReason = "review_ahead"
+	Stretch          PracticePickReason = "stretch"
+	TeacherSuggested PracticePickReason = "teacher_suggested"
+	WarmUp           PracticePickReason = "warm_up"
+	Weak             PracticePickReason = "weak"
 )
 
 // Defines values for PromptDocumentType.
@@ -441,6 +483,13 @@ const (
 	SequenceStepStrumDown SequenceStepStrum = "down"
 	SequenceStepStrumNone SequenceStepStrum = "none"
 	SequenceStepStrumUp   SequenceStepStrum = "up"
+)
+
+// Defines values for SkillProgressMeasure.
+const (
+	Accuracy          SkillProgressMeasure = "accuracy"
+	BestCleanTempoBpm SkillProgressMeasure = "best_clean_tempo_bpm"
+	Fluency           SkillProgressMeasure = "fluency"
 )
 
 // Defines values for StudentPathLevel.
@@ -1733,6 +1782,16 @@ type CreateMediaUploadUrlRequestContentType string
 // content_type must be image.
 type CreateMediaUploadUrlRequestPurpose string
 
+// CreatePracticeSessionPlanRequest What the student chose before practising.
+type CreatePracticeSessionPlanRequest struct {
+	// InstrumentId The instrument in the student's hands. Null (or omitted) for a session
+	// practised in the head, without an instrument.
+	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+
+	// Minutes How long the student wants to practise, in minutes.
+	Minutes int `json:"minutes"`
+}
+
 // Diagram A prebuilt, reusable diagram — structured position data for a scale,
 // chord, or similar pattern on a specific instrument. Never stores a
 // rendered image or SVG; motifpath-web renders positions client-side
@@ -2342,6 +2401,10 @@ type ForbiddenError struct {
 	Message string `json:"message"`
 }
 
+// FretboardDrill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
+// its note; find_the_note = the note and string are named and the student taps the cell.
+type FretboardDrill string
+
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
 // service that exposes an HTTP health surface so the contract cannot drift
 // between services.
@@ -2464,6 +2527,13 @@ type KnowledgeEdge struct {
 // instrument. An applies edge never implies a requirement; the same
 // two nodes may carry both.
 type KnowledgeEdgeType string
+
+// KnowledgeLevel How well a student knows an item, or a knowledge node, derived from the evidence.
+// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+// over long reviews.
+type KnowledgeLevel string
 
 // KnowledgeNode A skill or concept in the knowledge graph. Each kind forms
 // a strict tree through parent_id — at most one parent, always of the
@@ -2965,6 +3035,252 @@ type PathDetailLevel string
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
 
+// PracticeItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+//
+//   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+//     The instrument is the one whose fretboard layout the cell belongs to, so instruments
+//     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+//     fret 0 is the open string.
+//   - exercise:<exercise id> — an authored exercise.
+//   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+//   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//
+// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+// grader, and its golden cases.
+type PracticeItemKey = string
+
+// PracticeItemKind The kind of a practice item, the prefix of its item key. The set is open: a new kind
+// is added with its key scheme, grader and golden cases.
+type PracticeItemKind string
+
+// PracticeNextStep One suggested next step, framed as an opportunity, never as a failure.
+type PracticeNextStep struct {
+	// Kind refresh = known items are fading; strengthen = practised but not yet secure;
+	// ready_to_start = every requirement is met and nothing is practised yet.
+	Kind PracticeNextStepKind `json:"kind"`
+
+	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	Level *KnowledgeLevel `json:"level,omitempty"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId The skill the step is about.
+	NodeId openapi_types.UUID `json:"node_id"`
+}
+
+// PracticeNextStepKind refresh = known items are fading; strengthen = practised but not yet secure;
+// ready_to_start = every requirement is met and nothing is practised yet.
+type PracticeNextStepKind string
+
+// PracticeNodeGroup The practice nodes of one area, or the nodes that suit any instrument.
+type PracticeNodeGroup struct {
+	// AnyInstrument True for the group of nodes that suit any instrument.
+	AnyInstrument bool `json:"any_instrument"`
+
+	// AreaNodeId The area (a top-level node) of this group. Null for the "Any instrument" group.
+	AreaNodeId *openapi_types.UUID `json:"area_node_id"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// Nodes The group's nodes, in catalog order.
+	Nodes []PracticeNodeProgress `json:"nodes"`
+}
+
+// PracticeNodeProgress Where the student stands on one knowledge node for the summarised instrument. A
+// node with items of its own has a level; a wide node (one with child nodes) is shown
+// through its coverage and its children, never a level.
+type PracticeNodeProgress struct {
+	// ChildNodeIds The node's children, shown with their own levels. Empty for a leaf.
+	ChildNodeIds []openapi_types.UUID `json:"child_node_ids"`
+
+	// Coverage How much of the node's subtree the student has met.
+	Coverage struct {
+		// ItemCount Items in the subtree that suit the instrument.
+		ItemCount int `json:"item_count"`
+
+		// MetCount Items in the subtree at accurate or above.
+		MetCount int `json:"met_count"`
+	} `json:"coverage"`
+
+	// Fading True when the node's level rests on items whose review is due.
+	Fading bool `json:"fading"`
+
+	// Level The highest level at least 80% of the node's items reach. Null for a wide node,
+	// or a node with nothing to practise.
+	Level *KnowledgeLevel `json:"level"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId The knowledge node.
+	NodeId openapi_types.UUID `json:"node_id"`
+
+	// Readiness How many of the node's requirements are met for the instrument. Informs, never
+	// gates.
+	Readiness struct {
+		// MetCount Requirements whose target has reached the required level.
+		MetCount int `json:"met_count"`
+
+		// RequiredCount Requirements that count for the instrument.
+		RequiredCount int `json:"required_count"`
+	} `json:"readiness"`
+}
+
+// PracticePickReason Why the session composer put an item in a session, shown to the student.
+// teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+// practised but not yet secure; new = it has not been practised yet; warm_up = something
+// already known, played first with the instrument in hand; application = applying the
+// skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+// else is due; stretch = an unseen item of a node the student is ready to start, when
+// nothing else is due.
+type PracticePickReason string
+
+// PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
+// one of fretboard_cell, exercise and play_along is present, matching kind.
+type PracticeSessionItem struct {
+	// EstimatedSeconds About how long the item takes, used to fit the session to its minutes.
+	EstimatedSeconds int `json:"estimated_seconds"`
+
+	// Exercise A reusable, standalone practice item classified by skill/concept
+	// tree references and independent of any single challenge. The
+	// exercise_id is the value the SPA supplies in exercise-family
+	// tracking events. An exercise is checked by option selection: the
+	// student's selected option ID(s) must match the option(s) marked
+	// is_correct.
+	Exercise *Exercise `json:"exercise,omitempty"`
+
+	// FretboardCell Present when kind is fretboard_cell.
+	FretboardCell *struct {
+		// Drill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
+		// its note; find_the_note = the note and string are named and the student taps the cell.
+		Drill FretboardDrill `json:"drill"`
+
+		// Fret The cell's fret; 0 is the open string.
+		Fret int `json:"fret"`
+
+		// LayoutInstrumentId The instrument whose fretboard layout and tuning the cell belongs to.
+		LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
+		// String The cell's string, 1 being the highest-pitched.
+		String int `json:"string"`
+	} `json:"fretboard_cell,omitempty"`
+
+	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+	//
+	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
+	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+	//   fret 0 is the open string.
+	// - exercise:<exercise id> — an authored exercise.
+	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	//
+	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+	// grader, and its golden cases.
+	ItemKey PracticeItemKey `json:"item_key"`
+
+	// Kind The kind of a practice item, the prefix of its item key. The set is open: a new kind
+	// is added with its key scheme, grader and golden cases.
+	Kind PracticeItemKind `json:"kind"`
+
+	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	Level KnowledgeLevel `json:"level"`
+
+	// NodeId The knowledge node this pick serves, shown with its reason (for example the
+	// node a stretch item starts). Null when the reason needs none.
+	NodeId *openapi_types.UUID `json:"node_id"`
+
+	// PlayAlong Present when kind is play_along.
+	PlayAlong *struct {
+		// BestCleanTempoBpm The student's best clean tempo since their latest teacher review. Null when
+		// they have no clean take yet.
+		BestCleanTempoBpm *int `json:"best_clean_tempo_bpm"`
+
+		// DiagramId The diagram played along with.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+
+		// StartTempoBpm The tempo to play this take at. For a warm-up, about 80% of the student's
+		// best clean tempo; otherwise the tempo ladder's current step.
+		StartTempoBpm int `json:"start_tempo_bpm"`
+
+		// TargetTempoBpm The tempo the item aims for, the diagram's own tempo.
+		TargetTempoBpm int `json:"target_tempo_bpm"`
+	} `json:"play_along,omitempty"`
+
+	// Reason Why the session composer put an item in a session, shown to the student.
+	// teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+	// practised but not yet secure; new = it has not been practised yet; warm_up = something
+	// already known, played first with the instrument in hand; application = applying the
+	// skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+	// else is due; stretch = an unseen item of a node the student is ready to start, when
+	// nothing else is due.
+	Reason PracticePickReason `json:"reason"`
+}
+
+// PracticeSessionPlan A composed practice session. Not stored: it exists only in this response and in the
+// practice.session_started event the client sends when the student starts it.
+type PracticeSessionPlan struct {
+	// InstrumentId The instrument in hand, or null for a session in the head.
+	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+
+	// Items The items to practise, in order.
+	Items []PracticeSessionItem `json:"items"`
+
+	// Minutes The time the session was composed for, in minutes.
+	Minutes int `json:"minutes"`
+
+	// PracticeSessionId New identifier for this session, carried by every practice.* event it produces.
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+}
+
+// PracticeSummary The practice home for one instrument, derived from the student's evidence.
+type PracticeSummary struct {
+	// Groups Every practice node, grouped by area, then a group for nodes that suit any
+	// instrument.
+	Groups []PracticeNodeGroup `json:"groups"`
+
+	// InstrumentId The instrument summarised, or null for nodes that suit any instrument only.
+	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+
+	// NextSteps The top three next steps, in order.
+	NextSteps []PracticeNextStep `json:"next_steps"`
+
+	// NextStepsTotal How many next steps there are in all, for "see all".
+	NextStepsTotal int `json:"next_steps_total"`
+
+	// PracticeDaysLast7 On how many of the last 7 calendar days, in the given time zone, the student
+	// practised. Never a streak: a missed day is never a reset.
+	PracticeDaysLast7 int `json:"practice_days_last_7"`
+
+	// ProgressThisWeek Skills that improved this week, most improved first. Empty when none did.
+	ProgressThisWeek []SkillProgress `json:"progress_this_week"`
+
+	// StudentInstrumentIds The student's instruments: those of the paths and courses they're enrolled in,
+	// plus any they added. The home shows one tab per instrument.
+	StudentInstrumentIds []openapi_types.UUID `json:"student_instrument_ids"`
+}
+
 // PromptDocument A structured rich-text document, authored with MotifPath's
 // Tiptap-based content-authoring editor and persisted exactly as the
 // editor produces it (ProseMirror JSON). Used for an exercise's
@@ -3215,6 +3531,33 @@ type SetCurrentPathRequest struct {
 	// StudentPathId A non-archived standalone StudentPath already belonging to the caller, to make current.
 	StudentPathId *openapi_types.UUID `json:"student_path_id,omitempty"`
 }
+
+// SkillProgress How one skill improved this week, with both values so the student sees where they
+// started (for example accuracy 0.72 → 0.86).
+type SkillProgress struct {
+	// After The value now.
+	After float32 `json:"after"`
+
+	// Before The value at the start of the week.
+	Before float32 `json:"before"`
+
+	// Measure What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
+	// practised items; best_clean_tempo_bpm is a tempo.
+	Measure SkillProgressMeasure `json:"measure"`
+
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// NodeId The skill.
+	NodeId openapi_types.UUID `json:"node_id"`
+}
+
+// SkillProgressMeasure What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
+// practised items; best_clean_tempo_bpm is a tempo.
+type SkillProgressMeasure string
 
 // StudentPath A student's own copy of a learning path template's items. Created by
 // copying a LearningPath at assign time; independently editable
@@ -4204,6 +4547,17 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// GetPracticeSummaryParams defines parameters for GetPracticeSummary.
+type GetPracticeSummaryParams struct {
+	// InstrumentId The instrument to summarise. Absent means only nodes and items that suit any
+	// instrument.
+	InstrumentId *openapi_types.UUID `form:"instrument_id,omitempty" json:"instrument_id,omitempty"`
+
+	// TimeZone The student's IANA time zone, such as America/Sao_Paulo, used to decide which
+	// calendar day each practice falls on.
+	TimeZone *string `form:"time_zone,omitempty" json:"time_zone,omitempty"`
+}
+
 // UpdateChallengeJSONRequestBody defines body for UpdateChallenge for application/json ContentType.
 type UpdateChallengeJSONRequestBody = UpdateChallengeRequest
 
@@ -4272,6 +4626,9 @@ type CreateCourseEnrollmentJSONRequestBody = CreateCourseEnrollmentRequest
 
 // SetCurrentPathJSONRequestBody defines body for SetCurrentPath for application/json ContentType.
 type SetCurrentPathJSONRequestBody = SetCurrentPathRequest
+
+// CreatePracticeSessionPlanJSONRequestBody defines body for CreatePracticeSessionPlan for application/json ContentType.
+type CreatePracticeSessionPlanJSONRequestBody = CreatePracticeSessionPlanRequest
 
 // EnrollInLearningPathJSONRequestBody defines body for EnrollInLearningPath for application/json ContentType.
 type EnrollInLearningPathJSONRequestBody = EnrollInLearningPathRequest
@@ -4509,6 +4866,12 @@ type ServerInterface interface {
 	// Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID)
+	// Compose a practice session for the authenticated student
+	// (POST /students/me/practice-sessions)
+	CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request)
+	// Read the authenticated student's practice summary for the home
+	// (GET /students/me/practice-summary)
+	GetPracticeSummary(w http.ResponseWriter, r *http.Request, params GetPracticeSummaryParams)
 	// List the authenticated student's standalone paths
 	// (GET /students/me/student-paths)
 	ListMyStandalonePaths(w http.ResponseWriter, r *http.Request)
@@ -4977,6 +5340,18 @@ func (_ Unimplemented) GetMyPath(w http.ResponseWriter, r *http.Request) {
 // Archive a standalone student path
 // (POST /students/me/paths/{student_path_id}/archive)
 func (_ Unimplemented) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *http.Request, studentPathId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Compose a practice session for the authenticated student
+// (POST /students/me/practice-sessions)
+func (_ Unimplemented) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Read the authenticated student's practice summary for the home
+// (GET /students/me/practice-summary)
+func (_ Unimplemented) GetPracticeSummary(w http.ResponseWriter, r *http.Request, params GetPracticeSummaryParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7699,6 +8074,67 @@ func (siw *ServerInterfaceWrapper) ArchiveStandaloneStudentPath(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
+// CreatePracticeSessionPlan operation middleware
+func (siw *ServerInterfaceWrapper) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePracticeSessionPlan(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPracticeSummary operation middleware
+func (siw *ServerInterfaceWrapper) GetPracticeSummary(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPracticeSummaryParams
+
+	// ------------- Optional query parameter "instrument_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "time_zone" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "time_zone", r.URL.Query(), &params.TimeZone)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "time_zone", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPracticeSummary(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListMyStandalonePaths operation middleware
 func (siw *ServerInterfaceWrapper) ListMyStandalonePaths(w http.ResponseWriter, r *http.Request) {
 
@@ -8184,6 +8620,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/students/me/paths/{student_path_id}/archive", wrapper.ArchiveStandaloneStudentPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/students/me/practice-sessions", wrapper.CreatePracticeSessionPlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/practice-summary", wrapper.GetPracticeSummary)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/student-paths", wrapper.ListMyStandalonePaths)
@@ -11486,6 +11928,94 @@ func (response ArchiveStandaloneStudentPath409JSONResponse) VisitArchiveStandalo
 	return json.NewEncoder(w).Encode(response)
 }
 
+type CreatePracticeSessionPlanRequestObject struct {
+	Body *CreatePracticeSessionPlanJSONRequestBody
+}
+
+type CreatePracticeSessionPlanResponseObject interface {
+	VisitCreatePracticeSessionPlanResponse(w http.ResponseWriter) error
+}
+
+type CreatePracticeSessionPlan200JSONResponse PracticeSessionPlan
+
+func (response CreatePracticeSessionPlan200JSONResponse) VisitCreatePracticeSessionPlanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreatePracticeSessionPlan400JSONResponse ValidationError
+
+func (response CreatePracticeSessionPlan400JSONResponse) VisitCreatePracticeSessionPlanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreatePracticeSessionPlan401JSONResponse UnauthorizedError
+
+func (response CreatePracticeSessionPlan401JSONResponse) VisitCreatePracticeSessionPlanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreatePracticeSessionPlan404JSONResponse NotFoundError
+
+func (response CreatePracticeSessionPlan404JSONResponse) VisitCreatePracticeSessionPlanResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPracticeSummaryRequestObject struct {
+	Params GetPracticeSummaryParams
+}
+
+type GetPracticeSummaryResponseObject interface {
+	VisitGetPracticeSummaryResponse(w http.ResponseWriter) error
+}
+
+type GetPracticeSummary200JSONResponse PracticeSummary
+
+func (response GetPracticeSummary200JSONResponse) VisitGetPracticeSummaryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPracticeSummary400JSONResponse ValidationError
+
+func (response GetPracticeSummary400JSONResponse) VisitGetPracticeSummaryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPracticeSummary401JSONResponse UnauthorizedError
+
+func (response GetPracticeSummary401JSONResponse) VisitGetPracticeSummaryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPracticeSummary404JSONResponse NotFoundError
+
+func (response GetPracticeSummary404JSONResponse) VisitGetPracticeSummaryResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListMyStandalonePathsRequestObject struct {
 }
 
@@ -12016,6 +12546,12 @@ type StrictServerInterface interface {
 	// Archive a standalone student path
 	// (POST /students/me/paths/{student_path_id}/archive)
 	ArchiveStandaloneStudentPath(ctx context.Context, request ArchiveStandaloneStudentPathRequestObject) (ArchiveStandaloneStudentPathResponseObject, error)
+	// Compose a practice session for the authenticated student
+	// (POST /students/me/practice-sessions)
+	CreatePracticeSessionPlan(ctx context.Context, request CreatePracticeSessionPlanRequestObject) (CreatePracticeSessionPlanResponseObject, error)
+	// Read the authenticated student's practice summary for the home
+	// (GET /students/me/practice-summary)
+	GetPracticeSummary(ctx context.Context, request GetPracticeSummaryRequestObject) (GetPracticeSummaryResponseObject, error)
 	// List the authenticated student's standalone paths
 	// (GET /students/me/student-paths)
 	ListMyStandalonePaths(ctx context.Context, request ListMyStandalonePathsRequestObject) (ListMyStandalonePathsResponseObject, error)
@@ -14118,6 +14654,63 @@ func (sh *strictHandler) ArchiveStandaloneStudentPath(w http.ResponseWriter, r *
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ArchiveStandaloneStudentPathResponseObject); ok {
 		if err := validResponse.VisitArchiveStandaloneStudentPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePracticeSessionPlan operation middleware
+func (sh *strictHandler) CreatePracticeSessionPlan(w http.ResponseWriter, r *http.Request) {
+	var request CreatePracticeSessionPlanRequestObject
+
+	var body CreatePracticeSessionPlanJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePracticeSessionPlan(ctx, request.(CreatePracticeSessionPlanRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePracticeSessionPlan")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePracticeSessionPlanResponseObject); ok {
+		if err := validResponse.VisitCreatePracticeSessionPlanResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPracticeSummary operation middleware
+func (sh *strictHandler) GetPracticeSummary(w http.ResponseWriter, r *http.Request, params GetPracticeSummaryParams) {
+	var request GetPracticeSummaryRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPracticeSummary(ctx, request.(GetPracticeSummaryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPracticeSummary")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPracticeSummaryResponseObject); ok {
+		if err := validResponse.VisitGetPracticeSummaryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
