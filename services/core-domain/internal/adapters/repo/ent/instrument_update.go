@@ -147,6 +147,20 @@ func (_u *InstrumentUpdate) SetNillableDefaultVoiceID(v *string) *InstrumentUpda
 	return _u
 }
 
+// SetIcon sets the "icon" field.
+func (_u *InstrumentUpdate) SetIcon(v string) *InstrumentUpdate {
+	_u.mutation.SetIcon(v)
+	return _u
+}
+
+// SetNillableIcon sets the "icon" field if the given value is not nil.
+func (_u *InstrumentUpdate) SetNillableIcon(v *string) *InstrumentUpdate {
+	if v != nil {
+		_u.SetIcon(*v)
+	}
+	return _u
+}
+
 // SetDefaultVoice sets the "default_voice" edge to the Voice entity.
 func (_u *InstrumentUpdate) SetDefaultVoice(v *Voice) *InstrumentUpdate {
 	return _u.SetDefaultVoiceID(v.ID)
@@ -712,6 +726,9 @@ func (_u *InstrumentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if _u.mutation.KeyRangeHighestCleared() {
 		_spec.ClearField(instrument.FieldKeyRangeHighest, field.TypeString)
+	}
+	if value, ok := _u.mutation.Icon(); ok {
+		_spec.SetField(instrument.FieldIcon, field.TypeString, value)
 	}
 	if _u.mutation.DefaultVoiceCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1524,6 +1541,20 @@ func (_u *InstrumentUpdateOne) SetNillableDefaultVoiceID(v *string) *InstrumentU
 	return _u
 }
 
+// SetIcon sets the "icon" field.
+func (_u *InstrumentUpdateOne) SetIcon(v string) *InstrumentUpdateOne {
+	_u.mutation.SetIcon(v)
+	return _u
+}
+
+// SetNillableIcon sets the "icon" field if the given value is not nil.
+func (_u *InstrumentUpdateOne) SetNillableIcon(v *string) *InstrumentUpdateOne {
+	if v != nil {
+		_u.SetIcon(*v)
+	}
+	return _u
+}
+
 // SetDefaultVoice sets the "default_voice" edge to the Voice entity.
 func (_u *InstrumentUpdateOne) SetDefaultVoice(v *Voice) *InstrumentUpdateOne {
 	return _u.SetDefaultVoiceID(v.ID)
@@ -2119,6 +2150,9 @@ func (_u *InstrumentUpdateOne) sqlSave(ctx context.Context) (_node *Instrument, 
 	}
 	if _u.mutation.KeyRangeHighestCleared() {
 		_spec.ClearField(instrument.FieldKeyRangeHighest, field.TypeString)
+	}
+	if value, ok := _u.mutation.Icon(); ok {
+		_spec.SetField(instrument.FieldIcon, field.TypeString, value)
 	}
 	if _u.mutation.DefaultVoiceCleared() {
 		edge := &sqlgraph.EdgeSpec{

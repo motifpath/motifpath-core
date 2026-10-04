@@ -746,6 +746,7 @@ func toGeneratedInstrument(i domain.Instrument) generated.Instrument {
 		Family:         generated.InstrumentFamily(i.Family),
 		StringCount:    i.StringCount,
 		DefaultVoiceId: i.DefaultVoiceID,
+		Icon:           i.Icon,
 	}
 	if len(i.Tuning) > 0 {
 		tuning := i.Tuning

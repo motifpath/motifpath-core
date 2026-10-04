@@ -1990,7 +1990,7 @@ func (h *Handler) CreateInstrument(ctx context.Context, request generated.Create
 	if body.KeyRange != nil {
 		keyRange = &domain.KeyRange{Lowest: body.KeyRange.Lowest, Highest: body.KeyRange.Highest}
 	}
-	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange, body.DefaultVoiceId)
+	instrument, err := h.instrument.CreateInstrument(ctx, caller, body.Names, domain.InstrumentFamily(body.Family), body.StringCount, tuning, keyRange, body.DefaultVoiceId, body.Icon)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {
@@ -2012,7 +2012,7 @@ func (h *Handler) UpdateInstrument(ctx context.Context, request generated.Update
 		return generated.UpdateInstrument401JSONResponse(unauthorizedError()), nil
 	}
 
-	instrument, err := h.instrument.UpdateInstrument(ctx, caller, request.InstrumentId.String(), request.Body.Names, request.Body.DefaultVoiceId)
+	instrument, err := h.instrument.UpdateInstrument(ctx, caller, request.InstrumentId.String(), request.Body.Names, request.Body.DefaultVoiceId, request.Body.Icon)
 	if err != nil {
 		kind, valErr := classify(err)
 		switch kind {

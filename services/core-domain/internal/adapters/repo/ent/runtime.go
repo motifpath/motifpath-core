@@ -285,6 +285,10 @@ func init() {
 	expandedcontent.DefaultID = expandedcontentDescID.Default.(func() uuid.UUID)
 	instrumentFields := schema.Instrument{}.Fields()
 	_ = instrumentFields
+	// instrumentDescIcon is the schema descriptor for icon field.
+	instrumentDescIcon := instrumentFields[8].Descriptor()
+	// instrument.DefaultIcon holds the default value on creation for the icon field.
+	instrument.DefaultIcon = instrumentDescIcon.Default.(string)
 	// instrumentDescID is the schema descriptor for id field.
 	instrumentDescID := instrumentFields[0].Descriptor()
 	// instrument.DefaultID holds the default value on creation for the id field.

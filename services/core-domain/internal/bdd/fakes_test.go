@@ -1919,7 +1919,7 @@ func (f *fakeInstrumentRepo) Update(_ context.Context, i domain.Instrument) erro
 	if !ok {
 		return domain.ErrNotFound
 	}
-	instrument.Names, instrument.DefaultVoiceID = i.Names, i.DefaultVoiceID
+	instrument.Names, instrument.DefaultVoiceID, instrument.Icon = i.Names, i.DefaultVoiceID, i.Icon
 	f.byID[i.ID] = instrument
 	return nil
 }

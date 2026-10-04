@@ -23,13 +23,15 @@ INSTALLED_AT = '2026-10-02T00:00:00Z'
 # The catalog instruments, by key. Their IDs derive from the key, so renaming one
 # never changes its ID.
 INSTRUMENTS = {
-    'guitar': dict(names={'en': 'Acoustic guitar', 'pt_BR': 'Violão'}, tuning=['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], voice='acoustic-guitar'),
-    'electric-guitar': dict(names={'en': 'Electric guitar', 'pt_BR': 'Guitarra elétrica'}, tuning=['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], voice='acoustic-guitar'),
-    'electric-bass': dict(names={'en': 'Electric bass', 'pt_BR': 'Contrabaixo elétrico'}, tuning=['E1', 'A1', 'D2', 'G2'], voice='electric-bass'),
+    'guitar': dict(names={'en': 'Acoustic guitar', 'pt_BR': 'Violão'}, tuning=['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], voice='acoustic-guitar', icon='acoustic_guitar'),
+    'electric-guitar': dict(names={'en': 'Electric guitar', 'pt_BR': 'Guitarra elétrica'}, tuning=['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], voice='acoustic-guitar', icon='electric_guitar'),
+    'electric-bass': dict(names={'en': 'Electric bass', 'pt_BR': 'Contrabaixo elétrico'}, tuning=['E1', 'A1', 'D2', 'G2'], voice='electric-bass', icon='electric_bass'),
 }
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / 'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
 INSTRUMENTS_FILE = '20261002123300_catalog_instruments.up.sql'
+# The icon column came later than the instruments, so their icons install after it.
+INSTRUMENT_ICONS_FILE = '20261004165340_catalog_instrument_icons.up.sql'
 MAP_FILE = '20261002123400_knowledge_map.up.sql'
 
 
@@ -215,6 +217,13 @@ def render_instruments_sql():
             + ',\n'.join(rows) + ';\n')
 
 
+def render_instrument_icons_sql():
+    rows = [f'UPDATE "instruments" SET "icon" = {sql_text(i["icon"])} WHERE "id" = {sql_text(instrument_id(key))};'
+            for key, i in INSTRUMENTS.items()]
+    return ('-- Frozen catalog instrument icons: the keys clients draw their pictures for, by the\n'
+            '-- instruments\' fixed ids.\n' + '\n'.join(rows) + '\n')
+
+
 def render_sql(graph):
     out = ['-- Frozen knowledge map, compiled from motifpath-specs catalogs/knowledge-map.yaml by',
            '-- scripts/knowledge_map. Each id is the UUID v5 of knowledge-node/<key> or',
@@ -243,6 +252,7 @@ def main():
     args = parser.parse_args()
     graph = load(args.specs / 'catalogs/knowledge-map.yaml')
     (args.migrations / INSTRUMENTS_FILE).write_text(render_instruments_sql())
+    (args.migrations / INSTRUMENT_ICONS_FILE).write_text(render_instrument_icons_sql())
     (args.migrations / MAP_FILE).write_text(render_sql(graph))
     kinds = [n.kind for n in graph.nodes]
     types = [e.type for e in graph.edges]

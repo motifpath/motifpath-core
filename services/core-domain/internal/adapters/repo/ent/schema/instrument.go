@@ -48,6 +48,11 @@ func (Instrument) Fields() []ent.Field {
 		// default_voice_id is the Voice that plays this instrument's
 		// diagrams unless a usage picks another.
 		field.String("default_voice_id"),
+
+		// icon is the key of the picture a client draws for the instrument;
+		// an instrument starts with its family's generic one.
+		field.String("icon").
+			Default("fretted"),
 	}
 }
 

@@ -102,3 +102,32 @@ func TestInstrument_WithDefaultVoice(t *testing.T) {
 		requireFieldError(t, err, "default_voice_id")
 	})
 }
+
+func TestInstrument_Icon(t *testing.T) {
+	guitar, err := domain.NewInstrument("guitar", guitarNames, offeredLanguages, domain.InstrumentFamilyFretted, intPtr(6), []string{"E2", "A2", "D3", "G3", "B3", "E4"}, nil, guitarVoice)
+	require.NoError(t, err)
+
+	t.Run("a new instrument shows its family's generic icon", func(t *testing.T) {
+		assert.Equal(t, "fretted", guitar.Icon)
+
+		piano, err := domain.NewInstrument("piano", guitarNames, offeredLanguages, domain.InstrumentFamilyKeyboard, nil, nil, &domain.KeyRange{Lowest: "A0", Highest: "C8"}, pianoVoice)
+		require.NoError(t, err)
+		assert.Equal(t, "keyboard", piano.Icon)
+	})
+
+	t.Run("an icon key replaces it", func(t *testing.T) {
+		got, err := guitar.WithIcon("electric_bass")
+
+		require.NoError(t, err)
+		assert.Equal(t, "electric_bass", got.Icon)
+		assert.Equal(t, "fretted", guitar.Icon, "the receiver is unchanged")
+	})
+
+	for _, icon := range []string{"", "Electric Bass!", "electric-bass", "_bass", "9string"} {
+		t.Run("rejects "+icon, func(t *testing.T) {
+			_, err := guitar.WithIcon(icon)
+
+			requireFieldError(t, err, "icon")
+		})
+	}
+}

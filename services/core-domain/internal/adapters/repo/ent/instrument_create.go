@@ -99,6 +99,20 @@ func (_c *InstrumentCreate) SetDefaultVoiceID(v string) *InstrumentCreate {
 	return _c
 }
 
+// SetIcon sets the "icon" field.
+func (_c *InstrumentCreate) SetIcon(v string) *InstrumentCreate {
+	_c.mutation.SetIcon(v)
+	return _c
+}
+
+// SetNillableIcon sets the "icon" field if the given value is not nil.
+func (_c *InstrumentCreate) SetNillableIcon(v *string) *InstrumentCreate {
+	if v != nil {
+		_c.SetIcon(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *InstrumentCreate) SetID(v uuid.UUID) *InstrumentCreate {
 	_c.mutation.SetID(v)
@@ -348,6 +362,10 @@ func (_c *InstrumentCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *InstrumentCreate) defaults() {
+	if _, ok := _c.mutation.Icon(); !ok {
+		v := instrument.DefaultIcon
+		_c.mutation.SetIcon(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := instrument.DefaultID()
 		_c.mutation.SetID(v)
@@ -369,6 +387,9 @@ func (_c *InstrumentCreate) check() error {
 	}
 	if _, ok := _c.mutation.DefaultVoiceID(); !ok {
 		return &ValidationError{Name: "default_voice_id", err: errors.New(`ent: missing required field "Instrument.default_voice_id"`)}
+	}
+	if _, ok := _c.mutation.Icon(); !ok {
+		return &ValidationError{Name: "icon", err: errors.New(`ent: missing required field "Instrument.icon"`)}
 	}
 	if len(_c.mutation.DefaultVoiceIDs()) == 0 {
 		return &ValidationError{Name: "default_voice", err: errors.New(`ent: missing required edge "Instrument.default_voice"`)}
@@ -431,6 +452,10 @@ func (_c *InstrumentCreate) createSpec() (*Instrument, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.KeyRangeHighest(); ok {
 		_spec.SetField(instrument.FieldKeyRangeHighest, field.TypeString, value)
 		_node.KeyRangeHighest = &value
+	}
+	if value, ok := _c.mutation.Icon(); ok {
+		_spec.SetField(instrument.FieldIcon, field.TypeString, value)
+		_node.Icon = value
 	}
 	if nodes := _c.mutation.DefaultVoiceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
