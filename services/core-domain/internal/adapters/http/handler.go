@@ -61,6 +61,7 @@ type Handler struct {
 	instrument       *application.InstrumentService
 	voice            *application.VoiceService
 	diagram          *application.DiagramService
+	practiceSession  *application.PracticeSessionService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -86,6 +87,7 @@ func NewHandler(
 	instrument *application.InstrumentService,
 	voice *application.VoiceService,
 	diagram *application.DiagramService,
+	practiceSession *application.PracticeSessionService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
 ) *Handler {
@@ -105,6 +107,7 @@ func NewHandler(
 		instrument:            instrument,
 		voice:                 voice,
 		diagram:               diagram,
+		practiceSession:       practiceSession,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
 	}

@@ -304,9 +304,10 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), newID, now)
+	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, nodeRepo, diagramRepo, repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, learningGraphPinger, completionReader), nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go
