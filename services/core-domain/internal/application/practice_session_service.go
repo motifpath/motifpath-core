@@ -12,12 +12,18 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// warmUpMinMinutes is the shortest session that starts with a warm-up.
-const warmUpMinMinutes = 5
+// warmUpMinMinutes is the shortest session that starts with a warm-up, and
+// warmUpMaxShare the most of it a warm-up may take.
+const (
+	warmUpMinMinutes = 5
+	warmUpMaxShare   = 0.25
+)
 
 // PracticeSessionService composes practice sessions from what a student
-// knows. This version offers play-alongs only: diagrams with playback on
-// the skills of the student's paths, for the instrument in hand.
+// knows. This version offers play-alongs only: basic diagrams with playback
+// on the skills of the student's paths, for the instrument in hand. A
+// teacher's custom diagrams are theirs alone to find, so they are never
+// offered.
 type PracticeSessionService struct {
 	instruments  ports.InstrumentRepository
 	studentPaths ports.StudentPathRepository
@@ -138,7 +144,7 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, studentID, 
 	seen := map[string]bool{}
 	var candidates []playAlongCandidate
 	for _, skillID := range skillIDs {
-		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID})
+		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic})
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +171,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, studentI
 	found := 0
 	page := domain.PageRequest{Limit: domain.MaxPageLimit}
 	for found < seconds {
-		got, err := s.diagrams.List(ctx, domain.DiagramListFilter{InstrumentID: instrumentID}, page)
+		got, err := s.diagrams.List(ctx, domain.DiagramListFilter{InstrumentID: instrumentID, Kind: domain.DiagramKindBasic}, page)
 		if err != nil {
 			return nil, err
 		}
@@ -377,7 +383,7 @@ func compareDueAt(a, b *time.Time) int {
 }
 
 // warmUp opens the session with the best-known play-along already played
-// clean, if there is one.
+// clean, if there is one and it takes no more than a quarter of the session.
 func (c *composer) warmUp(candidates []playAlongCandidate) {
 	var best *playAlongCandidate
 	for i, cand := range candidates {
@@ -393,6 +399,9 @@ func (c *composer) warmUp(candidates []playAlongCandidate) {
 	}
 	tempo := domain.WarmUpTempo(*best.diagram.TempoBPM, *best.state.BestCleanBPM)
 	item := c.item(*best, domain.PracticePickWarmUp, tempo, domain.PlayAlongSeconds(best.diagram, tempo, true))
+	if float64(item.EstimatedSeconds) > float64(c.budget)*warmUpMaxShare {
+		return
+	}
 	c.add(item)
 }
 

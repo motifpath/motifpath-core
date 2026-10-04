@@ -6,8 +6,13 @@ import (
 )
 
 // PracticeRulesVersion is the version of the mastery rules this service
-// reads item states under. A state folded under another version is stale
-// until its item is next answered and rebuilt, so it is offered as due.
+// reads item states under, and boxWaitDays below their review waits. Both
+// copy the Aggregation Worker's, which folds the states: a rule change
+// bumps the worker's version first, and this one with it once this
+// service reads the new rules. A state folded under an older version is
+// stale until its item is next answered and rebuilt, so it is offered as
+// due; one folded under a newer version is read as it is, so the worker
+// shipping first never makes every item due.
 const PracticeRulesVersion = 1
 
 // KnowledgeLevel is how well a student knows a practice item.
@@ -38,8 +43,9 @@ func (l KnowledgeLevel) lapsed() KnowledgeLevel {
 	}
 }
 
-// boxWaitDays is the wait before the next review, by Leitner box, the same
-// waits the item states are folded with. Box 0 is unseen.
+// boxWaitDays is the wait before the next review, by Leitner box: the
+// waits the item states are folded with, kept in step with the worker's
+// under PracticeRulesVersion. Box 0 is unseen.
 var boxWaitDays = [...]int{0, 1, 2, 4, 8, 16, 32}
 
 // PracticeItemState is what the evidence says about one student's item, as
@@ -58,9 +64,9 @@ type PracticeItemState struct {
 	BestCleanBPM *int
 }
 
-// Stale reports whether s was folded under mastery rules other than these.
+// Stale reports whether s was folded under mastery rules older than these.
 func (s PracticeItemState) Stale() bool {
-	return s.RulesVersion != PracticeRulesVersion
+	return s.RulesVersion < PracticeRulesVersion
 }
 
 // Due reports whether s's review is due at now. A stale state is always

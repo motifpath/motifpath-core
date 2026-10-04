@@ -137,6 +137,28 @@ func (f *practiceFixture) state(diagramID string, s domain.PracticeItemState) {
 	f.states.put(studentCaller().ID, s)
 }
 
+// stateUnder puts a state folded under the given mastery rules version.
+func (f *practiceFixture) stateUnder(version int, diagramID string, s domain.PracticeItemState) {
+	s.ItemKey = "play_along:" + diagramID
+	s.RulesVersion = version
+	f.states.put(studentCaller().ID, s)
+}
+
+// reshape replaces a seeded diagram's kind and, when steps > 0, its
+// sequence with that many quarter notes.
+func (f *practiceFixture) reshape(id string, kind domain.DiagramKind, steps int) {
+	d, err := f.diagrams.GetByID(context.Background(), id)
+	require.NoError(f.t, err)
+	d.Kind = kind
+	if steps > 0 {
+		d.Sequence = nil
+		for range steps {
+			d.Sequence = append(d.Sequence, domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}})
+		}
+	}
+	require.NoError(f.t, f.diagrams.Update(context.Background(), d))
+}
+
 func (f *practiceFixture) daysAgo(days int) *time.Time {
 	t := f.now.AddDate(0, 0, -days)
 	return &t
@@ -428,17 +450,60 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Equal(t, domain.KnowledgeLevelAccurate, levels["play_along:lapsed"])
 	})
 
-	t.Run("a state folded under other mastery rules is due, keeping its best clean tempo", func(t *testing.T) {
+	t.Run("a state folded under older mastery rules is due, keeping its best clean tempo", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPath("skill-1")
 		f.playAlong("old", "Old rules", practiceGuitar, "skill-1", 120)
-		f.state("old", domain.PracticeItemState{RulesVersion: domain.PracticeRulesVersion + 1, Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(5), BestCleanBPM: intPtr(110)})
+		f.stateUnder(domain.PracticeRulesVersion-1, "old", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(5), BestCleanBPM: intPtr(110)})
 
 		plan := f.compose(t, practiceGuitar, 3)
 
 		require.Len(t, plan.Items, 1)
 		assert.Equal(t, domain.PracticePickDue, plan.Items[0].Reason)
 		assert.Equal(t, 110, plan.Items[0].PlayAlong.StartTempoBPM)
+	})
+
+	t.Run("a state folded under newer mastery rules than these is read as it is", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("known", "Known", practiceGuitar, "skill-1", 100)
+		f.playAlong("fresh", "Fresh", practiceGuitar, "skill-1", 100)
+		f.stateUnder(domain.PracticeRulesVersion+1, "known", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
+
+		plan := f.compose(t, practiceGuitar, 3)
+
+		assert.Equal(t, []string{"play_along:fresh"}, planKeys(plan), "a known item not yet due is neither due nor new")
+	})
+
+	t.Run("only basic diagrams are offered, never a teacher's own custom ones", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("basic", "Basic", practiceGuitar, "skill-1", 100)
+		f.playAlong("custom-on-path", "Custom on path", practiceGuitar, "skill-1", 100)
+		f.playAlong("custom-elsewhere", "Custom elsewhere", practiceGuitar, "skill-other", 100)
+		f.reshape("custom-on-path", domain.DiagramKindCustom, 0)
+		f.reshape("custom-elsewhere", domain.DiagramKindCustom, 0)
+		f.state("basic", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
+
+		plan := f.compose(t, practiceGuitar, 3)
+
+		assert.Equal(t, []string{"play_along:basic"}, planKeys(plan), "neither the path nor the stretch offers a custom diagram")
+	})
+
+	t.Run("a warm-up taking more than a quarter of the session is skipped", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("long", "Long known", practiceGuitar, "skill-1", 120)
+		f.playAlong("run", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		f.reshape("long", domain.DiagramKindBasic, 200)
+		f.state("long", domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 3, DueAt: f.inDays(3), BestCleanBPM: intPtr(100)})
+
+		plan := f.compose(t, practiceGuitar, 5)
+
+		for _, item := range plan.Items {
+			assert.NotEqual(t, domain.PracticePickWarmUp, item.Reason)
+		}
+		assert.Contains(t, planKeys(plan), "play_along:run")
 	})
 
 	t.Run("a failure reading item states fails the request", func(t *testing.T) {
