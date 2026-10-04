@@ -42,6 +42,14 @@ func toDomainEvent(body *generated.TrackingEvent) (domain.TrackingEvent, error) 
 		return toExerciseAnswerSentEvent(eventType, body)
 	case domain.EventTypeExerciseEnded:
 		return toExerciseEndedEvent(eventType, body)
+	case domain.EventTypePracticeSessionStarted:
+		return toPracticeSessionStartedEvent(eventType, body)
+	case domain.EventTypePracticeItemAnswered:
+		return toPracticeItemAnsweredEvent(eventType, body)
+	case domain.EventTypePracticeSessionEnded:
+		return toPracticeSessionEndedEvent(eventType, body)
+	case domain.EventTypePracticeTapCheckCompleted:
+		return toPracticeTapCheckCompletedEvent(eventType, body)
 	default:
 		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, eventTypeStr)
 	}

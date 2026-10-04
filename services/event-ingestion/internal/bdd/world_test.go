@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha1" //nolint:gosec // used only for deterministic test UUIDs, not security
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"sync"
@@ -59,6 +60,27 @@ func (f *fakeRepository) FindByEventID(_ context.Context, eventID string) (domai
 
 var errEventNotFound = errors.New("event not found")
 
+// LatestTap scans the saved events the way MongoEventRepository's query does, so the
+// tap-stamping scenarios run against tap checks submitted through the handler.
+func (f *fakeRepository) LatestTap(_ context.Context, studentID string, before time.Time) (int, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var latest *domain.PracticeTapCheckCompletedEvent
+	for _, event := range f.saved {
+		tap, ok := event.(domain.PracticeTapCheckCompletedEvent)
+		if !ok || tap.StudentID != studentID || !tap.OccurredAt.Before(before) {
+			continue
+		}
+		if latest == nil || tap.OccurredAt.After(latest.OccurredAt) {
+			latest = &tap
+		}
+	}
+	if latest == nil {
+		return 0, false, nil
+	}
+	return latest.MedianTapMs, true, nil
+}
+
 type fakePublisher struct {
 	mu   sync.Mutex
 	sent []domain.TrackingEvent
@@ -69,6 +91,26 @@ func (f *fakePublisher) Publish(_ context.Context, event domain.TrackingEvent) e
 	defer f.mu.Unlock()
 	f.sent = append(f.sent, event)
 	return nil
+}
+
+// waitForPublished returns the event published with eventID. IngestEventService
+// publishes asynchronously, so it polls briefly rather than reading f.sent once.
+func (f *fakePublisher) waitForPublished(eventID string) (domain.TrackingEvent, error) {
+	deadline := time.Now().Add(time.Second)
+	for {
+		f.mu.Lock()
+		for _, event := range f.sent {
+			if event.Base().EventID == eventID {
+				f.mu.Unlock()
+				return event, nil
+			}
+		}
+		f.mu.Unlock()
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("event %s was not published", eventID)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 type fakePinger struct {
@@ -179,6 +221,7 @@ var (
 	_ ports.PublishOutboxRepository = (*fakeOutboxRepository)(nil)
 	_ ports.ProfileResolver         = (*fakeProfileResolver)(nil)
 	_ ports.IdentityResolver        = (*fakeIdentityResolver)(nil)
+	_ ports.TapBaselineReader       = (*fakeRepository)(nil)
 )
 
 // exerciseAttempt records the trigger context established by a "has an active
@@ -221,6 +264,11 @@ type world struct {
 
 	exerciseAttempts map[string]exerciseAttempt
 
+	// practiceClock is the occurred_at of the next practice event a step submits; it
+	// advances a minute per event, so "has later submitted" is later, and an answer
+	// comes after the tap checks set up before it.
+	practiceClock time.Time
+
 	// lastSubmittedBody lets the "submits the same event again" step resend an
 	// identical payload rather than reconstructing an approximation of it.
 	lastSubmittedBody *generated.TrackingEvent
@@ -242,8 +290,9 @@ func newWorld() *world {
 		profileResolver:  &fakeProfileResolver{},
 		identityResolver: &fakeIdentityResolver{},
 		exerciseAttempts: make(map[string]exerciseAttempt),
+		practiceClock:    fixedOccurredAt,
 	}
-	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, discardLogger())
+	service := application.NewIngestEventService(w.repo, w.outbox, w.publisher, w.repo, discardLogger())
 	authorizer := application.NewAdminAuthorizer(w.profileResolver)
 	adminOutbox := application.NewAdminOutboxService(w.outbox, w.repo, w.publisher, authorizer)
 	w.handler = appHTTP.NewHandler(service, adminOutbox, w.identityResolver, w.mongoPinger, w.kafkaPinger)

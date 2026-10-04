@@ -26,12 +26,48 @@ type eventDocument struct {
 	Outcome        string             `bson:"outcome,omitempty"`
 	FinalScore     *int               `bson:"final_score,omitempty"`
 
-	// DurationSeconds (lesson.completed) and ElapsedSeconds (exercise.progress) are
-	// both from events.yaml. ADR-008's schema table lists DurationSeconds but omits
-	// ElapsedSeconds — stored anyway to avoid silently dropping real event data; the
-	// ADR's table should be amended to match.
+	// DurationSeconds is set on lesson.completed, ElapsedSeconds on exercise.progress.
 	DurationSeconds *int `bson:"duration_seconds,omitempty"`
 	ElapsedSeconds  *int `bson:"elapsed_seconds,omitempty"`
+
+	// practice.* fields. The ones a practice event requires even at their
+	// zero value -- answered_count, left_early, felt_ratings -- are pointers, so the
+	// stored document always carries them for the event that has them.
+	PracticeSessionID string               `bson:"practice_session_id,omitempty"`
+	InstrumentID      string               `bson:"instrument_id,omitempty"`
+	Minutes           *int                 `bson:"minutes,omitempty"`
+	PlannedItems      []plannedItemDoc     `bson:"planned_items,omitempty"`
+	ItemKey           string               `bson:"item_key,omitempty"`
+	Response          *practiceResponseDoc `bson:"response,omitempty"`
+	TapMs             *int                 `bson:"tap_ms,omitempty"`
+	AnsweredCount     *int                 `bson:"answered_count,omitempty"`
+	LeftEarly         *bool                `bson:"left_early,omitempty"`
+	FeltRatings       *[]feltRatingDoc     `bson:"felt_ratings,omitempty"`
+	MedianTapMs       *int                 `bson:"median_tap_ms,omitempty"`
+	TapCount          *int                 `bson:"tap_count,omitempty"`
+}
+
+type plannedItemDoc struct {
+	ItemKey string `bson:"item_key"`
+	Reason  string `bson:"reason"`
+}
+
+// practiceResponseDoc stores the raw response with only its shape's properties.
+type practiceResponseDoc struct {
+	ResponseType     string   `bson:"response_type"`
+	NoteName         string   `bson:"note_name,omitempty"`
+	String           *int     `bson:"string,omitempty"`
+	Fret             *int     `bson:"fret,omitempty"`
+	OptionIDs        []string `bson:"option_ids,omitempty"`
+	LatencyMs        *int     `bson:"latency_ms,omitempty"`
+	Rating           string   `bson:"rating,omitempty"`
+	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
+	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
+}
+
+type feltRatingDoc struct {
+	DrillTemplateKey string `bson:"drill_template_key"`
+	Felt             string `bson:"felt"`
 }
 
 type contentContextDoc struct {
@@ -82,6 +118,31 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 		doc.TriggerContext = toTriggerContextDoc(e.TriggerContext)
 		doc.Outcome = string(e.Outcome)
 		doc.FinalScore = e.FinalScore
+	case domain.PracticeSessionStartedEvent:
+		doc.PracticeSessionID = e.PracticeSessionID
+		doc.InstrumentID = e.InstrumentID
+		doc.Minutes = &e.Minutes
+		doc.PlannedItems = make([]plannedItemDoc, 0, len(e.PlannedItems))
+		for _, item := range e.PlannedItems {
+			doc.PlannedItems = append(doc.PlannedItems, plannedItemDoc{ItemKey: item.ItemKey, Reason: string(item.Reason)})
+		}
+	case domain.PracticeItemAnsweredEvent:
+		doc.PracticeSessionID = e.PracticeSessionID
+		doc.ItemKey = e.ItemKey
+		doc.Response = toPracticeResponseDoc(e.Response)
+		doc.TapMs = e.TapMs
+	case domain.PracticeSessionEndedEvent:
+		doc.PracticeSessionID = e.PracticeSessionID
+		doc.AnsweredCount = &e.AnsweredCount
+		doc.LeftEarly = &e.LeftEarly
+		felt := make([]feltRatingDoc, 0, len(e.FeltRatings))
+		for _, r := range e.FeltRatings {
+			felt = append(felt, feltRatingDoc{DrillTemplateKey: r.DrillTemplateKey, Felt: string(r.Felt)})
+		}
+		doc.FeltRatings = &felt
+	case domain.PracticeTapCheckCompletedEvent:
+		doc.MedianTapMs = &e.MedianTapMs
+		doc.TapCount = &e.TapCount
 	}
 
 	return doc
@@ -149,6 +210,14 @@ func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
 			Outcome:           domain.ExerciseOutcome(doc.Outcome),
 			FinalScore:        doc.FinalScore,
 		}, nil
+	case domain.EventTypePracticeSessionStarted:
+		return fromPracticeSessionStartedDoc(base, doc), nil
+	case domain.EventTypePracticeItemAnswered:
+		return fromPracticeItemAnsweredDoc(base, doc), nil
+	case domain.EventTypePracticeSessionEnded:
+		return fromPracticeSessionEndedDoc(base, doc), nil
+	case domain.EventTypePracticeTapCheckCompleted:
+		return fromPracticeTapCheckCompletedDoc(base, doc), nil
 	default:
 		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, doc.EventType)
 	}
@@ -189,5 +258,91 @@ func toTriggerContextDoc(tc domain.TriggerContext) *triggerContextDoc {
 		Source:        string(tc.Source),
 		ContentNodeID: tc.ContentNodeID,
 		ChallengeID:   tc.ChallengeID,
+	}
+}
+
+func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
+	return &practiceResponseDoc{
+		ResponseType:     string(r.Type),
+		NoteName:         r.NoteName,
+		String:           r.String,
+		Fret:             r.Fret,
+		OptionIDs:        r.OptionIDs,
+		LatencyMs:        r.LatencyMs,
+		Rating:           string(r.Rating),
+		TempoBPM:         r.TempoBPM,
+		ChangesPerMinute: r.ChangesPerMinute,
+	}
+}
+
+func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
+	if d == nil {
+		return domain.PracticeResponse{}
+	}
+	return domain.PracticeResponse{
+		Type:             domain.PracticeResponseType(d.ResponseType),
+		NoteName:         d.NoteName,
+		String:           d.String,
+		Fret:             d.Fret,
+		OptionIDs:        d.OptionIDs,
+		LatencyMs:        d.LatencyMs,
+		Rating:           domain.SelfRating(d.Rating),
+		TempoBPM:         d.TempoBPM,
+		ChangesPerMinute: d.ChangesPerMinute,
+	}
+}
+
+func derefInt(v *int) int {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+func fromPracticeSessionStartedDoc(base domain.TrackingEventBase, doc eventDocument) domain.PracticeSessionStartedEvent {
+	planned := make([]domain.PlannedPracticeItem, 0, len(doc.PlannedItems))
+	for _, item := range doc.PlannedItems {
+		planned = append(planned, domain.PlannedPracticeItem{ItemKey: item.ItemKey, Reason: domain.PracticePickReason(item.Reason)})
+	}
+	return domain.PracticeSessionStartedEvent{
+		TrackingEventBase: base,
+		PracticeSessionID: doc.PracticeSessionID,
+		InstrumentID:      doc.InstrumentID,
+		Minutes:           derefInt(doc.Minutes),
+		PlannedItems:      planned,
+	}
+}
+
+func fromPracticeItemAnsweredDoc(base domain.TrackingEventBase, doc eventDocument) domain.PracticeItemAnsweredEvent {
+	return domain.PracticeItemAnsweredEvent{
+		TrackingEventBase: base,
+		PracticeSessionID: doc.PracticeSessionID,
+		ItemKey:           doc.ItemKey,
+		Response:          fromPracticeResponseDoc(doc.Response),
+		TapMs:             doc.TapMs,
+	}
+}
+
+func fromPracticeSessionEndedDoc(base domain.TrackingEventBase, doc eventDocument) domain.PracticeSessionEndedEvent {
+	felt := []domain.FeltRating{}
+	if doc.FeltRatings != nil {
+		for _, r := range *doc.FeltRatings {
+			felt = append(felt, domain.FeltRating{DrillTemplateKey: r.DrillTemplateKey, Felt: domain.Felt(r.Felt)})
+		}
+	}
+	return domain.PracticeSessionEndedEvent{
+		TrackingEventBase: base,
+		PracticeSessionID: doc.PracticeSessionID,
+		AnsweredCount:     derefInt(doc.AnsweredCount),
+		LeftEarly:         doc.LeftEarly != nil && *doc.LeftEarly,
+		FeltRatings:       felt,
+	}
+}
+
+func fromPracticeTapCheckCompletedDoc(base domain.TrackingEventBase, doc eventDocument) domain.PracticeTapCheckCompletedEvent {
+	return domain.PracticeTapCheckCompletedEvent{
+		TrackingEventBase: base,
+		MedianTapMs:       derefInt(doc.MedianTapMs),
+		TapCount:          derefInt(doc.TapCount),
 	}
 }

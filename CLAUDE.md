@@ -31,9 +31,12 @@ Core entities:
 - **StudentPath** — tracks node states (locked / unlocked / in_progress) per student
 - **ThresholdOverride** — a teacher-set custom threshold for a specific student on a specific node
 
-Seven tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
+Tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
   lesson.started, lesson.resumed, lesson.completed
   exercise.started, exercise.progress, exercise.answer_sent, exercise.ended
+  practice.session_started, practice.item_answered, practice.session_ended,
+  practice.tap_check_completed — event-ingestion stamps the student's latest tap time
+  (tap_ms) on timed practice.item_answered events; a client-sent tap_ms is ignored
 
 Threshold logic: if a ThresholdOverride exists for a student+node pair, it takes
 precedence over the Node's default threshold. ALWAYS apply this rule in the application layer.

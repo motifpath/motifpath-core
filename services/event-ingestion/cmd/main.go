@@ -129,7 +129,7 @@ func run(logger *slog.Logger) error {
 	adminAuthorizer := application.NewAdminAuthorizer(coreDomainClient)
 	identityResolver := coredomain.NewCachingIdentityResolver(coreDomainClient, coredomain.CacheOptions{})
 
-	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, logger)
+	service := application.NewIngestEventService(eventRepo, outboxRepo, publisher, eventRepo, logger)
 	adminOutbox := application.NewAdminOutboxService(outboxRepo, eventRepo, publisher, adminAuthorizer)
 	handler := appHTTP.NewHandler(service, adminOutbox, identityResolver, eventRepo, publisher)
 	strictHandler := generated.NewStrictHandler(handler, nil)

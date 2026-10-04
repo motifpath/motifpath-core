@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -34,6 +35,10 @@ func (r *MongoEventRepository) EnsureIndexes(ctx context.Context) error {
 		},
 		{
 			Keys: bson.D{{Key: "event_type", Value: 1}, {Key: "occurred_at", Value: -1}},
+		},
+		// LatestTap: a student's newest event of one type before a given time.
+		{
+			Keys: bson.D{{Key: "student_id", Value: 1}, {Key: "event_type", Value: 1}, {Key: "occurred_at", Value: -1}},
 		},
 	})
 	return err
@@ -73,4 +78,29 @@ func (r *MongoEventRepository) FindByEventID(ctx context.Context, eventID string
 		return nil, err
 	}
 	return fromDocument(doc)
+}
+
+// LatestTap returns the median tap of the student's newest practice.tap_check_completed
+// event that occurred strictly before the given time. Ordered by occurred_at, the
+// student's own clock, not received_at: a tap check done offline and sent late still
+// counts from when it was done.
+func (r *MongoEventRepository) LatestTap(ctx context.Context, studentID string, before time.Time) (int, bool, error) {
+	filter := bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "event_type", Value: string(domain.EventTypePracticeTapCheckCompleted)},
+		{Key: "occurred_at", Value: bson.D{{Key: "$lt", Value: before}}},
+	}
+	opts := options.FindOne().SetSort(bson.D{{Key: "occurred_at", Value: -1}})
+
+	var doc eventDocument
+	if err := r.collection.FindOne(ctx, filter, opts).Decode(&doc); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	if doc.MedianTapMs == nil {
+		return 0, false, nil
+	}
+	return *doc.MedianTapMs, true, nil
 }

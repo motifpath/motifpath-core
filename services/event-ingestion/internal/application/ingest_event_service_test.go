@@ -29,7 +29,7 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 			repo := newFakeRepository()
 			outbox := newFakeOutboxRepository()
 			publisher := newFakePublisher(nil)
-			svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+			svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 			event := newEvent(eventType)
 
 			receivedAt, err := svc.Ingest(context.Background(), callerUserID, event)
@@ -56,7 +56,7 @@ func TestIngestEventService_Ingest_DuplicateEventIDRepublishesButDoesNotRecreate
 	repo := newFakeRepository()
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(nil)
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	_, err1 := svc.Ingest(context.Background(), callerUserID, event)
@@ -75,7 +75,7 @@ func TestIngestEventService_Ingest_RepositoryFailure(t *testing.T) {
 	repo.saveErr = errors.New("connection refused")
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(nil)
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 
 	_, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
@@ -94,7 +94,7 @@ func TestIngestEventService_Ingest_PublishFailureDoesNotFailRequest(t *testing.T
 	repo := newFakeRepository()
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(errors.New("kafka unavailable"))
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	_, err := svc.Ingest(context.Background(), callerUserID, event)
@@ -118,7 +118,7 @@ func TestIngestEventService_Ingest_OutboxCreateFailureDoesNotFailRequest(t *test
 	outbox := newFakeOutboxRepository()
 	outbox.createErr = errors.New("mongo unavailable")
 	publisher := newFakePublisher(nil)
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 
 	receivedAt, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
@@ -136,7 +136,7 @@ func TestIngestEventService_Ingest_PublishFailureWithNoOutboxEntryIsANoOp(t *tes
 	outbox := newFakeOutboxRepository()
 	outbox.createErr = errors.New("mongo unavailable")
 	publisher := newFakePublisher(errors.New("kafka unavailable"))
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	_, err := svc.Ingest(context.Background(), callerUserID, event)
@@ -154,7 +154,7 @@ func TestIngestEventService_Ingest_RecordPublishFailure_GetErrorDoesNotPanic(t *
 	repo := newFakeRepository()
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(errors.New("kafka unavailable"))
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	_, err := svc.Ingest(context.Background(), callerUserID, event)
@@ -172,7 +172,7 @@ func TestIngestEventService_Ingest_RecordPublishFailure_UpdateErrorDoesNotPanic(
 	repo := newFakeRepository()
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(errors.New("kafka unavailable"))
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted)
 
 	outbox.updateErr = errors.New("mongo unavailable")
@@ -187,7 +187,7 @@ func TestIngestEventService_Ingest_MarkPublishedFailureDoesNotPanic(t *testing.T
 	outbox := newFakeOutboxRepository()
 	outbox.markPublishedErr = errors.New("mongo unavailable")
 	publisher := newFakePublisher(nil)
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 
 	_, err := svc.Ingest(context.Background(), callerUserID, newEvent(domain.EventTypeLessonStarted))
 
@@ -200,7 +200,7 @@ func TestIngestEventService_Ingest_RejectsEventForAnotherStudent(t *testing.T) {
 	repo := newFakeRepository()
 	outbox := newFakeOutboxRepository()
 	publisher := newFakePublisher(nil)
-	svc := application.NewIngestEventService(repo, outbox, publisher, testLogger())
+	svc := application.NewIngestEventService(repo, outbox, publisher, &fakeTapBaselineReader{}, testLogger())
 	event := newEvent(domain.EventTypeLessonStarted) // StudentID == callerUserID
 
 	_, err := svc.Ingest(context.Background(), "a-different-user-id", event)
