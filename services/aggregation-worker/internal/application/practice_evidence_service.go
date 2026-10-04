@@ -31,8 +31,8 @@ func NewPracticeEvidenceService(
 // Process grades one answer and folds it. An answer that can't be graded (a
 // malformed key, a kind with no grader yet, a rejected response) is logged and
 // dropped: a redelivery would grade it the same way. The events collection keeps
-// it, so a later grader can still replay it. Storage failures are returned, so the
-// message is redelivered.
+// it, so a later grader can still replay it. Storage failures are returned, and
+// the consumer retries the message before it moves on to the next one.
 //
 // Every step is safe to repeat. A duplicate inserts no evidence and rebuilds the
 // item, which also repairs a state write that failed after the evidence was stored.

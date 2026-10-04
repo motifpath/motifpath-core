@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
 
@@ -14,6 +15,11 @@ import (
 const (
 	topic = "motifpath.events"
 
+	// firstRetryPause and maxRetryPause bound the wait between attempts at a
+	// message the handler failed on.
+	firstRetryPause = 500 * time.Millisecond
+	maxRetryPause   = 30 * time.Second
+
 	// groupID must stay stable across deployments per ADR-006 — renaming it
 	// loses committed offsets and triggers a full-topic replay.
 	groupID = "aggregation-worker"
@@ -23,10 +29,10 @@ var errNoBrokersConfigured = errors.New("kafka: no brokers configured")
 
 // KafkaEventConsumer subscribes to motifpath.events under the aggregation-worker
 // consumer group (ADR-006) and dispatches each message to an EventHandler,
-// committing its offset only after the handler succeeds. A crash or handler
-// failure leaves the message uncommitted, so it is redelivered on the next
-// poll or after a restart — the handler must be idempotent under this
-// at-least-once contract (ADR-011 satisfies this via NextStatus).
+// committing its offset only after the handler succeeds. A handler failure is
+// retried in place, and a crash leaves the message uncommitted for the next
+// consumer — the handler must be idempotent under this at-least-once contract
+// (ADR-011 satisfies this via NextStatus).
 type KafkaEventConsumer struct {
 	reader  *kafkago.Reader
 	handler ports.EventHandler
@@ -65,8 +71,12 @@ func (c *KafkaEventConsumer) Ping(ctx context.Context) error {
 
 // Run consumes messages until ctx is cancelled or an unrecoverable read error
 // occurs. A message that fails to decode is logged and committed rather than
-// retried forever on a poison message; a message the handler fails to process
-// is logged and left uncommitted so it is redelivered.
+// retried forever on a poison message. A message the handler fails to process
+// is retried, with a growing pause, before the next one is fetched: the reader
+// never fetches a message twice, and committing a later one would move the
+// group's offset past it, losing it for good. Retrying in place also keeps each
+// student's events in order. The cost is that a handler failing for good stalls
+// its partition, which the error log shows on every attempt.
 func (c *KafkaEventConsumer) Run(ctx context.Context) error {
 	for {
 		msg, err := c.reader.FetchMessage(ctx)
@@ -84,16 +94,35 @@ func (c *KafkaEventConsumer) Run(ctx context.Context) error {
 			continue
 		}
 
-		if err := c.handler.Handle(ctx, toDomainEvent(wire)); err != nil {
-			c.logger.ErrorContext(ctx, "failed to process tracking event",
-				"error", err,
-				"event_type", wire.EventType,
-				"student_id", wire.StudentID,
-			)
-			continue
+		if !c.handleUntilDone(ctx, wire) {
+			return nil
 		}
 
 		c.commit(ctx, msg)
+	}
+}
+
+// handleUntilDone retries the handler until it succeeds, reporting false when
+// ctx is cancelled first.
+func (c *KafkaEventConsumer) handleUntilDone(ctx context.Context, wire wireEvent) bool {
+	pause := firstRetryPause
+	for attempt := 1; ; attempt++ {
+		err := c.handler.Handle(ctx, toDomainEvent(wire))
+		if err == nil {
+			return true
+		}
+		c.logger.ErrorContext(ctx, "failed to process tracking event, retrying",
+			"error", err,
+			"attempt", attempt,
+			"event_type", wire.EventType,
+			"student_id", wire.StudentID,
+		)
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(pause):
+		}
+		pause = min(2*pause, maxRetryPause)
 	}
 }
 
