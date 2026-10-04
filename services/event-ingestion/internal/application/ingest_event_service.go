@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,11 +16,12 @@ type IngestEventService struct {
 	repo      ports.EventRepository
 	outbox    ports.PublishOutboxRepository
 	publisher ports.EventPublisher
+	taps      ports.TapBaselineReader
 	logger    *slog.Logger
 }
 
-func NewIngestEventService(repo ports.EventRepository, outbox ports.PublishOutboxRepository, publisher ports.EventPublisher, logger *slog.Logger) *IngestEventService {
-	return &IngestEventService{repo: repo, outbox: outbox, publisher: publisher, logger: logger}
+func NewIngestEventService(repo ports.EventRepository, outbox ports.PublishOutboxRepository, publisher ports.EventPublisher, taps ports.TapBaselineReader, logger *slog.Logger) *IngestEventService {
+	return &IngestEventService{repo: repo, outbox: outbox, publisher: publisher, taps: taps, logger: logger}
 }
 
 // Ingest writes event durably via the repository, then publishes it to Kafka without
@@ -40,9 +42,20 @@ func NewIngestEventService(repo ports.EventRepository, outbox ports.PublishOutbo
 // whose student_id is not that value is rejected with domain.ErrIdentityMismatch
 // before any write -- the student_id carried into motifpath.events is always the
 // caller's own identity, which is what every downstream consumer keys on.
+//
+// A practice.item_answered event is stamped with the student's tap time before it
+// is stored, so the stored document and the published message carry the same value.
 func (s *IngestEventService) Ingest(ctx context.Context, callerUserID string, event domain.TrackingEvent) (time.Time, error) {
 	if event.Base().StudentID != callerUserID {
 		return time.Time{}, domain.ErrIdentityMismatch
+	}
+
+	if answer, ok := event.(domain.PracticeItemAnsweredEvent); ok {
+		stamped, err := s.stampTap(ctx, answer)
+		if err != nil {
+			return time.Time{}, err
+		}
+		event = stamped
 	}
 
 	receivedAt, alreadyExisted, err := s.repo.Save(ctx, event)
@@ -81,4 +94,26 @@ func (s *IngestEventService) publishAsync(ctx context.Context, event domain.Trac
 	if err := s.outbox.MarkPublished(ctx, base.EventID); err != nil {
 		s.logger.ErrorContext(ctx, "failed to mark outbox entry published", "error", err, "event_id", base.EventID)
 	}
+}
+
+// stampTap sets the answer's TapMs from the student's latest tap check before it, on
+// timed answers only, and clears any value already there: tap_ms is server-set. A
+// failed lookup fails the request rather than storing the answer without its tap --
+// the client retries with the same event_id. On such a retry the lookup runs again;
+// it is keyed on occurred_at, so it finds the same tap check unless an older one
+// arrived late in between.
+func (s *IngestEventService) stampTap(ctx context.Context, answer domain.PracticeItemAnsweredEvent) (domain.PracticeItemAnsweredEvent, error) {
+	answer.TapMs = nil
+	if !answer.Response.IsTimed() {
+		return answer, nil
+	}
+
+	tapMs, found, err := s.taps.LatestTap(ctx, answer.StudentID, answer.OccurredAt)
+	if err != nil {
+		return answer, fmt.Errorf("reading the student's latest tap check: %w", err)
+	}
+	if found {
+		answer.TapMs = &tapMs
+	}
+	return answer, nil
 }

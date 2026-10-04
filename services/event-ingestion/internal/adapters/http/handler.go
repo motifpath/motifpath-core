@@ -80,8 +80,11 @@ func (h *Handler) IngestTrackingEvent(ctx context.Context, request generated.Ing
 
 func validationErrorResponse(err error) generated.IngestTrackingEvent400JSONResponse {
 	reason := "unrecognised event_type"
-	if errors.Is(err, domain.ErrMissingRequiredField) {
+	switch {
+	case errors.Is(err, domain.ErrMissingRequiredField):
 		reason = "missing required field"
+	case errors.Is(err, domain.ErrInvalidField):
+		reason = "invalid field"
 	}
 
 	return generated.IngestTrackingEvent400JSONResponse{

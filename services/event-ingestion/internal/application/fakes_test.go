@@ -242,7 +242,78 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 		return domain.ExerciseAnswerSentEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger, AttemptNumber: 1}
 	case domain.EventTypeExerciseEnded:
 		return domain.ExerciseEndedEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger, Outcome: domain.ExerciseOutcomeCompleted}
+	case domain.EventTypePracticeSessionStarted:
+		return domain.PracticeSessionStartedEvent{TrackingEventBase: base, PracticeSessionID: practiceSessionID, Minutes: 10,
+			PlannedItems: []domain.PlannedPracticeItem{{ItemKey: cellItemKey, Reason: domain.PracticePickReasonNew}}}
+	case domain.EventTypePracticeItemAnswered:
+		return newNameTheNoteAnswer(base)
+	case domain.EventTypePracticeSessionEnded:
+		return domain.PracticeSessionEndedEvent{TrackingEventBase: base, PracticeSessionID: practiceSessionID, AnsweredCount: 1}
+	case domain.EventTypePracticeTapCheckCompleted:
+		return domain.PracticeTapCheckCompletedEvent{TrackingEventBase: base, MedianTapMs: 350, TapCount: 24}
 	default:
 		panic("unhandled event type in test helper: " + string(eventType))
+	}
+}
+
+// fakeTapBaselineReader is a minimal ports.TapBaselineReader. It answers every
+// lookup with tapMs/found (or err) and records each call, so tests can assert both
+// what was stamped and when no lookup should have happened at all.
+type fakeTapBaselineReader struct {
+	mu    sync.Mutex
+	tapMs int
+	found bool
+	err   error
+	calls []tapLookup
+}
+
+type tapLookup struct {
+	studentID string
+	before    time.Time
+}
+
+func (f *fakeTapBaselineReader) LatestTap(_ context.Context, studentID string, before time.Time) (int, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, tapLookup{studentID: studentID, before: before})
+	if f.err != nil {
+		return 0, false, f.err
+	}
+	return f.tapMs, f.found, nil
+}
+
+func (f *fakeTapBaselineReader) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.calls)
+}
+
+var _ ports.TapBaselineReader = (*fakeTapBaselineReader)(nil)
+
+const (
+	practiceSessionID = "44444444-4444-4444-4444-444444444444"
+	cellItemKey       = "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3"
+	playAlongItemKey  = "play_along:55555555-5555-4555-8555-555555555555"
+)
+
+func newNameTheNoteAnswer(base domain.TrackingEventBase) domain.PracticeItemAnsweredEvent {
+	base.EventType = domain.EventTypePracticeItemAnswered
+	latency := 1800
+	return domain.PracticeItemAnsweredEvent{
+		TrackingEventBase: base,
+		PracticeSessionID: practiceSessionID,
+		ItemKey:           cellItemKey,
+		Response:          domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency},
+	}
+}
+
+func newSelfRatedAnswer(base domain.TrackingEventBase) domain.PracticeItemAnsweredEvent {
+	base.EventType = domain.EventTypePracticeItemAnswered
+	tempo := 90
+	return domain.PracticeItemAnsweredEvent{
+		TrackingEventBase: base,
+		PracticeSessionID: practiceSessionID,
+		ItemKey:           playAlongItemKey,
+		Response:          domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: &tempo},
 	}
 }

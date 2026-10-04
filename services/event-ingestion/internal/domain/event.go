@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// EventType identifies which of the seven tracking events a payload represents.
+// EventType identifies which tracking event a payload represents.
 // The set is closed — adding a value requires a spec change and a new ADR if it
 // introduces a new consumer concern.
 type EventType string
@@ -15,6 +15,11 @@ const (
 	EventTypeExerciseProgress   EventType = "exercise.progress"
 	EventTypeExerciseAnswerSent EventType = "exercise.answer_sent"
 	EventTypeExerciseEnded      EventType = "exercise.ended"
+
+	EventTypePracticeSessionStarted    EventType = "practice.session_started"
+	EventTypePracticeItemAnswered      EventType = "practice.item_answered"
+	EventTypePracticeSessionEnded      EventType = "practice.session_ended"
+	EventTypePracticeTapCheckCompleted EventType = "practice.tap_check_completed"
 )
 
 // TrackingEventBase is the common envelope carried by every student tracking event.
@@ -28,9 +33,9 @@ type TrackingEventBase struct {
 	OccurredAt time.Time
 }
 
-// TrackingEvent is implemented by all seven event-specific structs. It stands in for
-// a discriminated union: Go has no native sum type, and interface{}/any would erase
-// the compile-time guarantee that only the seven known event shapes satisfy it.
+// TrackingEvent is implemented by every event-specific struct. It stands in for a
+// discriminated union: Go has no native sum type, and interface{}/any would erase
+// the compile-time guarantee that only the known event shapes satisfy it.
 type TrackingEvent interface {
 	Base() TrackingEventBase
 }
