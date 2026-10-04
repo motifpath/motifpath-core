@@ -1,0 +1,85 @@
+package kafka
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/motifpath/aggregation-worker/internal/domain"
+)
+
+func intPtr(v int) *int { return &v }
+
+// The payloads are the ones event-ingestion publishes (its wire_event_practice_test).
+func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
+	const base = `"event_id":"11111111-1111-4111-8111-111111111111","student_id":"22222222-2222-4222-8222-222222222222","session_id":"33333333-3333-4333-8333-333333333333","occurred_at":"2026-10-04T10:00:00Z","event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444"`
+	occurredAt := time.Date(2026, 10, 4, 10, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name    string
+		payload string
+		want    domain.PracticeAnswer
+	}{
+		{
+			name:    "self-rated take",
+			payload: `{` + base + `,"item_key":"play_along:55555555-5555-4555-8555-555555555555","response":{"response_type":"self_rating","rating":"clean","tempo_bpm":90}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "play_along:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseSelfRating, Rating: domain.SelfRatingClean, TempoBPM: intPtr(90)},
+			},
+		},
+		{
+			name:    "timed answer with its tap",
+			payload: `{` + base + `,"item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3","response":{"response_type":"name_the_note","note_name":"C","latency_ms":1800},"tap_ms":350}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: intPtr(1800)},
+				TapMs:    intPtr(350),
+			},
+		},
+		{
+			name:    "found note and chosen options",
+			payload: `{` + base + `,"item_key":"exercise:55555555-5555-4555-8555-555555555555","response":{"response_type":"option_choice","option_ids":["a","b"],"latency_ms":900,"string":6,"fret":0}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "exercise:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{"a", "b"}, LatencyMs: intPtr(900), String: intPtr(6), Fret: intPtr(0)},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			wire, err := decodeWireEvent([]byte(c.payload))
+			require.NoError(t, err)
+
+			event := toDomainEvent(wire)
+
+			assert.Equal(t, domain.EventTypePracticeItemAnswered, event.EventType)
+			assert.Equal(t, "22222222-2222-4222-8222-222222222222", event.StudentID)
+			require.NotNil(t, event.PracticeAnswer)
+			want := c.want
+			want.EventID = "11111111-1111-4111-8111-111111111111"
+			want.StudentID = "22222222-2222-4222-8222-222222222222"
+			want.OccurredAt = occurredAt
+			want.PracticeSessionID = "44444444-4444-4444-8444-444444444444"
+			assert.Equal(t, want, *event.PracticeAnswer)
+		})
+	}
+}
+
+func TestToDomainEvent_PracticeItemAnsweredWithoutAResponseCarriesNoAnswer(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","item_key":"k"}`))
+	require.NoError(t, err)
+
+	assert.Nil(t, toDomainEvent(wire).PracticeAnswer)
+}
+
+func TestToDomainEvent_OtherEventsCarryNoPracticeAnswer(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"lesson.started","student_id":"s","content_context":{"content_node_id":"n"}}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+	assert.Equal(t, "n", event.ContentNodeID)
+	assert.Nil(t, event.PracticeAnswer)
+}

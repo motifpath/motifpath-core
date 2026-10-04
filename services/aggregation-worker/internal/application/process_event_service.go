@@ -12,11 +12,12 @@ import (
 // any other event_type) are accepted without error but produce no state
 // change — this worker's MVP scope stops at node-completion status.
 type ProcessEventService struct {
-	repo ports.CompletionStateRepository
+	repo     ports.CompletionStateRepository
+	practice *PracticeEvidenceService
 }
 
-func NewProcessEventService(repo ports.CompletionStateRepository) *ProcessEventService {
-	return &ProcessEventService{repo: repo}
+func NewProcessEventService(repo ports.CompletionStateRepository, practice *PracticeEvidenceService) *ProcessEventService {
+	return &ProcessEventService{repo: repo, practice: practice}
 }
 
 // Handle applies ADR-011's transition rule to event and persists the result if
@@ -24,6 +25,12 @@ func NewProcessEventService(repo ports.CompletionStateRepository) *ProcessEventS
 // safe: recomputing NextStatus from the same current value yields the same
 // next value, so the repeated Upsert is a no-op in effect.
 func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingEvent) error {
+	if event.EventType == domain.EventTypePracticeItemAnswered {
+		if event.PracticeAnswer == nil {
+			return nil
+		}
+		return s.practice.Process(ctx, *event.PracticeAnswer)
+	}
 	if !domain.IsLessonEvent(event.EventType) {
 		return nil
 	}

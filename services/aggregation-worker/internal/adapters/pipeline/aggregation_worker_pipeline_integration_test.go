@@ -21,6 +21,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"github.com/testcontainers/testcontainers-go/modules/redpanda"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
@@ -32,7 +33,7 @@ import (
 
 const kafkaTopic = "motifpath.events"
 
-func setupPipeline(t *testing.T) (broker string, repository *repo.MongoCompletionStateRepository) {
+func setupPipeline(t *testing.T) (broker string, db *mongo.Database) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -49,8 +50,7 @@ func setupPipeline(t *testing.T) (broker string, repository *repo.MongoCompletio
 		assert.NoError(t, mongoClient.Disconnect(context.Background()))
 	})
 
-	repository = repo.NewMongoCompletionStateRepository(mongoClient.Database("motifpath_events_test"))
-	require.NoError(t, repository.EnsureIndexes(ctx))
+	db = mongoClient.Database("motifpath_events_test")
 
 	redpandaContainer, err := redpanda.Run(ctx, "redpandadata/redpanda:v24.2.7", redpanda.WithAutoCreateTopics())
 	require.NoError(t, err)
@@ -60,16 +60,45 @@ func setupPipeline(t *testing.T) (broker string, repository *repo.MongoCompletio
 	broker, err = redpandaContainer.KafkaSeedBroker(ctx)
 	require.NoError(t, err)
 
-	return broker, repository
+	return broker, db
+}
+
+// startWorker wires the worker the way cmd/main.go does and runs its consumer
+// until the test ends.
+func startWorker(t *testing.T, broker string, db *mongo.Database) *repo.MongoCompletionStateRepository {
+	t.Helper()
+	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	completion := repo.NewMongoCompletionStateRepository(db)
+	require.NoError(t, completion.EnsureIndexes(ctx))
+	evidence := repo.NewMongoPracticeEvidenceRepository(db)
+	require.NoError(t, evidence.EnsureIndexes(ctx))
+	states := repo.NewMongoPracticeItemStateRepository(db)
+	require.NoError(t, states.EnsureIndexes(ctx))
+	practice := application.NewPracticeEvidenceService(repo.NewMongoPracticeReferenceReader(db), evidence, states, logger)
+
+	consumer := kafka.NewKafkaEventConsumer([]string{broker}, application.NewProcessEventService(completion, practice), logger)
+	t.Cleanup(func() { assert.NoError(t, consumer.Close()) })
+
+	runCtx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	t.Cleanup(cancel)
+	go func() { _ = consumer.Run(runCtx) }()
+	return completion
 }
 
 func publishLessonEvent(t *testing.T, broker string, eventType domain.EventType, studentID, contentNodeID string) {
 	t.Helper()
-	value, err := json.Marshal(map[string]any{
+	publish(t, broker, studentID, map[string]any{
 		"event_type":      string(eventType),
 		"student_id":      studentID,
 		"content_context": map[string]any{"content_node_id": contentNodeID},
 	})
+}
+
+func publish(t *testing.T, broker, studentID string, payload map[string]any) {
+	t.Helper()
+	value, err := json.Marshal(payload)
 	require.NoError(t, err)
 
 	writer := &kafkago.Writer{
@@ -86,16 +115,8 @@ func publishLessonEvent(t *testing.T, broker string, eventType domain.EventType,
 }
 
 func TestAggregationWorkerPipeline_LessonCompleted_ReachesCompletedStatus(t *testing.T) {
-	broker, repository := setupPipeline(t)
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	service := application.NewProcessEventService(repository)
-	consumer := kafka.NewKafkaEventConsumer([]string{broker}, service, logger)
-	t.Cleanup(func() { assert.NoError(t, consumer.Close()) })
-
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-	defer cancel()
-	go func() { _ = consumer.Run(ctx) }()
+	broker, db := setupPipeline(t)
+	repository := startWorker(t, broker, db)
 
 	const studentID = "student-pipeline-1"
 	const contentNodeID = "node-pipeline-1"
@@ -130,4 +151,48 @@ func TestAggregationWorkerPipeline_LessonCompleted_ReachesCompletedStatus(t *tes
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, domain.CompletionStatusCompleted, status, "the duplicate lesson.completed must leave status unchanged")
+}
+
+func TestAggregationWorkerPipeline_PracticeAnswer_BecomesEvidenceAndItemState(t *testing.T) {
+	broker, db := setupPipeline(t)
+	ctx := context.Background()
+	const (
+		studentID = "a11ce000-0000-4000-8000-000000000001"
+		diagramID = "00000000-0000-4000-8000-0000000000f1"
+		itemKey   = "play_along:" + diagramID
+	)
+	// The reference row core-domain keeps for the diagram.
+	_, err := db.Collection("practice_reference").InsertOne(ctx, bson.D{
+		{Key: "kind", Value: "diagram"}, {Key: "id", Value: diagramID}, {Key: "instrument_ids", Value: bson.A{}},
+		{Key: "tempo_bpm", Value: 100}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 1},
+	})
+	require.NoError(t, err)
+	startWorker(t, broker, db)
+
+	take := func(eventID string, rating string, bpm int) map[string]any {
+		return map[string]any{
+			"event_id": eventID, "event_type": "practice.item_answered", "student_id": studentID,
+			"session_id": "33333333-3333-4333-8333-333333333333", "occurred_at": "2026-10-05T09:00:00Z",
+			"practice_session_id": "44444444-4444-4444-8444-444444444444", "item_key": itemKey,
+			"response": map[string]any{"response_type": "self_rating", "rating": rating, "tempo_bpm": bpm},
+		}
+	}
+	first := take("e0000000-0000-4000-8000-000000000001", "clean", 80)
+	publish(t, broker, studentID, first)
+	publish(t, broker, studentID, first) // redelivered
+	publish(t, broker, studentID, take("e0000000-0000-4000-8000-000000000002", "almost", 85))
+
+	states := repo.NewMongoPracticeItemStateRepository(db)
+	require.Eventually(t, func() bool {
+		fold, found, err := states.Get(ctx, studentID, itemKey)
+		return err == nil && found && fold.Attempts == 2
+	}, 20*time.Second, 200*time.Millisecond, "both takes must fold into the item's state")
+
+	fold, _, err := states.Get(ctx, studentID, itemKey)
+	require.NoError(t, err)
+	assert.Equal(t, 1, fold.Box)
+	assert.Equal(t, 80, *fold.BestCleanBPM)
+	count, err := db.Collection("practice_evidence").CountDocuments(ctx, bson.D{{Key: "student_id", Value: studentID}})
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, count, "the redelivered take must be stored once")
 }

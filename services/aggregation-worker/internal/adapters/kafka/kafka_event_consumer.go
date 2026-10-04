@@ -111,5 +111,31 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 	if w.ContentContext != nil {
 		event.ContentNodeID = w.ContentContext.ContentNodeID
 	}
+	if event.EventType == domain.EventTypePracticeItemAnswered && w.Response != nil {
+		event.PracticeAnswer = toPracticeAnswer(w)
+	}
 	return event
+}
+
+func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
+	r := w.Response
+	return &domain.PracticeAnswer{
+		EventID:           w.EventID,
+		StudentID:         w.StudentID,
+		OccurredAt:        w.OccurredAt,
+		PracticeSessionID: w.PracticeSessionID,
+		ItemKey:           w.ItemKey,
+		Response: domain.PracticeResponse{
+			Type:             domain.PracticeResponseType(r.ResponseType),
+			NoteName:         r.NoteName,
+			String:           r.String,
+			Fret:             r.Fret,
+			OptionIDs:        r.OptionIDs,
+			LatencyMs:        r.LatencyMs,
+			Rating:           domain.SelfRating(r.Rating),
+			TempoBPM:         r.TempoBPM,
+			ChangesPerMinute: r.ChangesPerMinute,
+		},
+		TapMs: w.TapMs,
+	}
 }

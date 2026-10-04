@@ -98,7 +98,7 @@ func TestProcessEventService_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newFakeRepository()
-			svc := application.NewProcessEventService(repo)
+			svc := application.NewProcessEventService(repo, nil)
 
 			for _, eventType := range tt.events {
 				err := svc.Handle(context.Background(), domain.TrackingEvent{
@@ -122,7 +122,7 @@ func TestProcessEventService_Handle(t *testing.T) {
 func TestProcessEventService_Handle_PropagatesGetStatusError(t *testing.T) {
 	repo := newFakeRepository()
 	repo.getErr = errors.New("connection refused")
-	svc := application.NewProcessEventService(repo)
+	svc := application.NewProcessEventService(repo, nil)
 
 	err := svc.Handle(context.Background(), domain.TrackingEvent{
 		EventType:     domain.EventTypeLessonStarted,
@@ -136,7 +136,7 @@ func TestProcessEventService_Handle_PropagatesGetStatusError(t *testing.T) {
 func TestProcessEventService_Handle_PropagatesUpsertError(t *testing.T) {
 	repo := newFakeRepository()
 	repo.upsertErr = errors.New("connection refused")
-	svc := application.NewProcessEventService(repo)
+	svc := application.NewProcessEventService(repo, nil)
 
 	err := svc.Handle(context.Background(), domain.TrackingEvent{
 		EventType:     domain.EventTypeLessonStarted,

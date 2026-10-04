@@ -1,6 +1,7 @@
 // Command aggregation-worker runs the minimal Aggregation Worker described in
 // ADR-011: a Kafka consumer that derives per-student, per-content-node
-// completion status from lesson-family tracking events.
+// completion status from lesson-family tracking events, and grades practice
+// answers into evidence and per-item knowledge state.
 package main
 
 import (
@@ -87,7 +88,22 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("ensure mongodb indexes: %w", err)
 	}
 
-	service := application.NewProcessEventService(completionRepo)
+	evidenceRepo := repo.NewMongoPracticeEvidenceRepository(mongoClient.Database(cfg.mongoDatabase))
+	// Fatal on failure: the unique evidence_id index is what makes a redelivered
+	// practice answer count once.
+	if err := evidenceRepo.EnsureIndexes(ctx); err != nil {
+		return fmt.Errorf("ensure practice evidence indexes: %w", err)
+	}
+	itemStateRepo := repo.NewMongoPracticeItemStateRepository(mongoClient.Database(cfg.mongoDatabase))
+	if err := itemStateRepo.EnsureIndexes(ctx); err != nil {
+		return fmt.Errorf("ensure practice item state indexes: %w", err)
+	}
+	practice := application.NewPracticeEvidenceService(
+		repo.NewMongoPracticeReferenceReader(mongoClient.Database(cfg.mongoDatabase)),
+		evidenceRepo, itemStateRepo, logger,
+	)
+
+	service := application.NewProcessEventService(completionRepo, practice)
 	consumer := kafka.NewKafkaEventConsumer(cfg.kafkaBrokers, service, logger)
 	defer func() {
 		if err := consumer.Close(); err != nil {
