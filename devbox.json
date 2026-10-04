@@ -5,7 +5,7 @@
     "golangci-lint@2.13.1",
     "oapi-codegen@2.4",
     "atlas@0.28",
-    "nodejs@24",
+    "nodejs@26",
     "wgo@0.7"
   ],
   "shell": {
