@@ -26,10 +26,7 @@ type eventDocument struct {
 	Outcome        string             `bson:"outcome,omitempty"`
 	FinalScore     *int               `bson:"final_score,omitempty"`
 
-	// DurationSeconds (lesson.completed) and ElapsedSeconds (exercise.progress) are
-	// both from events.yaml. ADR-008's schema table lists DurationSeconds but omits
-	// ElapsedSeconds — stored anyway to avoid silently dropping real event data; the
-	// ADR's table should be amended to match.
+	// DurationSeconds is set on lesson.completed, ElapsedSeconds on exercise.progress.
 	DurationSeconds *int `bson:"duration_seconds,omitempty"`
 	ElapsedSeconds  *int `bson:"elapsed_seconds,omitempty"`
 
