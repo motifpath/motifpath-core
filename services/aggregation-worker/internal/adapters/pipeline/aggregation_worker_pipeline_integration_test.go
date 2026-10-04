@@ -184,11 +184,11 @@ func TestAggregationWorkerPipeline_PracticeAnswer_BecomesEvidenceAndItemState(t 
 
 	states := repo.NewMongoPracticeItemStateRepository(db)
 	require.Eventually(t, func() bool {
-		fold, found, err := states.Get(ctx, studentID, itemKey)
+		fold, _, found, err := states.Get(ctx, studentID, itemKey)
 		return err == nil && found && fold.Attempts == 2
 	}, 20*time.Second, 200*time.Millisecond, "both takes must fold into the item's state")
 
-	fold, _, err := states.Get(ctx, studentID, itemKey)
+	fold, _, _, err := states.Get(ctx, studentID, itemKey)
 	require.NoError(t, err)
 	assert.Equal(t, 1, fold.Box)
 	assert.Equal(t, 80, *fold.BestCleanBPM)

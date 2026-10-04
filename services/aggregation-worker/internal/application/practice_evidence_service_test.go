@@ -72,14 +72,15 @@ func (f *fakeEvidence) ListForItem(_ context.Context, studentID, itemKey string)
 }
 
 type fakeStates struct {
-	folds  map[string]domain.ItemFold
-	puts   int
-	putErr error
+	folds    map[string]domain.ItemFold
+	versions map[string]int
+	puts     int
+	putErr   error
 }
 
-func (f *fakeStates) Get(_ context.Context, studentID, itemKey string) (domain.ItemFold, bool, error) {
+func (f *fakeStates) Get(_ context.Context, studentID, itemKey string) (domain.ItemFold, int, bool, error) {
 	fold, ok := f.folds[studentID+"|"+itemKey]
-	return fold, ok, nil
+	return fold, f.versions[studentID+"|"+itemKey], ok, nil
 }
 
 func (f *fakeStates) Put(_ context.Context, studentID, itemKey string, fold domain.ItemFold) error {
@@ -88,6 +89,7 @@ func (f *fakeStates) Put(_ context.Context, studentID, itemKey string, fold doma
 	}
 	f.puts++
 	f.folds[studentID+"|"+itemKey] = fold
+	f.versions[studentID+"|"+itemKey] = domain.PracticeRulesVersion
 	return nil
 }
 
@@ -105,7 +107,7 @@ func newPracticeFixture() *practiceFixture {
 			pentatonic: {ID: pentatonic, TempoBPM: &tempo},
 		}},
 		evidence: &fakeEvidence{},
-		states:   &fakeStates{folds: map[string]domain.ItemFold{}},
+		states:   &fakeStates{folds: map[string]domain.ItemFold{}, versions: map[string]int{}},
 	}
 	f.service = application.NewPracticeEvidenceService(f.reference, f.evidence, f.states,
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -114,7 +116,7 @@ func newPracticeFixture() *practiceFixture {
 
 func (f *practiceFixture) fold(t *testing.T, itemKey string) (domain.ItemFold, bool) {
 	t.Helper()
-	fold, ok, err := f.states.Get(context.Background(), alice, itemKey)
+	fold, _, ok, err := f.states.Get(context.Background(), alice, itemKey)
 	require.NoError(t, err)
 	return fold, ok
 }
@@ -229,6 +231,25 @@ func TestPracticeEvidenceService_ALateAnswerIsPlacedInTimeOrder(t *testing.T) {
 	want, _ := inOrder.fold(t, playAlongKey)
 	got, _ := late.fold(t, playAlongKey)
 	assert.Equal(t, want, got)
+}
+
+func TestPracticeEvidenceService_RebuildsAStateFoldedUnderOtherRules(t *testing.T) {
+	f := newPracticeFixture()
+	earlier := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+	require.NoError(t, f.service.Process(context.Background(), earlier))
+	// The same evidence, but its state was folded by rules this worker no longer runs.
+	stale := domain.ItemFold{Attempts: 7, Counted: 7, Accuracy: 0.1, Box: 4, LastAt: &monday}
+	f.states.folds[alice+"|"+playAlongKey] = stale
+	f.states.versions[alice+"|"+playAlongKey] = domain.PracticeRulesVersion - 1
+
+	later := ratedTake("e0000000-0000-4000-8000-000000000002", monday.AddDate(0, 0, 1), domain.SelfRatingClean, 90)
+	require.NoError(t, f.service.Process(context.Background(), later))
+
+	want, err := domain.RebuildFold(f.evidence.stored, domain.ItemGoal{TargetTempoBPM: f.reference.diagrams[pentatonic].TempoBPM})
+	require.NoError(t, err)
+	got, _ := f.fold(t, playAlongKey)
+	assert.Equal(t, want, got)
+	assert.Equal(t, domain.PracticeRulesVersion, f.states.versions[alice+"|"+playAlongKey])
 }
 
 func TestPracticeEvidenceService_Failures(t *testing.T) {

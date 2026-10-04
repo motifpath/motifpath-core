@@ -8,9 +8,10 @@ import (
 	"time"
 )
 
-// PracticeRulesVersion versions the mastery rules below. A rule change
-// bumps it, and item states folded under an older version are rebuilt from their
-// evidence, which is never modified.
+// PracticeRulesVersion versions the mastery rules below. A rule change bumps
+// it. A state folded under another version is rebuilt from its evidence, which is
+// never modified, the next time its item is answered; until then its stored
+// version tells readers it is stale.
 const PracticeRulesVersion = 1
 
 // ErrUnsupportedEvidenceSource is returned for evidence whose source the fold has no

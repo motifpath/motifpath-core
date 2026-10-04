@@ -36,6 +36,8 @@ func NewPracticeEvidenceService(
 //
 // Every step is safe to repeat. A duplicate inserts no evidence and rebuilds the
 // item, which also repairs a state write that failed after the evidence was stored.
+// A state folded under other mastery rules is rebuilt too, the next time the item
+// is answered.
 func (s *PracticeEvidenceService) Process(ctx context.Context, answer domain.PracticeAnswer) error {
 	log := s.logger.With("event_id", answer.EventID, "student_id", answer.StudentID, "item_key", answer.ItemKey)
 
@@ -69,13 +71,16 @@ func (s *PracticeEvidenceService) Process(ctx context.Context, answer domain.Pra
 }
 
 func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.PracticeEvidence, goal domain.ItemGoal, inserted bool) error {
-	fold, _, err := s.states.Get(ctx, evidence.StudentID, evidence.ItemKey)
+	fold, rulesVersion, found, err := s.states.Get(ctx, evidence.StudentID, evidence.ItemKey)
 	if err != nil {
 		return err
 	}
 
+	// Folding onto a state built by other rules would mix the two, so such a state
+	// is rebuilt from the evidence, like a late or repeated answer.
+	staleRules := found && rulesVersion != domain.PracticeRulesVersion
 	late := fold.LastAt != nil && evidence.OccurredAt.Before(*fold.LastAt)
-	if inserted && !late {
+	if inserted && !late && !staleRules {
 		fold, err = domain.FoldEvidence(fold, evidence, goal)
 	} else {
 		var history []domain.PracticeEvidence

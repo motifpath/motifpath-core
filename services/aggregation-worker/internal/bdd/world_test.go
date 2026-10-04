@@ -60,9 +60,9 @@ type fakeStates struct {
 	folds map[string]domain.ItemFold
 }
 
-func (f *fakeStates) Get(_ context.Context, studentID, itemKey string) (domain.ItemFold, bool, error) {
+func (f *fakeStates) Get(_ context.Context, studentID, itemKey string) (domain.ItemFold, int, bool, error) {
 	fold, ok := f.folds[studentID+"|"+itemKey]
-	return fold, ok, nil
+	return fold, domain.PracticeRulesVersion, ok, nil
 }
 
 func (f *fakeStates) Put(_ context.Context, studentID, itemKey string, fold domain.ItemFold) error {
@@ -198,7 +198,7 @@ func (w *world) playAlongKey(diagram string) string {
 func (w *world) answer(student, itemKey string, response domain.PracticeResponse) error {
 	w.eventNo++
 	studentID := w.studentID(student)
-	before, _, err := w.states.Get(context.Background(), studentID, itemKey)
+	before, _, _, err := w.states.Get(context.Background(), studentID, itemKey)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (w *world) sessionID(student string) string {
 }
 
 func (w *world) fold(student, itemKey string) (domain.ItemFold, error) {
-	fold, _, err := w.states.Get(context.Background(), w.studentID(student), itemKey)
+	fold, _, _, err := w.states.Get(context.Background(), w.studentID(student), itemKey)
 	return fold, err
 }
 

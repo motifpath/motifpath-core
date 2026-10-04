@@ -33,16 +33,16 @@ func (r *MongoPracticeItemStateRepository) EnsureIndexes(ctx context.Context) er
 	return err
 }
 
-func (r *MongoPracticeItemStateRepository) Get(ctx context.Context, studentID, itemKey string) (domain.ItemFold, bool, error) {
+func (r *MongoPracticeItemStateRepository) Get(ctx context.Context, studentID, itemKey string) (domain.ItemFold, int, bool, error) {
 	var doc practiceItemStateDocument
 	err := r.collection.FindOne(ctx, stateFilter(studentID, itemKey)).Decode(&doc)
 	if errors.Is(err, mongo.ErrNoDocuments) {
-		return domain.ItemFold{}, false, nil
+		return domain.ItemFold{}, 0, false, nil
 	}
 	if err != nil {
-		return domain.ItemFold{}, false, err
+		return domain.ItemFold{}, 0, false, err
 	}
-	return doc.toDomain(), true, nil
+	return doc.toDomain(), doc.RulesVersion, true, nil
 }
 
 func (r *MongoPracticeItemStateRepository) Put(ctx context.Context, studentID, itemKey string, f domain.ItemFold) error {

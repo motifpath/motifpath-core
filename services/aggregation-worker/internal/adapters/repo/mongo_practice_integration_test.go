@@ -118,7 +118,7 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	require.NoError(t, repo.EnsureIndexes(ctx))
 	itemKey := "play_along:" + diagram1
 
-	_, found, err := repo.Get(ctx, studentA, itemKey)
+	_, _, found, err := repo.Get(ctx, studentA, itemKey)
 	require.NoError(t, err)
 	assert.False(t, found)
 
@@ -130,10 +130,11 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, replaced))
 
-	got, found, err := repo.Get(ctx, studentA, itemKey)
+	got, version, found, err := repo.Get(ctx, studentA, itemKey)
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, replaced, got)
+	assert.Equal(t, domain.PracticeRulesVersion, version)
 
 	t.Run("the document carries the rules version and the earned level for its readers", func(t *testing.T) {
 		var doc bson.M

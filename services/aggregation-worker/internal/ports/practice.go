@@ -31,9 +31,9 @@ type PracticeEvidenceRepository interface {
 // safe without locking because motifpath.events is partitioned by student_id, which makes
 // this worker the single writer for each student.
 type PracticeItemStateRepository interface {
-	// Get reports the stored fold; found is false when the student has no state for
-	// the item yet.
-	Get(ctx context.Context, studentID, itemKey string) (fold domain.ItemFold, found bool, err error)
+	// Get reports the stored fold and the rules version it was folded under; found
+	// is false when the student has no state for the item yet.
+	Get(ctx context.Context, studentID, itemKey string) (fold domain.ItemFold, rulesVersion int, found bool, err error)
 
 	// Put replaces the stored fold, stamped with domain.PracticeRulesVersion.
 	Put(ctx context.Context, studentID, itemKey string, fold domain.ItemFold) error
