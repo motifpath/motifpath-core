@@ -4,7 +4,7 @@
 # combination matrix (every CourseStatus, every CourseEnrollmentStatus,
 # standalone paths current and archived, every ExerciseType). Also clears
 # the local dev Mongo's completion aggregates collection, since seed-full
-# writes fresh ones.
+# writes fresh ones, and rebuilds the practice reference snapshot.
 #
 # HARD, NON-OVERRIDABLE PRODUCTION GUARD: refuses to run unless both
 # DATABASE_URL and MONGO_URI resolve to localhost/127.0.0.1. There is no
@@ -80,6 +80,14 @@ echo "==> Running seed-full"
 ( cd services/core-domain && \
   DATABASE_URL="$DATABASE_URL" MONGO_URI="$MONGO_URI" MONGO_DATABASE="$MONGO_DATABASE" \
   go run ./cmd/seed-full )
+
+# The migrations just re-installed the basic diagram catalog without core
+# restarting, so core's start-up sync never saw it: rebuild the snapshot the
+# practice graders read, or answers on new catalog diagrams are rejected.
+echo "==> Syncing the practice reference snapshot"
+( cd services/core-domain && \
+  DATABASE_URL="$DATABASE_URL" MONGO_URI="$MONGO_URI" MONGO_DATABASE="$MONGO_DATABASE" \
+  go run ./cmd/sync-practice-reference )
 
 # Diagrams only play once their voices' samples are in MinIO. A missing
 # ffmpeg leaves them silent but doesn't fail the reset.

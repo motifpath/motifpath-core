@@ -2026,3 +2026,11 @@ func (f *fakeDiagramRepo) put(d domain.Diagram) {
 	defer f.mu.Unlock()
 	f.byID[d.ID] = d
 }
+
+// discardPracticeReferences is a ports.PracticeReferenceWriter that keeps
+// nothing: no feature reads the practice reference snapshot through core.
+type discardPracticeReferences struct{}
+
+func (discardPracticeReferences) PutDiagrams(context.Context, []domain.DiagramReference) error {
+	return nil
+}

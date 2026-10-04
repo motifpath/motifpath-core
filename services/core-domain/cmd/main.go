@@ -36,7 +36,12 @@ import (
 
 const (
 	shutdownTimeout = 15 * time.Second
-	migrationsDir   = "file://internal/adapters/repo/ent/migrate/migrations"
+	// practiceReferenceSyncTimeout bounds the start-up sync of the practice
+	// reference snapshot. The sync writes one bulk upsert per page of 100
+	// diagrams — about 20 round trips for the ~2,000-diagram catalog — so
+	// this leaves a remote cluster ample room.
+	practiceReferenceSyncTimeout = 10 * time.Second
+	migrationsDir                = "file://internal/adapters/repo/ent/migrate/migrations"
 )
 
 func main() {
@@ -129,6 +134,8 @@ func run(logger *slog.Logger) error {
 	}
 	defer closeStores()
 
+	syncPracticeReference(ctx, logger, entClient, mongoClient.Database(cfg.mongoDatabase), practiceReferenceSyncTimeout)
+
 	// JWKS fetching, in-memory caching, and refresh are handled internally
 	// by the SDK from this point on — see ADR-007/ADR-009.
 	clerk.SetKey(cfg.clerkSecretKey)
@@ -176,6 +183,29 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("core domain service stopped cleanly")
 	return nil
+}
+
+// syncPracticeReference rebuilds the practice reference snapshot the
+// Aggregation Worker's graders read (ADR-047): it repairs any write lost
+// between a commit and a crash, and covers rows installed by migrations. A
+// failure is logged, not fatal — until a later start repairs it, an answer
+// on a missing row is rejected and kept for a regrade. It gives up after
+// timeout, so an unreachable MongoDB delays the listener by that much rather
+// than by the driver's 30s server selection.
+func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *ent.Client, mongoDB *mongo.Database, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	writer := repo.NewMongoPracticeReferenceWriter(mongoDB, func() time.Time { return time.Now().UTC() })
+	if err := writer.EnsureIndexes(ctx); err != nil {
+		logger.Error("ensure the practice reference indexes", "error", err)
+		return
+	}
+	synced, err := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), writer).SyncDiagrams(ctx)
+	if err != nil {
+		logger.Error("sync the practice reference snapshot", "synced", synced, "error", err)
+		return
+	}
+	logger.Info("practice reference snapshot synced", "diagrams", synced)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
@@ -273,7 +303,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// Voice samples are served from the same public media address as
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
-	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, newID, now)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, learningGraphPinger, completionReader), nil

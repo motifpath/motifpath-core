@@ -1812,3 +1812,47 @@ func (f *fakeDiagramRepository) Update(_ context.Context, diagram domain.Diagram
 	f.byID[diagram.ID] = diagram
 	return nil
 }
+
+// fakePracticeReferenceWriter is an in-memory ports.PracticeReferenceWriter:
+// it keeps the latest diagram reference per id and counts the writes, and
+// fails every write with err when set. Like a real store, it refuses a
+// write whose context is already done.
+type fakePracticeReferenceWriter struct {
+	mu       sync.Mutex
+	diagrams map[string]domain.DiagramReference
+	writes   int
+	err      error
+}
+
+func newFakePracticeReferenceWriter() *fakePracticeReferenceWriter {
+	return &fakePracticeReferenceWriter{diagrams: map[string]domain.DiagramReference{}}
+}
+
+func (f *fakePracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	for _, ref := range refs {
+		f.diagrams[ref.ID] = ref
+	}
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) writeCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.writes
+}
+
+func (f *fakePracticeReferenceWriter) diagram(id string) (domain.DiagramReference, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	ref, ok := f.diagrams[id]
+	return ref, ok
+}
