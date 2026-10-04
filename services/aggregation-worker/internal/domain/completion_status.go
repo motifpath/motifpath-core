@@ -28,6 +28,8 @@ func NextStatus(current CompletionStatus, eventType EventType) CompletionStatus 
 		return CompletionStatusInProgress
 	case EventTypeLessonCompleted:
 		return CompletionStatusCompleted
+	case EventTypePracticeItemAnswered:
+		return current
 	default:
 		return current
 	}

@@ -21,6 +21,8 @@ func IsLessonEvent(t EventType) bool {
 	switch t {
 	case EventTypeLessonStarted, EventTypeLessonResumed, EventTypeLessonCompleted:
 		return true
+	case EventTypePracticeItemAnswered:
+		return false
 	default:
 		return false
 	}
@@ -35,4 +37,7 @@ type TrackingEvent struct {
 	EventType     EventType
 	StudentID     string
 	ContentNodeID string
+
+	// PracticeAnswer is set on a practice.item_answered event.
+	PracticeAnswer *PracticeAnswer
 }
