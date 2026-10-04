@@ -1447,6 +1447,38 @@ func (f *fakeCourseEnrollmentRepo) Complete(_ context.Context, id string) error 
 	return nil
 }
 
+// fakePracticeItemStateReader is an in-memory ports.PracticeItemStateReader
+// standing in for the Aggregation Worker's practice item states.
+type fakePracticeItemStateReader struct {
+	mu     sync.Mutex
+	states map[string]map[string]domain.PracticeItemState
+}
+
+func newFakePracticeItemStateReader() *fakePracticeItemStateReader {
+	return &fakePracticeItemStateReader{states: map[string]map[string]domain.PracticeItemState{}}
+}
+
+func (f *fakePracticeItemStateReader) GetStates(_ context.Context, studentID string, itemKeys []string) (map[string]domain.PracticeItemState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := map[string]domain.PracticeItemState{}
+	for _, key := range itemKeys {
+		if s, ok := f.states[studentID][key]; ok {
+			result[key] = s
+		}
+	}
+	return result, nil
+}
+
+func (f *fakePracticeItemStateReader) put(studentID string, s domain.PracticeItemState) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.states[studentID] == nil {
+		f.states[studentID] = map[string]domain.PracticeItemState{}
+	}
+	f.states[studentID][s.ItemKey] = s
+}
+
 type fakeCompletionReader struct {
 	mu       sync.Mutex
 	statuses map[string]map[string]domain.CompletionStatus

@@ -42,6 +42,7 @@ type world struct {
 	versions          *fakeContentNodeVersionRepo
 	learningState     *fakeStudentLearningStateRepo
 	completion        *fakeCompletionReader
+	practiceStates    *fakePracticeItemStateReader
 	knowledge         *fakeKnowledgeNodeRepo
 	knowledgeEdges    *fakeKnowledgeEdgeRepo
 	instruments       *fakeInstrumentRepo
@@ -97,6 +98,9 @@ type world struct {
 	// also holds, for the "completed that lesson in the course" step.
 	sharedLessonPath string
 	lastErr          error
+	// pickedSlug and pickedReason are the play-along a "picked as" step
+	// composed a session for, and the reason it should be picked with.
+	pickedSlug, pickedReason string
 
 	// lastPromptSent holds whichever prompt document the most recent
 	// create/update exercise step built, so a following "the exercise's
@@ -226,6 +230,7 @@ func newWorld() *world {
 		versions:          newFakeContentNodeVersionRepo(),
 		learningState:     newFakeStudentLearningStateRepo(),
 		completion:        newFakeCompletionReader(),
+		practiceStates:    newFakePracticeItemStateReader(),
 		knowledge:         knowledge,
 		knowledgeEdges:    newFakeKnowledgeEdgeRepo(),
 		instruments:       newFakeInstrumentRepo(),
@@ -267,7 +272,9 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, newID, now)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, w.pgPinger, w.mongoPinger)
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.practiceStates, newID, now)
+
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, w.pgPinger, w.mongoPinger)
 	return w
 }
 

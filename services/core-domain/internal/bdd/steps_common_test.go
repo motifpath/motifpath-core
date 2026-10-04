@@ -362,6 +362,7 @@ func (w *world) requestRefusedNotFound() error {
 		generated.UnpublishLearningPath404JSONResponse,
 		generated.GetCatalogPath404JSONResponse,
 		generated.EnrollInLearningPath404JSONResponse,
+		generated.CreatePracticeSessionPlan404JSONResponse,
 		generated.GetKnowledgeNode404JSONResponse:
 		return nil
 	default:
@@ -496,6 +497,8 @@ func (w *world) validationErrors() ([]struct {
 }, error) {
 	switch resp := w.lastResp.(type) {
 	case generated.RegisterUser400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreatePracticeSessionPlan400JSONResponse:
 		return resp.Errors, nil
 	case generated.ListCatalogPaths400JSONResponse:
 		return resp.Errors, nil
