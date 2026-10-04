@@ -5,7 +5,7 @@ Go monorepo containing two backend services:
 - `services/core-domain/` — Learning graph, student paths, threshold logic (Postgres via ent ORM)
 - `services/event-ingestion/` — Domain event collection and storage (MongoDB Atlas)
 
-Shared tooling at monorepo root: Makefile, devbox.json, .golangci.yml, docker-compose.yml
+Shared tooling at monorepo root: Makefile, mise.toml, .golangci.yml, docker-compose.yml
 
 ## Hexagonal Architecture (both services)
 ```
@@ -94,10 +94,9 @@ NEVER access the database directly from the domain layer.
   self-registration can never create an admin role (`domain.NewUser` refuses it), so this goes
   through the user repository directly, the same way a hand-run SQL insert would.
   It finishes by uploading the voice samples diagrams play with (`scripts/voice-samples.sh`).
-  Rendering them needs ffmpeg, which devbox doesn't provide: without it (and no
-  `.voice-samples/` cache) the reset still succeeds but warns, and diagrams stay silent. Run
-  the reset once inside `nix --extra-experimental-features 'nix-command flakes' shell
-  nixpkgs#ffmpeg-headless`; see README → Voice samples.
+  Rendering them needs ffmpeg and Bash 4+, which mise doesn't provide: without them (and no
+  `.voice-samples/` cache) the reset still succeeds but warns, and diagrams stay silent;
+  see README → Voice samples.
 - `go run ./cmd/seed-dev-data` → seeds one realistic path for whichever student already exists
   (sign in once through the SPA first). Lighter than `db:reset` + `seed-full`; doesn't touch
   courses.

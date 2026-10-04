@@ -39,37 +39,49 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ## Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) — runs local dependencies (Postgres, MongoDB, Redpanda) and integration tests
-- [Devbox](https://www.jetify.com/devbox) — manages the Go toolchain and CLI versions
+- [Docker](https://docs.docker.com/get-docker/) — runs local dependencies (Postgres, MongoDB, Redpanda, object store) and integration tests
+- [mise](https://mise.jdx.dev) — installs the toolchain pinned in `mise.toml`
+- [Atlas](https://atlasgo.io) 1.3.2 — the migration CLI, same version as `services/core-domain/Dockerfile`
 
-You do **not** need to install Go, golangci-lint, oapi-codegen, or atlas yourself — Devbox
-provides all of them, pinned to the exact versions declared in `devbox.json`.
+You do **not** need to install Go, Node, golangci-lint, oapi-codegen, wgo, or process-compose
+yourself — mise provides all of them, at the exact versions declared in `mise.toml`.
+
+mise does not provide these, so install them separately where they are missing:
+
+| Tool | Needed for | Linux | macOS |
+|---|---|---|---|
+| GNU `timeout` | the `wait-*` gates in `process-compose.yaml` | preinstalled | GNU coreutils (installs as `gtimeout`; link it as `timeout`) |
+| Bash 4+ | `scripts/voice-samples.sh` | preinstalled | the system Bash is 3.2 — install a newer one |
+| ffmpeg | rendering voice samples | `apt install ffmpeg` | any package source |
 
 ## Getting Started (first time on this repo)
 
 1. **Install Docker** if you don't already have it (link above).
-2. **Install Devbox:**
+2. **Install mise** and activate it in your shell (zsh shown; see the mise docs for others):
    ```bash
-   curl -fsSL https://get.jetify.com/devbox | bash
+   curl https://mise.run | sh
+   echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc && source ~/.zshrc
    ```
-   This also bootstraps [Nix](https://nixos.org) if it isn't present yet, and will prompt for
-   your `sudo` password once to do so. Run it in a real terminal — it needs an interactive
-   password prompt, so it won't work through a tool or script that can't answer one.
-3. **Enter the dev shell**, from the repo root:
+3. **Install the pinned toolchain**, from the repo root:
    ```bash
-   devbox shell
+   mise trust
+   mise install
    ```
-   The first run downloads the pinned toolchain (a couple of minutes, under 100 MB). Every run
-   after that is near-instant. You'll know it worked when you see `motifpath-core dev environment
-   ready`.
-4. **Start local dependencies** (from inside `devbox shell`, or via `devbox run -- make dev` from
-   outside it):
+   The first run takes a few minutes: the Go-based tools are compiled locally. `mise ls` then
+   lists each tool with the version from `mise.toml`.
+4. **Install Atlas:**
+   ```bash
+   curl -sSf https://atlasgo.sh | ATLAS_VERSION=v1.3.2 sh
+   ```
+   Atlas removes binaries older than about six months; if this version is refused, bump it here
+   and in `services/core-domain/Dockerfile` together.
+5. **Start local dependencies:**
    ```bash
    make dev
    ```
-   Starts Postgres, MongoDB, and Redpanda (local Kafka) via docker-compose and waits for their
-   healthchecks.
-5. **Sanity-check the toolchain:**
+   Starts Postgres, MongoDB, Redpanda (local Kafka), and the SeaweedFS object store via
+   docker-compose and waits for their healthchecks.
+6. **Sanity-check the toolchain:**
    ```bash
    go work sync
    ```
@@ -80,19 +92,19 @@ You're ready to build at that point.
 ## Local Setup (day to day)
 
 ```bash
-# Enter the pinned toolchain
-devbox shell
-
-# Start local dependencies (Postgres, MongoDB, Redpanda)
+# Start local dependencies (Postgres, MongoDB, Redpanda, object store)
 make dev
 ```
+
+With mise activated in your shell, the pinned tools are on your `PATH` whenever you are inside
+the repo — there is no shell to enter.
 
 ## Running the services locally
 
 The Go services run as `wgo`-reloaded processes managed by
-[process-compose](https://github.com/F1bonacc1/process-compose) (bundled with
-Devbox). The dependency containers stay in Docker Compose — `make dev` starts
-them, `devbox services up` does not touch them (ADR-016).
+[process-compose](https://github.com/F1bonacc1/process-compose) (installed by
+mise). The dependency containers stay in Docker Compose — `make dev` starts
+them, process-compose does not touch them (ADR-016).
 
 ```bash
 # 1. One-time: copy the env templates and set a real Clerk secret key in each
@@ -101,13 +113,18 @@ cp services/core-domain/.env.example       services/core-domain/.env
 cp services/event-ingestion/.env.example   services/event-ingestion/.env
 cp services/aggregation-worker/.env.example services/aggregation-worker/.env
 
-# 2. Start the dependency containers (Postgres, MongoDB, Redpanda).
+# 2. Start the dependency containers (Postgres, MongoDB, Redpanda, object store).
 make dev
 
 # 3. Backend inner loop — core-domain (:8080) + event-ingestion (:8081),
 #    each rebuilding on save. core-domain applies Atlas migrations on startup.
-devbox services up
+mise run services
 ```
+
+`mise run services` is `process-compose up`. `mise.toml` sets `PC_PORT_NUM=8099` because
+process-compose's own API otherwise listens on 8080, the same port as `core-domain`, and the
+readiness probe then reaches the wrong server. If you call `process-compose` outside mise, pass
+`-p 8099`.
 
 `.env` files are gitignored. Each service reads its own `services/<name>/.env`.
 
@@ -117,7 +134,7 @@ devbox services up
 started by the bare command — name them to bring them up:
 
 ```bash
-devbox services up core-domain event-ingestion aggregation-worker web
+mise run full
 ```
 
 `web` runs `npm run dev` in `../motifpath-web`, so that repo must be checked out
@@ -149,10 +166,9 @@ their pitches come from the migrations; the audio files don't, so a diagram
 stays silent wherever they haven't been uploaded.
 
 - **Local:** `make db:reset` runs `scripts/voice-samples.sh`, which renders the
-  samples into `.voice-samples/` (gitignored) and uploads them to local MinIO.
-  Rendering needs ffmpeg, which devbox doesn't provide — run it once inside
-  `nix --extra-experimental-features 'nix-command flakes' shell nixpkgs#ffmpeg-headless`
-  (or any shell with ffmpeg). Later runs upload from the cache without it.
+  samples into `.voice-samples/` (gitignored) and uploads them to the local object store.
+  Rendering needs ffmpeg and Bash 4+, which mise doesn't provide (see Prerequisites).
+  Later runs upload from the cache without ffmpeg.
 - **Deployed environments:** before (or with) the first deploy that includes
   a new voice or new pitches, render locally as above and copy the files to
   the environment's media bucket under the same path, with long-lived caching
