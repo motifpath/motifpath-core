@@ -506,6 +506,33 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Contains(t, planKeys(plan), "play_along:run")
 	})
 
+	t.Run("a due play-along keeps its review instead of becoming the warm-up", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("due", "Due", practiceGuitar, "skill-1", 100)
+		f.state("due", domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 3, DueAt: f.daysAgo(0), BestCleanBPM: intPtr(100)})
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		require.Len(t, plan.Items, 1)
+		assert.Equal(t, domain.PracticePickDue, plan.Items[0].Reason)
+		assert.Equal(t, 100, plan.Items[0].PlayAlong.StartTempoBPM, "a due review starts at the best clean tempo, not a warm-up's 80%")
+	})
+
+	t.Run("a review-ahead item too long for its half leaves the time to stretch", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("long-known", "Long known", practiceGuitar, "skill-1", 20)
+		f.reshape("long-known", domain.DiagramKindBasic, 6)
+		f.state("long-known", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
+		f.playAlong("stretch-a", "Stretch A", practiceGuitar, "skill-other", 100)
+		f.playAlong("stretch-b", "Stretch B", practiceGuitar, "skill-other", 100)
+
+		plan := f.compose(t, practiceGuitar, 3)
+
+		assert.Equal(t, []string{"play_along:stretch-a", "play_along:stretch-b"}, planKeys(plan))
+	})
+
 	t.Run("a failure reading item states fails the request", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPath("skill-1")

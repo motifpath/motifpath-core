@@ -111,6 +111,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 			return domain.PracticeSessionPlan{}, err
 		}
 	}
+	c.neverEmpty()
 	if len(c.items) == 0 {
 		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: no play-along for this instrument", domain.ErrNotFound)
 	}
@@ -384,10 +385,12 @@ func compareDueAt(a, b *time.Time) int {
 
 // warmUp opens the session with the best-known play-along already played
 // clean, if there is one and it takes no more than a quarter of the session.
+// A due play-along is never the warm-up: its review belongs at the student's
+// edge, not at a warm-up's easier tempo.
 func (c *composer) warmUp(candidates []playAlongCandidate) {
 	var best *playAlongCandidate
 	for i, cand := range candidates {
-		if cand.state == nil || cand.state.BestCleanBPM == nil {
+		if cand.state == nil || cand.state.BestCleanBPM == nil || cand.state.Due(c.now) {
 			continue
 		}
 		if best == nil || betterWarmUp(cand, *best, c.now) {
@@ -423,7 +426,8 @@ func levelRank(l domain.KnowledgeLevel) int {
 }
 
 // fill adds candidates with reason, in order, while they fit until limit
-// seconds are used.
+// seconds are used. The first one refused for lack of time is remembered
+// for neverEmpty.
 func (c *composer) fill(candidates []playAlongCandidate, reason domain.PracticePickReason, limit int) {
 	for _, cand := range candidates {
 		if c.picked[cand.key()] {
@@ -439,6 +443,12 @@ func (c *composer) fill(candidates []playAlongCandidate, reason domain.PracticeP
 		}
 		c.add(item)
 	}
+}
+
+// neverEmpty offers the first pick refused for lack of time when nothing
+// else fitted. It runs once every fill is done, so a pick too long for its
+// own share can't take time a later fill would have used.
+func (c *composer) neverEmpty() {
 	if len(c.items) == 0 && c.first != nil {
 		c.add(*c.first)
 	}
