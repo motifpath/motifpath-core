@@ -5,7 +5,7 @@
 # workspace mode needs the other two services' directories to exist on disk
 # too, even though only aggregation-worker's binary is built here.
 
-FROM golang:1.26.5-bookworm AS build
+FROM golang:1.27.1-bookworm AS build
 WORKDIR /src
 
 COPY go.work go.work.sum ./
