@@ -36,7 +36,10 @@ import (
 
 const (
 	shutdownTimeout = 15 * time.Second
-	migrationsDir   = "file://internal/adapters/repo/ent/migrate/migrations"
+	// practiceReferenceSyncTimeout bounds the start-up sync of the practice
+	// reference snapshot; the whole catalog syncs in well under a second.
+	practiceReferenceSyncTimeout = 10 * time.Second
+	migrationsDir                = "file://internal/adapters/repo/ent/migrate/migrations"
 )
 
 func main() {
@@ -129,7 +132,7 @@ func run(logger *slog.Logger) error {
 	}
 	defer closeStores()
 
-	syncPracticeReference(ctx, logger, entClient, mongoClient.Database(cfg.mongoDatabase))
+	syncPracticeReference(ctx, logger, entClient, mongoClient.Database(cfg.mongoDatabase), practiceReferenceSyncTimeout)
 
 	// JWKS fetching, in-memory caching, and refresh are handled internally
 	// by the SDK from this point on — see ADR-007/ADR-009.
@@ -184,8 +187,12 @@ func run(logger *slog.Logger) error {
 // Aggregation Worker's graders read (ADR-047): it repairs any write lost
 // between a commit and a crash, and covers rows installed by migrations. A
 // failure is logged, not fatal — until a later start repairs it, an answer
-// on a missing row is rejected and kept for a regrade.
-func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *ent.Client, mongoDB *mongo.Database) {
+// on a missing row is rejected and kept for a regrade. It gives up after
+// timeout, so an unreachable MongoDB delays the listener by that much rather
+// than by the driver's 30s server selection.
+func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *ent.Client, mongoDB *mongo.Database, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	writer := repo.NewMongoPracticeReferenceWriter(mongoDB, func() time.Time { return time.Now().UTC() })
 	if err := writer.EnsureIndexes(ctx); err != nil {
 		logger.Error("ensure the practice reference indexes", "error", err)
