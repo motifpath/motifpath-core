@@ -33,6 +33,8 @@ type Instrument struct {
 	KeyRangeHighest *string `json:"key_range_highest,omitempty"`
 	// DefaultVoiceID holds the value of the "default_voice_id" field.
 	DefaultVoiceID string `json:"default_voice_id,omitempty"`
+	// Icon holds the value of the "icon" field.
+	Icon string `json:"icon,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the InstrumentQuery when eager-loading is set.
 	Edges        InstrumentEdges `json:"edges"`
@@ -211,7 +213,7 @@ func (*Instrument) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case instrument.FieldStringCount:
 			values[i] = new(sql.NullInt64)
-		case instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest, instrument.FieldDefaultVoiceID:
+		case instrument.FieldFamily, instrument.FieldKeyRangeLowest, instrument.FieldKeyRangeHighest, instrument.FieldDefaultVoiceID, instrument.FieldIcon:
 			values[i] = new(sql.NullString)
 		case instrument.FieldID:
 			values[i] = new(uuid.UUID)
@@ -284,6 +286,12 @@ func (_m *Instrument) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field default_voice_id", values[i])
 			} else if value.Valid {
 				_m.DefaultVoiceID = value.String
+			}
+		case instrument.FieldIcon:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field icon", values[i])
+			} else if value.Valid {
+				_m.Icon = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -417,6 +425,9 @@ func (_m *Instrument) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_voice_id=")
 	builder.WriteString(_m.DefaultVoiceID)
+	builder.WriteString(", ")
+	builder.WriteString("icon=")
+	builder.WriteString(_m.Icon)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -29,6 +29,8 @@ const (
 	FieldKeyRangeHighest = "key_range_highest"
 	// FieldDefaultVoiceID holds the string denoting the default_voice_id field in the database.
 	FieldDefaultVoiceID = "default_voice_id"
+	// FieldIcon holds the string denoting the icon field in the database.
+	FieldIcon = "icon"
 	// EdgeDefaultVoice holds the string denoting the default_voice edge name in mutations.
 	EdgeDefaultVoice = "default_voice"
 	// EdgeDiagrams holds the string denoting the diagrams edge name in mutations.
@@ -157,6 +159,7 @@ var Columns = []string{
 	FieldKeyRangeLowest,
 	FieldKeyRangeHighest,
 	FieldDefaultVoiceID,
+	FieldIcon,
 }
 
 var (
@@ -191,6 +194,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultIcon holds the default value on creation for the "icon" field.
+	DefaultIcon string
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -249,6 +254,11 @@ func ByKeyRangeHighest(opts ...sql.OrderTermOption) OrderOption {
 // ByDefaultVoiceID orders the results by the default_voice_id field.
 func ByDefaultVoiceID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDefaultVoiceID, opts...).ToFunc()
+}
+
+// ByIcon orders the results by the icon field.
+func ByIcon(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIcon, opts...).ToFunc()
 }
 
 // ByDefaultVoiceField orders the results by default_voice field.

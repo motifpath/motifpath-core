@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strconv"
@@ -37,6 +38,11 @@ func registerInstrumentSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the instrument's name in "([^"]+)" is "([^"]+)"$`, w.instrumentNameIs)
 	sc.Step(`^the instrument's languages are "([^"]+)"$`, w.instrumentLanguagesAre)
 
+	sc.Step(`^a fretted instrument "([^"]+)" with icon "([^"]+)" exists in the system$`, w.aFrettedInstrumentWithIconExists)
+	sc.Step(`^"([^"]+)" creates a fretted instrument named "([^"]+)" in English and "([^"]+)" in Portuguese with (\d+) strings tuned "([^"]+)" and icon "([^"]+)"$`, w.createsFrettedInstrumentWithIcon)
+	sc.Step(`^"([^"]+)" renames instrument "([^"]+)" to "([^"]+)" in English and "([^"]+)" in Portuguese with icon "([^"]+)"$`, w.renamesInstrumentWithIcon)
+	sc.Step(`^the instrument's icon is "([^"]+)"$`, w.instrumentIconIs)
+
 	sc.Step(`^"([^"]+)" lists all known instruments$`, w.listsAllInstruments)
 	sc.Step(`^the response includes instrument "([^"]+)" and instrument "([^"]+)"$`, w.responseIncludesTwoInstruments)
 }
@@ -47,6 +53,19 @@ func (w *world) aFrettedInstrumentExists(name string) error {
 		ID: instrumentID(name).String(), Names: domain.LocalizedText{"en": name}, Family: domain.InstrumentFamilyFretted,
 		StringCount: &six, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}, DefaultVoiceID: defaultVoiceOf[domain.InstrumentFamilyFretted],
 	})
+	return nil
+}
+
+func (w *world) aFrettedInstrumentWithIconExists(name, icon string) error {
+	if err := w.aFrettedInstrumentExists(name); err != nil {
+		return err
+	}
+	instrument, err := w.instruments.GetByID(context.Background(), instrumentID(name).String())
+	if err != nil {
+		return err
+	}
+	instrument.Icon = icon
+	w.instruments.put(instrument)
 	return nil
 }
 
@@ -99,6 +118,18 @@ func (w *world) createFrettedInstrumentWithVoice(names map[string]string, string
 	})
 }
 
+func (w *world) createsFrettedInstrumentWithIcon(_, english, portuguese, stringCount, tuning, icon string) error {
+	count, err := strconv.Atoi(stringCount)
+	if err != nil {
+		return fmt.Errorf("string count %q is not a number: %w", stringCount, err)
+	}
+	notes := splitCommaList(tuning)
+	return w.createInstrument(generated.CreateInstrumentRequest{
+		Names: bilingual(english, portuguese), Family: generated.CreateInstrumentRequestFamily(domain.InstrumentFamilyFretted),
+		StringCount: &count, Tuning: &notes, DefaultVoiceId: defaultVoiceOf[domain.InstrumentFamilyFretted], Icon: &icon,
+	})
+}
+
 func (w *world) createsBilingualFrettedInstrument(_, english, portuguese, stringCount, tuning string) error {
 	return w.createFrettedInstrument(bilingual(english, portuguese), stringCount, tuning)
 }
@@ -132,6 +163,10 @@ func (w *world) updateInstrument(id uuid.UUID, body generated.UpdateInstrumentRe
 
 func (w *world) renamesInstrument(_, name, english, portuguese string) error {
 	return w.renameInstrument(instrumentID(name), bilingual(english, portuguese))
+}
+
+func (w *world) renamesInstrumentWithIcon(_, name, english, portuguese, icon string) error {
+	return w.updateInstrument(instrumentID(name), generated.UpdateInstrumentRequest{Names: bilingual(english, portuguese), Icon: &icon})
 }
 
 func (w *world) renamesInstrumentEnglishOnly(_, name, english string) error {
@@ -231,6 +266,17 @@ func (w *world) instrumentLanguagesAre(list string) error {
 	}
 	if want := splitCommaList(list); !slices.Equal(instrument.Languages, want) {
 		return fmt.Errorf("expected languages %v, got %v", want, instrument.Languages)
+	}
+	return nil
+}
+
+func (w *world) instrumentIconIs(want string) error {
+	instrument, err := w.currentInstrument()
+	if err != nil {
+		return err
+	}
+	if instrument.Icon != want {
+		return fmt.Errorf("expected icon %q, got %q", want, instrument.Icon)
 	}
 	return nil
 }

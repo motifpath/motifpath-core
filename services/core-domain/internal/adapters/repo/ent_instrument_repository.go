@@ -30,6 +30,12 @@ func (r *EntInstrumentRepository) Create(ctx context.Context, i domain.Instrumen
 		SetFamily(instrument.Family(i.Family)).
 		SetNillableStringCount(i.StringCount).
 		SetDefaultVoiceID(i.DefaultVoiceID)
+	// An instrument without an icon is drawn with its family's generic one.
+	icon := i.Icon
+	if icon == "" {
+		icon = string(i.Family)
+	}
+	builder = builder.SetIcon(icon)
 	if len(i.Tuning) > 0 {
 		builder = builder.SetTuning(i.Tuning)
 	}
@@ -72,7 +78,7 @@ func (r *EntInstrumentRepository) Update(ctx context.Context, i domain.Instrumen
 	if err != nil {
 		return domain.ErrNotFound
 	}
-	err = r.client.Instrument.UpdateOneID(parsed).SetNames(i.Names).SetDefaultVoiceID(i.DefaultVoiceID).Exec(ctx)
+	err = r.client.Instrument.UpdateOneID(parsed).SetNames(i.Names).SetDefaultVoiceID(i.DefaultVoiceID).SetIcon(i.Icon).Exec(ctx)
 	if ent.IsNotFound(err) {
 		return domain.ErrNotFound
 	}
@@ -87,6 +93,7 @@ func toDomainInstrument(row *ent.Instrument) domain.Instrument {
 		StringCount:    row.StringCount,
 		Tuning:         row.Tuning,
 		DefaultVoiceID: row.DefaultVoiceID,
+		Icon:           row.Icon,
 	}
 	if row.KeyRangeLowest != nil && row.KeyRangeHighest != nil {
 		i.KeyRange = &domain.KeyRange{Lowest: *row.KeyRangeLowest, Highest: *row.KeyRangeHighest}

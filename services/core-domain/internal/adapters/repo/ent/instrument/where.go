@@ -74,6 +74,11 @@ func DefaultVoiceID(v string) predicate.Instrument {
 	return predicate.Instrument(sql.FieldEQ(FieldDefaultVoiceID, v))
 }
 
+// Icon applies equality check predicate on the "icon" field. It's identical to IconEQ.
+func Icon(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEQ(FieldIcon, v))
+}
+
 // FamilyEQ applies the EQ predicate on the "family" field.
 func FamilyEQ(v Family) predicate.Instrument {
 	return predicate.Instrument(sql.FieldEQ(FieldFamily, v))
@@ -367,6 +372,71 @@ func DefaultVoiceIDEqualFold(v string) predicate.Instrument {
 // DefaultVoiceIDContainsFold applies the ContainsFold predicate on the "default_voice_id" field.
 func DefaultVoiceIDContainsFold(v string) predicate.Instrument {
 	return predicate.Instrument(sql.FieldContainsFold(FieldDefaultVoiceID, v))
+}
+
+// IconEQ applies the EQ predicate on the "icon" field.
+func IconEQ(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEQ(FieldIcon, v))
+}
+
+// IconNEQ applies the NEQ predicate on the "icon" field.
+func IconNEQ(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldNEQ(FieldIcon, v))
+}
+
+// IconIn applies the In predicate on the "icon" field.
+func IconIn(vs ...string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldIn(FieldIcon, vs...))
+}
+
+// IconNotIn applies the NotIn predicate on the "icon" field.
+func IconNotIn(vs ...string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldNotIn(FieldIcon, vs...))
+}
+
+// IconGT applies the GT predicate on the "icon" field.
+func IconGT(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldGT(FieldIcon, v))
+}
+
+// IconGTE applies the GTE predicate on the "icon" field.
+func IconGTE(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldGTE(FieldIcon, v))
+}
+
+// IconLT applies the LT predicate on the "icon" field.
+func IconLT(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldLT(FieldIcon, v))
+}
+
+// IconLTE applies the LTE predicate on the "icon" field.
+func IconLTE(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldLTE(FieldIcon, v))
+}
+
+// IconContains applies the Contains predicate on the "icon" field.
+func IconContains(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldContains(FieldIcon, v))
+}
+
+// IconHasPrefix applies the HasPrefix predicate on the "icon" field.
+func IconHasPrefix(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldHasPrefix(FieldIcon, v))
+}
+
+// IconHasSuffix applies the HasSuffix predicate on the "icon" field.
+func IconHasSuffix(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldHasSuffix(FieldIcon, v))
+}
+
+// IconEqualFold applies the EqualFold predicate on the "icon" field.
+func IconEqualFold(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldEqualFold(FieldIcon, v))
+}
+
+// IconContainsFold applies the ContainsFold predicate on the "icon" field.
+func IconContainsFold(v string) predicate.Instrument {
+	return predicate.Instrument(sql.FieldContainsFold(FieldIcon, v))
 }
 
 // HasDefaultVoice applies the HasEdge predicate on the "default_voice" edge.

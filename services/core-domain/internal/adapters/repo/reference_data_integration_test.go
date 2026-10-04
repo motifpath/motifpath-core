@@ -63,12 +63,12 @@ func TestFreshInstall(t *testing.T) {
 		assert.LessOrEqual(t, count(t, "SELECT min(p::int) FROM voices, jsonb_array_elements_text(pitches) AS p WHERE id = 'electric-bass'"), 28)
 	})
 
-	t.Run("the catalog instruments have their fixed ids, names and voices", func(t *testing.T) {
+	t.Run("the catalog instruments have their fixed ids, names, voices and icons", func(t *testing.T) {
 		assert.Equal(t, map[string]string{
-			acousticGuitarID: "Acoustic guitar|Violão|6|acoustic-guitar",
-			electricGuitarID: "Electric guitar|Guitarra elétrica|6|acoustic-guitar",
-			electricBassID:   "Electric bass|Contrabaixo elétrico|4|electric-bass",
-		}, stringPairs(t, ctx, db, "SELECT id::text, concat_ws('|', names->>'en', names->>'pt_BR', string_count, default_voice_id) FROM instruments"))
+			acousticGuitarID: "Acoustic guitar|Violão|6|acoustic-guitar|acoustic_guitar",
+			electricGuitarID: "Electric guitar|Guitarra elétrica|6|acoustic-guitar|electric_guitar",
+			electricBassID:   "Electric bass|Contrabaixo elétrico|4|electric-bass|electric_bass",
+		}, stringPairs(t, ctx, db, "SELECT id::text, concat_ws('|', names->>'en', names->>'pt_BR', string_count, default_voice_id, icon) FROM instruments"))
 	})
 
 	t.Run("the knowledge map has its nodes and edges, with fixed ids", func(t *testing.T) {

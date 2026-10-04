@@ -23221,6 +23221,7 @@ type InstrumentMutation struct {
 	appendtuning                      []string
 	key_range_lowest                  *string
 	key_range_highest                 *string
+	icon                              *string
 	clearedFields                     map[string]struct{}
 	default_voice                     *string
 	cleareddefault_voice              bool
@@ -23711,6 +23712,42 @@ func (m *InstrumentMutation) OldDefaultVoiceID(ctx context.Context) (v string, e
 // ResetDefaultVoiceID resets all changes to the "default_voice_id" field.
 func (m *InstrumentMutation) ResetDefaultVoiceID() {
 	m.default_voice = nil
+}
+
+// SetIcon sets the "icon" field.
+func (m *InstrumentMutation) SetIcon(s string) {
+	m.icon = &s
+}
+
+// Icon returns the value of the "icon" field in the mutation.
+func (m *InstrumentMutation) Icon() (r string, exists bool) {
+	v := m.icon
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIcon returns the old "icon" field's value of the Instrument entity.
+// If the Instrument object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InstrumentMutation) OldIcon(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIcon is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIcon requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIcon: %w", err)
+	}
+	return oldValue.Icon, nil
+}
+
+// ResetIcon resets all changes to the "icon" field.
+func (m *InstrumentMutation) ResetIcon() {
+	m.icon = nil
 }
 
 // ClearDefaultVoice clears the "default_voice" edge to the Voice entity.
@@ -24476,7 +24513,7 @@ func (m *InstrumentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InstrumentMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.names != nil {
 		fields = append(fields, instrument.FieldNames)
 	}
@@ -24497,6 +24534,9 @@ func (m *InstrumentMutation) Fields() []string {
 	}
 	if m.default_voice != nil {
 		fields = append(fields, instrument.FieldDefaultVoiceID)
+	}
+	if m.icon != nil {
+		fields = append(fields, instrument.FieldIcon)
 	}
 	return fields
 }
@@ -24520,6 +24560,8 @@ func (m *InstrumentMutation) Field(name string) (ent.Value, bool) {
 		return m.KeyRangeHighest()
 	case instrument.FieldDefaultVoiceID:
 		return m.DefaultVoiceID()
+	case instrument.FieldIcon:
+		return m.Icon()
 	}
 	return nil, false
 }
@@ -24543,6 +24585,8 @@ func (m *InstrumentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldKeyRangeHighest(ctx)
 	case instrument.FieldDefaultVoiceID:
 		return m.OldDefaultVoiceID(ctx)
+	case instrument.FieldIcon:
+		return m.OldIcon(ctx)
 	}
 	return nil, fmt.Errorf("unknown Instrument field %s", name)
 }
@@ -24600,6 +24644,13 @@ func (m *InstrumentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDefaultVoiceID(v)
+		return nil
+	case instrument.FieldIcon:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIcon(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Instrument field %s", name)
@@ -24712,6 +24763,9 @@ func (m *InstrumentMutation) ResetField(name string) error {
 		return nil
 	case instrument.FieldDefaultVoiceID:
 		m.ResetDefaultVoiceID()
+		return nil
+	case instrument.FieldIcon:
+		m.ResetIcon()
 		return nil
 	}
 	return fmt.Errorf("unknown Instrument field %s", name)
