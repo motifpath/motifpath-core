@@ -5,7 +5,7 @@
 # workspace mode needs every member's directory to exist on disk, even though
 # only event-ingestion's binary is built here.
 
-FROM golang:1.26.5-bookworm AS build
+FROM golang:1.27.1-bookworm AS build
 WORKDIR /src
 
 COPY go.work go.work.sum ./
