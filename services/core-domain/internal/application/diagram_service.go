@@ -19,12 +19,13 @@ type DiagramService struct {
 	knowledge   ports.KnowledgeNodeRepository
 	languages   ports.LanguageRepository
 	users       ports.UserRepository
+	references  ports.PracticeReferenceWriter
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, newID func() string, now func() time.Time) *DiagramService {
-	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, newID: newID, now: now}
+func NewDiagramService(diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, languages ports.LanguageRepository, users ports.UserRepository, references ports.PracticeReferenceWriter, newID func() string, now func() time.Time) *DiagramService {
+	return &DiagramService{diagrams: diagrams, instruments: instruments, knowledge: knowledge, languages: languages, users: users, references: references, newID: newID, now: now}
 }
 
 const (
@@ -124,7 +125,18 @@ func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, calle
 	if err := s.diagrams.Create(ctx, diagram); err != nil {
 		return domain.Diagram{}, err
 	}
-	return s.diagrams.GetByID(ctx, diagram.ID)
+	return s.savedDiagram(ctx, diagram.ID)
+}
+
+// savedDiagram reads back a diagram just created or updated and refreshes
+// its practice reference.
+func (s *DiagramService) savedDiagram(ctx context.Context, id string) (domain.Diagram, error) {
+	saved, err := s.diagrams.GetByID(ctx, id)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	putDiagramReference(ctx, s.references, saved)
+	return saved, nil
 }
 
 // recheckClassification checks updated's skills and concepts against its
@@ -337,7 +349,7 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err := s.diagrams.Update(ctx, updated); err != nil {
 		return domain.Diagram{}, err
 	}
-	return s.diagrams.GetByID(ctx, updated.ID)
+	return s.savedDiagram(ctx, updated.ID)
 }
 
 // updatedNames returns update's names, or current's when update leaves them out.

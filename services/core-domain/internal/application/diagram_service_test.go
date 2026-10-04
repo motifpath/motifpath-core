@@ -18,6 +18,7 @@ type diagramFixture struct {
 	diagrams    *fakeDiagramRepository
 	instruments *fakeInstrumentRepository
 	users       *fakeUserRepository
+	references  *fakePracticeReferenceWriter
 	svc         *application.DiagramService
 }
 
@@ -38,8 +39,9 @@ func newDiagramFixture() diagramFixture {
 	knowledge := seededKnowledgeNodeRepository()
 	knowledge.put(domain.KnowledgeNode{ID: "pedal-sustain", Kind: domain.KnowledgeNodeKindSkill, Key: "pedal-sustain", InstrumentIDs: []string{"piano"}})
 	diagrams.knowledge = knowledge
-	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, idSequence(), func() time.Time { return fixedCreatedAt })
-	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, svc: svc}
+	references := newFakePracticeReferenceWriter()
+	svc := application.NewDiagramService(diagrams, instruments, knowledge, newFakeLanguageRepository(), users, references, idSequence(), func() time.Time { return fixedCreatedAt })
+	return diagramFixture{diagrams: diagrams, instruments: instruments, users: users, references: references, svc: svc}
 }
 
 // names names a diagram name in both offered languages, which every kind of
