@@ -20,8 +20,8 @@ type practiceResponseDocument struct {
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
 }
 
-// practiceEvidenceDocument is a `practice_evidence` document: practice.yaml's
-// PracticeEvidence, never modified once stored.
+// practiceEvidenceDocument is a `practice_evidence` document: one piece of
+// evidence with its raw response, never modified once stored.
 type practiceEvidenceDocument struct {
 	EvidenceID        string                   `bson:"evidence_id"`
 	StudentID         string                   `bson:"student_id"`

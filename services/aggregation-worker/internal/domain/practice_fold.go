@@ -21,7 +21,7 @@ const PracticeRulesVersion = 1
 var ErrUnsupportedEvidenceSource = errors.New("no fold rules for this evidence source yet")
 
 // PracticeEvidence is one observation of what a student knows about one item: the
-// only stored learning state (practice.yaml PracticeEvidence).
+// only stored learning state. Everything else about the item is derived from it.
 type PracticeEvidence struct {
 	// EvidenceID is the id of the event that produced it, so an event counts once.
 	EvidenceID        string

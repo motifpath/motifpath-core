@@ -32,9 +32,9 @@ func (r SelfRating) valid() bool {
 	return false
 }
 
-// PracticeResponse is the student's raw answer, exactly as given (practice.yaml's
-// PracticeResponse union, flattened and tagged by Type, as ingestion publishes it).
-// Only the fields of Type's shape are set.
+// PracticeResponse is the student's raw answer, exactly as given. The answer takes
+// one of several shapes; they are flattened into one struct tagged by Type, as
+// ingestion publishes them, and only the fields of Type's shape are set.
 type PracticeResponse struct {
 	Type             PracticeResponseType
 	NoteName         string

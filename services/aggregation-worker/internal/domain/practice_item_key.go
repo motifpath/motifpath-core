@@ -23,7 +23,8 @@ const (
 
 const uuidPattern = `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
 
-// practiceItemKeyPattern is PracticeItemKey's pattern from practice.yaml.
+// practiceItemKeyPattern matches every known kind's key scheme: the kind prefix,
+// then its own segments. It must stay identical to the one ingestion validates with.
 var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`fretboard_cell:` + uuidPattern + `:[1-9][0-9]*:(0|[1-9][0-9]*)` +
 	`|exercise:` + uuidPattern +
