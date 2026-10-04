@@ -17,6 +17,10 @@ import (
 // them checks a request against the schema. The answer response gets the strictest
 // treatment: it is graded downstream, and its schema closes it (additionalProperties:
 // false) so a client can never slip a verdict such as "correct" into it.
+//
+// A required field whose zero value is valid (0, false, an empty list) decodes the
+// same whether it was sent or left out, so requirePresent checks those against the
+// raw body: a client that drops one must be refused, not stored as a real zero.
 
 const (
 	maxPracticeMinutes = 60
@@ -41,6 +45,9 @@ func toPracticeSessionStartedEvent(eventType domain.EventType, body *generated.T
 	}
 	practiceSessionID, err := requireUUID(v.PracticeSessionId, "practice_session_id")
 	if err != nil {
+		return nil, err
+	}
+	if err := requirePresent(body, "minutes"); err != nil {
 		return nil, err
 	}
 	if v.Minutes < 1 || v.Minutes > maxPracticeMinutes {
@@ -123,6 +130,9 @@ func toPracticeSessionEndedEvent(eventType domain.EventType, body *generated.Tra
 	if err != nil {
 		return nil, err
 	}
+	if err := requirePresent(body, "answered_count", "left_early", "felt_ratings"); err != nil {
+		return nil, err
+	}
 	if v.AnsweredCount < 0 {
 		return nil, fmt.Errorf("%w: answered_count", domain.ErrInvalidField)
 	}
@@ -160,6 +170,9 @@ func toPracticeTapCheckCompletedEvent(eventType domain.EventType, body *generate
 	if err != nil {
 		return nil, err
 	}
+	if err := requirePresent(body, "median_tap_ms", "tap_count"); err != nil {
+		return nil, err
+	}
 	if v.MedianTapMs < 0 {
 		return nil, fmt.Errorf("%w: median_tap_ms", domain.ErrInvalidField)
 	}
@@ -171,6 +184,25 @@ func toPracticeTapCheckCompletedEvent(eventType domain.EventType, body *generate
 		MedianTapMs:       v.MedianTapMs,
 		TapCount:          v.TapCount,
 	}, nil
+}
+
+// requirePresent reports the first of fields that the body leaves out or sends as null.
+func requirePresent(body *generated.TrackingEvent, fields ...string) error {
+	raw, err := body.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("%w: request body", domain.ErrMissingRequiredField)
+	}
+	var present map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &present); err != nil {
+		return fmt.Errorf("%w: request body", domain.ErrMissingRequiredField)
+	}
+	for _, field := range fields {
+		value, ok := present[field]
+		if !ok || bytes.Equal(value, []byte("null")) {
+			return fmt.Errorf("%w: %s", domain.ErrMissingRequiredField, field)
+		}
+	}
+	return nil
 }
 
 func validPickReason(r domain.PracticePickReason) bool {

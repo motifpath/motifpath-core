@@ -197,6 +197,8 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 		// practice.session_started
 		{"started without a practice session id", "practice.session_started",
 			`,"minutes":10,"planned_items":` + planned, domain.ErrMissingRequiredField, "practice_session_id"},
+		{"started without minutes", "practice.session_started",
+			fmt.Sprintf(`,"practice_session_id":%q,"planned_items":%s`, testPracticeSessionID, planned), domain.ErrMissingRequiredField, "minutes"},
 		{"started with zero minutes", "practice.session_started",
 			fmt.Sprintf(`,"practice_session_id":%q,"minutes":0,"planned_items":%s`, testPracticeSessionID, planned), domain.ErrInvalidField, "minutes"},
 		{"started with more than 60 minutes", "practice.session_started",
@@ -259,7 +261,20 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 		{"ended with a malformed drill template key", "practice.session_ended",
 			fmt.Sprintf(`,"practice_session_id":%q,"answered_count":6,"left_early":false,"felt_ratings":[{"drill_template_key":"Name The Note","felt":"easy"}]`, testPracticeSessionID), domain.ErrInvalidField, "felt_ratings"},
 
+		{"ended without an answered count", "practice.session_ended",
+			fmt.Sprintf(`,"practice_session_id":%q,"left_early":true,"felt_ratings":[]`, testPracticeSessionID), domain.ErrMissingRequiredField, "answered_count"},
+		{"ended without saying whether it was left early", "practice.session_ended",
+			fmt.Sprintf(`,"practice_session_id":%q,"answered_count":2,"felt_ratings":[]`, testPracticeSessionID), domain.ErrMissingRequiredField, "left_early"},
+		{"ended without felt ratings", "practice.session_ended",
+			fmt.Sprintf(`,"practice_session_id":%q,"answered_count":2,"left_early":true`, testPracticeSessionID), domain.ErrMissingRequiredField, "felt_ratings"},
+		{"ended with null felt ratings", "practice.session_ended",
+			fmt.Sprintf(`,"practice_session_id":%q,"answered_count":2,"left_early":true,"felt_ratings":null`, testPracticeSessionID), domain.ErrMissingRequiredField, "felt_ratings"},
+
 		// practice.tap_check_completed
+		{"tap check without a median", "practice.tap_check_completed",
+			`,"tap_count":24`, domain.ErrMissingRequiredField, "median_tap_ms"},
+		{"tap check without a tap count", "practice.tap_check_completed",
+			`,"median_tap_ms":350`, domain.ErrMissingRequiredField, "tap_count"},
 		{"tap check with a negative median", "practice.tap_check_completed",
 			`,"median_tap_ms":-5,"tap_count":24`, domain.ErrInvalidField, "median_tap_ms"},
 		{"tap check over no taps", "practice.tap_check_completed",
