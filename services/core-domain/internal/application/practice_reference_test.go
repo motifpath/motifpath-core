@@ -67,6 +67,18 @@ func TestDiagramService_PracticeReference(t *testing.T) {
 		assert.Equal(t, before, after)
 	})
 
+	t.Run("the reference is written even when the request ends right after the save", func(t *testing.T) {
+		f := newDiagramFixture()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Lick"), []domain.Position{position()}, []string{"skill-1"}, []string{"concept-1"}, withPlayback())
+
+		require.NoError(t, err)
+		_, ok := f.references.diagram(got.ID)
+		assert.True(t, ok, "a client leaving after the commit must not cost the snapshot its write")
+	})
+
 	t.Run("a failed reference write doesn't fail the saved diagram", func(t *testing.T) {
 		f := newDiagramFixture()
 		f.references.err = errors.New("mongo down")

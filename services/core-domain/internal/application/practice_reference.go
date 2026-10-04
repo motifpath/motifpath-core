@@ -4,16 +4,24 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
+// referenceWriteTimeout bounds the snapshot write that follows a save.
+const referenceWriteTimeout = 5 * time.Second
+
 // putDiagramReference refreshes d's practice reference after d is saved.
 // A failure is logged, not returned: the diagram is already committed, and
 // the sync on start repairs the snapshot (ADR-047). Until then, an answer
-// on d is rejected and kept for a regrade.
+// on d is rejected and kept for a regrade. The write outlives the caller's
+// cancellation — a client leaving right after the commit must not leave the
+// snapshot stale until the next start.
 func putDiagramReference(ctx context.Context, references ports.PracticeReferenceWriter, d domain.Diagram) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), referenceWriteTimeout)
+	defer cancel()
 	if err := references.PutDiagrams(ctx, []domain.DiagramReference{domain.NewDiagramReference(d)}); err != nil {
 		slog.ErrorContext(ctx, "write the diagram's practice reference", "diagram_id", d.ID, "error", err)
 	}
