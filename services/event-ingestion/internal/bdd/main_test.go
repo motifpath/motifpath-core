@@ -3,6 +3,7 @@
 package bdd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/cucumber/godog"
@@ -10,7 +11,16 @@ import (
 
 // featuresPath is relative to this package's directory, which is where `go test`
 // sets the working directory — not the repo root the Makefile runs from.
-const featuresPath = "../../../../../motifpath-specs/features/event-ingestion"
+//
+// MOTIFPATH_SPECS_DIR overrides the default location of the motifpath-specs
+// checkout — needed when running against a specs worktree, where the sibling
+// checkout is not at that relative path.
+var featuresPath = func() string {
+	if dir := os.Getenv("MOTIFPATH_SPECS_DIR"); dir != "" {
+		return dir + "/features/event-ingestion"
+	}
+	return "../../../../../motifpath-specs/features/event-ingestion"
+}()
 
 func TestFeatures(t *testing.T) {
 	suite := godog.TestSuite{
@@ -19,6 +29,14 @@ func TestFeatures(t *testing.T) {
 			Format:   "pretty",
 			Paths:    []string{featuresPath},
 			TestingT: t,
+			// Strict fails the suite on an undefined step instead of warning and
+			// exiting 0, so a scenario merged to motifpath-specs without a step
+			// definition here cannot pass CI silently. motifpath-specs runs ahead
+			// of this repo by design (spec first): a scenario tagged @wip is not
+			// implemented yet and is skipped. Remove the tag in motifpath-specs
+			// when the scenario is implemented. Mirrors core-domain's runner.
+			Strict: true,
+			Tags:   "~@wip",
 		},
 	}
 
@@ -34,4 +52,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerIngestSteps(sc, w)
 	registerHealthSteps(sc, w)
 	registerAdminSteps(sc, w)
+	registerPracticeSteps(sc, w)
 }
