@@ -114,6 +114,42 @@ func (e ExerciseStartedEventEventType) Valid() bool {
 	}
 }
 
+// Defines values for FeltRatingFelt.
+const (
+	AboutRight FeltRatingFelt = "about_right"
+	Easy       FeltRatingFelt = "easy"
+	Hard       FeltRatingFelt = "hard"
+)
+
+// Valid indicates whether the value is a known member of the FeltRatingFelt enum.
+func (e FeltRatingFelt) Valid() bool {
+	switch e {
+	case AboutRight:
+		return true
+	case Easy:
+		return true
+	case Hard:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FindTheNoteResponseResponseType.
+const (
+	FindTheNote FindTheNoteResponseResponseType = "find_the_note"
+)
+
+// Valid indicates whether the value is a known member of the FindTheNoteResponseResponseType enum.
+func (e FindTheNoteResponseResponseType) Valid() bool {
+	switch e {
+	case FindTheNote:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatusChecks.
 const (
 	HealthStatusChecksFail HealthStatusChecks = "fail"
@@ -195,6 +231,132 @@ func (e LessonStartedEventEventType) Valid() bool {
 	}
 }
 
+// Defines values for NameTheNoteResponseResponseType.
+const (
+	NameTheNote NameTheNoteResponseResponseType = "name_the_note"
+)
+
+// Valid indicates whether the value is a known member of the NameTheNoteResponseResponseType enum.
+func (e NameTheNoteResponseResponseType) Valid() bool {
+	switch e {
+	case NameTheNote:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OptionChoiceResponseResponseType.
+const (
+	OptionChoice OptionChoiceResponseResponseType = "option_choice"
+)
+
+// Valid indicates whether the value is a known member of the OptionChoiceResponseResponseType enum.
+func (e OptionChoiceResponseResponseType) Valid() bool {
+	switch e {
+	case OptionChoice:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticeItemAnsweredEventEventType.
+const (
+	PracticeItemAnsweredEventEventTypePracticeItemAnswered PracticeItemAnsweredEventEventType = "practice.item_answered"
+)
+
+// Valid indicates whether the value is a known member of the PracticeItemAnsweredEventEventType enum.
+func (e PracticeItemAnsweredEventEventType) Valid() bool {
+	switch e {
+	case PracticeItemAnsweredEventEventTypePracticeItemAnswered:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticePickReason.
+const (
+	Application      PracticePickReason = "application"
+	Due              PracticePickReason = "due"
+	New              PracticePickReason = "new"
+	ReviewAhead      PracticePickReason = "review_ahead"
+	Stretch          PracticePickReason = "stretch"
+	TeacherSuggested PracticePickReason = "teacher_suggested"
+	WarmUp           PracticePickReason = "warm_up"
+	Weak             PracticePickReason = "weak"
+)
+
+// Valid indicates whether the value is a known member of the PracticePickReason enum.
+func (e PracticePickReason) Valid() bool {
+	switch e {
+	case Application:
+		return true
+	case Due:
+		return true
+	case New:
+		return true
+	case ReviewAhead:
+		return true
+	case Stretch:
+		return true
+	case TeacherSuggested:
+		return true
+	case WarmUp:
+		return true
+	case Weak:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticeSessionEndedEventEventType.
+const (
+	PracticeSessionEndedEventEventTypePracticeSessionEnded PracticeSessionEndedEventEventType = "practice.session_ended"
+)
+
+// Valid indicates whether the value is a known member of the PracticeSessionEndedEventEventType enum.
+func (e PracticeSessionEndedEventEventType) Valid() bool {
+	switch e {
+	case PracticeSessionEndedEventEventTypePracticeSessionEnded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticeSessionStartedEventEventType.
+const (
+	PracticeSessionStartedEventEventTypePracticeSessionStarted PracticeSessionStartedEventEventType = "practice.session_started"
+)
+
+// Valid indicates whether the value is a known member of the PracticeSessionStartedEventEventType enum.
+func (e PracticeSessionStartedEventEventType) Valid() bool {
+	switch e {
+	case PracticeSessionStartedEventEventTypePracticeSessionStarted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PracticeTapCheckCompletedEventEventType.
+const (
+	PracticeTapCheckCompletedEventEventTypePracticeTapCheckCompleted PracticeTapCheckCompletedEventEventType = "practice.tap_check_completed"
+)
+
+// Valid indicates whether the value is a known member of the PracticeTapCheckCompletedEventEventType enum.
+func (e PracticeTapCheckCompletedEventEventType) Valid() bool {
+	switch e {
+	case PracticeTapCheckCompletedEventEventTypePracticeTapCheckCompleted:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PublishOutboxEntryStatus.
 const (
 	Dead             PublishOutboxEntryStatus = "dead"
@@ -219,15 +381,55 @@ func (e PublishOutboxEntryStatus) Valid() bool {
 	}
 }
 
+// Defines values for SelfRatingResponseRating.
+const (
+	Almost    SelfRatingResponseRating = "almost"
+	Clean     SelfRatingResponseRating = "clean"
+	Struggled SelfRatingResponseRating = "struggled"
+)
+
+// Valid indicates whether the value is a known member of the SelfRatingResponseRating enum.
+func (e SelfRatingResponseRating) Valid() bool {
+	switch e {
+	case Almost:
+		return true
+	case Clean:
+		return true
+	case Struggled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SelfRatingResponseResponseType.
+const (
+	SelfRating SelfRatingResponseResponseType = "self_rating"
+)
+
+// Valid indicates whether the value is a known member of the SelfRatingResponseResponseType enum.
+func (e SelfRatingResponseResponseType) Valid() bool {
+	switch e {
+	case SelfRating:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TrackingEventBaseEventType.
 const (
-	TrackingEventBaseEventTypeExerciseAnswerSent TrackingEventBaseEventType = "exercise.answer_sent"
-	TrackingEventBaseEventTypeExerciseEnded      TrackingEventBaseEventType = "exercise.ended"
-	TrackingEventBaseEventTypeExerciseProgress   TrackingEventBaseEventType = "exercise.progress"
-	TrackingEventBaseEventTypeExerciseStarted    TrackingEventBaseEventType = "exercise.started"
-	TrackingEventBaseEventTypeLessonCompleted    TrackingEventBaseEventType = "lesson.completed"
-	TrackingEventBaseEventTypeLessonResumed      TrackingEventBaseEventType = "lesson.resumed"
-	TrackingEventBaseEventTypeLessonStarted      TrackingEventBaseEventType = "lesson.started"
+	TrackingEventBaseEventTypeExerciseAnswerSent        TrackingEventBaseEventType = "exercise.answer_sent"
+	TrackingEventBaseEventTypeExerciseEnded             TrackingEventBaseEventType = "exercise.ended"
+	TrackingEventBaseEventTypeExerciseProgress          TrackingEventBaseEventType = "exercise.progress"
+	TrackingEventBaseEventTypeExerciseStarted           TrackingEventBaseEventType = "exercise.started"
+	TrackingEventBaseEventTypeLessonCompleted           TrackingEventBaseEventType = "lesson.completed"
+	TrackingEventBaseEventTypeLessonResumed             TrackingEventBaseEventType = "lesson.resumed"
+	TrackingEventBaseEventTypeLessonStarted             TrackingEventBaseEventType = "lesson.started"
+	TrackingEventBaseEventTypePracticeItemAnswered      TrackingEventBaseEventType = "practice.item_answered"
+	TrackingEventBaseEventTypePracticeSessionEnded      TrackingEventBaseEventType = "practice.session_ended"
+	TrackingEventBaseEventTypePracticeSessionStarted    TrackingEventBaseEventType = "practice.session_started"
+	TrackingEventBaseEventTypePracticeTapCheckCompleted TrackingEventBaseEventType = "practice.tap_check_completed"
 )
 
 // Valid indicates whether the value is a known member of the TrackingEventBaseEventType enum.
@@ -246,6 +448,14 @@ func (e TrackingEventBaseEventType) Valid() bool {
 	case TrackingEventBaseEventTypeLessonResumed:
 		return true
 	case TrackingEventBaseEventTypeLessonStarted:
+		return true
+	case TrackingEventBaseEventTypePracticeItemAnswered:
+		return true
+	case TrackingEventBaseEventTypePracticeSessionEnded:
+		return true
+	case TrackingEventBaseEventTypePracticeSessionStarted:
+		return true
+	case TrackingEventBaseEventTypePracticeTapCheckCompleted:
 		return true
 	default:
 		return false
@@ -468,6 +678,38 @@ type ExerciseStartedEvent struct {
 // ExerciseStartedEventEventType defines model for ExerciseStartedEvent.EventType.
 type ExerciseStartedEventEventType string
 
+// FeltRating How a timed drill felt to the student in a session. Used only to calibrate how fast
+// counts as fluent for that drill; it never counts toward the student's own mastery.
+type FeltRating struct {
+	// DrillTemplateKey The timed drill asked about, such as fretboard_cell:name_the_note or
+	// fretboard_cell:find_the_note.
+	DrillTemplateKey string `json:"drill_template_key"`
+
+	// Felt The student's answer to "How did it feel?".
+	Felt FeltRatingFelt `json:"felt"`
+}
+
+// FeltRatingFelt The student's answer to "How did it feel?".
+type FeltRatingFelt string
+
+// FindTheNoteResponse Answer to a note asked on a given string: the student taps where it is on the fretboard.
+type FindTheNoteResponse struct {
+	// Fret The fret tapped; 0 is the open string.
+	Fret int `json:"fret"`
+
+	// LatencyMs Milliseconds from the moment the note was asked to the tap.
+	LatencyMs int `json:"latency_ms"`
+
+	// ResponseType Discriminator. The student tapped a cell to find the note asked.
+	ResponseType FindTheNoteResponseResponseType `json:"response_type"`
+
+	// String The string tapped, 1 being the highest-pitched.
+	String int `json:"string"`
+}
+
+// FindTheNoteResponseResponseType Discriminator. The student tapped a cell to find the note asked.
+type FindTheNoteResponseResponseType string
+
 // ForbiddenError Returned when the authenticated caller lacks permission for the requested operation.
 type ForbiddenError struct {
 	// Message Human-readable reason for the denial.
@@ -608,11 +850,274 @@ type LessonStartedEvent struct {
 // LessonStartedEventEventType defines model for LessonStartedEvent.EventType.
 type LessonStartedEventEventType string
 
+// NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note.
+type NameTheNoteResponse struct {
+	// LatencyMs Milliseconds from the moment the cell was shown to the answer.
+	LatencyMs int `json:"latency_ms"`
+
+	// NoteName The note named, as a letter with an optional sharp (#) or flat (b), without an
+	// octave. Any spelling of the right pitch counts as right (F# and Gb alike).
+	NoteName string `json:"note_name"`
+
+	// ResponseType Discriminator. The student named the note of the cell shown.
+	ResponseType NameTheNoteResponseResponseType `json:"response_type"`
+}
+
+// NameTheNoteResponseResponseType Discriminator. The student named the note of the cell shown.
+type NameTheNoteResponseResponseType string
+
 // NotFoundError Returned when the requested resource does not exist.
 type NotFoundError struct {
 	// Message Human-readable description of what was not found.
 	Message string `json:"message"`
 }
+
+// OptionChoiceResponse Answer to an authored exercise: the options the student selected. An exercise with one
+// correct option takes one selection; an exercise with several correct options takes
+// several, and is right only when the selection matches its correct options exactly.
+type OptionChoiceResponse struct {
+	// LatencyMs Milliseconds from the moment the exercise was shown to the answer.
+	LatencyMs int `json:"latency_ms"`
+
+	// OptionIds The options selected, in any order.
+	OptionIds []openapi_types.UUID `json:"option_ids"`
+
+	// ResponseType Discriminator. The student selected options of an authored exercise.
+	ResponseType OptionChoiceResponseResponseType `json:"response_type"`
+}
+
+// OptionChoiceResponseResponseType Discriminator. The student selected options of an authored exercise.
+type OptionChoiceResponseResponseType string
+
+// PlannedPracticeItem One item of a composed practice session, in the order it was offered.
+type PlannedPracticeItem struct {
+	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+	//
+	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
+	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+	//   fret 0 is the open string.
+	// - exercise:<exercise id> — an authored exercise.
+	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	//
+	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+	// grader, and its golden cases.
+	ItemKey PracticeItemKey `json:"item_key"`
+
+	// Reason Why the session composer put an item in a session, shown to the student.
+	// teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+	// practised but not yet secure; new = it has not been practised yet; warm_up = something
+	// already known, played first with the instrument in hand; application = applying the
+	// skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+	// else is due; stretch = an unseen item of a node the student is ready to start, when
+	// nothing else is due.
+	Reason PracticePickReason `json:"reason"`
+}
+
+// PracticeItemAnsweredEvent defines model for PracticeItemAnsweredEvent.
+type PracticeItemAnsweredEvent struct {
+	// EventId Client-generated unique identifier for this event occurrence. The Aggregation Worker
+	// must key idempotency checks on event_id to safely handle duplicate deliveries from
+	// the Kafka consumer group.
+	EventId   openapi_types.UUID                 `json:"event_id"`
+	EventType PracticeItemAnsweredEventEventType `json:"event_type"`
+
+	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+	//
+	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
+	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+	//   fret 0 is the open string.
+	// - exercise:<exercise id> — an authored exercise.
+	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	//
+	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+	// grader, and its golden cases.
+	ItemKey PracticeItemKey `json:"item_key"`
+
+	// OccurredAt Client-side timestamp at which the event occurred, in ISO 8601 format with UTC
+	// offset. Stored as-is by the Event Ingestion Service. Server-side ingestion time
+	// is recorded separately and is not part of the event payload.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// PracticeSessionId The practice session this answer belongs to.
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+
+	// Response The student's raw answer to one practice item, exactly as given. It never says whether
+	// the answer was right: the server grades it against reference data, and a client grades
+	// it only to show instant feedback, with the same rules. Exactly one shape applies,
+	// discriminated by response_type.
+	Response PracticeResponse `json:"response"`
+
+	// SessionId Identifies the student's active browser session. Generated by the frontend at
+	// session start and carried on all events until the page is reloaded or the session
+	// expires. Enables session-scoped aggregation in the Aggregation Worker.
+	SessionId openapi_types.UUID `json:"session_id"`
+
+	// StudentId ID of the authenticated student who generated this event. Used as the Kafka
+	// partition key — guarantees ordered delivery of all events for a given student
+	// to the same partition and consumer.
+	StudentId openapi_types.UUID `json:"student_id"`
+
+	// TapMs The student's tap time, in milliseconds, from their latest tap check before this
+	// answer: how long a tap takes them when they already know where to tap. Set by the
+	// server on timed answers (those with a latency_ms) when the student has done a tap
+	// check; absent otherwise. A value sent by a client is ignored.
+	TapMs *int `json:"tap_ms,omitempty"`
+}
+
+// PracticeItemAnsweredEventEventType defines model for PracticeItemAnsweredEvent.EventType.
+type PracticeItemAnsweredEventEventType string
+
+// PracticeItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+//
+//   - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+//     The instrument is the one whose fretboard layout the cell belongs to, so instruments
+//     that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+//     fret 0 is the open string.
+//   - exercise:<exercise id> — an authored exercise.
+//   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+//   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//
+// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+// grader, and its golden cases.
+type PracticeItemKey = string
+
+// PracticePickReason Why the session composer put an item in a session, shown to the student.
+// teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+// practised but not yet secure; new = it has not been practised yet; warm_up = something
+// already known, played first with the instrument in hand; application = applying the
+// skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+// else is due; stretch = an unseen item of a node the student is ready to start, when
+// nothing else is due.
+type PracticePickReason string
+
+// PracticeResponse The student's raw answer to one practice item, exactly as given. It never says whether
+// the answer was right: the server grades it against reference data, and a client grades
+// it only to show instant feedback, with the same rules. Exactly one shape applies,
+// discriminated by response_type.
+type PracticeResponse struct {
+	union json.RawMessage
+}
+
+// PracticeSessionEndedEvent defines model for PracticeSessionEndedEvent.
+type PracticeSessionEndedEvent struct {
+	// AnsweredCount How many items the student answered in the session.
+	AnsweredCount int `json:"answered_count"`
+
+	// EventId Client-generated unique identifier for this event occurrence. The Aggregation Worker
+	// must key idempotency checks on event_id to safely handle duplicate deliveries from
+	// the Kafka consumer group.
+	EventId   openapi_types.UUID                 `json:"event_id"`
+	EventType PracticeSessionEndedEventEventType `json:"event_type"`
+
+	// FeltRatings The student's answers to "How did it feel?" for at most two of the session's
+	// timed drills. Empty when the session asked none, or the student skipped them.
+	FeltRatings []FeltRating `json:"felt_ratings"`
+
+	// LeftEarly True when the student ended the session before its last planned item.
+	LeftEarly bool `json:"left_early"`
+
+	// OccurredAt Client-side timestamp at which the event occurred, in ISO 8601 format with UTC
+	// offset. Stored as-is by the Event Ingestion Service. Server-side ingestion time
+	// is recorded separately and is not part of the event payload.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// PracticeSessionId The practice session that ended.
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+
+	// SessionId Identifies the student's active browser session. Generated by the frontend at
+	// session start and carried on all events until the page is reloaded or the session
+	// expires. Enables session-scoped aggregation in the Aggregation Worker.
+	SessionId openapi_types.UUID `json:"session_id"`
+
+	// StudentId ID of the authenticated student who generated this event. Used as the Kafka
+	// partition key — guarantees ordered delivery of all events for a given student
+	// to the same partition and consumer.
+	StudentId openapi_types.UUID `json:"student_id"`
+}
+
+// PracticeSessionEndedEventEventType defines model for PracticeSessionEndedEvent.EventType.
+type PracticeSessionEndedEventEventType string
+
+// PracticeSessionStartedEvent defines model for PracticeSessionStartedEvent.
+type PracticeSessionStartedEvent struct {
+	// EventId Client-generated unique identifier for this event occurrence. The Aggregation Worker
+	// must key idempotency checks on event_id to safely handle duplicate deliveries from
+	// the Kafka consumer group.
+	EventId   openapi_types.UUID                   `json:"event_id"`
+	EventType PracticeSessionStartedEventEventType `json:"event_type"`
+
+	// InstrumentId The instrument in the student's hands for this session. Absent when the session
+	// is practised in the head, without an instrument.
+	InstrumentId *openapi_types.UUID `json:"instrument_id,omitempty"`
+
+	// Minutes The time the student chose for the session, in minutes.
+	Minutes int `json:"minutes"`
+
+	// OccurredAt Client-side timestamp at which the event occurred, in ISO 8601 format with UTC
+	// offset. Stored as-is by the Event Ingestion Service. Server-side ingestion time
+	// is recorded separately and is not part of the event payload.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// PlannedItems The session's items, in the order offered, each with why it was picked.
+	PlannedItems []PlannedPracticeItem `json:"planned_items"`
+
+	// PracticeSessionId Identifier of this practice session, carried by every practice.* event the
+	// session produces. Distinct from session_id, which identifies the browser session.
+	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+
+	// SessionId Identifies the student's active browser session. Generated by the frontend at
+	// session start and carried on all events until the page is reloaded or the session
+	// expires. Enables session-scoped aggregation in the Aggregation Worker.
+	SessionId openapi_types.UUID `json:"session_id"`
+
+	// StudentId ID of the authenticated student who generated this event. Used as the Kafka
+	// partition key — guarantees ordered delivery of all events for a given student
+	// to the same partition and consumer.
+	StudentId openapi_types.UUID `json:"student_id"`
+}
+
+// PracticeSessionStartedEventEventType defines model for PracticeSessionStartedEvent.EventType.
+type PracticeSessionStartedEventEventType string
+
+// PracticeTapCheckCompletedEvent defines model for PracticeTapCheckCompletedEvent.
+type PracticeTapCheckCompletedEvent struct {
+	// EventId Client-generated unique identifier for this event occurrence. The Aggregation Worker
+	// must key idempotency checks on event_id to safely handle duplicate deliveries from
+	// the Kafka consumer group.
+	EventId   openapi_types.UUID                      `json:"event_id"`
+	EventType PracticeTapCheckCompletedEventEventType `json:"event_type"`
+
+	// MedianTapMs The median time from a fret lighting up to the student's tap, in milliseconds.
+	MedianTapMs int `json:"median_tap_ms"`
+
+	// OccurredAt Client-side timestamp at which the event occurred, in ISO 8601 format with UTC
+	// offset. Stored as-is by the Event Ingestion Service. Server-side ingestion time
+	// is recorded separately and is not part of the event payload.
+	OccurredAt time.Time `json:"occurred_at"`
+
+	// SessionId Identifies the student's active browser session. Generated by the frontend at
+	// session start and carried on all events until the page is reloaded or the session
+	// expires. Enables session-scoped aggregation in the Aggregation Worker.
+	SessionId openapi_types.UUID `json:"session_id"`
+
+	// StudentId ID of the authenticated student who generated this event. Used as the Kafka
+	// partition key — guarantees ordered delivery of all events for a given student
+	// to the same partition and consumer.
+	StudentId openapi_types.UUID `json:"student_id"`
+
+	// TapCount How many taps the median was taken over.
+	TapCount int `json:"tap_count"`
+}
+
+// PracticeTapCheckCompletedEventEventType defines model for PracticeTapCheckCompletedEvent.EventType.
+type PracticeTapCheckCompletedEventEventType string
 
 // PublishOutboxEntry The retry-tracking record for a single tracking event's Kafka delivery.
 type PublishOutboxEntry struct {
@@ -646,6 +1151,31 @@ type ResolvePublishOutboxEntryRequest struct {
 	// stored on the entry for audit purposes.
 	Reason *string `json:"reason,omitempty"`
 }
+
+// SelfRatingResponse The student's own rating of a take they played: a play-along at a tempo, or chord
+// changes counted over a minute. A play-along rating carries tempo_bpm and no
+// changes_per_minute; a chord-change rating carries changes_per_minute and no tempo_bpm.
+type SelfRatingResponse struct {
+	// ChangesPerMinute The number of chord changes made in one minute. Present for a chord change.
+	ChangesPerMinute *int `json:"changes_per_minute,omitempty"`
+
+	// Rating How the take went, in the student's judgement. struggled = fell apart or needed to
+	// stop; almost = got through with slips; clean = no slips at this measure.
+	Rating SelfRatingResponseRating `json:"rating"`
+
+	// ResponseType Discriminator. The student rated a take of their own.
+	ResponseType SelfRatingResponseResponseType `json:"response_type"`
+
+	// TempoBpm The tempo of the take, in beats per minute. Present for a play-along.
+	TempoBpm *int `json:"tempo_bpm,omitempty"`
+}
+
+// SelfRatingResponseRating How the take went, in the student's judgement. struggled = fell apart or needed to
+// stop; almost = got through with slips; clean = no slips at this measure.
+type SelfRatingResponseRating string
+
+// SelfRatingResponseResponseType Discriminator. The student rated a take of their own.
+type SelfRatingResponseResponseType string
 
 // ServiceUnavailableError Returned when the service cannot complete the request because a dependency it
 // needs is temporarily unreachable. The request can be retried once the dependency
@@ -847,6 +1377,179 @@ func (a ContentContext) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(object)
+}
+
+// AsNameTheNoteResponse returns the union data inside the PracticeResponse as a NameTheNoteResponse
+func (t PracticeResponse) AsNameTheNoteResponse() (NameTheNoteResponse, error) {
+	var body NameTheNoteResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNameTheNoteResponse overwrites any union data inside the PracticeResponse as the provided NameTheNoteResponse
+func (t *PracticeResponse) FromNameTheNoteResponse(v NameTheNoteResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"name_the_note"}`))
+	t.union = b
+	return err
+}
+
+// MergeNameTheNoteResponse performs a merge with any union data inside the PracticeResponse, using the provided NameTheNoteResponse
+func (t *PracticeResponse) MergeNameTheNoteResponse(v NameTheNoteResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"name_the_note"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFindTheNoteResponse returns the union data inside the PracticeResponse as a FindTheNoteResponse
+func (t PracticeResponse) AsFindTheNoteResponse() (FindTheNoteResponse, error) {
+	var body FindTheNoteResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFindTheNoteResponse overwrites any union data inside the PracticeResponse as the provided FindTheNoteResponse
+func (t *PracticeResponse) FromFindTheNoteResponse(v FindTheNoteResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"find_the_note"}`))
+	t.union = b
+	return err
+}
+
+// MergeFindTheNoteResponse performs a merge with any union data inside the PracticeResponse, using the provided FindTheNoteResponse
+func (t *PracticeResponse) MergeFindTheNoteResponse(v FindTheNoteResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"find_the_note"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsOptionChoiceResponse returns the union data inside the PracticeResponse as a OptionChoiceResponse
+func (t PracticeResponse) AsOptionChoiceResponse() (OptionChoiceResponse, error) {
+	var body OptionChoiceResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromOptionChoiceResponse overwrites any union data inside the PracticeResponse as the provided OptionChoiceResponse
+func (t *PracticeResponse) FromOptionChoiceResponse(v OptionChoiceResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"option_choice"}`))
+	t.union = b
+	return err
+}
+
+// MergeOptionChoiceResponse performs a merge with any union data inside the PracticeResponse, using the provided OptionChoiceResponse
+func (t *PracticeResponse) MergeOptionChoiceResponse(v OptionChoiceResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"option_choice"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSelfRatingResponse returns the union data inside the PracticeResponse as a SelfRatingResponse
+func (t PracticeResponse) AsSelfRatingResponse() (SelfRatingResponse, error) {
+	var body SelfRatingResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSelfRatingResponse overwrites any union data inside the PracticeResponse as the provided SelfRatingResponse
+func (t *PracticeResponse) FromSelfRatingResponse(v SelfRatingResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"self_rating"}`))
+	t.union = b
+	return err
+}
+
+// MergeSelfRatingResponse performs a merge with any union data inside the PracticeResponse, using the provided SelfRatingResponse
+func (t *PracticeResponse) MergeSelfRatingResponse(v SelfRatingResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"self_rating"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PracticeResponse) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"response_type"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t PracticeResponse) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "find_the_note":
+		return t.AsFindTheNoteResponse()
+	case "name_the_note":
+		return t.AsNameTheNoteResponse()
+	case "option_choice":
+		return t.AsOptionChoiceResponse()
+	case "self_rating":
+		return t.AsSelfRatingResponse()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t PracticeResponse) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PracticeResponse) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
 }
 
 // AsLessonStartedEvent returns the union data inside the TrackingEvent as a LessonStartedEvent
@@ -1087,6 +1790,142 @@ func (t *TrackingEvent) MergeExerciseEndedEvent(v ExerciseEndedEvent) error {
 	return err
 }
 
+// AsPracticeSessionStartedEvent returns the union data inside the TrackingEvent as a PracticeSessionStartedEvent
+func (t TrackingEvent) AsPracticeSessionStartedEvent() (PracticeSessionStartedEvent, error) {
+	var body PracticeSessionStartedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPracticeSessionStartedEvent overwrites any union data inside the TrackingEvent as the provided PracticeSessionStartedEvent
+func (t *TrackingEvent) FromPracticeSessionStartedEvent(v PracticeSessionStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.session_started"}`))
+	t.union = b
+	return err
+}
+
+// MergePracticeSessionStartedEvent performs a merge with any union data inside the TrackingEvent, using the provided PracticeSessionStartedEvent
+func (t *TrackingEvent) MergePracticeSessionStartedEvent(v PracticeSessionStartedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.session_started"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPracticeItemAnsweredEvent returns the union data inside the TrackingEvent as a PracticeItemAnsweredEvent
+func (t TrackingEvent) AsPracticeItemAnsweredEvent() (PracticeItemAnsweredEvent, error) {
+	var body PracticeItemAnsweredEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPracticeItemAnsweredEvent overwrites any union data inside the TrackingEvent as the provided PracticeItemAnsweredEvent
+func (t *TrackingEvent) FromPracticeItemAnsweredEvent(v PracticeItemAnsweredEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.item_answered"}`))
+	t.union = b
+	return err
+}
+
+// MergePracticeItemAnsweredEvent performs a merge with any union data inside the TrackingEvent, using the provided PracticeItemAnsweredEvent
+func (t *TrackingEvent) MergePracticeItemAnsweredEvent(v PracticeItemAnsweredEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.item_answered"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPracticeSessionEndedEvent returns the union data inside the TrackingEvent as a PracticeSessionEndedEvent
+func (t TrackingEvent) AsPracticeSessionEndedEvent() (PracticeSessionEndedEvent, error) {
+	var body PracticeSessionEndedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPracticeSessionEndedEvent overwrites any union data inside the TrackingEvent as the provided PracticeSessionEndedEvent
+func (t *TrackingEvent) FromPracticeSessionEndedEvent(v PracticeSessionEndedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.session_ended"}`))
+	t.union = b
+	return err
+}
+
+// MergePracticeSessionEndedEvent performs a merge with any union data inside the TrackingEvent, using the provided PracticeSessionEndedEvent
+func (t *TrackingEvent) MergePracticeSessionEndedEvent(v PracticeSessionEndedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.session_ended"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPracticeTapCheckCompletedEvent returns the union data inside the TrackingEvent as a PracticeTapCheckCompletedEvent
+func (t TrackingEvent) AsPracticeTapCheckCompletedEvent() (PracticeTapCheckCompletedEvent, error) {
+	var body PracticeTapCheckCompletedEvent
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPracticeTapCheckCompletedEvent overwrites any union data inside the TrackingEvent as the provided PracticeTapCheckCompletedEvent
+func (t *TrackingEvent) FromPracticeTapCheckCompletedEvent(v PracticeTapCheckCompletedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.tap_check_completed"}`))
+	t.union = b
+	return err
+}
+
+// MergePracticeTapCheckCompletedEvent performs a merge with any union data inside the TrackingEvent, using the provided PracticeTapCheckCompletedEvent
+func (t *TrackingEvent) MergePracticeTapCheckCompletedEvent(v PracticeTapCheckCompletedEvent) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"event_type":"practice.tap_check_completed"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t TrackingEvent) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"event_type"`
@@ -1115,6 +1954,14 @@ func (t TrackingEvent) ValueByDiscriminator() (interface{}, error) {
 		return t.AsLessonResumedEvent()
 	case "lesson.started":
 		return t.AsLessonStartedEvent()
+	case "practice.item_answered":
+		return t.AsPracticeItemAnsweredEvent()
+	case "practice.session_ended":
+		return t.AsPracticeSessionEndedEvent()
+	case "practice.session_started":
+		return t.AsPracticeSessionStartedEvent()
+	case "practice.tap_check_completed":
+		return t.AsPracticeTapCheckCompletedEvent()
 	default:
 		return nil, errors.New("unknown discriminator value: " + discriminator)
 	}
