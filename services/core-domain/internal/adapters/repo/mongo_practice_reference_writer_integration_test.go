@@ -26,7 +26,10 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 	require.NoError(t, writer.EnsureIndexes(ctx))
 
 	tempo := 90
-	require.NoError(t, writer.PutDiagram(ctx, domain.DiagramReference{ID: "d-1", InstrumentIDs: []string{"guitar", "electric"}, TempoBPM: &tempo}))
+	require.NoError(t, writer.PutDiagrams(ctx, []domain.DiagramReference{
+		{ID: "d-1", InstrumentIDs: []string{"guitar", "electric"}, TempoBPM: &tempo},
+		{ID: "d-2", InstrumentIDs: []string{"guitar"}},
+	}))
 
 	var doc bson.M
 	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "d-1"}}).Decode(&doc))
@@ -40,8 +43,18 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		"snapshot_version": int32(1),
 	}, doc)
 
+	t.Run("every reference in one write is stored", func(t *testing.T) {
+		count, err := db.Collection("practice_reference").CountDocuments(ctx, bson.D{{Key: "kind", Value: "diagram"}})
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, count)
+	})
+
+	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
+		require.NoError(t, writer.PutDiagrams(ctx, nil))
+	})
+
 	t.Run("a second write replaces the document in place", func(t *testing.T) {
-		require.NoError(t, writer.PutDiagram(ctx, domain.DiagramReference{ID: "d-1", InstrumentIDs: []string{"guitar"}}))
+		require.NoError(t, writer.PutDiagrams(ctx, []domain.DiagramReference{{ID: "d-1", InstrumentIDs: []string{"guitar"}}}))
 
 		count, err := db.Collection("practice_reference").CountDocuments(ctx, bson.D{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "d-1"}})
 		require.NoError(t, err)

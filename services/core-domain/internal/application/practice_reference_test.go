@@ -103,6 +103,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.MaxPageLimit+5, synced)
+		assert.Equal(t, 2, references.writeCount(), "one bulk write per page, not one per diagram")
 		for i := range domain.MaxPageLimit + 5 {
 			id := fmt.Sprintf("d-%03d", i)
 			stored, err := diagrams.GetByID(ctx, id)

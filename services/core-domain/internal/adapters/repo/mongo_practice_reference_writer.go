@@ -49,19 +49,28 @@ func (w *MongoPracticeReferenceWriter) EnsureIndexes(ctx context.Context) error 
 	return err
 }
 
-func (w *MongoPracticeReferenceWriter) PutDiagram(ctx context.Context, ref domain.DiagramReference) error {
-	doc := diagramReferenceDocument{
-		Kind:            "diagram",
-		ID:              ref.ID,
-		InstrumentIDs:   ref.InstrumentIDs,
-		TempoBPM:        ref.TempoBPM,
-		UpdatedAt:       w.now(),
-		SnapshotVersion: practiceReferenceSnapshotVersion,
+// PutDiagrams upserts every reference in one unordered bulk write, so a
+// sync of the whole catalog costs one round trip per page, not per diagram.
+func (w *MongoPracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error {
+	if len(refs) == 0 {
+		return nil
 	}
-	_, err := w.collection.ReplaceOne(ctx,
-		bson.D{{Key: "kind", Value: doc.Kind}, {Key: "id", Value: doc.ID}},
-		doc,
-		options.Replace().SetUpsert(true),
-	)
+	at := w.now()
+	models := make([]mongo.WriteModel, len(refs))
+	for i, ref := range refs {
+		doc := diagramReferenceDocument{
+			Kind:            "diagram",
+			ID:              ref.ID,
+			InstrumentIDs:   ref.InstrumentIDs,
+			TempoBPM:        ref.TempoBPM,
+			UpdatedAt:       at,
+			SnapshotVersion: practiceReferenceSnapshotVersion,
+		}
+		models[i] = mongo.NewReplaceOneModel().
+			SetFilter(bson.D{{Key: "kind", Value: doc.Kind}, {Key: "id", Value: doc.ID}}).
+			SetReplacement(doc).
+			SetUpsert(true)
+	}
+	_, err := w.collection.BulkWrite(ctx, models, options.BulkWrite().SetOrdered(false))
 	return err
 }

@@ -14,7 +14,7 @@ import (
 // the sync on start repairs the snapshot (ADR-047). Until then, an answer
 // on d is rejected and kept for a regrade.
 func putDiagramReference(ctx context.Context, references ports.PracticeReferenceWriter, d domain.Diagram) {
-	if err := references.PutDiagram(ctx, domain.NewDiagramReference(d)); err != nil {
+	if err := references.PutDiagrams(ctx, []domain.DiagramReference{domain.NewDiagramReference(d)}); err != nil {
 		slog.ErrorContext(ctx, "write the diagram's practice reference", "diagram_id", d.ID, "error", err)
 	}
 }
@@ -32,8 +32,9 @@ func NewPracticeReferenceService(diagrams ports.DiagramRepository, references po
 	return &PracticeReferenceService{diagrams: diagrams, references: references}
 }
 
-// SyncDiagrams writes every diagram's reference and returns how many it
-// wrote. It keeps going past a failed write and reports all of them.
+// SyncDiagrams writes every diagram's reference, one bulk write per page,
+// and returns how many it wrote. It keeps going past a failed page and
+// reports all of them.
 func (s *PracticeReferenceService) SyncDiagrams(ctx context.Context) (int, error) {
 	page := domain.PageRequest{Limit: domain.MaxPageLimit}
 	synced := 0
@@ -43,12 +44,16 @@ func (s *PracticeReferenceService) SyncDiagrams(ctx context.Context) (int, error
 		if err != nil {
 			return synced, err
 		}
-		for _, d := range got.Items {
-			if err := s.references.PutDiagram(ctx, domain.NewDiagramReference(d)); err != nil {
+		refs := make([]domain.DiagramReference, len(got.Items))
+		for i, d := range got.Items {
+			refs[i] = domain.NewDiagramReference(d)
+		}
+		if len(refs) > 0 {
+			if err := s.references.PutDiagrams(ctx, refs); err != nil {
 				errs = append(errs, err)
-				continue
+			} else {
+				synced += len(refs)
 			}
-			synced++
 		}
 		page.Offset += len(got.Items)
 		if len(got.Items) == 0 || page.Offset >= got.Total {

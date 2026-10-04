@@ -37,7 +37,9 @@ import (
 const (
 	shutdownTimeout = 15 * time.Second
 	// practiceReferenceSyncTimeout bounds the start-up sync of the practice
-	// reference snapshot; the whole catalog syncs in well under a second.
+	// reference snapshot. The sync writes one bulk upsert per page of 100
+	// diagrams — about 20 round trips for the ~2,000-diagram catalog — so
+	// this leaves a remote cluster ample room.
 	practiceReferenceSyncTimeout = 10 * time.Second
 	migrationsDir                = "file://internal/adapters/repo/ent/migrate/migrations"
 )

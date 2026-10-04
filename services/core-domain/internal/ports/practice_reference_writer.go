@@ -11,6 +11,7 @@ import (
 // writer. A document is replaced in place and never removed, so old
 // evidence can always be regraded.
 type PracticeReferenceWriter interface {
-	// PutDiagram creates or replaces the diagram's reference.
-	PutDiagram(ctx context.Context, ref domain.DiagramReference) error
+	// PutDiagrams creates or replaces each diagram's reference, in one
+	// round trip to the store.
+	PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error
 }
