@@ -90,12 +90,21 @@ func (s PracticeItemState) ShownLevel(now time.Time) KnowledgeLevel {
 // PracticeItemKind is the kind of a practice item, its item key's prefix.
 type PracticeItemKind string
 
-const PracticeItemKindPlayAlong PracticeItemKind = "play_along"
+const (
+	PracticeItemKindPlayAlong PracticeItemKind = "play_along"
+	PracticeItemKindExercise  PracticeItemKind = "exercise"
+)
 
 // PlayAlongItemKey is the item key of playing diagramID along with its
 // playback.
 func PlayAlongItemKey(diagramID string) string {
 	return string(PracticeItemKindPlayAlong) + ":" + diagramID
+}
+
+// ExerciseItemKey is the item key of answering the authored exercise
+// exerciseID.
+func ExerciseItemKey(exerciseID string) string {
+	return string(PracticeItemKindExercise) + ":" + exerciseID
 }
 
 // PracticePickReason is why the composer put an item in a session.

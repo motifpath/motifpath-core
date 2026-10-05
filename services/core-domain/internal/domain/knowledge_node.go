@@ -135,6 +135,12 @@ func (n KnowledgeNode) Suits(instrumentIDs []string) bool {
 	return scopeSuits(n.InstrumentIDs, instrumentIDs)
 }
 
+// For reports whether n is for instrumentID: it lists it, or is for every
+// instrument.
+func (n KnowledgeNode) For(instrumentID string) bool {
+	return len(n.InstrumentIDs) == 0 || slices.Contains(n.InstrumentIDs, instrumentID)
+}
+
 // Within reports whether n's instruments fit inside parent's: a child is
 // never wider than its parent. Under a parent for every instrument any child
 // fits; under a parent for specific instruments a child must be for some of
