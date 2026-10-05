@@ -43,6 +43,8 @@ type world struct {
 	learningState     *fakeStudentLearningStateRepo
 	completion        *fakeCompletionReader
 	practiceStates    *fakePracticeItemStateReader
+	practiceItems     *fakeNodeItemSource
+	rollup            *application.KnowledgeRollupService
 	knowledge         *fakeKnowledgeNodeRepo
 	knowledgeEdges    *fakeKnowledgeEdgeRepo
 	instruments       *fakeInstrumentRepo
@@ -71,6 +73,10 @@ type world struct {
 	// lastEdgeID is "that" knowledge edge: the one most recently seeded or
 	// created.
 	lastEdgeID uuid.UUID
+
+	// lastPracticeItemKeys are the practice items a scenario set up last,
+	// which a following step about "all" of them refers to.
+	lastPracticeItemKeys []string
 
 	hasToken bool
 	clerkSub string // the "sub" claim of whichever identity is currently authenticated
@@ -273,6 +279,8 @@ func newWorld() *world {
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, newID, now)
 
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.practiceStates, newID, now)
+	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
+	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, w.pgPinger, w.mongoPinger)
 	return w
