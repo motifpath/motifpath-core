@@ -79,9 +79,9 @@ func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.
 	}
 
 	// Folding onto a state built by other rules would mix the two, so such a state
-	// is rebuilt from the evidence, like a late or repeated answer.
-	// The item's daily snapshots are rewritten along with it, from the day of the
-	// earliest evidence that changed.
+	// is rebuilt from the evidence, like a late or repeated answer. A rebuild
+	// rewrites every one of the item's daily snapshots from its whole history; an
+	// in-order answer only writes the snapshot of its own day.
 	staleRules := found && rulesVersion != domain.PracticeRulesVersion
 	late := fold.LastAt != nil && evidence.OccurredAt.Before(*fold.LastAt)
 	var snapshots []domain.ItemSnapshot
