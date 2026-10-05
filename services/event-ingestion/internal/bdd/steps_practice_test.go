@@ -26,6 +26,9 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event naming a note that claims a tap time of (\d+) milliseconds$`, w.submitNameTheNoteClaimingTap)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event for the item key "([^"]+)"$`, w.submitAnswerForItemKey)
 	sc.Step(`^"([^"]+)" submits a practice\.item_answered event whose response also claims it is correct$`, w.submitAnswerClaimingCorrect)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event selecting options of exercise "([^"]+)" in challenge "([^"]+)"$`, w.submitChallengeAnswer)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event carrying both a practice session and a challenge trigger context$`, w.submitAnswerWithSessionAndTrigger)
+	sc.Step(`^"([^"]+)" submits a practice\.item_answered event with neither a practice session nor a trigger context$`, w.submitAnswerWithNoContext)
 	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) items answered, not left early, and "([^"]+)" felt "([^"]+)"$`, w.submitSessionEndedWithFelt)
 	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) items answered, left early, and no felt ratings$`, w.submitSessionEndedEarly)
 	sc.Step(`^"([^"]+)" submits a practice\.session_ended event with (\d+) felt ratings$`, w.submitSessionEndedWithFeltCount)
@@ -50,6 +53,7 @@ type practiceEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
 
 	PracticeSessionID string            `json:"practice_session_id,omitempty"`
+	TriggerContext    *triggerContext   `json:"trigger_context,omitempty"`
 	InstrumentID      string            `json:"instrument_id,omitempty"`
 	Minutes           int               `json:"minutes,omitempty"`
 	PlannedItems      *[]plannedItem    `json:"planned_items,omitempty"`
@@ -69,14 +73,20 @@ type plannedItem struct {
 }
 
 type practiceResponse struct {
-	ResponseType string `json:"response_type"`
-	NoteName     string `json:"note_name,omitempty"`
-	LatencyMs    *int   `json:"latency_ms,omitempty"`
-	Rating       string `json:"rating,omitempty"`
-	TempoBPM     int    `json:"tempo_bpm,omitempty"`
+	ResponseType string   `json:"response_type"`
+	NoteName     string   `json:"note_name,omitempty"`
+	LatencyMs    *int     `json:"latency_ms,omitempty"`
+	Rating       string   `json:"rating,omitempty"`
+	TempoBPM     int      `json:"tempo_bpm,omitempty"`
+	OptionIDs    []string `json:"option_ids,omitempty"`
 
 	// Correct is not part of any response shape: a client claiming a verdict.
 	Correct *bool `json:"correct,omitempty"`
+}
+
+type triggerContext struct {
+	Source      string `json:"source"`
+	ChallengeID string `json:"challenge_id,omitempty"`
 }
 
 type feltRating struct {
@@ -136,6 +146,23 @@ func (w *world) answerEvent(name, itemKey string, response *practiceResponse) pr
 	e.ItemKey = itemKey
 	e.Response = response
 	return e
+}
+
+func challengeTrigger(challengeName string) *triggerContext {
+	return &triggerContext{Source: "challenge_sequence", ChallengeID: deterministicUUID("challenge", challengeName).String()}
+}
+
+func exerciseKey(exerciseName string) string {
+	return "exercise:" + deterministicUUID("exercise", exerciseName).String()
+}
+
+func optionChoice(exerciseName string) *practiceResponse {
+	latency := 3500
+	return &practiceResponse{
+		ResponseType: "option_choice",
+		OptionIDs:    []string{deterministicUUID("option", exerciseName, "a").String()},
+		LatencyMs:    &latency,
+	}
 }
 
 func nameTheNote(note string) *practiceResponse {
@@ -232,6 +259,25 @@ func (w *world) submitAnswerClaimingCorrect(name string) error {
 	correct := true
 	response.Correct = &correct
 	return w.submitPractice(w.answerEvent(name, guitarCellKey("5", "3"), response))
+}
+
+func (w *world) submitChallengeAnswer(name, exerciseName, challengeName string) error {
+	e := w.answerEvent(name, exerciseKey(exerciseName), optionChoice(exerciseName))
+	e.PracticeSessionID = ""
+	e.TriggerContext = challengeTrigger(challengeName)
+	return w.submitPractice(e)
+}
+
+func (w *world) submitAnswerWithSessionAndTrigger(name string) error {
+	e := w.answerEvent(name, exerciseKey("minor-third-from-a"), optionChoice("minor-third-from-a"))
+	e.TriggerContext = challengeTrigger("intervals-assessment")
+	return w.submitPractice(e)
+}
+
+func (w *world) submitAnswerWithNoContext(name string) error {
+	e := w.answerEvent(name, exerciseKey("minor-third-from-a"), optionChoice("minor-third-from-a"))
+	e.PracticeSessionID = ""
+	return w.submitPractice(e)
 }
 
 func (w *world) sessionEnded(name, answeredStr string, leftEarly bool, felt []feltRating) error {

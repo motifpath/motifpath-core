@@ -61,6 +61,10 @@ type PracticeResponse struct {
 	// item was asked to the answer. Its presence is what makes an answer timed.
 	LatencyMs *int
 
+	// AudioMs (option_choice) is the audio the exercise asks the student to hear once
+	// before answering; nil for an exercise without audio. Replays aren't counted.
+	AudioMs *int
+
 	// Rating (self_rating) is always set; TempoBPM for a play-along take,
 	// ChangesPerMinute for a chord-change minute.
 	Rating           SelfRating
@@ -129,7 +133,10 @@ func (e PracticeSessionStartedEvent) Base() TrackingEventBase { return e.Trackin
 // PracticeItemAnsweredEvent is emitted when a student answers one practice item.
 type PracticeItemAnsweredEvent struct {
 	TrackingEventBase
+	// Exactly one context is set: the practice session the answer was given in, or,
+	// for an exercise answered elsewhere such as a node's challenge, its trigger context.
 	PracticeSessionID string
+	TriggerContext    *TriggerContext
 	ItemKey           string
 	Response          PracticeResponse
 

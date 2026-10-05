@@ -38,8 +38,6 @@ func toDomainEvent(body *generated.TrackingEvent) (domain.TrackingEvent, error) 
 		return toExerciseStartedEvent(eventType, body)
 	case domain.EventTypeExerciseProgress:
 		return toExerciseProgressEvent(eventType, body)
-	case domain.EventTypeExerciseAnswerSent:
-		return toExerciseAnswerSentEvent(eventType, body)
 	case domain.EventTypeExerciseEnded:
 		return toExerciseEndedEvent(eventType, body)
 	case domain.EventTypePracticeSessionStarted:
@@ -141,39 +139,6 @@ func toExerciseProgressEvent(eventType domain.EventType, body *generated.Trackin
 		return nil, err
 	}
 	return domain.ExerciseProgressEvent{TrackingEventBase: base, ExerciseID: exerciseID, TriggerContext: tc, ElapsedSeconds: v.ElapsedSeconds}, nil
-}
-
-func toExerciseAnswerSentEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {
-	v, err := body.AsExerciseAnswerSentEvent()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", domain.ErrInvalidEventType, err)
-	}
-	base, err := toDomainBase(eventType, v.EventId, v.StudentId, v.SessionId, v.OccurredAt)
-	if err != nil {
-		return nil, err
-	}
-	exerciseID, err := requireUUID(v.ExerciseId, "exercise_id")
-	if err != nil {
-		return nil, err
-	}
-	tc, err := toDomainTriggerContext(v.TriggerContext)
-	if err != nil {
-		return nil, err
-	}
-	if v.AttemptNumber < 1 {
-		return nil, fmt.Errorf("%w: attempt_number", domain.ErrMissingRequiredField)
-	}
-	var answerPayload map[string]any
-	if v.AnswerPayload != nil {
-		answerPayload = *v.AnswerPayload
-	}
-	return domain.ExerciseAnswerSentEvent{
-		TrackingEventBase: base,
-		ExerciseID:        exerciseID,
-		TriggerContext:    tc,
-		AttemptNumber:     v.AttemptNumber,
-		AnswerPayload:     answerPayload,
-	}, nil
 }
 
 func toExerciseEndedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {

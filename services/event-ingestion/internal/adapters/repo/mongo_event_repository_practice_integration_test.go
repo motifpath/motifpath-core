@@ -76,6 +76,17 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 				OptionIDs: []string{"66666666-6666-4666-8666-666666666666", "77777777-7777-4777-8777-777777777777"}, LatencyMs: intRef(4000)},
 		},
 		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-00000000000a", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			TriggerContext: &domain.TriggerContext{
+				Source:        domain.TriggerSourceChallengeSequence,
+				ChallengeID:   "88888888-8888-4888-8888-888888888888",
+				ContentNodeID: "99999999-9999-4999-8999-999999999999",
+			},
+			ItemKey: "exercise:55555555-5555-4555-8555-555555555555",
+			Response: domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice,
+				OptionIDs: []string{"66666666-6666-4666-8666-666666666666"}, LatencyMs: intRef(9500), AudioMs: intRef(5000)},
+		},
+		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000006", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
 			ItemKey:           "play_along:55555555-5555-4555-8555-555555555555",

@@ -28,7 +28,6 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)" submits a lesson\.started event for video content node "([^"]+)"$`, w.submitLessonStarted)
 	sc.Step(`^"([^"]+)" submits a lesson\.completed event for content node "([^"]+)" with a duration of (\d+) seconds$`, w.submitLessonCompletedWithDuration)
-	sc.Step(`^"([^"]+)" submits an answer to the exercise as attempt number (\d+)$`, w.submitExerciseAnswer)
 	sc.Step(`^"([^"]+)" submits an exercise\.ended event with outcome "([^"]+)" and a final score of (\d+)$`, w.submitExerciseEndedWithScore)
 	sc.Step(`^"([^"]+)" submits an exercise\.ended event with outcome "([^"]+)" and no final score$`, w.submitExerciseEndedNoScore)
 	sc.Step(`^"([^"]+)" submits the same lesson\.started event again with identifier "([^"]+)"$`, w.resubmitLessonStarted)
@@ -41,8 +40,7 @@ func registerIngestSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" submits an event with the event type field omitted$`, w.submitEventMissingEventType)
 	sc.Step(`^"([^"]+)" submits an event with event type "([^"]+)"$`, w.submitEventWithUnknownEventType)
 	sc.Step(`^"([^"]+)" submits a lesson\.started event with the content context field omitted$`, w.submitLessonStartedMissingContentContext)
-	sc.Step(`^"([^"]+)" submits an exercise\.answer_sent event with attempt number (\d+)$`, w.submitExerciseAnswerSentWithAttemptNumber)
-	sc.Step(`^"([^"]+)" submits an exercise\.answer_sent event with the trigger context field omitted$`, w.submitExerciseAnswerSentMissingTriggerContext)
+	sc.Step(`^"([^"]+)" submits an exercise\.started event with the trigger context field omitted$`, w.submitExerciseStartedMissingTriggerContext)
 
 	sc.Step(`^the event is accepted and stored in the event log$`, w.eventIsAcceptedAndStored)
 	sc.Step(`^the server returns the submitted event identifier and a receipt timestamp$`, w.responseHasEventIDAndReceivedAt)
@@ -154,67 +152,14 @@ func (w *world) resubmitLessonStarted(_, _ string) error {
 	return nil
 }
 
-func (w *world) submitExerciseAnswer(name, attemptNumberStr string) error {
-	attemptNumber, err := strconv.Atoi(attemptNumberStr)
-	if err != nil {
-		return err
-	}
-	attempt, err := w.attemptFor(name)
-	if err != nil {
-		return err
-	}
-	eventID := deterministicUUID("event", name+":answer:"+attemptNumberStr)
-	v := generated.ExerciseAnswerSentEvent{
-		EventId:        eventID,
-		EventType:      "exercise.answer_sent",
-		StudentId:      studentUUID(name),
-		SessionId:      fixedSessionID,
-		OccurredAt:     fixedOccurredAt,
-		ExerciseId:     attempt.exerciseID,
-		TriggerContext: attempt.triggerContext(),
-		AttemptNumber:  attemptNumber,
-	}
-	w.submit(newTrackingEvent(v))
-	return nil
-}
-
-// submitExerciseAnswerSentWithAttemptNumber and submitExerciseAnswerSentMissingTriggerContext
-// deliberately build their own exercise_id rather than looking one up via
-// attemptFor: neither of their scenarios has a "has an active exercise attempt"
-// Given step — each is testing one specific required-field failure in isolation,
-// with everything else in the payload otherwise valid.
-
-func (w *world) submitExerciseAnswerSentWithAttemptNumber(name, attemptNumberStr string) error {
-	attemptNumber, err := strconv.Atoi(attemptNumberStr)
-	if err != nil {
-		return err
-	}
-	eventID := deterministicUUID("event", name+":answer-attempt-number:"+attemptNumberStr)
-	v := generated.ExerciseAnswerSentEvent{
-		EventId:        eventID,
-		EventType:      "exercise.answer_sent",
-		StudentId:      studentUUID(name),
-		SessionId:      fixedSessionID,
-		OccurredAt:     fixedOccurredAt,
-		ExerciseId:     deterministicUUID("exercise", "attempt-number-validation"),
-		TriggerContext: generated.TriggerContext{Source: "free_practice"},
-		AttemptNumber:  attemptNumber,
-	}
-	w.submit(newTrackingEvent(v))
-	return nil
-}
-
-func (w *world) submitExerciseAnswerSentMissingTriggerContext(name string) error {
-	eventID := deterministicUUID("event", name+":answer-missing-trigger")
-	v := generated.ExerciseAnswerSentEvent{
-		EventId:        eventID,
-		EventType:      "exercise.answer_sent",
-		StudentId:      studentUUID(name),
-		SessionId:      fixedSessionID,
-		OccurredAt:     fixedOccurredAt,
-		ExerciseId:     deterministicUUID("exercise", "trigger-context-validation"),
-		TriggerContext: generated.TriggerContext{},
-		AttemptNumber:  1,
+func (w *world) submitExerciseStartedMissingTriggerContext(name string) error {
+	v := generated.ExerciseStartedEvent{
+		EventId:    deterministicUUID("event", name+":started-missing-trigger"),
+		EventType:  "exercise.started",
+		StudentId:  studentUUID(name),
+		SessionId:  fixedSessionID,
+		OccurredAt: fixedOccurredAt,
+		ExerciseId: deterministicUUID("exercise", "trigger-context-validation"),
 	}
 	w.submit(newTrackingEvent(v))
 	return nil
@@ -438,7 +383,7 @@ func newLessonCompletedBody(studentName string, eventID uuid.UUID, nodeIdentifie
 type trackingEventSetter interface {
 	generated.LessonStartedEvent |
 		generated.LessonCompletedEvent |
-		generated.ExerciseAnswerSentEvent |
+		generated.ExerciseStartedEvent |
 		generated.ExerciseProgressEvent |
 		generated.ExerciseEndedEvent
 }
@@ -450,8 +395,8 @@ func newTrackingEvent[T trackingEventSetter](v T) *generated.TrackingEvent {
 		_ = body.FromLessonStartedEvent(typed)
 	case generated.LessonCompletedEvent:
 		_ = body.FromLessonCompletedEvent(typed)
-	case generated.ExerciseAnswerSentEvent:
-		_ = body.FromExerciseAnswerSentEvent(typed)
+	case generated.ExerciseStartedEvent:
+		_ = body.FromExerciseStartedEvent(typed)
 	case generated.ExerciseProgressEvent:
 		_ = body.FromExerciseProgressEvent(typed)
 	case generated.ExerciseEndedEvent:

@@ -8,13 +8,12 @@ import "time"
 type EventType string
 
 const (
-	EventTypeLessonStarted      EventType = "lesson.started"
-	EventTypeLessonResumed      EventType = "lesson.resumed"
-	EventTypeLessonCompleted    EventType = "lesson.completed"
-	EventTypeExerciseStarted    EventType = "exercise.started"
-	EventTypeExerciseProgress   EventType = "exercise.progress"
-	EventTypeExerciseAnswerSent EventType = "exercise.answer_sent"
-	EventTypeExerciseEnded      EventType = "exercise.ended"
+	EventTypeLessonStarted    EventType = "lesson.started"
+	EventTypeLessonResumed    EventType = "lesson.resumed"
+	EventTypeLessonCompleted  EventType = "lesson.completed"
+	EventTypeExerciseStarted  EventType = "exercise.started"
+	EventTypeExerciseProgress EventType = "exercise.progress"
+	EventTypeExerciseEnded    EventType = "exercise.ended"
 
 	EventTypePracticeSessionStarted    EventType = "practice.session_started"
 	EventTypePracticeItemAnswered      EventType = "practice.item_answered"

@@ -21,6 +21,8 @@ const (
 	testInstrumentID      = "6ea2d087-ab9c-59dc-9657-8546025414d2"
 	testDiagramID         = "6f1c1d1e-5555-4555-8555-555555555555"
 	testOptionID          = "6f1c1d1e-6666-4666-8666-666666666666"
+	testChallengeID       = "6f1c1d1e-7777-4777-8777-777777777777"
+	testNodeID            = "6f1c1d1e-8888-4888-8888-888888888888"
 	testOccurredAt        = "2026-10-04T10:00:00Z"
 )
 
@@ -106,6 +108,12 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			want:     domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{testOptionID}, LatencyMs: intPtr(4000)},
 		},
 		{
+			name:     "option choice with audio",
+			itemKey:  "exercise:" + testDiagramID,
+			response: fmt.Sprintf(`{"response_type":"option_choice","option_ids":[%q],"latency_ms":9500,"audio_ms":5000}`, testOptionID),
+			want:     domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{testOptionID}, LatencyMs: intPtr(9500), AudioMs: intPtr(5000)},
+		},
+		{
 			name:     "self rating of a play-along",
 			itemKey:  "play_along:" + testDiagramID,
 			response: `{"response_type":"self_rating","rating":"clean","tempo_bpm":90}`,
@@ -133,6 +141,23 @@ func TestToDomainEvent_PracticeItemAnsweredResponses(t *testing.T) {
 			assert.Nil(t, answered.TapMs)
 		})
 	}
+}
+
+func TestToDomainEvent_PracticeItemAnsweredInAChallenge(t *testing.T) {
+	fields := fmt.Sprintf(`,"trigger_context":{"source":"challenge_sequence","challenge_id":%q,"content_node_id":%q},"item_key":%q,"response":{"response_type":"option_choice","option_ids":[%q],"latency_ms":3500}`,
+		testChallengeID, testNodeID, "exercise:"+testDiagramID, testOptionID)
+
+	event, err := toDomainEvent(practiceBody(t, "practice.item_answered", fields))
+
+	require.NoError(t, err)
+	answered, ok := event.(domain.PracticeItemAnsweredEvent)
+	require.True(t, ok, "got %T", event)
+	assert.Empty(t, answered.PracticeSessionID)
+	assert.Equal(t, &domain.TriggerContext{
+		Source:        domain.TriggerSourceChallengeSequence,
+		ChallengeID:   testChallengeID,
+		ContentNodeID: testNodeID,
+	}, answered.TriggerContext)
 }
 
 func TestToDomainEvent_PracticeItemAnsweredIgnoresClientTapTime(t *testing.T) {
@@ -211,8 +236,17 @@ func TestToDomainEvent_PracticeValidationFailures(t *testing.T) {
 			fmt.Sprintf(`,"practice_session_id":%q,"minutes":10,"planned_items":[{"item_key":%q,"reason":"because"}]`, testPracticeSessionID, testCellKey), domain.ErrInvalidField, "planned_items"},
 
 		// practice.item_answered
-		{"answered without a practice session id", "practice.item_answered",
+		{"answered without a practice session id or a trigger context", "practice.item_answered",
 			fmt.Sprintf(`,"item_key":%q,"response":%s`, testCellKey, nameTheNote), domain.ErrMissingRequiredField, "practice_session_id"},
+		{"answered with both a practice session id and a trigger context", "practice.item_answered",
+			answeredFields(testCellKey, nameTheNote) + fmt.Sprintf(`,"trigger_context":{"source":"challenge_sequence","challenge_id":%q}`, testChallengeID),
+			domain.ErrInvalidField, "trigger_context"},
+		{"answered with a trigger context without a source", "practice.item_answered",
+			fmt.Sprintf(`,"trigger_context":{},"item_key":%q,"response":%s`, testCellKey, nameTheNote), domain.ErrMissingRequiredField, "trigger_context"},
+		{"answered with a negative audio length", "practice.item_answered",
+			answeredFields("exercise:"+testDiagramID, fmt.Sprintf(`{"response_type":"option_choice","option_ids":[%q],"latency_ms":900,"audio_ms":-1}`, testOptionID)), domain.ErrInvalidField, "response"},
+		{"answered naming a note with an audio length", "practice.item_answered",
+			answeredFields(testCellKey, `{"response_type":"name_the_note","note_name":"C","latency_ms":1800,"audio_ms":500}`), domain.ErrInvalidField, "response"},
 		{"answered with an item key of no kind", "practice.item_answered",
 			answeredFields("fretboard:"+testInstrumentID+":5:3", nameTheNote), domain.ErrInvalidField, "item_key"},
 		{"answered with a cell key on string 0", "practice.item_answered",

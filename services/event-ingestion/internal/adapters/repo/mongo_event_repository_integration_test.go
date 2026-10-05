@@ -143,36 +143,6 @@ func TestMongoEventRepository_FindByEventID_RoundTripsLessonCompletedEvent(t *te
 	assert.Equal(t, event, found)
 }
 
-func TestMongoEventRepository_FindByEventID_RoundTripsExerciseAnswerSentEvent(t *testing.T) {
-	repo := setupMongoRepository(t)
-	ctx := context.Background()
-
-	event := domain.ExerciseAnswerSentEvent{
-		TrackingEventBase: domain.TrackingEventBase{
-			EventID:    "88888888-8888-8888-8888-888888888888",
-			EventType:  domain.EventTypeExerciseAnswerSent,
-			StudentID:  "22222222-2222-2222-2222-222222222222",
-			SessionID:  "33333333-3333-3333-3333-333333333333",
-			OccurredAt: time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC),
-		},
-		ExerciseID: "99999999-9999-9999-9999-999999999999",
-		TriggerContext: domain.TriggerContext{
-			Source:        domain.TriggerSourceChallengeSequence,
-			ContentNodeID: "44444444-4444-4444-4444-444444444444",
-			ChallengeID:   "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-		},
-		AttemptNumber: 2,
-		AnswerPayload: map[string]any{"selected_option": "C"},
-	}
-
-	_, _, err := repo.Save(ctx, event)
-	require.NoError(t, err)
-
-	found, err := repo.FindByEventID(ctx, event.EventID)
-	require.NoError(t, err)
-	assert.Equal(t, event, found)
-}
-
 func TestMongoEventRepository_FindByEventID_NotFound(t *testing.T) {
 	repo := setupMongoRepository(t)
 

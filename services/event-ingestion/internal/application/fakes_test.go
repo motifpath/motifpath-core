@@ -238,8 +238,6 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 		return domain.ExerciseStartedEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger}
 	case domain.EventTypeExerciseProgress:
 		return domain.ExerciseProgressEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger}
-	case domain.EventTypeExerciseAnswerSent:
-		return domain.ExerciseAnswerSentEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger, AttemptNumber: 1}
 	case domain.EventTypeExerciseEnded:
 		return domain.ExerciseEndedEvent{TrackingEventBase: base, ExerciseID: "ex-1", TriggerContext: trigger, Outcome: domain.ExerciseOutcomeCompleted}
 	case domain.EventTypePracticeSessionStarted:
