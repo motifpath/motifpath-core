@@ -26,6 +26,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -233,6 +235,80 @@ func init() {
 	diagramskillDescLinkedAt := diagramskillFields[2].Descriptor()
 	// diagramskill.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	diagramskill.DefaultLinkedAt = diagramskillDescLinkedAt.Default.(func() time.Time)
+	drilltemplateFields := schema.DrillTemplate{}.Fields()
+	_ = drilltemplateFields
+	// drilltemplateDescKey is the schema descriptor for key field.
+	drilltemplateDescKey := drilltemplateFields[1].Descriptor()
+	// drilltemplate.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	drilltemplate.KeyValidator = func() func(string) error {
+		validators := drilltemplateDescKey.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(key string) error {
+			for _, fn := range fns {
+				if err := fn(key); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// drilltemplateDescItemKind is the schema descriptor for item_kind field.
+	drilltemplateDescItemKind := drilltemplateFields[2].Descriptor()
+	// drilltemplate.ItemKindValidator is a validator for the "item_kind" field. It is called by the builders before save.
+	drilltemplate.ItemKindValidator = func() func(string) error {
+		validators := drilltemplateDescItemKind.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(item_kind string) error {
+			for _, fn := range fns {
+				if err := fn(item_kind); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// drilltemplateDescResponseType is the schema descriptor for response_type field.
+	drilltemplateDescResponseType := drilltemplateFields[3].Descriptor()
+	// drilltemplate.ResponseTypeValidator is a validator for the "response_type" field. It is called by the builders before save.
+	drilltemplate.ResponseTypeValidator = func() func(string) error {
+		validators := drilltemplateDescResponseType.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(response_type string) error {
+			for _, fn := range fns {
+				if err := fn(response_type); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	drillthresholdFields := schema.DrillThreshold{}.Fields()
+	_ = drillthresholdFields
+	// drillthresholdDescVersion is the schema descriptor for version field.
+	drillthresholdDescVersion := drillthresholdFields[2].Descriptor()
+	// drillthreshold.VersionValidator is a validator for the "version" field. It is called by the builders before save.
+	drillthreshold.VersionValidator = drillthresholdDescVersion.Validators[0].(func(int) error)
+	// drillthresholdDescFluentNetMs is the schema descriptor for fluent_net_ms field.
+	drillthresholdDescFluentNetMs := drillthresholdFields[4].Descriptor()
+	// drillthreshold.FluentNetMsValidator is a validator for the "fluent_net_ms" field. It is called by the builders before save.
+	drillthreshold.FluentNetMsValidator = drillthresholdDescFluentNetMs.Validators[0].(func(int) error)
+	// drillthresholdDescSessions is the schema descriptor for sessions field.
+	drillthresholdDescSessions := drillthresholdFields[6].Descriptor()
+	// drillthreshold.SessionsValidator is a validator for the "sessions" field. It is called by the builders before save.
+	drillthreshold.SessionsValidator = drillthresholdDescSessions.Validators[0].(func(int) error)
+	// drillthresholdDescStudents is the schema descriptor for students field.
+	drillthresholdDescStudents := drillthresholdFields[7].Descriptor()
+	// drillthreshold.StudentsValidator is a validator for the "students" field. It is called by the builders before save.
+	drillthreshold.StudentsValidator = drillthresholdDescStudents.Validators[0].(func(int) error)
 	exerciseFields := schema.Exercise{}.Fields()
 	_ = exerciseFields
 	// exerciseDescCreatedAt is the schema descriptor for created_at field.

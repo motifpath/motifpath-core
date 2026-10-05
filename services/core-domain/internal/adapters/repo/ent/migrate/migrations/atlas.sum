@@ -1,4 +1,4 @@
-h1:b8TKz72xGtX8BAGafCG1j3iqyAD3krZZHTiQHxkSCrU=
+h1:zNraHvkvYWfHurkCfwE+x9aYsQgyGJi0VVrVETyroSc=
 20260922172448_initial_schema_student_path_and_content_versioning.up.sql h1:DTJlaJskch0SS4KJeracxn45WipONPrVf42g0LWYRJI=
 20260922180356_add_course_and_course_checkpoint.up.sql h1:KIefEsgObvQNHWLZ5FNgMrgjJIAPUbXoCmAeIdn5DFk=
 20260922181952_add_course_version.up.sql h1:H62FZAUVd4Q1DBgXnoTJapnk7zMUIgCOQcZzlKNd1qA=
@@ -29,3 +29,4 @@ h1:b8TKz72xGtX8BAGafCG1j3iqyAD3krZZHTiQHxkSCrU=
 20261002123500_basic_guitar_catalog.up.sql h1:7fH8h48d7QizCjqxZFkvvj2MmMbwVzTCcd5pbGgo4ug=
 20261004165339_instrument_icon.up.sql h1:7m56Njkgc+rz0k+TyMu5qGQR4b1W5mk1mEI8+byYKv4=
 20261004165340_catalog_instrument_icons.up.sql h1:oEq5KecUva84m4fywl/icfvmf7qJdMRHqc8SKFmDB3Y=
+20261005184328_drill_catalog.up.sql h1:SSQJfuSCUTBbu0E98Y6DZ6n3oyna/Yw/BfZ+hf7AHt0=

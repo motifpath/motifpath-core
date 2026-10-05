@@ -36,6 +36,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -104,6 +106,10 @@ type Client struct {
 	DiagramRegion *DiagramRegionClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
 	DiagramSkill *DiagramSkillClient
+	// DrillTemplate is the client for interacting with the DrillTemplate builders.
+	DrillTemplate *DrillTemplateClient
+	// DrillThreshold is the client for interacting with the DrillThreshold builders.
+	DrillThreshold *DrillThresholdClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -177,6 +183,8 @@ func (c *Client) init() {
 	c.DiagramInstrument = NewDiagramInstrumentClient(c.config)
 	c.DiagramRegion = NewDiagramRegionClient(c.config)
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
+	c.DrillTemplate = NewDrillTemplateClient(c.config)
+	c.DrillThreshold = NewDrillThresholdClient(c.config)
 	c.Exercise = NewExerciseClient(c.config)
 	c.ExerciseConcept = NewExerciseConceptClient(c.config)
 	c.ExerciseInstrument = NewExerciseInstrumentClient(c.config)
@@ -310,6 +318,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
+		DrillTemplate:           NewDrillTemplateClient(cfg),
+		DrillThreshold:          NewDrillThresholdClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
 		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
@@ -370,6 +380,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
+		DrillTemplate:           NewDrillTemplateClient(cfg),
+		DrillThreshold:          NewDrillThresholdClient(cfg),
 		Exercise:                NewExerciseClient(cfg),
 		ExerciseConcept:         NewExerciseConceptClient(cfg),
 		ExerciseInstrument:      NewExerciseInstrumentClient(cfg),
@@ -425,10 +437,10 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
 		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
-		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
-		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
-		c.ExpandedContent, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
-		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
+		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
+		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.KnowledgeEdge,
+		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
 		c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
@@ -445,10 +457,10 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
 		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
-		c.DiagramRegion, c.DiagramSkill, c.Exercise, c.ExerciseConcept,
-		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
-		c.ExpandedContent, c.Instrument, c.KnowledgeEdge, c.KnowledgeNode,
-		c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
+		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
+		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.KnowledgeEdge,
+		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
 		c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
@@ -499,6 +511,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DiagramRegion.mutate(ctx, m)
 	case *DiagramSkillMutation:
 		return c.DiagramSkill.mutate(ctx, m)
+	case *DrillTemplateMutation:
+		return c.DrillTemplate.mutate(ctx, m)
+	case *DrillThresholdMutation:
+		return c.DrillThreshold.mutate(ctx, m)
 	case *ExerciseMutation:
 		return c.Exercise.mutate(ctx, m)
 	case *ExerciseConceptMutation:
@@ -3907,6 +3923,304 @@ func (c *DiagramSkillClient) mutate(ctx context.Context, m *DiagramSkillMutation
 		return (&DiagramSkillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DiagramSkill mutation op: %q", m.Op())
+	}
+}
+
+// DrillTemplateClient is a client for the DrillTemplate schema.
+type DrillTemplateClient struct {
+	config
+}
+
+// NewDrillTemplateClient returns a client for the DrillTemplate from the given config.
+func NewDrillTemplateClient(c config) *DrillTemplateClient {
+	return &DrillTemplateClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `drilltemplate.Hooks(f(g(h())))`.
+func (c *DrillTemplateClient) Use(hooks ...Hook) {
+	c.hooks.DrillTemplate = append(c.hooks.DrillTemplate, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `drilltemplate.Intercept(f(g(h())))`.
+func (c *DrillTemplateClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DrillTemplate = append(c.inters.DrillTemplate, interceptors...)
+}
+
+// Create returns a builder for creating a DrillTemplate entity.
+func (c *DrillTemplateClient) Create() *DrillTemplateCreate {
+	mutation := newDrillTemplateMutation(c.config, OpCreate)
+	return &DrillTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DrillTemplate entities.
+func (c *DrillTemplateClient) CreateBulk(builders ...*DrillTemplateCreate) *DrillTemplateCreateBulk {
+	return &DrillTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DrillTemplateClient) MapCreateBulk(slice any, setFunc func(*DrillTemplateCreate, int)) *DrillTemplateCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DrillTemplateCreateBulk{err: fmt.Errorf("calling to DrillTemplateClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DrillTemplateCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DrillTemplateCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DrillTemplate.
+func (c *DrillTemplateClient) Update() *DrillTemplateUpdate {
+	mutation := newDrillTemplateMutation(c.config, OpUpdate)
+	return &DrillTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DrillTemplateClient) UpdateOne(_m *DrillTemplate) *DrillTemplateUpdateOne {
+	mutation := newDrillTemplateMutation(c.config, OpUpdateOne, withDrillTemplate(_m))
+	return &DrillTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DrillTemplateClient) UpdateOneID(id uuid.UUID) *DrillTemplateUpdateOne {
+	mutation := newDrillTemplateMutation(c.config, OpUpdateOne, withDrillTemplateID(id))
+	return &DrillTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DrillTemplate.
+func (c *DrillTemplateClient) Delete() *DrillTemplateDelete {
+	mutation := newDrillTemplateMutation(c.config, OpDelete)
+	return &DrillTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DrillTemplateClient) DeleteOne(_m *DrillTemplate) *DrillTemplateDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DrillTemplateClient) DeleteOneID(id uuid.UUID) *DrillTemplateDeleteOne {
+	builder := c.Delete().Where(drilltemplate.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DrillTemplateDeleteOne{builder}
+}
+
+// Query returns a query builder for DrillTemplate.
+func (c *DrillTemplateClient) Query() *DrillTemplateQuery {
+	return &DrillTemplateQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDrillTemplate},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DrillTemplate entity by its id.
+func (c *DrillTemplateClient) Get(ctx context.Context, id uuid.UUID) (*DrillTemplate, error) {
+	return c.Query().Where(drilltemplate.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DrillTemplateClient) GetX(ctx context.Context, id uuid.UUID) *DrillTemplate {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryThresholds queries the thresholds edge of a DrillTemplate.
+func (c *DrillTemplateClient) QueryThresholds(_m *DrillTemplate) *DrillThresholdQuery {
+	query := (&DrillThresholdClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drilltemplate.Table, drilltemplate.FieldID, id),
+			sqlgraph.To(drillthreshold.Table, drillthreshold.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, drilltemplate.ThresholdsTable, drilltemplate.ThresholdsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DrillTemplateClient) Hooks() []Hook {
+	return c.hooks.DrillTemplate
+}
+
+// Interceptors returns the client interceptors.
+func (c *DrillTemplateClient) Interceptors() []Interceptor {
+	return c.inters.DrillTemplate
+}
+
+func (c *DrillTemplateClient) mutate(ctx context.Context, m *DrillTemplateMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DrillTemplateCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DrillTemplateUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DrillTemplateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DrillTemplateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DrillTemplate mutation op: %q", m.Op())
+	}
+}
+
+// DrillThresholdClient is a client for the DrillThreshold schema.
+type DrillThresholdClient struct {
+	config
+}
+
+// NewDrillThresholdClient returns a client for the DrillThreshold from the given config.
+func NewDrillThresholdClient(c config) *DrillThresholdClient {
+	return &DrillThresholdClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `drillthreshold.Hooks(f(g(h())))`.
+func (c *DrillThresholdClient) Use(hooks ...Hook) {
+	c.hooks.DrillThreshold = append(c.hooks.DrillThreshold, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `drillthreshold.Intercept(f(g(h())))`.
+func (c *DrillThresholdClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DrillThreshold = append(c.inters.DrillThreshold, interceptors...)
+}
+
+// Create returns a builder for creating a DrillThreshold entity.
+func (c *DrillThresholdClient) Create() *DrillThresholdCreate {
+	mutation := newDrillThresholdMutation(c.config, OpCreate)
+	return &DrillThresholdCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DrillThreshold entities.
+func (c *DrillThresholdClient) CreateBulk(builders ...*DrillThresholdCreate) *DrillThresholdCreateBulk {
+	return &DrillThresholdCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DrillThresholdClient) MapCreateBulk(slice any, setFunc func(*DrillThresholdCreate, int)) *DrillThresholdCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DrillThresholdCreateBulk{err: fmt.Errorf("calling to DrillThresholdClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DrillThresholdCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DrillThresholdCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DrillThreshold.
+func (c *DrillThresholdClient) Update() *DrillThresholdUpdate {
+	mutation := newDrillThresholdMutation(c.config, OpUpdate)
+	return &DrillThresholdUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DrillThresholdClient) UpdateOne(_m *DrillThreshold) *DrillThresholdUpdateOne {
+	mutation := newDrillThresholdMutation(c.config, OpUpdateOne, withDrillThreshold(_m))
+	return &DrillThresholdUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DrillThresholdClient) UpdateOneID(id uuid.UUID) *DrillThresholdUpdateOne {
+	mutation := newDrillThresholdMutation(c.config, OpUpdateOne, withDrillThresholdID(id))
+	return &DrillThresholdUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DrillThreshold.
+func (c *DrillThresholdClient) Delete() *DrillThresholdDelete {
+	mutation := newDrillThresholdMutation(c.config, OpDelete)
+	return &DrillThresholdDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DrillThresholdClient) DeleteOne(_m *DrillThreshold) *DrillThresholdDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DrillThresholdClient) DeleteOneID(id uuid.UUID) *DrillThresholdDeleteOne {
+	builder := c.Delete().Where(drillthreshold.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DrillThresholdDeleteOne{builder}
+}
+
+// Query returns a query builder for DrillThreshold.
+func (c *DrillThresholdClient) Query() *DrillThresholdQuery {
+	return &DrillThresholdQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDrillThreshold},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DrillThreshold entity by its id.
+func (c *DrillThresholdClient) Get(ctx context.Context, id uuid.UUID) (*DrillThreshold, error) {
+	return c.Query().Where(drillthreshold.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DrillThresholdClient) GetX(ctx context.Context, id uuid.UUID) *DrillThreshold {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTemplate queries the template edge of a DrillThreshold.
+func (c *DrillThresholdClient) QueryTemplate(_m *DrillThreshold) *DrillTemplateQuery {
+	query := (&DrillTemplateClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drillthreshold.Table, drillthreshold.FieldID, id),
+			sqlgraph.To(drilltemplate.Table, drilltemplate.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, drillthreshold.TemplateTable, drillthreshold.TemplateColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DrillThresholdClient) Hooks() []Hook {
+	return c.hooks.DrillThreshold
+}
+
+// Interceptors returns the client interceptors.
+func (c *DrillThresholdClient) Interceptors() []Interceptor {
+	return c.inters.DrillThreshold
+}
+
+func (c *DrillThresholdClient) mutate(ctx context.Context, m *DrillThresholdMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DrillThresholdCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DrillThresholdUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DrillThresholdUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DrillThresholdDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DrillThreshold mutation op: %q", m.Op())
 	}
 }
 
@@ -7815,9 +8129,9 @@ type (
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
-		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
 		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
 		StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
@@ -7827,9 +8141,9 @@ type (
 		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		Exercise, ExerciseConcept, ExerciseInstrument, ExerciseLanguage,
-		ExerciseOption, ExerciseSkill, ExpandedContent, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
+		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
 		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
 		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
 	}

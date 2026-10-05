@@ -249,6 +249,30 @@ func (f DiagramSkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramSkillMutation", m)
 }
 
+// The DrillTemplateFunc type is an adapter to allow the use of ordinary
+// function as DrillTemplate mutator.
+type DrillTemplateFunc func(context.Context, *ent.DrillTemplateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DrillTemplateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DrillTemplateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DrillTemplateMutation", m)
+}
+
+// The DrillThresholdFunc type is an adapter to allow the use of ordinary
+// function as DrillThreshold mutator.
+type DrillThresholdFunc func(context.Context, *ent.DrillThresholdMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DrillThresholdFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DrillThresholdMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DrillThresholdMutation", m)
+}
+
 // The ExerciseFunc type is an adapter to allow the use of ordinary
 // function as Exercise mutator.
 type ExerciseFunc func(context.Context, *ent.ExerciseMutation) (ent.Value, error)

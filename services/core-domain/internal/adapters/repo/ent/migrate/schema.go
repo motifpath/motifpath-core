@@ -594,6 +594,53 @@ var (
 			},
 		},
 	}
+	// DrillTemplatesColumns holds the columns for the "drill_templates" table.
+	DrillTemplatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true, Size: 100},
+		{Name: "item_kind", Type: field.TypeString, Size: 50},
+		{Name: "response_type", Type: field.TypeString, Size: 50},
+		{Name: "timed", Type: field.TypeBool},
+		{Name: "names", Type: field.TypeJSON},
+	}
+	// DrillTemplatesTable holds the schema information for the "drill_templates" table.
+	DrillTemplatesTable = &schema.Table{
+		Name:       "drill_templates",
+		Columns:    DrillTemplatesColumns,
+		PrimaryKey: []*schema.Column{DrillTemplatesColumns[0]},
+	}
+	// DrillThresholdsColumns holds the columns for the "drill_thresholds" table.
+	DrillThresholdsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "version", Type: field.TypeInt},
+		{Name: "effective_from", Type: field.TypeTime},
+		{Name: "fluent_net_ms", Type: field.TypeInt},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"default", "benchmark", "calibrated"}},
+		{Name: "sessions", Type: field.TypeInt},
+		{Name: "students", Type: field.TypeInt},
+		{Name: "template_id", Type: field.TypeUUID},
+	}
+	// DrillThresholdsTable holds the schema information for the "drill_thresholds" table.
+	DrillThresholdsTable = &schema.Table{
+		Name:       "drill_thresholds",
+		Columns:    DrillThresholdsColumns,
+		PrimaryKey: []*schema.Column{DrillThresholdsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "drill_thresholds_drill_templates_template",
+				Columns:    []*schema.Column{DrillThresholdsColumns[7]},
+				RefColumns: []*schema.Column{DrillTemplatesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "drillthreshold_template_id_version",
+				Unique:  true,
+				Columns: []*schema.Column{DrillThresholdsColumns[7], DrillThresholdsColumns[1]},
+			},
+		},
+	}
 	// ExercisesColumns holds the columns for the "exercises" table.
 	ExercisesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1191,6 +1238,8 @@ var (
 		DiagramInstrumentsTable,
 		DiagramRegionsTable,
 		DiagramSkillsTable,
+		DrillTemplatesTable,
+		DrillThresholdsTable,
 		ExercisesTable,
 		ExerciseConceptsTable,
 		ExerciseInstrumentsTable,
@@ -1238,6 +1287,7 @@ func init() {
 	DiagramRegionsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
+	DrillThresholdsTable.ForeignKeys[0].RefTable = DrillTemplatesTable
 	ExerciseConceptsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	ExerciseInstrumentsTable.ForeignKeys[0].RefTable = ExercisesTable

@@ -66,6 +66,12 @@ type DiagramRegion func(*sql.Selector)
 // DiagramSkill is the predicate function for diagramskill builders.
 type DiagramSkill func(*sql.Selector)
 
+// DrillTemplate is the predicate function for drilltemplate builders.
+type DrillTemplate func(*sql.Selector)
+
+// DrillThreshold is the predicate function for drillthreshold builders.
+type DrillThreshold func(*sql.Selector)
+
 // Exercise is the predicate function for exercise builders.
 type Exercise func(*sql.Selector)
 
