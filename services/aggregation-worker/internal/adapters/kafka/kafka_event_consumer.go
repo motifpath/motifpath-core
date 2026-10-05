@@ -134,16 +134,51 @@ func (c *KafkaEventConsumer) commit(ctx context.Context, msg kafkago.Message) {
 
 func toDomainEvent(w wireEvent) domain.TrackingEvent {
 	event := domain.TrackingEvent{
-		EventType: domain.EventType(w.EventType),
-		StudentID: w.StudentID,
+		EventType:         domain.EventType(w.EventType),
+		EventID:           w.EventID,
+		StudentID:         w.StudentID,
+		OccurredAt:        w.OccurredAt,
+		PracticeSessionID: w.PracticeSessionID,
 	}
 	if w.ContentContext != nil {
 		event.ContentNodeID = w.ContentContext.ContentNodeID
 	}
-	if event.EventType == domain.EventTypePracticeItemAnswered && w.Response != nil {
-		event.PracticeAnswer = toPracticeAnswer(w)
+	switch event.EventType {
+	case domain.EventTypePracticeItemAnswered:
+		if w.Response != nil {
+			event.PracticeAnswer = toPracticeAnswer(w)
+		}
+	case domain.EventTypePracticeSessionStarted:
+		event.SessionStart = toSessionStart(w)
+	case domain.EventTypePracticeSessionEnded:
+		event.SessionEnd = &domain.PracticeSessionEnd{
+			EventID:           w.EventID,
+			StudentID:         w.StudentID,
+			PracticeSessionID: w.PracticeSessionID,
+			OccurredAt:        w.OccurredAt,
+			LeftEarly:         w.LeftEarly,
+			AnsweredCount:     w.AnsweredCount,
+		}
+	case domain.EventTypeLessonStarted, domain.EventTypeLessonResumed, domain.EventTypeLessonCompleted:
+		// A lesson event carries only its content node, set above.
 	}
 	return event
+}
+
+func toSessionStart(w wireEvent) *domain.PracticeSessionStart {
+	items := make([]domain.PlannedPracticeItem, len(w.PlannedItems))
+	for i, p := range w.PlannedItems {
+		items[i] = domain.PlannedPracticeItem{ItemKey: p.ItemKey, Reason: p.Reason}
+	}
+	return &domain.PracticeSessionStart{
+		EventID:           w.EventID,
+		StudentID:         w.StudentID,
+		PracticeSessionID: w.PracticeSessionID,
+		OccurredAt:        w.OccurredAt,
+		InstrumentID:      w.InstrumentID,
+		Minutes:           w.Minutes,
+		PlannedItems:      items,
+	}
 }
 
 func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {

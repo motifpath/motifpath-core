@@ -76,9 +76,16 @@ func startWorker(t *testing.T, broker string, db *mongo.Database) *repo.MongoCom
 	require.NoError(t, evidence.EnsureIndexes(ctx))
 	states := repo.NewMongoPracticeItemStateRepository(db)
 	require.NoError(t, states.EnsureIndexes(ctx))
-	practice := application.NewPracticeEvidenceService(repo.NewMongoPracticeReferenceReader(db), evidence, states, logger)
+	history := repo.NewMongoPracticeItemHistoryRepository(db)
+	require.NoError(t, history.EnsureIndexes(ctx))
+	practice := application.NewPracticeEvidenceService(repo.NewMongoPracticeReferenceReader(db), evidence, states, history, logger)
+	sessions := repo.NewMongoPracticeSessionRepository(db)
+	require.NoError(t, sessions.EnsureIndexes(ctx))
+	learning := repo.NewMongoLearningActivityRepository(db)
+	require.NoError(t, learning.EnsureIndexes(ctx))
 
-	consumer := kafka.NewKafkaEventConsumer([]string{broker}, application.NewProcessEventService(completion, practice), logger)
+	consumer := kafka.NewKafkaEventConsumer([]string{broker},
+		application.NewProcessEventService(completion, practice, application.NewActivityService(sessions, learning)), logger)
 	t.Cleanup(func() { assert.NoError(t, consumer.Close()) })
 
 	runCtx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -195,4 +202,66 @@ func TestAggregationWorkerPipeline_PracticeAnswer_BecomesEvidenceAndItemState(t 
 	count, err := db.Collection("practice_evidence").CountDocuments(ctx, bson.D{{Key: "student_id", Value: studentID}})
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, count, "the redelivered take must be stored once")
+}
+
+func TestAggregationWorkerPipeline_KeepsSessionsCompletionsAndDailySnapshots(t *testing.T) {
+	broker, db := setupPipeline(t)
+	ctx := context.Background()
+	const (
+		studentID = "a11ce000-0000-4000-8000-000000000001"
+		sessionID = "44444444-4444-4444-8444-444444444444"
+		diagramID = "00000000-0000-4000-8000-0000000000f1"
+		itemKey   = "play_along:" + diagramID
+	)
+	_, err := db.Collection("practice_reference").InsertOne(ctx, bson.D{
+		{Key: "kind", Value: "diagram"}, {Key: "id", Value: diagramID}, {Key: "instrument_ids", Value: bson.A{}},
+		{Key: "tempo_bpm", Value: 100}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 1},
+	})
+	require.NoError(t, err)
+	startWorker(t, broker, db)
+
+	envelope := func(eventID, eventType, at string) map[string]any {
+		return map[string]any{
+			"event_id": eventID, "event_type": eventType, "student_id": studentID,
+			"session_id": "33333333-3333-4333-8333-333333333333", "occurred_at": at,
+		}
+	}
+	started := envelope("e0000000-0000-4000-8000-000000000001", "practice.session_started", "2026-10-05T18:00:00Z")
+	started["practice_session_id"] = sessionID
+	started["minutes"] = 10
+	started["planned_items"] = []map[string]any{{"item_key": itemKey, "reason": "new"}}
+	answered := envelope("e0000000-0000-4000-8000-000000000002", "practice.item_answered", "2026-10-05T18:03:00Z")
+	answered["practice_session_id"] = sessionID
+	answered["item_key"] = itemKey
+	answered["response"] = map[string]any{"response_type": "self_rating", "rating": "clean", "tempo_bpm": 80}
+	ended := envelope("e0000000-0000-4000-8000-000000000003", "practice.session_ended", "2026-10-05T18:11:00Z")
+	ended["practice_session_id"] = sessionID
+	ended["answered_count"] = 1
+	ended["left_early"] = false
+	ended["felt_ratings"] = []any{}
+	completed := envelope("e0000000-0000-4000-8000-000000000004", "lesson.completed", "2026-10-05T19:30:00Z")
+	completed["content_context"] = map[string]any{"content_node_id": "c0000000-0000-4000-8000-000000000001"}
+	for _, e := range []map[string]any{started, answered, ended, completed, completed} {
+		publish(t, broker, studentID, e)
+	}
+
+	activity := db.Collection("learning_activity")
+	require.Eventually(t, func() bool {
+		n, err := activity.CountDocuments(ctx, bson.D{{Key: "student_id", Value: studentID}})
+		return err == nil && n == 1
+	}, 20*time.Second, 200*time.Millisecond, "the completion must be kept, once")
+
+	session, found, err := repo.NewMongoPracticeSessionRepository(db).Get(ctx, studentID, sessionID)
+	require.NoError(t, err)
+	require.True(t, found)
+	status, endedAt := session.StatusAt(time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC))
+	assert.Equal(t, domain.PracticeSessionFinished, status)
+	assert.Equal(t, time.Date(2026, 10, 5, 18, 11, 0, 0, time.UTC), *endedAt)
+
+	snapshots, err := db.Collection("practice_item_history").CountDocuments(ctx, bson.D{
+		{Key: "student_id", Value: studentID}, {Key: "item_key", Value: itemKey},
+		{Key: "day", Value: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)},
+	})
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, snapshots)
 }

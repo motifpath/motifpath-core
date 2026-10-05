@@ -83,3 +83,65 @@ func TestToDomainEvent_OtherEventsCarryNoPracticeAnswer(t *testing.T) {
 	assert.Equal(t, "n", event.ContentNodeID)
 	assert.Nil(t, event.PracticeAnswer)
 }
+
+func TestToDomainEvent_CarriesTheEnvelope(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"lesson.completed","student_id":"s","occurred_at":"2026-10-05T19:30:00Z","content_context":{"content_node_id":"n"},"duration_seconds":30}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Equal(t, domain.EventTypeLessonCompleted, event.EventType)
+	assert.Equal(t, "11111111-1111-4111-8111-111111111111", event.EventID)
+	assert.Equal(t, time.Date(2026, 10, 5, 19, 30, 0, 0, time.UTC), event.OccurredAt)
+	assert.Equal(t, "n", event.ContentNodeID)
+}
+
+func TestToDomainEvent_PracticeSessionStarted(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.session_started","student_id":"s","occurred_at":"2026-10-05T18:00:00Z","practice_session_id":"p","instrument_id":"g","minutes":10,"planned_items":[{"item_key":"play_along:d1","reason":"due"},{"item_key":"play_along:d2","reason":"new"}]}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Equal(t, "p", event.PracticeSessionID)
+	assert.Equal(t, &domain.PracticeSessionStart{
+		EventID:           "11111111-1111-4111-8111-111111111111",
+		StudentID:         "s",
+		PracticeSessionID: "p",
+		OccurredAt:        time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC),
+		InstrumentID:      "g",
+		Minutes:           10,
+		PlannedItems: []domain.PlannedPracticeItem{
+			{ItemKey: "play_along:d1", Reason: "due"},
+			{ItemKey: "play_along:d2", Reason: "new"},
+		},
+	}, event.SessionStart)
+	assert.Nil(t, event.SessionEnd)
+}
+
+func TestToDomainEvent_PracticeSessionEnded(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.session_ended","student_id":"s","occurred_at":"2026-10-05T18:11:00Z","practice_session_id":"p","answered_count":6,"left_early":true,"felt_ratings":[]}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Equal(t, &domain.PracticeSessionEnd{
+		EventID:           "11111111-1111-4111-8111-111111111111",
+		StudentID:         "s",
+		PracticeSessionID: "p",
+		OccurredAt:        time.Date(2026, 10, 5, 18, 11, 0, 0, time.UTC),
+		LeftEarly:         true,
+		AnsweredCount:     6,
+	}, event.SessionEnd)
+	assert.Nil(t, event.SessionStart)
+}
+
+func TestToDomainEvent_AnAnswerOutsideASessionHasNoSession(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","trigger_context":{"source":"challenge_sequence"},"item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"]}}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Empty(t, event.PracticeSessionID)
+	require.NotNil(t, event.PracticeAnswer)
+	assert.Empty(t, event.PracticeAnswer.PracticeSessionID)
+}

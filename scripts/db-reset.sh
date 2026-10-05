@@ -4,7 +4,8 @@
 # combination matrix (every CourseStatus, every CourseEnrollmentStatus,
 # standalone paths current and archived, every ExerciseType). Also clears
 # the local dev Mongo's completion aggregates collection, since seed-full
-# writes fresh ones, and rebuilds the practice reference snapshot.
+# writes fresh ones, the worker's practice and activity state, and rebuilds
+# the practice reference snapshot.
 #
 # HARD, NON-OVERRIDABLE PRODUCTION GUARD: refuses to run unless both
 # DATABASE_URL and MONGO_URI resolve to localhost/127.0.0.1. There is no
@@ -69,9 +70,15 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-echo "==> Clearing local Mongo completion aggregates"
+# The worker's practice and activity state is keyed by user ids the reset just
+# replaced, and is only ever built forward from new events: left in place, it
+# would mix orphaned rows with daily snapshots and sessions missing their past.
+echo "==> Clearing local Mongo completion aggregates and practice state"
 docker compose exec -T mongodb mongosh --quiet -u motifpath -p motifpath --authenticationDatabase admin \
-  --eval "db.getSiblingDB('${MONGO_DATABASE}').aggregates.deleteMany({})" >/dev/null 2>&1 || true
+  --eval "const db2 = db.getSiblingDB('${MONGO_DATABASE}');
+    for (const c of ['aggregates', 'practice_evidence', 'practice_item_state', 'practice_item_history',
+                     'practice_sessions', 'learning_activity']) { db2.getCollection(c).deleteMany({}); }" \
+  >/dev/null 2>&1 || true
 
 echo "==> Applying migrations from scratch"
 atlas migrate apply --dir "$MIGRATIONS_DIR" --url "$DATABASE_URL"

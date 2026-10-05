@@ -193,3 +193,40 @@ func TestRebuildFold_FoldsInTimeOrderAndTiesInArrivalOrder(t *testing.T) {
 
 	assert.Equal(t, foldAll(t, target100, monday, mondayAgain, tuesday, wednesday), got)
 }
+
+func TestDailySnapshots_KeepsTheStateAtTheEndOfEachDayPractised(t *testing.T) {
+	// Arrival order: Wednesday, then Monday's two takes late. Tuesday has none.
+	monday := take(onDay(0), SelfRatingClean, 80)
+	mondayLater := take(onDay(0).Add(3*time.Hour), SelfRatingClean, 90)
+	wednesday := take(onDay(2), SelfRatingStruggled, 100)
+
+	got, err := DailySnapshots([]PracticeEvidence{wednesday, monday, mondayLater}, target100)
+	require.NoError(t, err)
+
+	mondayMidnight := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, []ItemSnapshot{
+		{Day: mondayMidnight, Fold: foldAll(t, target100, monday, mondayLater)},
+		{Day: mondayMidnight.AddDate(0, 0, 2), Fold: foldAll(t, target100, monday, mondayLater, wednesday)},
+	}, got)
+}
+
+func TestDailySnapshots_DaysAreUTC(t *testing.T) {
+	saoPaulo := time.FixedZone("BRT", -3*60*60)
+	lateEvening := take(time.Date(2026, 10, 5, 22, 0, 0, 0, saoPaulo), SelfRatingClean, 80)
+
+	got, err := DailySnapshots([]PracticeEvidence{lateEvening}, target100)
+	require.NoError(t, err)
+
+	require.Len(t, got, 1)
+	assert.Equal(t, time.Date(2026, 10, 6, 0, 0, 0, 0, time.UTC), got[0].Day)
+}
+
+func TestDailySnapshots_NoEvidenceNoSnapshots(t *testing.T) {
+	got, err := DailySnapshots(nil, target100)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+func TestSnapshotDay_IsTheUTCMidnightOfTheDay(t *testing.T) {
+	assert.Equal(t, time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), SnapshotDay(onDay(0)))
+}

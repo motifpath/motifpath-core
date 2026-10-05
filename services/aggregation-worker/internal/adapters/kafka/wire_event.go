@@ -9,7 +9,7 @@ import (
 // message. It intentionally does not model the full event schema — see the
 // Event Ingestion Service's own wireEvent for that — because this worker only
 // derives state from lesson events (content_context.content_node_id) and
-// practice answers (the item and the raw response).
+// practice events (sessions, the item answered and the raw response).
 type wireEvent struct {
 	EventID        string    `json:"event_id"`
 	EventType      string    `json:"event_type"`
@@ -23,6 +23,17 @@ type wireEvent struct {
 	ItemKey           string                `json:"item_key,omitempty"`
 	Response          *practiceResponseWire `json:"response,omitempty"`
 	TapMs             *int                  `json:"tap_ms,omitempty"`
+
+	InstrumentID  string            `json:"instrument_id,omitempty"`
+	Minutes       int               `json:"minutes,omitempty"`
+	PlannedItems  []plannedItemWire `json:"planned_items,omitempty"`
+	AnsweredCount int               `json:"answered_count,omitempty"`
+	LeftEarly     bool              `json:"left_early,omitempty"`
+}
+
+type plannedItemWire struct {
+	ItemKey string `json:"item_key"`
+	Reason  string `json:"reason"`
 }
 
 // practiceResponseWire is the raw response, flat, with only its shape's fields.

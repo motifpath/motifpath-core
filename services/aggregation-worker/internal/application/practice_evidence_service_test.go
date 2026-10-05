@@ -93,10 +93,32 @@ func (f *fakeStates) Put(_ context.Context, studentID, itemKey string, fold doma
 	return nil
 }
 
+// fakeHistory keeps one snapshot per (student, item, day), replaced on a rewrite.
+type fakeHistory struct {
+	snapshots map[string]map[time.Time]domain.ItemFold
+	putErr    error
+}
+
+func (f *fakeHistory) Put(_ context.Context, studentID, itemKey string, snapshots []domain.ItemSnapshot) error {
+	if f.putErr != nil {
+		return f.putErr
+	}
+	days := f.snapshots[studentID+"|"+itemKey]
+	if days == nil {
+		days = map[time.Time]domain.ItemFold{}
+		f.snapshots[studentID+"|"+itemKey] = days
+	}
+	for _, s := range snapshots {
+		days[s.Day] = s.Fold
+	}
+	return nil
+}
+
 type practiceFixture struct {
 	reference *fakeReference
 	evidence  *fakeEvidence
 	states    *fakeStates
+	history   *fakeHistory
 	service   *application.PracticeEvidenceService
 }
 
@@ -108,10 +130,25 @@ func newPracticeFixture() *practiceFixture {
 		}},
 		evidence: &fakeEvidence{},
 		states:   &fakeStates{folds: map[string]domain.ItemFold{}, versions: map[string]int{}},
+		history:  &fakeHistory{snapshots: map[string]map[time.Time]domain.ItemFold{}},
 	}
-	f.service = application.NewPracticeEvidenceService(f.reference, f.evidence, f.states,
+	f.service = application.NewPracticeEvidenceService(f.reference, f.evidence, f.states, f.history,
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
 	return f
+}
+
+// wantHistory is the snapshots a batch derivation from all the stored evidence gives.
+func (f *practiceFixture) wantHistory(t *testing.T, itemKey string) map[time.Time]domain.ItemFold {
+	t.Helper()
+	stored, err := f.evidence.ListForItem(context.Background(), alice, itemKey)
+	require.NoError(t, err)
+	snapshots, err := domain.DailySnapshots(stored, domain.ItemGoal{TargetTempoBPM: f.reference.diagrams[pentatonic].TempoBPM})
+	require.NoError(t, err)
+	want := map[time.Time]domain.ItemFold{}
+	for _, s := range snapshots {
+		want[s.Day] = s.Fold
+	}
+	return want
 }
 
 func (f *practiceFixture) fold(t *testing.T, itemKey string) (domain.ItemFold, bool) {
@@ -252,6 +289,47 @@ func TestPracticeEvidenceService_RebuildsAStateFoldedUnderOtherRules(t *testing.
 	assert.Equal(t, domain.PracticeRulesVersion, f.states.versions[alice+"|"+playAlongKey])
 }
 
+func TestPracticeEvidenceService_KeepsADailySnapshotOfEachItem(t *testing.T) {
+	mon := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
+	monLater := ratedTake("e0000000-0000-4000-8000-000000000002", monday.Add(5*time.Hour), domain.SelfRatingAlmost, 95)
+	tue := ratedTake("e0000000-0000-4000-8000-000000000003", monday.AddDate(0, 0, 1), domain.SelfRatingStruggled, 80)
+	wed := ratedTake("e0000000-0000-4000-8000-000000000004", monday.AddDate(0, 0, 2), domain.SelfRatingClean, 90)
+	mondayMidnight := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name       string
+		deliveries []domain.PracticeAnswer
+		wantDays   []time.Time
+	}{
+		{"one snapshot per day practised, holding the day's last state",
+			[]domain.PracticeAnswer{mon, monLater, wed},
+			[]time.Time{mondayMidnight, mondayMidnight.AddDate(0, 0, 2)}},
+		{"a late answer rewrites the snapshots from its day on",
+			[]domain.PracticeAnswer{mon, wed, tue},
+			[]time.Time{mondayMidnight, mondayMidnight.AddDate(0, 0, 1), mondayMidnight.AddDate(0, 0, 2)}},
+		{"a redelivered answer leaves the snapshots as they were",
+			[]domain.PracticeAnswer{mon, wed, mon},
+			[]time.Time{mondayMidnight, mondayMidnight.AddDate(0, 0, 2)}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newPracticeFixture()
+			for _, a := range c.deliveries {
+				require.NoError(t, f.service.Process(context.Background(), a))
+			}
+
+			got := f.history.snapshots[alice+"|"+playAlongKey]
+			assert.Equal(t, f.wantHistory(t, playAlongKey), got)
+			assert.Len(t, got, len(c.wantDays))
+			for _, day := range c.wantDays {
+				assert.Contains(t, got, day)
+			}
+			state, _ := f.fold(t, playAlongKey)
+			assert.Equal(t, state, got[c.wantDays[len(c.wantDays)-1]], "the latest snapshot is the item's state")
+		})
+	}
+}
+
 func TestPracticeEvidenceService_Failures(t *testing.T) {
 	boom := errors.New("boom")
 
@@ -267,6 +345,12 @@ func TestPracticeEvidenceService_Failures(t *testing.T) {
 		err := f.service.Process(context.Background(), ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90))
 		assert.ErrorIs(t, err, boom)
 		assert.Empty(t, f.states.folds)
+	})
+	t.Run("a snapshot write failure is returned for a retry", func(t *testing.T) {
+		f := newPracticeFixture()
+		f.history.putErr = boom
+		err := f.service.Process(context.Background(), ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90))
+		assert.ErrorIs(t, err, boom)
 	})
 	t.Run("a redelivery after a failed state write folds the stored evidence", func(t *testing.T) {
 		f := newPracticeFixture()
@@ -322,12 +406,13 @@ func TestPracticeEvidenceService_IncrementalFoldEqualsBatch(t *testing.T) {
 		require.NoError(t, err)
 		got, _ := f.fold(t, playAlongKey)
 		require.Equal(t, want, got, "seed %d", seed)
+		require.Equal(t, f.wantHistory(t, playAlongKey), f.history.snapshots[alice+"|"+playAlongKey], "seed %d", seed)
 	}
 }
 
 func TestProcessEventService_HandsPracticeAnswersToTheEvidenceProcessor(t *testing.T) {
 	f := newPracticeFixture()
-	svc := application.NewProcessEventService(newFakeRepository(), f.service)
+	svc := application.NewProcessEventService(newFakeRepository(), f.service, newActivity())
 	answer := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
 
 	require.NoError(t, svc.Handle(context.Background(), domain.TrackingEvent{
@@ -341,7 +426,7 @@ func TestProcessEventService_HandsPracticeAnswersToTheEvidenceProcessor(t *testi
 
 func TestProcessEventService_DropsAPracticeAnswerWithoutItsAnswer(t *testing.T) {
 	f := newPracticeFixture()
-	svc := application.NewProcessEventService(newFakeRepository(), f.service)
+	svc := application.NewProcessEventService(newFakeRepository(), f.service, newActivity())
 
 	require.NoError(t, svc.Handle(context.Background(), domain.TrackingEvent{
 		EventType: domain.EventTypePracticeItemAnswered,
