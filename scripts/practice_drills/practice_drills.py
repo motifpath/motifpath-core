@@ -71,9 +71,14 @@ class Drills:
     thresholds: list
 
 
-def build(raw):
+def build(raw, installed=frozenset(), today=None):
     """Validates raw (the parsed YAML) against the catalog's rules and returns its
-    templates in catalog order and its thresholds by template, then version."""
+    templates in catalog order and its thresholds by template, then version.
+
+    installed holds the ids of the versions the frozen migration already installs. Any
+    other version must take effect today or later: answers are judged by the version in
+    force when they were given and items are rebuilt from their evidence, so a version
+    that started before it was installed would re-judge answers already folded."""
     templates = {}
     for entry in raw.get('templates') or []:
         key = entry.get('key', '')
@@ -116,6 +121,8 @@ def build(raw):
             raise ValueError(f'{key!r} v{t.version} needs sessions and students of 0 or more')
         if entry.get('id') != t.id:
             raise ValueError(f'{key!r} v{t.version} has id {entry.get("id")!r}, not {t.id!r}')
+        if today is not None and t.id not in installed and t.effective_from < today:
+            raise ValueError(f'{key!r} v{t.version} is new, so its effective_from must be {today} or later')
         by_template.setdefault(key, []).append(t)
 
     thresholds = []
@@ -130,9 +137,17 @@ def build(raw):
     return Drills(list(templates.values()), thresholds)
 
 
-def load(path):
+def load(path, installed=frozenset(), today=None):
     with open(path, encoding='utf-8') as f:
-        return build(yaml.safe_load(f))
+        return build(yaml.safe_load(f), installed, today)
+
+
+def installed_threshold_ids(sql):
+    """The ids of the threshold versions a rendered migration installs."""
+    rows = sql.split('INSERT INTO "drill_thresholds"', 1)
+    if len(rows) < 2:
+        return set()
+    return set(re.findall(r"^\s*\('([0-9a-f-]{36})'", rows[1], re.MULTILINE))
 
 
 def sql_text(value):
@@ -167,8 +182,10 @@ def main():
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
     parser.add_argument('--migrations', type=Path, default=MIGRATIONS_DIR)
     args = parser.parse_args()
-    drills = load(args.specs / 'catalogs/practice-drills.yaml')
-    (args.migrations / DRILLS_FILE).write_text(render_sql(drills))
+    frozen = args.migrations / DRILLS_FILE
+    installed = installed_threshold_ids(frozen.read_text()) if frozen.exists() else set()
+    drills = load(args.specs / 'catalogs/practice-drills.yaml', installed, datetime.date.today())
+    frozen.write_text(render_sql(drills))
     print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds))))
 
 

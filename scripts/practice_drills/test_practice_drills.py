@@ -1,3 +1,4 @@
+import datetime
 import os
 import unittest
 from pathlib import Path
@@ -70,6 +71,37 @@ class ValidationTests(unittest.TestCase):
     def test_a_template_key_appears_once(self):
         self.assertRejected(catalog(templates=[template('exercise:text_response'), template('exercise:text_response')]),
                             'more than once')
+
+
+class ForwardOnlyTests(unittest.TestCase):
+    """A version applies from its effective_from on, and items are rebuilt from their
+    evidence, so a version installed after its effective_from would re-judge answers
+    already folded under the old one."""
+
+    def raw(self):
+        return catalog(templates=[template('exercise:text_response')],
+                       thresholds=[threshold('exercise:text_response'),
+                                   threshold('exercise:text_response', 2, '2026-11-01', 4500, 'benchmark')])
+
+    def test_a_new_version_may_not_take_effect_before_the_day_it_is_generated(self):
+        with self.assertRaises(ValueError) as ctx:
+            pd.build(self.raw(), installed=frozenset({pd.threshold_id('exercise:text_response', 1)}),
+                     today=datetime.date(2026, 11, 2))
+        self.assertIn('effective_from', str(ctx.exception))
+
+    def test_a_new_version_from_today_or_later_is_accepted(self):
+        drills = pd.build(self.raw(), installed=frozenset({pd.threshold_id('exercise:text_response', 1)}),
+                          today=datetime.date(2026, 11, 1))
+        self.assertEqual(2, len(drills.thresholds))
+
+    def test_an_installed_version_is_not_held_to_today(self):
+        installed = frozenset({pd.threshold_id('exercise:text_response', v) for v in (1, 2)})
+        drills = pd.build(self.raw(), installed=installed, today=datetime.date(2027, 1, 1))
+        self.assertEqual(2, len(drills.thresholds))
+
+    def test_the_installed_versions_are_the_ids_in_the_frozen_migration(self):
+        sql = pd.render_sql(pd.build(self.raw()))
+        self.assertEqual({pd.threshold_id('exercise:text_response', v) for v in (1, 2)}, pd.installed_threshold_ids(sql))
 
 
 class RenderTests(unittest.TestCase):
