@@ -52,6 +52,26 @@ func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises por
 	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, thresholds: thresholds, references: references}
 }
 
+// PracticeReferenceSynced counts the references a Sync wrote, by kind.
+type PracticeReferenceSynced struct {
+	Diagrams        int
+	Exercises       int
+	DrillThresholds int
+}
+
+// Sync rebuilds the whole snapshot. The fluent times go first and every part
+// runs whatever the others did: an exercise answered while they're missing would
+// fold without fluency, then gain it when its item is rebuilt. It reports every
+// part that failed.
+func (s *PracticeReferenceService) Sync(ctx context.Context) (PracticeReferenceSynced, error) {
+	var synced PracticeReferenceSynced
+	var errs [3]error
+	synced.DrillThresholds, errs[0] = s.SyncDrillThresholds(ctx)
+	synced.Diagrams, errs[1] = s.SyncDiagrams(ctx)
+	synced.Exercises, errs[2] = s.SyncExercises(ctx)
+	return synced, errors.Join(errs[:]...)
+}
+
 // SyncDrillThresholds writes every installed fluent time version, all in one
 // write, and returns how many it wrote. Versions come only from migrations,
 // so this sync is the only way they reach the snapshot.

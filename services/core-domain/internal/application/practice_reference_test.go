@@ -301,3 +301,38 @@ func TestPracticeReferenceService_SyncDrillThresholds(t *testing.T) {
 		assert.Equal(t, 0, synced)
 	})
 }
+
+// failingExercises is an exercise repository whose listing always fails.
+type failingExercises struct{ *fakeExerciseRepository }
+
+func (failingExercises) List(context.Context, domain.ExerciseFilter, domain.PageRequest) (domain.Page[domain.Exercise], error) {
+	return domain.Page[domain.Exercise]{}, errors.New("postgres down")
+}
+
+func TestPracticeReferenceService_Sync(t *testing.T) {
+	ctx := context.Background()
+	installed := []domain.DrillThreshold{{ID: "th-1", TemplateKey: "exercise:text_response", Version: 1,
+		EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000, Source: domain.DrillThresholdSourceDefault}}
+
+	t.Run("writes the fluent times even when another part fails", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), failingExercises{newFakeExerciseRepository()}, fakeDrillThresholds(installed), references)
+
+		synced, err := svc.Sync(ctx)
+
+		require.Error(t, err, "the failed part is still reported")
+		assert.Equal(t, installed, references.drillThresholds(), "answers judged meanwhile need a fluent time, or they'd fold differently once rebuilt")
+		assert.Equal(t, 1, synced.DrillThresholds)
+	})
+
+	t.Run("counts every part it wrote", func(t *testing.T) {
+		exercises := newFakeExerciseRepository()
+		require.NoError(t, exercises.Create(ctx, domain.Exercise{ID: "e-1", ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions()}))
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, fakeDrillThresholds(installed), newFakePracticeReferenceWriter())
+
+		synced, err := svc.Sync(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, application.PracticeReferenceSynced{Diagrams: 0, Exercises: 1, DrillThresholds: 1}, synced)
+	})
+}
