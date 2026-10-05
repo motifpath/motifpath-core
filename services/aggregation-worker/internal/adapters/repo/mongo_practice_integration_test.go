@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	studentA = "a11ce000-0000-4000-8000-000000000001"
-	studentB = "b0b00000-0000-4000-8000-000000000002"
-	diagram1 = "00000000-0000-4000-8000-0000000000f1"
-	diagram2 = "00000000-0000-4000-8000-0000000000f2"
-	guitar   = "6ea2d087-ab9c-59dc-9657-8546025414d2"
+	studentA  = "a11ce000-0000-4000-8000-000000000001"
+	studentB  = "b0b00000-0000-4000-8000-000000000002"
+	diagram1  = "00000000-0000-4000-8000-0000000000f1"
+	diagram2  = "00000000-0000-4000-8000-0000000000f2"
+	exercise1 = "00000000-0000-4000-8000-0000000000e1"
+	exercise2 = "00000000-0000-4000-8000-0000000000e2"
+	guitar    = "6ea2d087-ab9c-59dc-9657-8546025414d2"
 )
 
 func intPtr(v int) *int { return &v }
@@ -55,6 +57,64 @@ func TestMongoPracticeReferenceReader_NoIDsReadsNothing(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+func TestMongoPracticeReferenceReader_Exercises(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	// The documents as core writes them: an empty instrument list means every instrument.
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "exercise"}, {Key: "id", Value: exercise1}, {Key: "exercise_type", Value: "text_response"},
+			{Key: "option_ids", Value: bson.A{"o-1", "o-2"}}, {Key: "correct_option_ids", Value: bson.A{"o-2"}},
+			{Key: "instrument_ids", Value: bson.A{}}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 1}},
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: exercise2}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.Exercises(ctx, []string{exercise1, exercise2})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]domain.ExerciseReference{
+		exercise1: {ID: exercise1, ExerciseType: "text_response", OptionIDs: []string{"o-1", "o-2"}, CorrectOptionIDs: []string{"o-2"}, InstrumentIDs: []string{}},
+	}, got, "a diagram with the same id is not an exercise")
+
+	t.Run("no ids reads nothing", func(t *testing.T) {
+		got, err := reader.Exercises(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
+func TestMongoPracticeReferenceReader_FluentTimes(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	october := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	november := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "drill_threshold"}, {Key: "id", Value: "th-2"}, {Key: "template_key", Value: "exercise:text_response"},
+			{Key: "version", Value: 2}, {Key: "effective_from", Value: november}, {Key: "fluent_net_ms", Value: 4500}, {Key: "source", Value: "benchmark"}},
+		{{Key: "kind", Value: "drill_threshold"}, {Key: "id", Value: "th-1"}, {Key: "template_key", Value: "exercise:text_response"},
+			{Key: "version", Value: 1}, {Key: "effective_from", Value: october}, {Key: "fluent_net_ms", Value: 6000}, {Key: "source", Value: "default"}},
+		{{Key: "kind", Value: "drill_threshold"}, {Key: "id", Value: "th-3"}, {Key: "template_key", Value: "exercise:image_choice"},
+			{Key: "version", Value: 1}, {Key: "effective_from", Value: october}, {Key: "fluent_net_ms", Value: 5000}, {Key: "source", Value: "default"}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.FluentTimes(ctx, "exercise:text_response")
+	require.NoError(t, err)
+
+	assert.Equal(t, []domain.FluentTime{
+		{Version: 1, EffectiveFrom: october, FluentNetMs: 6000},
+		{Version: 2, EffectiveFrom: november, FluentNetMs: 4500},
+	}, got)
+
+	t.Run("a template with no versions has none", func(t *testing.T) {
+		got, err := reader.FluentTimes(ctx, "fretboard_cell:name_the_note")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func takeEvidence(id, student string, at time.Time, rating domain.SelfRating) domain.PracticeEvidence {
 	return domain.PracticeEvidence{
 		EvidenceID:        id,
@@ -86,7 +146,15 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		Response: domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: intPtr(6), Fret: intPtr(0), LatencyMs: intPtr(1800)},
 		Correct:  boolPtr(true), LatencyMs: intPtr(1800), TapMs: intPtr(350),
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed} {
+	challenge := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000005", StudentID: studentA,
+		ItemKey: "exercise:" + exercise1, Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		TriggerContext: &domain.TriggerContext{Source: "challenge_sequence", ChallengeID: "c4a11e00-0000-4000-8000-000000000001", ContentNodeID: "c0de0000-0000-4000-8000-000000000001"},
+		GraderID:       "exercise_option.v1",
+		Response:       domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{"o-2"}, LatencyMs: intPtr(9500), AudioMs: intPtr(5000)},
+		Correct:        boolPtr(true), LatencyMs: intPtr(9500), AudioMs: intPtr(5000),
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -108,6 +176,12 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		got, err := repo.ListForItem(ctx, studentA, timed.ItemKey)
 		require.NoError(t, err)
 		assert.Equal(t, []domain.PracticeEvidence{timed}, got)
+	})
+
+	t.Run("a challenge answer keeps its trigger context and audio length", func(t *testing.T) {
+		got, err := repo.ListForItem(ctx, studentA, challenge.ItemKey)
+		require.NoError(t, err)
+		assert.Equal(t, []domain.PracticeEvidence{challenge}, got)
 	})
 }
 

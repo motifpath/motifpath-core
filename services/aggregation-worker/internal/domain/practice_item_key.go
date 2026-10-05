@@ -52,6 +52,14 @@ func ParsePracticeItemKey(raw string) (PracticeItemKey, error) {
 
 func (k PracticeItemKey) String() string { return k.raw }
 
+// ExerciseID is the exercise an exercise item is about; empty for the other kinds.
+func (k PracticeItemKey) ExerciseID() string {
+	if k.Kind != PracticeItemKindExercise {
+		return ""
+	}
+	return k.parts[0]
+}
+
 // DiagramIDs are the diagrams the item points at: one for a play-along, the two
 // chords of a chord change, none for the other kinds.
 func (k PracticeItemKey) DiagramIDs() []string {

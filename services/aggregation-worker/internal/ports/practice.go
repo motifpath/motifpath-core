@@ -12,6 +12,13 @@ type PracticeReferenceReader interface {
 	// Diagrams returns the diagrams among ids that exist, by id. A missing id is
 	// simply absent from the map.
 	Diagrams(ctx context.Context, ids []string) (map[string]domain.DiagramReference, error)
+
+	// Exercises returns the exercises among ids that exist, by id.
+	Exercises(ctx context.Context, ids []string) (map[string]domain.ExerciseReference, error)
+
+	// FluentTimes returns every version of a drill template's fluent time, none
+	// when the template has none yet.
+	FluentTimes(ctx context.Context, templateKey string) ([]domain.FluentTime, error)
 }
 
 // PracticeEvidenceRepository stores evidence, once per evidence id. Evidence is

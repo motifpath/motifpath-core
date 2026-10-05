@@ -183,11 +183,16 @@ func toSessionStart(w wireEvent) *domain.PracticeSessionStart {
 
 func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 	r := w.Response
+	var trigger *domain.TriggerContext
+	if tc := w.TriggerContext; tc != nil {
+		trigger = &domain.TriggerContext{Source: tc.Source, ContentNodeID: tc.ContentNodeID, ChallengeID: tc.ChallengeID}
+	}
 	return &domain.PracticeAnswer{
 		EventID:           w.EventID,
 		StudentID:         w.StudentID,
 		OccurredAt:        w.OccurredAt,
 		PracticeSessionID: w.PracticeSessionID,
+		TriggerContext:    trigger,
 		ItemKey:           w.ItemKey,
 		Response: domain.PracticeResponse{
 			Type:             domain.PracticeResponseType(r.ResponseType),
@@ -196,6 +201,7 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,
 			LatencyMs:        r.LatencyMs,
+			AudioMs:          r.AudioMs,
 			Rating:           domain.SelfRating(r.Rating),
 			TempoBPM:         r.TempoBPM,
 			ChangesPerMinute: r.ChangesPerMinute,

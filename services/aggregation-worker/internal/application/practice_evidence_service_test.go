@@ -21,13 +21,38 @@ const (
 	alice       = "a11ce000-0000-4000-8000-000000000001"
 	pentatonic  = "00000000-0000-4000-8000-0000000000f1"
 	missingDiag = "00000000-0000-4000-8000-0000000000ff"
+	minorThird  = "00000000-0000-4000-8000-0000000000e1"
+	rightOption = "00000000-0000-4000-8000-0000000000b1"
+	wrongOption = "00000000-0000-4000-8000-0000000000a1"
 )
 
 var playAlongKey = "play_along:" + pentatonic
 
 type fakeReference struct {
-	diagrams map[string]domain.DiagramReference
-	err      error
+	diagrams    map[string]domain.DiagramReference
+	exercises   map[string]domain.ExerciseReference
+	fluentTimes map[string][]domain.FluentTime
+	err         error
+}
+
+func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	found := map[string]domain.ExerciseReference{}
+	for _, id := range ids {
+		if e, ok := f.exercises[id]; ok {
+			found[id] = e
+		}
+	}
+	return found, nil
+}
+
+func (f *fakeReference) FluentTimes(_ context.Context, templateKey string) ([]domain.FluentTime, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.fluentTimes[templateKey], nil
 }
 
 func (f *fakeReference) Diagrams(_ context.Context, ids []string) (map[string]domain.DiagramReference, error) {
@@ -125,9 +150,17 @@ type practiceFixture struct {
 func newPracticeFixture() *practiceFixture {
 	tempo := 100
 	f := &practiceFixture{
-		reference: &fakeReference{diagrams: map[string]domain.DiagramReference{
-			pentatonic: {ID: pentatonic, TempoBPM: &tempo},
-		}},
+		reference: &fakeReference{
+			diagrams: map[string]domain.DiagramReference{
+				pentatonic: {ID: pentatonic, TempoBPM: &tempo},
+			},
+			exercises: map[string]domain.ExerciseReference{
+				minorThird: {ID: minorThird, ExerciseType: "text_response", OptionIDs: []string{wrongOption, rightOption}, CorrectOptionIDs: []string{rightOption}},
+			},
+			fluentTimes: map[string][]domain.FluentTime{
+				"exercise:text_response": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+			},
+		},
 		evidence: &fakeEvidence{},
 		states:   &fakeStates{folds: map[string]domain.ItemFold{}, versions: map[string]int{}},
 		history:  &fakeHistory{snapshots: map[string]map[time.Time]domain.ItemFold{}},
@@ -197,6 +230,54 @@ func TestPracticeEvidenceService_GradesAndFoldsATake(t *testing.T) {
 	assert.InDelta(t, 0.5, fold.Fluency, 1e-9)
 }
 
+func challengeAnswer(eventID string, at time.Time, optionID string, latency int) domain.PracticeAnswer {
+	return domain.PracticeAnswer{
+		EventID:        eventID,
+		StudentID:      alice,
+		OccurredAt:     at,
+		TriggerContext: &domain.TriggerContext{Source: "challenge_sequence", ChallengeID: "c4a11e00-0000-4000-8000-000000000001"},
+		ItemKey:        "exercise:" + minorThird,
+		Response:       domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{optionID}, LatencyMs: &latency},
+	}
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsAnExerciseAnswer(t *testing.T) {
+	f := newPracticeFixture()
+	answer := challengeAnswer("e0000000-0000-4000-8000-000000000001", monday, rightOption, 8000)
+	audio := 0
+	answer.Response.AudioMs = &audio
+
+	require.NoError(t, f.service.Process(context.Background(), answer))
+
+	require.Len(t, f.evidence.stored, 1)
+	e := f.evidence.stored[0]
+	assert.Equal(t, domain.EvidenceSourceAutoGraded, e.Source)
+	assert.Equal(t, "exercise_option.v1", e.GraderID)
+	assert.Empty(t, e.PracticeSessionID)
+	assert.Equal(t, answer.TriggerContext, e.TriggerContext, "a challenge answer names its challenge instead of a session")
+	require.NotNil(t, e.Correct)
+	assert.True(t, *e.Correct)
+	assert.Equal(t, 8000, *e.LatencyMs)
+	assert.Equal(t, &audio, e.AudioMs)
+
+	fold, ok := f.fold(t, answer.ItemKey)
+	require.True(t, ok)
+	assert.Equal(t, 1, fold.Box)
+	// Judged against text exercises' fluent time: 6000 of 8000 ms.
+	assert.InDelta(t, 0.75, fold.Fluency, 1e-9)
+}
+
+func TestPracticeEvidenceService_AWrongExerciseAnswerIsAMiss(t *testing.T) {
+	f := newPracticeFixture()
+
+	require.NoError(t, f.service.Process(context.Background(), challengeAnswer("e0000000-0000-4000-8000-000000000001", monday, wrongOption, 3000)))
+
+	require.Len(t, f.evidence.stored, 1)
+	assert.False(t, *f.evidence.stored[0].Correct)
+	fold, _ := f.fold(t, "exercise:"+minorThird)
+	assert.InDelta(t, 0, fold.Accuracy, 1e-9)
+}
+
 func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -211,6 +292,14 @@ func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
 			a.ItemKey = "play_along:" + missingDiag
 			return a
+		}},
+		{"the exercise isn't in the reference", func() domain.PracticeAnswer {
+			a := challengeAnswer("e0000000-0000-4000-8000-000000000001", monday, rightOption, 3000)
+			a.ItemKey = "exercise:" + missingDiag
+			return a
+		}},
+		{"an option the exercise doesn't have", func() domain.PracticeAnswer {
+			return challengeAnswer("e0000000-0000-4000-8000-000000000001", monday, missingDiag, 3000)
 		}},
 		{"the item kind has no grader yet", func() domain.PracticeAnswer {
 			latency := 1800

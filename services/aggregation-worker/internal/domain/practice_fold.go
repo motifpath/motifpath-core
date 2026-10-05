@@ -15,9 +15,8 @@ import (
 const PracticeRulesVersion = 1
 
 // ErrUnsupportedEvidenceSource is returned for evidence whose source the fold has no
-// rules for yet: auto-graded answers need the timed-drill thresholds, teacher
-// reviews need teacher notes. Failing loudly keeps such evidence from
-// being folded wrong.
+// rules for yet: teacher reviews need teacher notes. Failing loudly keeps such
+// evidence from being folded wrong.
 var ErrUnsupportedEvidenceSource = errors.New("no fold rules for this evidence source yet")
 
 // PracticeEvidence is one observation of what a student knows about one item: the
@@ -30,10 +29,12 @@ type PracticeEvidence struct {
 	Source            EvidenceSource
 	OccurredAt        time.Time
 	PracticeSessionID string
+	TriggerContext    *TriggerContext
 	GraderID          string
 	Response          PracticeResponse
 	Correct           *bool
 	LatencyMs         *int
+	AudioMs           *int
 	TapMs             *int
 	Rating            SelfRating
 	TempoBPM          *int
@@ -41,11 +42,65 @@ type PracticeEvidence struct {
 }
 
 // ItemGoal is what fluency is measured against: the tempo a play-along is played
-// at in the music, or a chord change's target rate. A nil goal counts any clean
-// take as fully fluent.
+// at in the music, a chord change's target rate, or a timed item's fluent times. A
+// nil target counts any clean take as fully fluent.
 type ItemGoal struct {
 	TargetTempoBPM         *int
 	TargetChangesPerMinute *int
+	// FluentTimes are every version of the item's drill template fluent time.
+	FluentTimes []FluentTime
+}
+
+// FluentTime is one version of a drill template's fluent time: the time a fluent
+// student spends knowing the answer, net of tap time and audio, in force from
+// EffectiveFrom until a later version starts.
+type FluentTime struct {
+	Version       int
+	EffectiveFrom time.Time
+	FluentNetMs   int
+}
+
+// FluentTimeAt is the version in force at t, and false when t is before the first.
+func (g ItemGoal) FluentTimeAt(t time.Time) (FluentTime, bool) {
+	var inForce FluentTime
+	found := false
+	for _, v := range g.FluentTimes {
+		if !v.EffectiveFrom.After(t) && (!found || v.EffectiveFrom.After(inForce.EffectiveFrom)) {
+			inForce, found = v, true
+		}
+	}
+	return inForce, found
+}
+
+// TimedJudgement is how a timed answer's time compares with the fluent time in
+// force when it was given.
+type TimedJudgement struct {
+	// NetMs is the time spent knowing the answer: the latency less the student's
+	// tap time and the audio heard once, never below zero.
+	NetMs            int
+	FluentTime       FluentTime
+	WithinFluentTime bool
+}
+
+// JudgeTimed judges e's time, and reports false when e has no latency or no fluent
+// time was in force when it was given: such an answer never counts for fluency,
+// so a new version can never take back a level.
+func JudgeTimed(e PracticeEvidence, goal ItemGoal) (TimedJudgement, bool) {
+	if e.LatencyMs == nil {
+		return TimedJudgement{}, false
+	}
+	fluent, ok := goal.FluentTimeAt(e.OccurredAt)
+	if !ok {
+		return TimedJudgement{}, false
+	}
+	net := *e.LatencyMs
+	for _, off := range []*int{e.TapMs, e.AudioMs} {
+		if off != nil {
+			net -= *off
+		}
+	}
+	net = max(net, 0)
+	return TimedJudgement{NetMs: net, FluentTime: fluent, WithinFluentTime: net <= fluent.FluentNetMs}, true
 }
 
 // KnowledgeLevel is how well a student knows an item, derived from its evidence.
@@ -119,20 +174,53 @@ const (
 )
 
 // reading is what one counted piece of evidence says: a hit, hold or miss, and
-// its accuracy and fluency values for the weighted averages.
+// its accuracy and fluency values for the weighted averages. A reading that
+// doesn't judge fluency leaves the fluency average as it was.
 type reading struct {
-	outcome  outcome
-	accuracy float64
-	fluency  float64
+	outcome       outcome
+	accuracy      float64
+	fluency       float64
+	judgesFluency bool
 }
 
 // FoldEvidence folds one more piece of evidence, which must not be older than
 // f.LastAt (use RebuildFold for that).
 func FoldEvidence(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error) {
-	if e.Source != EvidenceSourceSelfAssessed {
-		return f, fmt.Errorf("%w: %s", ErrUnsupportedEvidenceSource, e.Source)
+	switch e.Source {
+	case EvidenceSourceSelfAssessed:
+		return foldTake(f, e, goal), nil
+	case EvidenceSourceAutoGraded:
+		return foldAnswer(f, e, goal)
+	case EvidenceSourceTeacherReviewed:
 	}
+	return f, fmt.Errorf("%w: %s", ErrUnsupportedEvidenceSource, e.Source)
+}
 
+// foldAnswer folds an auto-graded answer: a right one is a hit whose fluency is the
+// fluent time over the net time (capped at 1), a wrong one a miss.
+func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error) {
+	if e.Correct == nil {
+		return f, fmt.Errorf("auto-graded evidence %s has no verdict", e.EvidenceID)
+	}
+	f.Attempts++
+	at := e.OccurredAt
+	f.LastAt = &at
+
+	judged, timed := JudgeTimed(e, goal)
+	r := reading{outcome: outcomeMiss, judgesFluency: timed}
+	if *e.Correct {
+		r.outcome, r.accuracy, r.fluency = outcomeHit, 1, 1
+		if timed && judged.NetMs > 0 {
+			r.fluency = math.Min(1, float64(judged.FluentTime.FluentNetMs)/float64(judged.NetMs))
+		}
+	}
+	f.count(r, sourceWeight[e.Source])
+	f.schedule(at, r.outcome)
+	return f, nil
+}
+
+// foldTake folds a self-rated take.
+func foldTake(f ItemFold, e PracticeEvidence, goal ItemGoal) ItemFold {
 	f.Attempts++
 	at := e.OccurredAt
 	f.LastAt = &at
@@ -142,7 +230,7 @@ func FoldEvidence(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, erro
 		measure, best, target = e.ChangesPerMinute, &f.BestChangesPerMinute, goal.TargetChangesPerMinute
 	}
 	if exploresAboveTheEdge(e.Rating, measure, *best) {
-		return f, nil
+		return f
 	}
 	if e.Rating == SelfRatingClean {
 		*best = higher(*best, measure)
@@ -151,7 +239,7 @@ func FoldEvidence(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, erro
 	r := readRating(e.Rating, goalRatio(measure, target))
 	f.count(r, sourceWeight[e.Source])
 	f.schedule(at, r.outcome)
-	return f, nil
+	return f
 }
 
 // exploresAboveTheEdge reports a take that isn't clean above the best clean
@@ -182,22 +270,28 @@ func goalRatio(measure, target *int) float64 {
 func readRating(rating SelfRating, ratio float64) reading {
 	switch rating {
 	case SelfRatingClean:
-		return reading{outcome: outcomeHit, accuracy: 1, fluency: ratio}
+		return reading{outcome: outcomeHit, accuracy: 1, fluency: ratio, judgesFluency: true}
 	case SelfRatingAlmost:
-		return reading{outcome: outcomeHold, accuracy: 0.5, fluency: ratio * 0.5}
+		return reading{outcome: outcomeHold, accuracy: 0.5, fluency: ratio * 0.5, judgesFluency: true}
 	case SelfRatingStruggled:
-		return reading{outcome: outcomeMiss}
+		return reading{outcome: outcomeMiss, judgesFluency: true}
 	}
-	return reading{outcome: outcomeMiss}
+	return reading{outcome: outcomeMiss, judgesFluency: true}
 }
 
 // count moves the weighted averages toward r; the first counted evidence sets them.
+// A reading that doesn't judge fluency moves accuracy only.
 func (f *ItemFold) count(r reading, weight float64) {
 	if f.Counted == 0 {
-		f.Accuracy, f.Fluency = r.accuracy, r.fluency
+		f.Accuracy = r.accuracy
+		if r.judgesFluency {
+			f.Fluency = r.fluency
+		}
 	} else {
 		f.Accuracy += weight * (r.accuracy - f.Accuracy)
-		f.Fluency += weight * (r.fluency - f.Fluency)
+		if r.judgesFluency {
+			f.Fluency += weight * (r.fluency - f.Fluency)
+		}
 	}
 	f.Counted++
 }
