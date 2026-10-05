@@ -223,15 +223,47 @@ func (f *ItemFold) schedule(at time.Time, o outcome) {
 // RebuildFold folds an item's whole history from scratch, in time order. Evidence
 // sharing a timestamp folds in the order given, which callers keep as arrival order.
 func RebuildFold(history []PracticeEvidence, goal ItemGoal) (ItemFold, error) {
+	snapshots, err := DailySnapshots(history, goal)
+	if err != nil || len(snapshots) == 0 {
+		return ItemFold{}, err
+	}
+	return snapshots[len(snapshots)-1].Fold, nil
+}
+
+// ItemSnapshot is an item's state at the end of a UTC day on which it was
+// practised: the record progress over a week is measured against.
+type ItemSnapshot struct {
+	Day  time.Time
+	Fold ItemFold
+}
+
+// SnapshotDay is the UTC day an answer given at t belongs to, as its midnight.
+func SnapshotDay(t time.Time) time.Time {
+	y, m, d := t.UTC().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// DailySnapshots folds an item's whole history like RebuildFold, keeping the state
+// at the end of each day that has evidence, in day order.
+func DailySnapshots(history []PracticeEvidence, goal ItemGoal) ([]ItemSnapshot, error) {
 	ordered := slices.Clone(history)
 	slices.SortStableFunc(ordered, func(a, b PracticeEvidence) int { return a.OccurredAt.Compare(b.OccurredAt) })
 
-	var f ItemFold
+	var (
+		f         ItemFold
+		snapshots []ItemSnapshot
+	)
 	for _, e := range ordered {
 		var err error
 		if f, err = FoldEvidence(f, e, goal); err != nil {
-			return ItemFold{}, err
+			return nil, err
+		}
+		day := SnapshotDay(e.OccurredAt)
+		if n := len(snapshots); n > 0 && snapshots[n-1].Day.Equal(day) {
+			snapshots[n-1].Fold = f
+		} else {
+			snapshots = append(snapshots, ItemSnapshot{Day: day, Fold: f})
 		}
 	}
-	return f, nil
+	return snapshots, nil
 }

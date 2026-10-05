@@ -56,6 +56,61 @@ func (f *fakeEvidence) ListForItem(_ context.Context, studentID, itemKey string)
 	return out, nil
 }
 
+// fakeHistory keeps one snapshot per item and day, like the Mongo adapter.
+type fakeHistory struct {
+	snapshots map[string]domain.ItemSnapshot
+}
+
+func (f *fakeHistory) Put(_ context.Context, studentID, itemKey string, snapshots []domain.ItemSnapshot) error {
+	for _, s := range snapshots {
+		f.snapshots[studentID+"|"+itemKey+"|"+s.Day.Format(time.DateOnly)] = s
+	}
+	return nil
+}
+
+// fakeSessions, fakeLearning and fakeCompletion keep their repositories'
+// contracts (one session per id, one completion per event id, one status per
+// node); the Mongo adapters are covered by the repo package's integration tests.
+type fakeSessions struct {
+	sessions map[string]domain.PracticeSession
+}
+
+func (f *fakeSessions) Get(_ context.Context, studentID, sessionID string) (domain.PracticeSession, bool, error) {
+	s, ok := f.sessions[studentID+"|"+sessionID]
+	return s, ok, nil
+}
+
+func (f *fakeSessions) Put(_ context.Context, s domain.PracticeSession) error {
+	f.sessions[s.StudentID+"|"+s.ID] = s
+	return nil
+}
+
+type fakeLearning struct {
+	stored []domain.LearningActivity
+}
+
+func (f *fakeLearning) Insert(_ context.Context, a domain.LearningActivity) (bool, error) {
+	if slices.ContainsFunc(f.stored, func(s domain.LearningActivity) bool { return s.EventID == a.EventID }) {
+		return false, nil
+	}
+	f.stored = append(f.stored, a)
+	return true, nil
+}
+
+type fakeCompletion struct {
+	statuses map[string]domain.CompletionStatus
+}
+
+func (f *fakeCompletion) GetStatus(_ context.Context, studentID, contentNodeID string) (domain.CompletionStatus, bool, error) {
+	s, ok := f.statuses[studentID+"|"+contentNodeID]
+	return s, ok, nil
+}
+
+func (f *fakeCompletion) Upsert(_ context.Context, studentID, contentNodeID string, status domain.CompletionStatus) error {
+	f.statuses[studentID+"|"+contentNodeID] = status
+	return nil
+}
+
 type fakeStates struct {
 	folds map[string]domain.ItemFold
 }
@@ -136,8 +191,16 @@ type world struct {
 	reference *fakeReference
 	evidence  *fakeEvidence
 	states    *fakeStates
+	history   *fakeHistory
 	logs      *logRecorder
 	service   *application.PracticeEvidenceService
+
+	// sessionRecords and learning are the raw activity; events reaches every
+	// event's handler, the way the Kafka consumer does.
+	sessionRecords *fakeSessions
+	learning       *fakeLearning
+	events         *application.ProcessEventService
+	activity       activityWorld
 
 	students map[string]string
 	sessions map[string]string
@@ -157,12 +220,18 @@ func newWorld() *world {
 		reference: &fakeReference{diagrams: map[string]domain.DiagramReference{}},
 		evidence:  &fakeEvidence{},
 		states:    &fakeStates{folds: map[string]domain.ItemFold{}},
+		history:   &fakeHistory{snapshots: map[string]domain.ItemSnapshot{}},
 		logs:      &logRecorder{},
-		students:  map[string]string{},
-		sessions:  map[string]string{},
-		clock:     time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
+
+		sessionRecords: &fakeSessions{sessions: map[string]domain.PracticeSession{}},
+		learning:       &fakeLearning{},
+		students:       map[string]string{},
+		sessions:       map[string]string{},
+		clock:          time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
 	}
-	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, slog.New(w.logs))
+	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
+	w.events = application.NewProcessEventService(&fakeCompletion{statuses: map[string]domain.CompletionStatus{}}, w.service,
+		application.NewActivityService(w.sessionRecords, w.learning))
 	return w
 }
 

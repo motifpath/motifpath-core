@@ -16,6 +16,7 @@ type PracticeEvidenceService struct {
 	reference ports.PracticeReferenceReader
 	evidence  ports.PracticeEvidenceRepository
 	states    ports.PracticeItemStateRepository
+	history   ports.PracticeItemHistoryRepository
 	logger    *slog.Logger
 }
 
@@ -23,9 +24,10 @@ func NewPracticeEvidenceService(
 	reference ports.PracticeReferenceReader,
 	evidence ports.PracticeEvidenceRepository,
 	states ports.PracticeItemStateRepository,
+	history ports.PracticeItemHistoryRepository,
 	logger *slog.Logger,
 ) *PracticeEvidenceService {
-	return &PracticeEvidenceService{reference: reference, evidence: evidence, states: states, logger: logger}
+	return &PracticeEvidenceService{reference: reference, evidence: evidence, states: states, history: history, logger: logger}
 }
 
 // Process grades one answer and folds it. An answer that can't be graded (a
@@ -78,17 +80,27 @@ func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.
 
 	// Folding onto a state built by other rules would mix the two, so such a state
 	// is rebuilt from the evidence, like a late or repeated answer.
+	// The item's daily snapshots are rewritten along with it, from the day of the
+	// earliest evidence that changed.
 	staleRules := found && rulesVersion != domain.PracticeRulesVersion
 	late := fold.LastAt != nil && evidence.OccurredAt.Before(*fold.LastAt)
+	var snapshots []domain.ItemSnapshot
 	if inserted && !late && !staleRules {
 		fold, err = domain.FoldEvidence(fold, evidence, goal)
+		snapshots = []domain.ItemSnapshot{{Day: domain.SnapshotDay(evidence.OccurredAt), Fold: fold}}
 	} else {
 		var history []domain.PracticeEvidence
 		if history, err = s.evidence.ListForItem(ctx, evidence.StudentID, evidence.ItemKey); err == nil {
-			fold, err = domain.RebuildFold(history, goal)
+			snapshots, err = domain.DailySnapshots(history, goal)
+		}
+		if len(snapshots) > 0 {
+			fold = snapshots[len(snapshots)-1].Fold
 		}
 	}
 	if err != nil {
+		return err
+	}
+	if err := s.history.Put(ctx, evidence.StudentID, evidence.ItemKey, snapshots); err != nil {
 		return err
 	}
 	return s.states.Put(ctx, evidence.StudentID, evidence.ItemKey, fold)

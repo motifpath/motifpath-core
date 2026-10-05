@@ -1,12 +1,14 @@
 // Package domain holds the entities and pure business rules for the Aggregation
-// Worker. Per ADR-011, this worker's MVP scope is limited to deriving per-student,
-// per-content-node completion status from lesson-family tracking events — it does
-// not model exercise scoring or analytics, which remain post-MVP.
+// Worker: per-student, per-content-node completion status from lesson events, the
+// knowledge state graded and folded from practice answers, and the raw record of
+// practice sessions and completed content nodes.
 package domain
 
+import "time"
+
 // EventType identifies which tracking event a message represents. The worker
-// only acts on the three lesson-family values; all others (exercise.*) are
-// accepted without error but produce no state change — see IsLessonEvent.
+// acts on the lesson and practice events it names; any other is accepted without
+// error and changes nothing.
 type EventType string
 
 const (
@@ -15,29 +17,23 @@ const (
 	EventTypeLessonCompleted EventType = "lesson.completed"
 )
 
-// IsLessonEvent reports whether t is one of the three event types this worker
-// derives completion status from.
-func IsLessonEvent(t EventType) bool {
-	switch t {
-	case EventTypeLessonStarted, EventTypeLessonResumed, EventTypeLessonCompleted:
-		return true
-	case EventTypePracticeItemAnswered:
-		return false
-	default:
-		return false
-	}
-}
-
 // TrackingEvent is the subset of a motifpath.events message this worker needs.
 // It is decoded independently of the Event Ingestion Service's own domain
-// types — per the monorepo's layering rules, services never share Go packages,
-// and this worker only needs three fields regardless of which of the seven
-// tracking events was published.
+// types — per the monorepo's layering rules, services never share Go packages.
+// Only the fields of the event type it carries are set.
 type TrackingEvent struct {
 	EventType     EventType
+	EventID       string
 	StudentID     string
+	OccurredAt    time.Time
 	ContentNodeID string
 
+	// PracticeSessionID is set on practice events given in a practice session.
+	PracticeSessionID string
 	// PracticeAnswer is set on a practice.item_answered event.
 	PracticeAnswer *PracticeAnswer
+	// SessionStart is set on a practice.session_started event.
+	SessionStart *PracticeSessionStart
+	// SessionEnd is set on a practice.session_ended event.
+	SessionEnd *PracticeSessionEnd
 }

@@ -25,11 +25,13 @@ func TestFeatures(t *testing.T) {
 		ScenarioInitializer: InitializeScenario,
 		Options: &godog.Options{
 			Format: "pretty",
-			// Only the practice features whose steps run in this worker: grading and
-			// knowledge state. The rest of features/practice is core-domain's.
+			// Only the practice features whose steps run in this worker: grading,
+			// knowledge state, and the record of sessions and learning activity. The
+			// rest of features/practice is core-domain's.
 			Paths: []string{
 				specsDir + "/features/practice/grade-practice-response.feature",
 				specsDir + "/features/practice/knowledge-state.feature",
+				specsDir + "/features/practice/practice-sessions.feature",
 			},
 			TestingT: t,
 			// Strict fails the suite on an undefined step instead of warning and
@@ -51,4 +53,5 @@ func TestFeatures(t *testing.T) {
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerPracticeSteps(sc, w)
+	registerActivitySteps(sc, w)
 }

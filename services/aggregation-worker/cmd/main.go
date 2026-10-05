@@ -81,29 +81,10 @@ func run(logger *slog.Logger) error {
 		}
 	}()
 
-	completionRepo := repo.NewMongoCompletionStateRepository(mongoClient.Database(cfg.mongoDatabase))
-	// Fatal on failure: the unique (student_id, content_node_id) index is what
-	// keeps this collection to exactly one document per pair.
-	if err := completionRepo.EnsureIndexes(ctx); err != nil {
-		return fmt.Errorf("ensure mongodb indexes: %w", err)
+	completionRepo, service, err := newEventService(ctx, mongoClient.Database(cfg.mongoDatabase), logger)
+	if err != nil {
+		return err
 	}
-
-	evidenceRepo := repo.NewMongoPracticeEvidenceRepository(mongoClient.Database(cfg.mongoDatabase))
-	// Fatal on failure: the unique evidence_id index is what makes a redelivered
-	// practice answer count once.
-	if err := evidenceRepo.EnsureIndexes(ctx); err != nil {
-		return fmt.Errorf("ensure practice evidence indexes: %w", err)
-	}
-	itemStateRepo := repo.NewMongoPracticeItemStateRepository(mongoClient.Database(cfg.mongoDatabase))
-	if err := itemStateRepo.EnsureIndexes(ctx); err != nil {
-		return fmt.Errorf("ensure practice item state indexes: %w", err)
-	}
-	practice := application.NewPracticeEvidenceService(
-		repo.NewMongoPracticeReferenceReader(mongoClient.Database(cfg.mongoDatabase)),
-		evidenceRepo, itemStateRepo, logger,
-	)
-
-	service := application.NewProcessEventService(completionRepo, practice)
 	consumer := kafka.NewKafkaEventConsumer(cfg.kafkaBrokers, service, logger)
 	defer func() {
 		if err := consumer.Close(); err != nil {
@@ -143,6 +124,52 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("aggregation worker stopped cleanly")
 	return nil
+}
+
+// newEventService builds the event handler over its MongoDB repositories,
+// creating their indexes first.
+func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logger) (*repo.MongoCompletionStateRepository, *application.ProcessEventService, error) {
+	completionRepo := repo.NewMongoCompletionStateRepository(db)
+	// Fatal on failure: the unique (student_id, content_node_id) index is what
+	// keeps this collection to exactly one document per pair.
+	if err := completionRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure mongodb indexes: %w", err)
+	}
+
+	evidenceRepo := repo.NewMongoPracticeEvidenceRepository(db)
+	// Fatal on failure: the unique evidence_id index is what makes a redelivered
+	// practice answer count once.
+	if err := evidenceRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure practice evidence indexes: %w", err)
+	}
+	itemStateRepo := repo.NewMongoPracticeItemStateRepository(db)
+	if err := itemStateRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure practice item state indexes: %w", err)
+	}
+	historyRepo := repo.NewMongoPracticeItemHistoryRepository(db)
+	// Fatal on failure: the unique (student_id, item_key, day) index is what keeps
+	// one snapshot per item and day.
+	if err := historyRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure practice item history indexes: %w", err)
+	}
+	practice := application.NewPracticeEvidenceService(
+		repo.NewMongoPracticeReferenceReader(db), evidenceRepo, itemStateRepo, historyRepo, logger,
+	)
+
+	sessionRepo := repo.NewMongoPracticeSessionRepository(db)
+	if err := sessionRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure practice session indexes: %w", err)
+	}
+	learningRepo := repo.NewMongoLearningActivityRepository(db)
+	// Fatal on failure: the unique event_id index is what keeps a redelivered
+	// completion once.
+	if err := learningRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure learning activity indexes: %w", err)
+	}
+
+	service := application.NewProcessEventService(completionRepo, practice,
+		application.NewActivityService(sessionRepo, learningRepo))
+	return completionRepo, service, nil
 }
 
 func getenvDefault(name, def string) string {

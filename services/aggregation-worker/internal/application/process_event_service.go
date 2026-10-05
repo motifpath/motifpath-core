@@ -7,34 +7,57 @@ import (
 	"github.com/motifpath/aggregation-worker/internal/ports"
 )
 
-// ProcessEventService derives per-student, per-content-node completion status
-// from lesson-family tracking events, per ADR-011. Exercise-family events (and
-// any other event_type) are accepted without error but produce no state
-// change — this worker's MVP scope stops at node-completion status.
+// ProcessEventService routes each tracking event to what it changes: lesson
+// events derive per-student, per-content-node completion status; practice events
+// feed the evidence processor; completions and practice sessions are kept as raw
+// activity. Any other event_type is accepted without error and changes nothing.
 type ProcessEventService struct {
 	repo     ports.CompletionStateRepository
 	practice *PracticeEvidenceService
+	activity *ActivityService
 }
 
-func NewProcessEventService(repo ports.CompletionStateRepository, practice *PracticeEvidenceService) *ProcessEventService {
-	return &ProcessEventService{repo: repo, practice: practice}
+func NewProcessEventService(repo ports.CompletionStateRepository, practice *PracticeEvidenceService, activity *ActivityService) *ProcessEventService {
+	return &ProcessEventService{repo: repo, practice: practice, activity: activity}
 }
 
-// Handle applies ADR-011's transition rule to event and persists the result if
-// it changed. Re-processing the same event (at-least-once Kafka delivery) is
-// safe: recomputing NextStatus from the same current value yields the same
-// next value, so the repeated Upsert is a no-op in effect.
+// Handle routes event to what it changes. Re-processing the same event
+// (at-least-once Kafka delivery) is safe for every route.
 func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingEvent) error {
-	if event.EventType == domain.EventTypePracticeItemAnswered {
-		if event.PracticeAnswer == nil {
+	switch event.EventType {
+	case domain.EventTypePracticeItemAnswered:
+		return s.handleAnswer(ctx, event)
+	case domain.EventTypePracticeSessionStarted:
+		if event.SessionStart == nil {
 			return nil
 		}
-		return s.practice.Process(ctx, *event.PracticeAnswer)
+		return s.activity.SessionStarted(ctx, *event.SessionStart)
+	case domain.EventTypePracticeSessionEnded:
+		if event.SessionEnd == nil {
+			return nil
+		}
+		return s.activity.SessionEnded(ctx, *event.SessionEnd)
+	case domain.EventTypeLessonCompleted:
+		if err := s.activity.LessonCompleted(ctx, domain.LearningActivity{
+			EventID:       event.EventID,
+			StudentID:     event.StudentID,
+			ContentNodeID: event.ContentNodeID,
+			CompletedAt:   event.OccurredAt,
+		}); err != nil {
+			return err
+		}
+		return s.updateCompletion(ctx, event)
+	case domain.EventTypeLessonStarted, domain.EventTypeLessonResumed:
+		return s.updateCompletion(ctx, event)
 	}
-	if !domain.IsLessonEvent(event.EventType) {
-		return nil
-	}
+	return nil
+}
 
+// updateCompletion applies the completion transition rule to event and persists
+// the result if it changed. Re-processing the same event is safe: recomputing
+// NextStatus from the same current value yields the same next value, so the
+// repeated Upsert is a no-op in effect.
+func (s *ProcessEventService) updateCompletion(ctx context.Context, event domain.TrackingEvent) error {
 	current, found, err := s.repo.GetStatus(ctx, event.StudentID, event.ContentNodeID)
 	if err != nil {
 		return err
@@ -49,4 +72,18 @@ func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingE
 	}
 
 	return s.repo.Upsert(ctx, event.StudentID, event.ContentNodeID, next)
+}
+
+// handleAnswer records the answer in its session, if it was given in one, then
+// grades it.
+func (s *ProcessEventService) handleAnswer(ctx context.Context, event domain.TrackingEvent) error {
+	if event.PracticeSessionID != "" {
+		if err := s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.OccurredAt); err != nil {
+			return err
+		}
+	}
+	if event.PracticeAnswer == nil {
+		return nil
+	}
+	return s.practice.Process(ctx, *event.PracticeAnswer)
 }

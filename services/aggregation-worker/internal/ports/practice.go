@@ -38,3 +38,10 @@ type PracticeItemStateRepository interface {
 	// Put replaces the stored fold, stamped with domain.PracticeRulesVersion.
 	Put(ctx context.Context, studentID, itemKey string, fold domain.ItemFold) error
 }
+
+// PracticeItemHistoryRepository keeps one snapshot per (student_id, item_key, day).
+type PracticeItemHistoryRepository interface {
+	// Put stores each snapshot, replacing any stored for the same day, stamped
+	// with domain.PracticeRulesVersion.
+	Put(ctx context.Context, studentID, itemKey string, snapshots []domain.ItemSnapshot) error
+}
