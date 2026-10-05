@@ -20,8 +20,6 @@ type wireEvent struct {
 	ContentContext *contentContextWire `json:"content_context,omitempty"`
 	ExerciseID     string              `json:"exercise_id,omitempty"`
 	TriggerContext *triggerContextWire `json:"trigger_context,omitempty"`
-	AttemptNumber  *int                `json:"attempt_number,omitempty"`
-	AnswerPayload  map[string]any      `json:"answer_payload,omitempty"`
 	Outcome        string              `json:"outcome,omitempty"`
 	FinalScore     *int                `json:"final_score,omitempty"`
 
@@ -58,6 +56,7 @@ type practiceResponseWire struct {
 	Fret             *int     `json:"fret,omitempty"`
 	OptionIDs        []string `json:"option_ids,omitempty"`
 	LatencyMs        *int     `json:"latency_ms,omitempty"`
+	AudioMs          *int     `json:"audio_ms,omitempty"`
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`
@@ -105,11 +104,6 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 		w.ExerciseID = e.ExerciseID
 		w.TriggerContext = toTriggerContextWire(e.TriggerContext)
 		w.ElapsedSeconds = e.ElapsedSeconds
-	case domain.ExerciseAnswerSentEvent:
-		w.ExerciseID = e.ExerciseID
-		w.TriggerContext = toTriggerContextWire(e.TriggerContext)
-		w.AttemptNumber = &e.AttemptNumber
-		w.AnswerPayload = e.AnswerPayload
 	case domain.ExerciseEndedEvent:
 		w.ExerciseID = e.ExerciseID
 		w.TriggerContext = toTriggerContextWire(e.TriggerContext)
@@ -125,6 +119,9 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 		}
 	case domain.PracticeItemAnsweredEvent:
 		w.PracticeSessionID = e.PracticeSessionID
+		if e.TriggerContext != nil {
+			w.TriggerContext = toTriggerContextWire(*e.TriggerContext)
+		}
 		w.ItemKey = e.ItemKey
 		w.Response = toPracticeResponseWire(e.Response)
 		w.TapMs = e.TapMs
@@ -153,6 +150,7 @@ func toPracticeResponseWire(r domain.PracticeResponse) *practiceResponseWire {
 		Fret:             r.Fret,
 		OptionIDs:        r.OptionIDs,
 		LatencyMs:        r.LatencyMs,
+		AudioMs:          r.AudioMs,
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
 		ChangesPerMinute: r.ChangesPerMinute,

@@ -21,8 +21,6 @@ type eventDocument struct {
 	ContentContext *contentContextDoc `bson:"content_context,omitempty"`
 	ExerciseID     string             `bson:"exercise_id,omitempty"`
 	TriggerContext *triggerContextDoc `bson:"trigger_context,omitempty"`
-	AttemptNumber  *int               `bson:"attempt_number,omitempty"`
-	AnswerPayload  map[string]any     `bson:"answer_payload,omitempty"`
 	Outcome        string             `bson:"outcome,omitempty"`
 	FinalScore     *int               `bson:"final_score,omitempty"`
 
@@ -60,6 +58,7 @@ type practiceResponseDoc struct {
 	Fret             *int     `bson:"fret,omitempty"`
 	OptionIDs        []string `bson:"option_ids,omitempty"`
 	LatencyMs        *int     `bson:"latency_ms,omitempty"`
+	AudioMs          *int     `bson:"audio_ms,omitempty"`
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
@@ -108,11 +107,6 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 		doc.ExerciseID = e.ExerciseID
 		doc.TriggerContext = toTriggerContextDoc(e.TriggerContext)
 		doc.ElapsedSeconds = e.ElapsedSeconds
-	case domain.ExerciseAnswerSentEvent:
-		doc.ExerciseID = e.ExerciseID
-		doc.TriggerContext = toTriggerContextDoc(e.TriggerContext)
-		doc.AttemptNumber = &e.AttemptNumber
-		doc.AnswerPayload = e.AnswerPayload
 	case domain.ExerciseEndedEvent:
 		doc.ExerciseID = e.ExerciseID
 		doc.TriggerContext = toTriggerContextDoc(e.TriggerContext)
@@ -128,6 +122,9 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 		}
 	case domain.PracticeItemAnsweredEvent:
 		doc.PracticeSessionID = e.PracticeSessionID
+		if e.TriggerContext != nil {
+			doc.TriggerContext = toTriggerContextDoc(*e.TriggerContext)
+		}
 		doc.ItemKey = e.ItemKey
 		doc.Response = toPracticeResponseDoc(e.Response)
 		doc.TapMs = e.TapMs
@@ -189,18 +186,6 @@ func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
 			ExerciseID:        doc.ExerciseID,
 			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
 			ElapsedSeconds:    doc.ElapsedSeconds,
-		}, nil
-	case domain.EventTypeExerciseAnswerSent:
-		var attemptNumber int
-		if doc.AttemptNumber != nil {
-			attemptNumber = *doc.AttemptNumber
-		}
-		return domain.ExerciseAnswerSentEvent{
-			TrackingEventBase: base,
-			ExerciseID:        doc.ExerciseID,
-			TriggerContext:    fromTriggerContextDoc(doc.TriggerContext),
-			AttemptNumber:     attemptNumber,
-			AnswerPayload:     doc.AnswerPayload,
 		}, nil
 	case domain.EventTypeExerciseEnded:
 		return domain.ExerciseEndedEvent{
@@ -269,6 +254,7 @@ func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
 		Fret:             r.Fret,
 		OptionIDs:        r.OptionIDs,
 		LatencyMs:        r.LatencyMs,
+		AudioMs:          r.AudioMs,
 		Rating:           string(r.Rating),
 		TempoBPM:         r.TempoBPM,
 		ChangesPerMinute: r.ChangesPerMinute,
@@ -286,6 +272,7 @@ func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 		Fret:             d.Fret,
 		OptionIDs:        d.OptionIDs,
 		LatencyMs:        d.LatencyMs,
+		AudioMs:          d.AudioMs,
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,
 		ChangesPerMinute: d.ChangesPerMinute,
@@ -317,10 +304,21 @@ func fromPracticeItemAnsweredDoc(base domain.TrackingEventBase, doc eventDocumen
 	return domain.PracticeItemAnsweredEvent{
 		TrackingEventBase: base,
 		PracticeSessionID: doc.PracticeSessionID,
+		TriggerContext:    fromAnswerTriggerContextDoc(doc.TriggerContext),
 		ItemKey:           doc.ItemKey,
 		Response:          fromPracticeResponseDoc(doc.Response),
 		TapMs:             doc.TapMs,
 	}
+}
+
+// fromAnswerTriggerContextDoc keeps an answer's trigger context absent when the
+// answer was given in a practice session.
+func fromAnswerTriggerContextDoc(d *triggerContextDoc) *domain.TriggerContext {
+	if d == nil {
+		return nil
+	}
+	tc := fromTriggerContextDoc(d)
+	return &tc
 }
 
 func fromPracticeSessionEndedDoc(base domain.TrackingEventBase, doc eventDocument) domain.PracticeSessionEndedEvent {

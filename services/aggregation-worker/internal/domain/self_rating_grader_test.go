@@ -16,11 +16,12 @@ func TestGraderFor(t *testing.T) {
 		require.True(t, ok, kind)
 		assert.Equal(t, "self_rating.v1", g.ID())
 	}
-	// Their graders come with the fretboard and exercise drills.
-	for _, kind := range []PracticeItemKind{PracticeItemKindFretboardCell, PracticeItemKindExercise} {
-		_, ok := GraderFor(kind)
-		assert.False(t, ok, kind)
-	}
+	g, ok := GraderFor(PracticeItemKindExercise)
+	require.True(t, ok)
+	assert.Equal(t, "exercise_option.v1", g.ID())
+	// Its grader comes with the fretboard drill.
+	_, ok = GraderFor(PracticeItemKindFretboardCell)
+	assert.False(t, ok)
 }
 
 func TestSelfRatingGrader_RejectsAnUnknownRating(t *testing.T) {

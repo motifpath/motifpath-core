@@ -18,7 +18,23 @@ import (
 // fakeReference stands in for core's practice_reference snapshot; the Mongo reader
 // is covered by the repo package's integration tests.
 type fakeReference struct {
-	diagrams map[string]domain.DiagramReference
+	diagrams    map[string]domain.DiagramReference
+	exercises   map[string]domain.ExerciseReference
+	fluentTimes map[string][]domain.FluentTime
+}
+
+func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
+	found := map[string]domain.ExerciseReference{}
+	for _, id := range ids {
+		if e, ok := f.exercises[id]; ok {
+			found[id] = e
+		}
+	}
+	return found, nil
+}
+
+func (f *fakeReference) FluentTimes(_ context.Context, templateKey string) ([]domain.FluentTime, error) {
+	return f.fluentTimes[templateKey], nil
 }
 
 func (f *fakeReference) Diagrams(_ context.Context, ids []string) (map[string]domain.DiagramReference, error) {
@@ -204,6 +220,12 @@ type world struct {
 
 	students map[string]string
 	sessions map[string]string
+	// challenges holds the challenge a student is taking: their answers go to it
+	// instead of a practice session.
+	challenges map[string]*domain.TriggerContext
+	// tapMs is each student's tap time, stamped on their timed answers the way
+	// ingestion stamps it.
+	tapMs map[string]int
 	// clock is when the next answer is given; each answer moves it on a minute.
 	clock   time.Time
 	eventNo int
@@ -213,20 +235,29 @@ type world struct {
 	lastStudent string
 	lastItemKey string
 	before      domain.ItemFold
+
+	// lastTemplate is the drill template the latest fluent time step named.
+	lastTemplate string
 }
 
 func newWorld() *world {
 	w := &world{
-		reference: &fakeReference{diagrams: map[string]domain.DiagramReference{}},
-		evidence:  &fakeEvidence{},
-		states:    &fakeStates{folds: map[string]domain.ItemFold{}},
-		history:   &fakeHistory{snapshots: map[string]domain.ItemSnapshot{}},
-		logs:      &logRecorder{},
+		reference: &fakeReference{
+			diagrams:    map[string]domain.DiagramReference{},
+			exercises:   map[string]domain.ExerciseReference{},
+			fluentTimes: map[string][]domain.FluentTime{},
+		},
+		evidence: &fakeEvidence{},
+		states:   &fakeStates{folds: map[string]domain.ItemFold{}},
+		history:  &fakeHistory{snapshots: map[string]domain.ItemSnapshot{}},
+		logs:     &logRecorder{},
 
 		sessionRecords: &fakeSessions{sessions: map[string]domain.PracticeSession{}},
 		learning:       &fakeLearning{},
 		students:       map[string]string{},
 		sessions:       map[string]string{},
+		challenges:     map[string]*domain.TriggerContext{},
+		tapMs:          map[string]int{},
 		clock:          time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
@@ -274,14 +305,22 @@ func (w *world) answer(student, itemKey string, response domain.PracticeResponse
 	w.lastStudent, w.lastItemKey, w.before = student, itemKey, before
 	at := w.clock
 	w.clock = w.clock.Add(time.Minute)
-	return w.service.Process(context.Background(), domain.PracticeAnswer{
-		EventID:           fmt.Sprintf("e0000000-0000-4000-8000-%012d", w.eventNo),
-		StudentID:         studentID,
-		OccurredAt:        at,
-		PracticeSessionID: w.sessionID(student),
-		ItemKey:           itemKey,
-		Response:          response,
-	})
+	answer := domain.PracticeAnswer{
+		EventID:    fmt.Sprintf("e0000000-0000-4000-8000-%012d", w.eventNo),
+		StudentID:  studentID,
+		OccurredAt: at,
+		ItemKey:    itemKey,
+		Response:   response,
+	}
+	if challenge, ok := w.challenges[student]; ok {
+		answer.TriggerContext = challenge
+	} else {
+		answer.PracticeSessionID = w.sessionID(student)
+	}
+	if tap, ok := w.tapMs[student]; ok && response.LatencyMs != nil {
+		answer.TapMs = &tap
+	}
+	return w.service.Process(context.Background(), answer)
 }
 
 func (w *world) sessionID(student string) string {

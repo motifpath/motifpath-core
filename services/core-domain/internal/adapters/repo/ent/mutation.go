@@ -32,6 +32,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseinstrument"
@@ -86,6 +88,8 @@ const (
 	TypeDiagramInstrument       = "DiagramInstrument"
 	TypeDiagramRegion           = "DiagramRegion"
 	TypeDiagramSkill            = "DiagramSkill"
+	TypeDrillTemplate           = "DrillTemplate"
+	TypeDrillThreshold          = "DrillThreshold"
 	TypeExercise                = "Exercise"
 	TypeExerciseConcept         = "ExerciseConcept"
 	TypeExerciseInstrument      = "ExerciseInstrument"
@@ -16097,6 +16101,1492 @@ func (m *DiagramSkillMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown DiagramSkill edge %s", name)
+}
+
+// DrillTemplateMutation represents an operation that mutates the DrillTemplate nodes in the graph.
+type DrillTemplateMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	key               *string
+	item_kind         *string
+	response_type     *string
+	timed             *bool
+	names             *map[string]string
+	clearedFields     map[string]struct{}
+	thresholds        map[uuid.UUID]struct{}
+	removedthresholds map[uuid.UUID]struct{}
+	clearedthresholds bool
+	done              bool
+	oldValue          func(context.Context) (*DrillTemplate, error)
+	predicates        []predicate.DrillTemplate
+}
+
+var _ ent.Mutation = (*DrillTemplateMutation)(nil)
+
+// drilltemplateOption allows management of the mutation configuration using functional options.
+type drilltemplateOption func(*DrillTemplateMutation)
+
+// newDrillTemplateMutation creates new mutation for the DrillTemplate entity.
+func newDrillTemplateMutation(c config, op Op, opts ...drilltemplateOption) *DrillTemplateMutation {
+	m := &DrillTemplateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDrillTemplate,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDrillTemplateID sets the ID field of the mutation.
+func withDrillTemplateID(id uuid.UUID) drilltemplateOption {
+	return func(m *DrillTemplateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DrillTemplate
+		)
+		m.oldValue = func(ctx context.Context) (*DrillTemplate, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DrillTemplate.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDrillTemplate sets the old DrillTemplate of the mutation.
+func withDrillTemplate(node *DrillTemplate) drilltemplateOption {
+	return func(m *DrillTemplateMutation) {
+		m.oldValue = func(context.Context) (*DrillTemplate, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DrillTemplateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DrillTemplateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DrillTemplate entities.
+func (m *DrillTemplateMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DrillTemplateMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DrillTemplateMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DrillTemplate.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetKey sets the "key" field.
+func (m *DrillTemplateMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *DrillTemplateMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *DrillTemplateMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetItemKind sets the "item_kind" field.
+func (m *DrillTemplateMutation) SetItemKind(s string) {
+	m.item_kind = &s
+}
+
+// ItemKind returns the value of the "item_kind" field in the mutation.
+func (m *DrillTemplateMutation) ItemKind() (r string, exists bool) {
+	v := m.item_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldItemKind returns the old "item_kind" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldItemKind(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldItemKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldItemKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldItemKind: %w", err)
+	}
+	return oldValue.ItemKind, nil
+}
+
+// ResetItemKind resets all changes to the "item_kind" field.
+func (m *DrillTemplateMutation) ResetItemKind() {
+	m.item_kind = nil
+}
+
+// SetResponseType sets the "response_type" field.
+func (m *DrillTemplateMutation) SetResponseType(s string) {
+	m.response_type = &s
+}
+
+// ResponseType returns the value of the "response_type" field in the mutation.
+func (m *DrillTemplateMutation) ResponseType() (r string, exists bool) {
+	v := m.response_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseType returns the old "response_type" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldResponseType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseType: %w", err)
+	}
+	return oldValue.ResponseType, nil
+}
+
+// ResetResponseType resets all changes to the "response_type" field.
+func (m *DrillTemplateMutation) ResetResponseType() {
+	m.response_type = nil
+}
+
+// SetTimed sets the "timed" field.
+func (m *DrillTemplateMutation) SetTimed(b bool) {
+	m.timed = &b
+}
+
+// Timed returns the value of the "timed" field in the mutation.
+func (m *DrillTemplateMutation) Timed() (r bool, exists bool) {
+	v := m.timed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimed returns the old "timed" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldTimed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimed: %w", err)
+	}
+	return oldValue.Timed, nil
+}
+
+// ResetTimed resets all changes to the "timed" field.
+func (m *DrillTemplateMutation) ResetTimed() {
+	m.timed = nil
+}
+
+// SetNames sets the "names" field.
+func (m *DrillTemplateMutation) SetNames(value map[string]string) {
+	m.names = &value
+}
+
+// Names returns the value of the "names" field in the mutation.
+func (m *DrillTemplateMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNames returns the old "names" field's value of the DrillTemplate entity.
+// If the DrillTemplate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillTemplateMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
+	}
+	return oldValue.Names, nil
+}
+
+// ResetNames resets all changes to the "names" field.
+func (m *DrillTemplateMutation) ResetNames() {
+	m.names = nil
+}
+
+// AddThresholdIDs adds the "thresholds" edge to the DrillThreshold entity by ids.
+func (m *DrillTemplateMutation) AddThresholdIDs(ids ...uuid.UUID) {
+	if m.thresholds == nil {
+		m.thresholds = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.thresholds[ids[i]] = struct{}{}
+	}
+}
+
+// ClearThresholds clears the "thresholds" edge to the DrillThreshold entity.
+func (m *DrillTemplateMutation) ClearThresholds() {
+	m.clearedthresholds = true
+}
+
+// ThresholdsCleared reports if the "thresholds" edge to the DrillThreshold entity was cleared.
+func (m *DrillTemplateMutation) ThresholdsCleared() bool {
+	return m.clearedthresholds
+}
+
+// RemoveThresholdIDs removes the "thresholds" edge to the DrillThreshold entity by IDs.
+func (m *DrillTemplateMutation) RemoveThresholdIDs(ids ...uuid.UUID) {
+	if m.removedthresholds == nil {
+		m.removedthresholds = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.thresholds, ids[i])
+		m.removedthresholds[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedThresholds returns the removed IDs of the "thresholds" edge to the DrillThreshold entity.
+func (m *DrillTemplateMutation) RemovedThresholdsIDs() (ids []uuid.UUID) {
+	for id := range m.removedthresholds {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ThresholdsIDs returns the "thresholds" edge IDs in the mutation.
+func (m *DrillTemplateMutation) ThresholdsIDs() (ids []uuid.UUID) {
+	for id := range m.thresholds {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetThresholds resets all changes to the "thresholds" edge.
+func (m *DrillTemplateMutation) ResetThresholds() {
+	m.thresholds = nil
+	m.clearedthresholds = false
+	m.removedthresholds = nil
+}
+
+// Where appends a list predicates to the DrillTemplateMutation builder.
+func (m *DrillTemplateMutation) Where(ps ...predicate.DrillTemplate) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DrillTemplateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DrillTemplateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DrillTemplate, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DrillTemplateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DrillTemplateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DrillTemplate).
+func (m *DrillTemplateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DrillTemplateMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.key != nil {
+		fields = append(fields, drilltemplate.FieldKey)
+	}
+	if m.item_kind != nil {
+		fields = append(fields, drilltemplate.FieldItemKind)
+	}
+	if m.response_type != nil {
+		fields = append(fields, drilltemplate.FieldResponseType)
+	}
+	if m.timed != nil {
+		fields = append(fields, drilltemplate.FieldTimed)
+	}
+	if m.names != nil {
+		fields = append(fields, drilltemplate.FieldNames)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DrillTemplateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case drilltemplate.FieldKey:
+		return m.Key()
+	case drilltemplate.FieldItemKind:
+		return m.ItemKind()
+	case drilltemplate.FieldResponseType:
+		return m.ResponseType()
+	case drilltemplate.FieldTimed:
+		return m.Timed()
+	case drilltemplate.FieldNames:
+		return m.Names()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DrillTemplateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case drilltemplate.FieldKey:
+		return m.OldKey(ctx)
+	case drilltemplate.FieldItemKind:
+		return m.OldItemKind(ctx)
+	case drilltemplate.FieldResponseType:
+		return m.OldResponseType(ctx)
+	case drilltemplate.FieldTimed:
+		return m.OldTimed(ctx)
+	case drilltemplate.FieldNames:
+		return m.OldNames(ctx)
+	}
+	return nil, fmt.Errorf("unknown DrillTemplate field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DrillTemplateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case drilltemplate.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case drilltemplate.FieldItemKind:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetItemKind(v)
+		return nil
+	case drilltemplate.FieldResponseType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseType(v)
+		return nil
+	case drilltemplate.FieldTimed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimed(v)
+		return nil
+	case drilltemplate.FieldNames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNames(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DrillTemplate field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DrillTemplateMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DrillTemplateMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DrillTemplateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DrillTemplate numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DrillTemplateMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DrillTemplateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DrillTemplateMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DrillTemplate nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DrillTemplateMutation) ResetField(name string) error {
+	switch name {
+	case drilltemplate.FieldKey:
+		m.ResetKey()
+		return nil
+	case drilltemplate.FieldItemKind:
+		m.ResetItemKind()
+		return nil
+	case drilltemplate.FieldResponseType:
+		m.ResetResponseType()
+		return nil
+	case drilltemplate.FieldTimed:
+		m.ResetTimed()
+		return nil
+	case drilltemplate.FieldNames:
+		m.ResetNames()
+		return nil
+	}
+	return fmt.Errorf("unknown DrillTemplate field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DrillTemplateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.thresholds != nil {
+		edges = append(edges, drilltemplate.EdgeThresholds)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DrillTemplateMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case drilltemplate.EdgeThresholds:
+		ids := make([]ent.Value, 0, len(m.thresholds))
+		for id := range m.thresholds {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DrillTemplateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedthresholds != nil {
+		edges = append(edges, drilltemplate.EdgeThresholds)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DrillTemplateMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case drilltemplate.EdgeThresholds:
+		ids := make([]ent.Value, 0, len(m.removedthresholds))
+		for id := range m.removedthresholds {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DrillTemplateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedthresholds {
+		edges = append(edges, drilltemplate.EdgeThresholds)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DrillTemplateMutation) EdgeCleared(name string) bool {
+	switch name {
+	case drilltemplate.EdgeThresholds:
+		return m.clearedthresholds
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DrillTemplateMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DrillTemplate unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DrillTemplateMutation) ResetEdge(name string) error {
+	switch name {
+	case drilltemplate.EdgeThresholds:
+		m.ResetThresholds()
+		return nil
+	}
+	return fmt.Errorf("unknown DrillTemplate edge %s", name)
+}
+
+// DrillThresholdMutation represents an operation that mutates the DrillThreshold nodes in the graph.
+type DrillThresholdMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *uuid.UUID
+	version          *int
+	addversion       *int
+	effective_from   *time.Time
+	fluent_net_ms    *int
+	addfluent_net_ms *int
+	source           *drillthreshold.Source
+	sessions         *int
+	addsessions      *int
+	students         *int
+	addstudents      *int
+	clearedFields    map[string]struct{}
+	template         *uuid.UUID
+	clearedtemplate  bool
+	done             bool
+	oldValue         func(context.Context) (*DrillThreshold, error)
+	predicates       []predicate.DrillThreshold
+}
+
+var _ ent.Mutation = (*DrillThresholdMutation)(nil)
+
+// drillthresholdOption allows management of the mutation configuration using functional options.
+type drillthresholdOption func(*DrillThresholdMutation)
+
+// newDrillThresholdMutation creates new mutation for the DrillThreshold entity.
+func newDrillThresholdMutation(c config, op Op, opts ...drillthresholdOption) *DrillThresholdMutation {
+	m := &DrillThresholdMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDrillThreshold,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDrillThresholdID sets the ID field of the mutation.
+func withDrillThresholdID(id uuid.UUID) drillthresholdOption {
+	return func(m *DrillThresholdMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DrillThreshold
+		)
+		m.oldValue = func(ctx context.Context) (*DrillThreshold, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DrillThreshold.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDrillThreshold sets the old DrillThreshold of the mutation.
+func withDrillThreshold(node *DrillThreshold) drillthresholdOption {
+	return func(m *DrillThresholdMutation) {
+		m.oldValue = func(context.Context) (*DrillThreshold, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DrillThresholdMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DrillThresholdMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DrillThreshold entities.
+func (m *DrillThresholdMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DrillThresholdMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DrillThresholdMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DrillThreshold.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetTemplateID sets the "template_id" field.
+func (m *DrillThresholdMutation) SetTemplateID(u uuid.UUID) {
+	m.template = &u
+}
+
+// TemplateID returns the value of the "template_id" field in the mutation.
+func (m *DrillThresholdMutation) TemplateID() (r uuid.UUID, exists bool) {
+	v := m.template
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTemplateID returns the old "template_id" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldTemplateID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTemplateID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTemplateID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTemplateID: %w", err)
+	}
+	return oldValue.TemplateID, nil
+}
+
+// ResetTemplateID resets all changes to the "template_id" field.
+func (m *DrillThresholdMutation) ResetTemplateID() {
+	m.template = nil
+}
+
+// SetVersion sets the "version" field.
+func (m *DrillThresholdMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *DrillThresholdMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *DrillThresholdMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *DrillThresholdMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *DrillThresholdMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
+}
+
+// SetEffectiveFrom sets the "effective_from" field.
+func (m *DrillThresholdMutation) SetEffectiveFrom(t time.Time) {
+	m.effective_from = &t
+}
+
+// EffectiveFrom returns the value of the "effective_from" field in the mutation.
+func (m *DrillThresholdMutation) EffectiveFrom() (r time.Time, exists bool) {
+	v := m.effective_from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEffectiveFrom returns the old "effective_from" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldEffectiveFrom(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEffectiveFrom is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEffectiveFrom requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEffectiveFrom: %w", err)
+	}
+	return oldValue.EffectiveFrom, nil
+}
+
+// ResetEffectiveFrom resets all changes to the "effective_from" field.
+func (m *DrillThresholdMutation) ResetEffectiveFrom() {
+	m.effective_from = nil
+}
+
+// SetFluentNetMs sets the "fluent_net_ms" field.
+func (m *DrillThresholdMutation) SetFluentNetMs(i int) {
+	m.fluent_net_ms = &i
+	m.addfluent_net_ms = nil
+}
+
+// FluentNetMs returns the value of the "fluent_net_ms" field in the mutation.
+func (m *DrillThresholdMutation) FluentNetMs() (r int, exists bool) {
+	v := m.fluent_net_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFluentNetMs returns the old "fluent_net_ms" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldFluentNetMs(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFluentNetMs is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFluentNetMs requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFluentNetMs: %w", err)
+	}
+	return oldValue.FluentNetMs, nil
+}
+
+// AddFluentNetMs adds i to the "fluent_net_ms" field.
+func (m *DrillThresholdMutation) AddFluentNetMs(i int) {
+	if m.addfluent_net_ms != nil {
+		*m.addfluent_net_ms += i
+	} else {
+		m.addfluent_net_ms = &i
+	}
+}
+
+// AddedFluentNetMs returns the value that was added to the "fluent_net_ms" field in this mutation.
+func (m *DrillThresholdMutation) AddedFluentNetMs() (r int, exists bool) {
+	v := m.addfluent_net_ms
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFluentNetMs resets all changes to the "fluent_net_ms" field.
+func (m *DrillThresholdMutation) ResetFluentNetMs() {
+	m.fluent_net_ms = nil
+	m.addfluent_net_ms = nil
+}
+
+// SetSource sets the "source" field.
+func (m *DrillThresholdMutation) SetSource(d drillthreshold.Source) {
+	m.source = &d
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *DrillThresholdMutation) Source() (r drillthreshold.Source, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldSource(ctx context.Context) (v drillthreshold.Source, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *DrillThresholdMutation) ResetSource() {
+	m.source = nil
+}
+
+// SetSessions sets the "sessions" field.
+func (m *DrillThresholdMutation) SetSessions(i int) {
+	m.sessions = &i
+	m.addsessions = nil
+}
+
+// Sessions returns the value of the "sessions" field in the mutation.
+func (m *DrillThresholdMutation) Sessions() (r int, exists bool) {
+	v := m.sessions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSessions returns the old "sessions" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldSessions(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSessions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSessions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSessions: %w", err)
+	}
+	return oldValue.Sessions, nil
+}
+
+// AddSessions adds i to the "sessions" field.
+func (m *DrillThresholdMutation) AddSessions(i int) {
+	if m.addsessions != nil {
+		*m.addsessions += i
+	} else {
+		m.addsessions = &i
+	}
+}
+
+// AddedSessions returns the value that was added to the "sessions" field in this mutation.
+func (m *DrillThresholdMutation) AddedSessions() (r int, exists bool) {
+	v := m.addsessions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSessions resets all changes to the "sessions" field.
+func (m *DrillThresholdMutation) ResetSessions() {
+	m.sessions = nil
+	m.addsessions = nil
+}
+
+// SetStudents sets the "students" field.
+func (m *DrillThresholdMutation) SetStudents(i int) {
+	m.students = &i
+	m.addstudents = nil
+}
+
+// Students returns the value of the "students" field in the mutation.
+func (m *DrillThresholdMutation) Students() (r int, exists bool) {
+	v := m.students
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStudents returns the old "students" field's value of the DrillThreshold entity.
+// If the DrillThreshold object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DrillThresholdMutation) OldStudents(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStudents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStudents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStudents: %w", err)
+	}
+	return oldValue.Students, nil
+}
+
+// AddStudents adds i to the "students" field.
+func (m *DrillThresholdMutation) AddStudents(i int) {
+	if m.addstudents != nil {
+		*m.addstudents += i
+	} else {
+		m.addstudents = &i
+	}
+}
+
+// AddedStudents returns the value that was added to the "students" field in this mutation.
+func (m *DrillThresholdMutation) AddedStudents() (r int, exists bool) {
+	v := m.addstudents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStudents resets all changes to the "students" field.
+func (m *DrillThresholdMutation) ResetStudents() {
+	m.students = nil
+	m.addstudents = nil
+}
+
+// ClearTemplate clears the "template" edge to the DrillTemplate entity.
+func (m *DrillThresholdMutation) ClearTemplate() {
+	m.clearedtemplate = true
+	m.clearedFields[drillthreshold.FieldTemplateID] = struct{}{}
+}
+
+// TemplateCleared reports if the "template" edge to the DrillTemplate entity was cleared.
+func (m *DrillThresholdMutation) TemplateCleared() bool {
+	return m.clearedtemplate
+}
+
+// TemplateIDs returns the "template" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TemplateID instead. It exists only for internal usage by the builders.
+func (m *DrillThresholdMutation) TemplateIDs() (ids []uuid.UUID) {
+	if id := m.template; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTemplate resets all changes to the "template" edge.
+func (m *DrillThresholdMutation) ResetTemplate() {
+	m.template = nil
+	m.clearedtemplate = false
+}
+
+// Where appends a list predicates to the DrillThresholdMutation builder.
+func (m *DrillThresholdMutation) Where(ps ...predicate.DrillThreshold) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DrillThresholdMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DrillThresholdMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DrillThreshold, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DrillThresholdMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DrillThresholdMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DrillThreshold).
+func (m *DrillThresholdMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DrillThresholdMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.template != nil {
+		fields = append(fields, drillthreshold.FieldTemplateID)
+	}
+	if m.version != nil {
+		fields = append(fields, drillthreshold.FieldVersion)
+	}
+	if m.effective_from != nil {
+		fields = append(fields, drillthreshold.FieldEffectiveFrom)
+	}
+	if m.fluent_net_ms != nil {
+		fields = append(fields, drillthreshold.FieldFluentNetMs)
+	}
+	if m.source != nil {
+		fields = append(fields, drillthreshold.FieldSource)
+	}
+	if m.sessions != nil {
+		fields = append(fields, drillthreshold.FieldSessions)
+	}
+	if m.students != nil {
+		fields = append(fields, drillthreshold.FieldStudents)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DrillThresholdMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case drillthreshold.FieldTemplateID:
+		return m.TemplateID()
+	case drillthreshold.FieldVersion:
+		return m.Version()
+	case drillthreshold.FieldEffectiveFrom:
+		return m.EffectiveFrom()
+	case drillthreshold.FieldFluentNetMs:
+		return m.FluentNetMs()
+	case drillthreshold.FieldSource:
+		return m.Source()
+	case drillthreshold.FieldSessions:
+		return m.Sessions()
+	case drillthreshold.FieldStudents:
+		return m.Students()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DrillThresholdMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case drillthreshold.FieldTemplateID:
+		return m.OldTemplateID(ctx)
+	case drillthreshold.FieldVersion:
+		return m.OldVersion(ctx)
+	case drillthreshold.FieldEffectiveFrom:
+		return m.OldEffectiveFrom(ctx)
+	case drillthreshold.FieldFluentNetMs:
+		return m.OldFluentNetMs(ctx)
+	case drillthreshold.FieldSource:
+		return m.OldSource(ctx)
+	case drillthreshold.FieldSessions:
+		return m.OldSessions(ctx)
+	case drillthreshold.FieldStudents:
+		return m.OldStudents(ctx)
+	}
+	return nil, fmt.Errorf("unknown DrillThreshold field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DrillThresholdMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case drillthreshold.FieldTemplateID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTemplateID(v)
+		return nil
+	case drillthreshold.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
+	case drillthreshold.FieldEffectiveFrom:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEffectiveFrom(v)
+		return nil
+	case drillthreshold.FieldFluentNetMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFluentNetMs(v)
+		return nil
+	case drillthreshold.FieldSource:
+		v, ok := value.(drillthreshold.Source)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	case drillthreshold.FieldSessions:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSessions(v)
+		return nil
+	case drillthreshold.FieldStudents:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStudents(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DrillThreshold field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DrillThresholdMutation) AddedFields() []string {
+	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, drillthreshold.FieldVersion)
+	}
+	if m.addfluent_net_ms != nil {
+		fields = append(fields, drillthreshold.FieldFluentNetMs)
+	}
+	if m.addsessions != nil {
+		fields = append(fields, drillthreshold.FieldSessions)
+	}
+	if m.addstudents != nil {
+		fields = append(fields, drillthreshold.FieldStudents)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DrillThresholdMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case drillthreshold.FieldVersion:
+		return m.AddedVersion()
+	case drillthreshold.FieldFluentNetMs:
+		return m.AddedFluentNetMs()
+	case drillthreshold.FieldSessions:
+		return m.AddedSessions()
+	case drillthreshold.FieldStudents:
+		return m.AddedStudents()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DrillThresholdMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case drillthreshold.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
+	case drillthreshold.FieldFluentNetMs:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFluentNetMs(v)
+		return nil
+	case drillthreshold.FieldSessions:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSessions(v)
+		return nil
+	case drillthreshold.FieldStudents:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStudents(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DrillThreshold numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DrillThresholdMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DrillThresholdMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DrillThresholdMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DrillThreshold nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DrillThresholdMutation) ResetField(name string) error {
+	switch name {
+	case drillthreshold.FieldTemplateID:
+		m.ResetTemplateID()
+		return nil
+	case drillthreshold.FieldVersion:
+		m.ResetVersion()
+		return nil
+	case drillthreshold.FieldEffectiveFrom:
+		m.ResetEffectiveFrom()
+		return nil
+	case drillthreshold.FieldFluentNetMs:
+		m.ResetFluentNetMs()
+		return nil
+	case drillthreshold.FieldSource:
+		m.ResetSource()
+		return nil
+	case drillthreshold.FieldSessions:
+		m.ResetSessions()
+		return nil
+	case drillthreshold.FieldStudents:
+		m.ResetStudents()
+		return nil
+	}
+	return fmt.Errorf("unknown DrillThreshold field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DrillThresholdMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.template != nil {
+		edges = append(edges, drillthreshold.EdgeTemplate)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DrillThresholdMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case drillthreshold.EdgeTemplate:
+		if id := m.template; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DrillThresholdMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DrillThresholdMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DrillThresholdMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedtemplate {
+		edges = append(edges, drillthreshold.EdgeTemplate)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DrillThresholdMutation) EdgeCleared(name string) bool {
+	switch name {
+	case drillthreshold.EdgeTemplate:
+		return m.clearedtemplate
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DrillThresholdMutation) ClearEdge(name string) error {
+	switch name {
+	case drillthreshold.EdgeTemplate:
+		m.ClearTemplate()
+		return nil
+	}
+	return fmt.Errorf("unknown DrillThreshold unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DrillThresholdMutation) ResetEdge(name string) error {
+	switch name {
+	case drillthreshold.EdgeTemplate:
+		m.ResetTemplate()
+		return nil
+	}
+	return fmt.Errorf("unknown DrillThreshold edge %s", name)
 }
 
 // ExerciseMutation represents an operation that mutates the Exercise nodes in the graph.

@@ -15,6 +15,7 @@ type practiceResponseDocument struct {
 	Fret             *int     `bson:"fret,omitempty"`
 	OptionIDs        []string `bson:"option_ids,omitempty"`
 	LatencyMs        *int     `bson:"latency_ms,omitempty"`
+	AudioMs          *int     `bson:"audio_ms,omitempty"`
 	Rating           string   `bson:"rating,omitempty"`
 	TempoBPM         *int     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `bson:"changes_per_minute,omitempty"`
@@ -29,14 +30,37 @@ type practiceEvidenceDocument struct {
 	Source            string                   `bson:"source"`
 	OccurredAt        time.Time                `bson:"occurred_at"`
 	PracticeSessionID string                   `bson:"practice_session_id,omitempty"`
+	TriggerContext    *triggerContextDocument  `bson:"trigger_context,omitempty"`
 	GraderID          string                   `bson:"grader_id,omitempty"`
 	Response          practiceResponseDocument `bson:"response"`
 	Correct           *bool                    `bson:"correct,omitempty"`
 	LatencyMs         *int                     `bson:"latency_ms,omitempty"`
+	AudioMs           *int                     `bson:"audio_ms,omitempty"`
 	TapMs             *int                     `bson:"tap_ms,omitempty"`
 	Rating            string                   `bson:"rating,omitempty"`
 	TempoBPM          *int                     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute  *int                     `bson:"changes_per_minute,omitempty"`
+}
+
+// triggerContextDocument is where an answer outside a practice session was given.
+type triggerContextDocument struct {
+	Source        string `bson:"source"`
+	ContentNodeID string `bson:"content_node_id,omitempty"`
+	ChallengeID   string `bson:"challenge_id,omitempty"`
+}
+
+func toTriggerContextDocument(tc *domain.TriggerContext) *triggerContextDocument {
+	if tc == nil {
+		return nil
+	}
+	return &triggerContextDocument{Source: tc.Source, ContentNodeID: tc.ContentNodeID, ChallengeID: tc.ChallengeID}
+}
+
+func (d *triggerContextDocument) toDomain() *domain.TriggerContext {
+	if d == nil {
+		return nil
+	}
+	return &domain.TriggerContext{Source: d.Source, ContentNodeID: d.ContentNodeID, ChallengeID: d.ChallengeID}
 }
 
 func toEvidenceDocument(e domain.PracticeEvidence) practiceEvidenceDocument {
@@ -48,6 +72,7 @@ func toEvidenceDocument(e domain.PracticeEvidence) practiceEvidenceDocument {
 		Source:            string(e.Source),
 		OccurredAt:        e.OccurredAt,
 		PracticeSessionID: e.PracticeSessionID,
+		TriggerContext:    toTriggerContextDocument(e.TriggerContext),
 		GraderID:          e.GraderID,
 		Response: practiceResponseDocument{
 			ResponseType:     string(r.Type),
@@ -56,12 +81,14 @@ func toEvidenceDocument(e domain.PracticeEvidence) practiceEvidenceDocument {
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,
 			LatencyMs:        r.LatencyMs,
+			AudioMs:          r.AudioMs,
 			Rating:           string(r.Rating),
 			TempoBPM:         r.TempoBPM,
 			ChangesPerMinute: r.ChangesPerMinute,
 		},
 		Correct:          e.Correct,
 		LatencyMs:        e.LatencyMs,
+		AudioMs:          e.AudioMs,
 		TapMs:            e.TapMs,
 		Rating:           string(e.Rating),
 		TempoBPM:         e.TempoBPM,
@@ -78,6 +105,7 @@ func (d practiceEvidenceDocument) toDomain() domain.PracticeEvidence {
 		Source:            domain.EvidenceSource(d.Source),
 		OccurredAt:        d.OccurredAt.UTC(),
 		PracticeSessionID: d.PracticeSessionID,
+		TriggerContext:    d.TriggerContext.toDomain(),
 		GraderID:          d.GraderID,
 		Response: domain.PracticeResponse{
 			Type:             domain.PracticeResponseType(r.ResponseType),
@@ -86,12 +114,14 @@ func (d practiceEvidenceDocument) toDomain() domain.PracticeEvidence {
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,
 			LatencyMs:        r.LatencyMs,
+			AudioMs:          r.AudioMs,
 			Rating:           domain.SelfRating(r.Rating),
 			TempoBPM:         r.TempoBPM,
 			ChangesPerMinute: r.ChangesPerMinute,
 		},
 		Correct:          d.Correct,
 		LatencyMs:        d.LatencyMs,
+		AudioMs:          d.AudioMs,
 		TapMs:            d.TapMs,
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,

@@ -20,6 +20,7 @@ type wireEvent struct {
 	} `json:"content_context,omitempty"`
 
 	PracticeSessionID string                `json:"practice_session_id,omitempty"`
+	TriggerContext    *triggerContextWire   `json:"trigger_context,omitempty"`
 	ItemKey           string                `json:"item_key,omitempty"`
 	Response          *practiceResponseWire `json:"response,omitempty"`
 	TapMs             *int                  `json:"tap_ms,omitempty"`
@@ -29,6 +30,13 @@ type wireEvent struct {
 	PlannedItems  []plannedItemWire `json:"planned_items,omitempty"`
 	AnsweredCount int               `json:"answered_count,omitempty"`
 	LeftEarly     bool              `json:"left_early,omitempty"`
+}
+
+// triggerContextWire is where an answer outside a practice session was given.
+type triggerContextWire struct {
+	Source        string `json:"source"`
+	ContentNodeID string `json:"content_node_id,omitempty"`
+	ChallengeID   string `json:"challenge_id,omitempty"`
 }
 
 type plannedItemWire struct {
@@ -44,6 +52,7 @@ type practiceResponseWire struct {
 	Fret             *int     `json:"fret,omitempty"`
 	OptionIDs        []string `json:"option_ids,omitempty"`
 	LatencyMs        *int     `json:"latency_ms,omitempty"`
+	AudioMs          *int     `json:"audio_ms,omitempty"`
 	Rating           string   `json:"rating,omitempty"`
 	TempoBPM         *int     `json:"tempo_bpm,omitempty"`
 	ChangesPerMinute *int     `json:"changes_per_minute,omitempty"`

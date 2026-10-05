@@ -26,8 +26,11 @@ type ExerciseService struct {
 	voices ports.VoiceRepository
 	// users names the creators ListExerciseCreators returns.
 	users ports.UserRepository
-	newID func() string
-	now   func() time.Time
+	// references is the practice reference snapshot every saved exercise is
+	// written to, for the exercise_option grader.
+	references ports.PracticeReferenceWriter
+	newID      func() string
+	now        func() time.Time
 	// shuffle randomizes n elements in place via swap, matching
 	// math/rand.Shuffle's signature — injected so tests can supply a
 	// deterministic permutation instead of a real random one.
@@ -43,11 +46,12 @@ func NewExerciseService(
 	instruments ports.InstrumentRepository,
 	voices ports.VoiceRepository,
 	users ports.UserRepository,
+	references ports.PracticeReferenceWriter,
 	newID func() string,
 	now func() time.Time,
 	shuffle func(n int, swap func(i, j int)),
 ) *ExerciseService {
-	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, newID: newID, now: now, shuffle: shuffle}
+	return &ExerciseService{challenges: challenges, exercises: exercises, nodes: nodes, knowledge: knowledge, diagrams: diagrams, instruments: instruments, voices: voices, users: users, references: references, newID: newID, now: now, shuffle: shuffle}
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -114,6 +118,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 	if err := s.exercises.Create(ctx, exercise); err != nil {
 		return domain.Exercise{}, err
 	}
+	putExerciseReference(ctx, s.references, exercise)
 	// Re-fetched rather than returned as constructed: exercise.Languages/
 	// Skills/Concepts only carry the request-supplied codes/ids until read
 	// back with their rows joined in.
@@ -461,6 +466,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}
+	putExerciseReference(ctx, s.references, updated)
 	// Re-fetched rather than returned as updated: same construct-then-refetch
 	// convention CreateExercise follows, for the same reason (see its comment).
 	return s.exercises.GetByID(ctx, updated.ID)

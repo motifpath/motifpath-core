@@ -67,10 +67,13 @@ func run() error {
 	if err := writer.EnsureIndexes(ctx); err != nil {
 		return fmt.Errorf("ensure the practice reference indexes: %w", err)
 	}
-	synced, err := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), writer).SyncDiagrams(ctx)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
+	synced, err := sync.Sync(ctx)
 	if err != nil {
-		return fmt.Errorf("sync diagrams (%d written): %w", synced, err)
+		return fmt.Errorf("sync the snapshot (%d diagrams, %d exercises, %d drill thresholds written): %w",
+			synced.Diagrams, synced.Exercises, synced.DrillThresholds, err)
 	}
-	log.Printf("practice reference snapshot synced: %d diagrams", synced)
+	log.Printf("practice reference snapshot synced: %d diagrams, %d exercises, %d drill thresholds",
+		synced.Diagrams, synced.Exercises, synced.DrillThresholds)
 	return nil
 }

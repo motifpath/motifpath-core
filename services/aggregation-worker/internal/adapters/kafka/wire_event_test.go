@@ -135,6 +135,27 @@ func TestToDomainEvent_PracticeSessionEnded(t *testing.T) {
 	assert.Nil(t, event.SessionStart)
 }
 
+func TestToDomainEvent_AChallengeAnswerCarriesItsTriggerContextAndAudio(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","trigger_context":{"source":"challenge_sequence","challenge_id":"c","content_node_id":"n"},"item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"],"latency_ms":9500,"audio_ms":5000}}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	require.NotNil(t, event.PracticeAnswer)
+	assert.Equal(t, &domain.TriggerContext{Source: "challenge_sequence", ChallengeID: "c", ContentNodeID: "n"}, event.PracticeAnswer.TriggerContext)
+	assert.Equal(t, intPtr(5000), event.PracticeAnswer.Response.AudioMs)
+}
+
+func TestToDomainEvent_AnAnswerInASessionHasNoTriggerContext(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","practice_session_id":"p","item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"],"latency_ms":900}}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	require.NotNil(t, event.PracticeAnswer)
+	assert.Nil(t, event.PracticeAnswer.TriggerContext)
+}
+
 func TestToDomainEvent_AnAnswerOutsideASessionHasNoSession(t *testing.T) {
 	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.item_answered","student_id":"s","trigger_context":{"source":"challenge_sequence"},"item_key":"exercise:e","response":{"response_type":"option_choice","option_ids":["a"]}}`))
 	require.NoError(t, err)

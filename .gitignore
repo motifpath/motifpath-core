@@ -34,3 +34,6 @@ npm-debug.log*
 
 # Local implementation plans (ADR-022) — never committed
 plans/
+
+# Python bytecode (scripts/*)
+__pycache__/

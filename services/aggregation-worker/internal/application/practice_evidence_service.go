@@ -54,14 +54,18 @@ func (s *PracticeEvidenceService) Process(ctx context.Context, answer domain.Pra
 		return nil
 	}
 
-	diagrams, err := s.reference.Diagrams(ctx, key.DiagramIDs())
+	ref, err := s.referenceFor(ctx, key)
 	if err != nil {
 		return err
 	}
-	result := grader.Grade(key, answer.Response, domain.PracticeReference{Diagrams: diagrams})
+	result := grader.Grade(key, answer.Response, ref)
 	if result.Rejection != "" {
 		log.InfoContext(ctx, "practice answer rejected by its grader", "grader", grader.ID(), "reason", result.Rejection)
 		return nil
+	}
+	goal, err := s.goalOf(ctx, key, ref)
+	if err != nil {
+		return err
 	}
 
 	evidence := toEvidence(answer, grader.ID(), result.Evidence)
@@ -69,7 +73,22 @@ func (s *PracticeEvidenceService) Process(ctx context.Context, answer domain.Pra
 	if err != nil {
 		return err
 	}
-	return s.foldInto(ctx, evidence, goalOf(key, diagrams), inserted)
+	return s.foldInto(ctx, evidence, goal, inserted)
+}
+
+// referenceFor reads the reference data the item's key points at.
+func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.PracticeItemKey) (domain.PracticeReference, error) {
+	diagrams, err := s.reference.Diagrams(ctx, key.DiagramIDs())
+	if err != nil {
+		return domain.PracticeReference{}, err
+	}
+	ref := domain.PracticeReference{Diagrams: diagrams}
+	if id := key.ExerciseID(); id != "" {
+		if ref.Exercises, err = s.reference.Exercises(ctx, []string{id}); err != nil {
+			return domain.PracticeReference{}, err
+		}
+	}
+	return ref, nil
 }
 
 func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.PracticeEvidence, goal domain.ItemGoal, inserted bool) error {
@@ -114,10 +133,12 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 		Source:            graded.Source,
 		OccurredAt:        answer.OccurredAt,
 		PracticeSessionID: answer.PracticeSessionID,
+		TriggerContext:    answer.TriggerContext,
 		GraderID:          graderID,
 		Response:          answer.Response,
 		Correct:           graded.Correct,
 		LatencyMs:         graded.LatencyMs,
+		AudioMs:           graded.AudioMs,
 		TapMs:             answer.TapMs,
 		Rating:            graded.Rating,
 		TempoBPM:          graded.TempoBPM,
@@ -126,11 +147,17 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 }
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
-// against its diagram's tempo. Chord changes have no source for a target rate yet,
-// so any clean minute counts as fully fluent.
-func goalOf(key domain.PracticeItemKey, diagrams map[string]domain.DiagramReference) domain.ItemGoal {
-	if key.Kind != domain.PracticeItemKindPlayAlong {
-		return domain.ItemGoal{}
+// against its diagram's tempo, and an exercise against its type's fluent times.
+// Chord changes have no source for a target rate yet, so any clean minute counts
+// as fully fluent.
+func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
+	switch key.Kind {
+	case domain.PracticeItemKindPlayAlong:
+		return domain.ItemGoal{TargetTempoBPM: ref.Diagrams[key.DiagramIDs()[0]].TempoBPM}, nil
+	case domain.PracticeItemKindExercise:
+		fluentTimes, err := s.reference.FluentTimes(ctx, ref.Exercises[key.ExerciseID()].DrillTemplateKey())
+		return domain.ItemGoal{FluentTimes: fluentTimes}, err
+	case domain.PracticeItemKindChordChange, domain.PracticeItemKindFretboardCell:
 	}
-	return domain.ItemGoal{TargetTempoBPM: diagrams[key.DiagramIDs()[0]].TempoBPM}
+	return domain.ItemGoal{}, nil
 }

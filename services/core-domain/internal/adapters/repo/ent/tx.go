@@ -52,6 +52,10 @@ type Tx struct {
 	DiagramRegion *DiagramRegionClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
 	DiagramSkill *DiagramSkillClient
+	// DrillTemplate is the client for interacting with the DrillTemplate builders.
+	DrillTemplate *DrillTemplateClient
+	// DrillThreshold is the client for interacting with the DrillThreshold builders.
+	DrillThreshold *DrillThresholdClient
 	// Exercise is the client for interacting with the Exercise builders.
 	Exercise *ExerciseClient
 	// ExerciseConcept is the client for interacting with the ExerciseConcept builders.
@@ -245,6 +249,8 @@ func (tx *Tx) init() {
 	tx.DiagramInstrument = NewDiagramInstrumentClient(tx.config)
 	tx.DiagramRegion = NewDiagramRegionClient(tx.config)
 	tx.DiagramSkill = NewDiagramSkillClient(tx.config)
+	tx.DrillTemplate = NewDrillTemplateClient(tx.config)
+	tx.DrillThreshold = NewDrillThresholdClient(tx.config)
 	tx.Exercise = NewExerciseClient(tx.config)
 	tx.ExerciseConcept = NewExerciseConceptClient(tx.config)
 	tx.ExerciseInstrument = NewExerciseInstrumentClient(tx.config)

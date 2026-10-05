@@ -200,12 +200,15 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	synced, err := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), writer).SyncDiagrams(ctx)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
+	synced, err := sync.Sync(ctx)
 	if err != nil {
-		logger.Error("sync the practice reference snapshot", "synced", synced, "error", err)
+		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
+			"drill_thresholds", synced.DrillThresholds, "error", err)
 		return
 	}
-	logger.Info("practice reference snapshot synced", "diagrams", synced)
+	logger.Info("practice reference snapshot synced", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
+		"drill_thresholds", synced.DrillThresholds)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
@@ -287,11 +290,12 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 
 	newID := uuid.NewString
 	now := func() time.Time { return time.Now().UTC() }
+	practiceReferences := repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now)
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
 	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, mathrand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle)
 	knowledgeNodeService := application.NewKnowledgeNodeService(knowledgeNodeRepo, instrumentRepo, languageRepo, newID)
 	knowledgeEdgeService := application.NewKnowledgeEdgeService(knowledgeEdgeRepo, knowledgeNodeRepo, newID)
 	mediaService := application.NewMediaService(exerciseRepo, mediaStorage, newID)
@@ -303,7 +307,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// Voice samples are served from the same public media address as
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
-	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now), newID, now)
+	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, newID, now)
 	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, nodeRepo, diagramRepo, repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,

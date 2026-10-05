@@ -23,6 +23,10 @@ type goldenCaseFile struct {
 		Diagrams map[string]struct {
 			Name string `json:"name"`
 		} `json:"diagrams"`
+		Exercises map[string]struct {
+			OptionIDs        []string `json:"option_ids"`
+			CorrectOptionIDs []string `json:"correct_option_ids"`
+		} `json:"exercises"`
 	} `json:"reference"`
 	Cases []struct {
 		Name     string          `json:"name"`
@@ -35,6 +39,7 @@ type goldenCaseFile struct {
 				Source           string `json:"source"`
 				Correct          *bool  `json:"correct"`
 				LatencyMs        *int   `json:"latency_ms"`
+				AudioMs          *int   `json:"audio_ms"`
 				Rating           string `json:"rating"`
 				TempoBPM         *int   `json:"tempo_bpm"`
 				ChangesPerMinute *int   `json:"changes_per_minute"`
@@ -56,9 +61,12 @@ func TestGraderGoldenCases(t *testing.T) {
 			require.NoError(t, json.Unmarshal(raw, &file))
 			require.Equal(t, grader.ID(), file.Grader)
 
-			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}}
+			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{}}
 			for id := range file.Reference.Diagrams {
 				ref.Diagrams[id] = domain.DiagramReference{ID: id}
+			}
+			for id, e := range file.Reference.Exercises {
+				ref.Exercises[id] = domain.ExerciseReference{ID: id, OptionIDs: e.OptionIDs, CorrectOptionIDs: e.CorrectOptionIDs}
 			}
 
 			for _, c := range file.Cases {
@@ -79,6 +87,7 @@ func TestGraderGoldenCases(t *testing.T) {
 					assert.Equal(t, domain.EvidenceSource(want.Source), got.Evidence.Source)
 					assert.Equal(t, want.Correct, got.Evidence.Correct)
 					assert.Equal(t, want.LatencyMs, got.Evidence.LatencyMs)
+					assert.Equal(t, want.AudioMs, got.Evidence.AudioMs)
 					assert.Equal(t, domain.SelfRating(want.Rating), got.Evidence.Rating)
 					assert.Equal(t, want.TempoBPM, got.Evidence.TempoBPM)
 					assert.Equal(t, want.ChangesPerMinute, got.Evidence.ChangesPerMinute)
@@ -98,6 +107,7 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		Fret             *int     `json:"fret"`
 		OptionIDs        []string `json:"option_ids"`
 		LatencyMs        *int     `json:"latency_ms"`
+		AudioMs          *int     `json:"audio_ms"`
 		Rating           string   `json:"rating"`
 		TempoBPM         *int     `json:"tempo_bpm"`
 		ChangesPerMinute *int     `json:"changes_per_minute"`
@@ -112,6 +122,7 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 		Fret:             w.Fret,
 		OptionIDs:        w.OptionIDs,
 		LatencyMs:        w.LatencyMs,
+		AudioMs:          w.AudioMs,
 		Rating:           domain.SelfRating(w.Rating),
 		TempoBPM:         w.TempoBPM,
 		ChangesPerMinute: w.ChangesPerMinute,

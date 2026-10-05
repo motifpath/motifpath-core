@@ -173,12 +173,149 @@ func TestFoldEvidence_ChordChangesMeasureChangesPerMinute(t *testing.T) {
 }
 
 func TestFoldEvidence_RejectsSourcesWithoutRulesYet(t *testing.T) {
-	for _, source := range []EvidenceSource{EvidenceSourceAutoGraded, EvidenceSourceTeacherReviewed} {
-		e := take(onDay(0), SelfRatingClean, 80)
-		e.Source = source
-		_, err := FoldEvidence(ItemFold{}, e, target100)
-		assert.ErrorIs(t, err, ErrUnsupportedEvidenceSource, source)
+	e := take(onDay(0), SelfRatingClean, 80)
+	e.Source = EvidenceSourceTeacherReviewed
+	_, err := FoldEvidence(ItemFold{}, e, target100)
+	assert.ErrorIs(t, err, ErrUnsupportedEvidenceSource)
+}
+
+// answer is auto-graded evidence for an exercise: right or wrong, after latency ms.
+func answer(at time.Time, correct bool, latency int) PracticeEvidence {
+	return PracticeEvidence{
+		ItemKey:    "exercise:" + diagramA,
+		Source:     EvidenceSourceAutoGraded,
+		OccurredAt: at,
+		GraderID:   "exercise_option.v1",
+		Correct:    ptr(correct),
+		LatencyMs:  ptr(latency),
 	}
+}
+
+var october1 = time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+
+// fluent6s is a text exercise's default fluent time, in force since October 1st.
+var fluent6s = ItemGoal{FluentTimes: []FluentTime{{Version: 1, EffectiveFrom: october1, FluentNetMs: 6000}}}
+
+func TestFoldEvidence_AutoGradedAnswers(t *testing.T) {
+	t.Run("a right answer is a hit", func(t *testing.T) {
+		f := foldAll(t, fluent6s, answer(onDay(0), true, 4000))
+
+		assert.Equal(t, 1, f.Counted)
+		assert.InDelta(t, 1, f.Accuracy, 1e-9)
+		assert.Equal(t, 1, f.Box)
+	})
+
+	t.Run("a wrong answer is a miss", func(t *testing.T) {
+		f := foldAll(t, fluent6s, answer(onDay(0), true, 4000), answer(onDay(1), true, 4000), answer(onDay(3), false, 4000))
+
+		assert.Equal(t, 1, f.Box)
+		assert.Less(t, f.Accuracy, 1.0)
+	})
+
+	t.Run("a right answer within the fluent time is fully fluent", func(t *testing.T) {
+		f := foldAll(t, fluent6s, answer(onDay(0), true, 5999))
+
+		assert.InDelta(t, 1, f.Fluency, 1e-9)
+	})
+
+	t.Run("a slower right answer is fluent in proportion", func(t *testing.T) {
+		f := foldAll(t, fluent6s, answer(onDay(0), true, 8000))
+
+		assert.InDelta(t, 0.75, f.Fluency, 1e-9)
+	})
+
+	t.Run("the time is judged net of the tap time and the audio", func(t *testing.T) {
+		e := answer(onDay(0), true, 11000)
+		e.TapMs, e.AudioMs = ptr(300), ptr(6000)
+		goal := ItemGoal{FluentTimes: []FluentTime{{Version: 1, EffectiveFrom: october1, FluentNetMs: 4000}}}
+
+		judged, ok := JudgeTimed(e, goal)
+
+		require.True(t, ok)
+		assert.Equal(t, 4700, judged.NetMs)
+		assert.False(t, judged.WithinFluentTime)
+		assert.InDelta(t, 4000.0/4700, foldAll(t, goal, e).Fluency, 1e-9)
+	})
+
+	t.Run("a net time below zero counts as zero", func(t *testing.T) {
+		e := answer(onDay(0), true, 200)
+		e.TapMs = ptr(300)
+
+		judged, ok := JudgeTimed(e, fluent6s)
+
+		require.True(t, ok)
+		assert.Equal(t, 0, judged.NetMs)
+		assert.True(t, judged.WithinFluentTime)
+	})
+
+	t.Run("five right answers within the fluent time are fluent", func(t *testing.T) {
+		var evidence []PracticeEvidence
+		for i := range 5 {
+			evidence = append(evidence, answer(onDay(0).Add(time.Duration(i)*time.Minute), true, 3000))
+		}
+
+		assert.Equal(t, KnowledgeLevelFluent, foldAll(t, fluent6s, evidence...).Level())
+	})
+
+	t.Run("five right answers far slower than the fluent time stay accurate", func(t *testing.T) {
+		var evidence []PracticeEvidence
+		for i := range 5 {
+			evidence = append(evidence, answer(onDay(0).Add(time.Duration(i)*time.Minute), true, 12000))
+		}
+
+		assert.Equal(t, KnowledgeLevelAccurate, foldAll(t, fluent6s, evidence...).Level())
+	})
+
+	t.Run("an answer with no fluent time in force counts for accuracy only", func(t *testing.T) {
+		before := answer(time.Date(2026, 9, 30, 9, 0, 0, 0, time.UTC), true, 1000)
+
+		_, ok := JudgeTimed(before, fluent6s)
+		f := foldAll(t, fluent6s, before)
+
+		assert.False(t, ok)
+		assert.Equal(t, 1, f.Counted)
+		assert.InDelta(t, 1, f.Accuracy, 1e-9)
+		assert.InDelta(t, 0, f.Fluency, 1e-9)
+	})
+
+	t.Run("an answer without its verdict is refused", func(t *testing.T) {
+		e := answer(onDay(0), true, 4000)
+		e.Correct = nil
+
+		_, err := FoldEvidence(ItemFold{}, e, fluent6s)
+
+		assert.Error(t, err)
+	})
+}
+
+func TestItemGoal_FluentTimeAt(t *testing.T) {
+	november1 := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	goal := ItemGoal{FluentTimes: []FluentTime{
+		{Version: 2, EffectiveFrom: november1, FluentNetMs: 4000},
+		{Version: 1, EffectiveFrom: october1, FluentNetMs: 5000},
+	}}
+
+	t.Run("each answer is judged by the version in force when it was given", func(t *testing.T) {
+		v, ok := goal.FluentTimeAt(time.Date(2026, 10, 31, 23, 59, 0, 0, time.UTC))
+		require.True(t, ok)
+		assert.Equal(t, 1, v.Version)
+
+		v, ok = goal.FluentTimeAt(november1)
+		require.True(t, ok)
+		assert.Equal(t, 2, v.Version)
+	})
+
+	t.Run("before the first version, none is in force", func(t *testing.T) {
+		_, ok := goal.FluentTimeAt(october1.Add(-time.Second))
+		assert.False(t, ok)
+	})
+
+	t.Run("a new version never takes back an earlier answer's fluency", func(t *testing.T) {
+		early := answer(time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC), true, 4800)
+		onlyV1 := ItemGoal{FluentTimes: goal.FluentTimes[1:]}
+
+		assert.Equal(t, foldAll(t, onlyV1, early), foldAll(t, goal, early))
+	})
 }
 
 func TestRebuildFold_FoldsInTimeOrderAndTiesInArrivalOrder(t *testing.T) {

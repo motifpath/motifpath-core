@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/event-ingestion/internal/adapters/http/generated"
 	"github.com/motifpath/event-ingestion/internal/domain"
@@ -91,7 +92,7 @@ func toPracticeItemAnsweredEvent(eventType domain.EventType, body *generated.Tra
 	if err != nil {
 		return nil, err
 	}
-	practiceSessionID, err := requireUUID(v.PracticeSessionId, "practice_session_id")
+	practiceSessionID, trigger, err := toAnswerContext(v.PracticeSessionId, v.TriggerContext)
 	if err != nil {
 		return nil, err
 	}
@@ -112,9 +113,30 @@ func toPracticeItemAnsweredEvent(eventType domain.EventType, body *generated.Tra
 	return domain.PracticeItemAnsweredEvent{
 		TrackingEventBase: base,
 		PracticeSessionID: practiceSessionID,
+		TriggerContext:    trigger,
 		ItemKey:           v.ItemKey,
 		Response:          response,
 	}, nil
+}
+
+// toAnswerContext reads the one context an answer belongs to: its practice session, or
+// the trigger context of an exercise answered elsewhere on the platform.
+func toAnswerContext(sessionID *openapi_types.UUID, tc *generated.TriggerContext) (string, *domain.TriggerContext, error) {
+	switch {
+	case sessionID != nil && tc != nil:
+		return "", nil, fmt.Errorf("%w: trigger_context must be absent when practice_session_id is present", domain.ErrInvalidField)
+	case tc != nil:
+		trigger, err := toDomainTriggerContext(*tc)
+		if err != nil {
+			return "", nil, err
+		}
+		return "", &trigger, nil
+	case sessionID != nil:
+		id, err := requireUUID(*sessionID, "practice_session_id")
+		return id, nil, err
+	default:
+		return "", nil, fmt.Errorf("%w: practice_session_id", domain.ErrMissingRequiredField)
+	}
 }
 
 func toPracticeSessionEndedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {
@@ -227,6 +249,7 @@ type rawPracticeResponse struct {
 	Fret             *int     `json:"fret"`
 	OptionIDs        []string `json:"option_ids"`
 	LatencyMs        *int     `json:"latency_ms"`
+	AudioMs          *int     `json:"audio_ms"`
 	Rating           *string  `json:"rating"`
 	TempoBPM         *int     `json:"tempo_bpm"`
 	ChangesPerMinute *int     `json:"changes_per_minute"`
@@ -245,6 +268,12 @@ func toDomainPracticeResponse(raw []byte) (domain.PracticeResponse, error) {
 	}
 	if r.LatencyMs != nil && *r.LatencyMs < 0 {
 		return invalidResponse("latency_ms must not be negative")
+	}
+	if r.AudioMs != nil && *r.AudioMs < 0 {
+		return invalidResponse("audio_ms must not be negative")
+	}
+	if r.AudioMs != nil && domain.PracticeResponseType(r.ResponseType) != domain.PracticeResponseOptionChoice {
+		return invalidResponse("audio_ms belongs to option_choice only")
 	}
 
 	switch domain.PracticeResponseType(r.ResponseType) {
@@ -317,7 +346,7 @@ func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, err
 	if r.LatencyMs == nil {
 		return invalidResponse("latency_ms is required")
 	}
-	return domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: ids, LatencyMs: r.LatencyMs}, nil
+	return domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: ids, LatencyMs: r.LatencyMs, AudioMs: r.AudioMs}, nil
 }
 
 func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {

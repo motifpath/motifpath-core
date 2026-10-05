@@ -20,7 +20,6 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 		domain.EventTypeLessonCompleted,
 		domain.EventTypeExerciseStarted,
 		domain.EventTypeExerciseProgress,
-		domain.EventTypeExerciseAnswerSent,
 		domain.EventTypeExerciseEnded,
 	}
 

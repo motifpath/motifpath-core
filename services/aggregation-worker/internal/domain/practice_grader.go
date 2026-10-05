@@ -26,6 +26,7 @@ type GradedEvidence struct {
 	Source           EvidenceSource
 	Correct          *bool
 	LatencyMs        *int
+	AudioMs          *int
 	Rating           SelfRating
 	TempoBPM         *int
 	ChangesPerMinute *int
@@ -48,10 +49,27 @@ type DiagramReference struct {
 	TempoBPM      *int
 }
 
+// ExerciseReference is what a grader may know about an authored exercise, from
+// core's practice_reference snapshot: its type, every option and the correct ones.
+type ExerciseReference struct {
+	ID               string
+	ExerciseType     string
+	OptionIDs        []string
+	CorrectOptionIDs []string
+	InstrumentIDs    []string
+}
+
+// DrillTemplateKey is the drill template the exercise's answers are timed under:
+// one per exercise type, so a family of exercises shares one fluent time.
+func (e ExerciseReference) DrillTemplateKey() string {
+	return string(PracticeItemKindExercise) + ":" + e.ExerciseType
+}
+
 // PracticeReference is the reference data a grade runs against. Anything an item key
 // points at that is missing here is unknown.
 type PracticeReference struct {
-	Diagrams map[string]DiagramReference
+	Diagrams  map[string]DiagramReference
+	Exercises map[string]ExerciseReference
 }
 
 // Grader grades raw responses to one or more item kinds under one versioned rule
@@ -64,10 +82,11 @@ type Grader interface {
 }
 
 // graderByKind is the registry: the grader for an item comes from its key's kind.
-// Fretboard cells and authored exercises get their graders with their drills.
+// Fretboard cells get theirs with the fretboard drill.
 var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindPlayAlong:   selfRatingV1{},
 	PracticeItemKindChordChange: selfRatingV1{},
+	PracticeItemKindExercise:    exerciseOptionV1{},
 }
 
 // GraderFor returns the grader for an item kind, and false when the worker has no
@@ -79,5 +98,5 @@ func GraderFor(kind PracticeItemKind) (Grader, bool) {
 
 // Graders lists each registered grader once.
 func Graders() []Grader {
-	return []Grader{selfRatingV1{}}
+	return []Grader{selfRatingV1{}, exerciseOptionV1{}}
 }

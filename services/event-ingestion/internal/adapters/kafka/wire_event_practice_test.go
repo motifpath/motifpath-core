@@ -31,7 +31,7 @@ func wireJSON(t *testing.T, event domain.TrackingEvent) string {
 }
 
 func TestToWireEvent_PracticeEvents(t *testing.T) {
-	latency, tap, tempo, str, fret := 1800, 350, 90, 6, 0
+	latency, tap, tempo, str, fret, audio := 1800, 350, 90, 6, 0, 5000
 
 	cases := []struct {
 		name  string
@@ -69,6 +69,21 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 				Response:          domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: &str, Fret: &fret, LatencyMs: &latency},
 			},
 			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:6:0","response":{"response_type":"find_the_note","string":6,"fret":0,"latency_ms":1800}}`,
+		},
+		{
+			name: "challenge answer with audio",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				TriggerContext: &domain.TriggerContext{
+					Source:        domain.TriggerSourceChallengeSequence,
+					ChallengeID:   "77777777-7777-4777-8777-777777777777",
+					ContentNodeID: "88888888-8888-4888-8888-888888888888",
+				},
+				ItemKey: "exercise:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice,
+					OptionIDs: []string{"66666666-6666-4666-8666-666666666666"}, LatencyMs: &latency, AudioMs: &audio},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","trigger_context":{"source":"challenge_sequence","content_node_id":"88888888-8888-4888-8888-888888888888","challenge_id":"77777777-7777-4777-8777-777777777777"},"item_key":"exercise:55555555-5555-4555-8555-555555555555","response":{"response_type":"option_choice","option_ids":["66666666-6666-4666-8666-666666666666"],"latency_ms":1800,"audio_ms":5000}}`,
 		},
 		{
 			name: "self-rated take",
