@@ -33,7 +33,8 @@ Core entities:
 
 Tracking events (client-emitted; defined in openapi/components/schemas/events.yaml):
   lesson.started, lesson.resumed, lesson.completed
-  exercise.started, exercise.progress, exercise.answer_sent, exercise.ended
+  exercise.started, exercise.progress, exercise.ended (an exercise's answers are
+  practice.item_answered, wherever it is answered)
   practice.session_started, practice.item_answered, practice.session_ended,
   practice.tap_check_completed — event-ingestion stamps the student's latest tap time
   (tap_ms) on timed practice.item_answered events; a client-sent tap_ms is ignored
