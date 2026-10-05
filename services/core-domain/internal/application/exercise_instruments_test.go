@@ -22,7 +22,7 @@ func instrumentKnowledge() *fakeKnowledgeNodeRepository {
 }
 
 func newInstrumentExerciseService(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, instrumentKnowledge(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, instrumentKnowledge(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 }
 
 func instruments(ids ...string) *[]string { return &ids }

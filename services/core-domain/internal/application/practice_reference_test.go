@@ -90,6 +90,137 @@ func TestDiagramService_PracticeReference(t *testing.T) {
 	})
 }
 
+// The exercise_option grader reads exercises only from the reference
+// snapshot, so creating or updating one must refresh it.
+func TestExerciseService_PracticeReference(t *testing.T) {
+	ctx := context.Background()
+	newService := func(references *fakePracticeReferenceWriter) (*application.ExerciseService, *fakeExerciseRepository) {
+		exercises := newFakeExerciseRepository()
+		return newExerciseServiceWithReferences(exercises, references), exercises
+	}
+	create := func(t *testing.T, ctx context.Context, svc *application.ExerciseService) domain.Exercise {
+		t.Helper()
+		e, err := svc.CreateExercise(ctx, teacherCaller(), "A minor or major?", domain.NewPlainTextPrompt("Which is it?"),
+			domain.ExerciseTypeTextResponse, []string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, textResponseOptions(), nil, nil, []string{"en"}, nil)
+		require.NoError(t, err)
+		return e
+	}
+	update := func(ctx context.Context, svc *application.ExerciseService, caller domain.User, id string, options []domain.Option) error {
+		_, err := svc.UpdateExercise(ctx, caller, id, "A minor or major?", domain.NewPlainTextPrompt("Which is it?"),
+			[]string{"skill-1"}, []string{"concept-1"}, nil, nil, nil, nil, options, nil, nil, []string{"en"}, nil)
+		return err
+	}
+
+	t.Run("creating an exercise writes its reference", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc, _ := newService(references)
+
+		got := create(t, ctx, svc)
+
+		ref, ok := references.exercise(got.ID)
+		require.True(t, ok, "no reference written")
+		assert.Equal(t, domain.NewExerciseReference(got), ref)
+		assert.Equal(t, []string{"opt-1"}, ref.CorrectOptionIDs)
+	})
+
+	t.Run("updating an exercise rewrites its reference", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc, _ := newService(references)
+		e := create(t, ctx, svc)
+		swapped := textResponseOptions()
+		swapped[0].IsCorrect, swapped[1].IsCorrect = false, true
+
+		require.NoError(t, update(ctx, svc, teacherCaller(), e.ID, swapped))
+
+		ref, ok := references.exercise(e.ID)
+		require.True(t, ok)
+		assert.Equal(t, []string{"opt-2"}, ref.CorrectOptionIDs, "the correct option changed")
+	})
+
+	t.Run("a refused update leaves the reference as it was", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc, _ := newService(references)
+		e := create(t, ctx, svc)
+		before, _ := references.exercise(e.ID)
+
+		err := update(ctx, svc, studentCaller(), e.ID, textResponseOptions())
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
+		after, _ := references.exercise(e.ID)
+		assert.Equal(t, before, after)
+	})
+
+	t.Run("the reference is written even when the request ends right after the save", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc, _ := newService(references)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		got := create(t, ctx, svc)
+
+		_, ok := references.exercise(got.ID)
+		assert.True(t, ok, "a client leaving after the commit must not cost the snapshot its write")
+	})
+
+	t.Run("a failed reference write doesn't fail the saved exercise", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		references.err = errors.New("mongo down")
+		svc, exercises := newService(references)
+
+		e := create(t, ctx, svc)
+		require.NoError(t, update(ctx, svc, teacherCaller(), e.ID, textResponseOptions()))
+
+		_, err := exercises.GetByID(ctx, e.ID)
+		require.NoError(t, err)
+	})
+}
+
+func TestPracticeReferenceService_SyncExercises(t *testing.T) {
+	ctx := context.Background()
+	seed := func(t *testing.T, n int) *fakeExerciseRepository {
+		t.Helper()
+		exercises := newFakeExerciseRepository()
+		for i := range n {
+			require.NoError(t, exercises.Create(ctx, domain.Exercise{
+				ID: fmt.Sprintf("e-%03d", i), Title: fmt.Sprintf("Exercise %03d", i),
+				ExerciseType: domain.ExerciseTypeTextResponse, Options: textResponseOptions(),
+			}))
+		}
+		return exercises
+	}
+
+	t.Run("writes every exercise's reference, across pages", func(t *testing.T) {
+		exercises := seed(t, domain.MaxPageLimit+5)
+		references := newFakePracticeReferenceWriter()
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, references)
+
+		synced, err := svc.SyncExercises(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.MaxPageLimit+5, synced)
+		assert.Equal(t, 2, references.writeCount(), "one bulk write per page, not one per exercise")
+		for i := range domain.MaxPageLimit + 5 {
+			id := fmt.Sprintf("e-%03d", i)
+			stored, err := exercises.GetByID(ctx, id)
+			require.NoError(t, err)
+			ref, ok := references.exercise(id)
+			require.True(t, ok, "no reference for %s", id)
+			assert.Equal(t, domain.NewExerciseReference(stored), ref)
+		}
+	})
+
+	t.Run("reports a failed write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		references.err = errors.New("mongo down")
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), seed(t, 2), references)
+
+		synced, err := svc.SyncExercises(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, 0, synced)
+	})
+}
+
 func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	ctx := context.Background()
 	seed := func(t *testing.T, n int) *fakeDiagramRepository {
@@ -109,7 +240,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("writes every diagram's reference, across pages", func(t *testing.T) {
 		diagrams := seed(t, domain.MaxPageLimit+5)
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(diagrams, references)
+		svc := application.NewPracticeReferenceService(diagrams, newFakeExerciseRepository(), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
 
@@ -129,7 +260,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(seed(t, 2), references)
+		svc := application.NewPracticeReferenceService(seed(t, 2), newFakeExerciseRepository(), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
 

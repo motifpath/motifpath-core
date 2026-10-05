@@ -1818,14 +1818,38 @@ func (f *fakeDiagramRepository) Update(_ context.Context, diagram domain.Diagram
 // fails every write with err when set. Like a real store, it refuses a
 // write whose context is already done.
 type fakePracticeReferenceWriter struct {
-	mu       sync.Mutex
-	diagrams map[string]domain.DiagramReference
-	writes   int
+	mu        sync.Mutex
+	diagrams  map[string]domain.DiagramReference
+	exercises map[string]domain.ExerciseReference
+	writes    int
 	err      error
 }
 
 func newFakePracticeReferenceWriter() *fakePracticeReferenceWriter {
-	return &fakePracticeReferenceWriter{diagrams: map[string]domain.DiagramReference{}}
+	return &fakePracticeReferenceWriter{diagrams: map[string]domain.DiagramReference{}, exercises: map[string]domain.ExerciseReference{}}
+}
+
+func (f *fakePracticeReferenceWriter) PutExercises(ctx context.Context, refs []domain.ExerciseReference) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	for _, ref := range refs {
+		f.exercises[ref.ID] = ref
+	}
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) exercise(id string) (domain.ExerciseReference, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	ref, ok := f.exercises[id]
+	return ref, ok
 }
 
 func (f *fakePracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error {

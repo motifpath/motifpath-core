@@ -27,37 +27,71 @@ func putDiagramReference(ctx context.Context, references ports.PracticeReference
 	}
 }
 
+// putExerciseReference refreshes e's practice reference after e is saved,
+// under the same rules as putDiagramReference.
+func putExerciseReference(ctx context.Context, references ports.PracticeReferenceWriter, e domain.Exercise) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), referenceWriteTimeout)
+	defer cancel()
+	if err := references.PutExercises(ctx, []domain.ExerciseReference{domain.NewExerciseReference(e)}); err != nil {
+		slog.ErrorContext(ctx, "write the exercise's practice reference", "exercise_id", e.ID, "error", err)
+	}
+}
+
 // PracticeReferenceService rebuilds the practice reference snapshot from
 // PostgreSQL (ADR-047). It runs on start and from a maintenance command,
 // repairing any write lost after a commit and covering rows installed by
 // migrations.
 type PracticeReferenceService struct {
 	diagrams   ports.DiagramRepository
+	exercises  ports.ExerciseRepository
 	references ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
-	return &PracticeReferenceService{diagrams: diagrams, references: references}
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, references: references}
 }
 
 // SyncDiagrams writes every diagram's reference, one bulk write per page,
 // and returns how many it wrote. It keeps going past a failed page and
 // reports all of them.
 func (s *PracticeReferenceService) SyncDiagrams(ctx context.Context) (int, error) {
+	return syncPages(ctx,
+		func(page domain.PageRequest) (domain.Page[domain.Diagram], error) {
+			return s.diagrams.List(ctx, domain.DiagramListFilter{}, page)
+		},
+		domain.NewDiagramReference,
+		s.references.PutDiagrams)
+}
+
+// SyncExercises writes every exercise's reference, one bulk write per page,
+// and returns how many it wrote. Like SyncDiagrams, it keeps going past a
+// failed page and reports all of them.
+func (s *PracticeReferenceService) SyncExercises(ctx context.Context) (int, error) {
+	return syncPages(ctx,
+		func(page domain.PageRequest) (domain.Page[domain.Exercise], error) {
+			return s.exercises.List(ctx, domain.ExerciseFilter{}, page)
+		},
+		domain.NewExerciseReference,
+		s.references.PutExercises)
+}
+
+// syncPages walks every page list returns, writing the references of each
+// page in one call to put.
+func syncPages[T, R any](ctx context.Context, list func(domain.PageRequest) (domain.Page[T], error), reference func(T) R, put func(context.Context, []R) error) (int, error) {
 	page := domain.PageRequest{Limit: domain.MaxPageLimit}
 	synced := 0
 	var errs []error
 	for {
-		got, err := s.diagrams.List(ctx, domain.DiagramListFilter{}, page)
+		got, err := list(page)
 		if err != nil {
 			return synced, err
 		}
-		refs := make([]domain.DiagramReference, len(got.Items))
-		for i, d := range got.Items {
-			refs[i] = domain.NewDiagramReference(d)
+		refs := make([]R, len(got.Items))
+		for i, item := range got.Items {
+			refs[i] = reference(item)
 		}
 		if len(refs) > 0 {
-			if err := s.references.PutDiagrams(ctx, refs); err != nil {
+			if err := put(ctx, refs); err != nil {
 				errs = append(errs, err)
 			} else {
 				synced += len(refs)

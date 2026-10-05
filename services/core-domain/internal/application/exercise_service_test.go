@@ -35,7 +35,11 @@ func newExerciseServiceWithNodes(challenges *fakeChallengeRepository, exercises 
 }
 
 func newExerciseServiceWithDiagrams(challenges *fakeChallengeRepository, exercises *fakeExerciseRepository, nodes *fakeContentNodeRepository, diagrams *fakeDiagramRepository) *application.ExerciseService {
-	return application.NewExerciseService(challenges, exercises, nodes, seededKnowledgeNodeRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+	return application.NewExerciseService(challenges, exercises, nodes, seededKnowledgeNodeRepository(), diagrams, exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
+}
+
+func newExerciseServiceWithReferences(exercises *fakeExerciseRepository, references *fakePracticeReferenceWriter) *application.ExerciseService {
+	return application.NewExerciseService(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), references, idSequence(), func() time.Time { return fixedCreatedAt }, noShuffle)
 }
 
 // exerciseUsers are the teachers whose display names name an exercise's
@@ -1322,7 +1326,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"ordered-challenge"}})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"ordered-challenge"}})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListExercisesForChallenge(context.Background(), "ordered-challenge")
 		require.NoError(t, err)
@@ -1341,7 +1345,7 @@ func TestExerciseService_ListExercisesForChallenge(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "ex-1", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-2", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
 		exercises.put(domain.Exercise{ID: "ex-3", ChallengeIDs: []string{"shuffled-challenge"}, Options: textResponseOptions()})
-		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(challenges, exercises, newFakeContentNodeRepository(), seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		got, err := svc.ListExercisesForChallenge(context.Background(), "shuffled-challenge")
 
@@ -1484,7 +1488,7 @@ func TestExerciseService_ListPathExercisesForContentNode(t *testing.T) {
 		exercises := newFakeExerciseRepository()
 		exercises.put(domain.Exercise{ID: "ex-1", ContentNodeIDs: []string{"node-1"}})
 		exercises.put(domain.Exercise{ID: "ex-2", ContentNodeIDs: []string{"node-1"}})
-		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
+		svc := application.NewExerciseService(newFakeChallengeRepository(), exercises, nodes, seededKnowledgeNodeRepository(), newFakeDiagramRepository(), exerciseInstruments(), newFakeVoiceRepository(), exerciseUsers(), newFakePracticeReferenceWriter(), idSequence(), func() time.Time { return fixedCreatedAt }, reverseShuffle)
 
 		first, err := svc.ListPathExercisesForContentNode(context.Background(), "node-1")
 		require.NoError(t, err)

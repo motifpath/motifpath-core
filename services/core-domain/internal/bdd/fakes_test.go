@@ -2066,3 +2066,7 @@ type discardPracticeReferences struct{}
 func (discardPracticeReferences) PutDiagrams(context.Context, []domain.DiagramReference) error {
 	return nil
 }
+
+func (discardPracticeReferences) PutExercises(context.Context, []domain.ExerciseReference) error {
+	return nil
+}

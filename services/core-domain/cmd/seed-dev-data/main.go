@@ -105,7 +105,7 @@ func run() error {
 	pathService := application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, repo.NewEntLanguageRepository(entClient), userRepo, instrumentRepo, newID, now)
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, nil, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
-	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, newID, now, rand.Shuffle)
+	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(mongoClient.Database(mongoDatabase), now), newID, now, rand.Shuffle)
 
 	student, err := findFirstStudent(ctx, entClient)
 	if err != nil {

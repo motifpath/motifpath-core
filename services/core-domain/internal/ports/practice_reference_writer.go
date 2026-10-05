@@ -14,4 +14,8 @@ type PracticeReferenceWriter interface {
 	// PutDiagrams creates or replaces each diagram's reference, in one
 	// round trip to the store.
 	PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error
+
+	// PutExercises creates or replaces each exercise's reference, in one
+	// round trip to the store.
+	PutExercises(ctx context.Context, refs []domain.ExerciseReference) error
 }

@@ -35,3 +35,42 @@ func TestNewDiagramReference(t *testing.T) {
 		assert.Equal(t, []string{"guitar"}, got.InstrumentIDs)
 	})
 }
+
+func TestNewExerciseReference(t *testing.T) {
+	label := "x"
+	options := []domain.Option{
+		{ID: "o-1", IsCorrect: false, Label: &label},
+		{ID: "o-2", IsCorrect: true, Label: &label},
+		{ID: "o-3", IsCorrect: true, Label: &label},
+	}
+
+	t.Run("carries the type, every option, the correct ones and the instruments", func(t *testing.T) {
+		e := domain.Exercise{ID: "e-1", Title: "Triad", ExerciseType: domain.ExerciseTypeTextResponse, Options: options, InstrumentIDs: []string{"guitar"}}
+
+		got := domain.NewExerciseReference(e)
+
+		assert.Equal(t, domain.ExerciseReference{
+			ID:               "e-1",
+			ExerciseType:     domain.ExerciseTypeTextResponse,
+			OptionIDs:        []string{"o-1", "o-2", "o-3"},
+			CorrectOptionIDs: []string{"o-2", "o-3"},
+			InstrumentIDs:    []string{"guitar"},
+		}, got)
+	})
+
+	t.Run("an exercise for every instrument has an empty instrument list, never nil", func(t *testing.T) {
+		got := domain.NewExerciseReference(domain.Exercise{ID: "e-2", ExerciseType: domain.ExerciseTypeAudioSelection, Options: options})
+
+		assert.NotNil(t, got.InstrumentIDs)
+		assert.Empty(t, got.InstrumentIDs)
+	})
+
+	t.Run("the instrument list is a copy", func(t *testing.T) {
+		e := domain.Exercise{ID: "e-3", ExerciseType: domain.ExerciseTypeTextResponse, Options: options, InstrumentIDs: []string{"guitar"}}
+
+		got := domain.NewExerciseReference(e)
+		e.InstrumentIDs[0] = "piano"
+
+		assert.Equal(t, []string{"guitar"}, got.InstrumentIDs)
+	})
+}

@@ -28,6 +28,20 @@ type diagramReferenceDocument struct {
 	SnapshotVersion int       `bson:"snapshot_version"`
 }
 
+// exerciseReferenceDocument is a `practice_reference` document of kind
+// "exercise". InstrumentIDs is empty, never null, for an exercise for every
+// instrument.
+type exerciseReferenceDocument struct {
+	Kind             string    `bson:"kind"`
+	ID               string    `bson:"id"`
+	ExerciseType     string    `bson:"exercise_type"`
+	OptionIDs        []string  `bson:"option_ids"`
+	CorrectOptionIDs []string  `bson:"correct_option_ids"`
+	InstrumentIDs    []string  `bson:"instrument_ids"`
+	UpdatedAt        time.Time `bson:"updated_at"`
+	SnapshotVersion  int       `bson:"snapshot_version"`
+}
+
 // MongoPracticeReferenceWriter keeps the `practice_reference` collection
 // (ADR-047). This service is its only writer; the Aggregation Worker reads
 // it. Documents are keyed by {kind, id}, replaced in place, never removed.
@@ -49,16 +63,32 @@ func (w *MongoPracticeReferenceWriter) EnsureIndexes(ctx context.Context) error 
 	return err
 }
 
+// PutExercises upserts every reference in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutExercises(ctx context.Context, refs []domain.ExerciseReference) error {
+	at := w.now()
+	docs := make([]exerciseReferenceDocument, len(refs))
+	for i, ref := range refs {
+		docs[i] = exerciseReferenceDocument{
+			Kind:             "exercise",
+			ID:               ref.ID,
+			ExerciseType:     string(ref.ExerciseType),
+			OptionIDs:        nonNil(ref.OptionIDs),
+			CorrectOptionIDs: nonNil(ref.CorrectOptionIDs),
+			InstrumentIDs:    nonNil(ref.InstrumentIDs),
+			UpdatedAt:        at,
+			SnapshotVersion:  practiceReferenceSnapshotVersion,
+		}
+	}
+	return upsert(ctx, w.collection, docs, func(d exerciseReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
 // PutDiagrams upserts every reference in one unordered bulk write, so a
 // sync of the whole catalog costs one round trip per page, not per diagram.
 func (w *MongoPracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []domain.DiagramReference) error {
-	if len(refs) == 0 {
-		return nil
-	}
 	at := w.now()
-	models := make([]mongo.WriteModel, len(refs))
+	docs := make([]diagramReferenceDocument, len(refs))
 	for i, ref := range refs {
-		doc := diagramReferenceDocument{
+		docs[i] = diagramReferenceDocument{
 			Kind:            "diagram",
 			ID:              ref.ID,
 			InstrumentIDs:   ref.InstrumentIDs,
@@ -66,11 +96,30 @@ func (w *MongoPracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []d
 			UpdatedAt:       at,
 			SnapshotVersion: practiceReferenceSnapshotVersion,
 		}
+	}
+	return upsert(ctx, w.collection, docs, func(d diagramReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
+// upsert replaces each document by its {kind, id}, inserting it when new.
+func upsert[T any](ctx context.Context, collection *mongo.Collection, docs []T, key func(T) (kind, id string)) error {
+	if len(docs) == 0 {
+		return nil
+	}
+	models := make([]mongo.WriteModel, len(docs))
+	for i, doc := range docs {
+		kind, id := key(doc)
 		models[i] = mongo.NewReplaceOneModel().
-			SetFilter(bson.D{{Key: "kind", Value: doc.Kind}, {Key: "id", Value: doc.ID}}).
+			SetFilter(bson.D{{Key: "kind", Value: kind}, {Key: "id", Value: id}}).
 			SetReplacement(doc).
 			SetUpsert(true)
 	}
-	_, err := w.collection.BulkWrite(ctx, models, options.BulkWrite().SetOrdered(false))
+	_, err := collection.BulkWrite(ctx, models, options.BulkWrite().SetOrdered(false))
 	return err
+}
+
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
 }
