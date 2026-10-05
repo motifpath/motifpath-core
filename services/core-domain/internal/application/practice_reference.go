@@ -44,11 +44,26 @@ func putExerciseReference(ctx context.Context, references ports.PracticeReferenc
 type PracticeReferenceService struct {
 	diagrams   ports.DiagramRepository
 	exercises  ports.ExerciseRepository
+	thresholds ports.DrillThresholdRepository
 	references ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
-	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, references: references}
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, thresholds ports.DrillThresholdRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, thresholds: thresholds, references: references}
+}
+
+// SyncDrillThresholds writes every installed fluent time version, all in one
+// write, and returns how many it wrote. Versions come only from migrations,
+// so this sync is the only way they reach the snapshot.
+func (s *PracticeReferenceService) SyncDrillThresholds(ctx context.Context) (int, error) {
+	thresholds, err := s.thresholds.List(ctx)
+	if err != nil || len(thresholds) == 0 {
+		return 0, err
+	}
+	if err := s.references.PutDrillThresholds(ctx, thresholds); err != nil {
+		return 0, err
+	}
+	return len(thresholds), nil
 }
 
 // SyncDiagrams writes every diagram's reference, one bulk write per page,

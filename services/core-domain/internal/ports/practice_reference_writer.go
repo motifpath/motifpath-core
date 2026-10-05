@@ -18,4 +18,8 @@ type PracticeReferenceWriter interface {
 	// PutExercises creates or replaces each exercise's reference, in one
 	// round trip to the store.
 	PutExercises(ctx context.Context, refs []domain.ExerciseReference) error
+
+	// PutDrillThresholds creates or replaces each fluent time version, in one
+	// round trip to the store.
+	PutDrillThresholds(ctx context.Context, thresholds []domain.DrillThreshold) error
 }

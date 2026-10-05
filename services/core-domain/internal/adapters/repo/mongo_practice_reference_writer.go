@@ -42,6 +42,20 @@ type exerciseReferenceDocument struct {
 	SnapshotVersion  int       `bson:"snapshot_version"`
 }
 
+// drillThresholdDocument is a `practice_reference` document of kind
+// "drill_threshold": one fluent time version of a timed drill template.
+type drillThresholdDocument struct {
+	Kind            string    `bson:"kind"`
+	ID              string    `bson:"id"`
+	TemplateKey     string    `bson:"template_key"`
+	Version         int       `bson:"version"`
+	EffectiveFrom   time.Time `bson:"effective_from"`
+	FluentNetMs     int       `bson:"fluent_net_ms"`
+	Source          string    `bson:"source"`
+	UpdatedAt       time.Time `bson:"updated_at"`
+	SnapshotVersion int       `bson:"snapshot_version"`
+}
+
 // MongoPracticeReferenceWriter keeps the `practice_reference` collection
 // (ADR-047). This service is its only writer; the Aggregation Worker reads
 // it. Documents are keyed by {kind, id}, replaced in place, never removed.
@@ -80,6 +94,26 @@ func (w *MongoPracticeReferenceWriter) PutExercises(ctx context.Context, refs []
 		}
 	}
 	return upsert(ctx, w.collection, docs, func(d exerciseReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
+// PutDrillThresholds upserts every version in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutDrillThresholds(ctx context.Context, thresholds []domain.DrillThreshold) error {
+	at := w.now()
+	docs := make([]drillThresholdDocument, len(thresholds))
+	for i, th := range thresholds {
+		docs[i] = drillThresholdDocument{
+			Kind:            "drill_threshold",
+			ID:              th.ID,
+			TemplateKey:     th.TemplateKey,
+			Version:         th.Version,
+			EffectiveFrom:   th.EffectiveFrom,
+			FluentNetMs:     th.FluentNetMs,
+			Source:          string(th.Source),
+			UpdatedAt:       at,
+			SnapshotVersion: practiceReferenceSnapshotVersion,
+		}
+	}
+	return upsert(ctx, w.collection, docs, func(d drillThresholdDocument) (string, string) { return d.Kind, d.ID })
 }
 
 // PutDiagrams upserts every reference in one unordered bulk write, so a

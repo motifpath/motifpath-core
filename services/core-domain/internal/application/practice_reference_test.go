@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,7 +193,7 @@ func TestPracticeReferenceService_SyncExercises(t *testing.T) {
 	t.Run("writes every exercise's reference, across pages", func(t *testing.T) {
 		exercises := seed(t, domain.MaxPageLimit+5)
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), exercises, fakeDrillThresholds(nil), references)
 
 		synced, err := svc.SyncExercises(ctx)
 
@@ -212,7 +213,7 @@ func TestPracticeReferenceService_SyncExercises(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), seed(t, 2), references)
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), seed(t, 2), fakeDrillThresholds(nil), references)
 
 		synced, err := svc.SyncExercises(ctx)
 
@@ -240,7 +241,7 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("writes every diagram's reference, across pages", func(t *testing.T) {
 		diagrams := seed(t, domain.MaxPageLimit+5)
 		references := newFakePracticeReferenceWriter()
-		svc := application.NewPracticeReferenceService(diagrams, newFakeExerciseRepository(), references)
+		svc := application.NewPracticeReferenceService(diagrams, newFakeExerciseRepository(), fakeDrillThresholds(nil), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
 
@@ -260,9 +261,41 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 	t.Run("reports a failed write", func(t *testing.T) {
 		references := newFakePracticeReferenceWriter()
 		references.err = errors.New("mongo down")
-		svc := application.NewPracticeReferenceService(seed(t, 2), newFakeExerciseRepository(), references)
+		svc := application.NewPracticeReferenceService(seed(t, 2), newFakeExerciseRepository(), fakeDrillThresholds(nil), references)
 
 		synced, err := svc.SyncDiagrams(ctx)
+
+		require.Error(t, err)
+		assert.Equal(t, 0, synced)
+	})
+}
+
+func TestPracticeReferenceService_SyncDrillThresholds(t *testing.T) {
+	ctx := context.Background()
+	october := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	installed := []domain.DrillThreshold{
+		{ID: "th-1", TemplateKey: "exercise:text_response", Version: 1, EffectiveFrom: october, FluentNetMs: 6000, Source: domain.DrillThresholdSourceDefault},
+		{ID: "th-2", TemplateKey: "exercise:audio_selection", Version: 1, EffectiveFrom: october, FluentNetMs: 4000, Source: domain.DrillThresholdSourceDefault},
+	}
+
+	t.Run("writes every installed version in one write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), fakeDrillThresholds(installed), references)
+
+		synced, err := svc.SyncDrillThresholds(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, synced)
+		assert.Equal(t, 1, references.writeCount())
+		assert.Equal(t, installed, references.drillThresholds())
+	})
+
+	t.Run("reports a failed write", func(t *testing.T) {
+		references := newFakePracticeReferenceWriter()
+		references.err = errors.New("mongo down")
+		svc := application.NewPracticeReferenceService(newFakeDiagramRepository(), newFakeExerciseRepository(), fakeDrillThresholds(installed), references)
+
+		synced, err := svc.SyncDrillThresholds(ctx)
 
 		require.Error(t, err)
 		assert.Equal(t, 0, synced)

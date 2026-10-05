@@ -123,3 +123,38 @@ func TestMongoPracticeReferenceWriter_ExerciseShape(t *testing.T) {
 		assert.Equal(t, bson.A{"o-1"}, got["correct_option_ids"])
 	})
 }
+
+// TestMongoPracticeReferenceWriter_DrillThresholdShape pins the fluent time
+// document the worker judges timed answers by: one per version, under its
+// template's key, in force from effective_from.
+func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	at := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return at })
+	require.NoError(t, writer.EnsureIndexes(ctx))
+	from := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+
+	require.NoError(t, writer.PutDrillThresholds(ctx, []domain.DrillThreshold{
+		{ID: "th-1", TemplateKey: "exercise:text_response", Version: 1, EffectiveFrom: from, FluentNetMs: 6000, Source: domain.DrillThresholdSourceDefault},
+	}))
+
+	var doc bson.M
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "drill_threshold"}, {Key: "id", Value: "th-1"}}).Decode(&doc))
+	delete(doc, "_id")
+	assert.Equal(t, bson.M{
+		"kind":             "drill_threshold",
+		"id":               "th-1",
+		"template_key":     "exercise:text_response",
+		"version":          int32(1),
+		"effective_from":   bson.NewDateTimeFromTime(from),
+		"fluent_net_ms":    int32(6000),
+		"source":           "default",
+		"updated_at":       bson.NewDateTimeFromTime(at),
+		"snapshot_version": int32(1),
+	}, doc)
+
+	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
+		require.NoError(t, writer.PutDrillThresholds(ctx, nil))
+	})
+}

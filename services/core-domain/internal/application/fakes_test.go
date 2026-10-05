@@ -1821,8 +1821,9 @@ type fakePracticeReferenceWriter struct {
 	mu        sync.Mutex
 	diagrams  map[string]domain.DiagramReference
 	exercises map[string]domain.ExerciseReference
+	threshold []domain.DrillThreshold
 	writes    int
-	err      error
+	err       error
 }
 
 func newFakePracticeReferenceWriter() *fakePracticeReferenceWriter {
@@ -1843,6 +1844,34 @@ func (f *fakePracticeReferenceWriter) PutExercises(ctx context.Context, refs []d
 		f.exercises[ref.ID] = ref
 	}
 	return nil
+}
+
+func (f *fakePracticeReferenceWriter) PutDrillThresholds(ctx context.Context, thresholds []domain.DrillThreshold) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	f.threshold = append(f.threshold, thresholds...)
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) drillThresholds() []domain.DrillThreshold {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.threshold
+}
+
+// fakeDrillThresholds is a ports.DrillThresholdRepository holding the given
+// installed versions.
+type fakeDrillThresholds []domain.DrillThreshold
+
+func (f fakeDrillThresholds) List(context.Context) ([]domain.DrillThreshold, error) {
+	return f, nil
 }
 
 func (f *fakePracticeReferenceWriter) exercise(id string) (domain.ExerciseReference, bool) {

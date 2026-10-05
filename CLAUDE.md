@@ -79,8 +79,8 @@ NEVER access the database directly from the domain layer.
   `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
   and archived, every `ExerciseType`, a diagram library of demo basic templates and two
   teachers' custom diagrams, and lessons with cues, pop-ups and a version history). Reference
-  data — languages, voices, the catalog instruments, the knowledge map and the basic guitar
-  diagram catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
+  data — languages, voices, the catalog instruments, the knowledge map, the basic guitar
+  diagram catalog and the practice drill catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
   nodes by key) and never create it. Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
@@ -107,8 +107,10 @@ NEVER access the database directly from the domain layer.
   worker's practice graders read (ADR-047). The service runs it on every start and `db:reset` after seeding; diagram
   create/update keep it current. Every new write path for a snapshotted kind must call the writer.
 - Reference-data migrations are generated, never hand-edited: `scripts/knowledge_map` compiles
-  motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map) and
-  `scripts/diagram_catalog` the basic guitar catalog; run `atlas migrate hash` afterwards.
+  motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map),
+  `scripts/diagram_catalog` the basic guitar catalog and `scripts/practice_drills`
+  `catalogs/practice-drills.yaml` (drill templates + versioned fluent times); run
+  `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`

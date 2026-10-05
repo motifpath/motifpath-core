@@ -121,6 +121,19 @@ func TestFreshInstall(t *testing.T) {
 	t.Run("the basic catalog is installed", func(t *testing.T) {
 		assert.Positive(t, count(t, "SELECT count(*) FROM diagrams WHERE kind = 'basic'"))
 	})
+
+	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
+		assert.Equal(t, 7, count(t, "SELECT count(*) FROM drill_templates"))
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
+		assert.Equal(t, map[string]string{
+			catalogID("drill-threshold/exercise:text_response/v1"):     "exercise:text_response|1|2026-10-01|6000|default",
+			catalogID("drill-threshold/exercise:audio_recognition/v1"): "exercise:audio_recognition|1|2026-10-01|4000|default",
+			catalogID("drill-threshold/exercise:image_recognition/v1"): "exercise:image_recognition|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:image_choice/v1"):      "exercise:image_choice|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:audio_selection/v1"):   "exercise:audio_selection|1|2026-10-01|4000|default",
+		}, stringPairs(t, ctx, db, `SELECT th.id::text, concat_ws('|', te.key, th.version, to_char(th.effective_from AT TIME ZONE 'UTC', 'YYYY-MM-DD'), th.fluent_net_ms, th.source)
+			FROM drill_thresholds th JOIN drill_templates te ON te.id = th.template_id`))
+	})
 }
 
 // stringPairs runs a two-column query and returns its rows as a map.

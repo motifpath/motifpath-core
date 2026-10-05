@@ -200,7 +200,7 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
 	diagrams, err := sync.SyncDiagrams(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", diagrams, "error", err)
@@ -211,7 +211,12 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("sync the practice reference snapshot", "diagrams", diagrams, "exercises", exercises, "error", err)
 		return
 	}
-	logger.Info("practice reference snapshot synced", "diagrams", diagrams, "exercises", exercises)
+	thresholds, err := sync.SyncDrillThresholds(ctx)
+	if err != nil {
+		logger.Error("sync the practice reference snapshot", "diagrams", diagrams, "exercises", exercises, "error", err)
+		return
+	}
+	logger.Info("practice reference snapshot synced", "diagrams", diagrams, "exercises", exercises, "drill_thresholds", thresholds)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
