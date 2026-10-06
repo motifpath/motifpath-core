@@ -90,6 +90,16 @@ type PracticeInstrumentCard struct {
 	TopNextStep *domain.PracticeNextStep
 }
 
+// FretboardMap returns how well caller knows each fretboard cell of
+// instrumentID, an instrument that must exist. An instrument whose layout
+// has no generated cells has an empty map.
+func (s *PracticeSummaryService) FretboardMap(ctx context.Context, caller domain.User, instrumentID string) (domain.FretboardMap, error) {
+	if err := s.requireInstrument(ctx, &instrumentID); err != nil {
+		return domain.FretboardMap{}, err
+	}
+	return s.rollup.FretboardMap(ctx, caller.ID, instrumentID)
+}
+
 // Summary returns caller's practice summary for instrumentID (nil: the
 // nodes that suit any instrument only), counting days in timeZone (empty:
 // UTC):

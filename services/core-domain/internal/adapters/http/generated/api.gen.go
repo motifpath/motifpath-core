@@ -2412,6 +2412,54 @@ type ForbiddenError struct {
 // its note; find_the_note = the note and string are named and the student taps the cell.
 type FretboardDrill string
 
+// FretboardMap How well the student knows each cell of an instrument's fretboard.
+type FretboardMap struct {
+	// Cells Every generated cell of the layout, by string then fret.
+	Cells []FretboardMapCell `json:"cells"`
+
+	// InstrumentId The instrument asked for.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// LayoutInstrumentId The instrument whose fretboard layout and tuning the cells belong to, shared by
+	// every instrument of the same geometry. Null for an instrument without one.
+	LayoutInstrumentId *openapi_types.UUID `json:"layout_instrument_id"`
+}
+
+// FretboardMapCell One fretboard cell and the student's level on it.
+type FretboardMapCell struct {
+	// Fading True when the cell's review is due, so the level shown is slipping; an item
+	// overdue by more than its wait already shows one level lower.
+	Fading bool `json:"fading"`
+
+	// Fret The cell's fret; 0 is the open string.
+	Fret int `json:"fret"`
+
+	// ItemKey Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+	// tracked. Every answer, rating and review points at one. The prefix is the item kind:
+	//
+	// - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+	//   The instrument is the one whose fretboard layout the cell belongs to, so instruments
+	//   that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+	//   fret 0 is the open string.
+	// - exercise:<exercise id> — an authored exercise.
+	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	//
+	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+	// grader, and its golden cases.
+	ItemKey PracticeItemKey `json:"item_key"`
+
+	// Level How well a student knows an item, or a knowledge node, derived from the evidence.
+	// new = never practised; learning = practised, not yet accurate; accurate = at least 3
+	// counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+	// accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+	// over long reviews.
+	Level KnowledgeLevel `json:"level"`
+
+	// String The cell's string, 1 being the highest-pitched.
+	String int `json:"string"`
+}
+
 // HealthStatus Response body for liveness and readiness probes. Shared by every MotifPath
 // service that exposes an HTTP health surface so the contract cannot drift
 // between services.
@@ -3181,7 +3229,7 @@ type PracticeNodeProgress struct {
 	} `json:"readiness"`
 }
 
-// PracticeOverview The practice home's overview, across all of the student's instruments.
+// PracticeOverview The home's overview, across all of the student's instruments.
 type PracticeOverview struct {
 	// Instruments One card per instrument of the student, inferred from the paths and courses
 	// they're enrolled in, in the order their summaries are tabbed.
@@ -3227,7 +3275,8 @@ type PracticeSessionItem struct {
 	// is_correct.
 	Exercise *Exercise `json:"exercise,omitempty"`
 
-	// FretboardCell Present when kind is fretboard_cell.
+	// FretboardCell Present when kind is fretboard_cell. The drill is the way of asking the cell has
+	// the fewer right answers so far, name_the_note on a tie.
 	FretboardCell *struct {
 		// Drill How a fretboard cell is asked. name_the_note = the cell is shown and the student names
 		// its note; find_the_note = the note and string are named and the student taps the cell.
@@ -3307,6 +3356,12 @@ type PracticeSessionItem struct {
 // PracticeSessionPlan A composed practice session. Not stored: it exists only in this response and in the
 // practice.session_started event the client sends when the student starts it.
 type PracticeSessionPlan struct {
+	// FeltQuestions The timed drill templates, at most two, to ask "How did it feel?" about when the
+	// session ends: those in this plan with the fewest felt-rated sessions so far, fewest
+	// first. The client asks only about the ones the student actually practised in the
+	// session. Empty when the plan has no timed drill, as with play-alongs only.
+	FeltQuestions []string `json:"felt_questions"`
+
 	// InstrumentId The instrument in hand, or null for a session in the head.
 	InstrumentId *openapi_types.UUID `json:"instrument_id"`
 
@@ -3318,9 +3373,15 @@ type PracticeSessionPlan struct {
 
 	// PracticeSessionId New identifier for this session, carried by every practice.* event it produces.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
+
+	// TapCheckDue True when the plan has a fretboard cell and the student has done no tap check in
+	// the last 30 days, or never. The client then offers the tap check before the first
+	// item; the student may skip it, and their answers are then judged on the whole
+	// latency.
+	TapCheckDue bool `json:"tap_check_due"`
 }
 
-// PracticeSummary The practice home for one instrument, derived from the student's evidence.
+// PracticeSummary The home for one instrument, derived from the student's evidence.
 type PracticeSummary struct {
 	// Groups Every practice node, grouped by area, then a group for nodes that suit any
 	// instrument.
@@ -4626,6 +4687,12 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// GetFretboardMapParams defines parameters for GetFretboardMap.
+type GetFretboardMapParams struct {
+	// InstrumentId The instrument whose fretboard to show.
+	InstrumentId openapi_types.UUID `form:"instrument_id" json:"instrument_id"`
+}
+
 // GetPracticeOverviewParams defines parameters for GetPracticeOverview.
 type GetPracticeOverviewParams struct {
 	// TimeZone The student's IANA time zone, such as America/Sao_Paulo, used to decide which
@@ -4946,6 +5013,9 @@ type ServerInterface interface {
 	// Switch the authenticated student's current course or path
 	// (PUT /students/me/current-path)
 	SetCurrentPath(w http.ResponseWriter, r *http.Request)
+	// Read how well the authenticated student knows each fretboard cell
+	// (GET /students/me/fretboard-map)
+	GetFretboardMap(w http.ResponseWriter, r *http.Request, params GetFretboardMapParams)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(w http.ResponseWriter, r *http.Request)
@@ -5417,6 +5487,12 @@ func (_ Unimplemented) AbandonCourseEnrollment(w http.ResponseWriter, r *http.Re
 // Switch the authenticated student's current course or path
 // (PUT /students/me/current-path)
 func (_ Unimplemented) SetCurrentPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Read how well the authenticated student knows each fretboard cell
+// (GET /students/me/fretboard-map)
+func (_ Unimplemented) GetFretboardMap(w http.ResponseWriter, r *http.Request, params GetFretboardMapParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8118,6 +8194,46 @@ func (siw *ServerInterfaceWrapper) SetCurrentPath(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// GetFretboardMap operation middleware
+func (siw *ServerInterfaceWrapper) GetFretboardMap(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetFretboardMapParams
+
+	// ------------- Required query parameter "instrument_id" -------------
+
+	if paramValue := r.URL.Query().Get("instrument_id"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "instrument_id"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "instrument_id", r.URL.Query(), &params.InstrumentId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "instrument_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetFretboardMap(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMyPath operation middleware
 func (siw *ServerInterfaceWrapper) GetMyPath(w http.ResponseWriter, r *http.Request) {
 
@@ -8742,6 +8858,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/students/me/current-path", wrapper.SetCurrentPath)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/students/me/fretboard-map", wrapper.GetFretboardMap)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/path", wrapper.GetMyPath)
@@ -11981,6 +12100,50 @@ func (response SetCurrentPath404JSONResponse) VisitSetCurrentPathResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetFretboardMapRequestObject struct {
+	Params GetFretboardMapParams
+}
+
+type GetFretboardMapResponseObject interface {
+	VisitGetFretboardMapResponse(w http.ResponseWriter) error
+}
+
+type GetFretboardMap200JSONResponse FretboardMap
+
+func (response GetFretboardMap200JSONResponse) VisitGetFretboardMapResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFretboardMap400JSONResponse ValidationError
+
+func (response GetFretboardMap400JSONResponse) VisitGetFretboardMapResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFretboardMap401JSONResponse UnauthorizedError
+
+func (response GetFretboardMap401JSONResponse) VisitGetFretboardMapResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetFretboardMap404JSONResponse NotFoundError
+
+func (response GetFretboardMap404JSONResponse) VisitGetFretboardMapResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetMyPathRequestObject struct {
 }
 
@@ -12706,6 +12869,9 @@ type StrictServerInterface interface {
 	// Switch the authenticated student's current course or path
 	// (PUT /students/me/current-path)
 	SetCurrentPath(ctx context.Context, request SetCurrentPathRequestObject) (SetCurrentPathResponseObject, error)
+	// Read how well the authenticated student knows each fretboard cell
+	// (GET /students/me/fretboard-map)
+	GetFretboardMap(ctx context.Context, request GetFretboardMapRequestObject) (GetFretboardMapResponseObject, error)
 	// Get the authenticated student's current learning path and progress
 	// (GET /students/me/path)
 	GetMyPath(ctx context.Context, request GetMyPathRequestObject) (GetMyPathResponseObject, error)
@@ -14773,6 +14939,32 @@ func (sh *strictHandler) SetCurrentPath(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SetCurrentPathResponseObject); ok {
 		if err := validResponse.VisitSetCurrentPathResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetFretboardMap operation middleware
+func (sh *strictHandler) GetFretboardMap(w http.ResponseWriter, r *http.Request, params GetFretboardMapParams) {
+	var request GetFretboardMapRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetFretboardMap(ctx, request.(GetFretboardMapRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetFretboardMap")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetFretboardMapResponseObject); ok {
+		if err := validResponse.VisitGetFretboardMapResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

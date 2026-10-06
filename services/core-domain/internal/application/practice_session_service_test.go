@@ -67,13 +67,15 @@ type practiceFixture struct {
 	knowledgeNodes *fakeKnowledgeNodeRepository
 	edges          *fakeKnowledgeEdgeRepository
 	states         *fakePracticeItemStateReader
-	now            time.Time
-	pathCount      int
-	t              *testing.T
+	// cells holds the fretboard cells that suit each instrument.
+	cells     map[string][]domain.ClassifiedItem
+	now       time.Time
+	pathCount int
+	t         *testing.T
 }
 
-// practiceItemSource is a ports.NodeItemSource over the fixture's diagrams
-// and exercises, classifying them as the Postgres source does.
+// practiceItemSource is a ports.NodeItemSource over the fixture's diagrams,
+// exercises and fretboard cells, classifying them as the Postgres source does.
 type practiceItemSource struct{ f *practiceFixture }
 
 func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
@@ -94,7 +96,7 @@ func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	for _, e := range exercises.Items {
 		items = append(items, domain.ClassifiedItem{ItemKey: domain.ExerciseItemKey(e.ID), NodeIDs: exerciseSkillIDs(e)})
 	}
-	return items, nil
+	return append(items, s.f.cells[instrumentID]...), nil
 }
 
 func newPracticeFixture(t *testing.T) *practiceFixture {
@@ -108,6 +110,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		knowledgeNodes: newFakeKnowledgeNodeRepository(),
 		edges:          newFakeKnowledgeEdgeRepository(),
 		states:         newFakePracticeItemStateReader(),
+		cells:          map[string][]domain.ClassifiedItem{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
 	}

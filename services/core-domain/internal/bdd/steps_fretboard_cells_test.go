@@ -97,7 +97,8 @@ func (w *world) seedCatalogInstrument(name string) (domain.Instrument, error) {
 }
 
 // practiceDrillCatalogIsInstalled reads motifpath-specs' drill catalog and
-// installs its cell ranges, each checked against its layout instrument.
+// installs its cell ranges, each checked against its layout instrument, as
+// the practice items of their layouts.
 func (w *world) practiceDrillCatalogIsInstalled() error {
 	raw, err := os.ReadFile(filepath.Join(filepath.Dir(featuresBase), "catalogs", "practice-drills.yaml"))
 	if err != nil {
@@ -133,6 +134,8 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 				f.ranges[entry.Skill] = map[string]domain.FretboardCellRange{}
 			}
 			f.ranges[entry.Skill][layoutName] = r
+			w.practiceItems.cells[layout.ID] = append(w.practiceItems.cells[layout.ID], r.Items()...)
+			w.practiceItems.layouts[layout.ID] = layout.ID
 		}
 	}
 	return nil

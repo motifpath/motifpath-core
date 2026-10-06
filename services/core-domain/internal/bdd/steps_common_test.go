@@ -318,6 +318,7 @@ func (w *world) requestRefusedNotFound() error {
 	switch w.lastResp.(type) {
 	case generated.GetContentNode404JSONResponse,
 		generated.GetPracticeSummary404JSONResponse,
+		generated.GetFretboardMap404JSONResponse,
 		generated.UpdateInstrument404JSONResponse,
 		generated.ListContentNodeVersions404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
