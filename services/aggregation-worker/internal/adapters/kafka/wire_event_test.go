@@ -179,3 +179,25 @@ func TestToDomainEvent_APracticeSessionEndCarriesItsFeltRatings(t *testing.T) {
 		{DrillTemplateKey: "exercise:text_response", Felt: domain.FeltAboutRight},
 	}, event.SessionEnd.FeltRatings)
 }
+
+func TestToDomainEvent_ATapCheckCarriesItsMedianAndTapCount(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.tap_check_completed","student_id":"s","occurred_at":"2026-10-06T09:00:00Z","median_tap_ms":320,"tap_count":24}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Equal(t, &domain.TapCheck{
+		EventID:     "11111111-1111-4111-8111-111111111111",
+		StudentID:   "s",
+		DoneAt:      time.Date(2026, 10, 6, 9, 0, 0, 0, time.UTC),
+		MedianTapMs: 320,
+		TapCount:    24,
+	}, event.TapCheck)
+}
+
+func TestToDomainEvent_OtherEventsCarryNoTapCheck(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_type":"practice.session_ended","student_id":"s","practice_session_id":"p"}`))
+	require.NoError(t, err)
+
+	assert.Nil(t, toDomainEvent(wire).TapCheck)
+}

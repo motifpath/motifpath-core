@@ -18,6 +18,14 @@ type PracticeSessionRepository interface {
 	Put(ctx context.Context, session domain.PracticeSession) error
 }
 
+// TapCheckRepository stores each tap check once per event id. Tap checks are
+// never modified or deleted.
+type TapCheckRepository interface {
+	// Insert stores c and reports false, without error, when a tap check with its
+	// event id is already stored.
+	Insert(ctx context.Context, c domain.TapCheck) (inserted bool, err error)
+}
+
 // LearningActivityRepository stores each content node completion once per event
 // id. Completions are never modified or deleted.
 type LearningActivityRepository interface {

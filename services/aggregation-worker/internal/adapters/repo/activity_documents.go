@@ -110,6 +110,17 @@ type learningActivityDocument struct {
 	CompletedAt   time.Time `bson:"completed_at"`
 }
 
+// tapCheckDocument is a `tap_checks` document: one tap check, never modified once
+// stored. Core Domain reads a student's newest done_at to decide whether a session
+// asks for another.
+type tapCheckDocument struct {
+	EventID     string    `bson:"event_id"`
+	StudentID   string    `bson:"student_id"`
+	DoneAt      time.Time `bson:"done_at"`
+	MedianTapMs int       `bson:"median_tap_ms"`
+	TapCount    int       `bson:"tap_count"`
+}
+
 // practiceItemSnapshotDocument is a `practice_item_history` document: an item's
 // state at the end of a UTC day it was practised on, stored as its midnight. level
 // is the earned level, before the reader applies any lapse.

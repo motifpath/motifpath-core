@@ -31,6 +31,9 @@ type wireEvent struct {
 	AnsweredCount int               `json:"answered_count,omitempty"`
 	LeftEarly     bool              `json:"left_early,omitempty"`
 	FeltRatings   []feltRatingWire  `json:"felt_ratings,omitempty"`
+
+	MedianTapMs int `json:"median_tap_ms,omitempty"`
+	TapCount    int `json:"tap_count,omitempty"`
 }
 
 // feltRatingWire is how a timed drill felt to the student in a session.

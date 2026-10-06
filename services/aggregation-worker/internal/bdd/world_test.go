@@ -124,6 +124,19 @@ func (f *fakeLearning) Insert(_ context.Context, a domain.LearningActivity) (boo
 	return true, nil
 }
 
+// fakeTapChecks keeps tap checks; no worker scenario reads them yet.
+type fakeTapChecks struct {
+	stored []domain.TapCheck
+}
+
+func (f *fakeTapChecks) Insert(_ context.Context, c domain.TapCheck) (bool, error) {
+	if slices.ContainsFunc(f.stored, func(s domain.TapCheck) bool { return s.EventID == c.EventID }) {
+		return false, nil
+	}
+	f.stored = append(f.stored, c)
+	return true, nil
+}
+
 type fakeCompletion struct {
 	statuses map[string]domain.CompletionStatus
 }
@@ -222,10 +235,11 @@ type world struct {
 	logs      *logRecorder
 	service   *application.PracticeEvidenceService
 
-	// sessionRecords and learning are the raw activity; events reaches every
-	// event's handler, the way the Kafka consumer does.
+	// sessionRecords, learning and tapChecks are the raw activity; events
+	// reaches every event's handler, the way the Kafka consumer does.
 	sessionRecords *fakeSessions
 	learning       *fakeLearning
+	tapChecks      *fakeTapChecks
 	events         *application.ProcessEventService
 	activity       activityWorld
 
@@ -273,6 +287,7 @@ func newWorld() *world {
 
 		sessionRecords: &fakeSessions{sessions: map[string]domain.PracticeSession{}},
 		learning:       &fakeLearning{},
+		tapChecks:      &fakeTapChecks{},
 		students:       map[string]string{},
 		sessions:       map[string]string{},
 		challenges:     map[string]*domain.TriggerContext{},
@@ -281,7 +296,7 @@ func newWorld() *world {
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
 	w.events = application.NewProcessEventService(&fakeCompletion{statuses: map[string]domain.CompletionStatus{}}, w.service,
-		application.NewActivityService(w.sessionRecords, w.learning))
+		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks))
 	return w
 }
 

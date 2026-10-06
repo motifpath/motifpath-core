@@ -36,4 +36,6 @@ type TrackingEvent struct {
 	SessionStart *PracticeSessionStart
 	// SessionEnd is set on a practice.session_ended event.
 	SessionEnd *PracticeSessionEnd
+	// TapCheck is set on a practice.tap_check_completed event.
+	TapCheck *TapCheck
 }

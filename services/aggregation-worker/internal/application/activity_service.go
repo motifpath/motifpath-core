@@ -9,16 +9,18 @@ import (
 )
 
 // ActivityService keeps the student's raw activity: every practice session's
-// start, answers and end, and every content node completed, each with its time.
+// start, answers and end, every content node completed and every tap check, each
+// with its time.
 // Practice days, learning days and any later measure, such as a streak, are
 // evaluated from it when read, so none of them needs new tracking.
 type ActivityService struct {
-	sessions ports.PracticeSessionRepository
-	learning ports.LearningActivityRepository
+	sessions  ports.PracticeSessionRepository
+	learning  ports.LearningActivityRepository
+	tapChecks ports.TapCheckRepository
 }
 
-func NewActivityService(sessions ports.PracticeSessionRepository, learning ports.LearningActivityRepository) *ActivityService {
-	return &ActivityService{sessions: sessions, learning: learning}
+func NewActivityService(sessions ports.PracticeSessionRepository, learning ports.LearningActivityRepository, tapChecks ports.TapCheckRepository) *ActivityService {
+	return &ActivityService{sessions: sessions, learning: learning, tapChecks: tapChecks}
 }
 
 // SessionStarted records a session's start and its plan.
@@ -50,6 +52,12 @@ func (s *ActivityService) SessionEnded(ctx context.Context, e domain.PracticeSes
 // is kept once.
 func (s *ActivityService) LessonCompleted(ctx context.Context, a domain.LearningActivity) error {
 	_, err := s.learning.Insert(ctx, a)
+	return err
+}
+
+// TapCheckCompleted keeps one tap check; a redelivered event is kept once.
+func (s *ActivityService) TapCheckCompleted(ctx context.Context, c domain.TapCheck) error {
+	_, err := s.tapChecks.Insert(ctx, c)
 	return err
 }
 
