@@ -30,7 +30,17 @@ func (h *Handler) CreatePracticeSessionPlan(ctx context.Context, request generat
 	plan, err := h.practiceSession.ComposePlan(ctx, caller, uuidPtrToStringPtr(request.Body.InstrumentId), request.Body.Minutes)
 	switch kind, valErr := classify(err); {
 	case err == nil:
-		return generated.CreatePracticeSessionPlan200JSONResponse(toGeneratedPracticeSessionPlan(plan)), nil
+		var creatorIDs []string
+		for _, item := range plan.Items {
+			if item.Exercise != nil && item.Exercise.CreatedBy != "" {
+				creatorIDs = append(creatorIDs, item.Exercise.CreatedBy)
+			}
+		}
+		names, err := h.loadUserNames(ctx, creatorIDs)
+		if err != nil {
+			return nil, err
+		}
+		return generated.CreatePracticeSessionPlan200JSONResponse(toGeneratedPracticeSessionPlan(plan, names)), nil
 	case kind == errKindValidation:
 		return generated.CreatePracticeSessionPlan400JSONResponse(validationErrorResponse(valErr)), nil
 	case kind == errKindNotFound:
@@ -46,10 +56,10 @@ func notFoundMessage(err error) string {
 	return strings.TrimPrefix(err.Error(), domain.ErrNotFound.Error()+": ")
 }
 
-func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan) generated.PracticeSessionPlan {
+func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userNames) generated.PracticeSessionPlan {
 	items := make([]generated.PracticeSessionItem, len(plan.Items))
 	for i, item := range plan.Items {
-		items[i] = toGeneratedPracticeSessionItem(item)
+		items[i] = toGeneratedPracticeSessionItem(item, names)
 	}
 	return generated.PracticeSessionPlan{
 		PracticeSessionId: mustUUID(plan.ID),
@@ -59,7 +69,7 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan) generated.P
 	}
 }
 
-func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem) generated.PracticeSessionItem {
+func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userNames) generated.PracticeSessionItem {
 	out := generated.PracticeSessionItem{
 		ItemKey:          item.ItemKey,
 		Kind:             generated.PracticeItemKind(item.Kind),
@@ -80,6 +90,10 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem) generated.P
 			StartTempoBpm:     p.StartTempoBPM,
 			TargetTempoBpm:    p.TargetTempoBPM,
 		}
+	}
+	if e := item.Exercise; e != nil {
+		exercise := toExercise(*e, names)
+		out.Exercise = &exercise
 	}
 	return out
 }

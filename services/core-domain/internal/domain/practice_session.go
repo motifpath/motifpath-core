@@ -82,6 +82,12 @@ func (s PracticeItemState) ReviewDue(now time.Time) bool {
 	return s.DueAt != nil && !s.DueAt.After(now)
 }
 
+// Weak reports whether s is weak at now: practised, not due, and shown
+// below fluent.
+func (s PracticeItemState) Weak(now time.Time) bool {
+	return s.Counted > 0 && !s.Due(now) && s.ShownLevel(now).Rank() < KnowledgeLevelFluent.Rank()
+}
+
 // ShownLevel is the level shown at now: the earned level, one step lower
 // once the review is overdue by more than the box's wait.
 func (s PracticeItemState) ShownLevel(now time.Time) KnowledgeLevel {
@@ -119,8 +125,10 @@ type PracticePickReason string
 
 const (
 	PracticePickDue         PracticePickReason = "due"
+	PracticePickWeak        PracticePickReason = "weak"
 	PracticePickNew         PracticePickReason = "new"
 	PracticePickWarmUp      PracticePickReason = "warm_up"
+	PracticePickApplication PracticePickReason = "application"
 	PracticePickReviewAhead PracticePickReason = "review_ahead"
 	PracticePickStretch     PracticePickReason = "stretch"
 )
@@ -142,7 +150,9 @@ type PracticeSessionItem struct {
 	NodeID           *string
 	Level            KnowledgeLevel
 	EstimatedSeconds int
-	PlayAlong        *PlannedPlayAlong
+	// Exactly one of PlayAlong and Exercise is set, matching Kind.
+	PlayAlong *PlannedPlayAlong
+	Exercise  *Exercise
 }
 
 // PracticeSessionPlan is a composed session. It is never stored: the client
@@ -229,4 +239,17 @@ func PlayAlongSeconds(d Diagram, tempo int, warmUp bool) int {
 	}
 	take := beats * 60 / float64(tempo)
 	return int(math.Ceil(float64(takes) * (take + rateSeconds)))
+}
+
+// defaultExerciseSeconds is how long an exercise with no authored estimate
+// is taken to need in a session.
+const defaultExerciseSeconds = 30
+
+// ExerciseSeconds estimates how long answering e once takes in a session:
+// its authored estimate, or 30 seconds without one.
+func ExerciseSeconds(e Exercise) int {
+	if e.EstimatedDurationSeconds != nil {
+		return *e.EstimatedDurationSeconds
+	}
+	return defaultExerciseSeconds
 }

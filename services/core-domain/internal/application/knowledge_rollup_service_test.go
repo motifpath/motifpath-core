@@ -141,6 +141,29 @@ func TestKnowledgeRollupService_Standings(t *testing.T) {
 		assert.Equal(t, 1, got[low.ID].RequiresDepth)
 	})
 
+	t.Run("the map lists the nodes for the instrument in catalog order, with their subtree items and the student's states", func(t *testing.T) {
+		f := setup(t)
+		f.items.items[practiceGuitar] = []domain.ClassifiedItem{
+			{ItemKey: "play_along:1", NodeIDs: []string{low.ID}},
+			{ItemKey: "exercise:1", NodeIDs: []string{intervals.ID}},
+		}
+		f.states.put(alice, accurate("play_along:1"))
+
+		got, err := f.svc.Map(ctx, alice, practiceGuitar)
+
+		require.NoError(t, err)
+		ids := make([]string, len(got.Nodes))
+		for i, n := range got.Nodes {
+			ids[i] = n.ID
+		}
+		assert.Equal(t, []string{fretboard.ID, intervals.ID, reading.ID, all.ID, low.ID}, ids, "sorted by key, without the bass-only slap")
+		assert.Equal(t, []string{"play_along:1"}, got.Subtrees[fretboard.ID])
+		assert.Equal(t, []string{"exercise:1"}, got.Subtrees[intervals.ID])
+		assert.Equal(t, map[string]domain.PracticeItemState{"play_along:1": accurate("play_along:1")}, got.States)
+		require.NotNil(t, got.Standings[low.ID].Level)
+		assert.Equal(t, domain.KnowledgeLevelAccurate, *got.Standings[low.ID].Level)
+	})
+
 	t.Run("a failure listing items or reading states fails the request", func(t *testing.T) {
 		f := setup(t)
 		f.items.err = errors.New("db down")

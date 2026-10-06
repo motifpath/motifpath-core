@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -56,37 +57,122 @@ const (
 )
 
 type practiceFixture struct {
-	svc          *application.PracticeSessionService
-	instruments  *fakeInstrumentRepository
-	studentPaths *fakeStudentPathRepository
-	enrollments  *fakeCourseEnrollmentRepository
-	contentNodes *fakeContentNodeRepository
-	diagrams     *fakeDiagramRepository
-	states       *fakePracticeItemStateReader
-	now          time.Time
-	pathCount    int
-	t            *testing.T
+	svc            *application.PracticeSessionService
+	instruments    *fakeInstrumentRepository
+	studentPaths   *fakeStudentPathRepository
+	enrollments    *fakeCourseEnrollmentRepository
+	contentNodes   *fakeContentNodeRepository
+	diagrams       *fakeDiagramRepository
+	exercises      *fakeExerciseRepository
+	knowledgeNodes *fakeKnowledgeNodeRepository
+	edges          *fakeKnowledgeEdgeRepository
+	states         *fakePracticeItemStateReader
+	now            time.Time
+	pathCount      int
+	t              *testing.T
+}
+
+// practiceItemSource is a ports.NodeItemSource over the fixture's diagrams
+// and exercises, classifying them as the Postgres source does.
+type practiceItemSource struct{ f *practiceFixture }
+
+func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
+	diagrams, err := s.f.diagrams.List(ctx, domain.DiagramListFilter{InstrumentID: instrumentID, Kind: domain.DiagramKindBasic}, domain.PageRequest{Limit: 1000})
+	if err != nil {
+		return nil, err
+	}
+	var items []domain.ClassifiedItem
+	for _, d := range diagrams.Items {
+		if d.TempoBPM != nil {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: d.SkillIDs()})
+		}
+	}
+	exercises, err := s.f.exercises.List(ctx, domain.ExerciseFilter{InstrumentIDs: []string{instrumentID}}, domain.PageRequest{Limit: 1000})
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range exercises.Items {
+		items = append(items, domain.ClassifiedItem{ItemKey: domain.ExerciseItemKey(e.ID), NodeIDs: exerciseSkillIDs(e)})
+	}
+	return items, nil
 }
 
 func newPracticeFixture(t *testing.T) *practiceFixture {
 	f := &practiceFixture{
-		instruments:  newFakeInstrumentRepository(),
-		studentPaths: newFakeStudentPathRepository(),
-		enrollments:  newFakeCourseEnrollmentRepository(),
-		contentNodes: newFakeContentNodeRepository(),
-		diagrams:     newFakeDiagramRepository(),
-		states:       newFakePracticeItemStateReader(),
-		now:          time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
-		t:            t,
+		instruments:    newFakeInstrumentRepository(),
+		studentPaths:   newFakeStudentPathRepository(),
+		enrollments:    newFakeCourseEnrollmentRepository(),
+		contentNodes:   newFakeContentNodeRepository(),
+		diagrams:       newFakeDiagramRepository(),
+		exercises:      newFakeExerciseRepository(),
+		knowledgeNodes: newFakeKnowledgeNodeRepository(),
+		edges:          newFakeKnowledgeEdgeRepository(),
+		states:         newFakePracticeItemStateReader(),
+		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
+		t:              t,
 	}
 	f.instruments.put(domain.Instrument{ID: practiceGuitar})
 	f.instruments.put(domain.Instrument{ID: practiceBass})
+	now := func() time.Time { return f.now }
+	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.contentNodes, f.diagrams, f.states,
+		f.instruments, f.studentPaths, f.enrollments, f.contentNodes, f.diagrams, f.exercises, rollup,
 		func() string { return "session-1" },
-		func() time.Time { return f.now },
+		now,
 	)
 	return f
+}
+
+// skill puts a skill for every instrument on the knowledge map, keyed by
+// its id so catalog order is id order, unless it is already there.
+func (f *practiceFixture) skill(id string) {
+	if _, err := f.knowledgeNodes.GetByID(context.Background(), id); err == nil {
+		return
+	}
+	f.knowledgeNodes.put(domain.KnowledgeNode{ID: id, Kind: domain.KnowledgeNodeKindSkill, Key: id})
+}
+
+// requires makes skill from require skill to at level.
+func (f *practiceFixture) requires(from, to string, level domain.KnowledgeLevel) {
+	f.skill(from)
+	f.skill(to)
+	l := domain.MasteryLevel(level)
+	require.NoError(f.t, f.edges.Create(context.Background(), domain.KnowledgeEdge{ID: from + "->" + to, FromID: from, ToID: to, Type: domain.KnowledgeEdgeTypeRequires, Level: &l}))
+}
+
+// exercise puts an exercise taking seconds, classified under skillID, for
+// instrumentIDs (none: every instrument).
+func (f *practiceFixture) exercise(id, skillID string, seconds int, instrumentIDs ...string) {
+	f.skill(skillID)
+	require.NoError(f.t, f.exercises.Create(context.Background(), domain.Exercise{
+		ID:                       id,
+		Title:                    id,
+		ExerciseType:             domain.ExerciseTypeTextResponse,
+		Skills:                   []domain.KnowledgeNode{{ID: skillID}},
+		EstimatedDurationSeconds: &seconds,
+		InstrumentIDs:            instrumentIDs,
+	}))
+}
+
+// exerciseBatch puts count exercises of seconds each under skillID for every
+// instrument, ids prefix-00, prefix-01, ..., and returns their item keys.
+func (f *practiceFixture) exerciseBatch(prefix, skillID string, count, seconds int) []string {
+	keys := make([]string, count)
+	for i := range count {
+		id := fmt.Sprintf("%s-%02d", prefix, i)
+		f.exercise(id, skillID, seconds)
+		keys[i] = domain.ExerciseItemKey(id)
+	}
+	return keys
+}
+
+// stateOf puts the student's state on the item itemKey.
+func (f *practiceFixture) stateOf(itemKey string, s domain.PracticeItemState) {
+	s.ItemKey = itemKey
+	if s.RulesVersion == 0 {
+		s.RulesVersion = domain.PracticeRulesVersion
+	}
+	f.states.put(studentCaller().ID, s)
 }
 
 // onPath puts a standalone path for the student whose one content node
@@ -111,6 +197,7 @@ func (f *practiceFixture) onPath(skillIDs ...string) {
 // at tempo, classified under skillID. A tempo of 0 leaves it without
 // playback.
 func (f *practiceFixture) playAlong(id, name, instrumentID, skillID string, tempo int) {
+	f.skill(skillID)
 	d := domain.Diagram{
 		ID:            id,
 		InstrumentID:  instrumentID,
@@ -229,17 +316,23 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 
 	t.Run("a play-along with no clean take yet is new, starting at 60% of the diagram's tempo rounded down to 5 BPM", func(t *testing.T) {
 		f := newPracticeFixture(t)
-		f.onPath("skill-1")
+		f.onPath("skill-1", "skill-2")
 		f.playAlong("d1", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		// A due exercise on skill-2 makes skill-2's play-along the ending,
+		// leaving d1 to the focus block, whose new share at 20 minutes fits it.
+		f.exercise("due", "skill-2", 30)
+		f.due("exercise:due")
+		f.playAlong("ending", "Ending", practiceGuitar, "skill-2", 100)
 
-		plan := f.compose(t, practiceGuitar, 10)
+		plan := f.compose(t, practiceGuitar, 20)
 
 		assert.Equal(t, "session-1", plan.ID)
 		require.NotNil(t, plan.InstrumentID)
 		assert.Equal(t, practiceGuitar, *plan.InstrumentID)
-		assert.Equal(t, 10, plan.Minutes)
-		require.Len(t, plan.Items, 1)
-		item := plan.Items[0]
+		assert.Equal(t, 20, plan.Minutes)
+		i := slices.Index(planKeys(plan), "play_along:d1")
+		require.NotEqual(t, -1, i)
+		item := plan.Items[i]
 		assert.Equal(t, "play_along:d1", item.ItemKey)
 		assert.Equal(t, domain.PracticeItemKindPlayAlong, item.Kind)
 		assert.Equal(t, domain.PracticePickNew, item.Reason)
@@ -294,7 +387,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.playAlong("run", "Pentatonic run", practiceGuitar, "skill-1", 120)
 		f.state("scale", domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 3, DueAt: f.inDays(3), BestCleanBPM: intPtr(100)})
 
-		plan := f.compose(t, practiceGuitar, 10)
+		plan := f.compose(t, practiceGuitar, 9)
 
 		require.Len(t, plan.Items, 2)
 		warmUp := plan.Items[0]
@@ -318,7 +411,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		}
 	})
 
-	t.Run("the warm-up comes first, then due items, most overdue first, then new items", func(t *testing.T) {
+	t.Run("the warm-up comes first, then due items, most overdue first, then the rest", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPath("skill-1")
 		f.playAlong("a-new", "A new", practiceGuitar, "skill-1", 100)
@@ -329,14 +422,15 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.state("c-due-long-ago", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 1, DueAt: f.daysAgo(1)})
 		f.state("d-known", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(5), BestCleanBPM: intPtr(100)})
 
-		plan := f.compose(t, practiceGuitar, 30)
+		plan := f.compose(t, practiceGuitar, 9)
 
 		assert.Equal(t, []string{"play_along:d-known", "play_along:c-due-long-ago", "play_along:b-due-today", "play_along:a-new"}, planKeys(plan))
 		reasons := []domain.PracticePickReason{}
 		for _, item := range plan.Items {
 			reasons = append(reasons, item.Reason)
 		}
-		assert.Equal(t, []domain.PracticePickReason{domain.PracticePickWarmUp, domain.PracticePickDue, domain.PracticePickDue, domain.PracticePickNew}, reasons)
+		assert.Equal(t, []domain.PracticePickReason{domain.PracticePickWarmUp, domain.PracticePickDue, domain.PracticePickDue, domain.PracticePickStretch}, reasons,
+			"a-new is too long for the new share of 9 minutes, so it comes back as a stretch on the path's skill")
 	})
 
 	t.Run("with an instrument in hand, only play-alongs that suit it and have playback are picked", func(t *testing.T) {
@@ -363,16 +457,19 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		archivedNode := domain.ContentNode{ID: "archived-node", Classification: domain.Classification{Skills: []domain.KnowledgeNode{{ID: "skill-archived"}}}}
 		f.contentNodes.put(archivedNode)
 		require.NoError(t, f.studentPaths.Create(ctx, domain.StudentPath{ID: "archived-path", StudentID: studentCaller().ID, ArchivedAt: &archivedAt, Items: []domain.StudentPathItemRecord{{Position: 1, ContentNodeID: archivedNode.ID}}}))
-		f.playAlong("standalone", "Standalone", practiceGuitar, "skill-standalone", 100)
-		f.playAlong("course", "Course", practiceGuitar, "skill-course", 100)
-		f.playAlong("archived", "Archived", practiceGuitar, "skill-archived", 100)
+		f.exercise("standalone", "skill-standalone", 30)
+		f.exercise("course", "skill-course", 30)
+		f.exercise("archived", "skill-archived", 30)
 
-		plan := f.compose(t, practiceGuitar, 30)
+		plan := f.compose(t, practiceGuitar, 9)
 
-		assert.ElementsMatch(t, []string{"play_along:standalone", "play_along:course"}, planKeys(plan))
+		reasons := map[string]domain.PracticePickReason{}
 		for _, item := range plan.Items {
-			assert.Equal(t, domain.PracticePickNew, item.Reason)
+			reasons[item.ItemKey] = item.Reason
 		}
+		assert.Equal(t, domain.PracticePickNew, reasons["exercise:standalone"])
+		assert.Equal(t, domain.PracticePickNew, reasons["exercise:course"])
+		assert.NotEqual(t, domain.PracticePickNew, reasons["exercise:archived"], "an archived path's skill is only ever a stretch")
 	})
 
 	t.Run("each pick is fitted to the minutes by its estimated time", func(t *testing.T) {
@@ -420,8 +517,8 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.onPath("skill-1")
 		f.playAlong("later", "Later", practiceGuitar, "skill-1", 100)
 		f.playAlong("sooner", "Sooner", practiceGuitar, "skill-1", 100)
-		f.state("later", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
-		f.state("sooner", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 1, DueAt: f.inDays(1)})
+		f.state("later", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(2)})
+		f.state("sooner", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(1)})
 
 		plan := f.compose(t, practiceGuitar, 3)
 
@@ -468,11 +565,13 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.onPath("skill-1")
 		f.playAlong("known", "Known", practiceGuitar, "skill-1", 100)
 		f.playAlong("fresh", "Fresh", practiceGuitar, "skill-1", 100)
-		f.stateUnder(domain.PracticeRulesVersion+1, "known", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
+		f.stateUnder(domain.PracticeRulesVersion+1, "known", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(2)})
 
 		plan := f.compose(t, practiceGuitar, 3)
 
-		assert.Equal(t, []string{"play_along:fresh"}, planKeys(plan), "a known item not yet due is neither due nor new")
+		require.Contains(t, planKeys(plan), "play_along:known")
+		assert.Equal(t, domain.PracticePickReviewAhead, plan.Items[slices.Index(planKeys(plan), "play_along:known")].Reason,
+			"a known item not yet due is reviewed ahead, not due")
 	})
 
 	t.Run("only basic diagrams are offered, never a teacher's own custom ones", func(t *testing.T) {
@@ -543,5 +642,336 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		_, err := f.svc.ComposePlan(ctx, studentCaller(), &guitar, 10)
 
 		require.ErrorIs(t, err, assert.AnError)
+	})
+}
+
+// secondsByReason sums the estimated seconds of a plan's items per reason.
+func secondsByReason(plan domain.PracticeSessionPlan) map[domain.PracticePickReason]int {
+	seconds := map[domain.PracticePickReason]int{}
+	for _, item := range plan.Items {
+		seconds[item.Reason] += item.EstimatedSeconds
+	}
+	return seconds
+}
+
+func planReasons(plan domain.PracticeSessionPlan) []domain.PracticePickReason {
+	reasons := make([]domain.PracticePickReason, len(plan.Items))
+	for i, item := range plan.Items {
+		reasons[i] = item.Reason
+	}
+	return reasons
+}
+
+// due, weak and known give the student a state on each of keys: due
+// today; accurate and due in two days; fluent and due in dueInDays.
+func (f *practiceFixture) due(keys ...string) {
+	for _, k := range keys {
+		f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(0)})
+	}
+}
+
+func (f *practiceFixture) weak(keys ...string) {
+	for _, k := range keys {
+		f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: f.inDays(2)})
+	}
+}
+
+func (f *practiceFixture) known(dueInDays int, keys ...string) {
+	for _, k := range keys {
+		f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(dueInDays)})
+	}
+}
+
+func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
+	// Every item below is a 30-second exercise, with no play-along, so a
+	// session has no warm-up and no application ending: the focus time is
+	// the whole session.
+	t.Run("an item practised, not due and below fluent is picked as weak; a fluent one never is", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.exercise("accurate", "skill-1", 30)
+		f.exercise("fluent", "skill-1", 30)
+		f.weak("exercise:accurate")
+		f.known(5, "exercise:fluent")
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		reasons := map[string]domain.PracticePickReason{}
+		for _, item := range plan.Items {
+			reasons[item.ItemKey] = item.Reason
+		}
+		assert.Equal(t, domain.PracticePickWeak, reasons["exercise:accurate"])
+		assert.NotEqual(t, domain.PracticePickWeak, reasons["exercise:fluent"])
+	})
+
+	t.Run("due, weak and new items share the focus time 60, 25 and 15", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.due(f.exerciseBatch("due", "skill-1", 40, 30)...)
+		f.weak(f.exerciseBatch("weak", "skill-1", 40, 30)...)
+		f.exerciseBatch("new", "skill-1", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{
+			domain.PracticePickDue:  720,
+			domain.PracticePickWeak: 300,
+			domain.PracticePickNew:  180,
+		}, secondsByReason(plan))
+		assert.Equal(t, []domain.PracticePickReason{domain.PracticePickDue, domain.PracticePickWeak, domain.PracticePickNew},
+			slices.Compact(planReasons(plan)), "due items come first, then weak, then new")
+	})
+
+	t.Run("due items take over the time weak items don't use", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.due(f.exerciseBatch("due", "skill-1", 40, 30)...)
+		f.exerciseBatch("new", "skill-1", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{domain.PracticePickDue: 1020, domain.PracticePickNew: 180}, secondsByReason(plan))
+	})
+
+	t.Run("weak items take over the time due items don't use", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.weak(f.exerciseBatch("weak", "skill-1", 40, 30)...)
+		f.exerciseBatch("new", "skill-1", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{domain.PracticePickWeak: 1020, domain.PracticePickNew: 180}, secondsByReason(plan))
+	})
+
+	t.Run("the new share is a ceiling, never filled past it", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.due(f.exerciseBatch("due", "skill-1", 2, 30)...)
+		f.exerciseBatch("new", "skill-1", 200, 30)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		seconds := secondsByReason(plan)
+		assert.Equal(t, 60, seconds[domain.PracticePickDue])
+		assert.Equal(t, 180, seconds[domain.PracticePickNew])
+	})
+
+	t.Run("time left after due, weak and new is split evenly between review ahead and stretch", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.due(f.exerciseBatch("due", "skill-1", 8, 30)...)
+		f.exerciseBatch("new", "skill-1", 2, 30)
+		f.known(3, f.exerciseBatch("known", "skill-1", 40, 30)...)
+		f.exerciseBatch("stretch", "skill-ready", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{
+			domain.PracticePickDue:         240,
+			domain.PracticePickNew:         60,
+			domain.PracticePickReviewAhead: 450,
+			domain.PracticePickStretch:     450,
+		}, secondsByReason(plan))
+	})
+
+	t.Run("a caught-up student with nothing coming due stretches for the whole session", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.exerciseBatch("stretch", "skill-ready", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{domain.PracticePickStretch: 600}, secondsByReason(plan))
+		for _, item := range plan.Items {
+			require.NotNil(t, item.NodeID)
+			assert.Equal(t, "skill-ready", *item.NodeID, "a stretch pick names the node it starts")
+		}
+	})
+
+	t.Run("review ahead looks a week ahead: a known item due later is left to stretch", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.known(7, f.exerciseBatch("week", "skill-1", 1, 30)...)
+		f.known(8, f.exerciseBatch("later", "skill-1", 1, 30)...)
+		f.exerciseBatch("stretch", "skill-ready", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Contains(t, planKeys(plan), "exercise:week-00")
+		assert.NotContains(t, planKeys(plan), "exercise:later-00")
+		assert.Equal(t, map[domain.PracticePickReason]int{domain.PracticePickReviewAhead: 30, domain.PracticePickStretch: 570}, secondsByReason(plan))
+	})
+
+	t.Run("stretch starts with nodes that build on what the student meets, then the shallowest, then catalog order", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.exercise("met", "skill-1", 30)
+		f.known(5, "exercise:met")
+		f.requires("skill-b-deep", "skill-c-shallow", domain.KnowledgeLevelAccurate)
+		f.requires("skill-c-shallow", "skill-1", domain.KnowledgeLevelAccurate)
+		f.requires("skill-d-unmet", "skill-unmet", domain.KnowledgeLevelAccurate)
+		f.exerciseBatch("a", "skill-a-free", 1, 30)
+		f.exerciseBatch("b", "skill-b-deep", 1, 30)
+		// Four of skill-c-shallow's five items are fluent, so the node is
+		// fluent and skill-b-deep's requirement is met; one is still unseen.
+		f.known(5, f.exerciseBatch("c", "skill-c-shallow", 5, 30)[:4]...)
+		f.exerciseBatch("d", "skill-d-unmet", 1, 30)
+		f.exerciseBatch("u", "skill-unmet", 1, 30)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		var stretch []string
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickStretch {
+				stretch = append(stretch, *item.NodeID)
+			}
+		}
+		assert.Equal(t, []string{"skill-c-shallow", "skill-b-deep", "skill-a-free", "skill-unmet"}, stretch,
+			"skill-d-unmet's requirement isn't met, so it is never a stretch")
+	})
+
+	t.Run("past the new share, a ready path skill's unseen items come back as stretch before any other node's", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-z-path")
+		f.exerciseBatch("path", "skill-z-path", 40, 30)
+		f.exerciseBatch("other", "skill-a-other", 40, 30)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Equal(t, map[domain.PracticePickReason]int{domain.PracticePickNew: 90, domain.PracticePickStretch: 510}, secondsByReason(plan))
+		for _, item := range plan.Items {
+			require.NotNil(t, item.NodeID)
+			assert.Equal(t, "skill-z-path", *item.NodeID, item.ItemKey)
+		}
+	})
+
+	t.Run("an unmet requirement never keeps a skill on the student's path out of practice", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-all-strings")
+		f.requires("skill-all-strings", "skill-low-strings", domain.KnowledgeLevelAccurate)
+		f.exerciseBatch("all", "skill-all-strings", 2, 30)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Equal(t, []string{"exercise:all-00", "exercise:all-01"}, planKeys(plan)[:2])
+		assert.Equal(t, domain.PracticePickNew, plan.Items[0].Reason)
+	})
+
+	t.Run("an exercise item carries the exercise, sized by its estimate", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.exercise("name-the-third", "skill-1", 25)
+		f.exercise("bass-only", "skill-1", 25, practiceBass)
+
+		plan := f.compose(t, practiceGuitar, 4)
+
+		require.Equal(t, []string{"exercise:name-the-third"}, planKeys(plan), "an exercise for another instrument is never picked")
+		item := plan.Items[0]
+		assert.Equal(t, domain.PracticeItemKindExercise, item.Kind)
+		assert.Equal(t, domain.PracticePickNew, item.Reason)
+		assert.Equal(t, 25, item.EstimatedSeconds)
+		assert.Equal(t, domain.KnowledgeLevelNew, item.Level)
+		require.NotNil(t, item.NodeID)
+		assert.Equal(t, "skill-1", *item.NodeID)
+		require.NotNil(t, item.Exercise)
+		assert.Equal(t, "name-the-third", item.Exercise.ID)
+		assert.Nil(t, item.PlayAlong)
+	})
+}
+
+func TestPracticeSessionService_ComposePlanApplication(t *testing.T) {
+	t.Run("a session of 10 minutes or more ends with a play-along applying a skill its focus items practise", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-other", "chord-tones")
+		f.playAlong("other-riff", "Other riff", practiceGuitar, "skill-other", 100)
+		f.playAlong("chord-tone-riff", "Chord-tone riff", practiceGuitar, "chord-tones", 100)
+		f.due(f.exerciseBatch("third", "chord-tones", 4, 30)...)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		last := plan.Items[len(plan.Items)-1]
+		assert.Equal(t, "play_along:chord-tone-riff", last.ItemKey)
+		assert.Equal(t, domain.PracticePickApplication, last.Reason)
+		assert.Equal(t, 60, last.PlayAlong.StartTempoBPM, "the ending is played on the tempo ladder")
+		count := 0
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickApplication {
+				count++
+			}
+		}
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("the application ending is taken out of the focus time", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("chord-tones")
+		f.playAlong("chord-tone-riff", "Chord-tone riff", practiceGuitar, "chord-tones", 100)
+		f.due(f.exerciseBatch("due", "chord-tones", 40, 30)...)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		seconds := secondsByReason(plan)
+		ending := seconds[domain.PracticePickApplication]
+		require.Positive(t, ending)
+		focus := 20*60 - ending
+		assert.Equal(t, (focus*60/100+focus*25/100)/30*30, seconds[domain.PracticePickDue],
+			"due takes its share and weak's of the focus time: the session less the ending")
+	})
+
+	t.Run("with no play-along on a focus skill, the ending applies another skill of the path", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1", "chord-tones")
+		f.due(f.exerciseBatch("due", "skill-1", 4, 30)...)
+		f.playAlong("chord-tone-riff", "Chord-tone riff", practiceGuitar, "chord-tones", 100)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		last := plan.Items[len(plan.Items)-1]
+		assert.Equal(t, "play_along:chord-tone-riff", last.ItemKey)
+		assert.Equal(t, domain.PracticePickApplication, last.Reason)
+	})
+
+	t.Run("a due play-along keeps its review rather than becoming the ending", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("due-riff", "Due riff", practiceGuitar, "skill-1", 100)
+		f.due("play_along:due-riff")
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Equal(t, []domain.PracticePickReason{domain.PracticePickDue}, planReasons(plan))
+	})
+
+	t.Run("an ending taking more than a quarter of the session is skipped", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("long-riff", "Long riff", practiceGuitar, "skill-1", 100)
+		f.reshape("long-riff", domain.DiagramKindBasic, 200)
+		f.due(f.exerciseBatch("due", "skill-1", 40, 30)...)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.NotContains(t, planReasons(plan), domain.PracticePickApplication)
+	})
+
+	t.Run("with no play-along on the instrument at all, or a session under 10 minutes, there is no ending", func(t *testing.T) {
+		for _, tc := range []struct {
+			name       string
+			instrument string
+			minutes    int
+		}{
+			{name: "no play-along on the bass", instrument: practiceBass, minutes: 10},
+			{name: "a 9-minute session", instrument: practiceGuitar, minutes: 9},
+		} {
+			f := newPracticeFixture(t)
+			f.onPath("skill-1")
+			f.playAlong("guitar-riff", "Guitar riff", practiceGuitar, "skill-1", 100)
+			f.due(f.exerciseBatch("due", "skill-1", 40, 30)...)
+
+			plan := f.compose(t, tc.instrument, tc.minutes)
+
+			assert.NotContains(t, planReasons(plan), domain.PracticePickApplication, tc.name)
+		}
 	})
 }
