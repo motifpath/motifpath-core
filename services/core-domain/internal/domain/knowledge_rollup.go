@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"cmp"
 	"slices"
 	"time"
 )
@@ -179,4 +180,43 @@ func requiresFrom(nodeID string, edges []KnowledgeEdge, nodes map[string]Knowled
 		}
 	}
 	return found
+}
+
+// RankStretchNodes lists the ids of nodes a student may stretch to, in the
+// order to start them: those with something to practise and every
+// requirement met, keyed in standings (the nodes for the instrument). The
+// nodes in pathNodeIDs, the student's own path, come first; then nodes that
+// build on something the student meets, having requirements; then the
+// shallowest requires depth; then nodes' own order.
+func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string) []string {
+	var ready []KnowledgeNode
+	for _, n := range nodes {
+		if s, ok := standings[n.ID]; ok && s.Level != nil && s.Readiness.Complete() {
+			ready = append(ready, n)
+		}
+	}
+	offPath := func(id string) int {
+		if slices.Contains(pathNodeIDs, id) {
+			return 0
+		}
+		return 1
+	}
+	buildsOn := func(id string) int {
+		if standings[id].Readiness.Total > 0 {
+			return 0
+		}
+		return 1
+	}
+	slices.SortStableFunc(ready, func(a, b KnowledgeNode) int {
+		return cmp.Or(
+			cmp.Compare(offPath(a.ID), offPath(b.ID)),
+			cmp.Compare(buildsOn(a.ID), buildsOn(b.ID)),
+			cmp.Compare(standings[a.ID].RequiresDepth, standings[b.ID].RequiresDepth),
+		)
+	})
+	ids := make([]string, len(ready))
+	for i, n := range ready {
+		ids[i] = n.ID
+	}
+	return ids
 }
