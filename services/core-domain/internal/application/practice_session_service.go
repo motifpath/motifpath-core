@@ -49,6 +49,7 @@ type PracticeSessionService struct {
 	exercises   ports.ExerciseRepository
 	rollup      *KnowledgeRollupService
 	tapChecks   ports.TapCheckReader
+	feltRatings ports.FeltRatingReader
 	newID       func() string
 	now         func() time.Time
 }
@@ -64,6 +65,7 @@ func NewPracticeSessionService(
 	exercises ports.ExerciseRepository,
 	rollup *KnowledgeRollupService,
 	tapChecks ports.TapCheckReader,
+	feltRatings ports.FeltRatingReader,
 	newID func() string,
 	now func() time.Time,
 ) *PracticeSessionService {
@@ -73,12 +75,13 @@ func NewPracticeSessionService(
 			studentPaths: studentPaths, enrollments: enrollments, contentNodes: contentNodes,
 			learningPaths: learningPaths, courseVersions: courseVersions, instruments: instruments,
 		},
-		diagrams:  diagrams,
-		exercises: exercises,
-		rollup:    rollup,
-		tapChecks: tapChecks,
-		newID:     newID,
-		now:       now,
+		diagrams:    diagrams,
+		exercises:   exercises,
+		rollup:      rollup,
+		tapChecks:   tapChecks,
+		feltRatings: feltRatings,
+		newID:       newID,
+		now:         now,
 	}
 }
 
@@ -196,17 +199,38 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	return s.newPlan(ctx, caller.ID, instrumentID, minutes, c.plan())
 }
 
-// newPlan is the plan of the composed items, asking for a tap check when
-// one is due. A plan with no item is not found.
+// newPlan is the plan of the composed items, with its felt questions and
+// asking for a tap check when one is due. A plan with no item is not found.
 func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, instrumentID *string, minutes int, items []domain.PracticeSessionItem) (domain.PracticeSessionPlan, error) {
 	if len(items) == 0 {
 		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise for this session", domain.ErrNotFound)
+	}
+	feltQuestions, err := s.feltQuestions(ctx, items)
+	if err != nil {
+		return domain.PracticeSessionPlan{}, err
 	}
 	tapCheckDue, err := s.tapCheckDue(ctx, studentID, items)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	return domain.PracticeSessionPlan{ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items, TapCheckDue: tapCheckDue}, nil
+	return domain.PracticeSessionPlan{
+		ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items,
+		FeltQuestions: feltQuestions, TapCheckDue: tapCheckDue,
+	}, nil
+}
+
+// feltQuestions picks the plan's felt questions, reading felt ratings only
+// when the plan has a timed drill.
+func (s *PracticeSessionService) feltQuestions(ctx context.Context, items []domain.PracticeSessionItem) ([]string, error) {
+	templates := domain.PlanDrillTemplates(items)
+	if len(templates) == 0 {
+		return []string{}, nil
+	}
+	feltRated, err := s.feltRatings.FeltRatedSessions(ctx, templates)
+	if err != nil {
+		return nil, err
+	}
+	return domain.FeltQuestions(items, feltRated), nil
 }
 
 // tapCheckDue reports whether the plan of items asks the student for a tap

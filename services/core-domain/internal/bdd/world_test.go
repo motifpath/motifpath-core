@@ -49,6 +49,7 @@ type world struct {
 	lastCell         *lastCell
 	practiceActivity *fakePracticeActivity
 	tapChecks        *fakeTapChecks
+	feltRatings      *fakeFeltRatings
 	// tapCheckSkill is the skill of the tap-check scenarios' path.
 	tapCheckSkill string
 	// summaryNow is the practice summary's clock, which a scenario may
@@ -293,7 +294,8 @@ func newWorld() *world {
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
 	w.tapChecks = newFakeTapChecks()
-	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, w.tapChecks, newID, now)
+	w.feltRatings = newFakeFeltRatings()
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, w.tapChecks, w.feltRatings, newID, now)
 	w.practiceActivity = newFakePracticeActivity()
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }

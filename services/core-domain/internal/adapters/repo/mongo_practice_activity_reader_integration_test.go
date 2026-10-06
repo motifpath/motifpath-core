@@ -149,4 +149,35 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, found, "a student who never did a tap check has none")
 	})
+
+	t.Run("felt-rated sessions are counted per drill template asked about", func(t *testing.T) {
+		rated := func(id string, templates ...string) bson.D {
+			list := bson.A{}
+			for _, tpl := range templates {
+				list = append(list, tpl)
+			}
+			return bson.D{
+				{Key: "student_id", Value: "alice"},
+				{Key: "practice_session_id", Value: "felt-" + id},
+				{Key: "practised_templates", Value: list},
+				{Key: "felt_rated_templates", Value: list},
+				{Key: "end", Value: nil},
+			}
+		}
+		_, err := db.Collection("practice_sessions").InsertMany(ctx, []any{
+			rated("1", "fretboard_cell:name_the_note", "exercise:text_response"),
+			rated("2", "fretboard_cell:name_the_note"),
+			rated("3", "exercise:image_choice"),
+			rated("4"),
+		})
+		require.NoError(t, err)
+
+		got, err := reader.FeltRatedSessions(ctx, []string{"fretboard_cell:name_the_note", "exercise:text_response", "fretboard_cell:find_the_note"})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{"fretboard_cell:name_the_note": 2, "exercise:text_response": 1}, got)
+
+		none, err := reader.FeltRatedSessions(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, none)
+	})
 }

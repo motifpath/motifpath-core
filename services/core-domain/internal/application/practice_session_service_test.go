@@ -68,6 +68,28 @@ func (f *fakeTapCheckReader) LastTapCheck(_ context.Context, studentID string) (
 	return at, ok, nil
 }
 
+// fakeFeltRatingReader is an in-memory ports.FeltRatingReader holding the
+// felt-rated sessions of each drill template.
+type fakeFeltRatingReader struct {
+	sessions map[string]int
+	asked    [][]string
+	err      error
+}
+
+func (f *fakeFeltRatingReader) FeltRatedSessions(_ context.Context, templateKeys []string) (map[string]int, error) {
+	f.asked = append(f.asked, templateKeys)
+	if f.err != nil {
+		return nil, f.err
+	}
+	counts := map[string]int{}
+	for _, key := range templateKeys {
+		if n, ok := f.sessions[key]; ok {
+			counts[key] = n
+		}
+	}
+	return counts, nil
+}
+
 const (
 	practiceGuitar = "guitar"
 	practiceBass   = "electric-bass"
@@ -87,6 +109,7 @@ type practiceFixture struct {
 	learningPaths  *fakeLearningPathRepository
 	courseVersions *fakeCourseVersionRepository
 	tapChecks      *fakeTapCheckReader
+	feltRatings    *fakeFeltRatingReader
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
 	now       time.Time
@@ -133,6 +156,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		learningPaths:  newFakeLearningPathRepository(),
 		courseVersions: newFakeCourseVersionRepository(),
 		tapChecks:      &fakeTapCheckReader{last: map[string]time.Time{}},
+		feltRatings:    &fakeFeltRatingReader{sessions: map[string]int{}},
 		cells:          map[string][]domain.ClassifiedItem{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
@@ -142,7 +166,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks, f.feltRatings,
 		func() string { return "session-1" },
 		now,
 	)
@@ -1270,6 +1294,49 @@ func TestPracticeSessionService_ComposePlanTapCheck(t *testing.T) {
 		f := headWithCells(t)
 		boom := fmt.Errorf("mongo down")
 		f.tapChecks.err = boom
+
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
+
+		assert.ErrorIs(t, err, boom)
+	})
+}
+
+func TestPracticeSessionService_ComposePlanFeltQuestions(t *testing.T) {
+	t.Run("the plan asks about its two least felt-rated timed drills, fewest first", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.exercise("name-the-root", "root-strings", 30)
+		f.feltRatings.sessions = map[string]int{"fretboard_cell:name_the_note": 50, "exercise:text_response": 4}
+
+		plan := f.composeInTheHead(t, 10)
+
+		require.NotEmpty(t, itemsOfKind(plan, domain.PracticeItemKindExercise))
+		assert.Equal(t, domain.FeltQuestions(plan.Items, f.feltRatings.sessions), plan.FeltQuestions)
+		assert.Equal(t, []string{"exercise:text_response", "fretboard_cell:name_the_note"}, plan.FeltQuestions)
+		assert.Equal(t, [][]string{domain.PlanDrillTemplates(plan.Items)}, f.feltRatings.asked)
+	})
+
+	t.Run("a plan of play-alongs only asks nothing, nor reads felt ratings", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.playAlong("lick", "Lick", practiceGuitar, "root-strings", 100)
+		f.playAlong("riff", "Riff", practiceGuitar, "root-strings", 100)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		require.NotEmpty(t, plan.Items)
+		assert.Empty(t, plan.FeltQuestions)
+		assert.NotNil(t, plan.FeltQuestions)
+		assert.Empty(t, f.feltRatings.asked)
+	})
+
+	t.Run("a failure reading felt ratings fails the plan", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		boom := fmt.Errorf("mongo down")
+		f.feltRatings.err = boom
 
 		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
 
