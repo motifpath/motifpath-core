@@ -36,7 +36,7 @@ type fakePracticeSession struct {
 }
 
 // fakeItemSnapshot is an item's state at the end of the UTC day starting
-// at day.
+// at day. A read at a time takes the day whose end is nearest to it.
 type fakeItemSnapshot struct {
 	day      time.Time
 	snapshot domain.PracticeItemSnapshot
@@ -76,7 +76,7 @@ func (f *fakePracticeActivity) SnapshotsAt(_ context.Context, studentID string, 
 	latest := map[string]fakeItemSnapshot{}
 	for _, s := range f.snapshots[studentID] {
 		key := s.snapshot.ItemKey
-		if !slices.Contains(itemKeys, key) || s.day.Add(24*time.Hour).After(at) {
+		if !slices.Contains(itemKeys, key) || s.day.Add(12*time.Hour).After(at) {
 			continue
 		}
 		if prev, ok := latest[key]; !ok || s.day.After(prev.day) {
@@ -150,6 +150,7 @@ func registerPracticeSummarySteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" reads their practice summary for "([^"]+)"$`, w.readsSummary)
 	sc.Step(`^"([^"]+)" reads their practice summary for "([^"]+)" in time zone "([^"]+)"$`, w.readsSummaryInTimeZone)
 	sc.Step(`^"([^"]+)" reads their practice summary for an instrument that doesn't exist$`, w.readsSummaryForMissingInstrument)
+	sc.Step(`^"([^"]+)" reads their practice summary without an instrument$`, w.readsSummaryWithoutInstrument)
 	sc.Step(`^"([^"]+)" reads their practice overview$`, w.readsOverview)
 	sc.Step(`^"([^"]+)" reads their practice overview in time zone "([^"]+)"$`, w.readsOverviewInTimeZone)
 
@@ -167,6 +168,7 @@ func registerPracticeSummarySteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the next steps include "([^"]+)" as ready to start$`, w.nextStepsIncludeReadyToStart)
 	sc.Step(`^the next steps start with skills they are ready to start$`, w.nextStepsStartWithReadyToStart)
 	sc.Step(`^"([^"]+)" is in the "Any instrument" group, not in a guitar area$`, w.isInAnyInstrumentGroup)
+	sc.Step(`^"([^"]+)" is in no group$`, w.isInNoGroup)
 	sc.Step(`^that practice counts on Monday$`, w.practiceCountsOnMonday)
 	sc.Step(`^that completion counts on Monday$`, w.completionCountsOnMonday)
 	sc.Step(`^the "([^"]+)" card shows (\d+) practice days? and the next step to strengthen "([^"]+)"$`, w.cardShowsDaysAndStrengthen)
@@ -494,6 +496,10 @@ func (w *world) readsSummaryForMissingInstrument(string) error {
 	return w.readSummary(&id, w.timeZone)
 }
 
+func (w *world) readsSummaryWithoutInstrument(string) error {
+	return w.readSummary(nil, w.timeZone)
+}
+
 func (w *world) readSummary(instrumentID *openapi_types.UUID, timeZone string) error {
 	resp, err := w.handler.GetPracticeSummary(w.ctx(), generated.GetPracticeSummaryRequestObject{
 		Params: generated.GetPracticeSummaryParams{InstrumentId: instrumentID, TimeZone: &timeZone},
@@ -733,6 +739,22 @@ func (w *world) nextStepsStartWithReadyToStart() error {
 	}
 	if len(s.NextSteps) == 0 || s.NextSteps[0].Kind != generated.ReadyToStart {
 		return fmt.Errorf("expected the next steps to start with a skill ready to start, got %+v", s.NextSteps)
+	}
+	return nil
+}
+
+func (w *world) isInNoGroup(node string) error {
+	s, err := w.summary()
+	if err != nil {
+		return err
+	}
+	id := w.nodeIDByName(node)
+	for _, g := range s.Groups {
+		for _, n := range g.Nodes {
+			if n.NodeId == id {
+				return fmt.Errorf("expected %q in no group, found it in the group of area %v", node, g.AreaNodeId)
+			}
+		}
 	}
 	return nil
 }
