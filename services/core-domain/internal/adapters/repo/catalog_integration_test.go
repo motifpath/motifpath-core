@@ -78,16 +78,21 @@ func TestBasicCatalog(t *testing.T) {
 		positionsCount += len(ps)
 	}
 	db := startMigrationPostgres(t, ctx)
+	// The schema migrations run first; the reference data, which installs
+	// the catalog, runs in a transaction of its own like Atlas runs it.
+	var referenceData string
 	for _, file := range migrationFiles(t) {
-		if filepath.Base(file) == "20261002123500_basic_guitar_catalog.up.sql" {
-			continue
+		if strings.HasSuffix(file, "_baseline_reference_data.up.sql") {
+			referenceData = file
+			break
 		}
 		contents, err := os.ReadFile(file)
 		require.NoError(t, err)
 		_, err = db.ExecContext(ctx, string(contents))
 		require.NoError(t, err, file)
 	}
-	sqlBytes, err := os.ReadFile(filepath.Join(root, "services/core-domain/internal/adapters/repo/ent/migrate/migrations/20261002123500_basic_guitar_catalog.up.sql"))
+	require.NotEmpty(t, referenceData, "expected a *_baseline_reference_data.up.sql migration")
+	sqlBytes, err := os.ReadFile(referenceData)
 	require.NoError(t, err)
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)

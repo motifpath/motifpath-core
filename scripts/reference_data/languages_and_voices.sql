@@ -1,5 +1,5 @@
 -- The system languages and the playback voices. No generator produces these
--- rows; they are carried over unchanged from the migrations that first
+-- rows. They are carried over unchanged from the migrations that first
 -- installed them.
 
 -- en, pt_BR, and the literal "any" marking language-agnostic content. Each id
