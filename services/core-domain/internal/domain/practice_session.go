@@ -158,9 +158,18 @@ type PracticeSessionItem struct {
 	NodeID           *string
 	Level            KnowledgeLevel
 	EstimatedSeconds int
-	// Exactly one of PlayAlong and Exercise is set, matching Kind.
-	PlayAlong *PlannedPlayAlong
-	Exercise  *Exercise
+	// Exactly one of PlayAlong, Exercise and FretboardCell is set, matching
+	// Kind.
+	PlayAlong     *PlannedPlayAlong
+	Exercise      *Exercise
+	FretboardCell *PlannedFretboardCell
+}
+
+// PlannedFretboardCell is a fretboard cell picked for a session and the way
+// it is asked.
+type PlannedFretboardCell struct {
+	FretboardCell
+	Drill FretboardDrill
 }
 
 // PracticeSessionPlan is a composed session. It is never stored: the client

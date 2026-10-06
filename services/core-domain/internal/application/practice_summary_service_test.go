@@ -57,17 +57,13 @@ func (f *fakePracticeActivityReader) SnapshotsAt(_ context.Context, _ string, it
 // summaryFixture is a practice fixture with a summary service over it.
 type summaryFixture struct {
 	*practiceFixture
-	svc            *application.PracticeSummaryService
-	learningPaths  *fakeLearningPathRepository
-	courseVersions *fakeCourseVersionRepository
-	activity       *fakePracticeActivityReader
+	svc      *application.PracticeSummaryService
+	activity *fakePracticeActivityReader
 }
 
 func newSummaryFixture(t *testing.T) *summaryFixture {
 	f := &summaryFixture{
 		practiceFixture: newPracticeFixture(t),
-		learningPaths:   newFakeLearningPathRepository(),
-		courseVersions:  newFakeCourseVersionRepository(),
 		activity:        &fakePracticeActivityReader{snapshots: map[string]domain.PracticeItemSnapshot{}},
 	}
 	now := func() time.Time { return f.now }
@@ -76,25 +72,6 @@ func newSummaryFixture(t *testing.T) *summaryFixture {
 		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, rollup, f.activity, now,
 	)
 	return f
-}
-
-// onPathFor puts the student on a path teaching skillIDs whose template is
-// for instrumentIDs (none: every instrument).
-func (f *summaryFixture) onPathFor(instrumentIDs []string, skillIDs ...string) {
-	f.onPath(skillIDs...)
-	f.learningPaths.put(domain.LearningPath{ID: f.lastTemplateID(), InstrumentIDs: instrumentIDs})
-}
-
-func (f *summaryFixture) lastTemplateID() string {
-	paths, err := f.studentPaths.ListActiveStandaloneByStudentID(context.Background(), studentCaller().ID)
-	require.NoError(f.t, err)
-	latest := paths[0]
-	for _, p := range paths {
-		if p.AssignedAt.After(latest.AssignedAt) {
-			latest = p
-		}
-	}
-	return latest.SourceTemplateID
 }
 
 func (f *summaryFixture) summary(t *testing.T, instrumentID *string, timeZone string) application.PracticeSummary {

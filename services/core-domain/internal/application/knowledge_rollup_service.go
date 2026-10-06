@@ -112,7 +112,7 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 		byID[n.ID] = n
 		rollups[n.ID] = domain.RollUpNode(subtrees[n.ID], states, now)
 	}
-	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states, Applies: applies}
+	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states, Applies: applies, Items: items}
 	for _, n := range nodes {
 		if !n.For(instrumentID) {
 			continue

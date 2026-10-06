@@ -37,25 +37,27 @@ const (
 )
 
 // PracticeSessionService composes practice sessions from what a student
-// knows. It offers play-alongs, basic diagrams with playback, and authored
-// exercises, for the instrument in hand. A teacher's custom diagrams are
-// theirs alone to find, so they are never offered.
+// knows. It offers play-alongs, basic diagrams with playback, authored
+// exercises and fretboard cells: for the instrument in hand, or, in the
+// head, everything but play-alongs for all the student's instruments. A
+// teacher's custom diagrams are theirs alone to find, so they are never
+// offered.
 type PracticeSessionService struct {
-	instruments  ports.InstrumentRepository
-	studentPaths ports.StudentPathRepository
-	enrollments  ports.CourseEnrollmentRepository
-	contentNodes ports.ContentNodeRepository
-	diagrams     ports.DiagramRepository
-	exercises    ports.ExerciseRepository
-	rollup       *KnowledgeRollupService
-	newID        func() string
-	now          func() time.Time
+	instruments ports.InstrumentRepository
+	learning    studentLearning
+	diagrams    ports.DiagramRepository
+	exercises   ports.ExerciseRepository
+	rollup      *KnowledgeRollupService
+	newID       func() string
+	now         func() time.Time
 }
 
 func NewPracticeSessionService(
 	instruments ports.InstrumentRepository,
 	studentPaths ports.StudentPathRepository,
 	enrollments ports.CourseEnrollmentRepository,
+	learningPaths ports.LearningPathRepository,
+	courseVersions ports.CourseVersionRepository,
 	contentNodes ports.ContentNodeRepository,
 	diagrams ports.DiagramRepository,
 	exercises ports.ExerciseRepository,
@@ -64,37 +66,41 @@ func NewPracticeSessionService(
 	now func() time.Time,
 ) *PracticeSessionService {
 	return &PracticeSessionService{
-		instruments:  instruments,
-		studentPaths: studentPaths,
-		enrollments:  enrollments,
-		contentNodes: contentNodes,
-		diagrams:     diagrams,
-		exercises:    exercises,
-		rollup:       rollup,
-		newID:        newID,
-		now:          now,
+		instruments: instruments,
+		learning: studentLearning{
+			studentPaths: studentPaths, enrollments: enrollments, contentNodes: contentNodes,
+			learningPaths: learningPaths, courseVersions: courseVersions, instruments: instruments,
+		},
+		diagrams:  diagrams,
+		exercises: exercises,
+		rollup:    rollup,
+		newID:     newID,
+		now:       now,
 	}
 }
 
-func (s *PracticeSessionService) learning() studentLearning {
-	return studentLearning{studentPaths: s.studentPaths, enrollments: s.enrollments, contentNodes: s.contentNodes}
-}
-
-// practiceCandidate is an item that can be practised in a session, either
-// a play-along or an exercise, with the node it is offered for and the
-// student's state on it, if any.
+// practiceCandidate is an item that can be practised in a session, a
+// play-along, an exercise or a fretboard cell, with the node it is offered
+// for, the student's state on it, if any, and the instrument it was found
+// for, which new items are balanced across.
 type practiceCandidate struct {
-	diagram  *domain.Diagram
-	exercise *domain.Exercise
-	nodeID   *string
-	state    *domain.PracticeItemState
+	diagram      *domain.Diagram
+	exercise     *domain.Exercise
+	cell         *domain.FretboardCell
+	nodeID       *string
+	state        *domain.PracticeItemState
+	instrumentID string
 }
 
 func (c practiceCandidate) key() string {
-	if c.diagram != nil {
+	switch {
+	case c.diagram != nil:
 		return domain.PlayAlongItemKey(c.diagram.ID)
+	case c.cell != nil:
+		return domain.FretboardCellItemKey(c.cell.LayoutInstrumentID, c.cell.String, c.cell.Fret)
+	default:
+		return domain.ExerciseItemKey(c.exercise.ID)
 	}
-	return domain.ExerciseItemKey(c.exercise.ID)
 }
 
 // practised reports whether the student has a counted answer on c.
@@ -102,12 +108,16 @@ func (c practiceCandidate) practised() bool {
 	return c.state != nil && c.state.Counted > 0
 }
 
-// skillIDs lists the skills c is classified under.
+// skillIDs lists the skills a play-along or an exercise is classified
+// under.
 func (c practiceCandidate) skillIDs() []string {
 	if c.diagram != nil {
 		return c.diagram.SkillIDs()
 	}
-	return knowledgeNodeIDs(c.exercise.Skills)
+	if c.exercise != nil {
+		return knowledgeNodeIDs(c.exercise.Skills)
+	}
+	return nil
 }
 
 func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
@@ -119,16 +129,18 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 }
 
 // ComposePlan composes a session of minutes for caller with instrumentID
-// in hand:
-//   - a session of 5 minutes or more starts with a warm-up on a play-along
-//     already played clean;
-//   - a session of 10 minutes or more ends by applying a skill to music: a
-//     play-along on a skill the focus items practise, or else on another
-//     skill of the student's paths;
-//   - the focus time between them goes 60% to due items, most overdue
-//     first, 25% to weak ones and at most 15% to new ones, from the skills
-//     of the student's paths. Due and weak items take over each other's
-//     unused time;
+// in hand, or in the head when instrumentID is nil:
+//   - with the instrument in hand, a session of 5 minutes or more starts
+//     with a warm-up on a play-along already played clean, and one of 10
+//     minutes or more ends by applying a skill to music: a play-along on a
+//     skill the focus items practise, or else on another skill of the
+//     student's paths;
+//   - in the head, the session covers all the student's instruments and
+//     offers no play-along, so it has no warm-up and no ending;
+//   - the focus time goes 60% to due items, most overdue first, 25% to weak
+//     ones and at most 15% to new ones, taken in turn from each of the
+//     student's instruments, from the skills of the student's paths. Due
+//     and weak items take over each other's unused time;
 //   - the time still left is shared half and half between reviewing known
 //     items coming due within a week, soonest first, and stretching to
 //     unseen items of nodes the student is ready to start and that connect
@@ -136,78 +148,125 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 //     over the other's half when it runs out.
 //
 // Each pick is fitted to the minutes by its estimated time; a session too
-// short for any of them still offers the first. Every play-along needs an
-// instrument in hand, so a session in the head has nothing to offer yet and
-// is not found, as is an instrumentID that doesn't exist.
+// short for any of them still offers the first. A session with nothing to
+// offer is not found, as is an instrumentID that doesn't exist.
 func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.User, instrumentID *string, minutes int) (domain.PracticeSessionPlan, error) {
 	if err := domain.ValidatePracticeMinutes(minutes); err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	if instrumentID == nil {
-		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise without an instrument in hand yet", domain.ErrNotFound)
-	}
-	if _, err := s.instruments.GetByID(ctx, *instrumentID); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return domain.PracticeSessionPlan{}, fmt.Errorf("%w: no instrument exists with the given instrument_id", domain.ErrNotFound)
-		}
-		return domain.PracticeSessionPlan{}, err
-	}
-
-	knowledge, err := s.rollup.Map(ctx, caller.ID, *instrumentID)
+	instrumentIDs, err := s.sessionInstruments(ctx, caller.ID, instrumentID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	skillIDs, err := s.learning().pathSkillIDs(ctx, caller.ID)
+	inHand := instrumentID != nil
+	skillIDs, err := s.learning.pathSkillIDs(ctx, caller.ID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	onPath, err := s.pathCandidates(ctx, skillIDs, *instrumentID, knowledge.States)
+	maps, onPath, err := s.sessionCandidates(ctx, caller.ID, instrumentIDs, skillIDs, inHand)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
 
 	c := newComposer(s.now(), minutes)
-	if minutes >= warmUpMinMinutes {
+	if inHand && minutes >= warmUpMinMinutes {
 		c.warmUp(onPath)
 	}
 	p := c.split(onPath)
-	if minutes >= applicationMinMinutes {
+	if inHand && minutes >= applicationMinMinutes {
 		c.application(onPath, p)
 	}
 	c.focus(p)
 	if c.remaining() > 0 {
-		stretch, err := s.stretchCandidates(ctx, knowledge, skillIDs, onPath, c.picked, c.remaining())
-		if err != nil {
-			return domain.PracticeSessionPlan{}, err
+		var stretch []practiceCandidate
+		for i, id := range instrumentIDs {
+			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.remaining())
+			if err != nil {
+				return domain.PracticeSessionPlan{}, err
+			}
+			stretch = append(stretch, found...)
 		}
 		c.catchUp(p.known, stretch)
 	}
 	c.neverEmpty()
 	items := c.plan()
 	if len(items) == 0 {
-		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise for this instrument", domain.ErrNotFound)
+		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise for this session", domain.ErrNotFound)
 	}
 
 	return domain.PracticeSessionPlan{ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items}, nil
 }
 
-// pathCandidates lists the play-alongs, then the exercises, for
-// instrumentID on each of the skills of the student's paths, in path
-// order, each with the student's state from states.
-func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []string, instrumentID string, states map[string]domain.PracticeItemState) ([]practiceCandidate, error) {
+// sessionInstruments lists the instruments a session covers: the one in
+// hand, which must exist, or, in the head, every instrument the student
+// learns for. A student whose paths are all for every instrument has none,
+// and is offered only the items for every instrument, under "".
+func (s *PracticeSessionService) sessionInstruments(ctx context.Context, studentID string, instrumentID *string) ([]string, error) {
+	if instrumentID != nil {
+		if _, err := s.instruments.GetByID(ctx, *instrumentID); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return nil, fmt.Errorf("%w: no instrument exists with the given instrument_id", domain.ErrNotFound)
+			}
+			return nil, err
+		}
+		return []string{*instrumentID}, nil
+	}
+	ids, err := s.learning.instrumentIDs(ctx, studentID)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return []string{""}, nil
+	}
+	return ids, nil
+}
+
+// sessionCandidates rolls the student's knowledge up for each of
+// instrumentIDs and lists the path candidates for them all, each once, the
+// first instrument it suits claiming it.
+func (s *PracticeSessionService) sessionCandidates(ctx context.Context, studentID string, instrumentIDs, skillIDs []string, inHand bool) ([]KnowledgeMap, []practiceCandidate, error) {
+	maps := make([]KnowledgeMap, len(instrumentIDs))
+	var onPath []practiceCandidate
+	seen := map[string]bool{}
+	for i, id := range instrumentIDs {
+		var err error
+		if maps[i], err = s.rollup.Map(ctx, studentID, id); err != nil {
+			return nil, nil, err
+		}
+		found, err := s.pathCandidates(ctx, skillIDs, id, maps[i], inHand)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, c := range found {
+			if !seen[c.key()] {
+				seen[c.key()] = true
+				onPath = append(onPath, c)
+			}
+		}
+	}
+	return maps, onPath, nil
+}
+
+// pathCandidates lists, on each of the skills of the student's paths in
+// path order, the play-alongs for instrumentID when it is in hand, then
+// its exercises, then its fretboard cells from knowledge, each with the
+// student's state from knowledge.
+func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []string, instrumentID string, knowledge KnowledgeMap, inHand bool) ([]practiceCandidate, error) {
 	seen := map[string]bool{}
 	var candidates []practiceCandidate
 	for _, skillID := range skillIDs {
-		found, err := s.skillCandidates(ctx, skillID, instrumentID)
+		found, err := s.skillCandidates(ctx, skillID, instrumentID, inHand)
 		if err != nil {
 			return nil, err
 		}
+		found = append(found, skillCells(knowledge, skillID)...)
 		for _, c := range found {
 			if seen[c.key()] {
 				continue
 			}
 			seen[c.key()] = true
-			if state, ok := states[c.key()]; ok {
+			c.instrumentID = instrumentID
+			if state, ok := knowledge.States[c.key()]; ok {
 				c.state = &state
 			}
 			candidates = append(candidates, c)
@@ -216,34 +275,60 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 	return candidates, nil
 }
 
-// skillCandidates lists the play-alongs, then the exercises, for
-// instrumentID classified under skillID, each offered for it.
-func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string) ([]practiceCandidate, error) {
-	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic})
-	if err != nil {
-		return nil, err
-	}
-	exercises, err := s.listExercises(ctx, domain.ExerciseFilter{SkillID: skillID, InstrumentIDs: []string{instrumentID}})
-	if err != nil {
-		return nil, err
-	}
+// skillCandidates lists the play-alongs for instrumentID when it is in
+// hand, then the exercises for it, classified under skillID, each offered
+// for it. With no instrumentID, only the exercises for every instrument.
+func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
 	var candidates []practiceCandidate
-	for _, d := range diagrams {
-		if playable(d) {
-			candidates = append(candidates, practiceCandidate{diagram: &d, nodeID: &skillID})
+	if inHand {
+		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic})
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range diagrams {
+			if playable(d) {
+				candidates = append(candidates, practiceCandidate{diagram: &d, nodeID: &skillID})
+			}
 		}
 	}
+	filter := domain.ExerciseFilter{SkillID: skillID}
+	if instrumentID != "" {
+		filter.InstrumentIDs = []string{instrumentID}
+	}
+	exercises, err := s.listExercises(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
 	for _, e := range exercises {
+		if instrumentID == "" && len(e.InstrumentIDs) > 0 {
+			continue
+		}
 		candidates = append(candidates, practiceCandidate{exercise: &e, nodeID: &skillID})
 	}
 	return candidates, nil
 }
 
-// stretchCandidates lists unseen items not yet picked, about seconds of
-// them, from the nodes the student is ready to start in the order to start
-// them, the skills of their paths, pathSkillIDs, first. Each is offered for
-// the node it starts.
-func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int) ([]practiceCandidate, error) {
+// skillCells lists the fretboard cells among knowledge's items classified
+// under skillID, each offered for it.
+func skillCells(knowledge KnowledgeMap, skillID string) []practiceCandidate {
+	var cells []practiceCandidate
+	for _, item := range knowledge.Items {
+		if !slices.Contains(item.NodeIDs, skillID) {
+			continue
+		}
+		if cell, ok := domain.ParseFretboardCellItemKey(item.ItemKey); ok {
+			cells = append(cells, practiceCandidate{cell: &cell, nodeID: &skillID})
+		}
+	}
+	return cells
+}
+
+// stretchCandidates lists unseen items for instrumentID not yet picked,
+// about seconds of them, from the nodes the student is ready to start in
+// the order to start them, the skills of their paths, pathSkillIDs, first.
+// Each is offered for the node it starts. Play-alongs are offered only with
+// the instrument in hand.
+func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int) ([]practiceCandidate, error) {
 	loaded := make(map[string]practiceCandidate, len(onPath))
 	for _, c := range onPath {
 		loaded[c.key()] = c
@@ -258,8 +343,9 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		if err != nil {
 			return nil, err
 		}
-		if ok {
+		if ok && (inHand || c.diagram == nil) {
 			c.nodeID = &pick.nodeID
+			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
 			found += c.seconds()
 		}
@@ -298,10 +384,13 @@ func (s *PracticeSessionService) loadedOr(ctx context.Context, loaded map[string
 	return s.candidate(ctx, itemKey)
 }
 
-// candidate loads the play-along or exercise itemKey names. It reports
-// false for any other kind of item, and for one that no longer exists or
-// can't be played along with.
+// candidate loads the play-along, exercise or fretboard cell itemKey
+// names. It reports false for any other kind of item, and for one that no
+// longer exists or can't be played along with.
 func (s *PracticeSessionService) candidate(ctx context.Context, itemKey string) (practiceCandidate, bool, error) {
+	if cell, ok := domain.ParseFretboardCellItemKey(itemKey); ok {
+		return practiceCandidate{cell: &cell}, true, nil
+	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindPlayAlong)+":"); ok {
 		d, err := s.diagrams.GetByID(ctx, id)
 		if errors.Is(err, domain.ErrNotFound) {
@@ -324,7 +413,6 @@ func (s *PracticeSessionService) candidate(ctx context.Context, itemKey string) 
 	}
 	return practiceCandidate{}, false, nil
 }
-
 
 func (s *PracticeSessionService) listDiagrams(ctx context.Context, filter domain.DiagramListFilter) ([]domain.Diagram, error) {
 	page := domain.PageRequest{Limit: domain.MaxPageLimit}
@@ -376,12 +464,17 @@ func startTempo(c practiceCandidate) int {
 	return domain.PlayAlongStartTempo(*c.diagram.TempoBPM, bestClean(c))
 }
 
-// seconds estimates how long c takes as a pick on the tempo ladder.
+// seconds estimates how long c takes as a pick, a play-along on its tempo
+// ladder.
 func (c practiceCandidate) seconds() int {
-	if c.diagram != nil {
+	switch {
+	case c.diagram != nil:
 		return domain.PlayAlongSeconds(*c.diagram, startTempo(c), false)
+	case c.cell != nil:
+		return domain.FretboardCellSeconds
+	default:
+		return domain.ExerciseSeconds(*c.exercise)
 	}
-	return domain.ExerciseSeconds(*c.exercise)
 }
 
 // reasonOrder is the order a session's picks are offered in, between its
@@ -440,7 +533,33 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 	byDueAt := func(a, b practiceCandidate) int { return compareDueAt(a.state.DueAt, b.state.DueAt) }
 	slices.SortStableFunc(p.due, byDueAt)
 	slices.SortStableFunc(p.known, byDueAt)
+	p.fresh = takeInTurn(p.fresh)
 	return p
+}
+
+// takeInTurn reorders candidates one instrument at a time, in the order
+// the instruments first appear, keeping each instrument's own order, so
+// whatever share of them fits is balanced across the student's
+// instruments.
+func takeInTurn(candidates []practiceCandidate) []practiceCandidate {
+	var order []string
+	byInstrument := map[string][]practiceCandidate{}
+	for _, c := range candidates {
+		if _, ok := byInstrument[c.instrumentID]; !ok {
+			order = append(order, c.instrumentID)
+		}
+		byInstrument[c.instrumentID] = append(byInstrument[c.instrumentID], c)
+	}
+	turns := make([]practiceCandidate, 0, len(candidates))
+	for len(turns) < len(candidates) {
+		for _, id := range order {
+			if queue := byInstrument[id]; len(queue) > 0 {
+				turns = append(turns, queue[0])
+				byInstrument[id] = queue[1:]
+			}
+		}
+	}
+	return turns
 }
 
 // compareDueAt orders review dates soonest first, no date before any.
@@ -615,11 +734,11 @@ func (c *composer) plan() []domain.PracticeSessionItem {
 	return items
 }
 
-// pick is cand picked for reason: a play-along on its tempo ladder, or an
-// exercise.
+// pick is cand picked for reason: a play-along on its tempo ladder, an
+// exercise or a fretboard cell.
 func (c *composer) pick(cand practiceCandidate, reason domain.PracticePickReason) domain.PracticeSessionItem {
 	if cand.diagram == nil {
-		return c.item(cand, reason, 0, domain.ExerciseSeconds(*cand.exercise))
+		return c.item(cand, reason, 0, cand.seconds())
 	}
 	tempo := startTempo(cand)
 	return c.item(cand, reason, tempo, domain.PlayAlongSeconds(*cand.diagram, tempo, false))
@@ -639,6 +758,10 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		Level:            level,
 		EstimatedSeconds: seconds,
 		Exercise:         cand.exercise,
+	}
+	if cand.cell != nil {
+		item.Kind = domain.PracticeItemKindFretboardCell
+		item.FretboardCell = &domain.PlannedFretboardCell{FretboardCell: *cand.cell, Drill: domain.NextFretboardDrill(cand.state)}
 	}
 	if cand.diagram != nil {
 		item.Kind = domain.PracticeItemKindPlayAlong
