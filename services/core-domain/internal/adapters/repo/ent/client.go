@@ -45,6 +45,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/fretboardcellrange"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -124,6 +125,8 @@ type Client struct {
 	ExerciseSkill *ExerciseSkillClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// FretboardCellRange is the client for interacting with the FretboardCellRange builders.
+	FretboardCellRange *FretboardCellRangeClient
 	// Instrument is the client for interacting with the Instrument builders.
 	Instrument *InstrumentClient
 	// KnowledgeEdge is the client for interacting with the KnowledgeEdge builders.
@@ -192,6 +195,7 @@ func (c *Client) init() {
 	c.ExerciseOption = NewExerciseOptionClient(c.config)
 	c.ExerciseSkill = NewExerciseSkillClient(c.config)
 	c.ExpandedContent = NewExpandedContentClient(c.config)
+	c.FretboardCellRange = NewFretboardCellRangeClient(c.config)
 	c.Instrument = NewInstrumentClient(c.config)
 	c.KnowledgeEdge = NewKnowledgeEdgeClient(c.config)
 	c.KnowledgeNode = NewKnowledgeNodeClient(c.config)
@@ -327,6 +331,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ExerciseOption:          NewExerciseOptionClient(cfg),
 		ExerciseSkill:           NewExerciseSkillClient(cfg),
 		ExpandedContent:         NewExpandedContentClient(cfg),
+		FretboardCellRange:      NewFretboardCellRangeClient(cfg),
 		Instrument:              NewInstrumentClient(cfg),
 		KnowledgeEdge:           NewKnowledgeEdgeClient(cfg),
 		KnowledgeNode:           NewKnowledgeNodeClient(cfg),
@@ -389,6 +394,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ExerciseOption:          NewExerciseOptionClient(cfg),
 		ExerciseSkill:           NewExerciseSkillClient(cfg),
 		ExpandedContent:         NewExpandedContentClient(cfg),
+		FretboardCellRange:      NewFretboardCellRangeClient(cfg),
 		Instrument:              NewInstrumentClient(cfg),
 		KnowledgeEdge:           NewKnowledgeEdgeClient(cfg),
 		KnowledgeNode:           NewKnowledgeNodeClient(cfg),
@@ -439,9 +445,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
 		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.KnowledgeEdge,
-		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange, c.Instrument,
+		c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language,
+		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
@@ -459,9 +465,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
 		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
 		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.Instrument, c.KnowledgeEdge,
-		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange, c.Instrument,
+		c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language,
+		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
@@ -529,6 +535,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ExerciseSkill.mutate(ctx, m)
 	case *ExpandedContentMutation:
 		return c.ExpandedContent.mutate(ctx, m)
+	case *FretboardCellRangeMutation:
+		return c.FretboardCellRange.mutate(ctx, m)
 	case *InstrumentMutation:
 		return c.Instrument.mutate(ctx, m)
 	case *KnowledgeEdgeMutation:
@@ -5507,6 +5515,171 @@ func (c *ExpandedContentClient) mutate(ctx context.Context, m *ExpandedContentMu
 	}
 }
 
+// FretboardCellRangeClient is a client for the FretboardCellRange schema.
+type FretboardCellRangeClient struct {
+	config
+}
+
+// NewFretboardCellRangeClient returns a client for the FretboardCellRange from the given config.
+func NewFretboardCellRangeClient(c config) *FretboardCellRangeClient {
+	return &FretboardCellRangeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `fretboardcellrange.Hooks(f(g(h())))`.
+func (c *FretboardCellRangeClient) Use(hooks ...Hook) {
+	c.hooks.FretboardCellRange = append(c.hooks.FretboardCellRange, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `fretboardcellrange.Intercept(f(g(h())))`.
+func (c *FretboardCellRangeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FretboardCellRange = append(c.inters.FretboardCellRange, interceptors...)
+}
+
+// Create returns a builder for creating a FretboardCellRange entity.
+func (c *FretboardCellRangeClient) Create() *FretboardCellRangeCreate {
+	mutation := newFretboardCellRangeMutation(c.config, OpCreate)
+	return &FretboardCellRangeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of FretboardCellRange entities.
+func (c *FretboardCellRangeClient) CreateBulk(builders ...*FretboardCellRangeCreate) *FretboardCellRangeCreateBulk {
+	return &FretboardCellRangeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FretboardCellRangeClient) MapCreateBulk(slice any, setFunc func(*FretboardCellRangeCreate, int)) *FretboardCellRangeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FretboardCellRangeCreateBulk{err: fmt.Errorf("calling to FretboardCellRangeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FretboardCellRangeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FretboardCellRangeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for FretboardCellRange.
+func (c *FretboardCellRangeClient) Update() *FretboardCellRangeUpdate {
+	mutation := newFretboardCellRangeMutation(c.config, OpUpdate)
+	return &FretboardCellRangeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FretboardCellRangeClient) UpdateOne(_m *FretboardCellRange) *FretboardCellRangeUpdateOne {
+	mutation := newFretboardCellRangeMutation(c.config, OpUpdateOne, withFretboardCellRange(_m))
+	return &FretboardCellRangeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FretboardCellRangeClient) UpdateOneID(id uuid.UUID) *FretboardCellRangeUpdateOne {
+	mutation := newFretboardCellRangeMutation(c.config, OpUpdateOne, withFretboardCellRangeID(id))
+	return &FretboardCellRangeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for FretboardCellRange.
+func (c *FretboardCellRangeClient) Delete() *FretboardCellRangeDelete {
+	mutation := newFretboardCellRangeMutation(c.config, OpDelete)
+	return &FretboardCellRangeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FretboardCellRangeClient) DeleteOne(_m *FretboardCellRange) *FretboardCellRangeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FretboardCellRangeClient) DeleteOneID(id uuid.UUID) *FretboardCellRangeDeleteOne {
+	builder := c.Delete().Where(fretboardcellrange.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FretboardCellRangeDeleteOne{builder}
+}
+
+// Query returns a query builder for FretboardCellRange.
+func (c *FretboardCellRangeClient) Query() *FretboardCellRangeQuery {
+	return &FretboardCellRangeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFretboardCellRange},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a FretboardCellRange entity by its id.
+func (c *FretboardCellRangeClient) Get(ctx context.Context, id uuid.UUID) (*FretboardCellRange, error) {
+	return c.Query().Where(fretboardcellrange.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FretboardCellRangeClient) GetX(ctx context.Context, id uuid.UUID) *FretboardCellRange {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySkill queries the skill edge of a FretboardCellRange.
+func (c *FretboardCellRangeClient) QuerySkill(_m *FretboardCellRange) *KnowledgeNodeQuery {
+	query := (&KnowledgeNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(fretboardcellrange.Table, fretboardcellrange.FieldID, id),
+			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, fretboardcellrange.SkillTable, fretboardcellrange.SkillColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLayoutInstrument queries the layout_instrument edge of a FretboardCellRange.
+func (c *FretboardCellRangeClient) QueryLayoutInstrument(_m *FretboardCellRange) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(fretboardcellrange.Table, fretboardcellrange.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, fretboardcellrange.LayoutInstrumentTable, fretboardcellrange.LayoutInstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FretboardCellRangeClient) Hooks() []Hook {
+	return c.hooks.FretboardCellRange
+}
+
+// Interceptors returns the client interceptors.
+func (c *FretboardCellRangeClient) Interceptors() []Interceptor {
+	return c.inters.FretboardCellRange
+}
+
+func (c *FretboardCellRangeClient) mutate(ctx context.Context, m *FretboardCellRangeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FretboardCellRangeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FretboardCellRangeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FretboardCellRangeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FretboardCellRangeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown FretboardCellRange mutation op: %q", m.Op())
+	}
+}
+
 // InstrumentClient is a client for the Instrument schema.
 type InstrumentClient struct {
 	config
@@ -8130,10 +8303,11 @@ type (
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
 		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Hook
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
+		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
+		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
+		User, Voice []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, ContentNode, ContentNodeConcept,
@@ -8142,9 +8316,10 @@ type (
 		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
 		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
 		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent, Instrument,
-		KnowledgeEdge, KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
+		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
+		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
+		User, Voice []ent.Interceptor
 	}
 )

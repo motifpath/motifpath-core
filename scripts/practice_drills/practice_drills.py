@@ -1,7 +1,8 @@
 """Compiles the practice drill catalog (motifpath-specs catalogs/practice-drills.yaml)
-into the frozen migration that installs its drill templates and timed thresholds.
-Deterministic and offline; needs PyYAML. The generated fretboard cells come with the
-fretboard drill, so the catalog's fretboard_cells section is not read here.
+into the frozen migrations that install its drill templates, its timed thresholds and
+the fretboard cell ranges each skill's generated cells come from. Deterministic and
+offline; needs PyYAML. Cell ranges are checked against the knowledge map
+(catalogs/knowledge-map.yaml) and the catalog instruments.
 
 Usage: python3 practice_drills.py [--specs ../../../motifpath-specs]
 Then run `atlas migrate hash` on the migrations directory.
@@ -10,11 +11,15 @@ import argparse
 import datetime
 import json
 import re
+import sys
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'knowledge_map'))
+import knowledge_map as km  # noqa: E402  (a sibling script, not a package)
 
 NAMESPACE = uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a')
 LANGUAGES = ('en', 'pt_BR')
@@ -23,6 +28,8 @@ SOURCES = ('default', 'benchmark', 'calibrated')
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / 'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
 DRILLS_FILE = '20261005184400_practice_drills.up.sql'
+# The cell ranges' table came later than the drills, so they install after it.
+CELLS_FILE = '20261006105600_fretboard_cells.up.sql'
 
 
 def stable_id(name):
@@ -137,6 +144,73 @@ def build(raw, installed=frozenset(), today=None):
     return Drills(list(templates.values()), thresholds)
 
 
+@dataclass
+class CellRange:
+    skill: str
+    layout: str
+    strings: list
+    from_fret: int
+    to_fret: int
+
+    @property
+    def id(self):
+        return stable_id(f'fretboard-cells/{self.skill}/{self.layout}')
+
+    @property
+    def cell_count(self):
+        return len(self.strings) * (self.to_fret - self.from_fret + 1)
+
+
+def build_cells(entries, nodes):
+    """Validates the catalog's fretboard_cells entries against nodes (knowledge-map
+    nodes by key) and the catalog instruments, and returns one range per skill and
+    layout, in catalog order. A layout is a catalog instrument; a string must be one
+    it has, the skill must suit it, no cell may serve two skills, and a skill lists one
+    layout per fretboard geometry."""
+    ranges = []
+    owner = {}
+    for entry in entries or []:
+        skill = entry.get('skill')
+        node = nodes.get(skill)
+        if node is None or node.kind != 'skill':
+            raise ValueError(f'fretboard cells name {skill!r}, which is not a skill of the knowledge map')
+        geometries = {}
+        for layout, spec in (entry.get('layouts') or {}).items():
+            instrument = km.INSTRUMENTS.get(layout)
+            if instrument is None:
+                raise ValueError(f'fretboard cells of {skill!r} name layout {layout!r}, which is not a catalog instrument')
+            # Instruments of the same tuning share one fretboard: listing two of them
+            # would give each note two item keys, so progress on one never counts for
+            # the other.
+            twin = geometries.setdefault(tuple(instrument['tuning']), layout)
+            if twin != layout:
+                raise ValueError(f'fretboard cells of {skill!r} list layouts {twin!r} and {layout!r}, which share one fretboard')
+            if node.instruments and layout not in node.instruments:
+                raise ValueError(f'skill {skill!r} is not for layout {layout!r}')
+            strings = list(spec.get('strings') or [])
+            frets = list(spec.get('frets') or [])
+            if len(frets) != 2 or not 0 <= frets[0] <= frets[1]:
+                raise ValueError(f'fretboard cells of {skill!r} on layout {layout!r} need frets [from, to] in order')
+            for string in strings:
+                if not isinstance(string, int) or not 1 <= string <= len(instrument['tuning']):
+                    raise ValueError(f'layout {layout!r} has no string {string} (skill {skill!r})')
+                for fret in range(frets[0], frets[1] + 1):
+                    other = owner.setdefault((layout, string, fret), skill)
+                    if other != skill:
+                        raise ValueError(f'layout {layout!r} string {string} fret {fret} serves both {other!r} and {skill!r}')
+            if not strings:
+                raise ValueError(f'fretboard cells of {skill!r} on layout {layout!r} list no strings')
+            ranges.append(CellRange(skill, layout, strings, frets[0], frets[1]))
+    return ranges
+
+
+def load_cells(path, map_path):
+    with open(path, encoding='utf-8') as f:
+        entries = (yaml.safe_load(f) or {}).get('fretboard_cells')
+    nodes = {n.key: n for n in km.load(map_path).nodes}
+    return build_cells(entries, nodes)
+
+
 def load(path, installed=frozenset(), today=None):
     with open(path, encoding='utf-8') as f:
         return build(yaml.safe_load(f), installed, today)
@@ -177,6 +251,19 @@ def render_sql(drills):
     return '\n'.join(out) + '\n'
 
 
+def render_cells_sql(ranges):
+    out = ['-- Frozen fretboard cell ranges, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of fretboard-cells/<skill key>/<layout key>.',
+           '-- Every string and fret in a range is a generated practice item of its skill.']
+    if ranges:
+        out.append('INSERT INTO "fretboard_cell_ranges" ("id", "skill_id", "layout_instrument_id", "strings", "from_fret", "to_fret") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(r.id)}, {sql_text(km.stable_id('knowledge-node/' + r.skill))}, {sql_text(km.instrument_id(r.layout))}, "
+            f"{sql_text(compact(r.strings))}, {r.from_fret}, {r.to_fret})"
+            for r in ranges) + ';')
+    return '\n'.join(out) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
@@ -186,7 +273,10 @@ def main():
     installed = installed_threshold_ids(frozen.read_text()) if frozen.exists() else set()
     drills = load(args.specs / 'catalogs/practice-drills.yaml', installed, datetime.date.today())
     frozen.write_text(render_sql(drills))
-    print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds))))
+    ranges = load_cells(args.specs / 'catalogs/practice-drills.yaml', args.specs / 'catalogs/knowledge-map.yaml')
+    (args.migrations / CELLS_FILE).write_text(render_cells_sql(ranges))
+    print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds),
+                          cell_ranges=len(ranges), cells=sum(r.cell_count for r in ranges))))
 
 
 if __name__ == '__main__':

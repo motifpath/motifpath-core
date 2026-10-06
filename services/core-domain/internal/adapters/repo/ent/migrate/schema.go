@@ -867,6 +867,42 @@ var (
 			},
 		},
 	}
+	// FretboardCellRangesColumns holds the columns for the "fretboard_cell_ranges" table.
+	FretboardCellRangesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "strings", Type: field.TypeJSON},
+		{Name: "from_fret", Type: field.TypeInt},
+		{Name: "to_fret", Type: field.TypeInt},
+		{Name: "skill_id", Type: field.TypeUUID},
+		{Name: "layout_instrument_id", Type: field.TypeUUID},
+	}
+	// FretboardCellRangesTable holds the schema information for the "fretboard_cell_ranges" table.
+	FretboardCellRangesTable = &schema.Table{
+		Name:       "fretboard_cell_ranges",
+		Columns:    FretboardCellRangesColumns,
+		PrimaryKey: []*schema.Column{FretboardCellRangesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "fretboard_cell_ranges_knowledge_nodes_skill",
+				Columns:    []*schema.Column{FretboardCellRangesColumns[4]},
+				RefColumns: []*schema.Column{KnowledgeNodesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "fretboard_cell_ranges_instruments_layout_instrument",
+				Columns:    []*schema.Column{FretboardCellRangesColumns[5]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "fretboardcellrange_skill_id_layout_instrument_id",
+				Unique:  true,
+				Columns: []*schema.Column{FretboardCellRangesColumns[4], FretboardCellRangesColumns[5]},
+			},
+		},
+	}
 	// InstrumentsColumns holds the columns for the "instruments" table.
 	InstrumentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1247,6 +1283,7 @@ var (
 		ExerciseOptionsTable,
 		ExerciseSkillsTable,
 		ExpandedContentsTable,
+		FretboardCellRangesTable,
 		InstrumentsTable,
 		KnowledgeEdgesTable,
 		KnowledgeNodesTable,
@@ -1297,6 +1334,8 @@ func init() {
 	ExerciseOptionsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[0].RefTable = ExercisesTable
 	ExerciseSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
+	FretboardCellRangesTable.ForeignKeys[0].RefTable = KnowledgeNodesTable
+	FretboardCellRangesTable.ForeignKeys[1].RefTable = InstrumentsTable
 	InstrumentsTable.ForeignKeys[0].RefTable = VoicesTable
 	KnowledgeEdgesTable.ForeignKeys[0].RefTable = KnowledgeNodesTable
 	KnowledgeEdgesTable.ForeignKeys[1].RefTable = KnowledgeNodesTable

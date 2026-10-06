@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"regexp"
+	"slices"
 )
 
 // InstrumentFamily decides which coordinate shape every Diagram authored
@@ -153,4 +154,28 @@ func validateKeyboardShape(stringCount *int, tuning []string, keyRange *KeyRange
 		return NewValidationError("key_range", "is required for a keyboard instrument, with both lowest and highest named")
 	}
 	return nil
+}
+
+// SameGeometry reports whether a fretboard or keyboard coordinate means the
+// same note on both instruments: same family, and the same strings and
+// tuning (fretted) or the same key range (keyboard).
+func (i Instrument) SameGeometry(other Instrument) bool {
+	return i.Family == other.Family &&
+		slices.Equal(i.Tuning, other.Tuning) &&
+		sameIntPtr(i.StringCount, other.StringCount) &&
+		sameKeyRange(i.KeyRange, other.KeyRange)
+}
+
+func sameIntPtr(left, right *int) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
+
+func sameKeyRange(left, right *KeyRange) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
 }

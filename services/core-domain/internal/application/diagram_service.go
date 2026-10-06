@@ -183,35 +183,11 @@ func (s *DiagramService) validateCompatibleInstruments(ctx context.Context, layo
 			}
 			return err
 		}
-		if !sameGeometry(instrument, layout) {
+		if !instrument.SameGeometry(layout) {
 			return domain.NewValidationError("instrument_ids", "must have the same coordinate geometry as the layout instrument")
 		}
 	}
 	return nil
-}
-
-// sameGeometry reports whether a diagram's coordinates mean the same notes on
-// both instruments: same family, and the same strings and tuning (fretted) or
-// the same key range (keyboard).
-func sameGeometry(a, b domain.Instrument) bool {
-	return a.Family == b.Family &&
-		slices.Equal(a.Tuning, b.Tuning) &&
-		sameStringCount(a.StringCount, b.StringCount) &&
-		sameKeyRange(a.KeyRange, b.KeyRange)
-}
-
-func sameStringCount(left, right *int) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-	return *left == *right
-}
-
-func sameKeyRange(left, right *domain.KeyRange) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-	return *left == *right
 }
 
 // GetDiagram returns the diagram with the given id, or domain.ErrNotFound.

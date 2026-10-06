@@ -93,6 +93,9 @@ type ExerciseSkill func(*sql.Selector)
 // ExpandedContent is the predicate function for expandedcontent builders.
 type ExpandedContent func(*sql.Selector)
 
+// FretboardCellRange is the predicate function for fretboardcellrange builders.
+type FretboardCellRange func(*sql.Selector)
+
 // Instrument is the predicate function for instrument builders.
 type Instrument func(*sql.Selector)
 

@@ -41,6 +41,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/fretboardcellrange"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -144,6 +145,7 @@ func checkColumn(t, c string) error {
 			exerciseoption.Table:          exerciseoption.ValidColumn,
 			exerciseskill.Table:           exerciseskill.ValidColumn,
 			expandedcontent.Table:         expandedcontent.ValidColumn,
+			fretboardcellrange.Table:      fretboardcellrange.ValidColumn,
 			instrument.Table:              instrument.ValidColumn,
 			knowledgeedge.Table:           knowledgeedge.ValidColumn,
 			knowledgenode.Table:           knowledgenode.ValidColumn,

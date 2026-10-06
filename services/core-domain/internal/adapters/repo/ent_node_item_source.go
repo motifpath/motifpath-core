@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"log/slog"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -22,10 +24,10 @@ func NewEntNodeItemSource(client *ent.Client) *EntNodeItemSource {
 	return &EntNodeItemSource{client: client}
 }
 
-// ClassifiedItems returns the play-alongs and exercises that suit
-// instrumentID. A play-along is a basic diagram with playback — a teacher's
-// custom diagrams are theirs alone, never offered for practice — and it
-// suits every instrument it is linked to. A malformed id has no items.
+// ClassifiedItems returns the play-alongs, exercises and fretboard cells that
+// suit instrumentID. A play-along is a basic diagram with playback — a
+// teacher's custom diagrams are theirs alone, never offered for practice —
+// and it suits every instrument it is linked to. A malformed id has no items.
 func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
 	if instrumentID == "" {
 		return s.everyInstrumentItems(ctx)
@@ -66,6 +68,55 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 		})
 	}
 	items = append(items, exerciseItems(exercises)...)
+	cells, err := s.fretboardCells(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
+	return append(items, cells...), nil
+}
+
+// fretboardCells generates the catalog's fretboard cells that suit
+// instrumentID: those of every range on a layout of the same geometry, so
+// instruments sharing a fretboard share its cells and their item keys, for a
+// skill that is for the instrument. A range that doesn't fit its layout is
+// logged and left out whole, never half-generated: one bad catalog row must
+// not take every student's practice on that layout down with it.
+func (s *EntNodeItemSource) fretboardCells(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
+	row, err := s.client.Instrument.Get(ctx, instrumentID)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	played := toDomainInstrument(row)
+	ranges, err := s.client.FretboardCellRange.Query().
+		WithLayoutInstrument().
+		WithSkill(func(q *ent.KnowledgeNodeQuery) { q.WithInstruments() }).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var items []domain.ClassifiedItem
+	for _, r := range ranges {
+		layout := toDomainInstrument(r.Edges.LayoutInstrument)
+		if !played.SameGeometry(layout) {
+			continue
+		}
+		skill := toDomainKnowledgeNode(r.Edges.Skill)
+		cellRange := domain.FretboardCellRange{
+			ID: r.ID.String(), SkillID: skill.ID, LayoutInstrumentID: layout.ID,
+			Strings: r.Strings, FromFret: r.FromFret, ToFret: r.ToFret,
+		}
+		if err := cellRange.CheckFits(layout, skill); err != nil {
+			slog.ErrorContext(ctx, "skip a fretboard cell range that doesn't fit its layout", "range_id", cellRange.ID, "error", err)
+			continue
+		}
+		if len(skill.InstrumentIDs) > 0 && !slices.Contains(skill.InstrumentIDs, played.ID) {
+			continue
+		}
+		items = append(items, cellRange.Items()...)
+	}
 	return items, nil
 }
 

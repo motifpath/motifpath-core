@@ -96,6 +96,36 @@ jobs:
       - name: Run BDD tests
         run: make test:bdd
 
+  # The reference-data generators (scripts/) are where a catalog that breaks
+  # its rules is refused before it becomes a frozen migration, so their tests
+  # gate CI like the Go suites, against the specs catalogs they compile.
+  test-catalogs:
+    name: Catalog generator tests (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout specs (for the catalogs)
+        uses: actions/checkout@v4
+        with:
+          repository: motifpath/motifpath-specs
+          path: _specs
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run generator tests
+        env:
+          SPECS_DIR: ${{ github.workspace }}/_specs
+        run: |
+          for dir in scripts/diagram_catalog scripts/knowledge_map scripts/practice_drills; do
+            (cd "$dir" && python -m unittest -v) || exit 1
+          done
+
   test-integration:
     name: Integration Tests (testcontainers)
     runs-on: ubuntu-latest
@@ -175,7 +205,7 @@ jobs:
   all-checks:
     name: All checks passed
     runs-on: ubuntu-latest
-    needs: [lint, test, test-bdd, test-integration, changes, image-smoke]
+    needs: [lint, test, test-bdd, test-catalogs, test-integration, changes, image-smoke]
     if: always()
     steps:
       - name: Verify required jobs succeeded
@@ -186,6 +216,7 @@ jobs:
           [[ "${{ needs.lint.result }}"             == "success"             ]] || { echo "lint failed";             exit 1; }
           [[ "${{ needs.test.result }}"             == "success"             ]] || { echo "test failed";             exit 1; }
           [[ "${{ needs.test-bdd.result }}"         == "success"             ]] || { echo "test-bdd failed";         exit 1; }
+          [[ "${{ needs.test-catalogs.result }}"    == "success"             ]] || { echo "test-catalogs failed";    exit 1; }
           [[ "${{ needs.test-integration.result }}" == "success"             ]] || { echo "test-integration failed"; exit 1; }
           [[ "${{ needs.image-smoke.result }}"      =~ ^(success|skipped)$   ]] || { echo "image-smoke failed";      exit 1; }
           echo "All required CI checks passed"
