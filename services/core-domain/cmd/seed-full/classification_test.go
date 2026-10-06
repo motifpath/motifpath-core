@@ -58,3 +58,21 @@ func TestSeededExercisesAreClassifiedByWhatTheyAsk(t *testing.T) {
 		"Listen to the E major chord, then tap its major third": {skill: "hear-chord-quality", concept: "major-triads"},
 	}, got)
 }
+
+func TestAdminPathTeachesFindingNotesOnTheFretboard(t *testing.T) {
+	skills := map[string]string{}
+	for _, s := range contentNodeSpecs() {
+		skills[s.key] = s.skill
+	}
+
+	var taught []string
+	for _, key := range adminPathNodeKeys {
+		skill, ok := skills[key]
+		require.True(t, ok, "admin path item %q is not a seeded content node", key)
+		taught = append(taught, skill)
+	}
+	// A session in the head asks fretboard cells only for the skills a path teaches.
+	assert.Contains(t, taught, "find-notes-root-strings")
+	assert.Contains(t, taught, "find-notes-top-strings")
+	assert.Equal(t, []string{acousticGuitarID}, adminPathInstrumentIDs)
+}
