@@ -16,6 +16,11 @@ import (
 // its day.
 const snapshotDay = 24 * time.Hour
 
+// snapshotReach is how far past a time a snapshot's day may end and still
+// stand for the state at that time: half a day, so the day whose end is
+// nearest is the one taken.
+const snapshotReach = snapshotDay / 2
+
 // practiceSessionDocument holds the fields this service reads from a
 // `practice_sessions` document, in the shape the Aggregation Worker writes
 // it: end is null until the session's end arrives.
@@ -118,7 +123,7 @@ func (r *MongoPracticeActivityReader) SnapshotsAt(ctx context.Context, studentID
 	cursor, err := r.history.Find(ctx, bson.D{
 		{Key: "student_id", Value: studentID},
 		{Key: "item_key", Value: bson.D{{Key: "$in", Value: itemKeys}}},
-		{Key: "day", Value: bson.D{{Key: "$lte", Value: at.Add(-snapshotDay)}}},
+		{Key: "day", Value: bson.D{{Key: "$lte", Value: at.Add(snapshotReach - snapshotDay)}}},
 	}, options.Find().SetSort(bson.D{{Key: "item_key", Value: 1}, {Key: "day", Value: -1}}))
 	if err != nil {
 		return nil, err

@@ -84,7 +84,7 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		assert.ElementsMatch(t, []time.Time{at(3, 10), at(3, 11)}, got)
 	})
 
-	t.Run("a snapshot at a time is each item's latest day that had ended by then", func(t *testing.T) {
+	t.Run("a snapshot at a time is each item's day whose end is nearest to it, never more than 12 hours later", func(t *testing.T) {
 		snapshot := func(studentID, itemKey string, day time.Time, accuracy float64, bestCleanBPM *int) bson.D {
 			return bson.D{
 				{Key: "student_id", Value: studentID}, {Key: "item_key", Value: itemKey}, {Key: "day", Value: day},
@@ -97,7 +97,7 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		_, err := db.Collection("practice_item_history").InsertMany(ctx, []any{
 			snapshot("alice", "play_along:d1", at(1, 0), 0.5, nil),
 			snapshot("alice", "play_along:d1", at(2, 0), 0.72, &bpm),
-			snapshot("alice", "play_along:d1", at(3, 0), 0.9, &bpm), // its day hadn't ended by then
+			snapshot("alice", "play_along:d1", at(3, 0), 0.9, &bpm), // its day ends 21 hours after 03:00
 			snapshot("alice", "play_along:d2", at(3, 0), 0.4, nil),  // practised only since
 			snapshot("alice", "play_along:d3", at(1, 0), 0.6, nil),  // not asked for
 			snapshot("bob", "play_along:d1", at(2, 0), 0.1, nil),
@@ -110,6 +110,12 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		assert.Equal(t, map[string]domain.PracticeItemSnapshot{
 			"play_along:d1": {ItemKey: "play_along:d1", Counted: 2, Accuracy: 0.72, Fluency: 0.25, BestCleanBPM: &bpm},
 		}, got)
+
+		// 23:00 UTC, when a week begins east of UTC: the day ending an hour
+		// later is nearer than the one that ended 23 hours before.
+		east, err := reader.SnapshotsAt(ctx, "alice", []string{"play_along:d1"}, at(2, 23))
+		require.NoError(t, err)
+		assert.InDelta(t, 0.72, east["play_along:d1"].Accuracy, 1e-9)
 
 		none, err := reader.SnapshotsAt(ctx, "alice", nil, at(3, 3))
 		require.NoError(t, err)

@@ -22,7 +22,8 @@ type PracticeActivityReader interface {
 	CompletionTimes(ctx context.Context, studentID string, since time.Time) ([]time.Time, error)
 
 	// SnapshotsAt returns the student's state on each of itemKeys as it
-	// stood at at: the latest daily snapshot of a day that had ended by
-	// then. An item not practised by then is absent from the result.
+	// stood at at, as near as daily snapshots tell: the snapshot of the UTC
+	// day whose end is nearest to at, so up to 12 hours before or after
+	// it. An item with no snapshot by then is absent from the result.
 	SnapshotsAt(ctx context.Context, studentID string, itemKeys []string, at time.Time) (map[string]domain.PracticeItemSnapshot, error)
 }
