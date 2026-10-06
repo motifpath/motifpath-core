@@ -28,18 +28,23 @@ func TestBasicCatalog(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(catalogDir, "catalog.json"))
 	require.NoError(t, err, "generate the catalog first")
 	var entries []struct {
-		ID       string              `json:"diagram_id"`
-		Key      string              `json:"key"`
-		Names    map[string]string   `json:"names"`
-		Root     string              `json:"root_note"`
-		Mode     *domain.DiagramMode `json:"mode"`
-		Tempo    *int                `json:"tempo_bpm"`
-		Sequence []struct {
-			IDs   []string         `json:"position_ids"`
-			Value domain.NoteValue `json:"value"`
-			Strum domain.Strum     `json:"strum"`
-		} `json:"sequence"`
-		Positions []struct {
+		ID        string              `json:"diagram_id"`
+		Key       string              `json:"key"`
+		Names     map[string]string   `json:"names"`
+		Root      string              `json:"root_note"`
+		Mode      *domain.DiagramMode `json:"mode"`
+		Playbacks []struct {
+			ID    string            `json:"playback_id"`
+			Names map[string]string `json:"names"`
+			Tempo int               `json:"tempo_bpm"`
+			Steps []struct {
+				IDs   []string         `json:"position_ids"`
+				Value domain.NoteValue `json:"value"`
+				Strum domain.Strum     `json:"strum"`
+			} `json:"steps"`
+		} `json:"playbacks"`
+		DefaultPlaybackID *string `json:"default_playback_id"`
+		Positions         []struct {
 			ID       string               `json:"position_id"`
 			Interval string               `json:"interval"`
 			Name     string               `json:"note_name"`
@@ -60,25 +65,34 @@ func TestBasicCatalog(t *testing.T) {
 		for i, p := range e.Positions {
 			ps[i] = domain.Position{ID: p.ID, Interval: p.Interval, NoteName: p.Name, Shape: p.Shape, Color: p.Color, String: &p.String, Fret: &p.Fret}
 		}
-		steps := make([]domain.SequenceStep, len(e.Sequence))
-		for i, s := range e.Sequence {
-			steps[i] = domain.SequenceStep{PositionIDs: s.IDs, Value: s.Value, Strum: s.Strum}
+		playbacks := make([]domain.DiagramPlayback, len(e.Playbacks))
+		for i, p := range e.Playbacks {
+			steps := make([]domain.SequenceStep, len(p.Steps))
+			for j, s := range p.Steps {
+				steps[j] = domain.SequenceStep{PositionIDs: s.IDs, Value: s.Value, Strum: s.Strum}
+			}
+			playbacks[i] = domain.DiagramPlayback{ID: p.ID, Names: p.Names, TempoBPM: p.Tempo, Steps: steps}
 		}
-		_, err := domain.NewDiagram(e.ID, owner, instrument, e.Names, []string{"en", "pt_BR"}, ps, []string{uuid.NewString()}, []string{uuid.NewString()}, domain.DiagramOptions{Kind: domain.DiagramKindBasic, RootNote: &e.Root, Mode: e.Mode, TempoBPM: e.Tempo, Sequence: steps}, time.Now())
+		_, err := domain.NewDiagram(e.ID, owner, instrument, e.Names, []string{"en", "pt_BR"}, ps, []string{uuid.NewString()}, []string{uuid.NewString()}, domain.DiagramOptions{Kind: domain.DiagramKindBasic, RootNote: &e.Root, Mode: e.Mode, Playbacks: playbacks, DefaultPlaybackID: e.DefaultPlaybackID}, time.Now())
 		require.NoError(t, err, e.Key)
 		positionsCount += len(ps)
 	}
 	db := startMigrationPostgres(t, ctx)
+	// The schema migrations run first; the reference data, which installs
+	// the catalog, runs in a transaction of its own like Atlas runs it.
+	var referenceData string
 	for _, file := range migrationFiles(t) {
-		if filepath.Base(file) == "20261002123500_basic_guitar_catalog.up.sql" {
-			continue
+		if strings.HasSuffix(file, "_baseline_reference_data.up.sql") {
+			referenceData = file
+			break
 		}
 		contents, err := os.ReadFile(file)
 		require.NoError(t, err)
 		_, err = db.ExecContext(ctx, string(contents))
 		require.NoError(t, err, file)
 	}
-	sqlBytes, err := os.ReadFile(filepath.Join(root, "services/core-domain/internal/adapters/repo/ent/migrate/migrations/20261002123500_basic_guitar_catalog.up.sql"))
+	require.NotEmpty(t, referenceData, "expected a *_baseline_reference_data.up.sql migration")
+	sqlBytes, err := os.ReadFile(referenceData)
 	require.NoError(t, err)
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)

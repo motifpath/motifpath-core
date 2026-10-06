@@ -436,10 +436,8 @@ var (
 		{Name: "label_display", Type: field.TypeEnum, Enums: []string{"interval", "note", "hidden"}, Default: "interval"},
 		{Name: "color", Type: field.TypeString, Nullable: true},
 		{Name: "mode", Type: field.TypeEnum, Nullable: true, Enums: []string{"major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"}},
-		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
-		{Name: "time_signature_beats", Type: field.TypeInt, Default: 4},
-		{Name: "time_signature_beat_value", Type: field.TypeInt, Default: 4},
-		{Name: "sequence", Type: field.TypeJSON},
+		{Name: "playbacks", Type: field.TypeJSON},
+		{Name: "default_playback_id", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "instrument_id", Type: field.TypeUUID},
 	}
@@ -451,7 +449,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[13]},
+				Columns:    []*schema.Column{DiagramsColumns[11]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

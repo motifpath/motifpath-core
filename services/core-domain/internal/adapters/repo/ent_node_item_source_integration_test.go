@@ -20,7 +20,7 @@ import (
 
 // playAlongDiagram is a diagram of kind on instrumentIDs (the first being
 // its layout) classified under skills and concepts, with a one-note
-// sequence when playable.
+// playback when playable.
 func playAlongDiagram(kind domain.DiagramKind, playable bool, skills, concepts []domain.KnowledgeNode, instrumentIDs ...string) domain.Diagram {
 	position := uuid.NewString()
 	d := domain.Diagram{
@@ -30,8 +30,12 @@ func playAlongDiagram(kind domain.DiagramKind, playable bool, skills, concepts [
 		Skills:    skills, Concepts: concepts, CreatedAt: fixedAt,
 	}
 	if playable {
-		d.TempoBPM = intPtr(80)
-		d.Sequence = []domain.SequenceStep{{PositionIDs: []string{position}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumNone}}
+		playbackID := uuid.NewString()
+		d.Playbacks = []domain.DiagramPlayback{{
+			ID: playbackID, Names: domain.LocalizedText{"en": "Lick"}, TempoBPM: 80, TimeSignature: domain.DefaultTimeSignature,
+			Steps: []domain.SequenceStep{{PositionIDs: []string{position}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumNone}},
+		}}
+		d.DefaultPlaybackID = &playbackID
 	}
 	return d
 }

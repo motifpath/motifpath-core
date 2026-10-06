@@ -28,8 +28,8 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^student "([^"]+)" plays "([^"]+)" and "([^"]+)"$`, w.studentPlays)
 	sc.Step(`^"([^"]+)" is enrolled in a path whose skills have practice items for both instruments$`, w.enrolledInPracticePath)
 	sc.Step(`^"([^"]+)" has a clean play-along "([^"]+)" with a best clean tempo of (\d+) BPM$`, w.hasCleanPlayAlong)
-	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" is (\d+) BPM and the diagram's tempo is (\d+) BPM$`, w.hasBestCleanTempoOn)
-	sc.Step(`^"([^"]+)" has never rated "([^"]+)" clean and the diagram's tempo is (\d+) BPM$`, w.neverRatedClean)
+	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" is (\d+) BPM and the diagram's default playback is at (\d+) BPM$`, w.hasBestCleanTempoOn)
+	sc.Step(`^"([^"]+)" has never rated "([^"]+)" clean and the diagram's default playback is at (\d+) BPM$`, w.neverRatedClean)
 
 	sc.Step(`^"([^"]+)" has plenty of due, weak and new items on guitar$`, w.hasPlentyOfEverything)
 	sc.Step(`^"([^"]+)" has (plenty of|no) due items, (plenty of|no) weak items and (plenty of|no) new items on guitar$`, w.hasItemsOnGuitar)
@@ -125,8 +125,8 @@ func (w *world) enrolledInPracticePath(name string) error {
 	return nil
 }
 
-// putPlayAlong seeds a basic diagram on instrument with eight quarter notes
-// of playback at tempo, classified under practiceSkill.
+// putPlayAlong seeds a basic diagram on instrument whose default playback is
+// eight quarter notes at tempo, classified under practiceSkill.
 func (w *world) putPlayAlong(slug, instrument string, tempo int) {
 	w.putPlayAlongOn(slug, instrument, practiceSkill, tempo)
 }
@@ -140,14 +140,14 @@ func (w *world) putPlayAlongOn(slug, instrument, skill string, tempo int) {
 		Names:         domain.LocalizedText{"en": slug},
 		Kind:          domain.DiagramKindBasic,
 		CreatedBy:     w.curatorID(),
-		TimeSignature: domain.DefaultTimeSignature,
-		TempoBPM:      &tempo,
 		Skills:        []domain.KnowledgeNode{{ID: w.skillIDFor(skill).String()}},
 		CreatedAt:     fixedNow,
 	}
+	playback := domain.DiagramPlayback{ID: playbackID(diagramID(slug).String(), "Play-along").String(), Names: domain.LocalizedText{"en": "Play-along"}, TempoBPM: tempo, TimeSignature: domain.DefaultTimeSignature}
 	for range 8 {
-		d.Sequence = append(d.Sequence, domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumNone})
+		playback.Steps = append(playback.Steps, domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumNone})
 	}
+	d.Playbacks, d.DefaultPlaybackID = []domain.DiagramPlayback{playback}, &playback.ID
 	w.diagrams.put(d)
 }
 

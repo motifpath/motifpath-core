@@ -154,7 +154,7 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 	pos1, pos2 := *intervalsRef(diagrams.pentatonicPos1.ID), *intervalsRef(diagrams.pentatonicPos2.ID)
 	// The lick has a rhythm (a triplet turn at 80 BPM); this cue offers Play, as authored, once through.
 	lickWithPlay := *intervalsRef(diagrams.teacherLick.ID)
-	lickWithPlay.Playback = &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
+	lickWithPlay.Playback = &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
 	rootsOnly := domain.DiagramRef{DiagramID: diagrams.pentatonicPos1.ID, Layers: domain.DiagramLayers{Intervals: true, Subset: &[]string{"R"}}}
 	cues := []diagramCue{
 		{diagram: &pos1, from: 0, to: 5, caption: "1 · One diagram: position 1"},
@@ -185,7 +185,7 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 // through, from 0:11 to 0:25 — after the node's image cues.
 func seedPlayableCue(ctx context.Context, teacher domain.User, content *application.ContentService, nodeID string, diagrams seededDiagrams) error {
 	ref := *intervalsRef(diagrams.teacherLick.ID)
-	ref.Playback = &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
+	ref.Playback = &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored}
 	start, end, caption := 11, 25, "Press Play to hear the lick"
 	if _, err := content.CreateExpandedContent(ctx, teacher, nodeID, domain.ExpandedContentTypeDiagram, nil, nil, &ref, nil, &start, &end, nil, nil, &caption); err != nil {
 		return fmt.Errorf("create playable diagram cue: %w", err)

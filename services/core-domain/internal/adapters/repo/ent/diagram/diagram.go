@@ -33,14 +33,10 @@ const (
 	FieldColor = "color"
 	// FieldMode holds the string denoting the mode field in the database.
 	FieldMode = "mode"
-	// FieldTempoBpm holds the string denoting the tempo_bpm field in the database.
-	FieldTempoBpm = "tempo_bpm"
-	// FieldTimeSignatureBeats holds the string denoting the time_signature_beats field in the database.
-	FieldTimeSignatureBeats = "time_signature_beats"
-	// FieldTimeSignatureBeatValue holds the string denoting the time_signature_beat_value field in the database.
-	FieldTimeSignatureBeatValue = "time_signature_beat_value"
-	// FieldSequence holds the string denoting the sequence field in the database.
-	FieldSequence = "sequence"
+	// FieldPlaybacks holds the string denoting the playbacks field in the database.
+	FieldPlaybacks = "playbacks"
+	// FieldDefaultPlaybackID holds the string denoting the default_playback_id field in the database.
+	FieldDefaultPlaybackID = "default_playback_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeInstrument holds the string denoting the instrument edge name in mutations.
@@ -133,10 +129,8 @@ var Columns = []string{
 	FieldLabelDisplay,
 	FieldColor,
 	FieldMode,
-	FieldTempoBpm,
-	FieldTimeSignatureBeats,
-	FieldTimeSignatureBeatValue,
-	FieldSequence,
+	FieldPlaybacks,
+	FieldDefaultPlaybackID,
 	FieldCreatedAt,
 }
 
@@ -163,12 +157,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultTimeSignatureBeats holds the default value on creation for the "time_signature_beats" field.
-	DefaultTimeSignatureBeats int
-	// DefaultTimeSignatureBeatValue holds the default value on creation for the "time_signature_beat_value" field.
-	DefaultTimeSignatureBeatValue int
-	// DefaultSequence holds the default value on creation for the "sequence" field.
-	DefaultSequence []schema.SequenceStep
+	// DefaultPlaybacks holds the default value on creation for the "playbacks" field.
+	DefaultPlaybacks []schema.Playback
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
@@ -296,19 +286,9 @@ func ByMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMode, opts...).ToFunc()
 }
 
-// ByTempoBpm orders the results by the tempo_bpm field.
-func ByTempoBpm(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTempoBpm, opts...).ToFunc()
-}
-
-// ByTimeSignatureBeats orders the results by the time_signature_beats field.
-func ByTimeSignatureBeats(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTimeSignatureBeats, opts...).ToFunc()
-}
-
-// ByTimeSignatureBeatValue orders the results by the time_signature_beat_value field.
-func ByTimeSignatureBeatValue(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTimeSignatureBeatValue, opts...).ToFunc()
+// ByDefaultPlaybackID orders the results by the default_playback_id field.
+func ByDefaultPlaybackID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDefaultPlaybackID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

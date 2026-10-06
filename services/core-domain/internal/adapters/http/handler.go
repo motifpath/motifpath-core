@@ -2125,7 +2125,7 @@ func (h *Handler) CreateDiagram(ctx context.Context, request generated.CreateDia
 		uuidsToStrings(body.Classification.SkillIds), uuidsToStrings(body.Classification.ConceptIds),
 		domain.DiagramOptions{
 			RootNote: body.RootNote, LabelDisplay: toDomainLabelDisplay(body.LabelDisplay), Color: body.Color, Kind: toDomainDiagramKind(body.Kind), Regions: toDomainRegions(body.Regions),
-			Mode: toDomainMode(body.Mode), TempoBPM: body.TempoBpm, TimeSignature: toDomainTimeSignature(body.TimeSignature), Sequence: toDomainSequence(body.Sequence),
+			Mode: toDomainMode(body.Mode), Playbacks: toDomainPlaybacks(body.Playbacks), DefaultPlaybackID: uuidPtrToStringPtr(body.DefaultPlaybackId),
 		})
 	if err != nil {
 		kind, valErr := classify(err)

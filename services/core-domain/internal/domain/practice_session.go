@@ -309,20 +309,21 @@ func clampTempo(bpm, target int) int {
 	return max(MinTempoBPM, min(bpm, target))
 }
 
-// PlayAlongSeconds estimates how long playing d at tempo takes in a
-// session: takes of a count-in bar plus the sequence, each followed by its
-// rating.
+// PlayAlongSeconds estimates how long playing d's default playback at tempo
+// takes in a session: takes of a count-in bar plus the playback's steps,
+// each followed by its rating.
 func PlayAlongSeconds(d Diagram, tempo int, warmUp bool) int {
 	takes := focusTakes
 	if warmUp {
 		takes = warmUpTakes
 	}
-	signature := d.TimeSignature
+	playback, _ := d.DefaultPlayback()
+	signature := playback.TimeSignature
 	if signature.Beats == 0 {
 		signature = DefaultTimeSignature
 	}
 	beats := float64(signature.Beats)
-	for _, step := range d.Sequence {
+	for _, step := range playback.Steps {
 		beats += float64(step.Value.Num) / float64(step.Value.Den) * float64(signature.BeatValue)
 	}
 	take := beats * 60 / float64(tempo)

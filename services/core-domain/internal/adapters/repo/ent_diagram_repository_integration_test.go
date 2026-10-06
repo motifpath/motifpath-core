@@ -123,15 +123,28 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
 			{ID: "88888888-0000-4000-8000-000000000003", Interval: "4", NoteName: "D", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(5)},
 		},
-		Mode: &minor, TempoBPM: intPtr(90), TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8},
+		Mode: &minor,
+		// Playbacks keep their order, and the default needn't be the first.
 		// A position may sound in several steps, a step may sound several
 		// positions, and a step with none is a rest.
-		Sequence: []domain.SequenceStep{
-			{PositionIDs: []string{"ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 1, Den: 8}, Strum: domain.StrumNone},
-			{PositionIDs: []string{"88888888-0000-4000-8000-000000000003", "ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 3, Den: 8}, Strum: domain.StrumDown},
-			{PositionIDs: []string{}, Value: domain.NoteValue{Num: 1, Den: 12}, Strum: domain.StrumNone},
+		Playbacks: []domain.DiagramPlayback{
+			{
+				ID: "cccccccc-0000-4000-8000-000000000001", Names: domain.LocalizedText{"en": "Lick", "pt_BR": "Frase"},
+				TempoBPM: 90, TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8},
+				Steps: []domain.SequenceStep{
+					{PositionIDs: []string{"ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 1, Den: 8}, Strum: domain.StrumNone},
+					{PositionIDs: []string{"88888888-0000-4000-8000-000000000003", "ffffffff-0000-4000-8000-000000000001"}, Value: domain.NoteValue{Num: 3, Den: 8}, Strum: domain.StrumDown},
+					{PositionIDs: []string{}, Value: domain.NoteValue{Num: 1, Den: 12}, Strum: domain.StrumNone},
+				},
+			},
+			{
+				ID: "aaaaaaaa-0000-4000-8000-000000000002", Names: domain.LocalizedText{"en": "Strum", "pt_BR": "Batida"},
+				TempoBPM: 120, TimeSignature: domain.DefaultTimeSignature,
+				Steps: []domain.SequenceStep{{PositionIDs: []string{"ffffffff-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"}, Value: domain.NoteValue{Num: 1, Den: 2}, Strum: domain.StrumUp}},
+			},
 		},
-		Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
+		DefaultPlaybackID: strPtr("aaaaaaaa-0000-4000-8000-000000000002"),
+		Skills:            []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
 	}
 	require.NoError(t, diagrams.Create(ctx, d))
 
@@ -333,6 +346,27 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 		count, countErr := client.Position.Query().Count(ctx)
 		require.NoError(t, countErr)
 		assert.Equal(t, 1, count, "only the one replaced position of the real diagram may exist")
+	})
+
+	t.Run("replaces the playbacks and the default, and clears them", func(t *testing.T) {
+		withPlaybacks := original
+		withPlaybacks.Playbacks = []domain.DiagramPlayback{{
+			ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Run"}, TempoBPM: 80, TimeSignature: domain.DefaultTimeSignature,
+			Steps: []domain.SequenceStep{{PositionIDs: []string{original.Positions[0].ID}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumNone}},
+		}}
+		withPlaybacks.DefaultPlaybackID = &withPlaybacks.Playbacks[0].ID
+
+		require.NoError(t, diagrams.Update(ctx, withPlaybacks))
+		got, err := diagrams.GetByID(ctx, original.ID)
+		require.NoError(t, err)
+		assert.Equal(t, withPlaybacks.Playbacks, got.Playbacks)
+		assert.Equal(t, withPlaybacks.DefaultPlaybackID, got.DefaultPlaybackID)
+
+		require.NoError(t, diagrams.Update(ctx, original))
+		got, err = diagrams.GetByID(ctx, original.ID)
+		require.NoError(t, err)
+		assert.Nil(t, got.Playbacks)
+		assert.Nil(t, got.DefaultPlaybackID)
 	})
 }
 

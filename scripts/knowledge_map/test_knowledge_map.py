@@ -71,9 +71,6 @@ class InstrumentIconTests(unittest.TestCase):
         for key, icon in (('guitar', 'acoustic_guitar'), ('electric-guitar', 'electric_guitar'), ('electric-bass', 'electric_bass')):
             self.assertIn(f"""UPDATE "instruments" SET "icon" = '{icon}' WHERE "id" = '{km.instrument_id(key)}';""", sql)
 
-    def test_icons_install_after_the_column_they_fill(self):
-        self.assertGreater(km.INSTRUMENT_ICONS_FILE, km.INSTRUMENTS_FILE)
-
 
 @unittest.skipUnless(MAP.exists(), f'{MAP} not found; set SPECS_DIR')
 class CatalogTests(unittest.TestCase):

@@ -71,10 +71,8 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
 		SetNillableMode(entMode(d.Mode)).
-		SetNillableTempoBpm(d.TempoBPM).
-		SetTimeSignatureBeats(d.TimeSignature.Beats).
-		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
-		SetSequence(entSequence(d.Sequence)).
+		SetPlaybacks(entPlaybacks(d.Playbacks)).
+		SetNillableDefaultPlaybackID(d.DefaultPlaybackID).
 		SetCreatedAt(d.CreatedAt).
 		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
 		AddSkillIDs(skillIDs...).
@@ -283,10 +281,8 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
-		SetTimeSignatureBeats(d.TimeSignature.Beats).
-		SetTimeSignatureBeatValue(d.TimeSignature.BeatValue).
-		SetSequence(entSequence(d.Sequence))
-	setOrClearPlayback(update, d)
+		SetPlaybacks(entPlaybacks(d.Playbacks))
+	setOrClearModeAndDefaultPlayback(update, d)
 	if _, err := update.
 		ClearCompatibleInstruments().
 		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
@@ -312,18 +308,18 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	return tx.Commit()
 }
 
-// setOrClearPlayback sets d's mode and tempo on update. Unlike root note and
-// color, mode and tempo can be cleared.
-func setOrClearPlayback(update *ent.DiagramUpdateOne, d domain.Diagram) {
+// setOrClearModeAndDefaultPlayback sets d's mode and default playback on
+// update. Unlike root note and color, both can be cleared.
+func setOrClearModeAndDefaultPlayback(update *ent.DiagramUpdateOne, d domain.Diagram) {
 	if d.Mode != nil {
 		update.SetMode(*entMode(d.Mode))
 	} else {
 		update.ClearMode()
 	}
-	if d.TempoBPM != nil {
-		update.SetTempoBpm(*d.TempoBPM)
+	if d.DefaultPlaybackID != nil {
+		update.SetDefaultPlaybackID(*d.DefaultPlaybackID)
 	} else {
-		update.ClearTempoBpm()
+		update.ClearDefaultPlaybackID()
 	}
 }
 
@@ -444,26 +440,23 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 	slices.Sort(instrumentIDs)
 	instrumentIDs = domain.LayoutFirst(row.InstrumentID.String(), instrumentIDs)
 	return domain.Diagram{
-		ID:            row.ID.String(),
-		InstrumentID:  row.InstrumentID.String(),
-		InstrumentIDs: instrumentIDs,
-		Names:         domain.LocalizedText(row.Names),
-		Kind:          domain.DiagramKind(row.Kind),
-		CreatedBy:     row.CreatedBy.String(),
-		RootNote:      row.RootNote,
-		LabelDisplay:  domain.LabelDisplay(row.LabelDisplay),
-		Color:         row.Color,
-		Positions:     positions,
-		Regions:       regions,
-		Mode:          domainMode(row.Mode),
-		TimeSignature: domain.TimeSignature{
-			Beats: row.TimeSignatureBeats, BeatValue: row.TimeSignatureBeatValue,
-		},
-		Sequence:  domainSequence(row.Sequence),
-		TempoBPM:  row.TempoBpm,
-		Skills:    domainKnowledgeNodesFromEdges(row.Edges.Skills),
-		Concepts:  domainKnowledgeNodesFromEdges(row.Edges.Concepts),
-		CreatedAt: row.CreatedAt,
+		ID:                row.ID.String(),
+		InstrumentID:      row.InstrumentID.String(),
+		InstrumentIDs:     instrumentIDs,
+		Names:             domain.LocalizedText(row.Names),
+		Kind:              domain.DiagramKind(row.Kind),
+		CreatedBy:         row.CreatedBy.String(),
+		RootNote:          row.RootNote,
+		LabelDisplay:      domain.LabelDisplay(row.LabelDisplay),
+		Color:             row.Color,
+		Positions:         positions,
+		Regions:           regions,
+		Mode:              domainMode(row.Mode),
+		Playbacks:         domainPlaybacks(row.Playbacks),
+		DefaultPlaybackID: row.DefaultPlaybackID,
+		Skills:            domainKnowledgeNodesFromEdges(row.Edges.Skills),
+		Concepts:          domainKnowledgeNodesFromEdges(row.Edges.Concepts),
+		CreatedAt:         row.CreatedAt,
 	}
 }
 
@@ -481,6 +474,40 @@ func domainMode(mode *diagram.Mode) *domain.DiagramMode {
 	}
 	m := domain.DiagramMode(*mode)
 	return &m
+}
+
+// entPlaybacks is playbacks as stored; none is an empty list, never NULL.
+func entPlaybacks(playbacks []domain.DiagramPlayback) []schema.Playback {
+	out := make([]schema.Playback, len(playbacks))
+	for i, p := range playbacks {
+		out[i] = schema.Playback{
+			ID:            p.ID,
+			Names:         p.Names,
+			TempoBPM:      p.TempoBPM,
+			TimeSignature: schema.TimeSignature{Beats: p.TimeSignature.Beats, BeatValue: p.TimeSignature.BeatValue},
+			Steps:         entSequence(p.Steps),
+		}
+	}
+	return out
+}
+
+// domainPlaybacks is stored playbacks as the domain holds them: nil for
+// none.
+func domainPlaybacks(playbacks []schema.Playback) []domain.DiagramPlayback {
+	if len(playbacks) == 0 {
+		return nil
+	}
+	out := make([]domain.DiagramPlayback, len(playbacks))
+	for i, p := range playbacks {
+		out[i] = domain.DiagramPlayback{
+			ID:            p.ID,
+			Names:         domain.LocalizedText(p.Names),
+			TempoBPM:      p.TempoBPM,
+			TimeSignature: domain.TimeSignature{Beats: p.TimeSignature.Beats, BeatValue: p.TimeSignature.BeatValue},
+			Steps:         domainSequence(p.Steps),
+		}
+	}
+	return out
 }
 
 // entSequence is steps as stored; no steps is an empty list, never NULL.

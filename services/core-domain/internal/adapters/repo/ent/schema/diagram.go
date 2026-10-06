@@ -61,22 +61,17 @@ func (Diagram) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
-		// tempo_bpm is the default tempo the sequence plays at; NULL exactly
-		// when the sequence is empty.
-		field.Int("tempo_bpm").
+		// playbacks are the ways the diagram sounds, in order, each with its
+		// steps naming positions of this diagram by id; empty = the diagram
+		// doesn't play.
+		field.JSON("playbacks", []Playback{}).
+			Default([]Playback{}),
+
+		// default_playback_id names one of playbacks; NULL exactly when there
+		// are none.
+		field.String("default_playback_id").
 			Optional().
 			Nillable(),
-
-		field.Int("time_signature_beats").
-			Default(4),
-
-		field.Int("time_signature_beat_value").
-			Default(4),
-
-		// sequence is the playback steps, in order, each naming positions of
-		// this diagram by id; empty = the diagram doesn't play.
-		field.JSON("sequence", []SequenceStep{}).
-			Default([]SequenceStep{}),
 
 		field.Time("created_at").
 			Immutable().
@@ -84,7 +79,22 @@ func (Diagram) Fields() []ent.Field {
 	}
 }
 
-// SequenceStep is one stored step of a Diagram's sequence.
+// Playback is one stored playback of a Diagram.
+type Playback struct {
+	ID            string            `json:"playback_id"`
+	Names         map[string]string `json:"names"`
+	TempoBPM      int               `json:"tempo_bpm"`
+	TimeSignature TimeSignature     `json:"time_signature"`
+	Steps         []SequenceStep    `json:"steps"`
+}
+
+// TimeSignature is a stored playback's meter.
+type TimeSignature struct {
+	Beats     int `json:"beats"`
+	BeatValue int `json:"beat_value"`
+}
+
+// SequenceStep is one stored step of a playback.
 type SequenceStep struct {
 	PositionIDs []string  `json:"position_ids"`
 	Value       NoteValue `json:"value"`

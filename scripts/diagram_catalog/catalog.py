@@ -1,4 +1,8 @@
-"""Deterministic, offline bilingual guitar catalog compiler (Python stdlib only)."""
+"""Deterministic, offline bilingual guitar catalog compiler (Python stdlib only).
+
+scripts/reference_data/build.py writes the SQL that installs the catalog into the
+baseline_reference_data migration; run on its own, this writes only the catalog's
+payload and coverage report."""
 import argparse
 import hashlib
 import itertools
@@ -145,18 +149,40 @@ def entry(key, root, intervals, coordinates, en, pt, family, tier, formula='', m
                               note_name=spell(root,i), shape='star' if i=='R' else 'dot',
                               color='#EF4444' if i=='R' else None, string=s, fret=f,
                               custom_label=None, note=None))
-    sequence = []
-    ordered = sorted(positions, key=lambda p:(TUNING[6-p['string']]+p['fret'], -p['string']))
-    if playback == 'chord':
-        sequence = [dict(position_ids=[p['position_id'] for p in ordered],value=dict(num=1,den=1),strum='none')]
-    elif playback == 'run':
-        sequence = [dict(position_ids=[p['position_id']],value=dict(num=1,den=4),strum='none') for p in ordered]
+    playbacks = shape_playbacks(key, positions, playback)
     return dict(key=key, diagram_id=did, tier=tier, family=family, formula=formula,
                 names=dict(en=en,pt_BR=pt), root_note=root, mode=mode,
                 label_display='interval', color='#3B82F6', positions=positions,
-                regions=[], sequence=sequence, tempo_bpm=60 if sequence else None,
-                time_signature=dict(beats=4,beat_value=4),
+                regions=[], playbacks=playbacks,
+                default_playback_id=playbacks[0]['playback_id'] if playbacks else None,
                 instruments=['guitar', 'electric-guitar'])
+
+
+# Each playback role's names; a role is also part of its playback's ID, so
+# the ID never depends on where the playback sits in the list.
+PLAYBACK_NAMES = {
+    'strum-down': dict(en='Strum down', pt_BR='Batida para baixo'),
+    'arpeggio': dict(en='Arpeggio', pt_BR='Arpejo'),
+    'ascending': dict(en='Ascending', pt_BR='Ascendente'),
+}
+# The playbacks of each kind of playable shape, default first. A shape
+# without a kind is a map, which is silent.
+SHAPE_PLAYBACKS = {'chord': ['strum-down', 'arpeggio'], 'run': ['ascending']}
+
+
+def shape_playbacks(key, positions, shape):
+    """The named playbacks of a playable shape, default first, at 60 BPM in
+    4/4: a whole-note down-strum of every position, or quarter notes from the
+    lowest pitch to the highest. A map (no shape) has none."""
+    ordered = sorted(positions, key=lambda p:(TUNING[6-p['string']]+p['fret'], -p['string']))
+    steps = {
+        'strum-down': [dict(position_ids=[p['position_id'] for p in ordered],value=dict(num=1,den=1),strum='down')],
+        'arpeggio': [dict(position_ids=[p['position_id']],value=dict(num=1,den=4),strum='none') for p in ordered],
+    }
+    steps['ascending'] = steps['arpeggio']
+    return [dict(playback_id=stable_id(f'{key}/playback/{role}'), names=PLAYBACK_NAMES[role], tempo_bpm=60,
+                 time_signature=dict(beats=4,beat_value=4), steps=steps[role])
+            for role in SHAPE_PLAYBACKS.get(shape, [])]
 
 
 def voicings(root, intervals, strings, drop=()):
@@ -224,7 +250,7 @@ def generate():
                 lo=min(f for _,f in coords); hi=max(f for _,f in coords)
                 for fk in ['major','natural-minor','major-triad','minor-triad']:
                     en,pt,formula,tier,mode=FORMULAS[fk]; ints=formula.split()
-                    result.append(entry(f'caged-window/{fk}/{root}/{shape}/{shift}',root,ints,cells(root,ints,lo,hi),f'{root} {en} — CAGED {shape} window, frets {lo}–{hi}',f'{pt} de {rp} — Região CAGED {shape}, casas {lo}–{hi}','caged-window','A',fk,mode))
+                    result.append(entry(f'caged-window/{fk}/{root}/{shape}/{shift}',root,ints,cells(root,ints,lo,hi),f'{root} {en} — CAGED {shape} window, frets {lo}–{hi}',f'{pt} de {rp} — Região CAGED {shape}, casas {lo}–{hi}','caged-window','A',fk,mode,'run'))
         for system,ints in [('quartal-3','R 4 b7'),('quartal-4','R 4 b7 b3'),('quintal-3','R 5 9'),('quintal-4','R 5 9 13')]:
             degrees=ints.split()
             result.append(entry(f'structure/{system}/{root}',root,degrees,cells(root,degrees),f'{root} {system} — Interval map',f'Estrutura de {"quartas" if system.startswith("quartal") else "quintas"} de {rp} — {len(degrees)} notas, mapa de intervalos','interval-structure','C',system))
@@ -269,9 +295,18 @@ def validate(entries):
             if expected!=pitch_class(p['note_name']) or expected!=(pitch_class(e['root_note'])+semitones(p['interval']))%12: raise ValueError('Pitch mismatch')
             for field in ['custom_label','note']:
                 if p[field] is not None and set(p[field])!={'en','pt_BR'}: raise ValueError('Incomplete annotation')
-        if bool(e['sequence']) != (e['tempo_bpm'] is not None): raise ValueError('Tempo/sequence mismatch')
-        for step in e['sequence']:
-            if not set(step['position_ids'])<=ids: raise ValueError('Broken playback reference')
+        validate_playbacks(e, ids)
+
+
+def validate_playbacks(e, position_ids):
+    playback_ids = [p['playback_id'] for p in e['playbacks']]
+    if len(playback_ids) != len(set(playback_ids)): raise ValueError(f'Duplicate playback ID {e["key"]}')
+    if e['default_playback_id'] != (playback_ids[0] if playback_ids else None): raise ValueError(f'Default playback mismatch {e["key"]}')
+    for playback in e['playbacks']:
+        if set(playback['names']) != {'en','pt_BR'}: raise ValueError(f'Incomplete playback names {e["key"]}')
+        if not playback['steps']: raise ValueError(f'Empty playback {e["key"]}')
+        for step in playback['steps']:
+            if not set(step['position_ids'])<=position_ids: raise ValueError(f'Broken playback reference {e["key"]}')
 
 
 def sql_text(value):
@@ -298,7 +333,7 @@ def render_sql(entries):
     positions = []
     classifications = []
     for e in entries:
-        values=[sql_text(e['diagram_id']), sql_text(stable_id('instrument/'+LAYOUT_INSTRUMENT)),sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',str(e['tempo_bpm']) if e['tempo_bpm'] else 'NULL','4','4',sql_text(compact(e['sequence'])),"'2026-10-01T00:00:00Z'"]
+        values=[sql_text(e['diagram_id']), sql_text(stable_id('instrument/'+LAYOUT_INSTRUMENT)),sql_text(compact(e['names'])),"'basic'",sql_text(SYSTEM_CATALOG_USER_ID),sql_text(e['root_note']),"'interval'","'#3B82F6'",sql_text(e['mode']) if e['mode'] else 'NULL',sql_text(compact(e['playbacks'])),sql_text(e['default_playback_id']) if e['default_playback_id'] else 'NULL',"'2026-10-01T00:00:00Z'"]
         diagrams.append('('+','.join(values)+')')
         for key in e['instruments']:
             diagram_instruments.append('('+sql_text(e['diagram_id'])+','+sql_text(stable_id('instrument/'+key))+",'2026-10-01T00:00:00Z')")
@@ -307,7 +342,7 @@ def render_sql(entries):
         skill, concept = DIAGRAM_CLASSIFICATION[e['family']]
         classifications.append((e['diagram_id'], stable_id('knowledge-node/'+skill), stable_id('knowledge-node/'+concept)))
     for group in batches(diagrams, 250):
-        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,tempo_bpm,time_signature_beats,time_signature_beat_value,sequence,created_at) VALUES '+','.join(group)+';')
+        sql.append('INSERT INTO diagrams (id,instrument_id,names,kind,created_by,root_note,label_display,color,mode,playbacks,default_playback_id,created_at) VALUES '+','.join(group)+';')
     for group in batches(diagram_instruments, 1000):
         sql.append('INSERT INTO diagram_instruments (diagram_id,instrument_id,linked_at) VALUES '+','.join(group)+';')
     for group in batches(positions, 1000):
@@ -319,17 +354,12 @@ def render_sql(entries):
     return '\n'.join(sql)+'\n'
 
 
-MIGRATION_FILE='20261002123500_basic_guitar_catalog.up.sql'
-MIGRATIONS_DIR=Path(__file__).resolve().parents[2]/'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
-
-
-def write_outputs(entries, output, migrations):
-    """Write the catalog payload and its coverage report to output, and the
-    migration that installs it to migrations, so only one copy of the SQL exists."""
+def write_outputs(entries, output):
+    """Write the catalog payload and its coverage report to output. The SQL
+    that installs the catalog lives only in the reference data migration."""
     output.mkdir(parents=True,exist_ok=True)
     payload=compact(entries)+'\n'
     (output/'catalog.json').write_text(payload)
-    (migrations/MIGRATION_FILE).write_text(render_sql(entries))
     report=dict(diagrams=len(entries),positions=sum(len(e['positions']) for e in entries),tiers=dict(sorted(Counter(e['tier'] for e in entries).items())),families=dict(sorted(Counter(e['family'] for e in entries).items())),sha256=hashlib.sha256(payload.encode()).hexdigest())
     (output/'coverage.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     return report
@@ -338,9 +368,8 @@ def write_outputs(entries, output, migrations):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--migrations',type=Path,default=MIGRATIONS_DIR,help='Atlas migrations directory; run `atlas migrate hash` afterwards')
     args=parser.parse_args()
-    report=write_outputs(generate(),args.output,args.migrations)
+    report=write_outputs(generate(),args.output)
     print(json.dumps(report,ensure_ascii=False,indent=2))
 
 

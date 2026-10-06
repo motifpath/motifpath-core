@@ -1,11 +1,13 @@
 """Compiles the practice drill catalog (motifpath-specs catalogs/practice-drills.yaml)
-into the frozen migrations that install its drill templates, its timed thresholds and
-the fretboard cell ranges each skill's generated cells come from. Deterministic and
+into the SQL that installs its drill templates, its timed thresholds and the
+fretboard cell ranges each skill's generated cells come from. Deterministic and
 offline; needs PyYAML. Cell ranges are checked against the knowledge map
 (catalogs/knowledge-map.yaml) and the catalog instruments.
+scripts/reference_data/build.py writes that SQL into the baseline_reference_data
+migration, keeping the threshold versions it already installs; run on its own,
+this prints the catalog's counts.
 
 Usage: python3 practice_drills.py [--specs ../../../motifpath-specs]
-Then run `atlas migrate hash` on the migrations directory.
 """
 import argparse
 import datetime
@@ -26,10 +28,6 @@ LANGUAGES = ('en', 'pt_BR')
 TEMPLATE_KEY = re.compile(r'^[a-z][a-z_]*:[a-z][a-z_]*$')
 SOURCES = ('default', 'benchmark', 'calibrated')
 
-MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / 'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
-DRILLS_FILE = '20261005184400_practice_drills.up.sql'
-# The cell ranges' table came later than the drills, so they install after it.
-CELLS_FILE = '20261006105600_fretboard_cells.up.sql'
 
 
 def stable_id(name):
@@ -267,14 +265,9 @@ def render_cells_sql(ranges):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
-    parser.add_argument('--migrations', type=Path, default=MIGRATIONS_DIR)
     args = parser.parse_args()
-    frozen = args.migrations / DRILLS_FILE
-    installed = installed_threshold_ids(frozen.read_text()) if frozen.exists() else set()
-    drills = load(args.specs / 'catalogs/practice-drills.yaml', installed, datetime.date.today())
-    frozen.write_text(render_sql(drills))
+    drills = load(args.specs / 'catalogs/practice-drills.yaml', set(), datetime.date.today())
     ranges = load_cells(args.specs / 'catalogs/practice-drills.yaml', args.specs / 'catalogs/knowledge-map.yaml')
-    (args.migrations / CELLS_FILE).write_text(render_cells_sql(ranges))
     print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds),
                           cell_ranges=len(ranges), cells=sum(r.cell_count for r in ranges))))
 

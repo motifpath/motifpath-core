@@ -1016,18 +1016,29 @@ func TestDiagramService_Playback(t *testing.T) {
 		p.ID = id
 		return p
 	}
-	lick := []domain.SequenceStep{
-		{PositionIDs: []string{"p1"}, Value: eighth},
-		{PositionIDs: []string{"p1", "p2"}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumDown},
+	// playback is a playback named name in both languages, at tempo, of one
+	// eighth note on each of positionIDs; id may be "" for the service to
+	// assign one.
+	playback := func(id, name string, tempo int, positionIDs ...string) domain.DiagramPlayback {
+		steps := make([]domain.SequenceStep, len(positionIDs))
+		for i, positionID := range positionIDs {
+			steps[i] = domain.SequenceStep{PositionIDs: []string{positionID}, Value: eighth}
+		}
+		return domain.DiagramPlayback{ID: id, Names: names(name), TempoBPM: tempo, Steps: steps}
 	}
-	create := func(t *testing.T, f diagramFixture) domain.Diagram {
+	strum := domain.DiagramPlayback{
+		ID: "pb-strum", Names: names("Strum"), TempoBPM: 90, TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8},
+		Steps: []domain.SequenceStep{{PositionIDs: []string{"p1", "p2"}, Value: domain.NoteValue{Num: 1, Den: 4}, Strum: domain.StrumDown}},
+	}
+	create := func(t *testing.T, f diagramFixture, opts domain.DiagramOptions) domain.Diagram {
 		t.Helper()
-		root, tempo := "A", 90
-		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Lick"), []domain.Position{positionWithID("p1", 6, 5), positionWithID("p2", 6, 8)}, []string{"skill-1"}, []string{"concept-1"},
-			domain.DiagramOptions{RootNote: &root, Mode: &minor, TempoBPM: &tempo, TimeSignature: domain.TimeSignature{Beats: 6, BeatValue: 8}, Sequence: lick})
+		root := "A"
+		opts.RootNote, opts.Mode = &root, &minor
+		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Lick"), []domain.Position{positionWithID("p1", 6, 5), positionWithID("p2", 6, 8)}, []string{"skill-1"}, []string{"concept-1"}, opts)
 		require.NoError(t, err)
 		return d
 	}
+	withStrumAndArpeggio := domain.DiagramOptions{Playbacks: []domain.DiagramPlayback{strum, playback("pb-arp", "Arpeggio", 70, "p1", "p2")}}
 	requireRejected := func(t *testing.T, f diagramFixture, err error, field string, before domain.Diagram) {
 		t.Helper()
 		var valErr *domain.ValidationError
@@ -1037,68 +1048,128 @@ func TestDiagramService_Playback(t *testing.T) {
 		require.NoError(t, getErr)
 		assert.Equal(t, before, stored)
 	}
+	playbackIDs := func(d domain.Diagram) []string {
+		ids := make([]string, len(d.Playbacks))
+		for i, p := range d.Playbacks {
+			ids[i] = p.ID
+		}
+		return ids
+	}
 
-	t.Run("a diagram is created with its key, meter, tempo and sequence", func(t *testing.T) {
+	t.Run("a diagram is created with its key and playbacks, the first the default", func(t *testing.T) {
 		f := newDiagramFixture()
 
-		got := create(t, f)
+		got := create(t, f, withStrumAndArpeggio)
 
 		assert.Equal(t, &minor, got.Mode)
-		assert.Equal(t, domain.TimeSignature{Beats: 6, BeatValue: 8}, got.TimeSignature)
-		require.NotNil(t, got.TempoBPM)
-		assert.Equal(t, 90, *got.TempoBPM)
-		require.Len(t, got.Sequence, 2)
-		assert.Equal(t, domain.StrumNone, got.Sequence[0].Strum)
+		assert.Equal(t, []string{"pb-strum", "pb-arp"}, playbackIDs(got))
+		assert.Equal(t, domain.TimeSignature{Beats: 6, BeatValue: 8}, got.Playbacks[0].TimeSignature)
+		assert.Equal(t, domain.StrumDown, got.Playbacks[0].Steps[0].Strum)
+		require.NotNil(t, got.DefaultPlaybackID)
+		assert.Equal(t, "pb-strum", *got.DefaultPlaybackID)
 		stored, err := f.diagrams.GetByID(ctx, got.ID)
 		require.NoError(t, err)
 		assert.Equal(t, got, stored)
 	})
 
-	t.Run("an update that leaves the playback out keeps it", func(t *testing.T) {
+	t.Run("a playback created without an id is assigned one", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
+
+		got := create(t, f, domain.DiagramOptions{Playbacks: []domain.DiagramPlayback{playback("", "Run", 90, "p1")}})
+
+		require.Len(t, got.Playbacks, 1)
+		assert.NotEmpty(t, got.Playbacks[0].ID)
+		assert.Equal(t, got.Playbacks[0].ID, *got.DefaultPlaybackID)
+	})
+
+	t.Run("an update that leaves the playbacks out keeps them and the default", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, domain.DiagramOptions{Playbacks: withStrumAndArpeggio.Playbacks, DefaultPlaybackID: strPtr("pb-arp")})
 
 		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Names: names("Renamed")})
 
 		require.NoError(t, err)
 		assert.Equal(t, d.Mode, got.Mode)
-		assert.Equal(t, d.TempoBPM, got.TempoBPM)
-		assert.Equal(t, d.TimeSignature, got.TimeSignature)
-		assert.Equal(t, d.Sequence, got.Sequence)
+		assert.Equal(t, d.Playbacks, got.Playbacks)
+		assert.Equal(t, "pb-arp", *got.DefaultPlaybackID)
 	})
 
-	t.Run("an update replaces the sequence, tempo and time signature", func(t *testing.T) {
+	t.Run("an update replaces the playbacks, keeping resent ids and assigning new ones", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
-		tempo := 120
+		d := create(t, f, withStrumAndArpeggio)
 
 		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{
-			Sequence:      []domain.SequenceStep{{PositionIDs: []string{"p2"}, Value: eighth}},
-			TempoBPM:      application.Nullable[int]{Set: true, Value: &tempo},
-			TimeSignature: &domain.TimeSignature{Beats: 3, BeatValue: 4},
+			Playbacks: []domain.DiagramPlayback{playback("", "Fingerstyle", 80, "p2"), playback("pb-arp", "Arpeggio", 60, "p1")},
 		})
 
 		require.NoError(t, err)
-		require.Len(t, got.Sequence, 1)
-		assert.Equal(t, []string{"p2"}, got.Sequence[0].PositionIDs)
-		assert.Equal(t, 120, *got.TempoBPM)
-		assert.Equal(t, domain.TimeSignature{Beats: 3, BeatValue: 4}, got.TimeSignature)
+		require.Len(t, got.Playbacks, 2)
+		assert.NotEmpty(t, got.Playbacks[0].ID)
+		assert.NotContains(t, []string{"pb-strum", "pb-arp"}, got.Playbacks[0].ID)
+		assert.Equal(t, "pb-arp", got.Playbacks[1].ID)
+		assert.Equal(t, 60, got.Playbacks[1].TempoBPM)
 	})
 
-	t.Run("an empty sequence with the tempo cleared removes the playback", func(t *testing.T) {
+	t.Run("replacing the playbacks keeps the default when it is still one of them", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
+		d := create(t, f, domain.DiagramOptions{Playbacks: withStrumAndArpeggio.Playbacks, DefaultPlaybackID: strPtr("pb-arp")})
 
-		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}, TempoBPM: application.Nullable[int]{Set: true}})
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{
+			Playbacks: []domain.DiagramPlayback{playback("", "Fingerstyle", 80, "p2"), strum, playback("pb-arp", "Arpeggio", 70, "p1")},
+		})
 
 		require.NoError(t, err)
-		assert.Empty(t, got.Sequence)
-		assert.Nil(t, got.TempoBPM)
+		assert.Equal(t, "pb-arp", *got.DefaultPlaybackID)
+	})
+
+	t.Run("replacing the playbacks without the default makes the first the default", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, withStrumAndArpeggio)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{
+			Playbacks: []domain.DiagramPlayback{playback("pb-finger", "Fingerstyle", 80, "p1", "p2")},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "pb-finger", *got.DefaultPlaybackID)
+	})
+
+	t.Run("an update changes the default", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, withStrumAndArpeggio)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{DefaultPlaybackID: application.Nullable[string]{Set: true, Value: strPtr("pb-arp")}})
+
+		require.NoError(t, err)
+		assert.Equal(t, "pb-arp", *got.DefaultPlaybackID)
+		assert.Equal(t, []string{"pb-strum", "pb-arp"}, playbackIDs(got))
+	})
+
+	t.Run("an empty list with the default cleared removes every playback", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, withStrumAndArpeggio)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Playbacks: []domain.DiagramPlayback{}, DefaultPlaybackID: application.Nullable[string]{Set: true}})
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Playbacks)
+		assert.Nil(t, got.DefaultPlaybackID)
+	})
+
+	t.Run("an empty list alone removes every playback too", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, withStrumAndArpeggio)
+
+		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Playbacks: []domain.DiagramPlayback{}})
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Playbacks)
+		assert.Nil(t, got.DefaultPlaybackID)
 	})
 
 	t.Run("a mode set to null clears the key", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
+		d := create(t, f, withStrumAndArpeggio)
 
 		got, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Mode: application.Nullable[domain.DiagramMode]{Set: true}})
 
@@ -1107,21 +1178,30 @@ func TestDiagramService_Playback(t *testing.T) {
 		assert.Equal(t, "A", *got.RootNote)
 	})
 
-	t.Run("emptying the sequence while keeping the tempo is rejected", func(t *testing.T) {
+	t.Run("clearing the default while playbacks remain is rejected", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
+		d := create(t, f, withStrumAndArpeggio)
 
-		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}})
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{DefaultPlaybackID: application.Nullable[string]{Set: true}})
 
-		requireRejected(t, f, err, "tempo_bpm", d)
+		requireRejected(t, f, err, "default_playback_id", d)
 	})
 
-	t.Run("removing a position that plays without resending the sequence is rejected", func(t *testing.T) {
+	t.Run("a default that is none of the playbacks is rejected", func(t *testing.T) {
 		f := newDiagramFixture()
-		d := create(t, f)
+		d := create(t, f, withStrumAndArpeggio)
+
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{DefaultPlaybackID: application.Nullable[string]{Set: true, Value: strPtr("pb-gone")}})
+
+		requireRejected(t, f, err, "default_playback_id", d)
+	})
+
+	t.Run("removing a position that plays without resending the playbacks is rejected", func(t *testing.T) {
+		f := newDiagramFixture()
+		d := create(t, f, withStrumAndArpeggio)
 
 		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Positions: []domain.Position{positionWithID("p1", 6, 5)}})
 
-		requireRejected(t, f, err, "sequence", d)
+		requireRejected(t, f, err, "playbacks", d)
 	})
 }

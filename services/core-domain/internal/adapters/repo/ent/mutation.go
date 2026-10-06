@@ -11438,14 +11438,9 @@ type DiagramMutation struct {
 	label_display                 *diagram.LabelDisplay
 	color                         *string
 	mode                          *diagram.Mode
-	tempo_bpm                     *int
-	addtempo_bpm                  *int
-	time_signature_beats          *int
-	addtime_signature_beats       *int
-	time_signature_beat_value     *int
-	addtime_signature_beat_value  *int
-	sequence                      *[]schema.SequenceStep
-	appendsequence                []schema.SequenceStep
+	playbacks                     *[]schema.Playback
+	appendplaybacks               []schema.Playback
+	default_playback_id           *string
 	created_at                    *time.Time
 	clearedFields                 map[string]struct{}
 	instrument                    *uuid.UUID
@@ -11910,237 +11905,104 @@ func (m *DiagramMutation) ResetMode() {
 	delete(m.clearedFields, diagram.FieldMode)
 }
 
-// SetTempoBpm sets the "tempo_bpm" field.
-func (m *DiagramMutation) SetTempoBpm(i int) {
-	m.tempo_bpm = &i
-	m.addtempo_bpm = nil
+// SetPlaybacks sets the "playbacks" field.
+func (m *DiagramMutation) SetPlaybacks(s []schema.Playback) {
+	m.playbacks = &s
+	m.appendplaybacks = nil
 }
 
-// TempoBpm returns the value of the "tempo_bpm" field in the mutation.
-func (m *DiagramMutation) TempoBpm() (r int, exists bool) {
-	v := m.tempo_bpm
+// Playbacks returns the value of the "playbacks" field in the mutation.
+func (m *DiagramMutation) Playbacks() (r []schema.Playback, exists bool) {
+	v := m.playbacks
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldTempoBpm returns the old "tempo_bpm" field's value of the Diagram entity.
+// OldPlaybacks returns the old "playbacks" field's value of the Diagram entity.
 // If the Diagram object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DiagramMutation) OldTempoBpm(ctx context.Context) (v *int, err error) {
+func (m *DiagramMutation) OldPlaybacks(ctx context.Context) (v []schema.Playback, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTempoBpm is only allowed on UpdateOne operations")
+		return v, errors.New("OldPlaybacks is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTempoBpm requires an ID field in the mutation")
+		return v, errors.New("OldPlaybacks requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTempoBpm: %w", err)
+		return v, fmt.Errorf("querying old value for OldPlaybacks: %w", err)
 	}
-	return oldValue.TempoBpm, nil
+	return oldValue.Playbacks, nil
 }
 
-// AddTempoBpm adds i to the "tempo_bpm" field.
-func (m *DiagramMutation) AddTempoBpm(i int) {
-	if m.addtempo_bpm != nil {
-		*m.addtempo_bpm += i
-	} else {
-		m.addtempo_bpm = &i
-	}
+// AppendPlaybacks adds s to the "playbacks" field.
+func (m *DiagramMutation) AppendPlaybacks(s []schema.Playback) {
+	m.appendplaybacks = append(m.appendplaybacks, s...)
 }
 
-// AddedTempoBpm returns the value that was added to the "tempo_bpm" field in this mutation.
-func (m *DiagramMutation) AddedTempoBpm() (r int, exists bool) {
-	v := m.addtempo_bpm
+// AppendedPlaybacks returns the list of values that were appended to the "playbacks" field in this mutation.
+func (m *DiagramMutation) AppendedPlaybacks() ([]schema.Playback, bool) {
+	if len(m.appendplaybacks) == 0 {
+		return nil, false
+	}
+	return m.appendplaybacks, true
+}
+
+// ResetPlaybacks resets all changes to the "playbacks" field.
+func (m *DiagramMutation) ResetPlaybacks() {
+	m.playbacks = nil
+	m.appendplaybacks = nil
+}
+
+// SetDefaultPlaybackID sets the "default_playback_id" field.
+func (m *DiagramMutation) SetDefaultPlaybackID(s string) {
+	m.default_playback_id = &s
+}
+
+// DefaultPlaybackID returns the value of the "default_playback_id" field in the mutation.
+func (m *DiagramMutation) DefaultPlaybackID() (r string, exists bool) {
+	v := m.default_playback_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearTempoBpm clears the value of the "tempo_bpm" field.
-func (m *DiagramMutation) ClearTempoBpm() {
-	m.tempo_bpm = nil
-	m.addtempo_bpm = nil
-	m.clearedFields[diagram.FieldTempoBpm] = struct{}{}
+// OldDefaultPlaybackID returns the old "default_playback_id" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldDefaultPlaybackID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultPlaybackID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultPlaybackID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultPlaybackID: %w", err)
+	}
+	return oldValue.DefaultPlaybackID, nil
 }
 
-// TempoBpmCleared returns if the "tempo_bpm" field was cleared in this mutation.
-func (m *DiagramMutation) TempoBpmCleared() bool {
-	_, ok := m.clearedFields[diagram.FieldTempoBpm]
+// ClearDefaultPlaybackID clears the value of the "default_playback_id" field.
+func (m *DiagramMutation) ClearDefaultPlaybackID() {
+	m.default_playback_id = nil
+	m.clearedFields[diagram.FieldDefaultPlaybackID] = struct{}{}
+}
+
+// DefaultPlaybackIDCleared returns if the "default_playback_id" field was cleared in this mutation.
+func (m *DiagramMutation) DefaultPlaybackIDCleared() bool {
+	_, ok := m.clearedFields[diagram.FieldDefaultPlaybackID]
 	return ok
 }
 
-// ResetTempoBpm resets all changes to the "tempo_bpm" field.
-func (m *DiagramMutation) ResetTempoBpm() {
-	m.tempo_bpm = nil
-	m.addtempo_bpm = nil
-	delete(m.clearedFields, diagram.FieldTempoBpm)
-}
-
-// SetTimeSignatureBeats sets the "time_signature_beats" field.
-func (m *DiagramMutation) SetTimeSignatureBeats(i int) {
-	m.time_signature_beats = &i
-	m.addtime_signature_beats = nil
-}
-
-// TimeSignatureBeats returns the value of the "time_signature_beats" field in the mutation.
-func (m *DiagramMutation) TimeSignatureBeats() (r int, exists bool) {
-	v := m.time_signature_beats
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldTimeSignatureBeats returns the old "time_signature_beats" field's value of the Diagram entity.
-// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DiagramMutation) OldTimeSignatureBeats(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTimeSignatureBeats is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTimeSignatureBeats requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTimeSignatureBeats: %w", err)
-	}
-	return oldValue.TimeSignatureBeats, nil
-}
-
-// AddTimeSignatureBeats adds i to the "time_signature_beats" field.
-func (m *DiagramMutation) AddTimeSignatureBeats(i int) {
-	if m.addtime_signature_beats != nil {
-		*m.addtime_signature_beats += i
-	} else {
-		m.addtime_signature_beats = &i
-	}
-}
-
-// AddedTimeSignatureBeats returns the value that was added to the "time_signature_beats" field in this mutation.
-func (m *DiagramMutation) AddedTimeSignatureBeats() (r int, exists bool) {
-	v := m.addtime_signature_beats
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetTimeSignatureBeats resets all changes to the "time_signature_beats" field.
-func (m *DiagramMutation) ResetTimeSignatureBeats() {
-	m.time_signature_beats = nil
-	m.addtime_signature_beats = nil
-}
-
-// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
-func (m *DiagramMutation) SetTimeSignatureBeatValue(i int) {
-	m.time_signature_beat_value = &i
-	m.addtime_signature_beat_value = nil
-}
-
-// TimeSignatureBeatValue returns the value of the "time_signature_beat_value" field in the mutation.
-func (m *DiagramMutation) TimeSignatureBeatValue() (r int, exists bool) {
-	v := m.time_signature_beat_value
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldTimeSignatureBeatValue returns the old "time_signature_beat_value" field's value of the Diagram entity.
-// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DiagramMutation) OldTimeSignatureBeatValue(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTimeSignatureBeatValue is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTimeSignatureBeatValue requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTimeSignatureBeatValue: %w", err)
-	}
-	return oldValue.TimeSignatureBeatValue, nil
-}
-
-// AddTimeSignatureBeatValue adds i to the "time_signature_beat_value" field.
-func (m *DiagramMutation) AddTimeSignatureBeatValue(i int) {
-	if m.addtime_signature_beat_value != nil {
-		*m.addtime_signature_beat_value += i
-	} else {
-		m.addtime_signature_beat_value = &i
-	}
-}
-
-// AddedTimeSignatureBeatValue returns the value that was added to the "time_signature_beat_value" field in this mutation.
-func (m *DiagramMutation) AddedTimeSignatureBeatValue() (r int, exists bool) {
-	v := m.addtime_signature_beat_value
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetTimeSignatureBeatValue resets all changes to the "time_signature_beat_value" field.
-func (m *DiagramMutation) ResetTimeSignatureBeatValue() {
-	m.time_signature_beat_value = nil
-	m.addtime_signature_beat_value = nil
-}
-
-// SetSequence sets the "sequence" field.
-func (m *DiagramMutation) SetSequence(ss []schema.SequenceStep) {
-	m.sequence = &ss
-	m.appendsequence = nil
-}
-
-// Sequence returns the value of the "sequence" field in the mutation.
-func (m *DiagramMutation) Sequence() (r []schema.SequenceStep, exists bool) {
-	v := m.sequence
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSequence returns the old "sequence" field's value of the Diagram entity.
-// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DiagramMutation) OldSequence(ctx context.Context) (v []schema.SequenceStep, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSequence is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSequence requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSequence: %w", err)
-	}
-	return oldValue.Sequence, nil
-}
-
-// AppendSequence adds ss to the "sequence" field.
-func (m *DiagramMutation) AppendSequence(ss []schema.SequenceStep) {
-	m.appendsequence = append(m.appendsequence, ss...)
-}
-
-// AppendedSequence returns the list of values that were appended to the "sequence" field in this mutation.
-func (m *DiagramMutation) AppendedSequence() ([]schema.SequenceStep, bool) {
-	if len(m.appendsequence) == 0 {
-		return nil, false
-	}
-	return m.appendsequence, true
-}
-
-// ResetSequence resets all changes to the "sequence" field.
-func (m *DiagramMutation) ResetSequence() {
-	m.sequence = nil
-	m.appendsequence = nil
+// ResetDefaultPlaybackID resets all changes to the "default_playback_id" field.
+func (m *DiagramMutation) ResetDefaultPlaybackID() {
+	m.default_playback_id = nil
+	delete(m.clearedFields, diagram.FieldDefaultPlaybackID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -12672,7 +12534,7 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 11)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
@@ -12697,17 +12559,11 @@ func (m *DiagramMutation) Fields() []string {
 	if m.mode != nil {
 		fields = append(fields, diagram.FieldMode)
 	}
-	if m.tempo_bpm != nil {
-		fields = append(fields, diagram.FieldTempoBpm)
+	if m.playbacks != nil {
+		fields = append(fields, diagram.FieldPlaybacks)
 	}
-	if m.time_signature_beats != nil {
-		fields = append(fields, diagram.FieldTimeSignatureBeats)
-	}
-	if m.time_signature_beat_value != nil {
-		fields = append(fields, diagram.FieldTimeSignatureBeatValue)
-	}
-	if m.sequence != nil {
-		fields = append(fields, diagram.FieldSequence)
+	if m.default_playback_id != nil {
+		fields = append(fields, diagram.FieldDefaultPlaybackID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, diagram.FieldCreatedAt)
@@ -12736,14 +12592,10 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.Color()
 	case diagram.FieldMode:
 		return m.Mode()
-	case diagram.FieldTempoBpm:
-		return m.TempoBpm()
-	case diagram.FieldTimeSignatureBeats:
-		return m.TimeSignatureBeats()
-	case diagram.FieldTimeSignatureBeatValue:
-		return m.TimeSignatureBeatValue()
-	case diagram.FieldSequence:
-		return m.Sequence()
+	case diagram.FieldPlaybacks:
+		return m.Playbacks()
+	case diagram.FieldDefaultPlaybackID:
+		return m.DefaultPlaybackID()
 	case diagram.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -12771,14 +12623,10 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldColor(ctx)
 	case diagram.FieldMode:
 		return m.OldMode(ctx)
-	case diagram.FieldTempoBpm:
-		return m.OldTempoBpm(ctx)
-	case diagram.FieldTimeSignatureBeats:
-		return m.OldTimeSignatureBeats(ctx)
-	case diagram.FieldTimeSignatureBeatValue:
-		return m.OldTimeSignatureBeatValue(ctx)
-	case diagram.FieldSequence:
-		return m.OldSequence(ctx)
+	case diagram.FieldPlaybacks:
+		return m.OldPlaybacks(ctx)
+	case diagram.FieldDefaultPlaybackID:
+		return m.OldDefaultPlaybackID(ctx)
 	case diagram.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -12846,33 +12694,19 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMode(v)
 		return nil
-	case diagram.FieldTempoBpm:
-		v, ok := value.(int)
+	case diagram.FieldPlaybacks:
+		v, ok := value.([]schema.Playback)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTempoBpm(v)
+		m.SetPlaybacks(v)
 		return nil
-	case diagram.FieldTimeSignatureBeats:
-		v, ok := value.(int)
+	case diagram.FieldDefaultPlaybackID:
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTimeSignatureBeats(v)
-		return nil
-	case diagram.FieldTimeSignatureBeatValue:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetTimeSignatureBeatValue(v)
-		return nil
-	case diagram.FieldSequence:
-		v, ok := value.([]schema.SequenceStep)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSequence(v)
+		m.SetDefaultPlaybackID(v)
 		return nil
 	case diagram.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -12888,31 +12722,13 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *DiagramMutation) AddedFields() []string {
-	var fields []string
-	if m.addtempo_bpm != nil {
-		fields = append(fields, diagram.FieldTempoBpm)
-	}
-	if m.addtime_signature_beats != nil {
-		fields = append(fields, diagram.FieldTimeSignatureBeats)
-	}
-	if m.addtime_signature_beat_value != nil {
-		fields = append(fields, diagram.FieldTimeSignatureBeatValue)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *DiagramMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case diagram.FieldTempoBpm:
-		return m.AddedTempoBpm()
-	case diagram.FieldTimeSignatureBeats:
-		return m.AddedTimeSignatureBeats()
-	case diagram.FieldTimeSignatureBeatValue:
-		return m.AddedTimeSignatureBeatValue()
-	}
 	return nil, false
 }
 
@@ -12921,27 +12737,6 @@ func (m *DiagramMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *DiagramMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case diagram.FieldTempoBpm:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddTempoBpm(v)
-		return nil
-	case diagram.FieldTimeSignatureBeats:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddTimeSignatureBeats(v)
-		return nil
-	case diagram.FieldTimeSignatureBeatValue:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddTimeSignatureBeatValue(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Diagram numeric field %s", name)
 }
@@ -12959,8 +12754,8 @@ func (m *DiagramMutation) ClearedFields() []string {
 	if m.FieldCleared(diagram.FieldMode) {
 		fields = append(fields, diagram.FieldMode)
 	}
-	if m.FieldCleared(diagram.FieldTempoBpm) {
-		fields = append(fields, diagram.FieldTempoBpm)
+	if m.FieldCleared(diagram.FieldDefaultPlaybackID) {
+		fields = append(fields, diagram.FieldDefaultPlaybackID)
 	}
 	return fields
 }
@@ -12985,8 +12780,8 @@ func (m *DiagramMutation) ClearField(name string) error {
 	case diagram.FieldMode:
 		m.ClearMode()
 		return nil
-	case diagram.FieldTempoBpm:
-		m.ClearTempoBpm()
+	case diagram.FieldDefaultPlaybackID:
+		m.ClearDefaultPlaybackID()
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram nullable field %s", name)
@@ -13020,17 +12815,11 @@ func (m *DiagramMutation) ResetField(name string) error {
 	case diagram.FieldMode:
 		m.ResetMode()
 		return nil
-	case diagram.FieldTempoBpm:
-		m.ResetTempoBpm()
+	case diagram.FieldPlaybacks:
+		m.ResetPlaybacks()
 		return nil
-	case diagram.FieldTimeSignatureBeats:
-		m.ResetTimeSignatureBeats()
-		return nil
-	case diagram.FieldTimeSignatureBeatValue:
-		m.ResetTimeSignatureBeatValue()
-		return nil
-	case diagram.FieldSequence:
-		m.ResetSequence()
+	case diagram.FieldDefaultPlaybackID:
+		m.ResetDefaultPlaybackID()
 		return nil
 	case diagram.FieldCreatedAt:
 		m.ResetCreatedAt()

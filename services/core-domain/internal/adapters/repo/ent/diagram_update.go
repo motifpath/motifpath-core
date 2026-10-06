@@ -117,84 +117,35 @@ func (_u *DiagramUpdate) ClearMode() *DiagramUpdate {
 	return _u
 }
 
-// SetTempoBpm sets the "tempo_bpm" field.
-func (_u *DiagramUpdate) SetTempoBpm(v int) *DiagramUpdate {
-	_u.mutation.ResetTempoBpm()
-	_u.mutation.SetTempoBpm(v)
+// SetPlaybacks sets the "playbacks" field.
+func (_u *DiagramUpdate) SetPlaybacks(v []schema.Playback) *DiagramUpdate {
+	_u.mutation.SetPlaybacks(v)
 	return _u
 }
 
-// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
-func (_u *DiagramUpdate) SetNillableTempoBpm(v *int) *DiagramUpdate {
+// AppendPlaybacks appends value to the "playbacks" field.
+func (_u *DiagramUpdate) AppendPlaybacks(v []schema.Playback) *DiagramUpdate {
+	_u.mutation.AppendPlaybacks(v)
+	return _u
+}
+
+// SetDefaultPlaybackID sets the "default_playback_id" field.
+func (_u *DiagramUpdate) SetDefaultPlaybackID(v string) *DiagramUpdate {
+	_u.mutation.SetDefaultPlaybackID(v)
+	return _u
+}
+
+// SetNillableDefaultPlaybackID sets the "default_playback_id" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableDefaultPlaybackID(v *string) *DiagramUpdate {
 	if v != nil {
-		_u.SetTempoBpm(*v)
+		_u.SetDefaultPlaybackID(*v)
 	}
 	return _u
 }
 
-// AddTempoBpm adds value to the "tempo_bpm" field.
-func (_u *DiagramUpdate) AddTempoBpm(v int) *DiagramUpdate {
-	_u.mutation.AddTempoBpm(v)
-	return _u
-}
-
-// ClearTempoBpm clears the value of the "tempo_bpm" field.
-func (_u *DiagramUpdate) ClearTempoBpm() *DiagramUpdate {
-	_u.mutation.ClearTempoBpm()
-	return _u
-}
-
-// SetTimeSignatureBeats sets the "time_signature_beats" field.
-func (_u *DiagramUpdate) SetTimeSignatureBeats(v int) *DiagramUpdate {
-	_u.mutation.ResetTimeSignatureBeats()
-	_u.mutation.SetTimeSignatureBeats(v)
-	return _u
-}
-
-// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
-func (_u *DiagramUpdate) SetNillableTimeSignatureBeats(v *int) *DiagramUpdate {
-	if v != nil {
-		_u.SetTimeSignatureBeats(*v)
-	}
-	return _u
-}
-
-// AddTimeSignatureBeats adds value to the "time_signature_beats" field.
-func (_u *DiagramUpdate) AddTimeSignatureBeats(v int) *DiagramUpdate {
-	_u.mutation.AddTimeSignatureBeats(v)
-	return _u
-}
-
-// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
-func (_u *DiagramUpdate) SetTimeSignatureBeatValue(v int) *DiagramUpdate {
-	_u.mutation.ResetTimeSignatureBeatValue()
-	_u.mutation.SetTimeSignatureBeatValue(v)
-	return _u
-}
-
-// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
-func (_u *DiagramUpdate) SetNillableTimeSignatureBeatValue(v *int) *DiagramUpdate {
-	if v != nil {
-		_u.SetTimeSignatureBeatValue(*v)
-	}
-	return _u
-}
-
-// AddTimeSignatureBeatValue adds value to the "time_signature_beat_value" field.
-func (_u *DiagramUpdate) AddTimeSignatureBeatValue(v int) *DiagramUpdate {
-	_u.mutation.AddTimeSignatureBeatValue(v)
-	return _u
-}
-
-// SetSequence sets the "sequence" field.
-func (_u *DiagramUpdate) SetSequence(v []schema.SequenceStep) *DiagramUpdate {
-	_u.mutation.SetSequence(v)
-	return _u
-}
-
-// AppendSequence appends value to the "sequence" field.
-func (_u *DiagramUpdate) AppendSequence(v []schema.SequenceStep) *DiagramUpdate {
-	_u.mutation.AppendSequence(v)
+// ClearDefaultPlaybackID clears the value of the "default_playback_id" field.
+func (_u *DiagramUpdate) ClearDefaultPlaybackID() *DiagramUpdate {
+	_u.mutation.ClearDefaultPlaybackID()
 	return _u
 }
 
@@ -572,34 +523,19 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ModeCleared() {
 		_spec.ClearField(diagram.FieldMode, field.TypeEnum)
 	}
-	if value, ok := _u.mutation.TempoBpm(); ok {
-		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
+	if value, ok := _u.mutation.Playbacks(); ok {
+		_spec.SetField(diagram.FieldPlaybacks, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.AddedTempoBpm(); ok {
-		_spec.AddField(diagram.FieldTempoBpm, field.TypeInt, value)
-	}
-	if _u.mutation.TempoBpmCleared() {
-		_spec.ClearField(diagram.FieldTempoBpm, field.TypeInt)
-	}
-	if value, ok := _u.mutation.TimeSignatureBeats(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTimeSignatureBeats(); ok {
-		_spec.AddField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TimeSignatureBeatValue(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTimeSignatureBeatValue(); ok {
-		_spec.AddField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Sequence(); ok {
-		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedSequence(); ok {
+	if value, ok := _u.mutation.AppendedPlaybacks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, diagram.FieldSequence, value)
+			sqljson.Append(u, diagram.FieldPlaybacks, value)
 		})
+	}
+	if value, ok := _u.mutation.DefaultPlaybackID(); ok {
+		_spec.SetField(diagram.FieldDefaultPlaybackID, field.TypeString, value)
+	}
+	if _u.mutation.DefaultPlaybackIDCleared() {
+		_spec.ClearField(diagram.FieldDefaultPlaybackID, field.TypeString)
 	}
 	if _u.mutation.CompatibleInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1097,84 +1033,35 @@ func (_u *DiagramUpdateOne) ClearMode() *DiagramUpdateOne {
 	return _u
 }
 
-// SetTempoBpm sets the "tempo_bpm" field.
-func (_u *DiagramUpdateOne) SetTempoBpm(v int) *DiagramUpdateOne {
-	_u.mutation.ResetTempoBpm()
-	_u.mutation.SetTempoBpm(v)
+// SetPlaybacks sets the "playbacks" field.
+func (_u *DiagramUpdateOne) SetPlaybacks(v []schema.Playback) *DiagramUpdateOne {
+	_u.mutation.SetPlaybacks(v)
 	return _u
 }
 
-// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
-func (_u *DiagramUpdateOne) SetNillableTempoBpm(v *int) *DiagramUpdateOne {
+// AppendPlaybacks appends value to the "playbacks" field.
+func (_u *DiagramUpdateOne) AppendPlaybacks(v []schema.Playback) *DiagramUpdateOne {
+	_u.mutation.AppendPlaybacks(v)
+	return _u
+}
+
+// SetDefaultPlaybackID sets the "default_playback_id" field.
+func (_u *DiagramUpdateOne) SetDefaultPlaybackID(v string) *DiagramUpdateOne {
+	_u.mutation.SetDefaultPlaybackID(v)
+	return _u
+}
+
+// SetNillableDefaultPlaybackID sets the "default_playback_id" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableDefaultPlaybackID(v *string) *DiagramUpdateOne {
 	if v != nil {
-		_u.SetTempoBpm(*v)
+		_u.SetDefaultPlaybackID(*v)
 	}
 	return _u
 }
 
-// AddTempoBpm adds value to the "tempo_bpm" field.
-func (_u *DiagramUpdateOne) AddTempoBpm(v int) *DiagramUpdateOne {
-	_u.mutation.AddTempoBpm(v)
-	return _u
-}
-
-// ClearTempoBpm clears the value of the "tempo_bpm" field.
-func (_u *DiagramUpdateOne) ClearTempoBpm() *DiagramUpdateOne {
-	_u.mutation.ClearTempoBpm()
-	return _u
-}
-
-// SetTimeSignatureBeats sets the "time_signature_beats" field.
-func (_u *DiagramUpdateOne) SetTimeSignatureBeats(v int) *DiagramUpdateOne {
-	_u.mutation.ResetTimeSignatureBeats()
-	_u.mutation.SetTimeSignatureBeats(v)
-	return _u
-}
-
-// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
-func (_u *DiagramUpdateOne) SetNillableTimeSignatureBeats(v *int) *DiagramUpdateOne {
-	if v != nil {
-		_u.SetTimeSignatureBeats(*v)
-	}
-	return _u
-}
-
-// AddTimeSignatureBeats adds value to the "time_signature_beats" field.
-func (_u *DiagramUpdateOne) AddTimeSignatureBeats(v int) *DiagramUpdateOne {
-	_u.mutation.AddTimeSignatureBeats(v)
-	return _u
-}
-
-// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
-func (_u *DiagramUpdateOne) SetTimeSignatureBeatValue(v int) *DiagramUpdateOne {
-	_u.mutation.ResetTimeSignatureBeatValue()
-	_u.mutation.SetTimeSignatureBeatValue(v)
-	return _u
-}
-
-// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
-func (_u *DiagramUpdateOne) SetNillableTimeSignatureBeatValue(v *int) *DiagramUpdateOne {
-	if v != nil {
-		_u.SetTimeSignatureBeatValue(*v)
-	}
-	return _u
-}
-
-// AddTimeSignatureBeatValue adds value to the "time_signature_beat_value" field.
-func (_u *DiagramUpdateOne) AddTimeSignatureBeatValue(v int) *DiagramUpdateOne {
-	_u.mutation.AddTimeSignatureBeatValue(v)
-	return _u
-}
-
-// SetSequence sets the "sequence" field.
-func (_u *DiagramUpdateOne) SetSequence(v []schema.SequenceStep) *DiagramUpdateOne {
-	_u.mutation.SetSequence(v)
-	return _u
-}
-
-// AppendSequence appends value to the "sequence" field.
-func (_u *DiagramUpdateOne) AppendSequence(v []schema.SequenceStep) *DiagramUpdateOne {
-	_u.mutation.AppendSequence(v)
+// ClearDefaultPlaybackID clears the value of the "default_playback_id" field.
+func (_u *DiagramUpdateOne) ClearDefaultPlaybackID() *DiagramUpdateOne {
+	_u.mutation.ClearDefaultPlaybackID()
 	return _u
 }
 
@@ -1582,34 +1469,19 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 	if _u.mutation.ModeCleared() {
 		_spec.ClearField(diagram.FieldMode, field.TypeEnum)
 	}
-	if value, ok := _u.mutation.TempoBpm(); ok {
-		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
+	if value, ok := _u.mutation.Playbacks(); ok {
+		_spec.SetField(diagram.FieldPlaybacks, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.AddedTempoBpm(); ok {
-		_spec.AddField(diagram.FieldTempoBpm, field.TypeInt, value)
-	}
-	if _u.mutation.TempoBpmCleared() {
-		_spec.ClearField(diagram.FieldTempoBpm, field.TypeInt)
-	}
-	if value, ok := _u.mutation.TimeSignatureBeats(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTimeSignatureBeats(); ok {
-		_spec.AddField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.TimeSignatureBeatValue(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedTimeSignatureBeatValue(); ok {
-		_spec.AddField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Sequence(); ok {
-		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedSequence(); ok {
+	if value, ok := _u.mutation.AppendedPlaybacks(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, diagram.FieldSequence, value)
+			sqljson.Append(u, diagram.FieldPlaybacks, value)
 		})
+	}
+	if value, ok := _u.mutation.DefaultPlaybackID(); ok {
+		_spec.SetField(diagram.FieldDefaultPlaybackID, field.TypeString, value)
+	}
+	if _u.mutation.DefaultPlaybackIDCleared() {
+		_spec.ClearField(diagram.FieldDefaultPlaybackID, field.TypeString)
 	}
 	if _u.mutation.CompatibleInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{

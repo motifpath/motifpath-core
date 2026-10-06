@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// DiagramPlaybackDirection is the order a diagram's sequence steps play in.
+// DiagramPlaybackDirection is the order a playback's steps play in.
 type DiagramPlaybackDirection string
 
 const (
@@ -68,12 +68,18 @@ type DiagramStyling struct {
 	IntervalColor *string `json:"interval_color"`
 }
 
-// DiagramPlayback is how one usage plays its Diagram's sequence. A diagram
-// with no sequence never plays, whatever this says. See DiagramLayers' doc
-// comment for why this type carries json tags.
-type DiagramPlayback struct {
-	Direction DiagramPlaybackDirection `json:"direction"`
-	// TempoBPM overrides the diagram's tempo; nil uses it.
+// DiagramRefPlayback is how one usage plays one of its Diagram's playbacks.
+// A diagram with no playbacks never plays, whatever this says. See
+// DiagramLayers' doc comment for why this type carries json tags.
+type DiagramRefPlayback struct {
+	// PlaybackID chooses which of the diagram's playbacks this usage plays;
+	// nil plays the default. When the usage is saved it must name one of the
+	// diagram's playbacks, which needs a repository round trip, so that is an
+	// application-layer concern. A playback later removed from the diagram
+	// leaves it unchanged, and the usage plays the default instead.
+	PlaybackID *string                  `json:"playback_id"`
+	Direction  DiagramPlaybackDirection `json:"direction"`
+	// TempoBPM overrides the chosen playback's tempo; nil uses it.
 	TempoBPM *int `json:"tempo_bpm"`
 	// VoiceID overrides the instrument's default voice; nil uses it. It
 	// must name a voice of the diagram's instrument family, which needs a
@@ -84,8 +90,8 @@ type DiagramPlayback struct {
 
 // UnmarshalJSON decodes a playback, giving one that names no direction the
 // authored order — the same default wherever the ref comes from.
-func (p *DiagramPlayback) UnmarshalJSON(data []byte) error {
-	type plain DiagramPlayback
+func (p *DiagramRefPlayback) UnmarshalJSON(data []byte) error {
+	type plain DiagramRefPlayback
 	decoded := plain{Direction: DiagramPlaybackDirectionAsAuthored}
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -93,7 +99,7 @@ func (p *DiagramPlayback) UnmarshalJSON(data []byte) error {
 	if decoded.Direction == "" {
 		decoded.Direction = DiagramPlaybackDirectionAsAuthored
 	}
-	*p = DiagramPlayback(decoded)
+	*p = DiagramRefPlayback(decoded)
 	return nil
 }
 
@@ -105,10 +111,10 @@ type DiagramRef struct {
 	DiagramID string `json:"diagram_id"`
 	// RootOverride, when non-nil, transposes the diagram to this root note.
 	// Nil uses the diagram's own authored root.
-	RootOverride *string          `json:"root_override"`
-	Layers       DiagramLayers    `json:"layers"`
-	Styling      *DiagramStyling  `json:"styling"`
-	Playback     *DiagramPlayback `json:"playback"`
+	RootOverride *string             `json:"root_override"`
+	Layers       DiagramLayers       `json:"layers"`
+	Styling      *DiagramStyling     `json:"styling"`
+	Playback     *DiagramRefPlayback `json:"playback"`
 	// CorrectPositionIDs names the diagram's positions, drawn or hidden,
 	// that are correct answers. Meaningful, and required (unless the older
 	// CorrectIntervals is given), only when this ref is an Exercise's
@@ -149,7 +155,7 @@ func ValidateDiagramRef(ref DiagramRef) error {
 }
 
 // playbackProblem returns why p is invalid, or "" if it is valid.
-func playbackProblem(p DiagramPlayback) string {
+func playbackProblem(p DiagramRefPlayback) string {
 	switch p.Direction {
 	case DiagramPlaybackDirectionAsAuthored, DiagramPlaybackDirectionReversed:
 	default:

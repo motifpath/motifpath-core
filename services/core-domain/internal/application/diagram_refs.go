@@ -32,7 +32,8 @@ type diagramRefWithDiagram struct {
 // diagram_id at all) is already checked by the domain layer before this
 // runs. At most one of diagramRef/diagramStackRef is ever non-nil.
 // A lone diagramRef whose playback picks a voice must pick an existing voice
-// of its diagram's instrument family, reported under "diagram_ref". A stack
+// of its diagram's instrument family, and one that chooses a playback must
+// choose one of its diagram's, both reported under "diagram_ref". A stack
 // doesn't play, so its entries' playback is never checked.
 func resolveDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef) ([]diagramRefWithDiagram, error) {
 	resolved, err := resolveDiagrams(ctx, repos.diagrams, diagramRef, diagramStackRef)
@@ -40,7 +41,7 @@ func resolveDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *
 		return nil, err
 	}
 	if diagramRef != nil {
-		if err := checkPlaybackVoice(ctx, repos, "diagram_ref", resolved[0]); err != nil {
+		if err := checkPlayback(ctx, repos, "diagram_ref", resolved[0]); err != nil {
 			return nil, err
 		}
 	}
@@ -54,12 +55,18 @@ type diagramRefRepos struct {
 	voices      ports.VoiceRepository
 }
 
-// checkPlaybackVoice returns a validation error on field when resolved's
-// playback picks a voice that doesn't exist or doesn't play its diagram's
-// instrument family.
-func checkPlaybackVoice(ctx context.Context, repos diagramRefRepos, field string, resolved diagramRefWithDiagram) error {
+// checkPlayback returns a validation error on field when resolved's
+// playback chooses a playback its diagram doesn't have, or picks a voice
+// that doesn't exist or doesn't play its diagram's instrument family.
+func checkPlayback(ctx context.Context, repos diagramRefRepos, field string, resolved diagramRefWithDiagram) error {
 	playback := resolved.ref.Playback
-	if playback == nil || playback.VoiceID == nil {
+	if playback == nil {
+		return nil
+	}
+	if playback.PlaybackID != nil && !resolved.diagram.HasPlayback(*playback.PlaybackID) {
+		return domain.NewValidationError(field, "playback.playback_id is not a playback of the diagram: "+*playback.PlaybackID)
+	}
+	if playback.VoiceID == nil {
 		return nil
 	}
 	voice, err := repos.voices.GetByID(ctx, *playback.VoiceID)
@@ -126,23 +133,24 @@ func checkDiagramRefs(ctx context.Context, repos diagramRefRepos, diagramRef *do
 	return err
 }
 
-// checkEmbeddedPlaybackVoices applies checkPlaybackVoice to every diagram
-// embedded in a document or an option, reporting under field. An embed that
-// picks no voice isn't resolved at all, so its diagram need not exist; one
-// that picks a voice needs its diagram, to know which family plays it.
-func checkEmbeddedPlaybackVoices(ctx context.Context, repos diagramRefRepos, field string, refs []domain.DiagramRef) error {
+// checkEmbeddedPlaybacks applies checkPlayback to every diagram embedded in
+// a document or an option, reporting under field. An embed that picks no
+// voice and chooses no playback isn't resolved at all, so its diagram need
+// not exist; one that does needs its diagram, to know which family plays it
+// and which playbacks it has.
+func checkEmbeddedPlaybacks(ctx context.Context, repos diagramRefRepos, field string, refs []domain.DiagramRef) error {
 	for _, ref := range refs {
-		if ref.Playback == nil || ref.Playback.VoiceID == nil {
+		if ref.Playback == nil || (ref.Playback.VoiceID == nil && ref.Playback.PlaybackID == nil) {
 			continue
 		}
 		diagram, err := repos.diagrams.GetByID(ctx, ref.DiagramID)
 		if errors.Is(err, domain.ErrNotFound) {
-			return domain.NewValidationError(field, "embeds a diagram that does not exist, playing with a voice: "+ref.DiagramID)
+			return domain.NewValidationError(field, "embeds a diagram that does not exist, playing with a voice or playback of its own: "+ref.DiagramID)
 		}
 		if err != nil {
 			return err
 		}
-		if err := checkPlaybackVoice(ctx, repos, field, diagramRefWithDiagram{ref: ref, diagram: diagram}); err != nil {
+		if err := checkPlayback(ctx, repos, field, diagramRefWithDiagram{ref: ref, diagram: diagram}); err != nil {
 			return err
 		}
 	}
