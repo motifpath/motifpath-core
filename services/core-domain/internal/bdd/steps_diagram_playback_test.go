@@ -4,6 +4,7 @@ package bdd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"regexp"
@@ -63,6 +64,7 @@ func registerDiagramPlaybackSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" adds diagram "([^"]+)" to "([^"]+)" with trigger_at_seconds (\d+) and hide_at_seconds (\d+), playing (.+)$`, w.addsPlayingDiagram)
 	sc.Step(`^a video content node "([^"]+)" has diagram "([^"]+)" as expanded content, playing playback "([^"]+)"$`, w.nodeHasDiagramPlaying)
 	sc.Step(`^the playback "([^"]+)" is removed from diagram "([^"]+)"$`, w.playbackIsRemoved)
+	sc.Step(`^"([^"]+)" updates the item's caption to "([^"]+)", resending its diagram unchanged$`, w.updatesCaptionResendingDiagram)
 	sc.Step(`^the item's diagram plays reversed and looping at (\d+) BPM with voice "([^"]+)"$`, w.itemPlaysReversedLooping)
 	sc.Step(`^the item's diagram plays its default playback as authored, not looping, with no tempo or voice of its own$`, w.itemPlaysWithNoOverrides)
 	sc.Step(`^the item's diagram plays playback "([^"]+)"$`, w.itemPlaysPlayback)
@@ -961,6 +963,34 @@ func (w *world) playbackIsRemoved(name, diagramSlug string) error {
 		return fmt.Errorf("expected removing playback %q to succeed, got %#v", name, updated)
 	}
 	return nil
+}
+
+// updatesCaptionResendingDiagram updates the playing item's caption as an
+// editor does: the whole item is resent, its diagram_ref exactly as stored.
+func (w *world) updatesCaptionResendingDiagram(_, caption string) error {
+	item, err := w.expanded.GetByID(context.Background(), expandedID(playingItemSlug(w.playingNode)).String())
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(item.DiagramRef)
+	if err != nil {
+		return err
+	}
+	var ref generated.DiagramRef
+	if err := json.Unmarshal(data, &ref); err != nil {
+		return err
+	}
+	resp, err := w.handler.UpdateExpandedContent(w.ctx(), generated.UpdateExpandedContentRequestObject{
+		ExpandedContentId: expandedID(playingItemSlug(w.playingNode)),
+		Body: &generated.UpdateExpandedContentRequest{
+			ContentType:      generated.UpdateExpandedContentRequestContentTypeDiagram,
+			DiagramRef:       &ref,
+			TriggerAtSeconds: item.TriggerAtSeconds, HideAtSeconds: item.HideAtSeconds,
+			Caption: &caption,
+		},
+	})
+	w.lastResp, w.lastErr = resp, err
+	return err
 }
 
 func (w *world) itemStillNamesPlayback(name string) error {

@@ -60,11 +60,26 @@ func (s *ExerciseService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-// checkEmbeddedVoices checks the voice of every diagram embedded in the
-// prompt, in an option's thumbnail or in a remediation's content, reported
-// under the field it came from.
-func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain.PromptDocument, options []domain.Option, remediationTargets []domain.RemediationTarget) error {
-	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "prompt", prompt.EmbeddedDiagramRefs()); err != nil {
+// existingDiagramRefs is every diagram reference e saved: its stimulus, and
+// every diagram embedded in its prompt, an option's thumbnail or a
+// remediation's content.
+func existingDiagramRefs(e domain.Exercise) []domain.DiagramRef {
+	refs := append(refsOf(e.DiagramRef), e.Prompt.EmbeddedDiagramRefs()...)
+	for _, option := range e.Options {
+		refs = append(refs, refsOf(option.DiagramRef)...)
+	}
+	for _, target := range e.RemediationTargets {
+		refs = append(refs, embeddedRefs(target.RichContent)...)
+	}
+	return refs
+}
+
+// checkEmbeddedVoices checks the voice and chosen playback of every diagram
+// embedded in the prompt, in an option's thumbnail or in a remediation's
+// content, reported under the field it came from. A playback stored already
+// holds passes even when its diagram no longer has it.
+func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain.PromptDocument, options []domain.Option, remediationTargets []domain.RemediationTarget, stored storedPlaybacks) error {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "prompt", prompt.EmbeddedDiagramRefs(), stored); err != nil {
 		return err
 	}
 	var thumbnails []domain.DiagramRef
@@ -73,14 +88,14 @@ func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain
 			thumbnails = append(thumbnails, *option.DiagramRef)
 		}
 	}
-	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "options", thumbnails); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "options", thumbnails, stored); err != nil {
 		return err
 	}
 	var remediation []domain.DiagramRef
 	for _, target := range remediationTargets {
 		remediation = append(remediation, embeddedRefs(target.RichContent)...)
 	}
-	return checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "remediation_targets", remediation)
+	return checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "remediation_targets", remediation, stored)
 }
 
 // CreateExercise creates a standalone exercise, not linked to any challenge
@@ -94,7 +109,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	options, diagramRef, err := s.resolveDiagramOptions(ctx, exerciseType, diagramRef, diagramStackRef, options, nil)
+	options, diagramRef, err := s.resolveDiagramOptions(ctx, exerciseType, diagramRef, diagramStackRef, options, nil, nil)
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -109,7 +124,7 @@ func (s *ExerciseService) CreateExercise(ctx context.Context, caller domain.User
 			return domain.Exercise{}, err
 		}
 	}
-	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
+	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets, nil); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, exercise.InstrumentIDs); err != nil {
@@ -182,8 +197,9 @@ func (s *ExerciseService) checkRemediationTargetsExist(ctx context.Context, targ
 // here rather than in the domain layer. previous is the exercise's options
 // before an update (nil on create): a single diagram's option that stands for
 // the same choice as one of them keeps its id, since students' recorded
-// answers name options by id.
-func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options, previous []domain.Option) ([]domain.Option, *domain.DiagramRef, error) {
+// answers name options by id. stored are the playbacks the exercise already
+// chose (nil on create).
+func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseType domain.ExerciseType, diagramRef *domain.DiagramRef, diagramStackRef *domain.DiagramStackRef, options, previous []domain.Option, stored storedPlaybacks) ([]domain.Option, *domain.DiagramRef, error) {
 	if exerciseType != domain.ExerciseTypeImageRecognition || (diagramRef == nil && diagramStackRef == nil) {
 		return options, diagramRef, nil
 	}
@@ -191,7 +207,7 @@ func (s *ExerciseService) resolveDiagramOptions(ctx context.Context, exerciseTyp
 		return nil, nil, domain.NewValidationError("options", "must be omitted when diagram_ref or diagram_stack_ref is given")
 	}
 
-	resolved, err := resolveDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef)
+	resolved, err := resolveDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef, stored)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -437,7 +453,8 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		return domain.Exercise{}, err
 	}
 
-	options, diagramRef, err = s.resolveDiagramOptions(ctx, existing.ExerciseType, diagramRef, diagramStackRef, options, existing.Options)
+	stored := storedPlaybacksOf(existingDiagramRefs(existing)...)
+	options, diagramRef, err = s.resolveDiagramOptions(ctx, existing.ExerciseType, diagramRef, diagramStackRef, options, existing.Options, stored)
 	if err != nil {
 		return domain.Exercise{}, err
 	}
@@ -451,7 +468,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 			return domain.Exercise{}, err
 		}
 	}
-	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets); err != nil {
+	if err := s.checkEmbeddedVoices(ctx, prompt, options, remediationTargets, stored); err != nil {
 		return domain.Exercise{}, err
 	}
 	if err := checkClassificationSuits(ctx, s.knowledge, skillIDs, conceptIDs, updated.InstrumentIDs); err != nil {

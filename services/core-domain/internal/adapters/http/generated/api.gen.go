@@ -2174,10 +2174,13 @@ type DiagramRef struct {
 		Loop *bool `json:"loop,omitempty"`
 
 		// PlaybackId Which of the diagram's playbacks this usage plays. Null (or
-		// omitted) plays the diagram's default playback. When saved, it
-		// must be one of the diagram's playbacks. If that playback is
-		// later removed from the diagram, the usage plays the default
-		// playback instead.
+		// omitted) plays the diagram's default playback. When a usage
+		// chooses it, it must be one of the diagram's playbacks. If that
+		// playback is later removed from the diagram, the usage keeps
+		// the id and plays the default playback instead; saving the
+		// usage again with the same id is still accepted, so an edit
+		// elsewhere in the usage (or in the document that embeds it)
+		// isn't blocked by the removal.
 		PlaybackId *openapi_types.UUID `json:"playback_id"`
 
 		// TempoBpm Overrides the chosen playback's tempo for this usage. Null
