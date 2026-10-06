@@ -127,8 +127,9 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 //     unused time;
 //   - the time still left is shared half and half between reviewing known
 //     items coming due within a week, soonest first, and stretching to
-//     unseen items of nodes the student is ready to start, their paths'
-//     skills first, each taking over the other's half when it runs out.
+//     unseen items of nodes the student is ready to start and that connect
+//     to what they are learning, their paths' skills first, each taking
+//     over the other's half when it runs out.
 //
 // Each pick is fitted to the minutes by its estimated time; a session too
 // short for any of them still offers the first. Every play-along needs an
@@ -273,7 +274,7 @@ type stretchPick struct {
 func stretchOrder(knowledge KnowledgeMap, pathSkillIDs []string, picked map[string]bool) []stretchPick {
 	skip := maps.Clone(picked)
 	var order []stretchPick
-	for _, nodeID := range domain.RankStretchNodes(knowledge.Nodes, knowledge.Standings, pathSkillIDs) {
+	for _, nodeID := range domain.RankStretchNodes(knowledge.Nodes, knowledge.Standings, pathSkillIDs, knowledge.Applies) {
 		for _, key := range knowledge.Subtrees[nodeID] {
 			if state, ok := knowledge.States[key]; skip[key] || ok && state.Counted > 0 {
 				continue

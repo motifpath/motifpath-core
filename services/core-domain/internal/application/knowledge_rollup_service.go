@@ -42,6 +42,9 @@ type KnowledgeMap struct {
 	// States holds the student's states on those items, keyed by item key;
 	// an item never practised has none.
 	States map[string]domain.PracticeItemState
+	// Applies lists every applies edge, which connects nodes without
+	// requiring anything.
+	Applies []domain.KnowledgeEdge
 }
 
 // Standings returns the student's standing on every knowledge node for
@@ -63,10 +66,18 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 	if err != nil {
 		return KnowledgeMap{}, err
 	}
-	requires := domain.KnowledgeEdgeTypeRequires
-	edges, err := s.edges.List(ctx, ports.KnowledgeEdgeFilter{Type: &requires})
+	allEdges, err := s.edges.List(ctx, ports.KnowledgeEdgeFilter{})
 	if err != nil {
 		return KnowledgeMap{}, err
+	}
+	var edges, applies []domain.KnowledgeEdge
+	for _, e := range allEdges {
+		switch e.Type {
+		case domain.KnowledgeEdgeTypeRequires:
+			edges = append(edges, e)
+		case domain.KnowledgeEdgeTypeApplies:
+			applies = append(applies, e)
+		}
 	}
 	items, err := s.items.ClassifiedItems(ctx, instrumentID)
 	if err != nil {
@@ -91,7 +102,7 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 		byID[n.ID] = n
 		rollups[n.ID] = domain.RollUpNode(subtrees[n.ID], states, now)
 	}
-	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states}
+	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states, Applies: applies}
 	for _, n := range nodes {
 		if !n.For(instrumentID) {
 			continue

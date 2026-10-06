@@ -140,6 +140,13 @@ func (f *practiceFixture) requires(from, to string, level domain.KnowledgeLevel)
 	require.NoError(f.t, f.edges.Create(context.Background(), domain.KnowledgeEdge{ID: from + "->" + to, FromID: from, ToID: to, Type: domain.KnowledgeEdgeTypeRequires, Level: &l}))
 }
 
+// applies links the skill from to the node to with an applies edge.
+func (f *practiceFixture) applies(from, to string) {
+	f.skill(from)
+	f.skill(to)
+	require.NoError(f.t, f.edges.Create(context.Background(), domain.KnowledgeEdge{ID: from + "~>" + to, FromID: from, ToID: to, Type: domain.KnowledgeEdgeTypeApplies}))
+}
+
 // exercise puts an exercise taking seconds, classified under skillID, for
 // instrumentIDs (none: every instrument).
 func (f *practiceFixture) exercise(id, skillID string, seconds int, instrumentIDs ...string) {
@@ -498,8 +505,20 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Equal(t, []string{"play_along:long"}, planKeys(plan))
 	})
 
-	t.Run("with nothing on the student's paths, play-alongs for the instrument in hand stretch the session", func(t *testing.T) {
+	t.Run("with nothing on the student's paths, nothing unconnected to their learning is stretched to", func(t *testing.T) {
 		f := newPracticeFixture(t)
+		f.playAlong("elsewhere", "Elsewhere", practiceGuitar, "skill-other", 100)
+
+		guitar := practiceGuitar
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), &guitar, 5)
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("stretch takes play-alongs for the instrument in hand on a node a path skill applies", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.applies("skill-1", "skill-other")
 		f.playAlong("elsewhere", "Elsewhere", practiceGuitar, "skill-other", 100)
 		f.playAlong("bass-elsewhere", "Bass elsewhere", practiceBass, "skill-other", 100)
 
@@ -624,6 +643,7 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		f.playAlong("long-known", "Long known", practiceGuitar, "skill-1", 20)
 		f.reshape("long-known", domain.DiagramKindBasic, 6)
 		f.state("long-known", domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 1, Box: 2, DueAt: f.inDays(2)})
+		f.applies("skill-1", "skill-other")
 		f.playAlong("stretch-a", "Stretch A", practiceGuitar, "skill-other", 100)
 		f.playAlong("stretch-b", "Stretch B", practiceGuitar, "skill-other", 100)
 
@@ -763,6 +783,7 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 		f.due(f.exerciseBatch("due", "skill-1", 8, 30)...)
 		f.exerciseBatch("new", "skill-1", 2, 30)
 		f.known(3, f.exerciseBatch("known", "skill-1", 40, 30)...)
+		f.applies("skill-1", "skill-ready")
 		f.exerciseBatch("stretch", "skill-ready", 40, 30)
 
 		plan := f.compose(t, practiceGuitar, 20)
@@ -778,6 +799,7 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 	t.Run("a caught-up student with nothing coming due stretches for the whole session", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPath("skill-1")
+		f.applies("skill-1", "skill-ready")
 		f.exerciseBatch("stretch", "skill-ready", 40, 30)
 
 		plan := f.compose(t, practiceGuitar, 10)
@@ -794,6 +816,7 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 		f.onPath("skill-1")
 		f.known(7, f.exerciseBatch("week", "skill-1", 1, 30)...)
 		f.known(8, f.exerciseBatch("later", "skill-1", 1, 30)...)
+		f.applies("skill-1", "skill-ready")
 		f.exerciseBatch("stretch", "skill-ready", 40, 30)
 
 		plan := f.compose(t, practiceGuitar, 10)
@@ -811,6 +834,7 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 		f.requires("skill-b-deep", "skill-c-shallow", domain.KnowledgeLevelAccurate)
 		f.requires("skill-c-shallow", "skill-1", domain.KnowledgeLevelAccurate)
 		f.requires("skill-d-unmet", "skill-unmet", domain.KnowledgeLevelAccurate)
+		f.applies("skill-1", "skill-a-free")
 		f.exerciseBatch("a", "skill-a-free", 1, 30)
 		f.exerciseBatch("b", "skill-b-deep", 1, 30)
 		// Four of skill-c-shallow's five items are fluent, so the node is
@@ -827,8 +851,8 @@ func TestPracticeSessionService_ComposePlanMix(t *testing.T) {
 				stretch = append(stretch, *item.NodeID)
 			}
 		}
-		assert.Equal(t, []string{"skill-c-shallow", "skill-b-deep", "skill-a-free", "skill-unmet"}, stretch,
-			"skill-d-unmet's requirement isn't met, so it is never a stretch")
+		assert.Equal(t, []string{"skill-c-shallow", "skill-b-deep", "skill-a-free"}, stretch,
+			"skill-d-unmet's requirement isn't met, and skill-unmet has no link to the path, so neither is a stretch")
 	})
 
 	t.Run("past the new share, a ready path skill's unseen items come back as stretch before any other node's", func(t *testing.T) {

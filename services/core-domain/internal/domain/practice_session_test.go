@@ -81,7 +81,35 @@ func TestRankStretchNodes(t *testing.T) {
 		// g is not for the instrument: no standing.
 	}
 
-	assert.Equal(t, []string{"c", "f", "b", "a"}, domain.RankStretchNodes(nodes, standings, nil))
-	assert.Equal(t, []string{"b", "a", "c", "f"}, domain.RankStretchNodes(nodes, standings, []string{"a", "b", "d"}),
+	assert.Equal(t, []string{"c", "f", "b"}, domain.RankStretchNodes(nodes, standings, nil, nil),
+		"a requires nothing and has no link to the path, so it is not connected to what the student is learning")
+	assert.Equal(t, []string{"b", "a", "c", "f"}, domain.RankStretchNodes(nodes, standings, []string{"a", "b", "d"}, nil),
 		"the student's path skills come first, ranked by the same rules among themselves; d stays unready")
+}
+
+func TestRankStretchNodesReachesPathNeighbours(t *testing.T) {
+	level := domain.KnowledgeLevelNew
+	fromScratch := domain.NodeStanding{NodeRollup: domain.NodeRollup{Total: 4, Level: &level}}
+	path, parent := "path", "parent"
+	nodes := []domain.KnowledgeNode{
+		{ID: "parent"},
+		{ID: "path", ParentID: &parent},
+		{ID: "child", ParentID: &path},
+		{ID: "applied"},
+		{ID: "applier"},
+		{ID: "sibling", ParentID: &parent},
+		{ID: "unlinked"},
+	}
+	standings := map[string]domain.NodeStanding{}
+	for _, n := range nodes {
+		standings[n.ID] = fromScratch
+	}
+	applies := []domain.KnowledgeEdge{
+		{Type: domain.KnowledgeEdgeTypeApplies, FromID: "path", ToID: "applied"},
+		{Type: domain.KnowledgeEdgeTypeApplies, FromID: "applier", ToID: "path"},
+		{Type: domain.KnowledgeEdgeTypeApplies, FromID: "unlinked", ToID: "sibling"},
+	}
+
+	assert.Equal(t, []string{"path", "parent", "child", "applied", "applier"}, domain.RankStretchNodes(nodes, standings, []string{"path"}, applies),
+		"a path skill's parent, children and applies neighbours either way are connected; a sibling and a node linked only to it are not")
 }

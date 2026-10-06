@@ -164,6 +164,20 @@ func TestKnowledgeRollupService_Standings(t *testing.T) {
 		assert.Equal(t, domain.KnowledgeLevelAccurate, *got.Standings[low.ID].Level)
 	})
 
+	t.Run("the map carries the applies edges, apart from the requires edges", func(t *testing.T) {
+		f := setup(t)
+		level := domain.MasteryLevelAccurate
+		applies := domain.KnowledgeEdge{ID: "e1", FromID: all.ID, ToID: intervals.ID, Type: domain.KnowledgeEdgeTypeApplies}
+		require.NoError(t, f.edges.Create(ctx, applies))
+		require.NoError(t, f.edges.Create(ctx, domain.KnowledgeEdge{ID: "e2", FromID: all.ID, ToID: low.ID, Type: domain.KnowledgeEdgeTypeRequires, Level: &level}))
+
+		got, err := f.svc.Map(ctx, alice, practiceGuitar)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.KnowledgeEdge{applies}, got.Applies)
+		assert.Equal(t, 1, got.Standings[all.ID].Readiness.Total, "an applies edge is never a requirement")
+	})
+
 	t.Run("a failure listing items or reading states fails the request", func(t *testing.T) {
 		f := setup(t)
 		f.items.err = errors.New("db down")

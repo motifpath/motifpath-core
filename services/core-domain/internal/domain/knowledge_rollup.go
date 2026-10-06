@@ -184,14 +184,16 @@ func requiresFrom(nodeID string, edges []KnowledgeEdge, nodes map[string]Knowled
 
 // RankStretchNodes lists the ids of nodes a student may stretch to, in the
 // order to start them: those with something to practise and every
-// requirement met, keyed in standings (the nodes for the instrument). The
+// requirement met, keyed in standings (the nodes for the instrument), and
+// connected to what the student is learning (see ConnectedNodes). The
 // nodes in pathNodeIDs, the student's own path, come first; then nodes that
 // build on something the student meets, having requirements; then the
 // shallowest requires depth; then nodes' own order.
-func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string) []string {
+func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string, applies []KnowledgeEdge) []string {
+	connected := ConnectedNodes(nodes, standings, pathNodeIDs, applies)
 	var ready []KnowledgeNode
 	for _, n := range nodes {
-		if s, ok := standings[n.ID]; ok && s.Level != nil && s.Readiness.Complete() {
+		if s, ok := standings[n.ID]; ok && s.Level != nil && s.Readiness.Complete() && connected[n.ID] {
 			ready = append(ready, n)
 		}
 	}
@@ -219,4 +221,39 @@ func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, 
 		ids[i] = n.ID
 	}
 	return ids
+}
+
+// ConnectedNodes reports which of nodes connect to what the student is
+// learning: the nodes in pathNodeIDs; their parents and children; nodes
+// linked to them by an applies edge, either way; and nodes that build on
+// something the student meets, having every requirement in standings met.
+func ConnectedNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string, applies []KnowledgeEdge) map[string]bool {
+	connected := map[string]bool{}
+	onPath := func(id *string) bool { return id != nil && slices.Contains(pathNodeIDs, *id) }
+	for _, id := range pathNodeIDs {
+		connected[id] = true
+	}
+	for _, n := range nodes {
+		if onPath(n.ParentID) {
+			connected[n.ID] = true
+		}
+		if onPath(&n.ID) && n.ParentID != nil {
+			connected[*n.ParentID] = true
+		}
+		if s, ok := standings[n.ID]; ok && s.Readiness.Total > 0 && s.Readiness.Complete() {
+			connected[n.ID] = true
+		}
+	}
+	for _, e := range applies {
+		if e.Type != KnowledgeEdgeTypeApplies {
+			continue
+		}
+		if onPath(&e.FromID) {
+			connected[e.ToID] = true
+		}
+		if onPath(&e.ToID) {
+			connected[e.FromID] = true
+		}
+	}
+	return connected
 }
