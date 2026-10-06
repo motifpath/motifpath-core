@@ -803,7 +803,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		diagrams := newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
 		svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
-		playback := &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true}
+		playback := &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true}
 
 		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil,
@@ -828,7 +828,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 
 			_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 				domain.ExpandedContentTypeDiagram, nil, nil,
-				&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr(tt.voiceID)}}, nil,
+				&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr(tt.voiceID)}}, nil,
 				intPtr(150), intPtr(165), nil, nil, nil)
 
 			var valErr *domain.ValidationError
@@ -848,7 +848,7 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeDiagram, nil, nil, nil,
 			&domain.DiagramStackRef{Stack: []domain.DiagramRef{
-				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")}},
+				{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")}},
 				{DiagramID: "diagram-2", Layers: domain.DiagramLayers{Intervals: true}},
 			}},
 			nil, nil, intPtr(3), intPtr(8000), nil)

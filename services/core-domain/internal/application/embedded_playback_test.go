@@ -17,7 +17,7 @@ import (
 func withEmbeddedDiagram(voice *string, diagramID string) *domain.PromptDocument {
 	ref := &domain.DiagramRef{DiagramID: diagramID, Layers: domain.DiagramLayers{Intervals: true}}
 	if voice != nil {
-		ref.Playback = &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: voice}
+		ref.Playback = &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: voice}
 	}
 	doc := richTextContent("Listen to this lick.")
 	doc.Content = append(doc.Content, domain.PromptNode{Type: domain.PromptNodeTypeBulletList, Content: []domain.PromptNode{

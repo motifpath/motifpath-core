@@ -21,7 +21,7 @@ func TestNewDiagramRef(t *testing.T) {
 		name       string
 		diagramID  string
 		layers     domain.DiagramLayers
-		playback   *domain.DiagramPlayback
+		playback   *domain.DiagramRefPlayback
 		wantField  string
 		wantErrMsg string
 	}{
@@ -57,25 +57,25 @@ func TestNewDiagramRef(t *testing.T) {
 			name:      "playback with its own tempo, voice and looping",
 			diagramID: "diagram-1",
 			layers:    validDiagramLayers(),
-			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true},
+			playback:  &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: intPtr(60), VoiceID: strPtr("acoustic-guitar"), Loop: true},
 		},
 		{
 			name:      "playback at the boundary tempos",
 			diagramID: "diagram-1",
 			layers:    validDiagramLayers(),
-			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(20)},
+			playback:  &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(20)},
 		},
 		{
 			name:      "playback at the fastest tempo",
 			diagramID: "diagram-1",
 			layers:    validDiagramLayers(),
-			playback:  &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(300)},
+			playback:  &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(300)},
 		},
 		{
 			name:       "playback with invalid direction",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: "sideways"},
+			playback:   &domain.DiagramRefPlayback{Direction: "sideways"},
 			wantField:  "playback",
 			wantErrMsg: "direction",
 		},
@@ -83,7 +83,7 @@ func TestNewDiagramRef(t *testing.T) {
 			name:       "playback slower than 20 BPM",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(19)},
+			playback:   &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(19)},
 			wantField:  "playback",
 			wantErrMsg: "tempo_bpm",
 		},
@@ -91,7 +91,7 @@ func TestNewDiagramRef(t *testing.T) {
 			name:       "playback faster than 300 BPM",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(301)},
+			playback:   &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, TempoBPM: intPtr(301)},
 			wantField:  "playback",
 			wantErrMsg: "tempo_bpm",
 		},
@@ -99,7 +99,7 @@ func TestNewDiagramRef(t *testing.T) {
 			name:       "playback with an empty voice id",
 			diagramID:  "diagram-1",
 			layers:     validDiagramLayers(),
-			playback:   &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("")},
+			playback:   &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("")},
 			wantField:  "playback",
 			wantErrMsg: "voice_id",
 		},
@@ -135,7 +135,7 @@ func TestDiagramPlayback_StoredBeforeTempoAndVoice(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, ref.Playback)
-	assert.Equal(t, domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed}, *ref.Playback)
+	assert.Equal(t, domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed}, *ref.Playback)
 	require.NoError(t, domain.ValidateDiagramRef(ref))
 }
 

@@ -106,7 +106,7 @@ func seedListeningExercise(ctx context.Context, teacher domain.User, exerciseSvc
 	stimulus := &domain.DiagramRef{
 		DiagramID:          eMajor.ID,
 		Layers:             domain.DiagramLayers{Intervals: false, HiddenPositionIDs: &[]string{highE}},
-		Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, Loop: true},
+		Playback:           &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed, Loop: true},
 		CorrectPositionIDs: &[]string{third},
 	}
 	exercise, err := exerciseSvc.CreateExercise(ctx, teacher, title, domain.NewPlainTextPrompt(title), domain.ExerciseTypeImageRecognition,

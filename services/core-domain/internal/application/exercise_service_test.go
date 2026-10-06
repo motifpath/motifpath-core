@@ -494,7 +494,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 		exercise, err := create(t, pentatonic, domain.DiagramRef{
 			Layers:             domain.DiagramLayers{HiddenPositionIDs: &[]string{"pos-6-5"}},
 			CorrectPositionIDs: &[]string{"pos-6-5"},
-			Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("acoustic-guitar")},
+			Playback:           &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("acoustic-guitar")},
 		})
 
 		require.NoError(t, err)
@@ -505,7 +505,7 @@ func TestExerciseService_DiagramDrivenImageRecognition(t *testing.T) {
 	t.Run("a stimulus that plays with a keyboard voice is rejected as diagram_ref", func(t *testing.T) {
 		_, err := create(t, pentatonic, domain.DiagramRef{
 			CorrectPositionIDs: &[]string{"pos-6-5"},
-			Playback:           &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")},
+			Playback:           &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: strPtr("piano")},
 		})
 
 		var valErr *domain.ValidationError

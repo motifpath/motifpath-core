@@ -39,7 +39,7 @@ func TestDiagramRefPlaybackMapping(t *testing.T) {
 
 	t.Run("tempo, voice, direction and loop come back as stored", func(t *testing.T) {
 		voice, tempo := "acoustic-guitar", 72
-		ref := domain.DiagramRef{DiagramID: uuid.NewString(), Playback: &domain.DiagramPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: &tempo, VoiceID: &voice, Loop: true}}
+		ref := domain.DiagramRef{DiagramID: uuid.NewString(), Playback: &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionReversed, TempoBPM: &tempo, VoiceID: &voice, Loop: true}}
 
 		got := toGeneratedDiagramRef(ref)
 
