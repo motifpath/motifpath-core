@@ -57,6 +57,58 @@ func TestMongoPracticeReferenceReader_NoIDsReadsNothing(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+// shownOption is an exercise option as core keeps it in the reference snapshot.
+func shownOption(t *testing.T, id string, correct bool, label string) domain.AnswerOption {
+	t.Helper()
+	raw, err := bson.Marshal(bson.D{{Key: "option_id", Value: id}, {Key: "is_correct", Value: correct}, {Key: "label", Value: label}})
+	require.NoError(t, err)
+	return domain.AnswerOption{OptionID: id, IsCorrect: correct, Shown: raw}
+}
+
+func TestMongoPracticeReferenceReader_ExerciseOptions(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	_, err := db.Collection("practice_reference").InsertOne(ctx, bson.D{
+		{Key: "kind", Value: "exercise"}, {Key: "id", Value: exercise1}, {Key: "exercise_type", Value: "text_response"},
+		{Key: "option_ids", Value: bson.A{"o-1", "o-2"}}, {Key: "correct_option_ids", Value: bson.A{"o-2"}}, {Key: "instrument_ids", Value: bson.A{}},
+		{Key: "options", Value: bson.A{
+			bson.D{{Key: "option_id", Value: "o-1"}, {Key: "is_correct", Value: false}, {Key: "label", Value: "B"}},
+			bson.D{{Key: "option_id", Value: "o-2"}, {Key: "is_correct", Value: true}, {Key: "label", Value: "C"}},
+		}},
+		{Key: "snapshot_version", Value: 2},
+	})
+	require.NoError(t, err)
+
+	got, err := NewMongoPracticeReferenceReader(db).Exercises(ctx, []string{exercise1})
+	require.NoError(t, err)
+
+	assert.Equal(t, []domain.AnswerOption{shownOption(t, "o-1", false, "B"), shownOption(t, "o-2", true, "C")}, got[exercise1].Options,
+		"each option keeps its id, its verdict and exactly what core stored")
+}
+
+func TestMongoPracticeReferenceReader_Instruments(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	_, err := db.Collection("practice_reference").InsertMany(ctx, []bson.D{
+		{{Key: "kind", Value: "instrument"}, {Key: "id", Value: guitar}, {Key: "family", Value: "fretted"}, {Key: "string_count", Value: 6},
+			{Key: "tuning", Value: bson.A{"E2", "A2", "D3", "G3", "B3", "E4"}}, {Key: "snapshot_version", Value: 2}},
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: diagram1}, {Key: "instrument_ids", Value: bson.A{}}, {Key: "snapshot_version", Value: 1}},
+	})
+	require.NoError(t, err)
+	reader := NewMongoPracticeReferenceReader(db)
+
+	got, err := reader.Instruments(ctx, []string{guitar, diagram1})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]domain.InstrumentReference{guitar: {ID: guitar, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}}}, got)
+
+	t.Run("no ids reads nothing", func(t *testing.T) {
+		got, err := reader.Instruments(ctx, nil)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
 func TestMongoPracticeReferenceReader_Exercises(t *testing.T) {
 	ctx := context.Background()
 	db := mongoDatabase(t)
@@ -145,6 +197,7 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		GraderID: "fretboard_cell.v1",
 		Response: domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: intPtr(6), Fret: intPtr(0), LatencyMs: intPtr(1800)},
 		Correct:  boolPtr(true), LatencyMs: intPtr(1800), TapMs: intPtr(350),
+		AnswerKey: &domain.AnswerKey{String: intPtr(6), Fret: intPtr(0), NoteName: "E"},
 	}
 	challenge := domain.PracticeEvidence{
 		EvidenceID: "e0000000-0000-4000-8000-000000000005", StudentID: studentA,
@@ -153,6 +206,9 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		GraderID:       "exercise_option.v1",
 		Response:       domain.PracticeResponse{Type: domain.PracticeResponseOptionChoice, OptionIDs: []string{"o-2"}, LatencyMs: intPtr(9500), AudioMs: intPtr(5000)},
 		Correct:        boolPtr(true), LatencyMs: intPtr(9500), AudioMs: intPtr(5000),
+		AnswerKey: &domain.AnswerKey{Options: []domain.AnswerOption{
+			shownOption(t, "o-1", false, "B"), shownOption(t, "o-2", true, "C"),
+		}},
 	}
 	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge} {
 		inserted, err := repo.Insert(ctx, e)
@@ -198,7 +254,8 @@ func TestMongoPracticeItemStateRepository(t *testing.T) {
 
 	due := time.Date(2026, 10, 7, 9, 0, 0, 0, time.UTC)
 	last := time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
-	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90)}
+	first := domain.ItemFold{Attempts: 1, Counted: 1, Accuracy: 1, Fluency: 0.9, Box: 1, DueAt: &due, LastAt: &last, BestCleanBPM: intPtr(90),
+		RightByResponse: map[domain.PracticeResponseType]int{domain.PracticeResponseNameTheNote: 2, domain.PracticeResponseFindTheNote: 1}}
 	require.NoError(t, repo.Put(ctx, studentA, itemKey, first))
 	replaced := first
 	replaced.Attempts, replaced.Counted, replaced.Box = 6, 5, 3

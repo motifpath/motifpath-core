@@ -4,9 +4,11 @@ package bdd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -85,14 +87,35 @@ func (w *world) exerciseKey(name, exerciseType string) string {
 func (w *world) theExercise(name, correct, all string) error {
 	id := stableUUID("exercise", name)
 	ref := domain.ExerciseReference{ID: id, ExerciseType: "text_response"}
-	for _, label := range labels(all) {
-		ref.OptionIDs = append(ref.OptionIDs, optionID(name, label))
-	}
-	for _, label := range labels(correct) {
-		ref.CorrectOptionIDs = append(ref.CorrectOptionIDs, optionID(name, label))
-	}
+	ref.OptionIDs, ref.CorrectOptionIDs, ref.Options = exerciseOptions(name, labels(all), labels(correct))
 	w.reference.exercises[id] = ref
+	w.lastExercise, w.lastExerciseID = name, id
 	return nil
+}
+
+// exerciseOptions are an exercise's options with these labels: their ids, the
+// correct ones, and each as core keeps it to show, with its label.
+func exerciseOptions(exercise string, all, correct []string) ([]string, []string, []domain.AnswerOption) {
+	var ids, correctIDs []string
+	var shown []domain.AnswerOption
+	for _, label := range all {
+		id := optionID(exercise, label)
+		right := slices.Contains(correct, label)
+		ids = append(ids, id)
+		if right {
+			correctIDs = append(correctIDs, id)
+		}
+		raw, err := json.Marshal(struct {
+			OptionID  string `json:"option_id"`
+			IsCorrect bool   `json:"is_correct"`
+			Label     string `json:"label"`
+		}{id, right, label})
+		if err != nil {
+			panic(err)
+		}
+		shown = append(shown, domain.AnswerOption{OptionID: id, IsCorrect: right, Shown: raw})
+	}
+	return ids, correctIDs, shown
 }
 
 func (w *world) isTakingTheChallenge(student, challenge, node string) error {
@@ -307,12 +330,21 @@ func (w *world) answersAnImageChoiceExerciseOn(student, day string, latency int)
 // judgement is how the worker's rules judge the latest answer's time, against
 // the fluent times of its exercise's type.
 func (w *world) judgement() (domain.TimedJudgement, error) {
-	e, err := w.onlyEvidence(w.lastStudent, w.lastItemKey)
+	var e domain.PracticeEvidence
+	var goal domain.ItemGoal
+	var err error
+	if strings.HasPrefix(w.lastItemKey, string(domain.PracticeItemKindFretboardCell)+":") {
+		e, err = w.onlyCellEvidence(w.lastStudent)
+		goal = w.cellGoal()
+	} else {
+		e, err = w.onlyEvidence(w.lastStudent, w.lastItemKey)
+		exercise := w.reference.exercises[strings.TrimPrefix(e.ItemKey, "exercise:")]
+		goal = domain.ItemGoal{FluentTimes: w.reference.fluentTimes[exercise.DrillTemplateKey()]}
+	}
 	if err != nil {
 		return domain.TimedJudgement{}, err
 	}
-	exercise := w.reference.exercises[strings.TrimPrefix(e.ItemKey, "exercise:")]
-	judged, ok := domain.JudgeTimed(e, domain.ItemGoal{FluentTimes: w.reference.fluentTimes[exercise.DrillTemplateKey()]})
+	judged, ok := domain.JudgeTimed(e, goal)
 	if !ok {
 		return judged, fmt.Errorf("the answer was not judged against any fluent time")
 	}

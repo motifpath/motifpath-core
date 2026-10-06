@@ -60,6 +60,7 @@ func (r *MongoPracticeItemStateRepository) Put(ctx context.Context, studentID, i
 		LastAt:               f.LastAt,
 		BestCleanBPM:         f.BestCleanBPM,
 		BestChangesPerMinute: f.BestChangesPerMinute,
+		RightByResponse:      rightByResponseDocument(f.RightByResponse),
 		UpdatedAt:            r.now().UTC(),
 	}
 	_, err := r.collection.ReplaceOne(ctx, stateFilter(studentID, itemKey), doc, options.Replace().SetUpsert(true))

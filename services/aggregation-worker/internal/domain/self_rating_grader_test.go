@@ -19,9 +19,9 @@ func TestGraderFor(t *testing.T) {
 	g, ok := GraderFor(PracticeItemKindExercise)
 	require.True(t, ok)
 	assert.Equal(t, "exercise_option.v1", g.ID())
-	// Its grader comes with the fretboard drill.
-	_, ok = GraderFor(PracticeItemKindFretboardCell)
-	assert.False(t, ok)
+	g, ok = GraderFor(PracticeItemKindFretboardCell)
+	require.True(t, ok)
+	assert.Equal(t, "fretboard_cell.v1", g.ID())
 }
 
 func TestSelfRatingGrader_RejectsAnUnknownRating(t *testing.T) {

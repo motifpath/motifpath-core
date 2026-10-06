@@ -3,6 +3,8 @@ package repo
 import (
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
+
 	"github.com/motifpath/aggregation-worker/internal/domain"
 )
 
@@ -40,6 +42,45 @@ type practiceEvidenceDocument struct {
 	Rating            string                   `bson:"rating,omitempty"`
 	TempoBPM          *int                     `bson:"tempo_bpm,omitempty"`
 	ChangesPerMinute  *int                     `bson:"changes_per_minute,omitempty"`
+	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
+}
+
+// answerKeyDocument is what a right answer was: the asked cell and its note, or
+// every exercise option as the student was shown it, stored as core kept it.
+type answerKeyDocument struct {
+	String   *int       `bson:"string,omitempty"`
+	Fret     *int       `bson:"fret,omitempty"`
+	NoteName string     `bson:"note_name,omitempty"`
+	Options  []bson.Raw `bson:"options,omitempty"`
+}
+
+func toAnswerKeyDocument(k *domain.AnswerKey) (*answerKeyDocument, error) {
+	if k == nil {
+		return nil, nil
+	}
+	doc := &answerKeyDocument{String: k.String, Fret: k.Fret, NoteName: k.NoteName}
+	for _, o := range k.Options {
+		raw := bson.Raw(o.Shown)
+		if len(raw) == 0 {
+			var err error
+			if raw, err = bson.Marshal(bson.D{{Key: "option_id", Value: o.OptionID}, {Key: "is_correct", Value: o.IsCorrect}}); err != nil {
+				return nil, err
+			}
+		}
+		doc.Options = append(doc.Options, raw)
+	}
+	return doc, nil
+}
+
+func (d *answerKeyDocument) toDomain() (*domain.AnswerKey, error) {
+	if d == nil {
+		return nil, nil
+	}
+	options, err := answerOptions(d.Options)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.AnswerKey{String: d.String, Fret: d.Fret, NoteName: d.NoteName, Options: options}, nil
 }
 
 // triggerContextDocument is where an answer outside a practice session was given.
@@ -63,7 +104,11 @@ func (d *triggerContextDocument) toDomain() *domain.TriggerContext {
 	return &domain.TriggerContext{Source: d.Source, ContentNodeID: d.ContentNodeID, ChallengeID: d.ChallengeID}
 }
 
-func toEvidenceDocument(e domain.PracticeEvidence) practiceEvidenceDocument {
+func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, error) {
+	answerKey, err := toAnswerKeyDocument(e.AnswerKey)
+	if err != nil {
+		return practiceEvidenceDocument{}, err
+	}
 	r := e.Response
 	return practiceEvidenceDocument{
 		EvidenceID:        e.EvidenceID,
@@ -93,10 +138,15 @@ func toEvidenceDocument(e domain.PracticeEvidence) practiceEvidenceDocument {
 		Rating:           string(e.Rating),
 		TempoBPM:         e.TempoBPM,
 		ChangesPerMinute: e.ChangesPerMinute,
-	}
+		AnswerKey:        answerKey,
+	}, nil
 }
 
-func (d practiceEvidenceDocument) toDomain() domain.PracticeEvidence {
+func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
+	answerKey, err := d.AnswerKey.toDomain()
+	if err != nil {
+		return domain.PracticeEvidence{}, err
+	}
 	r := d.Response
 	return domain.PracticeEvidence{
 		EvidenceID:        d.EvidenceID,
@@ -126,7 +176,8 @@ func (d practiceEvidenceDocument) toDomain() domain.PracticeEvidence {
 		Rating:           domain.SelfRating(d.Rating),
 		TempoBPM:         d.TempoBPM,
 		ChangesPerMinute: d.ChangesPerMinute,
-	}
+		AnswerKey:        answerKey,
+	}, nil
 }
 
 // practiceItemStateDocument is a `practice_item_state` document: one per
@@ -147,7 +198,9 @@ type practiceItemStateDocument struct {
 	LastAt               *time.Time `bson:"last_at"`
 	BestCleanBPM         *int       `bson:"best_clean_bpm"`
 	BestChangesPerMinute *int       `bson:"best_changes_per_minute"`
-	UpdatedAt            time.Time  `bson:"updated_at"`
+	// RightByResponse counts right answers by the way the item was asked.
+	RightByResponse map[string]int `bson:"right_by_response,omitempty"`
+	UpdatedAt       time.Time      `bson:"updated_at"`
 }
 
 func (d practiceItemStateDocument) toDomain() domain.ItemFold {
@@ -161,6 +214,7 @@ func (d practiceItemStateDocument) toDomain() domain.ItemFold {
 		LastAt:               utc(d.LastAt),
 		BestCleanBPM:         d.BestCleanBPM,
 		BestChangesPerMinute: d.BestChangesPerMinute,
+		RightByResponse:      rightByResponse(d.RightByResponse),
 	}
 }
 
@@ -170,4 +224,26 @@ func utc(t *time.Time) *time.Time {
 	}
 	u := t.UTC()
 	return &u
+}
+
+func rightByResponse(counts map[string]int) map[domain.PracticeResponseType]int {
+	if len(counts) == 0 {
+		return nil
+	}
+	byType := make(map[domain.PracticeResponseType]int, len(counts))
+	for asked, n := range counts {
+		byType[domain.PracticeResponseType(asked)] = n
+	}
+	return byType
+}
+
+func rightByResponseDocument(counts map[domain.PracticeResponseType]int) map[string]int {
+	if len(counts) == 0 {
+		return nil
+	}
+	byType := make(map[string]int, len(counts))
+	for asked, n := range counts {
+		byType[string(asked)] = n
+	}
+	return byType
 }
