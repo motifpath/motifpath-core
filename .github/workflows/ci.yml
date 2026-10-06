@@ -122,7 +122,7 @@ jobs:
         env:
           SPECS_DIR: ${{ github.workspace }}/_specs
         run: |
-          for dir in scripts/diagram_catalog scripts/knowledge_map scripts/practice_drills; do
+          for dir in scripts/diagram_catalog scripts/knowledge_map scripts/practice_drills scripts/reference_data; do
             (cd "$dir" && python -m unittest -v) || exit 1
           done
 

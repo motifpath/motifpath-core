@@ -174,13 +174,11 @@ class CatalogTests(unittest.TestCase):
         self.assertLess(sql.count('\nINSERT INTO '), 300)
         self.assertLess(sql.count('\nINSERT INTO positions '), 200)
 
-    def test_migration_is_written_only_to_the_migrations_directory(self):
+    def test_only_the_payload_and_its_report_are_written(self):
         with tempfile.TemporaryDirectory() as tmp:
-            output, migrations = Path(tmp)/'catalog', Path(tmp)/'migrations'
-            migrations.mkdir()
-            catalog.write_outputs(self.entries[:1], output, migrations)
+            output = Path(tmp)/'catalog'
+            catalog.write_outputs(self.entries[:1], output)
             self.assertEqual(sorted(p.name for p in output.iterdir()), ['catalog.json', 'coverage.json'])
-            self.assertEqual([p.name for p in migrations.iterdir()], [catalog.MIGRATION_FILE])
 
 
 if __name__ == '__main__': unittest.main()

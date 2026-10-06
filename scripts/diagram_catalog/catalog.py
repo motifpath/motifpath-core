@@ -1,4 +1,8 @@
-"""Deterministic, offline bilingual guitar catalog compiler (Python stdlib only)."""
+"""Deterministic, offline bilingual guitar catalog compiler (Python stdlib only).
+
+scripts/reference_data/build.py writes the SQL that installs the catalog into the
+baseline_reference_data migration; run on its own, this writes only the catalog's
+payload and coverage report."""
 import argparse
 import hashlib
 import itertools
@@ -350,17 +354,12 @@ def render_sql(entries):
     return '\n'.join(sql)+'\n'
 
 
-MIGRATION_FILE='20261002123500_basic_guitar_catalog.up.sql'
-MIGRATIONS_DIR=Path(__file__).resolve().parents[2]/'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
-
-
-def write_outputs(entries, output, migrations):
-    """Write the catalog payload and its coverage report to output, and the
-    migration that installs it to migrations, so only one copy of the SQL exists."""
+def write_outputs(entries, output):
+    """Write the catalog payload and its coverage report to output. The SQL
+    that installs the catalog lives only in the reference data migration."""
     output.mkdir(parents=True,exist_ok=True)
     payload=compact(entries)+'\n'
     (output/'catalog.json').write_text(payload)
-    (migrations/MIGRATION_FILE).write_text(render_sql(entries))
     report=dict(diagrams=len(entries),positions=sum(len(e['positions']) for e in entries),tiers=dict(sorted(Counter(e['tier'] for e in entries).items())),families=dict(sorted(Counter(e['family'] for e in entries).items())),sha256=hashlib.sha256(payload.encode()).hexdigest())
     (output/'coverage.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     return report
@@ -369,9 +368,8 @@ def write_outputs(entries, output, migrations):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--migrations',type=Path,default=MIGRATIONS_DIR,help='Atlas migrations directory; run `atlas migrate hash` afterwards')
     args=parser.parse_args()
-    report=write_outputs(generate(),args.output,args.migrations)
+    report=write_outputs(generate(),args.output)
     print(json.dumps(report,ensure_ascii=False,indent=2))
 
 

@@ -1,9 +1,10 @@
 """Compiles the reviewed knowledge map (motifpath-specs catalogs/knowledge-map.yaml)
-into the frozen migrations that install it, with the catalog instruments it scopes
-nodes to. Deterministic and offline; needs PyYAML.
+into the SQL that installs it, with the catalog instruments it scopes nodes to.
+Deterministic and offline; needs PyYAML. scripts/reference_data/build.py writes
+that SQL into the baseline_reference_data migration; run on its own, this prints
+the map's counts.
 
 Usage: python3 knowledge_map.py [--specs ../../../motifpath-specs]
-Then run `atlas migrate hash` on the migrations directory.
 """
 import argparse
 import json
@@ -28,11 +29,6 @@ INSTRUMENTS = {
     'electric-bass': dict(names={'en': 'Electric bass', 'pt_BR': 'Contrabaixo elétrico'}, tuning=['E1', 'A1', 'D2', 'G2'], voice='electric-bass', icon='electric_bass'),
 }
 
-MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / 'services/core-domain/internal/adapters/repo/ent/migrate/migrations'
-INSTRUMENTS_FILE = '20261002123300_catalog_instruments.up.sql'
-# The icon column came later than the instruments, so their icons install after it.
-INSTRUMENT_ICONS_FILE = '20261004165340_catalog_instrument_icons.up.sql'
-MAP_FILE = '20261002123400_knowledge_map.up.sql'
 
 
 def stable_id(name):
@@ -248,12 +244,8 @@ def render_sql(graph):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
-    parser.add_argument('--migrations', type=Path, default=MIGRATIONS_DIR)
     args = parser.parse_args()
     graph = load(args.specs / 'catalogs/knowledge-map.yaml')
-    (args.migrations / INSTRUMENTS_FILE).write_text(render_instruments_sql())
-    (args.migrations / INSTRUMENT_ICONS_FILE).write_text(render_instrument_icons_sql())
-    (args.migrations / MAP_FILE).write_text(render_sql(graph))
     kinds = [n.kind for n in graph.nodes]
     types = [e.type for e in graph.edges]
     print(json.dumps(dict(skills=kinds.count('skill'), concepts=kinds.count('concept'),

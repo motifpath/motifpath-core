@@ -107,12 +107,15 @@ NEVER access the database directly from the domain layer.
 - `go run ./cmd/sync-practice-reference` → rebuilds MongoDB's `practice_reference` snapshot the
   worker's practice graders read (ADR-047). The service runs it on every start and `db:reset` after seeding; diagram
   create/update keep it current. Every new write path for a snapshotted kind must call the writer.
-- Reference-data migrations are generated, never hand-edited: `scripts/knowledge_map` compiles
-  motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map),
+- Reference data is one generated migration, `baseline_reference_data`, never hand-edited:
+  `scripts/reference_data/build.py` writes it right after `baseline_schema`, in dependency order,
+  from the generators that own each part — `scripts/knowledge_map` compiles motifpath-specs
+  `catalogs/knowledge-map.yaml` (catalog instruments, their icons + knowledge map),
   `scripts/diagram_catalog` the basic guitar catalog and `scripts/practice_drills`
   `catalogs/practice-drills.yaml` (drill templates, versioned fluent times and the fretboard cell
-  ranges, checked against the knowledge map); run
-  `atlas migrate hash` afterwards.
+  ranges, checked against the knowledge map). Languages and voices have no generator and are
+  carried in `scripts/reference_data/languages_and_voices.sql`. Run `atlas migrate hash`
+  afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`
