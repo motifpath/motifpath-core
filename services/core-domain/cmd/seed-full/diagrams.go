@@ -173,37 +173,42 @@ func bluesLick() ([]domain.Position, domain.DiagramOptions) {
 	for i, color := range []string{"#EC4899", "#F59E0B", "#22C55E", "#06B6D4", "#EF4444"} {
 		lick[i].Color = stringPtr(color)
 	}
-	root, minor, tempo := "A", domain.DiagramModeMinor, 80
+	root, minor := "A", domain.DiagramModeMinor
 	triplet := domain.NoteValue{Num: 1, Den: 12}
 	return lick, domain.DiagramOptions{
-		RootNote: &root, Mode: &minor, LabelDisplay: domain.LabelDisplayHidden, Kind: domain.DiagramKindCustom, TempoBPM: &tempo,
-		Sequence: []domain.SequenceStep{
-			playStep(domain.NoteValue{Num: 1, Den: 4}, lick[0]),
-			playStep(domain.NoteValue{Num: 1, Den: 8}, lick[1]),
-			playStep(domain.NoteValue{Num: 1, Den: 8}, lick[2]),
-			playStep(triplet, lick[3]), playStep(triplet, lick[2]), playStep(triplet, lick[3]),
-			playStep(domain.NoteValue{Num: 1, Den: 2}, lick[4]),
-		},
+		RootNote: &root, Mode: &minor, LabelDisplay: domain.LabelDisplayHidden, Kind: domain.DiagramKindCustom,
+		Playbacks: []domain.DiagramPlayback{{
+			ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Lick"}, TempoBPM: 80,
+			Steps: []domain.SequenceStep{
+				playStep(domain.NoteValue{Num: 1, Den: 4}, lick[0]),
+				playStep(domain.NoteValue{Num: 1, Den: 8}, lick[1]),
+				playStep(domain.NoteValue{Num: 1, Den: 8}, lick[2]),
+				playStep(triplet, lick[3]), playStep(triplet, lick[2]), playStep(triplet, lick[3]),
+				playStep(domain.NoteValue{Num: 1, Den: 2}, lick[4]),
+			},
+		}},
 	}
 }
 
-// eMajorChordSequence strums the whole chord down, picks it string by
-// string from the low E, then strums it back up.
-func eMajorChordSequence(chord []domain.Position) (*int, []domain.SequenceStep) {
-	tempo := 90
-	eighth := domain.NoteValue{Num: 1, Den: 8}
-	all := playStep(domain.NoteValue{Num: 1, Den: 2}, chord...)
-	all.Strum = domain.StrumDown
-	sequence := []domain.SequenceStep{all}
-	for _, p := range chord {
-		sequence = append(sequence, playStep(eighth, p))
-	}
-	up := playStep(domain.NoteValue{Num: 1, Den: 4}, chord...)
+// eMajorChordPlaybacks are two ways to sound the chord: a strum down and
+// back up, the default, and an arpeggio picked string by string from the
+// low E.
+func eMajorChordPlaybacks(chord []domain.Position) []domain.DiagramPlayback {
+	down := playStep(domain.NoteValue{Num: 1, Den: 2}, chord...)
+	down.Strum = domain.StrumDown
+	up := playStep(domain.NoteValue{Num: 1, Den: 2}, chord...)
 	up.Strum = domain.StrumUp
-	return &tempo, append(sequence, up)
+	arpeggio := make([]domain.SequenceStep, len(chord))
+	for i, p := range chord {
+		arpeggio[i] = playStep(domain.NoteValue{Num: 1, Den: 8}, p)
+	}
+	return []domain.DiagramPlayback{
+		{ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Strum", "pt_BR": "Batida"}, TempoBPM: 90, Steps: []domain.SequenceStep{down, up}},
+		{ID: uuid.NewString(), Names: domain.LocalizedText{"en": "Arpeggio", "pt_BR": "Arpejo"}, TempoBPM: 90, Steps: arpeggio},
+	}
 }
 
-// playStep is a sequence step sounding positions together for value.
+// playStep is a playback step sounding positions together for value.
 func playStep(value domain.NoteValue, positions ...domain.Position) domain.SequenceStep {
 	ids := make([]string, len(positions))
 	for i, p := range positions {
@@ -212,7 +217,7 @@ func playStep(value domain.NoteValue, positions ...domain.Position) domain.Seque
 	return domain.SequenceStep{PositionIDs: ids, Value: value}
 }
 
-// withPositionIDs gives every position an id up front, so a sequence can
+// withPositionIDs gives every position an id up front, so a playback can
 // name them before the diagram is created.
 func withPositionIDs(positions []domain.Position) []domain.Position {
 	for i := range positions {
@@ -225,8 +230,8 @@ func withPositionIDs(positions []domain.Position) []domain.Position {
 // bass and creates a library of diagrams covering what the diagram editor and viewer
 // support: basic templates (owned by curator, in every language) and custom
 // diagrams (owned by the teacher who made them), with colours, every marker
-// shape and label display, custom labels, notes, regions and a playback
-// order. otherTeacher owns one custom diagram so a teacher can open another
+// shape and label display, custom labels, notes, regions and playbacks (a
+// chord with two). otherTeacher owns one custom diagram so a teacher can open another
 // teacher's diagram and see it read-only.
 func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, curator domain.User, instrumentSvc *application.InstrumentService, diagramSvc *application.DiagramService, classifier *classificationSeeder) (seededDiagrams, error) {
 	var seeded seededDiagrams
@@ -249,7 +254,7 @@ func seedInstrumentsAndDiagrams(ctx context.Context, teacher, otherTeacher, cura
 	eMajorOptions := basicOptions("E", domain.LabelDisplayInterval, violet, fretBand(0, 2, "Fretted notes", "Notas presas", violet, 3, 5))
 	major := domain.DiagramModeMajor
 	eMajorOptions.Mode = &major
-	eMajorOptions.TempoBPM, eMajorOptions.Sequence = eMajorChordSequence(eMajor)
+	eMajorOptions.Playbacks = eMajorChordPlaybacks(eMajor)
 	specs := []diagramSpec{
 		{&seeded.pentatonicPos1, curator, seeded.guitar,
 			map[string]string{"en": "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor de Lá — Posição 1"},
