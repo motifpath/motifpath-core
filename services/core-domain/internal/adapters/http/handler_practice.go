@@ -226,6 +226,7 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userN
 		Minutes:           plan.Minutes,
 		Items:             items,
 		FeltQuestions:     []string{},
+		TapCheckDue:       plan.TapCheckDue,
 	}
 }
 

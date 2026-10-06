@@ -2,6 +2,7 @@ package domain
 
 import (
 	"math"
+	"slices"
 	"time"
 )
 
@@ -180,6 +181,24 @@ type PracticeSessionPlan struct {
 	InstrumentID *string
 	Minutes      int
 	Items        []PracticeSessionItem
+	// TapCheckDue is true when the client should offer a tap check before
+	// the first item: see TapCheckDue.
+	TapCheckDue bool
+}
+
+// TapCheckValidity is how long a tap check stands for the student's tap
+// time: a student's device or habits change, so a plan asks for another
+// once the newest is older.
+const TapCheckValidity = 30 * 24 * time.Hour
+
+// TapCheckDue reports whether a plan of items asks for a tap check: when
+// it has a fretboard cell and the student's newest tap check, lastDone, is
+// older than TapCheckValidity, or there is none.
+func TapCheckDue(items []PracticeSessionItem, lastDone *time.Time, now time.Time) bool {
+	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool { return item.Kind == PracticeItemKindFretboardCell }) {
+		return false
+	}
+	return lastDone == nil || lastDone.Before(now.Add(-TapCheckValidity))
 }
 
 // The bounds of a session's length, in minutes.

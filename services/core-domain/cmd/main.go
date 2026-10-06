@@ -309,8 +309,9 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, newID, now)
 	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, repo.NewEntNodeItemSource(entClient), repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
-	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, newID, now)
-	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase)), now)
+	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
+	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, practiceActivity, newID, now)
+	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, learningGraphPinger, completionReader), nil

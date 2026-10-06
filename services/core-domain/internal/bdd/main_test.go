@@ -41,6 +41,7 @@ func TestFeatures(t *testing.T) {
 				featuresBase + "/practice/node-levels.feature",
 				featuresBase + "/practice/practice-summary.feature",
 				featuresBase + "/practice/practice-overview.feature",
+				featuresBase + "/practice/tap-check.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -114,4 +115,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerNodeLevelSteps(sc, w)
 	registerFretboardCellSteps(sc, w)
 	registerFretboardMapSteps(sc, w)
+	registerTapCheckSteps(sc, w)
 }

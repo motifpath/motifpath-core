@@ -48,6 +48,9 @@ type world struct {
 	// lastCell is the fretboard cell a step answered, for a following step.
 	lastCell         *lastCell
 	practiceActivity *fakePracticeActivity
+	tapChecks        *fakeTapChecks
+	// tapCheckSkill is the skill of the tap-check scenarios' path.
+	tapCheckSkill string
 	// summaryNow is the practice summary's clock, which a scenario may
 	// move to see which calendar day an activity fell on.
 	summaryNow time.Time
@@ -289,7 +292,8 @@ func newWorld() *world {
 
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
-	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, newID, now)
+	w.tapChecks = newFakeTapChecks()
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, w.tapChecks, newID, now)
 	w.practiceActivity = newFakePracticeActivity()
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
