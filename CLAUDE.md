@@ -81,7 +81,7 @@ NEVER access the database directly from the domain layer.
   and archived, every `ExerciseType`, a diagram library of demo basic templates and two
   teachers' custom diagrams, and lessons with cues, pop-ups and a version history). Reference
   data — languages, voices, the catalog instruments, the knowledge map, the basic guitar
-  diagram catalog and the practice drill catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
+  diagram catalog, the practice drill catalog and the chord catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
   nodes by key) and never create it. Hard-refuses to run unless `DATABASE_URL`/`MONGO_URI`
   resolve to `localhost`/`127.0.0.1` — no override exists; see `scripts/db-reset.sh`. **Never run
   against anything but a local dev database.** Back up any real (Clerk-linked) user rows first —
@@ -114,8 +114,11 @@ NEVER access the database directly from the domain layer.
   `scripts/diagram_catalog` the basic guitar catalog and `scripts/practice_drills`
   `catalogs/practice-drills.yaml` (drill templates, versioned fluent times and the fretboard cell
   ranges, checked against the knowledge map). Languages and voices have no generator and are
-  carried in `scripts/reference_data/languages_and_voices.sql`. Run `atlas migrate hash`
-  afterwards.
+  carried in `scripts/reference_data/languages_and_voices.sql`. The chord catalog
+  (`scripts/chord_catalog`, from motifpath-specs `catalogs/chord-voicings.yaml`) needs tables
+  added after the baseline, so the same build writes it as a second generated migration,
+  `chord_catalog_reference_data`, one second after the `chord_catalog` migration; every voicing
+  passes the musical validator first. Run `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`
