@@ -793,6 +793,9 @@ func diagramListFilter(params generated.ListDiagramsParams) (domain.DiagramListF
 	if params.Kind != nil {
 		filter.Kind = domain.DiagramKind(*params.Kind)
 	}
+	if params.Purpose != nil {
+		filter.Purpose = domain.DiagramPurposeFilter(*params.Purpose)
+	}
 	if params.Language != nil {
 		filter.Language = *params.Language
 	}
@@ -850,6 +853,7 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 		Names:         generated.LocalizedNames(d.Names),
 		Languages:     d.Names.Languages(),
 		Kind:          generated.DiagramKind(d.Kind),
+		Purpose:       generated.DiagramPurpose(d.Purpose),
 		CreatedBy:     names.ref(d.CreatedBy),
 		RootNote:      d.RootNote,
 		LabelDisplay:  generated.DiagramLabelDisplay(d.LabelDisplay),

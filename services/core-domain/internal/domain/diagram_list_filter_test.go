@@ -42,3 +42,34 @@ func TestDiagramListFilter_Matches(t *testing.T) {
 		})
 	}
 }
+
+func TestDiagramListFilter_MatchesPurpose(t *testing.T) {
+	general := domain.Diagram{ID: "g", Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeGeneral}
+	voicing := domain.Diagram{ID: "v", Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeChordVoicing}
+
+	tests := []struct {
+		name   string
+		filter domain.DiagramPurposeFilter
+		want   map[string]bool
+	}{
+		{"no purpose filter matches every purpose", "", map[string]bool{"g": true, "v": true}},
+		{"any matches every purpose", domain.DiagramPurposeFilterAny, map[string]bool{"g": true, "v": true}},
+		{"general keeps only general diagrams", domain.DiagramPurposeFilterGeneral, map[string]bool{"g": true, "v": false}},
+		{"chord_voicing keeps only chord voicing diagrams", domain.DiagramPurposeFilterChordVoicing, map[string]bool{"g": false, "v": true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filter := domain.DiagramListFilter{Purpose: tt.filter}
+			for _, d := range []domain.Diagram{general, voicing} {
+				assert.Equal(t, tt.want[d.ID], filter.Matches(d), "diagram %s", d.ID)
+			}
+		})
+	}
+}
+
+func TestDiagramPurposeFilter_Valid(t *testing.T) {
+	for _, f := range []domain.DiagramPurposeFilter{"", "general", "chord_voicing", "any"} {
+		assert.True(t, f.Valid(), "%q", f)
+	}
+	assert.False(t, domain.DiagramPurposeFilter("scale").Valid())
+}

@@ -1205,3 +1205,115 @@ func TestDiagramService_Playback(t *testing.T) {
 		requireRejected(t, f, err, "playbacks", d)
 	})
 }
+
+func TestDiagramService_Purpose(t *testing.T) {
+	ctx := context.Background()
+	page := domain.PageRequest{Limit: domain.MaxPageLimit}
+
+	// seedVoicing installs a chord voicing diagram the way the chord catalog
+	// does: basic, owned by the catalog profile, never through CreateDiagram.
+	seedVoicing := func(t *testing.T, f diagramFixture) domain.Diagram {
+		t.Helper()
+		six, fret := 6, 5
+		voicing := domain.Diagram{
+			ID: "voicing-am", InstrumentID: "guitar", InstrumentIDs: []string{"guitar"},
+			Names: domain.LocalizedText{"en": "Am — A shape", "pt_BR": "Am — forma de Lá"},
+			Kind:  domain.DiagramKindBasic, Purpose: domain.DiagramPurposeChordVoicing, CreatedBy: "catalog",
+			LabelDisplay: domain.LabelDisplayInterval,
+			Positions:    []domain.Position{{ID: "p1", Interval: "R", NoteName: "A", String: &six, Fret: &fret}},
+			Skills:       []domain.KnowledgeNode{{ID: "skill-1"}}, Concepts: []domain.KnowledgeNode{{ID: "concept-1"}},
+		}
+		require.NoError(t, f.diagrams.Create(ctx, voicing))
+		return voicing
+	}
+	seedGeneral := func(t *testing.T, f diagramFixture) domain.Diagram {
+		t.Helper()
+		d, err := f.svc.CreateDiagram(ctx, adminCaller(), "guitar", names("Major scale"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{Kind: domain.DiagramKindBasic})
+		require.NoError(t, err)
+		return d
+	}
+	ids := func(p domain.Page[domain.Diagram]) []string {
+		out := make([]string, len(p.Items))
+		for i, d := range p.Items {
+			out[i] = d.ID
+		}
+		return out
+	}
+
+	t.Run("a created diagram is general", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		got, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Box"), []domain.Position{frettedPos(6, 5)}, []string{"skill-1"}, []string{"concept-1"}, domain.DiagramOptions{})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.DiagramPurposeGeneral, got.Purpose)
+	})
+
+	listTests := []struct {
+		name    string
+		purpose domain.DiagramPurposeFilter
+		want    func(general, voicing domain.Diagram) []string
+	}{
+		{"the list leaves chord voicings out by default", "", func(g, _ domain.Diagram) []string { return []string{g.ID} }},
+		{"general lists only general diagrams", domain.DiagramPurposeFilterGeneral, func(g, _ domain.Diagram) []string { return []string{g.ID} }},
+		{"chord_voicing lists only chord voicings", domain.DiagramPurposeFilterChordVoicing, func(_, v domain.Diagram) []string { return []string{v.ID} }},
+		{"any lists both", domain.DiagramPurposeFilterAny, func(g, v domain.Diagram) []string { return []string{v.ID, g.ID} }},
+	}
+	for _, tt := range listTests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newDiagramFixture()
+			general, voicing := seedGeneral(t, f), seedVoicing(t, f)
+
+			got, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{Purpose: tt.purpose}, page)
+
+			require.NoError(t, err)
+			want := tt.want(general, voicing)
+			assert.ElementsMatch(t, want, ids(got))
+			assert.Equal(t, len(want), got.Total)
+		})
+	}
+
+	t.Run("an unrecognised purpose filter is a validation error", func(t *testing.T) {
+		f := newDiagramFixture()
+
+		_, err := f.svc.ListDiagrams(ctx, teacherCaller(), domain.DiagramListFilter{Purpose: "scale"}, page)
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "purpose", valErr.Fields[0].Field)
+	})
+
+	t.Run("an admin cannot update a chord voicing diagram", func(t *testing.T) {
+		f := newDiagramFixture()
+		voicing := seedVoicing(t, f)
+		root := "G"
+
+		_, err := f.svc.UpdateDiagram(ctx, adminCaller(), voicing.ID, application.DiagramUpdate{RootNote: &root})
+
+		require.ErrorIs(t, err, domain.ErrConflict)
+		stored, getErr := f.diagrams.GetByID(ctx, voicing.ID)
+		require.NoError(t, getErr)
+		assert.Nil(t, stored.RootNote)
+	})
+
+	t.Run("a teacher updating a chord voicing diagram is refused as for any basic diagram", func(t *testing.T) {
+		f := newDiagramFixture()
+		voicing := seedVoicing(t, f)
+		root := "G"
+
+		_, err := f.svc.UpdateDiagram(ctx, teacherCaller(), voicing.ID, application.DiagramUpdate{RootNote: &root})
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("creators come from general diagrams only", func(t *testing.T) {
+		f := newDiagramFixture()
+		seedGeneral(t, f)
+		seedVoicing(t, f)
+
+		got, err := f.svc.ListDiagramCreators(ctx, adminCaller(), "")
+
+		require.NoError(t, err)
+		assert.Equal(t, []application.Creator{{UserID: adminCaller().ID, DisplayName: "Ana Admin"}}, got)
+	})
+}

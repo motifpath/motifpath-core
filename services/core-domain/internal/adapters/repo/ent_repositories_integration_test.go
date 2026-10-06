@@ -56,7 +56,7 @@ func seedDiagram(t *testing.T, ctx context.Context, client *ent.Client, instrume
 	require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, instrument))
 
 	diagram := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: instrument.ID, InstrumentIDs: []string{instrument.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "minor-pentatonic-" + uuid.NewString()},
+		ID: uuid.NewString(), InstrumentID: instrument.ID, InstrumentIDs: []string{instrument.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "minor-pentatonic-" + uuid.NewString()},
 		LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtrRepo(6), Fret: intPtrRepo(5)},

@@ -107,6 +107,42 @@ func (k DiagramKind) Valid() bool {
 	return k == DiagramKindBasic || k == DiagramKindCustom
 }
 
+// DiagramPurpose says what a Diagram is for. A chord voicing diagram is the
+// fingering of a voicing in the chord catalog: it is found through the
+// catalog rather than the diagram library, and only the catalog may change
+// it, so its fingering can't drift from the chord it was validated against.
+// Every other diagram is general.
+type DiagramPurpose string
+
+const (
+	DiagramPurposeGeneral      DiagramPurpose = "general"
+	DiagramPurposeChordVoicing DiagramPurpose = "chord_voicing"
+)
+
+// DiagramPurposeFilter narrows a diagram list by purpose. The zero value and
+// DiagramPurposeFilterAny both match every purpose.
+type DiagramPurposeFilter string
+
+const (
+	DiagramPurposeFilterGeneral      DiagramPurposeFilter = "general"
+	DiagramPurposeFilterChordVoicing DiagramPurposeFilter = "chord_voicing"
+	DiagramPurposeFilterAny          DiagramPurposeFilter = "any"
+)
+
+// Valid reports whether f is empty or a purpose filter this service knows.
+func (f DiagramPurposeFilter) Valid() bool {
+	switch f {
+	case "", DiagramPurposeFilterGeneral, DiagramPurposeFilterChordVoicing, DiagramPurposeFilterAny:
+		return true
+	}
+	return false
+}
+
+// Matches reports whether a diagram of purpose p passes f.
+func (f DiagramPurposeFilter) Matches(p DiagramPurpose) bool {
+	return f == "" || f == DiagramPurposeFilterAny || DiagramPurpose(f) == p
+}
+
 // Diagram is a prebuilt, reusable set of positions for a scale, chord or
 // similar pattern on one instrument. It stores structured positions only,
 // never a rendered image: how it looks and plays back is decided by
@@ -130,6 +166,9 @@ type Diagram struct {
 	// them, and a copy under another kind or owner is a new Diagram.
 	Kind      DiagramKind
 	CreatedBy string
+	// Purpose is set by whoever installs the diagram, never by a request:
+	// NewDiagram always makes a general one.
+	Purpose DiagramPurpose
 	// RootNote is the note this Diagram's positions are authored relative
 	// to (e.g. "A"); nil means none is recorded.
 	RootNote *string
@@ -325,6 +364,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 		Names:             localizedNames,
 		Kind:              kind,
 		CreatedBy:         createdBy,
+		Purpose:           DiagramPurposeGeneral,
 		RootNote:          rootNote,
 		LabelDisplay:      labelDisplay,
 		Color:             color,
