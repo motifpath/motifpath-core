@@ -52,6 +52,15 @@ func ParsePracticeItemKey(raw string) (PracticeItemKey, error) {
 
 func (k PracticeItemKey) String() string { return k.raw }
 
+// LayoutInstrumentID is the instrument whose fretboard a fretboard cell is on;
+// empty for the other kinds.
+func (k PracticeItemKey) LayoutInstrumentID() string {
+	if k.Kind != PracticeItemKindFretboardCell {
+		return ""
+	}
+	return k.parts[0]
+}
+
 // ExerciseID is the exercise an exercise item is about; empty for the other kinds.
 func (k PracticeItemKey) ExerciseID() string {
 	if k.Kind != PracticeItemKindExercise {

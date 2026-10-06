@@ -16,6 +16,9 @@ type PracticeReferenceReader interface {
 	// Exercises returns the exercises among ids that exist, by id.
 	Exercises(ctx context.Context, ids []string) (map[string]domain.ExerciseReference, error)
 
+	// Instruments returns the instruments among ids that exist, by id.
+	Instruments(ctx context.Context, ids []string) (map[string]domain.InstrumentReference, error)
+
 	// FluentTimes returns every version of a drill template's fluent time, none
 	// when the template has none yet.
 	FluentTimes(ctx context.Context, templateKey string) ([]domain.FluentTime, error)

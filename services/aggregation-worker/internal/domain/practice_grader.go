@@ -30,6 +30,31 @@ type GradedEvidence struct {
 	Rating           SelfRating
 	TempoBPM         *int
 	ChangesPerMinute *int
+	// AnswerKey is what a right answer was, kept with auto-graded evidence so a
+	// disputed answer can be checked from the evidence alone; nil when the grader
+	// had nothing to keep.
+	AnswerKey *AnswerKey
+}
+
+// AnswerKey is what a right answer was when an answer was graded: the asked
+// cell and its note (fretboard cells), or every option the student was shown
+// (exercises).
+type AnswerKey struct {
+	String *int
+	Fret   *int
+	// NoteName is the cell's note, spelled with sharps; any spelling of its pitch
+	// is right.
+	NoteName string
+	Options  []AnswerOption
+}
+
+// AnswerOption is an exercise option as the student was shown it. Shown is the
+// option as core keeps it in the reference snapshot, passed through untouched so
+// the evidence keeps exactly what was on screen.
+type AnswerOption struct {
+	OptionID  string
+	IsCorrect bool
+	Shown     []byte
 }
 
 // GradeResult is either evidence (Rejection empty) or a rejection.
@@ -57,6 +82,16 @@ type ExerciseReference struct {
 	OptionIDs        []string
 	CorrectOptionIDs []string
 	InstrumentIDs    []string
+	// Options is every option as it is shown, empty for a reference kept before
+	// core began keeping them.
+	Options []AnswerOption
+}
+
+// InstrumentReference is what the fretboard grader may know about an
+// instrument: the tuning that gives each cell its pitch, lowest string first.
+type InstrumentReference struct {
+	ID     string
+	Tuning []string
 }
 
 // DrillTemplateKey is the drill template the exercise's answers are timed under:
@@ -68,8 +103,9 @@ func (e ExerciseReference) DrillTemplateKey() string {
 // PracticeReference is the reference data a grade runs against. Anything an item key
 // points at that is missing here is unknown.
 type PracticeReference struct {
-	Diagrams  map[string]DiagramReference
-	Exercises map[string]ExerciseReference
+	Diagrams    map[string]DiagramReference
+	Exercises   map[string]ExerciseReference
+	Instruments map[string]InstrumentReference
 }
 
 // Grader grades raw responses to one or more item kinds under one versioned rule
@@ -82,11 +118,11 @@ type Grader interface {
 }
 
 // graderByKind is the registry: the grader for an item comes from its key's kind.
-// Fretboard cells get theirs with the fretboard drill.
 var graderByKind = map[PracticeItemKind]Grader{
-	PracticeItemKindPlayAlong:   selfRatingV1{},
-	PracticeItemKindChordChange: selfRatingV1{},
-	PracticeItemKindExercise:    exerciseOptionV1{},
+	PracticeItemKindPlayAlong:     selfRatingV1{},
+	PracticeItemKindChordChange:   selfRatingV1{},
+	PracticeItemKindExercise:      exerciseOptionV1{},
+	PracticeItemKindFretboardCell: fretboardCellV1{},
 }
 
 // GraderFor returns the grader for an item kind, and false when the worker has no
@@ -98,5 +134,5 @@ func GraderFor(kind PracticeItemKind) (Grader, bool) {
 
 // Graders lists each registered grader once.
 func Graders() []Grader {
-	return []Grader{selfRatingV1{}, exerciseOptionV1{}}
+	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}}
 }

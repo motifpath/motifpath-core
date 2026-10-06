@@ -278,6 +278,32 @@ func TestFoldEvidence_AutoGradedAnswers(t *testing.T) {
 		assert.InDelta(t, 0, f.Fluency, 1e-9)
 	})
 
+	t.Run("a cell's answer is judged against the fluent time of the way it was asked", func(t *testing.T) {
+		goal := ItemGoal{FluentTimesByResponse: map[PracticeResponseType][]FluentTime{
+			PracticeResponseNameTheNote: {{Version: 1, EffectiveFrom: october1, FluentNetMs: 3000}},
+			PracticeResponseFindTheNote: {{Version: 1, EffectiveFrom: october1, FluentNetMs: 4000}},
+		}}
+		named, found := answer(onDay(0), true, 3500), answer(onDay(0), true, 3500)
+		named.Response.Type, found.Response.Type = PracticeResponseNameTheNote, PracticeResponseFindTheNote
+
+		judgedNamed, ok := JudgeTimed(named, goal)
+		require.True(t, ok)
+		judgedFound, ok := JudgeTimed(found, goal)
+		require.True(t, ok)
+
+		assert.False(t, judgedNamed.WithinFluentTime, "3.5 s is slower than naming's 3 s")
+		assert.True(t, judgedFound.WithinFluentTime, "3.5 s is within finding's 4 s")
+	})
+
+	t.Run("right answers are counted per way of asking", func(t *testing.T) {
+		named, found, wrong := answer(onDay(0), true, 2000), answer(onDay(1), true, 2000), answer(onDay(2), false, 2000)
+		named.Response.Type, found.Response.Type, wrong.Response.Type = PracticeResponseNameTheNote, PracticeResponseFindTheNote, PracticeResponseFindTheNote
+
+		f := foldAll(t, ItemGoal{}, named, found, wrong)
+
+		assert.Equal(t, map[PracticeResponseType]int{PracticeResponseNameTheNote: 1, PracticeResponseFindTheNote: 1}, f.RightByResponse)
+	})
+
 	t.Run("an answer without its verdict is refused", func(t *testing.T) {
 		e := answer(onDay(0), true, 4000)
 		e.Correct = nil

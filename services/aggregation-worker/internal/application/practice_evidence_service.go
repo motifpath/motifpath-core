@@ -88,6 +88,11 @@ func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.P
 			return domain.PracticeReference{}, err
 		}
 	}
+	if id := key.LayoutInstrumentID(); id != "" {
+		if ref.Instruments, err = s.reference.Instruments(ctx, []string{id}); err != nil {
+			return domain.PracticeReference{}, err
+		}
+	}
 	return ref, nil
 }
 
@@ -143,13 +148,14 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 		Rating:            graded.Rating,
 		TempoBPM:          graded.TempoBPM,
 		ChangesPerMinute:  graded.ChangesPerMinute,
+		AnswerKey:         graded.AnswerKey,
 	}
 }
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
-// against its diagram's tempo, and an exercise against its type's fluent times.
-// Chord changes have no source for a target rate yet, so any clean minute counts
-// as fully fluent.
+// against its diagram's tempo, an exercise against its type's fluent times, and a
+// fretboard cell against the fluent times of each way it is asked. Chord changes
+// have no source for a target rate yet, so any clean minute counts as fully fluent.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
 	case domain.PracticeItemKindPlayAlong:
@@ -157,7 +163,17 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 	case domain.PracticeItemKindExercise:
 		fluentTimes, err := s.reference.FluentTimes(ctx, ref.Exercises[key.ExerciseID()].DrillTemplateKey())
 		return domain.ItemGoal{FluentTimes: fluentTimes}, err
-	case domain.PracticeItemKindChordChange, domain.PracticeItemKindFretboardCell:
+	case domain.PracticeItemKindFretboardCell:
+		goal := domain.ItemGoal{FluentTimesByResponse: map[domain.PracticeResponseType][]domain.FluentTime{}}
+		for _, asked := range []domain.PracticeResponseType{domain.PracticeResponseNameTheNote, domain.PracticeResponseFindTheNote} {
+			fluentTimes, err := s.reference.FluentTimes(ctx, string(domain.PracticeItemKindFretboardCell)+":"+string(asked))
+			if err != nil {
+				return domain.ItemGoal{}, err
+			}
+			goal.FluentTimesByResponse[asked] = fluentTimes
+		}
+		return goal, nil
+	case domain.PracticeItemKindChordChange:
 	}
 	return domain.ItemGoal{}, nil
 }

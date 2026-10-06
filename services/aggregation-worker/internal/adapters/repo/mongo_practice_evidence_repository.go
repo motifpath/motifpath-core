@@ -31,7 +31,11 @@ func (r *MongoPracticeEvidenceRepository) EnsureIndexes(ctx context.Context) err
 }
 
 func (r *MongoPracticeEvidenceRepository) Insert(ctx context.Context, e domain.PracticeEvidence) (bool, error) {
-	_, err := r.collection.InsertOne(ctx, toEvidenceDocument(e))
+	doc, err := toEvidenceDocument(e)
+	if err != nil {
+		return false, err
+	}
+	_, err = r.collection.InsertOne(ctx, doc)
 	if mongo.IsDuplicateKeyError(err) {
 		return false, nil
 	}
@@ -54,7 +58,9 @@ func (r *MongoPracticeEvidenceRepository) ListForItem(ctx context.Context, stude
 	}
 	evidence := make([]domain.PracticeEvidence, len(docs))
 	for i, d := range docs {
-		evidence[i] = d.toDomain()
+		if evidence[i], err = d.toDomain(); err != nil {
+			return nil, err
+		}
 	}
 	return evidence, nil
 }

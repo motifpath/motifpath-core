@@ -39,6 +39,8 @@ type PracticeEvidence struct {
 	Rating            SelfRating
 	TempoBPM          *int
 	ChangesPerMinute  *int
+	// AnswerKey is what a right answer was, for auto-graded evidence.
+	AnswerKey *AnswerKey
 }
 
 // ItemGoal is what fluency is measured against: the tempo a play-along is played
@@ -49,6 +51,10 @@ type ItemGoal struct {
 	TargetChangesPerMinute *int
 	// FluentTimes are every version of the item's drill template fluent time.
 	FluentTimes []FluentTime
+	// FluentTimesByResponse, when set, holds the fluent times of an item asked more
+	// than one way (a fretboard cell named or found), by the way it was asked; an
+	// answer is judged by its own.
+	FluentTimesByResponse map[PracticeResponseType][]FluentTime
 }
 
 // FluentTime is one version of a drill template's fluent time: the time a fluent
@@ -62,9 +68,24 @@ type FluentTime struct {
 
 // FluentTimeAt is the version in force at t, and false when t is before the first.
 func (g ItemGoal) FluentTimeAt(t time.Time) (FluentTime, bool) {
+	return versionAt(g.FluentTimes, t)
+}
+
+// fluentTimeAt is the version of e's fluent time in force when e was given: the
+// fluent time of the way e was asked when the item is asked more than one way.
+func (g ItemGoal) fluentTimeAt(e PracticeEvidence) (FluentTime, bool) {
+	if g.FluentTimesByResponse != nil {
+		return versionAt(g.FluentTimesByResponse[e.Response.Type], e.OccurredAt)
+	}
+	return versionAt(g.FluentTimes, e.OccurredAt)
+}
+
+// versionAt is the version of versions in force at t, and false when t is before
+// the first.
+func versionAt(versions []FluentTime, t time.Time) (FluentTime, bool) {
 	var inForce FluentTime
 	found := false
-	for _, v := range g.FluentTimes {
+	for _, v := range versions {
 		if !v.EffectiveFrom.After(t) && (!found || v.EffectiveFrom.After(inForce.EffectiveFrom)) {
 			inForce, found = v, true
 		}
@@ -89,7 +110,7 @@ func JudgeTimed(e PracticeEvidence, goal ItemGoal) (TimedJudgement, bool) {
 	if e.LatencyMs == nil {
 		return TimedJudgement{}, false
 	}
-	fluent, ok := goal.FluentTimeAt(e.OccurredAt)
+	fluent, ok := goal.fluentTimeAt(e)
 	if !ok {
 		return TimedJudgement{}, false
 	}
@@ -146,6 +167,9 @@ type ItemFold struct {
 	// last teacher review: the edge above which a take that isn't clean explores.
 	BestCleanBPM         *int
 	BestChangesPerMinute *int
+	// RightByResponse counts the right answers by the way the item was asked, so
+	// an item asked more than one way can next be asked the way it knows least.
+	RightByResponse map[PracticeResponseType]int
 }
 
 // Level is the level the evidence has earned, before any lapse is applied.
@@ -209,6 +233,10 @@ func foldAnswer(f ItemFold, e PracticeEvidence, goal ItemGoal) (ItemFold, error)
 	judged, timed := JudgeTimed(e, goal)
 	r := reading{outcome: outcomeMiss, judgesFluency: timed}
 	if *e.Correct {
+		if f.RightByResponse == nil {
+			f.RightByResponse = map[PracticeResponseType]int{}
+		}
+		f.RightByResponse[e.Response.Type]++
 		r.outcome, r.accuracy, r.fluency = outcomeHit, 1, 1
 		if timed && judged.NetMs > 0 {
 			r.fluency = math.Min(1, float64(judged.FluentTime.FluentNetMs)/float64(judged.NetMs))

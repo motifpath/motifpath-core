@@ -31,8 +31,22 @@ var playAlongKey = "play_along:" + pentatonic
 type fakeReference struct {
 	diagrams    map[string]domain.DiagramReference
 	exercises   map[string]domain.ExerciseReference
+	instruments map[string]domain.InstrumentReference
 	fluentTimes map[string][]domain.FluentTime
 	err         error
+}
+
+func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	found := map[string]domain.InstrumentReference{}
+	for _, id := range ids {
+		if i, ok := f.instruments[id]; ok {
+			found[id] = i
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
@@ -157,8 +171,13 @@ func newPracticeFixture() *practiceFixture {
 			exercises: map[string]domain.ExerciseReference{
 				minorThird: {ID: minorThird, ExerciseType: "text_response", OptionIDs: []string{wrongOption, rightOption}, CorrectOptionIDs: []string{rightOption}},
 			},
+			instruments: map[string]domain.InstrumentReference{
+				guitarLayout: {ID: guitarLayout, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}},
+			},
 			fluentTimes: map[string][]domain.FluentTime{
-				"exercise:text_response": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+				"exercise:text_response":       {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+				"fretboard_cell:name_the_note": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
+				"fretboard_cell:find_the_note": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
 			},
 		},
 		evidence: &fakeEvidence{},
@@ -267,6 +286,64 @@ func TestPracticeEvidenceService_GradesAndFoldsAnExerciseAnswer(t *testing.T) {
 	assert.InDelta(t, 0.75, fold.Fluency, 1e-9)
 }
 
+const guitarLayout = "6ea2d087-ab9c-59dc-9657-8546025414d2"
+
+// cellAnswer is alice's answer to the guitar cell on string 5, fret 3 (a C), after
+// a tap check of 300 ms.
+func cellAnswer(eventID string, at time.Time, response domain.PracticeResponse) domain.PracticeAnswer {
+	tap := 300
+	return domain.PracticeAnswer{
+		EventID: eventID, StudentID: alice, OccurredAt: at, PracticeSessionID: "5e550000-0000-4000-8000-000000000001",
+		ItemKey: "fretboard_cell:" + guitarLayout + ":5:3", Response: response, TapMs: &tap,
+	}
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsAFretboardCellAnswer(t *testing.T) {
+	latency := 3500
+
+	t.Run("a named note is graded, keeps its answer key and is judged by naming's fluent time", func(t *testing.T) {
+		f := newPracticeFixture()
+		answer := cellAnswer("e0000000-0000-4000-8000-0000000000c1", monday, domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		require.Len(t, f.evidence.stored, 1)
+		e := f.evidence.stored[0]
+		assert.Equal(t, "fretboard_cell.v1", e.GraderID)
+		require.NotNil(t, e.Correct)
+		assert.True(t, *e.Correct)
+		require.NotNil(t, e.AnswerKey)
+		assert.Equal(t, "C", e.AnswerKey.NoteName)
+		fold, ok := f.fold(t, answer.ItemKey)
+		require.True(t, ok)
+		// 3500 ms less the 300 ms tap is 3200 ms against naming's 3000 ms.
+		assert.InDelta(t, 3000.0/3200, fold.Fluency, 1e-9)
+		assert.Equal(t, 1, fold.RightByResponse[domain.PracticeResponseNameTheNote])
+	})
+
+	t.Run("a found note is judged by finding's fluent time", func(t *testing.T) {
+		f := newPracticeFixture()
+		five, three := 5, 3
+		answer := cellAnswer("e0000000-0000-4000-8000-0000000000c2", monday, domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: &five, Fret: &three, LatencyMs: &latency})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		fold, ok := f.fold(t, answer.ItemKey)
+		require.True(t, ok)
+		assert.InDelta(t, 1, fold.Fluency, 1e-9, "3200 ms is within finding's 4000 ms")
+	})
+
+	t.Run("a cell on an instrument the snapshot doesn't know stores nothing", func(t *testing.T) {
+		f := newPracticeFixture()
+		delete(f.reference.instruments, guitarLayout)
+
+		require.NoError(t, f.service.Process(context.Background(), cellAnswer("e0000000-0000-4000-8000-0000000000c3", monday,
+			domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency})))
+
+		assert.Empty(t, f.evidence.stored)
+	})
+}
+
 func TestPracticeEvidenceService_AWrongExerciseAnswerIsAMiss(t *testing.T) {
 	f := newPracticeFixture()
 
@@ -301,11 +378,9 @@ func TestPracticeEvidenceService_StoresNothingWhenItCannotGrade(t *testing.T) {
 		{"an option the exercise doesn't have", func() domain.PracticeAnswer {
 			return challengeAnswer("e0000000-0000-4000-8000-000000000001", monday, missingDiag, 3000)
 		}},
-		{"the item kind has no grader yet", func() domain.PracticeAnswer {
-			latency := 1800
+		{"a fretboard cell's response doesn't fit its item", func() domain.PracticeAnswer {
 			a := ratedTake("e0000000-0000-4000-8000-000000000001", monday, domain.SelfRatingClean, 90)
 			a.ItemKey = "fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3"
-			a.Response = domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency}
 			return a
 		}},
 		{"the item key is malformed", func() domain.PracticeAnswer {
