@@ -66,6 +66,9 @@ type PracticeItemState struct {
 	// BestCleanBPM is the best tempo rated clean since the latest teacher
 	// review; nil with no clean take.
 	BestCleanBPM *int
+	// RightByResponse counts the right answers by the way the item was
+	// asked, such as name_the_note; nil before any.
+	RightByResponse map[string]int
 }
 
 // Stale reports whether s was folded under mastery rules older than these.
