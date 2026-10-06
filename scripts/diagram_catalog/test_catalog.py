@@ -64,6 +64,65 @@ class CatalogTests(unittest.TestCase):
         d = next(e for e in self.entries if e['key'] == 'arpeggio/dim7/C/frets-0-12')
         self.assertEqual({p['note_name'] for p in d['positions']}, {'C', 'Eb', 'Gb', 'Bbb'})
 
+    def test_playbacks_by_family(self):
+        ascending = {'caged-window', 'pentatonic-box', '3nps'}
+        for e in self.entries:
+            roles = [p['playback_id'] for p in e['playbacks']]
+            if e['family'] == 'caged':
+                expected = ['strum-down', 'arpeggio']
+            elif e['family'] in ascending:
+                expected = ['ascending']
+            else:
+                expected = []
+            self.assertEqual(roles, [catalog.stable_id(f"{e['key']}/playback/{role}") for role in expected], e['key'])
+            self.assertEqual(e['default_playback_id'], roles[0] if roles else None, e['key'])
+            self.assertNotIn('sequence', e)
+            self.assertNotIn('tempo_bpm', e)
+
+    def test_playback_names_tempo_and_meter(self):
+        names = {
+            'strum-down': {'en': 'Strum down', 'pt_BR': 'Batida para baixo'},
+            'arpeggio': {'en': 'Arpeggio', 'pt_BR': 'Arpejo'},
+            'ascending': {'en': 'Ascending', 'pt_BR': 'Ascendente'},
+        }
+        grip = next(e for e in self.entries if e['family'] == 'caged')
+        window = next(e for e in self.entries if e['family'] == 'caged-window')
+        for e, roles in ((grip, ['strum-down', 'arpeggio']), (window, ['ascending'])):
+            for playback, role in zip(e['playbacks'], roles):
+                self.assertEqual(playback['names'], names[role])
+                self.assertEqual(playback['tempo_bpm'], 60)
+                self.assertEqual(playback['time_signature'], {'beats': 4, 'beat_value': 4})
+
+    def test_a_grip_strums_down_then_arpeggiates_from_its_lowest_pitch(self):
+        grip = next(e for e in self.entries if e['key'] == 'caged/C/C/0')
+        by_id = {p['position_id']: p for p in grip['positions']}
+        lowest_first = sorted(grip['positions'], key=lambda p: catalog.TUNING[6-p['string']] + p['fret'])
+        strum, arpeggio = grip['playbacks']
+        self.assertEqual(strum['steps'], [{'position_ids': [p['position_id'] for p in lowest_first], 'value': {'num': 1, 'den': 1}, 'strum': 'down'}])
+        self.assertEqual(arpeggio['steps'], [{'position_ids': [p['position_id']], 'value': {'num': 1, 'den': 4}, 'strum': 'none'} for p in lowest_first])
+        self.assertEqual(set(by_id), {i for step in strum['steps'] for i in step['position_ids']})
+
+    def test_a_window_ascends_through_every_position(self):
+        for family in ('caged-window', 'pentatonic-box', '3nps'):
+            e = next(e for e in self.entries if e['family'] == family)
+            pitches = {p['position_id']: catalog.TUNING[6-p['string']] + p['fret'] for p in e['positions']}
+            steps = e['playbacks'][0]['steps']
+            self.assertEqual(len(steps), len(e['positions']), family)
+            played = [pitches[step['position_ids'][0]] for step in steps]
+            self.assertEqual(played, sorted(played), family)
+
+    def test_validation_rejects_a_broken_playback(self):
+        grip = next(e for e in self.entries if e['family'] == 'caged')
+        broken = json.loads(json.dumps(grip)); broken['playbacks'][0]['steps'][0]['position_ids'].append('not-a-position')
+        with self.assertRaises(ValueError): catalog.validate([broken])
+        broken = json.loads(json.dumps(grip)); broken['default_playback_id'] = 'not-a-playback'
+        with self.assertRaises(ValueError): catalog.validate([broken])
+        broken = json.loads(json.dumps(grip)); broken['playbacks'][1]['names'].pop('pt_BR')
+        with self.assertRaises(ValueError): catalog.validate([broken])
+        silent = next(e for e in self.entries if e['family'] == 'chromatic')
+        broken = json.loads(json.dumps(silent)); broken['default_playback_id'] = grip['playbacks'][0]['playback_id']
+        with self.assertRaises(ValueError): catalog.validate([broken])
+
     def test_validation_rejects_broken_translation_and_pitch(self):
         small = json.loads(json.dumps(self.entries[:1])); small[0]['names'].pop('pt_BR')
         with self.assertRaises(ValueError): catalog.validate(small)
@@ -82,8 +141,9 @@ class CatalogTests(unittest.TestCase):
         self.assertNotIn('INSERT INTO instruments', sql)
         self.assertNotIn('INSERT INTO skills', sql)
         self.assertNotIn('INSERT INTO concepts', sql)
-        self.assertIn('sequence,created_at) VALUES (', sql)
-        self.assertNotIn('sequence_index', sql)
+        self.assertIn('playbacks,default_playback_id,created_at) VALUES (', sql)
+        self.assertNotIn('sequence', sql)
+        self.assertNotIn('tempo_bpm', sql.split('VALUES')[0])
         self.assertIn('linked_at', sql)
         self.assertNotIn('DELETE FROM', sql)
         self.assertNotIn('ON CONFLICT', sql)
