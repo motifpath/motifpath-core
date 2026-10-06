@@ -108,8 +108,9 @@ func (s PracticeItemState) ShownLevel(now time.Time) KnowledgeLevel {
 type PracticeItemKind string
 
 const (
-	PracticeItemKindPlayAlong PracticeItemKind = "play_along"
-	PracticeItemKindExercise  PracticeItemKind = "exercise"
+	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
+	PracticeItemKindExercise      PracticeItemKind = "exercise"
+	PracticeItemKindFretboardCell PracticeItemKind = "fretboard_cell"
 )
 
 // PlayAlongItemKey is the item key of playing diagramID along with its

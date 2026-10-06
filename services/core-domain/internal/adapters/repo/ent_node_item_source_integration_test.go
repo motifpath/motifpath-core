@@ -5,12 +5,16 @@ package repo
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/domain"
 )
 
@@ -134,5 +138,92 @@ func TestEntNodeItemSource_ClassifiedItems(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+}
+
+// TestEntNodeItemSource_FretboardCells reads the cells of the catalog the
+// migrations install, so it migrates an empty database rather than creating
+// the bare schema.
+func TestEntNodeItemSource_FretboardCells(t *testing.T) {
+	ctx := context.Background()
+	db := startMigrationPostgres(t, ctx)
+	for _, file := range migrationFiles(t) {
+		_, err := execMigrationFile(ctx, db, file)
+		require.NoError(t, err)
+	}
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	source := NewEntNodeItemSource(client)
+	rootStrings := catalogID("knowledge-node/find-notes-root-strings")
+	topStrings := catalogID("knowledge-node/find-notes-top-strings")
+
+	// cells keeps the fretboard cells of items, by the skill they serve.
+	cells := func(items []domain.ClassifiedItem) map[string][]string {
+		bySkill := map[string][]string{}
+		for _, item := range items {
+			if strings.HasPrefix(item.ItemKey, string(domain.PracticeItemKindFretboardCell)+":") {
+				require.Len(t, item.NodeIDs, 1, item.ItemKey)
+				bySkill[item.NodeIDs[0]] = append(bySkill[item.NodeIDs[0]], item.ItemKey)
+			}
+		}
+		return bySkill
+	}
+
+	t.Run("the guitar has the catalog's 72 cells, on its own layout, under their skills", func(t *testing.T) {
+		got, err := source.ClassifiedItems(ctx, acousticGuitarID)
+
+		require.NoError(t, err)
+		bySkill := cells(got)
+		assert.Len(t, bySkill[rootStrings], 24)
+		assert.Len(t, bySkill[topStrings], 48)
+		assert.Contains(t, bySkill[rootStrings], domain.FretboardCellItemKey(acousticGuitarID, 6, 0))
+		assert.Contains(t, bySkill[topStrings], domain.FretboardCellItemKey(acousticGuitarID, 1, 11))
+	})
+
+	t.Run("an electric guitar shares the guitar layout's cells, with the same item keys", func(t *testing.T) {
+		guitar, err := source.ClassifiedItems(ctx, acousticGuitarID)
+		require.NoError(t, err)
+		electric, err := source.ClassifiedItems(ctx, electricGuitarID)
+		require.NoError(t, err)
+
+		assert.Equal(t, cells(guitar), cells(electric))
+	})
+
+	t.Run("the bass has its own layout's 48 cells", func(t *testing.T) {
+		got, err := source.ClassifiedItems(ctx, electricBassID)
+
+		require.NoError(t, err)
+		bySkill := cells(got)
+		assert.Len(t, bySkill[rootStrings], 24)
+		assert.Len(t, bySkill[topStrings], 24)
+		assert.Contains(t, bySkill[rootStrings], domain.FretboardCellItemKey(electricBassID, 4, 0))
+	})
+
+	t.Run("an instrument of another geometry has no cells", func(t *testing.T) {
+		seven := frettedInstrument()
+		seven.StringCount = intPtr(7)
+		seven.Tuning = []string{"B1", "E2", "A2", "D3", "G3", "B3", "E4"}
+		require.NoError(t, NewEntInstrumentRepository(client).Create(ctx, seven))
+
+		got, err := source.ClassifiedItems(ctx, seven.ID)
+
+		require.NoError(t, err)
+		assert.Empty(t, cells(got))
+	})
+
+	t.Run("no instrument has no cells", func(t *testing.T) {
+		got, err := source.ClassifiedItems(ctx, "")
+
+		require.NoError(t, err)
+		assert.Empty(t, cells(got))
+	})
+
+	t.Run("a range on a string its layout doesn't have is refused, not half-generated", func(t *testing.T) {
+		_, err := db.ExecContext(ctx, `INSERT INTO fretboard_cell_ranges (id, skill_id, layout_instrument_id, strings, from_fret, to_fret)
+			VALUES ($1, $2, $3, '[5]', 0, 11)`, uuid.NewString(), catalogID("knowledge-node/find-octaves"), electricBassID)
+		require.NoError(t, err)
+
+		_, err = source.ClassifiedItems(ctx, electricBassID)
+
+		assert.ErrorIs(t, err, domain.ErrInvalidDrillCatalog)
 	})
 }
