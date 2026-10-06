@@ -76,6 +76,46 @@ func NewMongoPracticeActivityReader(db *mongo.Database) *MongoPracticeActivityRe
 	}
 }
 
+// feltRatedCountDocument is one template's count from FeltRatedSessions'
+// aggregation.
+type feltRatedCountDocument struct {
+	TemplateKey string `bson:"_id"`
+	Sessions    int    `bson:"sessions"`
+}
+
+// FeltRatedSessions counts, per template, the sessions whose
+// felt_rated_templates hold it: the worker keeps only the felt ratings of
+// templates a session practised there, each once.
+func (r *MongoPracticeActivityReader) FeltRatedSessions(ctx context.Context, templateKeys []string) (map[string]int, error) {
+	counts := map[string]int{}
+	if len(templateKeys) == 0 {
+		return counts, nil
+	}
+	asked := bson.D{{Key: "felt_rated_templates", Value: bson.D{{Key: "$in", Value: templateKeys}}}}
+	cursor, err := r.sessions.Aggregate(ctx, mongo.Pipeline{
+		{{Key: "$match", Value: asked}},
+		{{Key: "$unwind", Value: "$felt_rated_templates"}},
+		{{Key: "$match", Value: asked}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$felt_rated_templates"},
+			{Key: "sessions", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var doc feltRatedCountDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		counts[doc.TemplateKey] = doc.Sessions
+	}
+	return counts, cursor.Err()
+}
+
 // LastTapCheck reads the student's newest tap check by done_at, the
 // student's own clock, on the worker's student_id + done_at index.
 func (r *MongoPracticeActivityReader) LastTapCheck(ctx context.Context, studentID string) (time.Time, bool, error) {

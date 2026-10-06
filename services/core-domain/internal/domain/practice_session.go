@@ -166,6 +166,54 @@ type PracticeSessionItem struct {
 	FretboardCell *PlannedFretboardCell
 }
 
+// DrillTemplateKey is the timed drill template answering the item
+// practises: a fretboard cell's way of being asked, or an exercise's type.
+// A play-along is rated, not timed, so it practises none ("").
+func (i PracticeSessionItem) DrillTemplateKey() string {
+	switch {
+	case i.FretboardCell != nil:
+		return string(PracticeItemKindFretboardCell) + ":" + string(i.FretboardCell.Drill)
+	case i.Exercise != nil:
+		return string(PracticeItemKindExercise) + ":" + string(i.Exercise.ExerciseType)
+	}
+	return ""
+}
+
+// PlanDrillTemplates lists the timed drill templates items practise, each
+// once, in plan order.
+func PlanDrillTemplates(items []PracticeSessionItem) []string {
+	var templates []string
+	for _, item := range items {
+		if key := item.DrillTemplateKey(); key != "" && !slices.Contains(templates, key) {
+			templates = append(templates, key)
+		}
+	}
+	return templates
+}
+
+// MaxFeltQuestions is the most "How did it feel?" questions a session asks,
+// so the end of a session stays short.
+const MaxFeltQuestions = 2
+
+// FeltQuestions picks the timed drill templates of items to ask "How did it
+// feel?" about: those with the fewest felt-rated sessions so far, fewest
+// first, MaxFeltQuestions at most. Felt ratings calibrate a template's fluent
+// time, so the least calibrated gain the most from one more. A tie keeps the
+// plan's order. A plan with no timed drill asks none.
+func FeltQuestions(items []PracticeSessionItem, feltRatedSessions map[string]int) []string {
+	templates := PlanDrillTemplates(items)
+	slices.SortStableFunc(templates, func(a, b string) int {
+		return feltRatedSessions[a] - feltRatedSessions[b]
+	})
+	if len(templates) > MaxFeltQuestions {
+		templates = templates[:MaxFeltQuestions]
+	}
+	if templates == nil {
+		return []string{}
+	}
+	return templates
+}
+
 // PlannedFretboardCell is a fretboard cell picked for a session and the way
 // it is asked.
 type PlannedFretboardCell struct {
@@ -181,6 +229,10 @@ type PracticeSessionPlan struct {
 	InstrumentID *string
 	Minutes      int
 	Items        []PracticeSessionItem
+	// FeltQuestions are the timed drill templates the client asks "How did
+	// it feel?" about at the end, if the student practised them: see
+	// FeltQuestions.
+	FeltQuestions []string
 	// TapCheckDue is true when the client should offer a tap check before
 	// the first item: see TapCheckDue.
 	TapCheckDue bool

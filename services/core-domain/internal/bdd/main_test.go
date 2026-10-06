@@ -116,4 +116,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerFretboardCellSteps(sc, w)
 	registerFretboardMapSteps(sc, w)
 	registerTapCheckSteps(sc, w)
+	registerFeltQuestionSteps(sc, w)
 }

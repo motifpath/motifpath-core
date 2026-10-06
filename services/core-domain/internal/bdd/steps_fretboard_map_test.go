@@ -28,6 +28,7 @@ func registerFretboardMapSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has named the note of the "([^"]+)" cell on string (\d+), fret (\d+) correctly on 2 different days$`, w.namedCellOnTwoDays)
 	sc.Step(`^found it correctly on a third day$`, w.foundCellOnThirdDay)
 	sc.Step(`^"([^"]+)"'s "([^"]+)" cell on string (\d+), fret (\d+) is fluent and its review was due yesterday$`, w.cellFluentDueYesterday)
+	sc.Step(`^"([^"]+)"'s "([^"]+)" cell on string (\d+), fret (\d+) is fluent, in box (\d+), and its review is (\d+) days overdue$`, w.cellFluentOverdue)
 
 	sc.Step(`^"([^"]+)" reads their fretboard map for "([^"]+)"$`, w.readsFretboardMap)
 	sc.Step(`^"([^"]+)" reads their fretboard map for an instrument that doesn't exist$`, w.readsFretboardMapForMissingInstrument)
@@ -95,6 +96,12 @@ func (w *world) foundCellOnThirdDay() error {
 func (w *world) cellFluentDueYesterday(name, layout string, str, fret int) error {
 	due := fixedNow.Add(-24 * time.Hour)
 	w.putCellState(name, layout, str, fret, domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: &due, LastAt: &due})
+	return nil
+}
+
+func (w *world) cellFluentOverdue(name, layout string, str, fret, box, days int) error {
+	due := fixedNow.AddDate(0, 0, -days)
+	w.putCellState(name, layout, str, fret, domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: box, DueAt: &due, LastAt: &due})
 	return nil
 }
 

@@ -142,3 +142,80 @@ func TestTapCheckDue(t *testing.T) {
 		})
 	}
 }
+
+func TestPracticeSessionItemDrillTemplateKey(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		item domain.PracticeSessionItem
+		want string
+	}{
+		{"a fretboard cell is timed by the way it is asked",
+			domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell, FretboardCell: &domain.PlannedFretboardCell{Drill: domain.FretboardDrillFindTheNote}},
+			"fretboard_cell:find_the_note"},
+		{"an exercise is timed by its type",
+			domain.PracticeSessionItem{Kind: domain.PracticeItemKindExercise, Exercise: &domain.Exercise{ExerciseType: domain.ExerciseTypeTextResponse}},
+			"exercise:text_response"},
+		{"a play-along is rated, not timed",
+			domain.PracticeSessionItem{Kind: domain.PracticeItemKindPlayAlong, PlayAlong: &domain.PlannedPlayAlong{}},
+			""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.item.DrillTemplateKey())
+		})
+	}
+}
+
+func TestFeltQuestions(t *testing.T) {
+	cell := func(drill domain.FretboardDrill) domain.PracticeSessionItem {
+		return domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell, FretboardCell: &domain.PlannedFretboardCell{Drill: drill}}
+	}
+	exercise := func(exerciseType domain.ExerciseType) domain.PracticeSessionItem {
+		return domain.PracticeSessionItem{Kind: domain.PracticeItemKindExercise, Exercise: &domain.Exercise{ExerciseType: exerciseType}}
+	}
+	playAlong := domain.PracticeSessionItem{Kind: domain.PracticeItemKindPlayAlong, PlayAlong: &domain.PlannedPlayAlong{}}
+	name, find := cell(domain.FretboardDrillNameTheNote), cell(domain.FretboardDrillFindTheNote)
+	text := exercise(domain.ExerciseTypeTextResponse)
+
+	for _, tc := range []struct {
+		name      string
+		items     []domain.PracticeSessionItem
+		feltRated map[string]int
+		want      []string
+	}{
+		{"the two templates with the fewest felt-rated sessions, fewest first",
+			[]domain.PracticeSessionItem{name, find, text, name},
+			map[string]int{"fretboard_cell:name_the_note": 40, "fretboard_cell:find_the_note": 12, "exercise:text_response": 3},
+			[]string{"exercise:text_response", "fretboard_cell:find_the_note"}},
+		{"a template never felt-rated has none",
+			[]domain.PracticeSessionItem{name, text},
+			map[string]int{"fretboard_cell:name_the_note": 1},
+			[]string{"exercise:text_response", "fretboard_cell:name_the_note"}},
+		{"a tie keeps the plan's order",
+			[]domain.PracticeSessionItem{text, find, name},
+			map[string]int{},
+			[]string{"exercise:text_response", "fretboard_cell:find_the_note"}},
+		{"a single timed template is the only question",
+			[]domain.PracticeSessionItem{playAlong, find, find},
+			nil,
+			[]string{"fretboard_cell:find_the_note"}},
+		{"play-alongs are never asked about",
+			[]domain.PracticeSessionItem{playAlong},
+			nil,
+			[]string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, domain.FeltQuestions(tc.items, tc.feltRated))
+		})
+	}
+}
+
+func TestPlanDrillTemplates(t *testing.T) {
+	items := []domain.PracticeSessionItem{
+		{Kind: domain.PracticeItemKindPlayAlong, PlayAlong: &domain.PlannedPlayAlong{}},
+		{Kind: domain.PracticeItemKindExercise, Exercise: &domain.Exercise{ExerciseType: domain.ExerciseTypeImageChoice}},
+		{Kind: domain.PracticeItemKindFretboardCell, FretboardCell: &domain.PlannedFretboardCell{Drill: domain.FretboardDrillNameTheNote}},
+		{Kind: domain.PracticeItemKindExercise, Exercise: &domain.Exercise{ExerciseType: domain.ExerciseTypeImageChoice}},
+	}
+
+	assert.Equal(t, []string{"exercise:image_choice", "fretboard_cell:name_the_note"}, domain.PlanDrillTemplates(items))
+}
