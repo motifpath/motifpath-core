@@ -113,3 +113,32 @@ func TestRankStretchNodesReachesPathNeighbours(t *testing.T) {
 	assert.Equal(t, []string{"path", "parent", "child", "applied", "applier"}, domain.RankStretchNodes(nodes, standings, []string{"path"}, applies),
 		"a path skill's parent, children and applies neighbours either way are connected; a sibling and a node linked only to it are not")
 }
+
+func TestTapCheckDue(t *testing.T) {
+	now := time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
+	daysAgo := func(days int) *time.Time {
+		at := now.AddDate(0, 0, -days)
+		return &at
+	}
+	cell := domain.PracticeSessionItem{Kind: domain.PracticeItemKindFretboardCell}
+	exercise := domain.PracticeSessionItem{Kind: domain.PracticeItemKindExercise}
+	playAlong := domain.PracticeSessionItem{Kind: domain.PracticeItemKindPlayAlong}
+
+	for _, tc := range []struct {
+		name     string
+		items    []domain.PracticeSessionItem
+		lastDone *time.Time
+		want     bool
+	}{
+		{"a plan with a cell and no tap check ever", []domain.PracticeSessionItem{exercise, cell}, nil, true},
+		{"a tap check 12 days ago still stands", []domain.PracticeSessionItem{cell}, daysAgo(12), false},
+		{"a tap check exactly 30 days ago still stands", []domain.PracticeSessionItem{cell}, daysAgo(30), false},
+		{"a tap check 31 days ago is asked for again", []domain.PracticeSessionItem{cell}, daysAgo(31), true},
+		{"a plan without a cell never asks", []domain.PracticeSessionItem{exercise, playAlong}, nil, false},
+		{"an empty plan never asks", nil, nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, domain.TapCheckDue(tc.items, tc.lastDone, now))
+		})
+	}
+}

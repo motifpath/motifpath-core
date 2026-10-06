@@ -121,6 +121,43 @@ func TestMongoLearningActivityRepository(t *testing.T) {
 	assert.Equal(t, bson.NewDateTimeFromTime(completed.CompletedAt), docs[0]["completed_at"])
 }
 
+func TestMongoTapCheckRepository(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	repo := NewMongoTapCheckRepository(db)
+	require.NoError(t, repo.EnsureIndexes(ctx))
+	check := domain.TapCheck{
+		EventID: "e0000000-0000-4000-8000-0000000000f1", StudentID: studentA,
+		DoneAt: time.Date(2026, 10, 6, 9, 0, 0, 0, time.UTC), MedianTapMs: 320, TapCount: 24,
+	}
+
+	inserted, err := repo.Insert(ctx, check)
+	require.NoError(t, err)
+	assert.True(t, inserted)
+
+	again := check
+	again.EventID = "e0000000-0000-4000-8000-0000000000f2"
+	again.DoneAt = check.DoneAt.AddDate(0, 0, 31)
+	inserted, err = repo.Insert(ctx, again)
+	require.NoError(t, err)
+	assert.True(t, inserted, "doing a tap check again is another tap check")
+
+	inserted, err = repo.Insert(ctx, check)
+	require.NoError(t, err)
+	assert.False(t, inserted, "a redelivered event is stored once")
+
+	var docs []bson.M
+	cursor, err := db.Collection("tap_checks").Find(ctx, bson.D{})
+	require.NoError(t, err)
+	require.NoError(t, cursor.All(ctx, &docs))
+	require.Len(t, docs, 2)
+	assert.Equal(t, check.EventID, docs[0]["event_id"])
+	assert.Equal(t, studentA, docs[0]["student_id"])
+	assert.Equal(t, bson.NewDateTimeFromTime(check.DoneAt), docs[0]["done_at"])
+	assert.EqualValues(t, 320, docs[0]["median_tap_ms"])
+	assert.EqualValues(t, 24, docs[0]["tap_count"])
+}
+
 func TestMongoPracticeItemHistoryRepository(t *testing.T) {
 	ctx := context.Background()
 	db := mongoDatabase(t)

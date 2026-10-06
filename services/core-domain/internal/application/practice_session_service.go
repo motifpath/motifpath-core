@@ -48,6 +48,7 @@ type PracticeSessionService struct {
 	diagrams    ports.DiagramRepository
 	exercises   ports.ExerciseRepository
 	rollup      *KnowledgeRollupService
+	tapChecks   ports.TapCheckReader
 	newID       func() string
 	now         func() time.Time
 }
@@ -62,6 +63,7 @@ func NewPracticeSessionService(
 	diagrams ports.DiagramRepository,
 	exercises ports.ExerciseRepository,
 	rollup *KnowledgeRollupService,
+	tapChecks ports.TapCheckReader,
 	newID func() string,
 	now func() time.Time,
 ) *PracticeSessionService {
@@ -74,6 +76,7 @@ func NewPracticeSessionService(
 		diagrams:  diagrams,
 		exercises: exercises,
 		rollup:    rollup,
+		tapChecks: tapChecks,
 		newID:     newID,
 		now:       now,
 	}
@@ -190,12 +193,36 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		c.catchUp(p.known, takeInTurn(stretch))
 	}
 	c.neverEmpty()
-	items := c.plan()
+	return s.newPlan(ctx, caller.ID, instrumentID, minutes, c.plan())
+}
+
+// newPlan is the plan of the composed items, asking for a tap check when
+// one is due. A plan with no item is not found.
+func (s *PracticeSessionService) newPlan(ctx context.Context, studentID string, instrumentID *string, minutes int, items []domain.PracticeSessionItem) (domain.PracticeSessionPlan, error) {
 	if len(items) == 0 {
 		return domain.PracticeSessionPlan{}, fmt.Errorf("%w: nothing to practise for this session", domain.ErrNotFound)
 	}
+	tapCheckDue, err := s.tapCheckDue(ctx, studentID, items)
+	if err != nil {
+		return domain.PracticeSessionPlan{}, err
+	}
+	return domain.PracticeSessionPlan{ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items, TapCheckDue: tapCheckDue}, nil
+}
 
-	return domain.PracticeSessionPlan{ID: s.newID(), InstrumentID: instrumentID, Minutes: minutes, Items: items}, nil
+// tapCheckDue reports whether the plan of items asks the student for a tap
+// check, reading their tap checks only when it has a fretboard cell.
+func (s *PracticeSessionService) tapCheckDue(ctx context.Context, studentID string, items []domain.PracticeSessionItem) (bool, error) {
+	if !domain.TapCheckDue(items, nil, s.now()) {
+		return false, nil
+	}
+	lastDone, found, err := s.tapChecks.LastTapCheck(ctx, studentID)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+	return domain.TapCheckDue(items, &lastDone, s.now()), nil
 }
 
 // sessionInstruments lists the instruments a session covers: the one in

@@ -46,6 +46,24 @@ func (f *fakeSessions) Put(_ context.Context, s domain.PracticeSession) error {
 	return nil
 }
 
+type fakeTapChecks struct {
+	stored    []domain.TapCheck
+	insertErr error
+}
+
+func (f *fakeTapChecks) Insert(_ context.Context, c domain.TapCheck) (bool, error) {
+	if f.insertErr != nil {
+		return false, f.insertErr
+	}
+	for _, s := range f.stored {
+		if s.EventID == c.EventID {
+			return false, nil
+		}
+	}
+	f.stored = append(f.stored, c)
+	return true, nil
+}
+
 type fakeLearning struct {
 	stored    []domain.LearningActivity
 	insertErr error
@@ -127,20 +145,21 @@ func lessonCompletedEvent(eventID string, at time.Time) domain.TrackingEvent {
 }
 
 func newActivity() *application.ActivityService {
-	return application.NewActivityService(newFakeSessions(), &fakeLearning{})
+	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{})
 }
 
 type activityFixture struct {
-	sessions *fakeSessions
-	learning *fakeLearning
-	practice *practiceFixture
-	service  *application.ProcessEventService
+	sessions  *fakeSessions
+	learning  *fakeLearning
+	tapChecks *fakeTapChecks
+	practice  *practiceFixture
+	service   *application.ProcessEventService
 }
 
 func newActivityFixture() *activityFixture {
-	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, practice: newPracticeFixture()}
+	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, practice: newPracticeFixture()}
 	f.service = application.NewProcessEventService(newFakeRepository(), f.practice.service,
-		application.NewActivityService(f.sessions, f.learning))
+		application.NewActivityService(f.sessions, f.learning, f.tapChecks))
 	return f
 }
 
@@ -323,6 +342,8 @@ func TestActivityService_ReturnsStorageFailuresForARetry(t *testing.T) {
 			answeredEvent("e0000000-0000-4000-8000-000000000001", clock(18, 3), sessionOne)},
 		{"keeping a completion", func(f *activityFixture) { f.learning.insertErr = boom },
 			lessonCompletedEvent("e0000000-0000-4000-8000-0000000000c1", clock(19, 30))},
+		{"keeping a tap check", func(f *activityFixture) { f.tapChecks.insertErr = boom },
+			tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320)},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -364,4 +385,64 @@ func TestActivityService_KeepsEachSessionsPractisedDrillsAndFeltRatings(t *testi
 	assert.Equal(t, ended.SessionEnd.FeltRatings, s.End.FeltRatings)
 	assert.Equal(t, []string{"fretboard_cell:name_the_note"}, s.FeltRatedTemplates())
 	assert.Equal(t, clock(18, 11), s.LastEventAt)
+}
+
+func tapCheckEvent(eventID string, at time.Time, medianMs int) domain.TrackingEvent {
+	return domain.TrackingEvent{
+		EventType:  domain.EventTypePracticeTapCheckCompleted,
+		EventID:    eventID,
+		StudentID:  alice,
+		OccurredAt: at,
+		TapCheck:   &domain.TapCheck{EventID: eventID, StudentID: alice, DoneAt: at, MedianTapMs: medianMs, TapCount: 24},
+	}
+}
+
+func TestActivityService_KeepsEveryTapCheck(t *testing.T) {
+	cases := []struct {
+		name   string
+		events []domain.TrackingEvent
+		want   []domain.TapCheck
+	}{
+		{
+			name:   "a tap check is kept with when it was done, its median and its taps",
+			events: []domain.TrackingEvent{tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320)},
+			want: []domain.TapCheck{
+				{EventID: "e0000000-0000-4000-8000-0000000000f1", StudentID: alice, DoneAt: clock(9, 0), MedianTapMs: 320, TapCount: 24},
+			},
+		},
+		{
+			name: "doing it again is another tap check",
+			events: []domain.TrackingEvent{
+				tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0).AddDate(0, 0, -31), 380),
+				tapCheckEvent("e0000000-0000-4000-8000-0000000000f2", clock(9, 0), 320),
+			},
+			want: []domain.TapCheck{
+				{EventID: "e0000000-0000-4000-8000-0000000000f1", StudentID: alice, DoneAt: clock(9, 0).AddDate(0, 0, -31), MedianTapMs: 380, TapCount: 24},
+				{EventID: "e0000000-0000-4000-8000-0000000000f2", StudentID: alice, DoneAt: clock(9, 0), MedianTapMs: 320, TapCount: 24},
+			},
+		},
+		{
+			name: "the same event delivered twice is kept once",
+			events: []domain.TrackingEvent{
+				tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320),
+				tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320),
+			},
+			want: []domain.TapCheck{
+				{EventID: "e0000000-0000-4000-8000-0000000000f1", StudentID: alice, DoneAt: clock(9, 0), MedianTapMs: 320, TapCount: 24},
+			},
+		},
+		{
+			name:   "a tap check event without its fields changes nothing",
+			events: []domain.TrackingEvent{{EventType: domain.EventTypePracticeTapCheckCompleted, EventID: "e0000000-0000-4000-8000-0000000000f1", StudentID: alice}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newActivityFixture()
+
+			f.handle(t, c.events...)
+
+			assert.Equal(t, c.want, f.tapChecks.stored)
+		})
+	}
 }

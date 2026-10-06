@@ -166,9 +166,15 @@ func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logge
 	if err := learningRepo.EnsureIndexes(ctx); err != nil {
 		return nil, nil, fmt.Errorf("ensure learning activity indexes: %w", err)
 	}
+	tapCheckRepo := repo.NewMongoTapCheckRepository(db)
+	// Fatal on failure: the unique event_id index is what keeps a redelivered
+	// tap check once.
+	if err := tapCheckRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure tap check indexes: %w", err)
+	}
 
 	service := application.NewProcessEventService(completionRepo, practice,
-		application.NewActivityService(sessionRepo, learningRepo))
+		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo))
 	return completionRepo, service, nil
 }
 

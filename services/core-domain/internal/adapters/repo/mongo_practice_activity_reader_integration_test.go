@@ -121,4 +121,32 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, none)
 	})
+
+	t.Run("the newest tap check is the one with the latest done_at", func(t *testing.T) {
+		tapCheck := func(studentID, eventID string, doneAt time.Time) bson.D {
+			return bson.D{
+				{Key: "event_id", Value: eventID},
+				{Key: "student_id", Value: studentID},
+				{Key: "done_at", Value: doneAt},
+				{Key: "median_tap_ms", Value: 320},
+				{Key: "tap_count", Value: 24},
+			}
+		}
+		_, err := db.Collection("tap_checks").InsertMany(ctx, []any{
+			tapCheck("alice", "t1", at(1, 9)),
+			tapCheck("alice", "t2", at(5, 9)),
+			tapCheck("alice", "t3", at(3, 9)),
+			tapCheck("bob", "t4", at(6, 9)),
+		})
+		require.NoError(t, err)
+
+		got, found, err := reader.LastTapCheck(ctx, "alice")
+		require.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, at(5, 9), got)
+
+		_, found, err = reader.LastTapCheck(ctx, "carol")
+		require.NoError(t, err)
+		assert.False(t, found, "a student who never did a tap check has none")
+	})
 }

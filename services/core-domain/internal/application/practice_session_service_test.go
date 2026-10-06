@@ -51,6 +51,23 @@ func (f *fakePracticeItemStateReader) put(studentID string, s domain.PracticeIte
 	f.states[studentID][s.ItemKey] = s
 }
 
+// fakeTapCheckReader is an in-memory ports.TapCheckReader holding each
+// student's newest tap check.
+type fakeTapCheckReader struct {
+	last  map[string]time.Time
+	err   error
+	reads int
+}
+
+func (f *fakeTapCheckReader) LastTapCheck(_ context.Context, studentID string) (time.Time, bool, error) {
+	f.reads++
+	if f.err != nil {
+		return time.Time{}, false, f.err
+	}
+	at, ok := f.last[studentID]
+	return at, ok, nil
+}
+
 const (
 	practiceGuitar = "guitar"
 	practiceBass   = "electric-bass"
@@ -69,6 +86,7 @@ type practiceFixture struct {
 	states         *fakePracticeItemStateReader
 	learningPaths  *fakeLearningPathRepository
 	courseVersions *fakeCourseVersionRepository
+	tapChecks      *fakeTapCheckReader
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
 	now       time.Time
@@ -114,6 +132,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		states:         newFakePracticeItemStateReader(),
 		learningPaths:  newFakeLearningPathRepository(),
 		courseVersions: newFakeCourseVersionRepository(),
+		tapChecks:      &fakeTapCheckReader{last: map[string]time.Time{}},
 		cells:          map[string][]domain.ClassifiedItem{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
@@ -123,7 +142,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks,
 		func() string { return "session-1" },
 		now,
 	)
@@ -1200,5 +1219,60 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 5)
 
 		assert.ErrorIs(t, err, domain.ErrNotFound)
+	})
+}
+
+func TestPracticeSessionService_ComposePlanTapCheck(t *testing.T) {
+	headWithCells := func(t *testing.T) *practiceFixture {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		return f
+	}
+
+	t.Run("a plan with fretboard cells asks for a tap check when the student never did one", func(t *testing.T) {
+		f := headWithCells(t)
+
+		plan := f.composeInTheHead(t, 5)
+
+		require.NotEmpty(t, itemsOfKind(plan, domain.PracticeItemKindFretboardCell))
+		assert.True(t, plan.TapCheckDue)
+	})
+
+	t.Run("a tap check within the last 30 days isn't asked for again", func(t *testing.T) {
+		f := headWithCells(t)
+		f.tapChecks.last[studentCaller().ID] = f.now.AddDate(0, 0, -12)
+
+		assert.False(t, f.composeInTheHead(t, 5).TapCheckDue)
+	})
+
+	t.Run("a tap check older than 30 days is asked for again", func(t *testing.T) {
+		f := headWithCells(t)
+		f.tapChecks.last[studentCaller().ID] = f.now.AddDate(0, 0, -31)
+
+		assert.True(t, f.composeInTheHead(t, 5).TapCheckDue)
+	})
+
+	t.Run("a plan without fretboard cells never asks, nor reads the student's tap checks", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.exercise("name-the-root", "root-strings", 30)
+		f.playAlong("lick", "Lick", practiceGuitar, "root-strings", 100)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindFretboardCell))
+		assert.False(t, plan.TapCheckDue)
+		assert.Zero(t, f.tapChecks.reads)
+	})
+
+	t.Run("a failure reading tap checks fails the plan", func(t *testing.T) {
+		f := headWithCells(t)
+		boom := fmt.Errorf("mongo down")
+		f.tapChecks.err = boom
+
+		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
+
+		assert.ErrorIs(t, err, boom)
 	})
 }

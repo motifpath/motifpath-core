@@ -160,6 +160,14 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 			AnsweredCount:     w.AnsweredCount,
 			FeltRatings:       toFeltRatings(w.FeltRatings),
 		}
+	case domain.EventTypePracticeTapCheckCompleted:
+		event.TapCheck = &domain.TapCheck{
+			EventID:     w.EventID,
+			StudentID:   w.StudentID,
+			DoneAt:      w.OccurredAt,
+			MedianTapMs: w.MedianTapMs,
+			TapCount:    w.TapCount,
+		}
 	case domain.EventTypeLessonStarted, domain.EventTypeLessonResumed, domain.EventTypeLessonCompleted:
 		// A lesson event carries only its content node, set above.
 	}

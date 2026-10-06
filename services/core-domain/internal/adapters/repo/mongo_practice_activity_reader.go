@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -50,21 +51,46 @@ type practiceItemSnapshotDocument struct {
 	BestCleanBPM *int    `bson:"best_clean_bpm"`
 }
 
+// tapCheckDocument holds the fields this service reads from a
+// `tap_checks` document.
+type tapCheckDocument struct {
+	DoneAt time.Time `bson:"done_at"`
+}
+
 // MongoPracticeActivityReader reads the `practice_sessions`,
-// `learning_activity` and `practice_item_history` collections the
-// Aggregation Worker owns. It never writes to them.
+// `learning_activity`, `practice_item_history` and `tap_checks`
+// collections the Aggregation Worker owns. It never writes to them.
 type MongoPracticeActivityReader struct {
-	sessions *mongo.Collection
-	learning *mongo.Collection
-	history  *mongo.Collection
+	sessions  *mongo.Collection
+	learning  *mongo.Collection
+	history   *mongo.Collection
+	tapChecks *mongo.Collection
 }
 
 func NewMongoPracticeActivityReader(db *mongo.Database) *MongoPracticeActivityReader {
 	return &MongoPracticeActivityReader{
-		sessions: db.Collection("practice_sessions"),
-		learning: db.Collection("learning_activity"),
-		history:  db.Collection("practice_item_history"),
+		sessions:  db.Collection("practice_sessions"),
+		learning:  db.Collection("learning_activity"),
+		history:   db.Collection("practice_item_history"),
+		tapChecks: db.Collection("tap_checks"),
 	}
+}
+
+// LastTapCheck reads the student's newest tap check by done_at, the
+// student's own clock, on the worker's student_id + done_at index.
+func (r *MongoPracticeActivityReader) LastTapCheck(ctx context.Context, studentID string) (time.Time, bool, error) {
+	var doc tapCheckDocument
+	err := r.tapChecks.FindOne(ctx,
+		bson.D{{Key: "student_id", Value: studentID}},
+		options.FindOne().SetSort(bson.D{{Key: "done_at", Value: -1}}),
+	).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return doc.DoneAt.UTC(), true, nil
 }
 
 func (r *MongoPracticeActivityReader) FinishedSessions(ctx context.Context, studentID string, since time.Time) ([]domain.FinishedPracticeSession, error) {
