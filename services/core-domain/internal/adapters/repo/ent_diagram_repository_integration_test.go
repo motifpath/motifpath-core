@@ -144,7 +144,7 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 			},
 		},
 		DefaultPlaybackID: strPtr("aaaaaaaa-0000-4000-8000-000000000002"),
-		Skills: []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
+		Skills:            []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
 	}
 	require.NoError(t, diagrams.Create(ctx, d))
 
