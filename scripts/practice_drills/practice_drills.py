@@ -165,7 +165,8 @@ def build_cells(entries, nodes):
     """Validates the catalog's fretboard_cells entries against nodes (knowledge-map
     nodes by key) and the catalog instruments, and returns one range per skill and
     layout, in catalog order. A layout is a catalog instrument; a string must be one
-    it has, the skill must suit it, and no cell may serve two skills."""
+    it has, the skill must suit it, no cell may serve two skills, and a skill lists one
+    layout per fretboard geometry."""
     ranges = []
     owner = {}
     for entry in entries or []:
@@ -173,10 +174,17 @@ def build_cells(entries, nodes):
         node = nodes.get(skill)
         if node is None or node.kind != 'skill':
             raise ValueError(f'fretboard cells name {skill!r}, which is not a skill of the knowledge map')
+        geometries = {}
         for layout, spec in (entry.get('layouts') or {}).items():
             instrument = km.INSTRUMENTS.get(layout)
             if instrument is None:
                 raise ValueError(f'fretboard cells of {skill!r} name layout {layout!r}, which is not a catalog instrument')
+            # Instruments of the same tuning share one fretboard: listing two of them
+            # would give each note two item keys, so progress on one never counts for
+            # the other.
+            twin = geometries.setdefault(tuple(instrument['tuning']), layout)
+            if twin != layout:
+                raise ValueError(f'fretboard cells of {skill!r} list layouts {twin!r} and {layout!r}, which share one fretboard')
             if node.instruments and layout not in node.instruments:
                 raise ValueError(f'skill {skill!r} is not for layout {layout!r}')
             strings = list(spec.get('strings') or [])

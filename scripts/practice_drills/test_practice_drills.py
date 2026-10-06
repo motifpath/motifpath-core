@@ -121,21 +121,24 @@ class RenderTests(unittest.TestCase):
 
 
 class CatalogTests(unittest.TestCase):
+    """The live specs catalog, which CI reads from specs main: these check what must hold
+    of it, not its exact contents, so a catalog that grows keeps this suite green."""
+
     def test_the_specs_catalog_builds(self):
         drills = pd.load(CATALOG)
-        self.assertEqual(7, len(drills.templates))
-        self.assertEqual({'exercise:text_response', 'exercise:audio_recognition', 'exercise:image_recognition',
-                          'exercise:image_choice', 'exercise:audio_selection',
-                          'fretboard_cell:name_the_note', 'fretboard_cell:find_the_note'},
-                         {t.template for t in drills.thresholds})
-        self.assertTrue(all(t.source == 'default' and t.version == 1 for t in drills.thresholds))
+        keys = {t.key for t in drills.templates}
+        self.assertLessEqual({'fretboard_cell:name_the_note', 'fretboard_cell:find_the_note', 'exercise:text_response',
+                              'exercise:audio_recognition', 'exercise:image_recognition', 'exercise:image_choice',
+                              'exercise:audio_selection'}, keys)
+        timed = {t.key for t in drills.templates if t.timed}
+        self.assertEqual(timed, {t.template for t in drills.thresholds if t.version == 1},
+                         'every timed template starts with a version 1')
 
     def test_the_specs_catalog_cells_cover_the_guitar_and_bass_fretboards(self):
         ranges = pd.load_cells(CATALOG, MAP)
-        cells = {}
-        for r in ranges:
-            cells[r.layout] = cells.get(r.layout, 0) + r.cell_count
-        self.assertEqual({'guitar': 72, 'electric-bass': 48}, cells)
+        layouts = {r.layout for r in ranges}
+        self.assertLessEqual({'guitar', 'electric-bass'}, layouts)
+        self.assertTrue(all(r.cell_count > 0 for r in ranges))
 
 
 def cell_entry(skill='find-notes-root-strings', **layouts):
@@ -187,6 +190,11 @@ class CellTests(unittest.TestCase):
                              cell_entry('find-notes-top-strings', guitar={'strings': [5, 4], 'frets': [0, 11]})],
                             node_map(('find-notes-root-strings', FRETTED), ('find-notes-top-strings', FRETTED)),
                             'string 5')
+
+    def test_two_layouts_of_the_same_geometry_for_one_skill_are_rejected(self):
+        self.assertRejected([cell_entry(guitar={'strings': [6], 'frets': [0, 11]},
+                                        **{'electric-guitar': {'strings': [5], 'frets': [0, 11]}})],
+                            node_map(('find-notes-root-strings', FRETTED)), "'guitar'", "'electric-guitar'")
 
     def test_the_sql_installs_every_range_with_fixed_ids(self):
         sql = pd.render_cells_sql(pd.build_cells([cell_entry()], node_map(('find-notes-root-strings', FRETTED))))
