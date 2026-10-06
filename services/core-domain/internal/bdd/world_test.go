@@ -281,7 +281,7 @@ func newWorld() *world {
 	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
-	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), newID)
+	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), discardPracticeReferences{}, newID)
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, newID, now)
 

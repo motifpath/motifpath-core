@@ -200,15 +200,15 @@ func syncPracticeReference(ctx context.Context, logger *slog.Logger, entClient *
 		logger.Error("ensure the practice reference indexes", "error", err)
 		return
 	}
-	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
+	sync := application.NewPracticeReferenceService(repo.NewEntDiagramRepository(entClient), repo.NewEntExerciseRepository(entClient), repo.NewEntInstrumentRepository(entClient), repo.NewEntDrillThresholdRepository(entClient), writer)
 	synced, err := sync.Sync(ctx)
 	if err != nil {
 		logger.Error("sync the practice reference snapshot", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-			"drill_thresholds", synced.DrillThresholds, "error", err)
+			"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds, "error", err)
 		return
 	}
 	logger.Info("practice reference snapshot synced", "diagrams", synced.Diagrams, "exercises", synced.Exercises,
-		"drill_thresholds", synced.DrillThresholds)
+		"instruments", synced.Instruments, "drill_thresholds", synced.DrillThresholds)
 }
 
 // applyMigrations shells out to the Atlas CLI (bundled into the service
@@ -303,7 +303,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	studentPathService := application.NewStudentPathService(userRepo, pathRepo, studentPathRepo, contentNodeVersionRepo, studentLearningStateRepo, courseEnrollmentRepo, courseVersionRepo, nodeRepo, exerciseRepo, completionReader, newID, now)
 	courseService := application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now)
 	courseEnrollmentService := application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now)
-	instrumentService := application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, newID)
+	instrumentService := application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, practiceReferences, newID)
 	// Voice samples are served from the same public media address as
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)

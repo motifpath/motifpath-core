@@ -12,7 +12,7 @@ import (
 )
 
 func newInstrumentService(repo *fakeInstrumentRepository) *application.InstrumentService {
-	return application.NewInstrumentService(repo, newFakeVoiceRepository(), newFakeLanguageRepository(), idSequence())
+	return application.NewInstrumentService(repo, newFakeVoiceRepository(), newFakeLanguageRepository(), newFakePracticeReferenceWriter(), idSequence())
 }
 
 var (

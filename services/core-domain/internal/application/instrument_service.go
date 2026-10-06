@@ -16,11 +16,12 @@ type InstrumentService struct {
 	instruments ports.InstrumentRepository
 	voices      ports.VoiceRepository
 	languages   ports.LanguageRepository
+	references  ports.PracticeReferenceWriter
 	newID       func() string
 }
 
-func NewInstrumentService(instruments ports.InstrumentRepository, voices ports.VoiceRepository, languages ports.LanguageRepository, newID func() string) *InstrumentService {
-	return &InstrumentService{instruments: instruments, voices: voices, languages: languages, newID: newID}
+func NewInstrumentService(instruments ports.InstrumentRepository, voices ports.VoiceRepository, languages ports.LanguageRepository, references ports.PracticeReferenceWriter, newID func() string) *InstrumentService {
+	return &InstrumentService{instruments: instruments, voices: voices, languages: languages, references: references, newID: newID}
 }
 
 // CreateInstrument creates a new instrument played by defaultVoiceID and
@@ -28,6 +29,8 @@ func NewInstrumentService(instruments ports.InstrumentRepository, voices ports.V
 // teachers and admins may create one — instruments are an authoring surface.
 // names must cover every language MotifPath offers, since every user sees
 // the instrument, and the voice must exist and play the instrument's family.
+// Its practice reference is written after the save, so its fretboard cells
+// can be graded.
 func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.User, names map[string]string, family domain.InstrumentFamily, stringCount *int, tuning []string, keyRange *domain.KeyRange, defaultVoiceID string, icon *string) (domain.Instrument, error) {
 	if !canManageContent(caller.Role) {
 		return domain.Instrument{}, domain.ErrForbidden
@@ -53,6 +56,7 @@ func (s *InstrumentService) CreateInstrument(ctx context.Context, caller domain.
 	if err := s.instruments.Create(ctx, instrument); err != nil {
 		return domain.Instrument{}, err
 	}
+	putInstrumentReference(ctx, s.references, instrument)
 	return instrument, nil
 }
 

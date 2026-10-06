@@ -210,7 +210,7 @@ func wireServices(res resources) (services, seedDeps) {
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
 		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now, rand.Shuffle),
 		knowledge:   knowledgeRepo,
-		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, newID),
+		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
 	}
 

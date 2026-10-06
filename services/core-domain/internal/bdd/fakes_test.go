@@ -2074,3 +2074,7 @@ func (discardPracticeReferences) PutExercises(context.Context, []domain.Exercise
 func (discardPracticeReferences) PutDrillThresholds(context.Context, []domain.DrillThreshold) error {
 	return nil
 }
+
+func (discardPracticeReferences) PutInstruments(context.Context, []domain.InstrumentReference) error {
+	return nil
+}

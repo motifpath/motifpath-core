@@ -1821,13 +1821,14 @@ type fakePracticeReferenceWriter struct {
 	mu        sync.Mutex
 	diagrams  map[string]domain.DiagramReference
 	exercises map[string]domain.ExerciseReference
+	instrs    map[string]domain.InstrumentReference
 	threshold []domain.DrillThreshold
 	writes    int
 	err       error
 }
 
 func newFakePracticeReferenceWriter() *fakePracticeReferenceWriter {
-	return &fakePracticeReferenceWriter{diagrams: map[string]domain.DiagramReference{}, exercises: map[string]domain.ExerciseReference{}}
+	return &fakePracticeReferenceWriter{diagrams: map[string]domain.DiagramReference{}, exercises: map[string]domain.ExerciseReference{}, instrs: map[string]domain.InstrumentReference{}}
 }
 
 func (f *fakePracticeReferenceWriter) PutExercises(ctx context.Context, refs []domain.ExerciseReference) error {
@@ -1895,6 +1896,29 @@ func (f *fakePracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []do
 		f.diagrams[ref.ID] = ref
 	}
 	return nil
+}
+
+func (f *fakePracticeReferenceWriter) PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if f.err != nil {
+		return f.err
+	}
+	f.writes++
+	for _, ref := range refs {
+		f.instrs[ref.ID] = ref
+	}
+	return nil
+}
+
+func (f *fakePracticeReferenceWriter) instrument(id string) (domain.InstrumentReference, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	ref, ok := f.instrs[id]
+	return ref, ok
 }
 
 func (f *fakePracticeReferenceWriter) writeCount() int {

@@ -40,7 +40,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		"instrument_ids":   bson.A{"guitar", "electric"},
 		"tempo_bpm":        int32(90),
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(1),
+		"snapshot_version": int32(2),
 	}, doc)
 
 	t.Run("every reference in one write is stored", func(t *testing.T) {
@@ -96,8 +96,9 @@ func TestMongoPracticeReferenceWriter_ExerciseShape(t *testing.T) {
 		"option_ids":         bson.A{"o-1", "o-2"},
 		"correct_option_ids": bson.A{"o-2"},
 		"instrument_ids":     bson.A{"guitar"},
+		"options":            bson.A{},
 		"updated_at":         bson.NewDateTimeFromTime(at),
-		"snapshot_version":   int32(1),
+		"snapshot_version":   int32(2),
 	}, doc)
 
 	t.Run("an exercise for every instrument stores an empty list", func(t *testing.T) {
@@ -151,10 +152,86 @@ func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
 		"fluent_net_ms":    int32(6000),
 		"source":           "default",
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(1),
+		"snapshot_version": int32(2),
 	}, doc)
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
 		require.NoError(t, writer.PutDrillThresholds(ctx, nil))
+	})
+}
+
+// TestMongoPracticeReferenceWriter_ExerciseOptions pins how an exercise's
+// options are kept: each in the shape the API shows it, so a grader can copy
+// what the student saw into the evidence as it is.
+func TestMongoPracticeReferenceWriter_ExerciseOptions(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC) })
+	label, audio, diagramID, positionID := "C", "https://cdn.example.com/c.mp3", "d-1", "p-1"
+	require.NoError(t, writer.PutExercises(ctx, []domain.ExerciseReference{{
+		ID: "e-1", ExerciseType: domain.ExerciseTypeImageRecognition, OptionIDs: []string{"o-1", "o-2", "o-3"}, CorrectOptionIDs: []string{"o-1"},
+		Options: []domain.Option{
+			{ID: "o-1", IsCorrect: true, Label: &label, AudioURL: &audio},
+			{ID: "o-2", Region: &domain.OptionRegion{X: 0.1, Y: 0.2, Width: 0.3, Height: 0.4, Shape: domain.OptionRegionShapeCircle}},
+			{ID: "o-3", DiagramID: &diagramID, DiagramPositionID: &positionID, FretCell: &domain.FretCell{String: 5, Fret: 3},
+				DiagramRef: &domain.DiagramRef{DiagramID: "d-2"}},
+		},
+	}}))
+
+	var doc struct {
+		Options []bson.M `bson:"options"`
+	}
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "exercise"}, {Key: "id", Value: "e-1"}}).Decode(&doc))
+
+	require.Len(t, doc.Options, 3)
+	assert.Equal(t, bson.M{"option_id": "o-1", "is_correct": true, "label": "C", "audio_url": audio}, doc.Options[0])
+	assert.Equal(t, bson.M{"option_id": "o-2", "is_correct": false,
+		"region": bson.D{{Key: "x", Value: 0.1}, {Key: "y", Value: 0.2}, {Key: "width", Value: 0.3}, {Key: "height", Value: 0.4}, {Key: "shape", Value: "circle"}}}, doc.Options[1])
+	assert.Equal(t, "o-3", doc.Options[2]["option_id"])
+	assert.Equal(t, "d-1", doc.Options[2]["diagram_id"])
+	assert.Equal(t, "p-1", doc.Options[2]["diagram_position_id"])
+	assert.Equal(t, bson.D{{Key: "string", Value: int32(5)}, {Key: "fret", Value: int32(3)}}, doc.Options[2]["fret_cell"])
+	ref, ok := doc.Options[2]["diagram_ref"].(bson.D)
+	require.True(t, ok, "the diagram ref is a document, as the API shows it")
+	assert.Contains(t, ref, bson.E{Key: "diagram_id", Value: "d-2"})
+}
+
+// TestMongoPracticeReferenceWriter_InstrumentShape pins the instrument
+// document the fretboard grader reads: its family, strings and tuning.
+func TestMongoPracticeReferenceWriter_InstrumentShape(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	at := time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
+	writer := NewMongoPracticeReferenceWriter(db, func() time.Time { return at })
+	require.NoError(t, writer.EnsureIndexes(ctx))
+	six := 6
+
+	require.NoError(t, writer.PutInstruments(ctx, []domain.InstrumentReference{
+		{ID: "i-guitar", Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}},
+		{ID: "i-piano", Family: domain.InstrumentFamilyKeyboard},
+	}))
+
+	var doc bson.M
+	require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "instrument"}, {Key: "id", Value: "i-guitar"}}).Decode(&doc))
+	delete(doc, "_id")
+	assert.Equal(t, bson.M{
+		"kind":             "instrument",
+		"id":               "i-guitar",
+		"family":           "fretted",
+		"string_count":     int32(6),
+		"tuning":           bson.A{"E2", "A2", "D3", "G3", "B3", "E4"},
+		"updated_at":       bson.NewDateTimeFromTime(at),
+		"snapshot_version": int32(2),
+	}, doc)
+
+	t.Run("an instrument without strings stores none and an empty tuning", func(t *testing.T) {
+		var got bson.M
+		require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "instrument"}, {Key: "id", Value: "i-piano"}}).Decode(&got))
+		assert.Nil(t, got["string_count"])
+		assert.Equal(t, bson.A{}, got["tuning"])
+	})
+
+	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
+		require.NoError(t, writer.PutInstruments(ctx, nil))
 	})
 }
