@@ -45,7 +45,9 @@ type world struct {
 	practiceStates    *fakePracticeItemStateReader
 	practiceItems     *fakeNodeItemSource
 	fretboardCells    *fretboardCellWorld
-	practiceActivity  *fakePracticeActivity
+	// lastCell is the fretboard cell a step answered, for a following step.
+	lastCell         *lastCell
+	practiceActivity *fakePracticeActivity
 	// summaryNow is the practice summary's clock, which a scenario may
 	// move to see which calendar day an activity fell on.
 	summaryNow time.Time
