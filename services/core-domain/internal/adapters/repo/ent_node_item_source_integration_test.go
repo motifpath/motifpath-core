@@ -217,13 +217,18 @@ func TestEntNodeItemSource_FretboardCells(t *testing.T) {
 		assert.Empty(t, cells(got))
 	})
 
-	t.Run("a range on a string its layout doesn't have is refused, not half-generated", func(t *testing.T) {
+	t.Run("a range on a string its layout doesn't have is skipped, and the layout's other cells stay", func(t *testing.T) {
+		findOctaves := catalogID("knowledge-node/find-octaves")
 		_, err := db.ExecContext(ctx, `INSERT INTO fretboard_cell_ranges (id, skill_id, layout_instrument_id, strings, from_fret, to_fret)
-			VALUES ($1, $2, $3, '[5]', 0, 11)`, uuid.NewString(), catalogID("knowledge-node/find-octaves"), electricBassID)
+			VALUES ($1, $2, $3, '[5]', 0, 11)`, uuid.NewString(), findOctaves, electricBassID)
 		require.NoError(t, err)
 
-		_, err = source.ClassifiedItems(ctx, electricBassID)
+		got, err := source.ClassifiedItems(ctx, electricBassID)
 
-		assert.ErrorIs(t, err, domain.ErrInvalidDrillCatalog)
+		require.NoError(t, err)
+		bySkill := cells(got)
+		assert.Empty(t, bySkill[findOctaves])
+		assert.Len(t, bySkill[rootStrings], 24)
+		assert.Len(t, bySkill[topStrings], 24)
 	})
 }

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"log/slog"
 	"slices"
 
 	"github.com/google/uuid"
@@ -78,7 +79,8 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 // instrumentID: those of every range on a layout of the same geometry, so
 // instruments sharing a fretboard share its cells and their item keys, for a
 // skill that is for the instrument. A range that doesn't fit its layout is
-// reported as domain.ErrInvalidDrillCatalog rather than half-generated.
+// logged and left out whole, never half-generated: one bad catalog row must
+// not take every student's practice on that layout down with it.
 func (s *EntNodeItemSource) fretboardCells(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
 	row, err := s.client.Instrument.Get(ctx, instrumentID)
 	if ent.IsNotFound(err) {
@@ -107,7 +109,8 @@ func (s *EntNodeItemSource) fretboardCells(ctx context.Context, instrumentID uui
 			Strings: r.Strings, FromFret: r.FromFret, ToFret: r.ToFret,
 		}
 		if err := cellRange.CheckFits(layout, skill); err != nil {
-			return nil, err
+			slog.ErrorContext(ctx, "skip a fretboard cell range that doesn't fit its layout", "range_id", cellRange.ID, "error", err)
+			continue
 		}
 		if len(skill.InstrumentIDs) > 0 && !slices.Contains(skill.InstrumentIDs, played.ID) {
 			continue
