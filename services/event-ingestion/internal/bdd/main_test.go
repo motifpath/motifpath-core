@@ -36,7 +36,8 @@ func TestFeatures(t *testing.T) {
 			// implemented yet and is skipped. Remove the tag in motifpath-specs
 			// when the scenario is implemented. Mirrors core-domain's runner.
 			Strict: true,
-			Tags:   "~@wip",
+			// @web scenarios are client behaviour, pinned by motifpath-web's own tests.
+			Tags: "~@wip && ~@web",
 		},
 	}
 
