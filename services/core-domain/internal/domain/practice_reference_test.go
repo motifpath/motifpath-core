@@ -9,16 +9,20 @@ import (
 )
 
 func TestNewDiagramReference(t *testing.T) {
-	t.Run("carries the id, every instrument and the playback tempo", func(t *testing.T) {
+	t.Run("carries the id, every instrument and the default playback's tempo", func(t *testing.T) {
 		tempo := 90
-		d := domain.Diagram{ID: "d-1", InstrumentID: "guitar", InstrumentIDs: []string{"guitar", "electric"}, TempoBPM: &tempo, Names: domain.LocalizedText{"en": "Lick"}}
+		d := domain.Diagram{
+			ID: "d-1", InstrumentID: "guitar", InstrumentIDs: []string{"guitar", "electric"}, Names: domain.LocalizedText{"en": "Lick"},
+			Playbacks:         []domain.DiagramPlayback{{ID: "pb-strum", TempoBPM: 120}, {ID: "pb-arp", TempoBPM: tempo}},
+			DefaultPlaybackID: strPtr("pb-arp"),
+		}
 
 		got := domain.NewDiagramReference(d)
 
 		assert.Equal(t, domain.DiagramReference{ID: "d-1", InstrumentIDs: []string{"guitar", "electric"}, TempoBPM: &tempo}, got)
 	})
 
-	t.Run("a diagram without playback has no tempo", func(t *testing.T) {
+	t.Run("a diagram without playbacks has no tempo", func(t *testing.T) {
 		d := domain.Diagram{ID: "d-2", InstrumentID: "guitar", InstrumentIDs: []string{"guitar"}}
 
 		got := domain.NewDiagramReference(d)

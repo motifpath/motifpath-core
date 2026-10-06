@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// DiagramPlaybackDirection is the order a diagram's sequence steps play in.
+// DiagramPlaybackDirection is the order a playback's steps play in.
 type DiagramPlaybackDirection string
 
 const (
@@ -68,12 +68,18 @@ type DiagramStyling struct {
 	IntervalColor *string `json:"interval_color"`
 }
 
-// DiagramRefPlayback is how one usage plays its Diagram's sequence. A
-// diagram with no sequence never plays, whatever this says. See
+// DiagramRefPlayback is how one usage plays one of its Diagram's playbacks.
+// A diagram with no playbacks never plays, whatever this says. See
 // DiagramLayers' doc comment for why this type carries json tags.
 type DiagramRefPlayback struct {
-	Direction DiagramPlaybackDirection `json:"direction"`
-	// TempoBPM overrides the diagram's tempo; nil uses it.
+	// PlaybackID chooses which of the diagram's playbacks this usage plays;
+	// nil plays the default. When the usage is saved it must name one of the
+	// diagram's playbacks, which needs a repository round trip, so that is an
+	// application-layer concern. A playback later removed from the diagram
+	// leaves it unchanged, and the usage plays the default instead.
+	PlaybackID *string                  `json:"playback_id"`
+	Direction  DiagramPlaybackDirection `json:"direction"`
+	// TempoBPM overrides the chosen playback's tempo; nil uses it.
 	TempoBPM *int `json:"tempo_bpm"`
 	// VoiceID overrides the instrument's default voice; nil uses it. It
 	// must name a voice of the diagram's instrument family, which needs a

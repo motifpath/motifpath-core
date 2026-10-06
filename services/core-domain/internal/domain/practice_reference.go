@@ -10,13 +10,19 @@ type DiagramReference struct {
 	ID string
 	// InstrumentIDs lists every instrument the diagram suits, layout first.
 	InstrumentIDs []string
-	// TempoBPM is the playback tempo; nil when the diagram has no sequence.
+	// TempoBPM is the default playback's tempo; nil when the diagram has no
+	// playbacks.
 	TempoBPM *int
 }
 
 // NewDiagramReference returns d's reference.
 func NewDiagramReference(d Diagram) DiagramReference {
-	return DiagramReference{ID: d.ID, InstrumentIDs: slices.Clone(d.InstrumentIDs), TempoBPM: d.TempoBPM}
+	ref := DiagramReference{ID: d.ID, InstrumentIDs: slices.Clone(d.InstrumentIDs)}
+	if playback, ok := d.DefaultPlayback(); ok {
+		tempo := playback.TempoBPM
+		ref.TempoBPM = &tempo
+	}
+	return ref
 }
 
 // ExerciseReference is what the exercise_option grader may know about an

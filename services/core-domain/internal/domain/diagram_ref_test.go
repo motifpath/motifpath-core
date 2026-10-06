@@ -155,6 +155,28 @@ func TestDiagramPlayback_WithoutDirection(t *testing.T) {
 	require.NoError(t, domain.ValidateDiagramRef(*ref))
 }
 
+func TestDiagramRefPlayback_PlaybackChoice(t *testing.T) {
+	t.Run("a usage saved before choosing a playback plays the default", func(t *testing.T) {
+		var ref domain.DiagramRef
+
+		err := json.Unmarshal([]byte(`{"diagram_id":"diagram-1","layers":{},"playback":{"direction":"as_authored"}}`), &ref)
+
+		require.NoError(t, err)
+		require.NotNil(t, ref.Playback)
+		assert.Nil(t, ref.Playback.PlaybackID)
+	})
+
+	t.Run("a usage keeps the playback it chose", func(t *testing.T) {
+		var ref domain.DiagramRef
+
+		err := json.Unmarshal([]byte(`{"diagram_id":"diagram-1","layers":{},"playback":{"playback_id":"pb-arp"}}`), &ref)
+
+		require.NoError(t, err)
+		require.NotNil(t, ref.Playback.PlaybackID)
+		assert.Equal(t, "pb-arp", *ref.Playback.PlaybackID)
+	})
+}
+
 func TestNewDiagramStackRef(t *testing.T) {
 	validRef := func(id string) domain.DiagramRef {
 		return domain.DiagramRef{DiagramID: id, Layers: validDiagramLayers()}

@@ -147,17 +147,15 @@ type Diagram struct {
 	// Mode with RootNote names the key of the diagram's material; nil means
 	// it has no key. Never set without RootNote.
 	Mode *DiagramMode
-	// TimeSignature is the meter Sequence is written in.
-	TimeSignature TimeSignature
-	// Sequence is the diagram's playback, in order; nil means it doesn't
-	// play.
-	Sequence []SequenceStep
-	// TempoBPM is the default tempo Sequence plays at; nil exactly when
-	// Sequence is empty.
-	TempoBPM  *int
-	Skills    []KnowledgeNode
-	Concepts  []KnowledgeNode
-	CreatedAt time.Time
+	// Playbacks are the ways the diagram sounds, in order; nil means it
+	// doesn't play.
+	Playbacks []DiagramPlayback
+	// DefaultPlaybackID names the playback a usage plays when it doesn't
+	// choose one; nil exactly when there are no Playbacks.
+	DefaultPlaybackID *string
+	Skills            []KnowledgeNode
+	Concepts          []KnowledgeNode
+	CreatedAt         time.Time
 }
 
 // IntervalCodes is every interval a Position may carry: canonical codes
@@ -196,6 +194,24 @@ func (d Diagram) ConceptIDs() []string {
 	return ids
 }
 
+// DefaultPlayback returns the playback d plays when a usage doesn't choose
+// one, or false when d has no playbacks.
+func (d Diagram) DefaultPlayback() (DiagramPlayback, bool) {
+	if d.DefaultPlaybackID == nil {
+		return DiagramPlayback{}, false
+	}
+	i := slices.IndexFunc(d.Playbacks, func(p DiagramPlayback) bool { return p.ID == *d.DefaultPlaybackID })
+	if i < 0 {
+		return DiagramPlayback{}, false
+	}
+	return d.Playbacks[i], true
+}
+
+// HasPlayback reports whether id is one of d's playbacks.
+func (d Diagram) HasPlayback(id string) bool {
+	return slices.ContainsFunc(d.Playbacks, func(p DiagramPlayback) bool { return p.ID == id })
+}
+
 // DiagramOptions carries NewDiagram's optional settings, named so two
 // optional strings (RootNote, Color) can never be swapped by position.
 // The zero value means: no recorded root note, LabelDisplayInterval, no
@@ -217,14 +233,12 @@ type DiagramOptions struct {
 	Regions []Region
 	// Mode names the key together with RootNote; nil means no key.
 	Mode *DiagramMode
-	// TimeSignature defaults to DefaultTimeSignature when left as the zero
-	// value.
-	TimeSignature TimeSignature
-	// Sequence is the playback steps, in order; nil means no playback.
-	Sequence []SequenceStep
-	// TempoBPM is required when Sequence has steps and must be nil when it
-	// has none.
-	TempoBPM *int
+	// Playbacks are the ways the diagram sounds, in order; nil means none.
+	// Every playback needs an ID: assigning new ones is up to the caller.
+	Playbacks []DiagramPlayback
+	// DefaultPlaybackID chooses the default playback; nil makes the first
+	// playback the default. It must be nil when there are no Playbacks.
+	DefaultPlaybackID *string
 }
 
 // The longest each piece of diagram text may be, in characters, in any one
@@ -258,8 +272,9 @@ func diagramNames(names map[string]string, languages []string, kind DiagramKind)
 // position's CustomLabel and Note, a region's Description — must be written
 // in exactly the languages names is, so the diagram reads completely in each
 // of them. Regions follow the instrument's family like positions do. A mode
-// needs a root note; every sequence step may only name positions of this
-// diagram, and a tempo is given exactly when there are steps. Whether
+// needs a root note. Every playback step may only name positions of this
+// diagram, and playbacks are named in exactly the diagram's languages, with
+// ids and names that don't repeat. Whether
 // skillIDs/conceptIDs reference existing rows needs a repository round trip,
 // so that stays an application-layer concern.
 func NewDiagram(id, createdBy string, instrument Instrument, names map[string]string, languages []string, positions []Position, skillIDs, conceptIDs []string, opts DiagramOptions, now time.Time) (Diagram, error) {
@@ -294,7 +309,7 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 	if err != nil {
 		return Diagram{}, err
 	}
-	timeSignature, sequence, err := keyAndPlayback(opts, positions)
+	playbacks, defaultPlaybackID, err := keyAndPlaybacks(opts, positions, localizedNames.Languages())
 	if err != nil {
 		return Diagram{}, err
 	}
@@ -304,24 +319,23 @@ func NewDiagram(id, createdBy string, instrument Instrument, names map[string]st
 	}
 
 	return Diagram{
-		ID:            id,
-		InstrumentID:  instrument.ID,
-		InstrumentIDs: []string{instrument.ID},
-		Names:         localizedNames,
-		Kind:          kind,
-		CreatedBy:     createdBy,
-		RootNote:      rootNote,
-		LabelDisplay:  labelDisplay,
-		Color:         color,
-		Positions:     positions,
-		Regions:       regions,
-		Mode:          opts.Mode,
-		TimeSignature: timeSignature,
-		Sequence:      sequence,
-		TempoBPM:      opts.TempoBPM,
-		Skills:        skills,
-		Concepts:      concepts,
-		CreatedAt:     now,
+		ID:                id,
+		InstrumentID:      instrument.ID,
+		InstrumentIDs:     []string{instrument.ID},
+		Names:             localizedNames,
+		Kind:              kind,
+		CreatedBy:         createdBy,
+		RootNote:          rootNote,
+		LabelDisplay:      labelDisplay,
+		Color:             color,
+		Positions:         positions,
+		Regions:           regions,
+		Mode:              opts.Mode,
+		Playbacks:         playbacks,
+		DefaultPlaybackID: defaultPlaybackID,
+		Skills:            skills,
+		Concepts:          concepts,
+		CreatedAt:         now,
 	}, nil
 }
 
