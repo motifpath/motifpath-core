@@ -189,3 +189,139 @@ func TestEmbeddedDiagramPlayback(t *testing.T) {
 		}
 	}
 }
+
+// TestPlaybackRemovedFromItsDiagram covers every place a usage can choose a
+// diagram's playback: once that playback is removed from the diagram, the
+// usage keeps its id and plays the default, so saving the usage again with
+// that same id must still succeed. Choosing a removed playback anew is still
+// rejected.
+func TestPlaybackRemovedFromItsDiagram(t *testing.T) {
+	ctx := context.Background()
+	// A door saves a usage of diagram-1 choosing playback, returning the
+	// diagrams it plays from and a way to save the usage again choosing
+	// another playback (or the same one).
+	type door struct {
+		name  string
+		field string
+		save  func(t *testing.T, playback string) (diagrams *fakeDiagramRepository, resave func(playback string) error)
+	}
+	choosing := func(playbackID string) *domain.DiagramRefPlayback {
+		return &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, PlaybackID: &playbackID}
+	}
+	refChoosing := func(playbackID string) *domain.DiagramRef {
+		return &domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: choosing(playbackID)}
+	}
+	contentService := func(t *testing.T) (*application.ContentService, *fakeContentNodeRepository, *fakeDiagramRepository) {
+		t.Helper()
+		nodes, diagrams := newFakeContentNodeRepository(), newFakeDiagramRepository()
+		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
+		return newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams), nodes, diagrams
+	}
+	exerciseService := func(t *testing.T, positions []domain.Position) (*application.ExerciseService, *fakeDiagramRepository) {
+		t.Helper()
+		diagrams := newFakeDiagramRepository()
+		seedDiagram(t, diagrams, "diagram-1", "guitar", positions)
+		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
+		return newExerciseServiceWithDiagrams(newFakeChallengeRepository(), newFakeExerciseRepository(), newFakeContentNodeRepository(), diagrams), diagrams
+	}
+	article := func(doc *domain.PromptDocument) application.ContentNodeInput {
+		return application.ContentNodeInput{Title: "Blues phrasing", ContentType: domain.ContentTypeArticle, SkillIDs: []string{"skill-1"}, ConceptIDs: []string{"concept-1"},
+			Difficulty: domain.DifficultyLevelBeginner, Languages: []string{"en"}, RichContent: doc}
+	}
+	// exercise saves an exercise of exerciseType, created then updated with
+	// the parts usage gives it for a playback choice.
+	type exerciseParts struct {
+		exerciseType domain.ExerciseType
+		prompt       domain.PromptDocument
+		imageURL     *string
+		diagramRef   *domain.DiagramRef
+		options      []domain.Option
+		remediation  []domain.RemediationTarget
+	}
+	exercise := func(positions []domain.Position, usage func(playback string) exerciseParts) func(t *testing.T, playback string) (*fakeDiagramRepository, func(string) error) {
+		return func(t *testing.T, playback string) (*fakeDiagramRepository, func(string) error) {
+			svc, diagrams := exerciseService(t, positions)
+			p := usage(playback)
+			created, err := svc.CreateExercise(ctx, teacherCaller(), "Name the lick", p.prompt, p.exerciseType, []string{"skill-1"}, []string{"concept-1"},
+				p.imageURL, nil, p.diagramRef, nil, p.options, nil, p.remediation, []string{"en"}, nil)
+			require.NoError(t, err)
+			return diagrams, func(playback string) error {
+				p := usage(playback)
+				_, err := svc.UpdateExercise(ctx, teacherCaller(), created.ID, "Name the lick, edited", p.prompt, []string{"skill-1"}, []string{"concept-1"},
+					p.imageURL, nil, p.diagramRef, nil, p.options, nil, p.remediation, []string{"en"}, nil)
+				return err
+			}
+		}
+	}
+	fretted := domain.Position{ID: "pos-6-5", Interval: "R", NoteName: "A", String: intPtr(6), Fret: intPtr(5)}
+
+	doors := []door{
+		{name: "an article's body", field: "rich_content", save: func(t *testing.T, playback string) (*fakeDiagramRepository, func(string) error) {
+			svc, _, diagrams := contentService(t)
+			node, err := svc.CreateContentNode(ctx, teacherCaller(), article(withEmbeddedPlayback(choosing(playback), "diagram-1")))
+			require.NoError(t, err)
+			return diagrams, func(playback string) error {
+				_, err := svc.UpdateContentNode(ctx, teacherCaller(), node.ID, article(withEmbeddedPlayback(choosing(playback), "diagram-1")))
+				return err
+			}
+		}},
+		{name: "a rich-text pop-up", field: "rich_content", save: func(t *testing.T, playback string) (*fakeDiagramRepository, func(string) error) {
+			svc, nodes, diagrams := contentService(t)
+			nodes.put(articleNode("node-1"))
+			item, err := svc.CreateExpandedContent(ctx, teacherCaller(), "node-1", domain.ExpandedContentTypeRichText, nil, withEmbeddedPlayback(choosing(playback), "diagram-1"), nil, nil, nil, nil, intPtr(3), intPtr(8000), nil)
+			require.NoError(t, err)
+			return diagrams, func(playback string) error {
+				_, err := svc.UpdateExpandedContent(ctx, teacherCaller(), item.ID, domain.ExpandedContentTypeRichText, nil, withEmbeddedPlayback(choosing(playback), "diagram-1"), nil, nil, nil, nil, intPtr(3), intPtr(8000), strPtr("Edited"))
+				return err
+			}
+		}},
+		{name: "a diagram pop-up", field: "diagram_ref", save: func(t *testing.T, playback string) (*fakeDiagramRepository, func(string) error) {
+			svc, nodes, diagrams := contentService(t)
+			nodes.put(videoNode("node-1"))
+			item, err := svc.CreateExpandedContent(ctx, teacherCaller(), "node-1", domain.ExpandedContentTypeDiagram, nil, nil, refChoosing(playback), nil, intPtr(150), intPtr(165), nil, nil, nil)
+			require.NoError(t, err)
+			return diagrams, func(playback string) error {
+				_, err := svc.UpdateExpandedContent(ctx, teacherCaller(), item.ID, domain.ExpandedContentTypeDiagram, nil, nil, refChoosing(playback), nil, intPtr(150), intPtr(165), nil, nil, strPtr("Edited"))
+				return err
+			}
+		}},
+		{name: "an exercise's prompt", field: "prompt", save: exercise(nil, func(playback string) exerciseParts {
+			return exerciseParts{exerciseType: domain.ExerciseTypeImageRecognition, prompt: *withEmbeddedPlayback(choosing(playback), "diagram-1"),
+				imageURL: strPtr("https://cdn.example.com/a.png"), options: imageRecognitionOptions()}
+		})},
+		{name: "an exercise's remediation", field: "remediation_targets", save: exercise(nil, func(playback string) exerciseParts {
+			return exerciseParts{exerciseType: domain.ExerciseTypeImageRecognition, prompt: domain.NewPlainTextPrompt("Which lick?"),
+				imageURL: strPtr("https://cdn.example.com/a.png"), options: imageRecognitionOptions(),
+				remediation: []domain.RemediationTarget{{RichContent: withEmbeddedPlayback(choosing(playback), "diagram-1")}}}
+		})},
+		{name: "an exercise option's thumbnail", field: "options", save: exercise(nil, func(playback string) exerciseParts {
+			return exerciseParts{exerciseType: domain.ExerciseTypeImageChoice, prompt: domain.NewPlainTextPrompt("Which one is the lick?"),
+				options: []domain.Option{{ID: "opt-1", IsCorrect: true, DiagramRef: refChoosing(playback)}, {ID: "opt-2", ImageURL: strPtr("https://cdn.example.com/b.png")}}}
+		})},
+		{name: "an exercise's diagram stimulus", field: "diagram_ref", save: exercise([]domain.Position{fretted}, func(playback string) exerciseParts {
+			ref := refChoosing(playback)
+			ref.CorrectPositionIDs = &[]string{"pos-6-5"}
+			return exerciseParts{exerciseType: domain.ExerciseTypeImageRecognition, prompt: domain.NewPlainTextPrompt("Tap every root"), diagramRef: ref}
+		})},
+	}
+
+	for _, d := range doors {
+		t.Run(d.name+" can be saved again after its playback is removed", func(t *testing.T) {
+			diagrams, resave := d.save(t, "pb-arp")
+			givePlaybacks(t, diagrams, "diagram-1", "pb-strum")
+
+			require.NoError(t, resave("pb-arp"))
+		})
+		t.Run(d.name+" still rejects choosing a removed playback it didn't have", func(t *testing.T) {
+			diagrams, resave := d.save(t, "pb-strum")
+			givePlaybacks(t, diagrams, "diagram-1", "pb-strum")
+
+			err := resave("pb-arp")
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, d.field, valErr.Fields[0].Field)
+		})
+	}
+}
