@@ -57,7 +57,8 @@ func TestFeatures(t *testing.T) {
 			// green for unrelated work. Strict still applies to everything
 			// untagged, so an untagged scenario cannot go undefined silently.
 			// Remove the tag in motifpath-specs when the feature is implemented.
-			Tags: "~@wip",
+			// @web scenarios are client behaviour, pinned by motifpath-web's own tests.
+			Tags: "~@wip && ~@web",
 		},
 	}
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -23,6 +24,8 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" answers exercise "([^"]*)" by selecting an option of another exercise$`, w.answersWithAnotherExercisesOption)
 	sc.Step(`^"([^"]*)" answers the exercise "([^"]*)" in the challenge by selecting its correct option after (\d+) milliseconds$`, w.answersInTheChallenge)
 	sc.Step(`^"([^"]*)" answers a listening exercise whose sound lasts (\d+) milliseconds by selecting its correct option after (\d+) milliseconds$`, w.answersAListeningExercise)
+	sc.Step(`^"([^"]*)" took the challenge "([^"]*)" yesterday and answered "([^"]*)" wrong$`, w.tookTheChallengeYesterday)
+	sc.Step(`^"([^"]*)" takes "([^"]*)" again and moves on from "([^"]*)" with its correct option selected$`, w.takesTheChallengeAgain)
 
 	sc.Step(`^"([^"]*)" has auto-graded evidence for exercise "([^"]*)" that is (correct|wrong)$`, w.hasAutoGradedEvidenceForExercise)
 	sc.Step(`^"([^"]*)" has auto-graded evidence for "([^"]*)" that is correct with a latency of (\d+) milliseconds$`, w.hasCorrectEvidenceWithLatency)
@@ -30,6 +33,7 @@ func registerExerciseSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]*)" has auto-graded evidence for that exercise with a latency of (\d+) milliseconds and (\d+) milliseconds of audio$`, w.hasEvidenceWithAudio)
 	sc.Step(`^the answer is rejected because the option is unknown$`, w.answerRejectedBecause(domain.GradeRejectionUnknownOption))
 	sc.Step(`^"([^"]*)" has no evidence for exercise "([^"]*)"$`, w.hasNoEvidenceForExercise)
+	sc.Step(`^"([^"]*)" has two pieces of evidence for "([^"]*)", the second one correct$`, w.hasTwoPiecesTheSecondCorrect)
 
 	// ── Fluent times ───────────────────────────────────────────────────────────
 	sc.Step(`^the drill template "([^"]*)" has version 1 (?:from source "[^"]*" )?with a fluent time of (\d+) milliseconds(?: net of tap time)?$`, w.templateHasVersion1)
@@ -122,6 +126,28 @@ func (w *world) answersInTheChallenge(student, exercise string, latency int) err
 	return w.selecting(student, w.exerciseKey(exercise, "text_response"), []string{optionID(exercise, "right")}, latency, nil)
 }
 
+// tookTheChallengeYesterday answers wrong in a run through the challenge a day before the next
+// answer a scenario gives.
+func (w *world) tookTheChallengeYesterday(student, challenge, exercise string) error {
+	if err := w.isTakingTheChallenge(student, challenge, "challenge's node"); err != nil {
+		return err
+	}
+	if err := w.selecting(student, w.exerciseKey(exercise, "text_response"), []string{optionID(exercise, "wrong")}, 4000, nil); err != nil {
+		return err
+	}
+	w.clock = w.clock.Add(24 * time.Hour)
+	return nil
+}
+
+// takesTheChallengeAgain answers in a new run through the challenge: what the client sends when
+// the student moves on from the exercise with its correct option selected.
+func (w *world) takesTheChallengeAgain(student, challenge, exercise string) error {
+	if err := w.isTakingTheChallenge(student, challenge, "challenge's node"); err != nil {
+		return err
+	}
+	return w.selecting(student, w.exerciseKey(exercise, "text_response"), []string{optionID(exercise, "right")}, 4000, nil)
+}
+
 func (w *world) answersAListeningExercise(student string, audio, latency int) error {
 	return w.selecting(student, w.exerciseKey("listening exercise", "audio_recognition"), []string{optionID("listening exercise", "right")}, latency, &audio)
 }
@@ -184,6 +210,22 @@ func (w *world) hasEvidenceWithAudio(student string, latency, audio int) error {
 	}
 	if e.LatencyMs == nil || *e.LatencyMs != latency || e.AudioMs == nil || *e.AudioMs != audio {
 		return fmt.Errorf("evidence has latency %v and audio %v, want %d and %d", e.LatencyMs, e.AudioMs, latency, audio)
+	}
+	return nil
+}
+
+func (w *world) hasTwoPiecesTheSecondCorrect(student, exercise string) error {
+	evidence, err := w.evidenceFor(student, w.exerciseKey(exercise, "text_response"))
+	if err != nil {
+		return err
+	}
+	if len(evidence) != 2 {
+		return fmt.Errorf("want two pieces of evidence, got %d", len(evidence))
+	}
+	sort.Slice(evidence, func(i, j int) bool { return evidence[i].OccurredAt.Before(evidence[j].OccurredAt) })
+	first, second := evidence[0], evidence[1]
+	if first.Correct == nil || *first.Correct || second.Correct == nil || !*second.Correct {
+		return fmt.Errorf("evidence is correct=%v then correct=%v, want wrong then correct", first.Correct, second.Correct)
 	}
 	return nil
 }

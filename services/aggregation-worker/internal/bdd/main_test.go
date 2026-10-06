@@ -41,7 +41,8 @@ func TestFeatures(t *testing.T) {
 			// skipped; remove the tag in motifpath-specs when it is. Mirrors the
 			// other services' runners.
 			Strict: true,
-			Tags:   "~@wip",
+			// @web scenarios are client behaviour, pinned by motifpath-web's own tests.
+			Tags: "~@wip && ~@web",
 		},
 	}
 
