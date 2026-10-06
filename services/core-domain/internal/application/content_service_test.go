@@ -837,6 +837,38 @@ func TestContentService_CreateExpandedContent_Diagram(t *testing.T) {
 		})
 	}
 
+	for _, tt := range []struct {
+		name, playbackID string
+		wantErr          bool
+	}{
+		{name: "a diagram playing one of its playbacks is accepted", playbackID: "pb-arp"},
+		{name: "a diagram playing a playback it doesn't have is rejected", playbackID: "pb-gone", wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			nodes := newFakeContentNodeRepository()
+			nodes.put(videoNode("node-1"))
+			diagrams := newFakeDiagramRepository()
+			seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+			givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
+			svc := newContentServiceWithDiagrams(nodes, newFakeExpandedContentRepository(), seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams)
+			playback := &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, PlaybackID: strPtr(tt.playbackID)}
+
+			item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+				domain.ExpandedContentTypeDiagram, nil, nil,
+				&domain.DiagramRef{DiagramID: "diagram-1", Layers: domain.DiagramLayers{Intervals: true}, Playback: playback}, nil,
+				intPtr(150), intPtr(165), nil, nil, nil)
+
+			if tt.wantErr {
+				var valErr *domain.ValidationError
+				require.True(t, errors.As(err, &valErr))
+				assertHasField(t, valErr, "diagram_ref")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, playback, item.DiagramRef.Playback)
+		})
+	}
+
 	t.Run("a stack entry's playback is ignored, since a stack doesn't play", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(articleNode("node-1"))

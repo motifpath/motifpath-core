@@ -85,7 +85,7 @@ func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	}
 	var items []domain.ClassifiedItem
 	for _, d := range diagrams.Items {
-		if d.TempoBPM != nil {
+		if _, ok := d.DefaultPlayback(); ok {
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: d.SkillIDs()})
 		}
 	}
@@ -214,16 +214,22 @@ func (f *practiceFixture) playAlong(id, name, instrumentID, skillID string, temp
 		InstrumentIDs: []string{instrumentID},
 		Names:         names(name),
 		Kind:          domain.DiagramKindBasic,
-		TimeSignature: domain.DefaultTimeSignature,
 		Skills:        []domain.KnowledgeNode{{ID: skillID}},
 	}
 	if tempo > 0 {
-		d.TempoBPM = &tempo
-		for range 8 {
-			d.Sequence = append(d.Sequence, domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}})
-		}
+		d.Playbacks = []domain.DiagramPlayback{{ID: "pb-default", TempoBPM: tempo, TimeSignature: domain.DefaultTimeSignature, Steps: quarterNotes(8)}}
+		d.DefaultPlaybackID = strPtr("pb-default")
 	}
 	require.NoError(f.t, f.diagrams.Create(context.Background(), d))
+}
+
+// quarterNotes is n quarter-note steps on position p1.
+func quarterNotes(n int) []domain.SequenceStep {
+	steps := make([]domain.SequenceStep, n)
+	for i := range steps {
+		steps[i] = domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}}
+	}
+	return steps
 }
 
 func (f *practiceFixture) state(diagramID string, s domain.PracticeItemState) {
@@ -242,16 +248,13 @@ func (f *practiceFixture) stateUnder(version int, diagramID string, s domain.Pra
 }
 
 // reshape replaces a seeded diagram's kind and, when steps > 0, its
-// sequence with that many quarter notes.
+// default playback's steps with that many quarter notes.
 func (f *practiceFixture) reshape(id string, kind domain.DiagramKind, steps int) {
 	d, err := f.diagrams.GetByID(context.Background(), id)
 	require.NoError(f.t, err)
 	d.Kind = kind
 	if steps > 0 {
-		d.Sequence = nil
-		for range steps {
-			d.Sequence = append(d.Sequence, domain.SequenceStep{PositionIDs: []string{"p1"}, Value: domain.NoteValue{Num: 1, Den: 4}})
-		}
+		d.Playbacks[0].Steps = quarterNotes(steps)
 	}
 	require.NoError(f.t, f.diagrams.Update(context.Background(), d))
 }
@@ -351,6 +354,22 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Equal(t, "skill-1", *item.NodeID)
 		require.NotNil(t, item.PlayAlong)
 		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, TargetTempoBPM: 120}, *item.PlayAlong)
+	})
+
+	t.Run("a play-along targets its default playback's tempo, whichever playback comes first", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("d1", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		d, err := f.diagrams.GetByID(context.Background(), "d1")
+		require.NoError(t, err)
+		d.Playbacks = append([]domain.DiagramPlayback{{ID: "pb-fast", TempoBPM: 200, TimeSignature: domain.DefaultTimeSignature, Steps: quarterNotes(8)}}, d.Playbacks...)
+		require.NoError(t, f.diagrams.Update(context.Background(), d))
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		i := slices.Index(planKeys(plan), "play_along:d1")
+		require.NotEqual(t, -1, i)
+		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 70, TargetTempoBPM: 120}, *plan.Items[i].PlayAlong)
 	})
 
 	t.Run("a due play-along starts at the student's best clean tempo", func(t *testing.T) {

@@ -15,10 +15,17 @@ import (
 // guitar diagram "diagram-1" embedded to play with voice (nil for none).
 // The embed may be nested, as an editor nests it inside other blocks.
 func withEmbeddedDiagram(voice *string, diagramID string) *domain.PromptDocument {
-	ref := &domain.DiagramRef{DiagramID: diagramID, Layers: domain.DiagramLayers{Intervals: true}}
+	var playback *domain.DiagramRefPlayback
 	if voice != nil {
-		ref.Playback = &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: voice}
+		playback = &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, VoiceID: voice}
 	}
+	return withEmbeddedPlayback(playback, diagramID)
+}
+
+// withEmbeddedPlayback is withEmbeddedDiagram with the embed playing as
+// playback says (nil for no playback config).
+func withEmbeddedPlayback(playback *domain.DiagramRefPlayback, diagramID string) *domain.PromptDocument {
+	ref := &domain.DiagramRef{DiagramID: diagramID, Layers: domain.DiagramLayers{Intervals: true}, Playback: playback}
 	doc := richTextContent("Listen to this lick.")
 	doc.Content = append(doc.Content, domain.PromptNode{Type: domain.PromptNodeTypeBulletList, Content: []domain.PromptNode{
 		{Type: domain.PromptNodeTypeListItem, Content: []domain.PromptNode{
@@ -28,10 +35,25 @@ func withEmbeddedDiagram(voice *string, diagramID string) *domain.PromptDocument
 	return &doc
 }
 
-// TestEmbeddedDiagramPlaybackVoice covers every place a diagram can be
-// embedded in a document or an option: a voice it plays with must exist and
-// play its diagram's instrument family, as for a usage's own diagram_ref.
-func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
+// givePlaybacks gives the seeded diagram id the playbacks ids, the first
+// the default.
+func givePlaybacks(t *testing.T, diagrams *fakeDiagramRepository, id string, ids ...string) {
+	t.Helper()
+	d, err := diagrams.GetByID(context.Background(), id)
+	require.NoError(t, err)
+	d.Playbacks = make([]domain.DiagramPlayback, len(ids))
+	for i, playbackID := range ids {
+		d.Playbacks[i] = domain.DiagramPlayback{ID: playbackID, TempoBPM: 90}
+	}
+	d.DefaultPlaybackID = &d.Playbacks[0].ID
+	require.NoError(t, diagrams.Update(context.Background(), d))
+}
+
+// TestEmbeddedDiagramPlayback covers every place a diagram can be embedded
+// in a document or an option: a voice it plays with must exist and play its
+// diagram's instrument family, and a playback it chooses must be one of its
+// diagram's, as for a usage's own diagram_ref.
+func TestEmbeddedDiagramPlayback(t *testing.T) {
 	ctx := context.Background()
 	type door struct {
 		name  string
@@ -42,12 +64,14 @@ func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
 		t.Helper()
 		nodes, expanded, diagrams := newFakeContentNodeRepository(), newFakeExpandedContentRepository(), newFakeDiagramRepository()
 		seedContentDiagram(t, diagrams, "diagram-1", "guitar")
+		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
 		return newContentServiceWithDiagrams(nodes, expanded, seededKnowledgeNodeRepository(), newFakeContentNodeVersionRepository(), diagrams), nodes, expanded
 	}
 	exerciseService := func(t *testing.T) (*application.ExerciseService, *fakeExerciseRepository) {
 		t.Helper()
 		exercises, diagrams := newFakeExerciseRepository(), newFakeDiagramRepository()
 		seedDiagram(t, diagrams, "diagram-1", "guitar", nil)
+		givePlaybacks(t, diagrams, "diagram-1", "pb-strum", "pb-arp")
 		return newExerciseServiceWithDiagrams(newFakeChallengeRepository(), exercises, newFakeContentNodeRepository(), diagrams), exercises
 	}
 	article := func(doc *domain.PromptDocument) application.ContentNodeInput {
@@ -121,6 +145,13 @@ func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
 		embedded := withEmbeddedDiagram(voice, diagramID)
 		return embedded.Content[1].Content[0].Content[0].Attrs.DiagramRef
 	}
+	choosing := func(playbackID string) *domain.DiagramRefPlayback {
+		return &domain.DiagramRefPlayback{Direction: domain.DiagramPlaybackDirectionAsAuthored, PlaybackID: &playbackID}
+	}
+	optionChoosing := func(playbackID, diagramID string) *domain.DiagramRef {
+		embedded := withEmbeddedPlayback(choosing(playbackID), diagramID)
+		return embedded.Content[1].Content[0].Content[0].Attrs.DiagramRef
+	}
 	for _, d := range doors {
 		t.Run(d.name+" accepts a voice of its diagram's family", func(t *testing.T) {
 			require.NoError(t, d.save(t, withEmbeddedDiagram(strPtr("acoustic-guitar"), "diagram-1"), optionPlaying(strPtr("acoustic-guitar"), "diagram-1")))
@@ -128,6 +159,21 @@ func TestEmbeddedDiagramPlaybackVoice(t *testing.T) {
 		t.Run(d.name+" leaves an embed without a voice unchecked, as before", func(t *testing.T) {
 			require.NoError(t, d.save(t, withEmbeddedDiagram(nil, "not-a-diagram"), optionPlaying(nil, "not-a-diagram")))
 		})
+		t.Run(d.name+" accepts a playback its diagram has", func(t *testing.T) {
+			require.NoError(t, d.save(t, withEmbeddedPlayback(choosing("pb-arp"), "diagram-1"), optionChoosing("pb-arp", "diagram-1")))
+		})
+		for _, bad := range []struct{ what, playback, diagram string }{
+			{what: "a playback its diagram doesn't have", playback: "pb-gone", diagram: "diagram-1"},
+			{what: "a playback on a diagram that does not exist", playback: "pb-arp", diagram: "not-a-diagram"},
+		} {
+			t.Run(d.name+" rejects "+bad.what, func(t *testing.T) {
+				err := d.save(t, withEmbeddedPlayback(choosing(bad.playback), bad.diagram), optionChoosing(bad.playback, bad.diagram))
+
+				var valErr *domain.ValidationError
+				require.ErrorAs(t, err, &valErr)
+				assert.Equal(t, d.field, valErr.Fields[0].Field)
+			})
+		}
 		for _, bad := range []struct{ what, voice, diagram string }{
 			{what: "a voice of another family", voice: "piano", diagram: "diagram-1"},
 			{what: "a voice that does not exist", voice: "banjo", diagram: "diagram-1"},

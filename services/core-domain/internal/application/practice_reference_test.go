@@ -20,8 +20,7 @@ func TestDiagramService_PracticeReference(t *testing.T) {
 	ctx := context.Background()
 	eighth := domain.NoteValue{Num: 1, Den: 8}
 	withPlayback := func() domain.DiagramOptions {
-		tempo := 90
-		return domain.DiagramOptions{TempoBPM: &tempo, Sequence: []domain.SequenceStep{{PositionIDs: []string{"p1"}, Value: eighth}}}
+		return domain.DiagramOptions{Playbacks: []domain.DiagramPlayback{{ID: "pb-1", Names: names("Run"), TempoBPM: 90, Steps: []domain.SequenceStep{{PositionIDs: []string{"p1"}, Value: eighth}}}}}
 	}
 	position := func() domain.Position {
 		p := frettedPos(6, 5)
@@ -47,12 +46,12 @@ func TestDiagramService_PracticeReference(t *testing.T) {
 		d, err := f.svc.CreateDiagram(ctx, teacherCaller(), "guitar", names("Lick"), []domain.Position{position()}, []string{"skill-1"}, []string{"concept-1"}, withPlayback())
 		require.NoError(t, err)
 
-		_, err = f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}, TempoBPM: application.Nullable[int]{Set: true}})
+		_, err = f.svc.UpdateDiagram(ctx, teacherCaller(), d.ID, application.DiagramUpdate{Playbacks: []domain.DiagramPlayback{}})
 
 		require.NoError(t, err)
 		ref, ok := f.references.diagram(d.ID)
 		require.True(t, ok)
-		assert.Nil(t, ref.TempoBPM, "the playback was removed, so the reference has no tempo")
+		assert.Nil(t, ref.TempoBPM, "the playbacks were removed, so the reference has no tempo")
 	})
 
 	t.Run("a refused update leaves the reference as it was", func(t *testing.T) {
@@ -61,7 +60,7 @@ func TestDiagramService_PracticeReference(t *testing.T) {
 		require.NoError(t, err)
 		before, _ := f.references.diagram(d.ID)
 
-		_, err = f.svc.UpdateDiagram(ctx, otherTeacherCaller(), d.ID, application.DiagramUpdate{Sequence: []domain.SequenceStep{}, TempoBPM: application.Nullable[int]{Set: true}})
+		_, err = f.svc.UpdateDiagram(ctx, otherTeacherCaller(), d.ID, application.DiagramUpdate{Playbacks: []domain.DiagramPlayback{}})
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
 		after, _ := f.references.diagram(d.ID)
@@ -231,7 +230,8 @@ func TestPracticeReferenceService_SyncDiagrams(t *testing.T) {
 			tempo := 60 + i
 			require.NoError(t, diagrams.Create(ctx, domain.Diagram{
 				ID: fmt.Sprintf("d-%03d", i), CreatedBy: "admin-1", Kind: domain.DiagramKindBasic,
-				InstrumentID: "guitar", InstrumentIDs: []string{"guitar"}, TempoBPM: &tempo,
+				InstrumentID: "guitar", InstrumentIDs: []string{"guitar"},
+				Playbacks: []domain.DiagramPlayback{{ID: "pb-1", TempoBPM: tempo}}, DefaultPlaybackID: strPtr("pb-1"),
 				Names: domain.LocalizedText{"en": fmt.Sprintf("Diagram %03d", i)},
 			}))
 		}

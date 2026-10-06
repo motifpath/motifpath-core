@@ -147,7 +147,7 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := s.nodes.Create(ctx, node); err != nil {
@@ -204,7 +204,7 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	if err := checkInstrumentsExist(ctx, s.instruments, input.InstrumentIDs); err != nil {
 		return domain.ContentNode{}, err
 	}
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent)); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := s.checkLinkedExercisesFit(ctx, updated); err != nil {
@@ -270,7 +270,7 @@ func (s *ContentService) CreateExpandedContent(
 	if err := checkDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 	if err := s.expanded.Create(ctx, item); err != nil {
@@ -334,7 +334,7 @@ func (s *ContentService) UpdateExpandedContent(
 	if err := checkDiagramRefs(ctx, s.diagramRefRepos(), diagramRef, diagramStackRef); err != nil {
 		return domain.ExpandedContent{}, err
 	}
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent)); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 

@@ -58,13 +58,15 @@ type DiagramUpdate struct {
 	Color        *string
 	// Mode replaces the mode when Set; a nil Value clears it.
 	Mode Nullable[domain.DiagramMode]
-	// TempoBPM replaces the tempo when Set; a nil Value clears it, which is
-	// only valid when the resulting sequence is empty.
-	TempoBPM      Nullable[int]
-	TimeSignature *domain.TimeSignature
-	// Sequence replaces every step when non-nil — an empty, non-nil slice
-	// removes the playback; nil keeps the current steps.
-	Sequence []domain.SequenceStep
+	// Playbacks replaces every playback when non-nil — an empty, non-nil
+	// slice removes them all; nil keeps the current ones. A playback without
+	// an id is assigned one; one resent with its id keeps it.
+	Playbacks []domain.DiagramPlayback
+	// DefaultPlaybackID replaces the default when Set; a nil Value is only
+	// valid when the resulting playbacks are empty. Left out, the current
+	// default is kept while it is still one of the playbacks, and otherwise
+	// the first playback becomes the default.
+	DefaultPlaybackID Nullable[string]
 }
 
 // Nullable is an update field with three states: left out (Set false)
@@ -113,6 +115,7 @@ func (s *DiagramService) CreateDiagramWithInstruments(ctx context.Context, calle
 		return domain.Diagram{}, err
 	}
 	opts.Regions = s.withRegionIDs(opts.Regions)
+	opts.Playbacks = s.withPlaybackIDs(opts.Playbacks)
 	diagram, err := domain.NewDiagram(s.newID(), caller.ID, instrument, names, offered, s.withPositionIDs(positions), skillIDs, conceptIDs, opts, s.now())
 	if err != nil {
 		return domain.Diagram{}, err
@@ -307,9 +310,9 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 	if err != nil {
 		return domain.Diagram{}, err
 	}
-	opts := updatedDiagramOptions(current, update)
-	if update.Regions != nil {
-		opts.Regions = s.withRegionIDs(update.Regions)
+	opts, err := s.updatedOptions(current, update)
+	if err != nil {
+		return domain.Diagram{}, err
 	}
 	updated, err := domain.NewDiagram(current.ID, current.CreatedBy, instrument, names, offered, positions, skillIDs, conceptIDs, opts, current.CreatedAt)
 	if err != nil {
@@ -336,14 +339,33 @@ func updatedNames(current domain.Diagram, update DiagramUpdate) map[string]strin
 	return current.Names
 }
 
+// updatedOptions is updatedDiagramOptions with ids assigned to update's new
+// regions and playbacks.
+func (s *DiagramService) updatedOptions(current domain.Diagram, update DiagramUpdate) (domain.DiagramOptions, error) {
+	if update.Regions != nil {
+		update.Regions = s.withRegionIDs(update.Regions)
+	}
+	if update.Playbacks != nil {
+		update.Playbacks = s.withPlaybackIDs(update.Playbacks)
+	}
+	opts, err := updatedDiagramOptions(current, update)
+	if err != nil {
+		return domain.DiagramOptions{}, err
+	}
+	if update.Regions != nil {
+		opts.Regions = update.Regions
+	}
+	return opts, nil
+}
+
 // updatedDiagramOptions returns current's options with update's given root
-// note, label display, color, mode, tempo, time signature and sequence
-// applied. Kind always stays current's; regions are current's too, for the
-// caller to replace.
-func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.DiagramOptions {
+// note, label display, color, mode, playbacks and default playback applied.
+// Kind always stays current's; regions are current's too, for the caller to
+// replace.
+func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) (domain.DiagramOptions, error) {
 	opts := domain.DiagramOptions{
 		RootNote: current.RootNote, LabelDisplay: current.LabelDisplay, Color: current.Color, Kind: current.Kind, Regions: current.Regions,
-		Mode: current.Mode, TempoBPM: current.TempoBPM, TimeSignature: current.TimeSignature, Sequence: current.Sequence,
+		Mode: current.Mode, Playbacks: current.Playbacks,
 	}
 	if update.RootNote != nil {
 		opts.RootNote = update.RootNote
@@ -357,16 +379,33 @@ func updatedDiagramOptions(current domain.Diagram, update DiagramUpdate) domain.
 	if update.Mode.Set {
 		opts.Mode = update.Mode.Value
 	}
-	if update.TempoBPM.Set {
-		opts.TempoBPM = update.TempoBPM.Value
+	if update.Playbacks != nil {
+		opts.Playbacks = update.Playbacks
 	}
-	if update.TimeSignature != nil {
-		opts.TimeSignature = *update.TimeSignature
+	defaultID, err := updatedDefaultPlaybackID(current, update, opts.Playbacks)
+	if err != nil {
+		return domain.DiagramOptions{}, err
 	}
-	if update.Sequence != nil {
-		opts.Sequence = update.Sequence
+	opts.DefaultPlaybackID = defaultID
+	return opts, nil
+}
+
+// updatedDefaultPlaybackID is the default playback update chooses among
+// playbacks, the playbacks as updated: the one it names, none when it clears
+// the default (only valid when there are no playbacks), and otherwise
+// current's default while it is still one of them. A nil result with
+// playbacks lets the first one become the default.
+func updatedDefaultPlaybackID(current domain.Diagram, update DiagramUpdate, playbacks []domain.DiagramPlayback) (*string, error) {
+	switch {
+	case update.DefaultPlaybackID.Set && update.DefaultPlaybackID.Value != nil:
+		return update.DefaultPlaybackID.Value, nil
+	case update.DefaultPlaybackID.Set && len(playbacks) > 0:
+		return nil, domain.NewValidationError("default_playback_id", "can only be cleared when the diagram has no playbacks")
+	case update.DefaultPlaybackID.Set:
+		return nil, nil
+	default:
+		return domain.KeptDefaultPlaybackID(current.DefaultPlaybackID, playbacks), nil
 	}
-	return opts
 }
 
 // requireDiagramEditor returns domain.ErrForbidden unless caller may update
@@ -384,6 +423,23 @@ func requireDiagramEditor(caller domain.User, diagram domain.Diagram) error {
 func (s *DiagramService) withPositionIDs(positions []domain.Position) []domain.Position {
 	out := make([]domain.Position, len(positions))
 	copy(out, positions)
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = s.newID()
+		}
+	}
+	return out
+}
+
+// withPlaybackIDs returns a copy of playbacks with an id assigned to every
+// playback that lacks one, leaving the caller's slice untouched. A nil slice
+// stays nil.
+func (s *DiagramService) withPlaybackIDs(playbacks []domain.DiagramPlayback) []domain.DiagramPlayback {
+	if playbacks == nil {
+		return nil
+	}
+	out := make([]domain.DiagramPlayback, len(playbacks))
+	copy(out, playbacks)
 	for i := range out {
 		if out[i].ID == "" {
 			out[i].ID = s.newID()

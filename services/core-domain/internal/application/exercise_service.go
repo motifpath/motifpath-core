@@ -64,7 +64,7 @@ func (s *ExerciseService) diagramRefRepos() diagramRefRepos {
 // prompt, in an option's thumbnail or in a remediation's content, reported
 // under the field it came from.
 func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain.PromptDocument, options []domain.Option, remediationTargets []domain.RemediationTarget) error {
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "prompt", prompt.EmbeddedDiagramRefs()); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "prompt", prompt.EmbeddedDiagramRefs()); err != nil {
 		return err
 	}
 	var thumbnails []domain.DiagramRef
@@ -73,14 +73,14 @@ func (s *ExerciseService) checkEmbeddedVoices(ctx context.Context, prompt domain
 			thumbnails = append(thumbnails, *option.DiagramRef)
 		}
 	}
-	if err := checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "options", thumbnails); err != nil {
+	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "options", thumbnails); err != nil {
 		return err
 	}
 	var remediation []domain.DiagramRef
 	for _, target := range remediationTargets {
 		remediation = append(remediation, embeddedRefs(target.RichContent)...)
 	}
-	return checkEmbeddedPlaybackVoices(ctx, s.diagramRefRepos(), "remediation_targets", remediation)
+	return checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "remediation_targets", remediation)
 }
 
 // CreateExercise creates a standalone exercise, not linked to any challenge

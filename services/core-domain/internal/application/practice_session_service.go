@@ -358,10 +358,18 @@ func (s *PracticeSessionService) listExercises(ctx context.Context, filter domai
 	}
 }
 
-// playable reports whether d can be played along with: it has a sequence
-// and a tempo.
+// playable reports whether d can be played along with: it has a default
+// playback, which always has steps and a tempo.
 func playable(d domain.Diagram) bool {
-	return len(d.Sequence) > 0 && d.TempoBPM != nil
+	_, ok := d.DefaultPlayback()
+	return ok
+}
+
+// targetTempo is the tempo a playable diagram's play-along aims for: its
+// default playback's.
+func targetTempo(d domain.Diagram) int {
+	playback, _ := d.DefaultPlayback()
+	return playback.TempoBPM
 }
 
 func bestClean(c practiceCandidate) *int {
@@ -373,7 +381,7 @@ func bestClean(c practiceCandidate) *int {
 
 // startTempo is the tempo a play-along candidate's ladder starts at.
 func startTempo(c practiceCandidate) int {
-	return domain.PlayAlongStartTempo(*c.diagram.TempoBPM, bestClean(c))
+	return domain.PlayAlongStartTempo(targetTempo(*c.diagram), bestClean(c))
 }
 
 // seconds estimates how long c takes as a pick on the tempo ladder.
@@ -474,7 +482,7 @@ func (c *composer) warmUp(candidates []practiceCandidate) {
 	if best == nil {
 		return
 	}
-	tempo := domain.WarmUpTempo(*best.diagram.TempoBPM, *best.state.BestCleanBPM)
+	tempo := domain.WarmUpTempo(targetTempo(*best.diagram), *best.state.BestCleanBPM)
 	item := c.item(*best, domain.PracticePickWarmUp, tempo, domain.PlayAlongSeconds(*best.diagram, tempo, true))
 	if float64(item.EstimatedSeconds) > float64(c.budget)*warmUpMaxShare {
 		return
@@ -645,7 +653,7 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		item.PlayAlong = &domain.PlannedPlayAlong{
 			DiagramID:         cand.diagram.ID,
 			StartTempoBPM:     tempo,
-			TargetTempoBPM:    *cand.diagram.TempoBPM,
+			TargetTempoBPM:    targetTempo(*cand.diagram),
 			BestCleanTempoBPM: bestClean(cand),
 		}
 	}
