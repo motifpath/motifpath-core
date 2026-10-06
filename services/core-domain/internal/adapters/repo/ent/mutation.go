@@ -41,6 +41,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/fretboardcellrange"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -97,6 +98,7 @@ const (
 	TypeExerciseOption          = "ExerciseOption"
 	TypeExerciseSkill           = "ExerciseSkill"
 	TypeExpandedContent         = "ExpandedContent"
+	TypeFretboardCellRange      = "FretboardCellRange"
 	TypeInstrument              = "Instrument"
 	TypeKnowledgeEdge           = "KnowledgeEdge"
 	TypeKnowledgeNode           = "KnowledgeNode"
@@ -24695,6 +24697,739 @@ func (m *ExpandedContentMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *ExpandedContentMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown ExpandedContent edge %s", name)
+}
+
+// FretboardCellRangeMutation represents an operation that mutates the FretboardCellRange nodes in the graph.
+type FretboardCellRangeMutation struct {
+	config
+	op                       Op
+	typ                      string
+	id                       *uuid.UUID
+	strings                  *[]int
+	appendstrings            []int
+	from_fret                *int
+	addfrom_fret             *int
+	to_fret                  *int
+	addto_fret               *int
+	clearedFields            map[string]struct{}
+	skill                    *uuid.UUID
+	clearedskill             bool
+	layout_instrument        *uuid.UUID
+	clearedlayout_instrument bool
+	done                     bool
+	oldValue                 func(context.Context) (*FretboardCellRange, error)
+	predicates               []predicate.FretboardCellRange
+}
+
+var _ ent.Mutation = (*FretboardCellRangeMutation)(nil)
+
+// fretboardcellrangeOption allows management of the mutation configuration using functional options.
+type fretboardcellrangeOption func(*FretboardCellRangeMutation)
+
+// newFretboardCellRangeMutation creates new mutation for the FretboardCellRange entity.
+func newFretboardCellRangeMutation(c config, op Op, opts ...fretboardcellrangeOption) *FretboardCellRangeMutation {
+	m := &FretboardCellRangeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFretboardCellRange,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFretboardCellRangeID sets the ID field of the mutation.
+func withFretboardCellRangeID(id uuid.UUID) fretboardcellrangeOption {
+	return func(m *FretboardCellRangeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *FretboardCellRange
+		)
+		m.oldValue = func(ctx context.Context) (*FretboardCellRange, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().FretboardCellRange.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFretboardCellRange sets the old FretboardCellRange of the mutation.
+func withFretboardCellRange(node *FretboardCellRange) fretboardcellrangeOption {
+	return func(m *FretboardCellRangeMutation) {
+		m.oldValue = func(context.Context) (*FretboardCellRange, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FretboardCellRangeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FretboardCellRangeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of FretboardCellRange entities.
+func (m *FretboardCellRangeMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FretboardCellRangeMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FretboardCellRangeMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().FretboardCellRange.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSkillID sets the "skill_id" field.
+func (m *FretboardCellRangeMutation) SetSkillID(u uuid.UUID) {
+	m.skill = &u
+}
+
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *FretboardCellRangeMutation) SkillID() (r uuid.UUID, exists bool) {
+	v := m.skill
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillID returns the old "skill_id" field's value of the FretboardCellRange entity.
+// If the FretboardCellRange object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FretboardCellRangeMutation) OldSkillID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
+	}
+	return oldValue.SkillID, nil
+}
+
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *FretboardCellRangeMutation) ResetSkillID() {
+	m.skill = nil
+}
+
+// SetLayoutInstrumentID sets the "layout_instrument_id" field.
+func (m *FretboardCellRangeMutation) SetLayoutInstrumentID(u uuid.UUID) {
+	m.layout_instrument = &u
+}
+
+// LayoutInstrumentID returns the value of the "layout_instrument_id" field in the mutation.
+func (m *FretboardCellRangeMutation) LayoutInstrumentID() (r uuid.UUID, exists bool) {
+	v := m.layout_instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLayoutInstrumentID returns the old "layout_instrument_id" field's value of the FretboardCellRange entity.
+// If the FretboardCellRange object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FretboardCellRangeMutation) OldLayoutInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLayoutInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLayoutInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLayoutInstrumentID: %w", err)
+	}
+	return oldValue.LayoutInstrumentID, nil
+}
+
+// ResetLayoutInstrumentID resets all changes to the "layout_instrument_id" field.
+func (m *FretboardCellRangeMutation) ResetLayoutInstrumentID() {
+	m.layout_instrument = nil
+}
+
+// SetStrings sets the "strings" field.
+func (m *FretboardCellRangeMutation) SetStrings(i []int) {
+	m.strings = &i
+	m.appendstrings = nil
+}
+
+// Strings returns the value of the "strings" field in the mutation.
+func (m *FretboardCellRangeMutation) Strings() (r []int, exists bool) {
+	v := m.strings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStrings returns the old "strings" field's value of the FretboardCellRange entity.
+// If the FretboardCellRange object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FretboardCellRangeMutation) OldStrings(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStrings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStrings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStrings: %w", err)
+	}
+	return oldValue.Strings, nil
+}
+
+// AppendStrings adds i to the "strings" field.
+func (m *FretboardCellRangeMutation) AppendStrings(i []int) {
+	m.appendstrings = append(m.appendstrings, i...)
+}
+
+// AppendedStrings returns the list of values that were appended to the "strings" field in this mutation.
+func (m *FretboardCellRangeMutation) AppendedStrings() ([]int, bool) {
+	if len(m.appendstrings) == 0 {
+		return nil, false
+	}
+	return m.appendstrings, true
+}
+
+// ResetStrings resets all changes to the "strings" field.
+func (m *FretboardCellRangeMutation) ResetStrings() {
+	m.strings = nil
+	m.appendstrings = nil
+}
+
+// SetFromFret sets the "from_fret" field.
+func (m *FretboardCellRangeMutation) SetFromFret(i int) {
+	m.from_fret = &i
+	m.addfrom_fret = nil
+}
+
+// FromFret returns the value of the "from_fret" field in the mutation.
+func (m *FretboardCellRangeMutation) FromFret() (r int, exists bool) {
+	v := m.from_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFromFret returns the old "from_fret" field's value of the FretboardCellRange entity.
+// If the FretboardCellRange object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FretboardCellRangeMutation) OldFromFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFromFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFromFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFromFret: %w", err)
+	}
+	return oldValue.FromFret, nil
+}
+
+// AddFromFret adds i to the "from_fret" field.
+func (m *FretboardCellRangeMutation) AddFromFret(i int) {
+	if m.addfrom_fret != nil {
+		*m.addfrom_fret += i
+	} else {
+		m.addfrom_fret = &i
+	}
+}
+
+// AddedFromFret returns the value that was added to the "from_fret" field in this mutation.
+func (m *FretboardCellRangeMutation) AddedFromFret() (r int, exists bool) {
+	v := m.addfrom_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetFromFret resets all changes to the "from_fret" field.
+func (m *FretboardCellRangeMutation) ResetFromFret() {
+	m.from_fret = nil
+	m.addfrom_fret = nil
+}
+
+// SetToFret sets the "to_fret" field.
+func (m *FretboardCellRangeMutation) SetToFret(i int) {
+	m.to_fret = &i
+	m.addto_fret = nil
+}
+
+// ToFret returns the value of the "to_fret" field in the mutation.
+func (m *FretboardCellRangeMutation) ToFret() (r int, exists bool) {
+	v := m.to_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToFret returns the old "to_fret" field's value of the FretboardCellRange entity.
+// If the FretboardCellRange object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FretboardCellRangeMutation) OldToFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToFret: %w", err)
+	}
+	return oldValue.ToFret, nil
+}
+
+// AddToFret adds i to the "to_fret" field.
+func (m *FretboardCellRangeMutation) AddToFret(i int) {
+	if m.addto_fret != nil {
+		*m.addto_fret += i
+	} else {
+		m.addto_fret = &i
+	}
+}
+
+// AddedToFret returns the value that was added to the "to_fret" field in this mutation.
+func (m *FretboardCellRangeMutation) AddedToFret() (r int, exists bool) {
+	v := m.addto_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetToFret resets all changes to the "to_fret" field.
+func (m *FretboardCellRangeMutation) ResetToFret() {
+	m.to_fret = nil
+	m.addto_fret = nil
+}
+
+// ClearSkill clears the "skill" edge to the KnowledgeNode entity.
+func (m *FretboardCellRangeMutation) ClearSkill() {
+	m.clearedskill = true
+	m.clearedFields[fretboardcellrange.FieldSkillID] = struct{}{}
+}
+
+// SkillCleared reports if the "skill" edge to the KnowledgeNode entity was cleared.
+func (m *FretboardCellRangeMutation) SkillCleared() bool {
+	return m.clearedskill
+}
+
+// SkillIDs returns the "skill" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SkillID instead. It exists only for internal usage by the builders.
+func (m *FretboardCellRangeMutation) SkillIDs() (ids []uuid.UUID) {
+	if id := m.skill; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSkill resets all changes to the "skill" edge.
+func (m *FretboardCellRangeMutation) ResetSkill() {
+	m.skill = nil
+	m.clearedskill = false
+}
+
+// ClearLayoutInstrument clears the "layout_instrument" edge to the Instrument entity.
+func (m *FretboardCellRangeMutation) ClearLayoutInstrument() {
+	m.clearedlayout_instrument = true
+	m.clearedFields[fretboardcellrange.FieldLayoutInstrumentID] = struct{}{}
+}
+
+// LayoutInstrumentCleared reports if the "layout_instrument" edge to the Instrument entity was cleared.
+func (m *FretboardCellRangeMutation) LayoutInstrumentCleared() bool {
+	return m.clearedlayout_instrument
+}
+
+// LayoutInstrumentIDs returns the "layout_instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// LayoutInstrumentID instead. It exists only for internal usage by the builders.
+func (m *FretboardCellRangeMutation) LayoutInstrumentIDs() (ids []uuid.UUID) {
+	if id := m.layout_instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetLayoutInstrument resets all changes to the "layout_instrument" edge.
+func (m *FretboardCellRangeMutation) ResetLayoutInstrument() {
+	m.layout_instrument = nil
+	m.clearedlayout_instrument = false
+}
+
+// Where appends a list predicates to the FretboardCellRangeMutation builder.
+func (m *FretboardCellRangeMutation) Where(ps ...predicate.FretboardCellRange) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FretboardCellRangeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FretboardCellRangeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.FretboardCellRange, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FretboardCellRangeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FretboardCellRangeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (FretboardCellRange).
+func (m *FretboardCellRangeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FretboardCellRangeMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.skill != nil {
+		fields = append(fields, fretboardcellrange.FieldSkillID)
+	}
+	if m.layout_instrument != nil {
+		fields = append(fields, fretboardcellrange.FieldLayoutInstrumentID)
+	}
+	if m.strings != nil {
+		fields = append(fields, fretboardcellrange.FieldStrings)
+	}
+	if m.from_fret != nil {
+		fields = append(fields, fretboardcellrange.FieldFromFret)
+	}
+	if m.to_fret != nil {
+		fields = append(fields, fretboardcellrange.FieldToFret)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FretboardCellRangeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case fretboardcellrange.FieldSkillID:
+		return m.SkillID()
+	case fretboardcellrange.FieldLayoutInstrumentID:
+		return m.LayoutInstrumentID()
+	case fretboardcellrange.FieldStrings:
+		return m.Strings()
+	case fretboardcellrange.FieldFromFret:
+		return m.FromFret()
+	case fretboardcellrange.FieldToFret:
+		return m.ToFret()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FretboardCellRangeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case fretboardcellrange.FieldSkillID:
+		return m.OldSkillID(ctx)
+	case fretboardcellrange.FieldLayoutInstrumentID:
+		return m.OldLayoutInstrumentID(ctx)
+	case fretboardcellrange.FieldStrings:
+		return m.OldStrings(ctx)
+	case fretboardcellrange.FieldFromFret:
+		return m.OldFromFret(ctx)
+	case fretboardcellrange.FieldToFret:
+		return m.OldToFret(ctx)
+	}
+	return nil, fmt.Errorf("unknown FretboardCellRange field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FretboardCellRangeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case fretboardcellrange.FieldSkillID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillID(v)
+		return nil
+	case fretboardcellrange.FieldLayoutInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLayoutInstrumentID(v)
+		return nil
+	case fretboardcellrange.FieldStrings:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStrings(v)
+		return nil
+	case fretboardcellrange.FieldFromFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFromFret(v)
+		return nil
+	case fretboardcellrange.FieldToFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToFret(v)
+		return nil
+	}
+	return fmt.Errorf("unknown FretboardCellRange field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FretboardCellRangeMutation) AddedFields() []string {
+	var fields []string
+	if m.addfrom_fret != nil {
+		fields = append(fields, fretboardcellrange.FieldFromFret)
+	}
+	if m.addto_fret != nil {
+		fields = append(fields, fretboardcellrange.FieldToFret)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FretboardCellRangeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case fretboardcellrange.FieldFromFret:
+		return m.AddedFromFret()
+	case fretboardcellrange.FieldToFret:
+		return m.AddedToFret()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FretboardCellRangeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case fretboardcellrange.FieldFromFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFromFret(v)
+		return nil
+	case fretboardcellrange.FieldToFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddToFret(v)
+		return nil
+	}
+	return fmt.Errorf("unknown FretboardCellRange numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FretboardCellRangeMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FretboardCellRangeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FretboardCellRangeMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown FretboardCellRange nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FretboardCellRangeMutation) ResetField(name string) error {
+	switch name {
+	case fretboardcellrange.FieldSkillID:
+		m.ResetSkillID()
+		return nil
+	case fretboardcellrange.FieldLayoutInstrumentID:
+		m.ResetLayoutInstrumentID()
+		return nil
+	case fretboardcellrange.FieldStrings:
+		m.ResetStrings()
+		return nil
+	case fretboardcellrange.FieldFromFret:
+		m.ResetFromFret()
+		return nil
+	case fretboardcellrange.FieldToFret:
+		m.ResetToFret()
+		return nil
+	}
+	return fmt.Errorf("unknown FretboardCellRange field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FretboardCellRangeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.skill != nil {
+		edges = append(edges, fretboardcellrange.EdgeSkill)
+	}
+	if m.layout_instrument != nil {
+		edges = append(edges, fretboardcellrange.EdgeLayoutInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FretboardCellRangeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case fretboardcellrange.EdgeSkill:
+		if id := m.skill; id != nil {
+			return []ent.Value{*id}
+		}
+	case fretboardcellrange.EdgeLayoutInstrument:
+		if id := m.layout_instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FretboardCellRangeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FretboardCellRangeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FretboardCellRangeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedskill {
+		edges = append(edges, fretboardcellrange.EdgeSkill)
+	}
+	if m.clearedlayout_instrument {
+		edges = append(edges, fretboardcellrange.EdgeLayoutInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FretboardCellRangeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case fretboardcellrange.EdgeSkill:
+		return m.clearedskill
+	case fretboardcellrange.EdgeLayoutInstrument:
+		return m.clearedlayout_instrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FretboardCellRangeMutation) ClearEdge(name string) error {
+	switch name {
+	case fretboardcellrange.EdgeSkill:
+		m.ClearSkill()
+		return nil
+	case fretboardcellrange.EdgeLayoutInstrument:
+		m.ClearLayoutInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown FretboardCellRange unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FretboardCellRangeMutation) ResetEdge(name string) error {
+	switch name {
+	case fretboardcellrange.EdgeSkill:
+		m.ResetSkill()
+		return nil
+	case fretboardcellrange.EdgeLayoutInstrument:
+		m.ResetLayoutInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown FretboardCellRange edge %s", name)
 }
 
 // InstrumentMutation represents an operation that mutates the Instrument nodes in the graph.

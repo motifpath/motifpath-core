@@ -110,7 +110,8 @@ NEVER access the database directly from the domain layer.
 - Reference-data migrations are generated, never hand-edited: `scripts/knowledge_map` compiles
   motifpath-specs `catalogs/knowledge-map.yaml` (catalog instruments + knowledge map),
   `scripts/diagram_catalog` the basic guitar catalog and `scripts/practice_drills`
-  `catalogs/practice-drills.yaml` (drill templates + versioned fluent times); run
+  `catalogs/practice-drills.yaml` (drill templates, versioned fluent times and the fretboard cell
+  ranges, checked against the knowledge map); run
   `atlas migrate hash` afterwards.
 
 ## Auth

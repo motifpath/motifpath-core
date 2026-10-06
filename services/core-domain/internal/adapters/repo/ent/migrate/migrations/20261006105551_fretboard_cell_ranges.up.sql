@@ -1,0 +1,4 @@
+-- create "fretboard_cell_ranges" table
+CREATE TABLE "fretboard_cell_ranges" ("id" uuid NOT NULL, "strings" jsonb NOT NULL, "from_fret" bigint NOT NULL, "to_fret" bigint NOT NULL, "skill_id" uuid NOT NULL, "layout_instrument_id" uuid NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "fretboard_cell_ranges_instruments_layout_instrument" FOREIGN KEY ("layout_instrument_id") REFERENCES "instruments" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION, CONSTRAINT "fretboard_cell_ranges_knowledge_nodes_skill" FOREIGN KEY ("skill_id") REFERENCES "knowledge_nodes" ("id") ON UPDATE NO ACTION ON DELETE NO ACTION);
+-- create index "fretboardcellrange_skill_id_layout_instrument_id" to table: "fretboard_cell_ranges"
+CREATE UNIQUE INDEX "fretboardcellrange_skill_id_layout_instrument_id" ON "fretboard_cell_ranges" ("skill_id", "layout_instrument_id");

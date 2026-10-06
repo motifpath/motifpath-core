@@ -357,6 +357,18 @@ func (f ExpandedContentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ExpandedContentMutation", m)
 }
 
+// The FretboardCellRangeFunc type is an adapter to allow the use of ordinary
+// function as FretboardCellRange mutator.
+type FretboardCellRangeFunc func(context.Context, *ent.FretboardCellRangeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FretboardCellRangeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FretboardCellRangeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FretboardCellRangeMutation", m)
+}
+
 // The InstrumentFunc type is an adapter to allow the use of ordinary
 // function as Instrument mutator.
 type InstrumentFunc func(context.Context, *ent.InstrumentMutation) (ent.Value, error)

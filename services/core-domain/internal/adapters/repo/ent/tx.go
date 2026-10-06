@@ -70,6 +70,8 @@ type Tx struct {
 	ExerciseSkill *ExerciseSkillClient
 	// ExpandedContent is the client for interacting with the ExpandedContent builders.
 	ExpandedContent *ExpandedContentClient
+	// FretboardCellRange is the client for interacting with the FretboardCellRange builders.
+	FretboardCellRange *FretboardCellRangeClient
 	// Instrument is the client for interacting with the Instrument builders.
 	Instrument *InstrumentClient
 	// KnowledgeEdge is the client for interacting with the KnowledgeEdge builders.
@@ -258,6 +260,7 @@ func (tx *Tx) init() {
 	tx.ExerciseOption = NewExerciseOptionClient(tx.config)
 	tx.ExerciseSkill = NewExerciseSkillClient(tx.config)
 	tx.ExpandedContent = NewExpandedContentClient(tx.config)
+	tx.FretboardCellRange = NewFretboardCellRangeClient(tx.config)
 	tx.Instrument = NewInstrumentClient(tx.config)
 	tx.KnowledgeEdge = NewKnowledgeEdgeClient(tx.config)
 	tx.KnowledgeNode = NewKnowledgeNodeClient(tx.config)

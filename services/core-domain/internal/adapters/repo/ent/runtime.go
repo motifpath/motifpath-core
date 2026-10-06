@@ -35,6 +35,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseoption"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exerciseskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/expandedcontent"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/fretboardcellrange"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgeedge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -359,6 +360,16 @@ func init() {
 	expandedcontentDescID := expandedcontentFields[0].Descriptor()
 	// expandedcontent.DefaultID holds the default value on creation for the id field.
 	expandedcontent.DefaultID = expandedcontentDescID.Default.(func() uuid.UUID)
+	fretboardcellrangeFields := schema.FretboardCellRange{}.Fields()
+	_ = fretboardcellrangeFields
+	// fretboardcellrangeDescFromFret is the schema descriptor for from_fret field.
+	fretboardcellrangeDescFromFret := fretboardcellrangeFields[4].Descriptor()
+	// fretboardcellrange.FromFretValidator is a validator for the "from_fret" field. It is called by the builders before save.
+	fretboardcellrange.FromFretValidator = fretboardcellrangeDescFromFret.Validators[0].(func(int) error)
+	// fretboardcellrangeDescToFret is the schema descriptor for to_fret field.
+	fretboardcellrangeDescToFret := fretboardcellrangeFields[5].Descriptor()
+	// fretboardcellrange.ToFretValidator is a validator for the "to_fret" field. It is called by the builders before save.
+	fretboardcellrange.ToFretValidator = fretboardcellrangeDescToFret.Validators[0].(func(int) error)
 	instrumentFields := schema.Instrument{}.Fields()
 	_ = instrumentFields
 	// instrumentDescIcon is the schema descriptor for icon field.

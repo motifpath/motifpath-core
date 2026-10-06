@@ -7,6 +7,7 @@ import practice_drills as pd
 
 SPECS_DIR = Path(os.environ.get('SPECS_DIR', Path(__file__).resolve().parents[3] / 'motifpath-specs'))
 CATALOG = SPECS_DIR / 'catalogs/practice-drills.yaml'
+MAP = SPECS_DIR / 'catalogs/knowledge-map.yaml'
 
 
 def template(key, kind='exercise', response='option_choice', timed=True):
@@ -124,9 +125,74 @@ class CatalogTests(unittest.TestCase):
         drills = pd.load(CATALOG)
         self.assertEqual(7, len(drills.templates))
         self.assertEqual({'exercise:text_response', 'exercise:audio_recognition', 'exercise:image_recognition',
-                          'exercise:image_choice', 'exercise:audio_selection'},
+                          'exercise:image_choice', 'exercise:audio_selection',
+                          'fretboard_cell:name_the_note', 'fretboard_cell:find_the_note'},
                          {t.template for t in drills.thresholds})
         self.assertTrue(all(t.source == 'default' and t.version == 1 for t in drills.thresholds))
+
+    def test_the_specs_catalog_cells_cover_the_guitar_and_bass_fretboards(self):
+        ranges = pd.load_cells(CATALOG, MAP)
+        cells = {}
+        for r in ranges:
+            cells[r.layout] = cells.get(r.layout, 0) + r.cell_count
+        self.assertEqual({'guitar': 72, 'electric-bass': 48}, cells)
+
+
+def cell_entry(skill='find-notes-root-strings', **layouts):
+    return {'skill': skill, 'layouts': layouts or {'guitar': {'strings': [6, 5], 'frets': [0, 11]}}}
+
+
+def node_map(*skills):
+    """A knowledge map with the given (key, instrument keys) skills; empty keys = every instrument."""
+    return {s: pd.km.Node(s, 'skill', {'en': s, 'pt_BR': s}, None, list(instruments)) for s, instruments in skills}
+
+
+FRETTED = ('guitar', 'electric-guitar', 'electric-bass')
+
+
+class CellTests(unittest.TestCase):
+    def assertRejected(self, entries, nodes, *fragments):
+        with self.assertRaises(ValueError) as ctx:
+            pd.build_cells(entries, nodes)
+        for fragment in fragments:
+            self.assertIn(fragment, str(ctx.exception))
+
+    def test_a_range_lists_its_strings_and_frets_with_a_fixed_id(self):
+        [r] = pd.build_cells([cell_entry()], node_map(('find-notes-root-strings', FRETTED)))
+        self.assertEqual(('find-notes-root-strings', 'guitar', [6, 5], 0, 11), (r.skill, r.layout, r.strings, r.from_fret, r.to_fret))
+        self.assertEqual(24, r.cell_count)
+        self.assertEqual(pd.stable_id('fretboard-cells/find-notes-root-strings/guitar'), r.id)
+
+    def test_a_string_the_layout_doesnt_have_is_rejected(self):
+        self.assertRejected([cell_entry('find-notes-top-strings', **{'electric-bass': {'strings': [2, 5], 'frets': [0, 11]}})],
+                            node_map(('find-notes-top-strings', FRETTED)), "'electric-bass'", 'string 5')
+
+    def test_a_skill_that_doesnt_suit_the_layout_is_rejected(self):
+        self.assertRejected([cell_entry('play-e-shape-barre', **{'electric-bass': {'strings': [4], 'frets': [0, 11]}})],
+                            node_map(('play-e-shape-barre', ('guitar', 'electric-guitar'))), "'play-e-shape-barre'", "'electric-bass'")
+
+    def test_an_unknown_skill_is_rejected(self):
+        self.assertRejected([cell_entry('no-such-skill')], node_map(), "'no-such-skill'")
+
+    def test_an_unknown_layout_is_rejected(self):
+        self.assertRejected([cell_entry(ukulele={'strings': [1], 'frets': [0, 11]})],
+                            node_map(('find-notes-root-strings', ())), "'ukulele'")
+
+    def test_frets_out_of_order_are_rejected(self):
+        self.assertRejected([cell_entry(guitar={'strings': [6], 'frets': [5, 2]})],
+                            node_map(('find-notes-root-strings', FRETTED)), 'frets')
+
+    def test_a_cell_in_two_skills_is_rejected(self):
+        self.assertRejected([cell_entry('find-notes-root-strings', guitar={'strings': [6, 5], 'frets': [0, 11]}),
+                             cell_entry('find-notes-top-strings', guitar={'strings': [5, 4], 'frets': [0, 11]})],
+                            node_map(('find-notes-root-strings', FRETTED), ('find-notes-top-strings', FRETTED)),
+                            'string 5')
+
+    def test_the_sql_installs_every_range_with_fixed_ids(self):
+        sql = pd.render_cells_sql(pd.build_cells([cell_entry()], node_map(('find-notes-root-strings', FRETTED))))
+        self.assertIn('INSERT INTO "fretboard_cell_ranges"', sql)
+        self.assertIn(f"('{pd.stable_id('fretboard-cells/find-notes-root-strings/guitar')}', "
+                      f"'{pd.km.stable_id('knowledge-node/find-notes-root-strings')}', '{pd.km.instrument_id('guitar')}', '[6,5]', 0, 11)", sql)
 
 
 if __name__ == '__main__':
