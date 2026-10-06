@@ -38,10 +38,13 @@ func registerPracticeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the take is counted as a miss$`, w.takeIsCountedAsAMiss)
 }
 
-func (w *world) instrumentInTuning(_, tuning string) error {
-	if len(strings.Fields(tuning)) == 0 {
+func (w *world) instrumentInTuning(name, tuning string) error {
+	strings := strings.Fields(tuning)
+	if len(strings) == 0 {
 		return fmt.Errorf("instrument has no strings")
 	}
+	id := stableUUID("instrument", name)
+	w.reference.instruments[id] = domain.InstrumentReference{ID: id, Tuning: strings}
 	return nil
 }
 
@@ -50,8 +53,9 @@ func (w *world) studentIsPractisingInSession(student, session string) error {
 	return nil
 }
 
-func (w *world) studentPractisesCell(student string, _, _ int) error {
+func (w *world) studentPractisesCell(student string, str, fret int) error {
 	w.studentID(student)
+	w.guitarCell(str, fret)
 	return nil
 }
 
@@ -59,7 +63,7 @@ func (w *world) fluentTimeForNamingANote(ms int) error {
 	if ms <= 0 {
 		return fmt.Errorf("fluent time must be positive, got %d", ms)
 	}
-	return nil
+	return w.templateHasVersion1("fretboard_cell:name_the_note", ms)
 }
 
 func (w *world) thePlayAlongDiagram(diagram string) error {

@@ -20,7 +20,18 @@ import (
 type fakeReference struct {
 	diagrams    map[string]domain.DiagramReference
 	exercises   map[string]domain.ExerciseReference
+	instruments map[string]domain.InstrumentReference
 	fluentTimes map[string][]domain.FluentTime
+}
+
+func (f *fakeReference) Instruments(_ context.Context, ids []string) (map[string]domain.InstrumentReference, error) {
+	found := map[string]domain.InstrumentReference{}
+	for _, id := range ids {
+		if i, ok := f.instruments[id]; ok {
+			found[id] = i
+		}
+	}
+	return found, nil
 }
 
 func (f *fakeReference) Exercises(_ context.Context, ids []string) (map[string]domain.ExerciseReference, error) {
@@ -238,6 +249,13 @@ type world struct {
 
 	// lastTemplate is the drill template the latest fluent time step named.
 	lastTemplate string
+
+	// lastAnswer is the latest answer sent.
+	lastAnswer domain.PracticeAnswer
+	// lastExercise and lastExerciseID name the exercise a scenario set up last.
+	lastExercise   string
+	lastExerciseID string
+	cells          cellWorld
 }
 
 func newWorld() *world {
@@ -245,6 +263,7 @@ func newWorld() *world {
 		reference: &fakeReference{
 			diagrams:    map[string]domain.DiagramReference{},
 			exercises:   map[string]domain.ExerciseReference{},
+			instruments: map[string]domain.InstrumentReference{},
 			fluentTimes: map[string][]domain.FluentTime{},
 		},
 		evidence: &fakeEvidence{},
@@ -320,6 +339,7 @@ func (w *world) answer(student, itemKey string, response domain.PracticeResponse
 	if tap, ok := w.tapMs[student]; ok && response.LatencyMs != nil {
 		answer.TapMs = &tap
 	}
+	w.lastAnswer = answer
 	return w.service.Process(context.Background(), answer)
 }
 

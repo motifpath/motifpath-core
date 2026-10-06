@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,9 @@ type goldenCaseFile struct {
 			OptionIDs        []string `json:"option_ids"`
 			CorrectOptionIDs []string `json:"correct_option_ids"`
 		} `json:"exercises"`
+		Instruments map[string]struct {
+			Tuning []string `json:"tuning"`
+		} `json:"instruments"`
 	} `json:"reference"`
 	Cases []struct {
 		Name     string          `json:"name"`
@@ -43,6 +47,15 @@ type goldenCaseFile struct {
 				Rating           string `json:"rating"`
 				TempoBPM         *int   `json:"tempo_bpm"`
 				ChangesPerMinute *int   `json:"changes_per_minute"`
+				AnswerKey        *struct {
+					String   *int   `json:"string"`
+					Fret     *int   `json:"fret"`
+					NoteName string `json:"note_name"`
+					Options  []struct {
+						OptionID  string `json:"option_id"`
+						IsCorrect bool   `json:"is_correct"`
+					} `json:"options"`
+				} `json:"answer_key"`
 			} `json:"evidence"`
 		} `json:"expected"`
 	} `json:"cases"`
@@ -61,12 +74,19 @@ func TestGraderGoldenCases(t *testing.T) {
 			require.NoError(t, json.Unmarshal(raw, &file))
 			require.Equal(t, grader.ID(), file.Grader)
 
-			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{}}
+			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{}, Instruments: map[string]domain.InstrumentReference{}}
 			for id := range file.Reference.Diagrams {
 				ref.Diagrams[id] = domain.DiagramReference{ID: id}
 			}
 			for id, e := range file.Reference.Exercises {
-				ref.Exercises[id] = domain.ExerciseReference{ID: id, OptionIDs: e.OptionIDs, CorrectOptionIDs: e.CorrectOptionIDs}
+				options := make([]domain.AnswerOption, len(e.OptionIDs))
+				for i, o := range e.OptionIDs {
+					options[i] = domain.AnswerOption{OptionID: o, IsCorrect: slices.Contains(e.CorrectOptionIDs, o)}
+				}
+				ref.Exercises[id] = domain.ExerciseReference{ID: id, OptionIDs: e.OptionIDs, CorrectOptionIDs: e.CorrectOptionIDs, Options: options}
+			}
+			for id, i := range file.Reference.Instruments {
+				ref.Instruments[id] = domain.InstrumentReference{ID: id, Tuning: i.Tuning}
 			}
 
 			for _, c := range file.Cases {
@@ -91,6 +111,19 @@ func TestGraderGoldenCases(t *testing.T) {
 					assert.Equal(t, domain.SelfRating(want.Rating), got.Evidence.Rating)
 					assert.Equal(t, want.TempoBPM, got.Evidence.TempoBPM)
 					assert.Equal(t, want.ChangesPerMinute, got.Evidence.ChangesPerMinute)
+					if want.AnswerKey == nil {
+						assert.Nil(t, got.Evidence.AnswerKey)
+						return
+					}
+					require.NotNil(t, got.Evidence.AnswerKey, "auto-graded evidence keeps its answer key")
+					assert.Equal(t, want.AnswerKey.String, got.Evidence.AnswerKey.String)
+					assert.Equal(t, want.AnswerKey.Fret, got.Evidence.AnswerKey.Fret)
+					assert.Equal(t, want.AnswerKey.NoteName, got.Evidence.AnswerKey.NoteName)
+					require.Len(t, got.Evidence.AnswerKey.Options, len(want.AnswerKey.Options))
+					for i, o := range want.AnswerKey.Options {
+						assert.Equal(t, o.OptionID, got.Evidence.AnswerKey.Options[i].OptionID)
+						assert.Equal(t, o.IsCorrect, got.Evidence.AnswerKey.Options[i].IsCorrect)
+					}
 				})
 			}
 		})

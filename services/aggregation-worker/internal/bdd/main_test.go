@@ -56,6 +56,7 @@ func TestFeatures(t *testing.T) {
 func InitializeScenario(sc *godog.ScenarioContext) {
 	w := newWorld()
 	registerPracticeSteps(sc, w)
+	registerCellSteps(sc, w)
 	registerExerciseSteps(sc, w)
 	registerActivitySteps(sc, w)
 }
