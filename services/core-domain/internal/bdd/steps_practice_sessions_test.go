@@ -28,6 +28,7 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^student "([^"]+)" plays "([^"]+)" and "([^"]+)"$`, w.studentPlays)
 	sc.Step(`^"([^"]+)" is enrolled in a path whose skills have practice items for both instruments$`, w.enrolledInPracticePath)
 	sc.Step(`^"([^"]+)" has a clean play-along "([^"]+)" with a best clean tempo of (\d+) BPM$`, w.hasCleanPlayAlong)
+	sc.Step(`^"([^"]+)" has a clean play-along "([^"]+)" with a best clean tempo of (\d+) BPM and a default playback at (\d+) BPM$`, w.hasCleanPlayAlongAt)
 	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" is (\d+) BPM and the diagram's default playback is at (\d+) BPM$`, w.hasBestCleanTempoOn)
 	sc.Step(`^"([^"]+)" has never rated "([^"]+)" clean and the diagram's default playback is at (\d+) BPM$`, w.neverRatedClean)
 
@@ -158,7 +159,11 @@ func (w *world) putPlayAlongState(name, slug string, s domain.PracticeItemState)
 }
 
 func (w *world) hasCleanPlayAlong(name, slug string, bestClean int) error {
-	w.putPlayAlong(slug, "guitar", 120)
+	return w.hasCleanPlayAlongAt(name, slug, bestClean, 120)
+}
+
+func (w *world) hasCleanPlayAlongAt(name, slug string, bestClean, tempo int) error {
+	w.putPlayAlong(slug, "guitar", tempo)
 	dueAt := fixedNow.AddDate(0, 0, 3)
 	w.putPlayAlongState(name, slug, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 3, DueAt: &dueAt, LastAt: &fixedNow, BestCleanBPM: &bestClean})
 	return nil
