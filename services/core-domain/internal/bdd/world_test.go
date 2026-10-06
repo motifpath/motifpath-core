@@ -44,21 +44,22 @@ type world struct {
 	completion        *fakeCompletionReader
 	practiceStates    *fakePracticeItemStateReader
 	practiceItems     *fakeNodeItemSource
+	fretboardCells    *fretboardCellWorld
 	practiceActivity  *fakePracticeActivity
 	// summaryNow is the practice summary's clock, which a scenario may
 	// move to see which calendar day an activity fell on.
 	summaryNow time.Time
 	// timeZone is the student's time zone, sent with each summary read.
-	timeZone string
-	rollup            *application.KnowledgeRollupService
-	knowledge         *fakeKnowledgeNodeRepo
-	knowledgeEdges    *fakeKnowledgeEdgeRepo
-	instruments       *fakeInstrumentRepo
-	voices            *fakeVoiceRepo
-	diagrams          *fakeDiagramRepo
-	pgPinger          *fakePinger
-	mongoPinger       *fakePinger
-	handler           *appHTTP.Handler
+	timeZone       string
+	rollup         *application.KnowledgeRollupService
+	knowledge      *fakeKnowledgeNodeRepo
+	knowledgeEdges *fakeKnowledgeEdgeRepo
+	instruments    *fakeInstrumentRepo
+	voices         *fakeVoiceRepo
+	diagrams       *fakeDiagramRepo
+	pgPinger       *fakePinger
+	mongoPinger    *fakePinger
+	handler        *appHTTP.Handler
 
 	// health probe responses from the most recent "probe is checked" step
 	livenessResp  generated.LivenessCheckResponseObject
@@ -283,7 +284,6 @@ func newWorld() *world {
 	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), newID)
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, newID, now)
-
 
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
