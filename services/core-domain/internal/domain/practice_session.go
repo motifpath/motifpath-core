@@ -285,28 +285,30 @@ const (
 
 // PlayAlongStartTempo is the tempo a play-along's ladder starts at: the best
 // clean tempo, or 60% of the target rounded down to 5 BPM with no clean
-// take yet, kept between the slowest playable tempo and the target.
+// take yet. It is kept between the slowest playable tempo and the target,
+// unless the student has played it clean past the target: that tempo is
+// theirs, and kept.
 func PlayAlongStartTempo(target int, bestClean *int) int {
-	start := roundDownToStep(float64(target) * firstStartTempoShare)
 	if bestClean != nil {
-		start = *bestClean
+		return clampTempo(*bestClean, max(target, *bestClean))
 	}
-	return clampTempo(start, target)
+	return clampTempo(roundDownToStep(float64(target)*firstStartTempoShare), target)
 }
 
 // WarmUpTempo is a warm-up's tempo: about 80% of the best clean tempo,
 // rounded down to 5 BPM, kept between the slowest playable tempo and the
+// target, or the best clean tempo when the student has played it past the
 // target.
 func WarmUpTempo(target, bestClean int) int {
-	return clampTempo(roundDownToStep(float64(bestClean)*warmUpTempoShare), target)
+	return clampTempo(roundDownToStep(float64(bestClean)*warmUpTempoShare), max(target, bestClean))
 }
 
 func roundDownToStep(bpm float64) int {
 	return int(math.Floor(bpm/tempoStepBPM)) * tempoStepBPM
 }
 
-func clampTempo(bpm, target int) int {
-	return max(MinTempoBPM, min(bpm, target))
+func clampTempo(bpm, ceiling int) int {
+	return max(MinTempoBPM, min(bpm, ceiling))
 }
 
 // PlayAlongSeconds estimates how long playing d's default playback at tempo
