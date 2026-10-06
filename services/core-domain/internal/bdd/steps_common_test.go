@@ -317,6 +317,7 @@ func (w *world) requestRefusedForbidden() error {
 func (w *world) requestRefusedNotFound() error {
 	switch w.lastResp.(type) {
 	case generated.GetContentNode404JSONResponse,
+		generated.GetPracticeSummary404JSONResponse,
 		generated.UpdateInstrument404JSONResponse,
 		generated.ListContentNodeVersions404JSONResponse,
 		generated.CreateChallenge404JSONResponse,
@@ -497,6 +498,10 @@ func (w *world) validationErrors() ([]struct {
 }, error) {
 	switch resp := w.lastResp.(type) {
 	case generated.RegisterUser400JSONResponse:
+		return resp.Errors, nil
+	case generated.GetPracticeSummary400JSONResponse:
+		return resp.Errors, nil
+	case generated.GetPracticeOverview400JSONResponse:
 		return resp.Errors, nil
 	case generated.CreatePracticeSessionPlan400JSONResponse:
 		return resp.Errors, nil

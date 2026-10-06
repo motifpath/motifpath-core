@@ -44,6 +44,12 @@ type world struct {
 	completion        *fakeCompletionReader
 	practiceStates    *fakePracticeItemStateReader
 	practiceItems     *fakeNodeItemSource
+	practiceActivity  *fakePracticeActivity
+	// summaryNow is the practice summary's clock, which a scenario may
+	// move to see which calendar day an activity fell on.
+	summaryNow time.Time
+	// timeZone is the student's time zone, sent with each summary read.
+	timeZone string
 	rollup            *application.KnowledgeRollupService
 	knowledge         *fakeKnowledgeNodeRepo
 	knowledgeEdges    *fakeKnowledgeEdgeRepo
@@ -282,8 +288,13 @@ func newWorld() *world {
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
 	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.exercises, w.rollup, newID, now)
+	w.practiceActivity = newFakePracticeActivity()
+	w.summaryNow = fixedNow
+	summaryNow := func() time.Time { return w.summaryNow }
+	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
+	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, summaryNow)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, w.pgPinger, w.mongoPinger)
 	return w
 }
 
