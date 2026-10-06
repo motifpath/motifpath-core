@@ -860,11 +860,10 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 			Skills:   toGeneratedKnowledgeNodes(d.Skills),
 			Concepts: toGeneratedKnowledgeNodes(d.Concepts),
 		},
-		Mode:          toGeneratedMode(d.Mode),
-		TempoBpm:      d.TempoBPM,
-		TimeSignature: generated.TimeSignature{Beats: d.TimeSignature.Beats, BeatValue: generated.TimeSignatureBeatValue(d.TimeSignature.BeatValue)},
-		Sequence:      toGeneratedSequence(d.Sequence),
-		CreatedAt:     d.CreatedAt,
+		Mode:              toGeneratedMode(d.Mode),
+		Playbacks:         toGeneratedPlaybacks(d.Playbacks),
+		DefaultPlaybackId: uuidPtrFromStringPtr(d.DefaultPlaybackID),
+		CreatedAt:         d.CreatedAt,
 	}
 }
 
@@ -873,9 +872,9 @@ func toGeneratedDiagram(d domain.Diagram, names userNames) generated.Diagram {
 func toDiagramUpdate(body *generated.UpdateDiagramRequest) application.DiagramUpdate {
 	update := application.DiagramUpdate{
 		RootNote: body.RootNote, Color: body.Color, Regions: toDomainRegions(body.Regions),
-		Mode:     toUpdateNullable(body.Mode, func(m generated.DiagramMode) domain.DiagramMode { return domain.DiagramMode(m) }),
-		TempoBPM: toUpdateNullable(body.TempoBpm, func(t int) int { return t }),
-		Sequence: toDomainSequence(body.Sequence),
+		Mode:              toUpdateNullable(body.Mode, func(m generated.DiagramMode) domain.DiagramMode { return domain.DiagramMode(m) }),
+		Playbacks:         toDomainPlaybacks(body.Playbacks),
+		DefaultPlaybackID: toUpdateNullable(body.DefaultPlaybackId, func(id openapi_types.UUID) string { return id.String() }),
 	}
 	if body.Names != nil {
 		update.Names = *body.Names
@@ -890,10 +889,6 @@ func toDiagramUpdate(body *generated.UpdateDiagramRequest) application.DiagramUp
 	if body.LabelDisplay != nil {
 		labelDisplay := domain.LabelDisplay(*body.LabelDisplay)
 		update.LabelDisplay = &labelDisplay
-	}
-	if body.TimeSignature != nil {
-		signature := toDomainTimeSignature(body.TimeSignature)
-		update.TimeSignature = &signature
 	}
 	if body.InstrumentIds != nil {
 		update.InstrumentIDs = uuidsToStrings(*body.InstrumentIds)
@@ -931,8 +926,46 @@ func toDomainMode(mode *generated.DiagramMode) *domain.DiagramMode {
 	return &m
 }
 
-// toGeneratedSequence renders steps, always as a list: a diagram that
-// doesn't play has an empty sequence, never a null one.
+// toGeneratedPlaybacks renders playbacks, always as a list: a diagram that
+// doesn't play has an empty list, never a null one.
+func toGeneratedPlaybacks(playbacks []domain.DiagramPlayback) []generated.DiagramPlayback {
+	out := make([]generated.DiagramPlayback, len(playbacks))
+	for i, p := range playbacks {
+		out[i] = generated.DiagramPlayback{
+			PlaybackId:    mustUUID(p.ID),
+			Names:         generated.LocalizedNames(p.Names),
+			TempoBpm:      p.TempoBPM,
+			TimeSignature: generated.TimeSignature{Beats: p.TimeSignature.Beats, BeatValue: generated.TimeSignatureBeatValue(p.TimeSignature.BeatValue)},
+			Steps:         toGeneratedSequence(p.Steps),
+		}
+	}
+	return out
+}
+
+// toDomainPlaybacks converts a request's playbacks, keeping omitted
+// playbacks nil and an empty list empty — they mean different things on an
+// update. A playback without an id is left for the service to assign one,
+// and one without a time signature for the domain to default.
+func toDomainPlaybacks(playbacks *[]generated.DiagramPlaybackInput) []domain.DiagramPlayback {
+	if playbacks == nil {
+		return nil
+	}
+	out := make([]domain.DiagramPlayback, len(*playbacks))
+	for i, p := range *playbacks {
+		out[i] = domain.DiagramPlayback{
+			Names:         domain.LocalizedText(p.Names),
+			TempoBPM:      p.TempoBpm,
+			TimeSignature: toDomainTimeSignature(p.TimeSignature),
+			Steps:         toDomainSequence(&p.Steps),
+		}
+		if p.PlaybackId != nil {
+			out[i].ID = p.PlaybackId.String()
+		}
+	}
+	return out
+}
+
+// toGeneratedSequence renders steps, always as a list.
 func toGeneratedSequence(steps []domain.SequenceStep) []generated.SequenceStep {
 	out := make([]generated.SequenceStep, len(steps))
 	for i, s := range steps {
@@ -946,9 +979,9 @@ func toGeneratedSequence(steps []domain.SequenceStep) []generated.SequenceStep {
 	return out
 }
 
-// toDomainSequence converts a request's steps, keeping an omitted sequence
-// nil and an empty one empty — they mean different things on an update. A
-// step without a strum is left for the domain to default.
+// toDomainSequence converts a request's steps, keeping omitted steps nil and
+// an empty list empty. A step without a strum is left for the domain to
+// default.
 func toDomainSequence(steps *[]generated.SequenceStep) []domain.SequenceStep {
 	if steps == nil {
 		return nil
