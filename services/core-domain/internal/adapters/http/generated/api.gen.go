@@ -1355,10 +1355,10 @@ type CreateCourseRequestLevel string
 // CreateDiagramRequest Payload for creating a new diagram. Every position's string/fret vs.
 // key, and every region's coordinates, must match the referenced
 // instrument's family — the API rejects a request that mixes shapes or
-// supplies the wrong shape for the instrument. Every sequence step may
+// supplies the wrong shape for the instrument. Every playback step may
 // only name positions of this request. Every per-language text
-// (positions' custom_label and note, regions' description) must be
-// keyed by exactly the languages of names.
+// (positions' custom_label and note, regions' description, playbacks'
+// names) must be keyed by exactly the languages of names.
 type CreateDiagramRequest struct {
 	// Classification Classification for a new or updated Diagram. Diagrams share the
 	// exact knowledge graph ContentNode and Exercise use (see
@@ -1371,6 +1371,12 @@ type CreateDiagramRequest struct {
 	// Color The diagram's general marker color as #RRGGBB. Null (or omitted)
 	// leaves it unrecorded.
 	Color *string `json:"color"`
+
+	// DefaultPlaybackId Which of playbacks is the default; it must be the playback_id
+	// of one of them, so the client supplies that playback's id.
+	// Omitted or null makes the first playback the default. Must be
+	// omitted or null when there are no playbacks.
+	DefaultPlaybackId *openapi_types.UUID `json:"default_playback_id"`
 
 	// InstrumentIds The compatible instruments for this diagram. The first is the
 	// immutable layout instrument; every selected instrument must have
@@ -1399,6 +1405,12 @@ type CreateDiagramRequest struct {
 	// viewer's locale, falling back to "en", then to any name present.
 	Names LocalizedNames `json:"names"`
 
+	// Playbacks The diagram's playbacks, in order. Every position_id a step
+	// names must be the position_id of one of this request's
+	// positions, so a position that plays must be given its
+	// position_id by the client. Omitted means no playback.
+	Playbacks *[]DiagramPlaybackInput `json:"playbacks,omitempty"`
+
 	// Positions Every marked position in this diagram, in the coordinate shape
 	// matching the referenced instrument's family. position_id may be
 	// supplied by the client or left for the server to assign.
@@ -1412,24 +1424,6 @@ type CreateDiagramRequest struct {
 	// RootNote The root note this diagram is authored against (e.g. "A"). Null
 	// (or omitted) leaves it unrecorded.
 	RootNote *string `json:"root_note"`
-
-	// Sequence The diagram's playback steps, in order. Every position_id a step
-	// names must be the position_id of one of this request's
-	// positions, so a position that plays must be given its
-	// position_id by the client. Omitted means no playback.
-	Sequence *[]SequenceStep `json:"sequence,omitempty"`
-
-	// TempoBpm The sequence's default tempo in beats per minute. Required when
-	// sequence is non-empty; must be null or omitted when it is empty.
-	TempoBpm *int `json:"tempo_bpm"`
-
-	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
-	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
-	// and a beat_value of 4 or more, the meter is compound and the pulse
-	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
-	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
-	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
-	TimeSignature *TimeSignature `json:"time_signature,omitempty"`
 }
 
 // CreateDiagramRequestKind Whether the new diagram is a curated basic template or the
@@ -1829,6 +1823,10 @@ type Diagram struct {
 	// receive.
 	CreatedBy UserRef `json:"created_by"`
 
+	// DefaultPlaybackId The playback a usage plays when it doesn't choose one. Always
+	// one of playbacks; null exactly when playbacks is empty.
+	DefaultPlaybackId *openapi_types.UUID `json:"default_playback_id"`
+
 	// DiagramId Stable identifier for this diagram.
 	DiagramId openapi_types.UUID `json:"diagram_id"`
 
@@ -1873,6 +1871,12 @@ type Diagram struct {
 	// viewer's locale, falling back to "en", then to any name present.
 	Names LocalizedNames `json:"names"`
 
+	// Playbacks The ways this diagram can sound, in the order its author gave
+	// them — e.g. a strum, an arpeggio and a fingerstyle pattern of the
+	// same chord shape. Every playback sounds only this diagram's
+	// positions. Empty means the diagram has no playback.
+	Playbacks []DiagramPlayback `json:"playbacks"`
+
 	// Positions Every marked position in this diagram. All positions share the
 	// same coordinate shape, decided by this diagram's instrument's
 	// family.
@@ -1889,25 +1893,6 @@ type Diagram struct {
 	// to the root of the diagram it came from. Null for a diagram with
 	// no recorded root (e.g. created before this field existed).
 	RootNote *string `json:"root_note"`
-
-	// Sequence The diagram's playback, as an ordered list of steps: which
-	// positions sound, together or in turn, and for how long. A
-	// position may sound in any number of steps. Empty means the
-	// diagram has no playback.
-	Sequence []SequenceStep `json:"sequence"`
-
-	// TempoBpm The default tempo the sequence plays at, in beats per minute,
-	// where one beat is the time signature's pulse. Null exactly when
-	// sequence is empty.
-	TempoBpm *int `json:"tempo_bpm"`
-
-	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
-	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
-	// and a beat_value of 4 or more, the meter is compound and the pulse
-	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
-	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
-	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
-	TimeSignature TimeSignature `json:"time_signature"`
 }
 
 // DiagramKind basic diagrams are curated templates: every teacher can find and
@@ -1955,6 +1940,67 @@ type DiagramClassificationInput struct {
 // its key signature: the signature of the major key the mode belongs
 // to (A minor and D dorian both have C major's signature).
 type DiagramMode string
+
+// DiagramPlayback One named way a diagram sounds: an ordered list of steps over the
+// diagram's own positions, with its tempo and time signature. A
+// diagram can have several, e.g. a strum and an arpeggio of the same
+// chord shape.
+type DiagramPlayback struct {
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// PlaybackId Stable identifier of this playback within its diagram.
+	PlaybackId openapi_types.UUID `json:"playback_id"`
+
+	// Steps Which positions sound, together or in turn, and for how long,
+	// in order. A position may sound in any number of steps.
+	Steps []SequenceStep `json:"steps"`
+
+	// TempoBpm The tempo this playback plays at by default, in beats per
+	// minute, where one beat is the time signature's pulse.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+	// and a beat_value of 4 or more, the meter is compound and the pulse
+	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+	TimeSignature TimeSignature `json:"time_signature"`
+}
+
+// DiagramPlaybackInput A playback as sent when creating or updating a diagram.
+// playback_id may be supplied by the client (and must be, for the one
+// default_playback_id names) or left for the server to assign.
+type DiagramPlaybackInput struct {
+	// Names Text in one or more languages, keyed by Language.code — for example
+	// {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+	// always words in some language. Clients display the name for the
+	// viewer's locale, falling back to "en", then to any name present.
+	Names LocalizedNames `json:"names"`
+
+	// PlaybackId The playback's identifier. Omitted means the server assigns a
+	// new one. No two playbacks of one request may share an id.
+	PlaybackId *openapi_types.UUID `json:"playback_id,omitempty"`
+
+	// Steps The playback's steps, in order. Every position_id a step names
+	// must be a position of the diagram.
+	Steps []SequenceStep `json:"steps"`
+
+	// TempoBpm The playback's default tempo in beats per minute.
+	TempoBpm int `json:"tempo_bpm"`
+
+	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+	// and a beat_value of 4 or more, the meter is compound and the pulse
+	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+	TimeSignature *TimeSignature `json:"time_signature,omitempty"`
+}
 
 // DiagramPosition One marked location in a Diagram — a note the diagram shows, at a
 // specific physical location on its instrument. interval and
@@ -2114,11 +2160,11 @@ type DiagramRef struct {
 		Subset *[]string `json:"subset"`
 	} `json:"layers"`
 
-	// Playback How this usage plays the diagram's sequence. Null means this
-	// usage offers no Play control. A diagram with an empty sequence
-	// never plays, whatever this says. Positions this usage hides
-	// still sound when played, but are never drawn. Ignored for an
-	// entry of a DiagramStackRef — a stack doesn't play.
+	// Playback How this usage plays the diagram. Null means this usage offers
+	// no Play control. A diagram with no playbacks never plays,
+	// whatever this says. Positions this usage hides still sound when
+	// played, but are never drawn. Ignored for an entry of a
+	// DiagramStackRef — a stack doesn't play.
 	Playback *struct {
 		// Direction as_authored plays the steps in order; reversed plays them
 		// last to first, each step keeping its own value and strum.
@@ -2127,8 +2173,15 @@ type DiagramRef struct {
 		// Loop Whether playback starts over after the last step.
 		Loop *bool `json:"loop,omitempty"`
 
-		// TempoBpm Overrides the diagram's tempo for this usage. Null (or
-		// omitted) uses the diagram's own tempo. A student can still
+		// PlaybackId Which of the diagram's playbacks this usage plays. Null (or
+		// omitted) plays the diagram's default playback. When saved, it
+		// must be one of the diagram's playbacks. If that playback is
+		// later removed from the diagram, the usage plays the default
+		// playback instead.
+		PlaybackId *openapi_types.UUID `json:"playback_id"`
+
+		// TempoBpm Overrides the chosen playback's tempo for this usage. Null
+		// (or omitted) uses that playback's own tempo. A student can still
 		// change the tempo while playing; that choice is never saved.
 		TempoBpm *int `json:"tempo_bpm"`
 
@@ -3335,7 +3388,7 @@ type PracticeSessionItem struct {
 		// best clean tempo; otherwise the tempo ladder's current step.
 		StartTempoBpm int `json:"start_tempo_bpm"`
 
-		// TargetTempoBpm The tempo the item aims for, the diagram's own tempo.
+		// TargetTempoBpm The tempo the item aims for, the tempo of the diagram's default playback.
 		TargetTempoBpm int `json:"target_tempo_bpm"`
 	} `json:"play_along,omitempty"`
 
@@ -3624,7 +3677,7 @@ type ReplaceLearningPathRequest struct {
 // ReplaceLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 type ReplaceLearningPathRequestLevel string
 
-// SequenceStep One step of a diagram's playback. Its positions start together (or
+// SequenceStep One step of a diagram playback. Its positions start together (or
 // strummed), sound for the step's value, and the next step starts
 // when this one ends. A step with no positions is a rest.
 type SequenceStep struct {
@@ -3937,13 +3990,14 @@ type UpdateContentNodeRequest struct {
 
 // UpdateDiagramRequest Payload for replacing an existing diagram's names, positions,
 // regions, classification, root_note, mode, label_display, color,
-// tempo_bpm, time_signature, or sequence. The rules of a diagram are
-// checked on the result of the update: every sequence step must still
+// playbacks, or default_playback_id. The rules of a diagram are
+// checked on the result of the update: every playback step must still
 // name only positions of the diagram (a position that plays can't be
-// removed without also resending the sequence), a mode needs a root
-// note, and tempo_bpm is set exactly when the sequence is non-empty. Every
-// per-language text on the diagram — names, positions' custom_label
-// and note, regions' description — must cover exactly the same
+// removed without also resending the playbacks), a mode needs a root
+// note, and default_playback_id names one of the playbacks exactly
+// when there are any. Every per-language text on the diagram — names,
+// positions' custom_label and note, regions' description, playbacks'
+// names — must cover exactly the same
 // languages once the update is applied. instrument_ids may replace the
 // compatible instruments only with records that match the diagram's
 // immutable layout geometry. Nor are kind and
@@ -3966,6 +4020,13 @@ type UpdateDiagramRequest struct {
 	// by omitting them.
 	Color *string `json:"color,omitempty"`
 
+	// DefaultPlaybackId Which playback is the default, replacing the current choice; it
+	// must name one of the resulting playbacks. Omitted keeps the
+	// current default if it is still one of the playbacks, and
+	// otherwise makes the first playback the default. Null is only
+	// valid when the resulting playbacks are empty.
+	DefaultPlaybackId nullable.Nullable[openapi_types.UUID] `json:"default_playback_id"`
+
 	// InstrumentIds Replaces the compatible instruments for this diagram.
 	InstrumentIds *[]openapi_types.UUID `json:"instrument_ids,omitempty"`
 
@@ -3985,6 +4046,12 @@ type UpdateDiagramRequest struct {
 	// viewer's locale, falling back to "en", then to any name present.
 	Names *LocalizedNames `json:"names,omitempty"`
 
+	// Playbacks The diagram's full list of playbacks, replacing the current one;
+	// an empty list removes every playback. A playback sent with the
+	// playback_id of an existing one keeps that id, so usages that
+	// chose it still find it. Omitted leaves the playbacks unchanged.
+	Playbacks *[]DiagramPlaybackInput `json:"playbacks,omitempty"`
+
 	// Positions The diagram's full position list, replacing the current set. A
 	// caller that only wants to change one position must resend the
 	// full set.
@@ -4000,24 +4067,6 @@ type UpdateDiagramRequest struct {
 	// unchanged; there is currently no way to clear an already-set
 	// root note back to unrecorded via this request.
 	RootNote *string `json:"root_note,omitempty"`
-
-	// Sequence The diagram's full list of playback steps, replacing the current
-	// one; an empty list removes the playback. Omitted leaves the
-	// sequence unchanged.
-	Sequence *[]SequenceStep `json:"sequence,omitempty"`
-
-	// TempoBpm The sequence's default tempo, replacing the current value. Null
-	// clears it, which is only valid when the resulting sequence is
-	// empty. Omitted leaves it unchanged.
-	TempoBpm nullable.Nullable[int] `json:"tempo_bpm"`
-
-	// TimeSignature The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
-	// the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
-	// and a beat_value of 4 or more, the meter is compound and the pulse
-	// is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
-	// bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
-	// eighth in 7/8). A bar lasts beats/beat_value of a whole note.
-	TimeSignature *TimeSignature `json:"time_signature,omitempty"`
 }
 
 // UpdateDiagramRequestLabelDisplay Which of a position's interval or note_name its marker shows by
