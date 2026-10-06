@@ -622,7 +622,7 @@ func sessionSeconds(plan generated.PracticeSessionPlan) map[string]int {
 // ending.
 func focusSeconds(plan generated.PracticeSessionPlan) int {
 	seconds := sessionSeconds(plan)
-	return plan.Minutes*60 - seconds[string(generated.WarmUp)] - seconds[string(generated.Application)]
+	return plan.Minutes*60 - seconds[string(generated.PracticePickReasonWarmUp)] - seconds[string(generated.PracticePickReasonApplication)]
 }
 
 func (w *world) everyItemHasOneOfReasons(list string) error {
@@ -708,7 +708,7 @@ func (w *world) endingAppliesFocusSkill() error {
 		return err
 	}
 	for _, item := range plan.Items[:len(plan.Items)-1] {
-		if item.Reason != generated.WarmUp && item.NodeId != nil && slices.Contains(d.SkillIDs(), item.NodeId.String()) {
+		if item.Reason != generated.PracticePickReasonWarmUp && item.NodeId != nil && slices.Contains(d.SkillIDs(), item.NodeId.String()) {
 			return nil
 		}
 	}
@@ -738,16 +738,16 @@ func (w *world) focusFits(minutes int, withEnding bool) error {
 		return err
 	}
 	seconds := sessionSeconds(plan)
-	ending := seconds[string(generated.Application)]
+	ending := seconds[string(generated.PracticePickReasonApplication)]
 	if withEnding != (ending > 0) {
 		return fmt.Errorf("expected an application ending: %t, got %d seconds of one", withEnding, ending)
 	}
-	if focus := minutes*60 - seconds[string(generated.WarmUp)] - ending; focus != focusSeconds(plan) {
+	if focus := minutes*60 - seconds[string(generated.PracticePickReasonWarmUp)] - ending; focus != focusSeconds(plan) {
 		return fmt.Errorf("expected %d seconds of focus time, got %d", focus, focusSeconds(plan))
 	}
 	used := 0
 	for reason, s := range seconds {
-		if reason != string(generated.WarmUp) && reason != string(generated.Application) {
+		if reason != string(generated.PracticePickReasonWarmUp) && reason != string(generated.PracticePickReasonApplication) {
 			used += s
 		}
 	}
@@ -850,7 +850,7 @@ func (w *world) leftoverSplitEvenly() error {
 		return err
 	}
 	seconds := sessionSeconds(plan)
-	review, stretch := seconds[string(generated.ReviewAhead)], seconds[string(generated.Stretch)]
+	review, stretch := seconds[string(generated.PracticePickReasonReviewAhead)], seconds[string(generated.PracticePickReasonStretch)]
 	if review == 0 || stretch == 0 || abs(review-stretch)*10 > review+stretch {
 		return fmt.Errorf("expected the time left split about evenly, got %d seconds of review_ahead and %d of stretch", review, stretch)
 	}
@@ -864,7 +864,7 @@ func (w *world) noMoreMinutesToNew(minutes int) error {
 	if err != nil {
 		return err
 	}
-	if got := sessionSeconds(plan)[string(generated.New)]; got > minutes*60 {
+	if got := sessionSeconds(plan)[string(generated.PracticePickReasonNew)]; got > minutes*60 {
 		return fmt.Errorf("expected no more than %d minutes of new items, got %d seconds", minutes, got)
 	}
 	return nil
@@ -879,7 +879,7 @@ func (w *world) halfTheSession(keep func(generated.PracticeSessionItem) bool, wh
 	}
 	total, got := 0, 0
 	for _, item := range plan.Items {
-		if item.Reason == generated.WarmUp {
+		if item.Reason == generated.PracticePickReasonWarmUp {
 			continue
 		}
 		total += item.EstimatedSeconds
@@ -910,7 +910,7 @@ func (w *world) everyItemAfterWarmUpHasReason(reason string) error {
 		return err
 	}
 	for _, item := range plan.Items {
-		if item.Reason != generated.WarmUp && string(item.Reason) != reason {
+		if item.Reason != generated.PracticePickReasonWarmUp && string(item.Reason) != reason {
 			return fmt.Errorf("expected every item after the warm-up to be %s, got %s with %s", reason, item.ItemKey, item.Reason)
 		}
 	}
@@ -924,7 +924,7 @@ func (w *world) stretchItemsOfBefore(first, second string) error {
 	}
 	firstAt, secondAt := -1, -1
 	for i, item := range plan.Items {
-		if item.Reason != generated.Stretch || item.NodeId == nil {
+		if item.Reason != generated.PracticePickReasonStretch || item.NodeId == nil {
 			continue
 		}
 		if *item.NodeId == w.nodeIDByName(first) && firstAt < 0 {

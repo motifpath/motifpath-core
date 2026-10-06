@@ -33,6 +33,30 @@ func (f ChallengeExerciseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChallengeExerciseMutation", m)
 }
 
+// The ChordDefinitionFunc type is an adapter to allow the use of ordinary
+// function as ChordDefinition mutator.
+type ChordDefinitionFunc func(context.Context, *ent.ChordDefinitionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChordDefinitionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChordDefinitionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordDefinitionMutation", m)
+}
+
+// The ChordVoicingFunc type is an adapter to allow the use of ordinary
+// function as ChordVoicing mutator.
+type ChordVoicingFunc func(context.Context, *ent.ChordVoicingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ChordVoicingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ChordVoicingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ChordVoicingMutation", m)
+}
+
 // The ContentNodeFunc type is an adapter to allow the use of ordinary
 // function as ContentNode mutator.
 type ContentNodeFunc func(context.Context, *ent.ContentNodeMutation) (ent.Value, error)

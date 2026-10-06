@@ -213,7 +213,7 @@ func (w *world) newItemsSplitEvenly() error {
 	}
 	guitar, bass := 0, 0
 	for _, item := range cells {
-		if item.Reason != generated.New {
+		if item.Reason != generated.PracticePickReasonNew {
 			continue
 		}
 		switch item.FretboardCell.LayoutInstrumentId {

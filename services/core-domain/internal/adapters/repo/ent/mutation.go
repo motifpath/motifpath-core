@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -71,6 +73,8 @@ const (
 	// Node types.
 	TypeChallenge               = "Challenge"
 	TypeChallengeExercise       = "ChallengeExercise"
+	TypeChordDefinition         = "ChordDefinition"
+	TypeChordVoicing            = "ChordVoicing"
 	TypeContentNode             = "ContentNode"
 	TypeContentNodeConcept      = "ContentNodeConcept"
 	TypeContentNodeExercise     = "ContentNodeExercise"
@@ -1663,6 +1667,2517 @@ func (m *ChallengeExerciseMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown ChallengeExercise edge %s", name)
+}
+
+// ChordDefinitionMutation represents an operation that mutates the ChordDefinition nodes in the graph.
+type ChordDefinitionMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	canonical_symbol    *string
+	root                *string
+	root_pitch_class    *int
+	addroot_pitch_class *int
+	quality             *string
+	formula             *[]string
+	appendformula       []string
+	omittable           *[]string
+	appendomittable     []string
+	bass                *string
+	bass_pitch_class    *int
+	addbass_pitch_class *int
+	aliases             *[]string
+	appendaliases       []string
+	clearedFields       map[string]struct{}
+	voicings            map[uuid.UUID]struct{}
+	removedvoicings     map[uuid.UUID]struct{}
+	clearedvoicings     bool
+	done                bool
+	oldValue            func(context.Context) (*ChordDefinition, error)
+	predicates          []predicate.ChordDefinition
+}
+
+var _ ent.Mutation = (*ChordDefinitionMutation)(nil)
+
+// chorddefinitionOption allows management of the mutation configuration using functional options.
+type chorddefinitionOption func(*ChordDefinitionMutation)
+
+// newChordDefinitionMutation creates new mutation for the ChordDefinition entity.
+func newChordDefinitionMutation(c config, op Op, opts ...chorddefinitionOption) *ChordDefinitionMutation {
+	m := &ChordDefinitionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChordDefinition,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChordDefinitionID sets the ID field of the mutation.
+func withChordDefinitionID(id uuid.UUID) chorddefinitionOption {
+	return func(m *ChordDefinitionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChordDefinition
+		)
+		m.oldValue = func(ctx context.Context) (*ChordDefinition, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChordDefinition.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChordDefinition sets the old ChordDefinition of the mutation.
+func withChordDefinition(node *ChordDefinition) chorddefinitionOption {
+	return func(m *ChordDefinitionMutation) {
+		m.oldValue = func(context.Context) (*ChordDefinition, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChordDefinitionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChordDefinitionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChordDefinition entities.
+func (m *ChordDefinitionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChordDefinitionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChordDefinitionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChordDefinition.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCanonicalSymbol sets the "canonical_symbol" field.
+func (m *ChordDefinitionMutation) SetCanonicalSymbol(s string) {
+	m.canonical_symbol = &s
+}
+
+// CanonicalSymbol returns the value of the "canonical_symbol" field in the mutation.
+func (m *ChordDefinitionMutation) CanonicalSymbol() (r string, exists bool) {
+	v := m.canonical_symbol
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCanonicalSymbol returns the old "canonical_symbol" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldCanonicalSymbol(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCanonicalSymbol is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCanonicalSymbol requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCanonicalSymbol: %w", err)
+	}
+	return oldValue.CanonicalSymbol, nil
+}
+
+// ResetCanonicalSymbol resets all changes to the "canonical_symbol" field.
+func (m *ChordDefinitionMutation) ResetCanonicalSymbol() {
+	m.canonical_symbol = nil
+}
+
+// SetRoot sets the "root" field.
+func (m *ChordDefinitionMutation) SetRoot(s string) {
+	m.root = &s
+}
+
+// Root returns the value of the "root" field in the mutation.
+func (m *ChordDefinitionMutation) Root() (r string, exists bool) {
+	v := m.root
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRoot returns the old "root" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldRoot(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRoot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRoot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoot: %w", err)
+	}
+	return oldValue.Root, nil
+}
+
+// ResetRoot resets all changes to the "root" field.
+func (m *ChordDefinitionMutation) ResetRoot() {
+	m.root = nil
+}
+
+// SetRootPitchClass sets the "root_pitch_class" field.
+func (m *ChordDefinitionMutation) SetRootPitchClass(i int) {
+	m.root_pitch_class = &i
+	m.addroot_pitch_class = nil
+}
+
+// RootPitchClass returns the value of the "root_pitch_class" field in the mutation.
+func (m *ChordDefinitionMutation) RootPitchClass() (r int, exists bool) {
+	v := m.root_pitch_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRootPitchClass returns the old "root_pitch_class" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldRootPitchClass(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRootPitchClass is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRootPitchClass requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRootPitchClass: %w", err)
+	}
+	return oldValue.RootPitchClass, nil
+}
+
+// AddRootPitchClass adds i to the "root_pitch_class" field.
+func (m *ChordDefinitionMutation) AddRootPitchClass(i int) {
+	if m.addroot_pitch_class != nil {
+		*m.addroot_pitch_class += i
+	} else {
+		m.addroot_pitch_class = &i
+	}
+}
+
+// AddedRootPitchClass returns the value that was added to the "root_pitch_class" field in this mutation.
+func (m *ChordDefinitionMutation) AddedRootPitchClass() (r int, exists bool) {
+	v := m.addroot_pitch_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRootPitchClass resets all changes to the "root_pitch_class" field.
+func (m *ChordDefinitionMutation) ResetRootPitchClass() {
+	m.root_pitch_class = nil
+	m.addroot_pitch_class = nil
+}
+
+// SetQuality sets the "quality" field.
+func (m *ChordDefinitionMutation) SetQuality(s string) {
+	m.quality = &s
+}
+
+// Quality returns the value of the "quality" field in the mutation.
+func (m *ChordDefinitionMutation) Quality() (r string, exists bool) {
+	v := m.quality
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuality returns the old "quality" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldQuality(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuality is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuality requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuality: %w", err)
+	}
+	return oldValue.Quality, nil
+}
+
+// ResetQuality resets all changes to the "quality" field.
+func (m *ChordDefinitionMutation) ResetQuality() {
+	m.quality = nil
+}
+
+// SetFormula sets the "formula" field.
+func (m *ChordDefinitionMutation) SetFormula(s []string) {
+	m.formula = &s
+	m.appendformula = nil
+}
+
+// Formula returns the value of the "formula" field in the mutation.
+func (m *ChordDefinitionMutation) Formula() (r []string, exists bool) {
+	v := m.formula
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFormula returns the old "formula" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldFormula(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFormula is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFormula requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFormula: %w", err)
+	}
+	return oldValue.Formula, nil
+}
+
+// AppendFormula adds s to the "formula" field.
+func (m *ChordDefinitionMutation) AppendFormula(s []string) {
+	m.appendformula = append(m.appendformula, s...)
+}
+
+// AppendedFormula returns the list of values that were appended to the "formula" field in this mutation.
+func (m *ChordDefinitionMutation) AppendedFormula() ([]string, bool) {
+	if len(m.appendformula) == 0 {
+		return nil, false
+	}
+	return m.appendformula, true
+}
+
+// ResetFormula resets all changes to the "formula" field.
+func (m *ChordDefinitionMutation) ResetFormula() {
+	m.formula = nil
+	m.appendformula = nil
+}
+
+// SetOmittable sets the "omittable" field.
+func (m *ChordDefinitionMutation) SetOmittable(s []string) {
+	m.omittable = &s
+	m.appendomittable = nil
+}
+
+// Omittable returns the value of the "omittable" field in the mutation.
+func (m *ChordDefinitionMutation) Omittable() (r []string, exists bool) {
+	v := m.omittable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOmittable returns the old "omittable" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldOmittable(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOmittable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOmittable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOmittable: %w", err)
+	}
+	return oldValue.Omittable, nil
+}
+
+// AppendOmittable adds s to the "omittable" field.
+func (m *ChordDefinitionMutation) AppendOmittable(s []string) {
+	m.appendomittable = append(m.appendomittable, s...)
+}
+
+// AppendedOmittable returns the list of values that were appended to the "omittable" field in this mutation.
+func (m *ChordDefinitionMutation) AppendedOmittable() ([]string, bool) {
+	if len(m.appendomittable) == 0 {
+		return nil, false
+	}
+	return m.appendomittable, true
+}
+
+// ResetOmittable resets all changes to the "omittable" field.
+func (m *ChordDefinitionMutation) ResetOmittable() {
+	m.omittable = nil
+	m.appendomittable = nil
+}
+
+// SetBass sets the "bass" field.
+func (m *ChordDefinitionMutation) SetBass(s string) {
+	m.bass = &s
+}
+
+// Bass returns the value of the "bass" field in the mutation.
+func (m *ChordDefinitionMutation) Bass() (r string, exists bool) {
+	v := m.bass
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBass returns the old "bass" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldBass(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBass is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBass requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBass: %w", err)
+	}
+	return oldValue.Bass, nil
+}
+
+// ClearBass clears the value of the "bass" field.
+func (m *ChordDefinitionMutation) ClearBass() {
+	m.bass = nil
+	m.clearedFields[chorddefinition.FieldBass] = struct{}{}
+}
+
+// BassCleared returns if the "bass" field was cleared in this mutation.
+func (m *ChordDefinitionMutation) BassCleared() bool {
+	_, ok := m.clearedFields[chorddefinition.FieldBass]
+	return ok
+}
+
+// ResetBass resets all changes to the "bass" field.
+func (m *ChordDefinitionMutation) ResetBass() {
+	m.bass = nil
+	delete(m.clearedFields, chorddefinition.FieldBass)
+}
+
+// SetBassPitchClass sets the "bass_pitch_class" field.
+func (m *ChordDefinitionMutation) SetBassPitchClass(i int) {
+	m.bass_pitch_class = &i
+	m.addbass_pitch_class = nil
+}
+
+// BassPitchClass returns the value of the "bass_pitch_class" field in the mutation.
+func (m *ChordDefinitionMutation) BassPitchClass() (r int, exists bool) {
+	v := m.bass_pitch_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBassPitchClass returns the old "bass_pitch_class" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldBassPitchClass(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBassPitchClass is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBassPitchClass requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBassPitchClass: %w", err)
+	}
+	return oldValue.BassPitchClass, nil
+}
+
+// AddBassPitchClass adds i to the "bass_pitch_class" field.
+func (m *ChordDefinitionMutation) AddBassPitchClass(i int) {
+	if m.addbass_pitch_class != nil {
+		*m.addbass_pitch_class += i
+	} else {
+		m.addbass_pitch_class = &i
+	}
+}
+
+// AddedBassPitchClass returns the value that was added to the "bass_pitch_class" field in this mutation.
+func (m *ChordDefinitionMutation) AddedBassPitchClass() (r int, exists bool) {
+	v := m.addbass_pitch_class
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearBassPitchClass clears the value of the "bass_pitch_class" field.
+func (m *ChordDefinitionMutation) ClearBassPitchClass() {
+	m.bass_pitch_class = nil
+	m.addbass_pitch_class = nil
+	m.clearedFields[chorddefinition.FieldBassPitchClass] = struct{}{}
+}
+
+// BassPitchClassCleared returns if the "bass_pitch_class" field was cleared in this mutation.
+func (m *ChordDefinitionMutation) BassPitchClassCleared() bool {
+	_, ok := m.clearedFields[chorddefinition.FieldBassPitchClass]
+	return ok
+}
+
+// ResetBassPitchClass resets all changes to the "bass_pitch_class" field.
+func (m *ChordDefinitionMutation) ResetBassPitchClass() {
+	m.bass_pitch_class = nil
+	m.addbass_pitch_class = nil
+	delete(m.clearedFields, chorddefinition.FieldBassPitchClass)
+}
+
+// SetAliases sets the "aliases" field.
+func (m *ChordDefinitionMutation) SetAliases(s []string) {
+	m.aliases = &s
+	m.appendaliases = nil
+}
+
+// Aliases returns the value of the "aliases" field in the mutation.
+func (m *ChordDefinitionMutation) Aliases() (r []string, exists bool) {
+	v := m.aliases
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAliases returns the old "aliases" field's value of the ChordDefinition entity.
+// If the ChordDefinition object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordDefinitionMutation) OldAliases(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAliases is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAliases requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAliases: %w", err)
+	}
+	return oldValue.Aliases, nil
+}
+
+// AppendAliases adds s to the "aliases" field.
+func (m *ChordDefinitionMutation) AppendAliases(s []string) {
+	m.appendaliases = append(m.appendaliases, s...)
+}
+
+// AppendedAliases returns the list of values that were appended to the "aliases" field in this mutation.
+func (m *ChordDefinitionMutation) AppendedAliases() ([]string, bool) {
+	if len(m.appendaliases) == 0 {
+		return nil, false
+	}
+	return m.appendaliases, true
+}
+
+// ResetAliases resets all changes to the "aliases" field.
+func (m *ChordDefinitionMutation) ResetAliases() {
+	m.aliases = nil
+	m.appendaliases = nil
+}
+
+// AddVoicingIDs adds the "voicings" edge to the ChordVoicing entity by ids.
+func (m *ChordDefinitionMutation) AddVoicingIDs(ids ...uuid.UUID) {
+	if m.voicings == nil {
+		m.voicings = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.voicings[ids[i]] = struct{}{}
+	}
+}
+
+// ClearVoicings clears the "voicings" edge to the ChordVoicing entity.
+func (m *ChordDefinitionMutation) ClearVoicings() {
+	m.clearedvoicings = true
+}
+
+// VoicingsCleared reports if the "voicings" edge to the ChordVoicing entity was cleared.
+func (m *ChordDefinitionMutation) VoicingsCleared() bool {
+	return m.clearedvoicings
+}
+
+// RemoveVoicingIDs removes the "voicings" edge to the ChordVoicing entity by IDs.
+func (m *ChordDefinitionMutation) RemoveVoicingIDs(ids ...uuid.UUID) {
+	if m.removedvoicings == nil {
+		m.removedvoicings = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.voicings, ids[i])
+		m.removedvoicings[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedVoicings returns the removed IDs of the "voicings" edge to the ChordVoicing entity.
+func (m *ChordDefinitionMutation) RemovedVoicingsIDs() (ids []uuid.UUID) {
+	for id := range m.removedvoicings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// VoicingsIDs returns the "voicings" edge IDs in the mutation.
+func (m *ChordDefinitionMutation) VoicingsIDs() (ids []uuid.UUID) {
+	for id := range m.voicings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetVoicings resets all changes to the "voicings" edge.
+func (m *ChordDefinitionMutation) ResetVoicings() {
+	m.voicings = nil
+	m.clearedvoicings = false
+	m.removedvoicings = nil
+}
+
+// Where appends a list predicates to the ChordDefinitionMutation builder.
+func (m *ChordDefinitionMutation) Where(ps ...predicate.ChordDefinition) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChordDefinitionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChordDefinitionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChordDefinition, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChordDefinitionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChordDefinitionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChordDefinition).
+func (m *ChordDefinitionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChordDefinitionMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.canonical_symbol != nil {
+		fields = append(fields, chorddefinition.FieldCanonicalSymbol)
+	}
+	if m.root != nil {
+		fields = append(fields, chorddefinition.FieldRoot)
+	}
+	if m.root_pitch_class != nil {
+		fields = append(fields, chorddefinition.FieldRootPitchClass)
+	}
+	if m.quality != nil {
+		fields = append(fields, chorddefinition.FieldQuality)
+	}
+	if m.formula != nil {
+		fields = append(fields, chorddefinition.FieldFormula)
+	}
+	if m.omittable != nil {
+		fields = append(fields, chorddefinition.FieldOmittable)
+	}
+	if m.bass != nil {
+		fields = append(fields, chorddefinition.FieldBass)
+	}
+	if m.bass_pitch_class != nil {
+		fields = append(fields, chorddefinition.FieldBassPitchClass)
+	}
+	if m.aliases != nil {
+		fields = append(fields, chorddefinition.FieldAliases)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChordDefinitionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case chorddefinition.FieldCanonicalSymbol:
+		return m.CanonicalSymbol()
+	case chorddefinition.FieldRoot:
+		return m.Root()
+	case chorddefinition.FieldRootPitchClass:
+		return m.RootPitchClass()
+	case chorddefinition.FieldQuality:
+		return m.Quality()
+	case chorddefinition.FieldFormula:
+		return m.Formula()
+	case chorddefinition.FieldOmittable:
+		return m.Omittable()
+	case chorddefinition.FieldBass:
+		return m.Bass()
+	case chorddefinition.FieldBassPitchClass:
+		return m.BassPitchClass()
+	case chorddefinition.FieldAliases:
+		return m.Aliases()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChordDefinitionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case chorddefinition.FieldCanonicalSymbol:
+		return m.OldCanonicalSymbol(ctx)
+	case chorddefinition.FieldRoot:
+		return m.OldRoot(ctx)
+	case chorddefinition.FieldRootPitchClass:
+		return m.OldRootPitchClass(ctx)
+	case chorddefinition.FieldQuality:
+		return m.OldQuality(ctx)
+	case chorddefinition.FieldFormula:
+		return m.OldFormula(ctx)
+	case chorddefinition.FieldOmittable:
+		return m.OldOmittable(ctx)
+	case chorddefinition.FieldBass:
+		return m.OldBass(ctx)
+	case chorddefinition.FieldBassPitchClass:
+		return m.OldBassPitchClass(ctx)
+	case chorddefinition.FieldAliases:
+		return m.OldAliases(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChordDefinition field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordDefinitionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case chorddefinition.FieldCanonicalSymbol:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCanonicalSymbol(v)
+		return nil
+	case chorddefinition.FieldRoot:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRoot(v)
+		return nil
+	case chorddefinition.FieldRootPitchClass:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRootPitchClass(v)
+		return nil
+	case chorddefinition.FieldQuality:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuality(v)
+		return nil
+	case chorddefinition.FieldFormula:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFormula(v)
+		return nil
+	case chorddefinition.FieldOmittable:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOmittable(v)
+		return nil
+	case chorddefinition.FieldBass:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBass(v)
+		return nil
+	case chorddefinition.FieldBassPitchClass:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBassPitchClass(v)
+		return nil
+	case chorddefinition.FieldAliases:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAliases(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDefinition field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChordDefinitionMutation) AddedFields() []string {
+	var fields []string
+	if m.addroot_pitch_class != nil {
+		fields = append(fields, chorddefinition.FieldRootPitchClass)
+	}
+	if m.addbass_pitch_class != nil {
+		fields = append(fields, chorddefinition.FieldBassPitchClass)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChordDefinitionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case chorddefinition.FieldRootPitchClass:
+		return m.AddedRootPitchClass()
+	case chorddefinition.FieldBassPitchClass:
+		return m.AddedBassPitchClass()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordDefinitionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case chorddefinition.FieldRootPitchClass:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRootPitchClass(v)
+		return nil
+	case chorddefinition.FieldBassPitchClass:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddBassPitchClass(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDefinition numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChordDefinitionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(chorddefinition.FieldBass) {
+		fields = append(fields, chorddefinition.FieldBass)
+	}
+	if m.FieldCleared(chorddefinition.FieldBassPitchClass) {
+		fields = append(fields, chorddefinition.FieldBassPitchClass)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChordDefinitionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChordDefinitionMutation) ClearField(name string) error {
+	switch name {
+	case chorddefinition.FieldBass:
+		m.ClearBass()
+		return nil
+	case chorddefinition.FieldBassPitchClass:
+		m.ClearBassPitchClass()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDefinition nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChordDefinitionMutation) ResetField(name string) error {
+	switch name {
+	case chorddefinition.FieldCanonicalSymbol:
+		m.ResetCanonicalSymbol()
+		return nil
+	case chorddefinition.FieldRoot:
+		m.ResetRoot()
+		return nil
+	case chorddefinition.FieldRootPitchClass:
+		m.ResetRootPitchClass()
+		return nil
+	case chorddefinition.FieldQuality:
+		m.ResetQuality()
+		return nil
+	case chorddefinition.FieldFormula:
+		m.ResetFormula()
+		return nil
+	case chorddefinition.FieldOmittable:
+		m.ResetOmittable()
+		return nil
+	case chorddefinition.FieldBass:
+		m.ResetBass()
+		return nil
+	case chorddefinition.FieldBassPitchClass:
+		m.ResetBassPitchClass()
+		return nil
+	case chorddefinition.FieldAliases:
+		m.ResetAliases()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDefinition field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChordDefinitionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.voicings != nil {
+		edges = append(edges, chorddefinition.EdgeVoicings)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChordDefinitionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case chorddefinition.EdgeVoicings:
+		ids := make([]ent.Value, 0, len(m.voicings))
+		for id := range m.voicings {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChordDefinitionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedvoicings != nil {
+		edges = append(edges, chorddefinition.EdgeVoicings)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChordDefinitionMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case chorddefinition.EdgeVoicings:
+		ids := make([]ent.Value, 0, len(m.removedvoicings))
+		for id := range m.removedvoicings {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChordDefinitionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedvoicings {
+		edges = append(edges, chorddefinition.EdgeVoicings)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChordDefinitionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case chorddefinition.EdgeVoicings:
+		return m.clearedvoicings
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChordDefinitionMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ChordDefinition unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChordDefinitionMutation) ResetEdge(name string) error {
+	switch name {
+	case chorddefinition.EdgeVoicings:
+		m.ResetVoicings()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordDefinition edge %s", name)
+}
+
+// ChordVoicingMutation represents an operation that mutates the ChordVoicing nodes in the graph.
+type ChordVoicingMutation struct {
+	config
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	tuning_fingerprint      *string
+	lowest_fret             *int
+	addlowest_fret          *int
+	highest_fret            *int
+	addhighest_fret         *int
+	fingering               *[]schema.VoicingFinger
+	appendfingering         []schema.VoicingFinger
+	muted_strings           *[]int
+	appendmuted_strings     []int
+	omitted_intervals       *[]string
+	appendomitted_intervals []string
+	difficulty              *chordvoicing.Difficulty
+	technique_tags          *[]string
+	appendtechnique_tags    []string
+	shape_family            *chordvoicing.ShapeFamily
+	is_movable              *bool
+	recommended_rank        *int
+	addrecommended_rank     *int
+	status                  *chordvoicing.Status
+	template_key            *string
+	clearedFields           map[string]struct{}
+	chord_definition        *uuid.UUID
+	clearedchord_definition bool
+	diagram                 *uuid.UUID
+	cleareddiagram          bool
+	instrument              *uuid.UUID
+	clearedinstrument       bool
+	done                    bool
+	oldValue                func(context.Context) (*ChordVoicing, error)
+	predicates              []predicate.ChordVoicing
+}
+
+var _ ent.Mutation = (*ChordVoicingMutation)(nil)
+
+// chordvoicingOption allows management of the mutation configuration using functional options.
+type chordvoicingOption func(*ChordVoicingMutation)
+
+// newChordVoicingMutation creates new mutation for the ChordVoicing entity.
+func newChordVoicingMutation(c config, op Op, opts ...chordvoicingOption) *ChordVoicingMutation {
+	m := &ChordVoicingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeChordVoicing,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withChordVoicingID sets the ID field of the mutation.
+func withChordVoicingID(id uuid.UUID) chordvoicingOption {
+	return func(m *ChordVoicingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ChordVoicing
+		)
+		m.oldValue = func(ctx context.Context) (*ChordVoicing, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ChordVoicing.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withChordVoicing sets the old ChordVoicing of the mutation.
+func withChordVoicing(node *ChordVoicing) chordvoicingOption {
+	return func(m *ChordVoicingMutation) {
+		m.oldValue = func(context.Context) (*ChordVoicing, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ChordVoicingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ChordVoicingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ChordVoicing entities.
+func (m *ChordVoicingMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ChordVoicingMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ChordVoicingMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ChordVoicing.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetChordDefinitionID sets the "chord_definition_id" field.
+func (m *ChordVoicingMutation) SetChordDefinitionID(u uuid.UUID) {
+	m.chord_definition = &u
+}
+
+// ChordDefinitionID returns the value of the "chord_definition_id" field in the mutation.
+func (m *ChordVoicingMutation) ChordDefinitionID() (r uuid.UUID, exists bool) {
+	v := m.chord_definition
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChordDefinitionID returns the old "chord_definition_id" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldChordDefinitionID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChordDefinitionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChordDefinitionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChordDefinitionID: %w", err)
+	}
+	return oldValue.ChordDefinitionID, nil
+}
+
+// ResetChordDefinitionID resets all changes to the "chord_definition_id" field.
+func (m *ChordVoicingMutation) ResetChordDefinitionID() {
+	m.chord_definition = nil
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *ChordVoicingMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *ChordVoicingMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *ChordVoicingMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetInstrumentID sets the "instrument_id" field.
+func (m *ChordVoicingMutation) SetInstrumentID(u uuid.UUID) {
+	m.instrument = &u
+}
+
+// InstrumentID returns the value of the "instrument_id" field in the mutation.
+func (m *ChordVoicingMutation) InstrumentID() (r uuid.UUID, exists bool) {
+	v := m.instrument
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstrumentID returns the old "instrument_id" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldInstrumentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstrumentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstrumentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstrumentID: %w", err)
+	}
+	return oldValue.InstrumentID, nil
+}
+
+// ResetInstrumentID resets all changes to the "instrument_id" field.
+func (m *ChordVoicingMutation) ResetInstrumentID() {
+	m.instrument = nil
+}
+
+// SetTuningFingerprint sets the "tuning_fingerprint" field.
+func (m *ChordVoicingMutation) SetTuningFingerprint(s string) {
+	m.tuning_fingerprint = &s
+}
+
+// TuningFingerprint returns the value of the "tuning_fingerprint" field in the mutation.
+func (m *ChordVoicingMutation) TuningFingerprint() (r string, exists bool) {
+	v := m.tuning_fingerprint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTuningFingerprint returns the old "tuning_fingerprint" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldTuningFingerprint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTuningFingerprint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTuningFingerprint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTuningFingerprint: %w", err)
+	}
+	return oldValue.TuningFingerprint, nil
+}
+
+// ResetTuningFingerprint resets all changes to the "tuning_fingerprint" field.
+func (m *ChordVoicingMutation) ResetTuningFingerprint() {
+	m.tuning_fingerprint = nil
+}
+
+// SetLowestFret sets the "lowest_fret" field.
+func (m *ChordVoicingMutation) SetLowestFret(i int) {
+	m.lowest_fret = &i
+	m.addlowest_fret = nil
+}
+
+// LowestFret returns the value of the "lowest_fret" field in the mutation.
+func (m *ChordVoicingMutation) LowestFret() (r int, exists bool) {
+	v := m.lowest_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLowestFret returns the old "lowest_fret" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldLowestFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLowestFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLowestFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLowestFret: %w", err)
+	}
+	return oldValue.LowestFret, nil
+}
+
+// AddLowestFret adds i to the "lowest_fret" field.
+func (m *ChordVoicingMutation) AddLowestFret(i int) {
+	if m.addlowest_fret != nil {
+		*m.addlowest_fret += i
+	} else {
+		m.addlowest_fret = &i
+	}
+}
+
+// AddedLowestFret returns the value that was added to the "lowest_fret" field in this mutation.
+func (m *ChordVoicingMutation) AddedLowestFret() (r int, exists bool) {
+	v := m.addlowest_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLowestFret resets all changes to the "lowest_fret" field.
+func (m *ChordVoicingMutation) ResetLowestFret() {
+	m.lowest_fret = nil
+	m.addlowest_fret = nil
+}
+
+// SetHighestFret sets the "highest_fret" field.
+func (m *ChordVoicingMutation) SetHighestFret(i int) {
+	m.highest_fret = &i
+	m.addhighest_fret = nil
+}
+
+// HighestFret returns the value of the "highest_fret" field in the mutation.
+func (m *ChordVoicingMutation) HighestFret() (r int, exists bool) {
+	v := m.highest_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHighestFret returns the old "highest_fret" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldHighestFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHighestFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHighestFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHighestFret: %w", err)
+	}
+	return oldValue.HighestFret, nil
+}
+
+// AddHighestFret adds i to the "highest_fret" field.
+func (m *ChordVoicingMutation) AddHighestFret(i int) {
+	if m.addhighest_fret != nil {
+		*m.addhighest_fret += i
+	} else {
+		m.addhighest_fret = &i
+	}
+}
+
+// AddedHighestFret returns the value that was added to the "highest_fret" field in this mutation.
+func (m *ChordVoicingMutation) AddedHighestFret() (r int, exists bool) {
+	v := m.addhighest_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetHighestFret resets all changes to the "highest_fret" field.
+func (m *ChordVoicingMutation) ResetHighestFret() {
+	m.highest_fret = nil
+	m.addhighest_fret = nil
+}
+
+// SetFingering sets the "fingering" field.
+func (m *ChordVoicingMutation) SetFingering(sf []schema.VoicingFinger) {
+	m.fingering = &sf
+	m.appendfingering = nil
+}
+
+// Fingering returns the value of the "fingering" field in the mutation.
+func (m *ChordVoicingMutation) Fingering() (r []schema.VoicingFinger, exists bool) {
+	v := m.fingering
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFingering returns the old "fingering" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldFingering(ctx context.Context) (v []schema.VoicingFinger, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFingering is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFingering requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFingering: %w", err)
+	}
+	return oldValue.Fingering, nil
+}
+
+// AppendFingering adds sf to the "fingering" field.
+func (m *ChordVoicingMutation) AppendFingering(sf []schema.VoicingFinger) {
+	m.appendfingering = append(m.appendfingering, sf...)
+}
+
+// AppendedFingering returns the list of values that were appended to the "fingering" field in this mutation.
+func (m *ChordVoicingMutation) AppendedFingering() ([]schema.VoicingFinger, bool) {
+	if len(m.appendfingering) == 0 {
+		return nil, false
+	}
+	return m.appendfingering, true
+}
+
+// ResetFingering resets all changes to the "fingering" field.
+func (m *ChordVoicingMutation) ResetFingering() {
+	m.fingering = nil
+	m.appendfingering = nil
+}
+
+// SetMutedStrings sets the "muted_strings" field.
+func (m *ChordVoicingMutation) SetMutedStrings(i []int) {
+	m.muted_strings = &i
+	m.appendmuted_strings = nil
+}
+
+// MutedStrings returns the value of the "muted_strings" field in the mutation.
+func (m *ChordVoicingMutation) MutedStrings() (r []int, exists bool) {
+	v := m.muted_strings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMutedStrings returns the old "muted_strings" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldMutedStrings(ctx context.Context) (v []int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMutedStrings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMutedStrings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMutedStrings: %w", err)
+	}
+	return oldValue.MutedStrings, nil
+}
+
+// AppendMutedStrings adds i to the "muted_strings" field.
+func (m *ChordVoicingMutation) AppendMutedStrings(i []int) {
+	m.appendmuted_strings = append(m.appendmuted_strings, i...)
+}
+
+// AppendedMutedStrings returns the list of values that were appended to the "muted_strings" field in this mutation.
+func (m *ChordVoicingMutation) AppendedMutedStrings() ([]int, bool) {
+	if len(m.appendmuted_strings) == 0 {
+		return nil, false
+	}
+	return m.appendmuted_strings, true
+}
+
+// ResetMutedStrings resets all changes to the "muted_strings" field.
+func (m *ChordVoicingMutation) ResetMutedStrings() {
+	m.muted_strings = nil
+	m.appendmuted_strings = nil
+}
+
+// SetOmittedIntervals sets the "omitted_intervals" field.
+func (m *ChordVoicingMutation) SetOmittedIntervals(s []string) {
+	m.omitted_intervals = &s
+	m.appendomitted_intervals = nil
+}
+
+// OmittedIntervals returns the value of the "omitted_intervals" field in the mutation.
+func (m *ChordVoicingMutation) OmittedIntervals() (r []string, exists bool) {
+	v := m.omitted_intervals
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOmittedIntervals returns the old "omitted_intervals" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldOmittedIntervals(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOmittedIntervals is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOmittedIntervals requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOmittedIntervals: %w", err)
+	}
+	return oldValue.OmittedIntervals, nil
+}
+
+// AppendOmittedIntervals adds s to the "omitted_intervals" field.
+func (m *ChordVoicingMutation) AppendOmittedIntervals(s []string) {
+	m.appendomitted_intervals = append(m.appendomitted_intervals, s...)
+}
+
+// AppendedOmittedIntervals returns the list of values that were appended to the "omitted_intervals" field in this mutation.
+func (m *ChordVoicingMutation) AppendedOmittedIntervals() ([]string, bool) {
+	if len(m.appendomitted_intervals) == 0 {
+		return nil, false
+	}
+	return m.appendomitted_intervals, true
+}
+
+// ResetOmittedIntervals resets all changes to the "omitted_intervals" field.
+func (m *ChordVoicingMutation) ResetOmittedIntervals() {
+	m.omitted_intervals = nil
+	m.appendomitted_intervals = nil
+}
+
+// SetDifficulty sets the "difficulty" field.
+func (m *ChordVoicingMutation) SetDifficulty(c chordvoicing.Difficulty) {
+	m.difficulty = &c
+}
+
+// Difficulty returns the value of the "difficulty" field in the mutation.
+func (m *ChordVoicingMutation) Difficulty() (r chordvoicing.Difficulty, exists bool) {
+	v := m.difficulty
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDifficulty returns the old "difficulty" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldDifficulty(ctx context.Context) (v chordvoicing.Difficulty, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDifficulty is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDifficulty requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDifficulty: %w", err)
+	}
+	return oldValue.Difficulty, nil
+}
+
+// ResetDifficulty resets all changes to the "difficulty" field.
+func (m *ChordVoicingMutation) ResetDifficulty() {
+	m.difficulty = nil
+}
+
+// SetTechniqueTags sets the "technique_tags" field.
+func (m *ChordVoicingMutation) SetTechniqueTags(s []string) {
+	m.technique_tags = &s
+	m.appendtechnique_tags = nil
+}
+
+// TechniqueTags returns the value of the "technique_tags" field in the mutation.
+func (m *ChordVoicingMutation) TechniqueTags() (r []string, exists bool) {
+	v := m.technique_tags
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTechniqueTags returns the old "technique_tags" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldTechniqueTags(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTechniqueTags is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTechniqueTags requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTechniqueTags: %w", err)
+	}
+	return oldValue.TechniqueTags, nil
+}
+
+// AppendTechniqueTags adds s to the "technique_tags" field.
+func (m *ChordVoicingMutation) AppendTechniqueTags(s []string) {
+	m.appendtechnique_tags = append(m.appendtechnique_tags, s...)
+}
+
+// AppendedTechniqueTags returns the list of values that were appended to the "technique_tags" field in this mutation.
+func (m *ChordVoicingMutation) AppendedTechniqueTags() ([]string, bool) {
+	if len(m.appendtechnique_tags) == 0 {
+		return nil, false
+	}
+	return m.appendtechnique_tags, true
+}
+
+// ResetTechniqueTags resets all changes to the "technique_tags" field.
+func (m *ChordVoicingMutation) ResetTechniqueTags() {
+	m.technique_tags = nil
+	m.appendtechnique_tags = nil
+}
+
+// SetShapeFamily sets the "shape_family" field.
+func (m *ChordVoicingMutation) SetShapeFamily(cf chordvoicing.ShapeFamily) {
+	m.shape_family = &cf
+}
+
+// ShapeFamily returns the value of the "shape_family" field in the mutation.
+func (m *ChordVoicingMutation) ShapeFamily() (r chordvoicing.ShapeFamily, exists bool) {
+	v := m.shape_family
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShapeFamily returns the old "shape_family" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldShapeFamily(ctx context.Context) (v *chordvoicing.ShapeFamily, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShapeFamily is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShapeFamily requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShapeFamily: %w", err)
+	}
+	return oldValue.ShapeFamily, nil
+}
+
+// ClearShapeFamily clears the value of the "shape_family" field.
+func (m *ChordVoicingMutation) ClearShapeFamily() {
+	m.shape_family = nil
+	m.clearedFields[chordvoicing.FieldShapeFamily] = struct{}{}
+}
+
+// ShapeFamilyCleared returns if the "shape_family" field was cleared in this mutation.
+func (m *ChordVoicingMutation) ShapeFamilyCleared() bool {
+	_, ok := m.clearedFields[chordvoicing.FieldShapeFamily]
+	return ok
+}
+
+// ResetShapeFamily resets all changes to the "shape_family" field.
+func (m *ChordVoicingMutation) ResetShapeFamily() {
+	m.shape_family = nil
+	delete(m.clearedFields, chordvoicing.FieldShapeFamily)
+}
+
+// SetIsMovable sets the "is_movable" field.
+func (m *ChordVoicingMutation) SetIsMovable(b bool) {
+	m.is_movable = &b
+}
+
+// IsMovable returns the value of the "is_movable" field in the mutation.
+func (m *ChordVoicingMutation) IsMovable() (r bool, exists bool) {
+	v := m.is_movable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsMovable returns the old "is_movable" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldIsMovable(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsMovable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsMovable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsMovable: %w", err)
+	}
+	return oldValue.IsMovable, nil
+}
+
+// ResetIsMovable resets all changes to the "is_movable" field.
+func (m *ChordVoicingMutation) ResetIsMovable() {
+	m.is_movable = nil
+}
+
+// SetRecommendedRank sets the "recommended_rank" field.
+func (m *ChordVoicingMutation) SetRecommendedRank(i int) {
+	m.recommended_rank = &i
+	m.addrecommended_rank = nil
+}
+
+// RecommendedRank returns the value of the "recommended_rank" field in the mutation.
+func (m *ChordVoicingMutation) RecommendedRank() (r int, exists bool) {
+	v := m.recommended_rank
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRecommendedRank returns the old "recommended_rank" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldRecommendedRank(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRecommendedRank is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRecommendedRank requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRecommendedRank: %w", err)
+	}
+	return oldValue.RecommendedRank, nil
+}
+
+// AddRecommendedRank adds i to the "recommended_rank" field.
+func (m *ChordVoicingMutation) AddRecommendedRank(i int) {
+	if m.addrecommended_rank != nil {
+		*m.addrecommended_rank += i
+	} else {
+		m.addrecommended_rank = &i
+	}
+}
+
+// AddedRecommendedRank returns the value that was added to the "recommended_rank" field in this mutation.
+func (m *ChordVoicingMutation) AddedRecommendedRank() (r int, exists bool) {
+	v := m.addrecommended_rank
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRecommendedRank resets all changes to the "recommended_rank" field.
+func (m *ChordVoicingMutation) ResetRecommendedRank() {
+	m.recommended_rank = nil
+	m.addrecommended_rank = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *ChordVoicingMutation) SetStatus(c chordvoicing.Status) {
+	m.status = &c
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *ChordVoicingMutation) Status() (r chordvoicing.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldStatus(ctx context.Context) (v chordvoicing.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *ChordVoicingMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetTemplateKey sets the "template_key" field.
+func (m *ChordVoicingMutation) SetTemplateKey(s string) {
+	m.template_key = &s
+}
+
+// TemplateKey returns the value of the "template_key" field in the mutation.
+func (m *ChordVoicingMutation) TemplateKey() (r string, exists bool) {
+	v := m.template_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTemplateKey returns the old "template_key" field's value of the ChordVoicing entity.
+// If the ChordVoicing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChordVoicingMutation) OldTemplateKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTemplateKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTemplateKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTemplateKey: %w", err)
+	}
+	return oldValue.TemplateKey, nil
+}
+
+// ClearTemplateKey clears the value of the "template_key" field.
+func (m *ChordVoicingMutation) ClearTemplateKey() {
+	m.template_key = nil
+	m.clearedFields[chordvoicing.FieldTemplateKey] = struct{}{}
+}
+
+// TemplateKeyCleared returns if the "template_key" field was cleared in this mutation.
+func (m *ChordVoicingMutation) TemplateKeyCleared() bool {
+	_, ok := m.clearedFields[chordvoicing.FieldTemplateKey]
+	return ok
+}
+
+// ResetTemplateKey resets all changes to the "template_key" field.
+func (m *ChordVoicingMutation) ResetTemplateKey() {
+	m.template_key = nil
+	delete(m.clearedFields, chordvoicing.FieldTemplateKey)
+}
+
+// ClearChordDefinition clears the "chord_definition" edge to the ChordDefinition entity.
+func (m *ChordVoicingMutation) ClearChordDefinition() {
+	m.clearedchord_definition = true
+	m.clearedFields[chordvoicing.FieldChordDefinitionID] = struct{}{}
+}
+
+// ChordDefinitionCleared reports if the "chord_definition" edge to the ChordDefinition entity was cleared.
+func (m *ChordVoicingMutation) ChordDefinitionCleared() bool {
+	return m.clearedchord_definition
+}
+
+// ChordDefinitionIDs returns the "chord_definition" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChordDefinitionID instead. It exists only for internal usage by the builders.
+func (m *ChordVoicingMutation) ChordDefinitionIDs() (ids []uuid.UUID) {
+	if id := m.chord_definition; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChordDefinition resets all changes to the "chord_definition" edge.
+func (m *ChordVoicingMutation) ResetChordDefinition() {
+	m.chord_definition = nil
+	m.clearedchord_definition = false
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *ChordVoicingMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[chordvoicing.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *ChordVoicingMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *ChordVoicingMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *ChordVoicingMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// ClearInstrument clears the "instrument" edge to the Instrument entity.
+func (m *ChordVoicingMutation) ClearInstrument() {
+	m.clearedinstrument = true
+	m.clearedFields[chordvoicing.FieldInstrumentID] = struct{}{}
+}
+
+// InstrumentCleared reports if the "instrument" edge to the Instrument entity was cleared.
+func (m *ChordVoicingMutation) InstrumentCleared() bool {
+	return m.clearedinstrument
+}
+
+// InstrumentIDs returns the "instrument" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InstrumentID instead. It exists only for internal usage by the builders.
+func (m *ChordVoicingMutation) InstrumentIDs() (ids []uuid.UUID) {
+	if id := m.instrument; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInstrument resets all changes to the "instrument" edge.
+func (m *ChordVoicingMutation) ResetInstrument() {
+	m.instrument = nil
+	m.clearedinstrument = false
+}
+
+// Where appends a list predicates to the ChordVoicingMutation builder.
+func (m *ChordVoicingMutation) Where(ps ...predicate.ChordVoicing) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ChordVoicingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ChordVoicingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ChordVoicing, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ChordVoicingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ChordVoicingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ChordVoicing).
+func (m *ChordVoicingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ChordVoicingMutation) Fields() []string {
+	fields := make([]string, 0, 16)
+	if m.chord_definition != nil {
+		fields = append(fields, chordvoicing.FieldChordDefinitionID)
+	}
+	if m.diagram != nil {
+		fields = append(fields, chordvoicing.FieldDiagramID)
+	}
+	if m.instrument != nil {
+		fields = append(fields, chordvoicing.FieldInstrumentID)
+	}
+	if m.tuning_fingerprint != nil {
+		fields = append(fields, chordvoicing.FieldTuningFingerprint)
+	}
+	if m.lowest_fret != nil {
+		fields = append(fields, chordvoicing.FieldLowestFret)
+	}
+	if m.highest_fret != nil {
+		fields = append(fields, chordvoicing.FieldHighestFret)
+	}
+	if m.fingering != nil {
+		fields = append(fields, chordvoicing.FieldFingering)
+	}
+	if m.muted_strings != nil {
+		fields = append(fields, chordvoicing.FieldMutedStrings)
+	}
+	if m.omitted_intervals != nil {
+		fields = append(fields, chordvoicing.FieldOmittedIntervals)
+	}
+	if m.difficulty != nil {
+		fields = append(fields, chordvoicing.FieldDifficulty)
+	}
+	if m.technique_tags != nil {
+		fields = append(fields, chordvoicing.FieldTechniqueTags)
+	}
+	if m.shape_family != nil {
+		fields = append(fields, chordvoicing.FieldShapeFamily)
+	}
+	if m.is_movable != nil {
+		fields = append(fields, chordvoicing.FieldIsMovable)
+	}
+	if m.recommended_rank != nil {
+		fields = append(fields, chordvoicing.FieldRecommendedRank)
+	}
+	if m.status != nil {
+		fields = append(fields, chordvoicing.FieldStatus)
+	}
+	if m.template_key != nil {
+		fields = append(fields, chordvoicing.FieldTemplateKey)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ChordVoicingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case chordvoicing.FieldChordDefinitionID:
+		return m.ChordDefinitionID()
+	case chordvoicing.FieldDiagramID:
+		return m.DiagramID()
+	case chordvoicing.FieldInstrumentID:
+		return m.InstrumentID()
+	case chordvoicing.FieldTuningFingerprint:
+		return m.TuningFingerprint()
+	case chordvoicing.FieldLowestFret:
+		return m.LowestFret()
+	case chordvoicing.FieldHighestFret:
+		return m.HighestFret()
+	case chordvoicing.FieldFingering:
+		return m.Fingering()
+	case chordvoicing.FieldMutedStrings:
+		return m.MutedStrings()
+	case chordvoicing.FieldOmittedIntervals:
+		return m.OmittedIntervals()
+	case chordvoicing.FieldDifficulty:
+		return m.Difficulty()
+	case chordvoicing.FieldTechniqueTags:
+		return m.TechniqueTags()
+	case chordvoicing.FieldShapeFamily:
+		return m.ShapeFamily()
+	case chordvoicing.FieldIsMovable:
+		return m.IsMovable()
+	case chordvoicing.FieldRecommendedRank:
+		return m.RecommendedRank()
+	case chordvoicing.FieldStatus:
+		return m.Status()
+	case chordvoicing.FieldTemplateKey:
+		return m.TemplateKey()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ChordVoicingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case chordvoicing.FieldChordDefinitionID:
+		return m.OldChordDefinitionID(ctx)
+	case chordvoicing.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case chordvoicing.FieldInstrumentID:
+		return m.OldInstrumentID(ctx)
+	case chordvoicing.FieldTuningFingerprint:
+		return m.OldTuningFingerprint(ctx)
+	case chordvoicing.FieldLowestFret:
+		return m.OldLowestFret(ctx)
+	case chordvoicing.FieldHighestFret:
+		return m.OldHighestFret(ctx)
+	case chordvoicing.FieldFingering:
+		return m.OldFingering(ctx)
+	case chordvoicing.FieldMutedStrings:
+		return m.OldMutedStrings(ctx)
+	case chordvoicing.FieldOmittedIntervals:
+		return m.OldOmittedIntervals(ctx)
+	case chordvoicing.FieldDifficulty:
+		return m.OldDifficulty(ctx)
+	case chordvoicing.FieldTechniqueTags:
+		return m.OldTechniqueTags(ctx)
+	case chordvoicing.FieldShapeFamily:
+		return m.OldShapeFamily(ctx)
+	case chordvoicing.FieldIsMovable:
+		return m.OldIsMovable(ctx)
+	case chordvoicing.FieldRecommendedRank:
+		return m.OldRecommendedRank(ctx)
+	case chordvoicing.FieldStatus:
+		return m.OldStatus(ctx)
+	case chordvoicing.FieldTemplateKey:
+		return m.OldTemplateKey(ctx)
+	}
+	return nil, fmt.Errorf("unknown ChordVoicing field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordVoicingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case chordvoicing.FieldChordDefinitionID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChordDefinitionID(v)
+		return nil
+	case chordvoicing.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case chordvoicing.FieldInstrumentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstrumentID(v)
+		return nil
+	case chordvoicing.FieldTuningFingerprint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTuningFingerprint(v)
+		return nil
+	case chordvoicing.FieldLowestFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLowestFret(v)
+		return nil
+	case chordvoicing.FieldHighestFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHighestFret(v)
+		return nil
+	case chordvoicing.FieldFingering:
+		v, ok := value.([]schema.VoicingFinger)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFingering(v)
+		return nil
+	case chordvoicing.FieldMutedStrings:
+		v, ok := value.([]int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMutedStrings(v)
+		return nil
+	case chordvoicing.FieldOmittedIntervals:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOmittedIntervals(v)
+		return nil
+	case chordvoicing.FieldDifficulty:
+		v, ok := value.(chordvoicing.Difficulty)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDifficulty(v)
+		return nil
+	case chordvoicing.FieldTechniqueTags:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTechniqueTags(v)
+		return nil
+	case chordvoicing.FieldShapeFamily:
+		v, ok := value.(chordvoicing.ShapeFamily)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShapeFamily(v)
+		return nil
+	case chordvoicing.FieldIsMovable:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsMovable(v)
+		return nil
+	case chordvoicing.FieldRecommendedRank:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRecommendedRank(v)
+		return nil
+	case chordvoicing.FieldStatus:
+		v, ok := value.(chordvoicing.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case chordvoicing.FieldTemplateKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTemplateKey(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ChordVoicingMutation) AddedFields() []string {
+	var fields []string
+	if m.addlowest_fret != nil {
+		fields = append(fields, chordvoicing.FieldLowestFret)
+	}
+	if m.addhighest_fret != nil {
+		fields = append(fields, chordvoicing.FieldHighestFret)
+	}
+	if m.addrecommended_rank != nil {
+		fields = append(fields, chordvoicing.FieldRecommendedRank)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ChordVoicingMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case chordvoicing.FieldLowestFret:
+		return m.AddedLowestFret()
+	case chordvoicing.FieldHighestFret:
+		return m.AddedHighestFret()
+	case chordvoicing.FieldRecommendedRank:
+		return m.AddedRecommendedRank()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ChordVoicingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case chordvoicing.FieldLowestFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLowestFret(v)
+		return nil
+	case chordvoicing.FieldHighestFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddHighestFret(v)
+		return nil
+	case chordvoicing.FieldRecommendedRank:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRecommendedRank(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ChordVoicingMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(chordvoicing.FieldShapeFamily) {
+		fields = append(fields, chordvoicing.FieldShapeFamily)
+	}
+	if m.FieldCleared(chordvoicing.FieldTemplateKey) {
+		fields = append(fields, chordvoicing.FieldTemplateKey)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ChordVoicingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ChordVoicingMutation) ClearField(name string) error {
+	switch name {
+	case chordvoicing.FieldShapeFamily:
+		m.ClearShapeFamily()
+		return nil
+	case chordvoicing.FieldTemplateKey:
+		m.ClearTemplateKey()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ChordVoicingMutation) ResetField(name string) error {
+	switch name {
+	case chordvoicing.FieldChordDefinitionID:
+		m.ResetChordDefinitionID()
+		return nil
+	case chordvoicing.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case chordvoicing.FieldInstrumentID:
+		m.ResetInstrumentID()
+		return nil
+	case chordvoicing.FieldTuningFingerprint:
+		m.ResetTuningFingerprint()
+		return nil
+	case chordvoicing.FieldLowestFret:
+		m.ResetLowestFret()
+		return nil
+	case chordvoicing.FieldHighestFret:
+		m.ResetHighestFret()
+		return nil
+	case chordvoicing.FieldFingering:
+		m.ResetFingering()
+		return nil
+	case chordvoicing.FieldMutedStrings:
+		m.ResetMutedStrings()
+		return nil
+	case chordvoicing.FieldOmittedIntervals:
+		m.ResetOmittedIntervals()
+		return nil
+	case chordvoicing.FieldDifficulty:
+		m.ResetDifficulty()
+		return nil
+	case chordvoicing.FieldTechniqueTags:
+		m.ResetTechniqueTags()
+		return nil
+	case chordvoicing.FieldShapeFamily:
+		m.ResetShapeFamily()
+		return nil
+	case chordvoicing.FieldIsMovable:
+		m.ResetIsMovable()
+		return nil
+	case chordvoicing.FieldRecommendedRank:
+		m.ResetRecommendedRank()
+		return nil
+	case chordvoicing.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case chordvoicing.FieldTemplateKey:
+		m.ResetTemplateKey()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ChordVoicingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.chord_definition != nil {
+		edges = append(edges, chordvoicing.EdgeChordDefinition)
+	}
+	if m.diagram != nil {
+		edges = append(edges, chordvoicing.EdgeDiagram)
+	}
+	if m.instrument != nil {
+		edges = append(edges, chordvoicing.EdgeInstrument)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ChordVoicingMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case chordvoicing.EdgeChordDefinition:
+		if id := m.chord_definition; id != nil {
+			return []ent.Value{*id}
+		}
+	case chordvoicing.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	case chordvoicing.EdgeInstrument:
+		if id := m.instrument; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ChordVoicingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ChordVoicingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ChordVoicingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedchord_definition {
+		edges = append(edges, chordvoicing.EdgeChordDefinition)
+	}
+	if m.cleareddiagram {
+		edges = append(edges, chordvoicing.EdgeDiagram)
+	}
+	if m.clearedinstrument {
+		edges = append(edges, chordvoicing.EdgeInstrument)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ChordVoicingMutation) EdgeCleared(name string) bool {
+	switch name {
+	case chordvoicing.EdgeChordDefinition:
+		return m.clearedchord_definition
+	case chordvoicing.EdgeDiagram:
+		return m.cleareddiagram
+	case chordvoicing.EdgeInstrument:
+		return m.clearedinstrument
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ChordVoicingMutation) ClearEdge(name string) error {
+	switch name {
+	case chordvoicing.EdgeChordDefinition:
+		m.ClearChordDefinition()
+		return nil
+	case chordvoicing.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	case chordvoicing.EdgeInstrument:
+		m.ClearInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ChordVoicingMutation) ResetEdge(name string) error {
+	switch name {
+	case chordvoicing.EdgeChordDefinition:
+		m.ResetChordDefinition()
+		return nil
+	case chordvoicing.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	case chordvoicing.EdgeInstrument:
+		m.ResetInstrument()
+		return nil
+	}
+	return fmt.Errorf("unknown ChordVoicing edge %s", name)
 }
 
 // ContentNodeMutation represents an operation that mutates the ContentNode nodes in the graph.
@@ -11434,6 +13949,7 @@ type DiagramMutation struct {
 	names                         *map[string]string
 	kind                          *diagram.Kind
 	created_by                    *uuid.UUID
+	purpose                       *diagram.Purpose
 	root_note                     *string
 	label_display                 *diagram.LabelDisplay
 	color                         *string
@@ -11720,6 +14236,42 @@ func (m *DiagramMutation) OldCreatedBy(ctx context.Context) (v uuid.UUID, err er
 // ResetCreatedBy resets all changes to the "created_by" field.
 func (m *DiagramMutation) ResetCreatedBy() {
 	m.created_by = nil
+}
+
+// SetPurpose sets the "purpose" field.
+func (m *DiagramMutation) SetPurpose(d diagram.Purpose) {
+	m.purpose = &d
+}
+
+// Purpose returns the value of the "purpose" field in the mutation.
+func (m *DiagramMutation) Purpose() (r diagram.Purpose, exists bool) {
+	v := m.purpose
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPurpose returns the old "purpose" field's value of the Diagram entity.
+// If the Diagram object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramMutation) OldPurpose(ctx context.Context) (v diagram.Purpose, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPurpose is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPurpose requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPurpose: %w", err)
+	}
+	return oldValue.Purpose, nil
+}
+
+// ResetPurpose resets all changes to the "purpose" field.
+func (m *DiagramMutation) ResetPurpose() {
+	m.purpose = nil
 }
 
 // SetRootNote sets the "root_note" field.
@@ -12534,7 +15086,7 @@ func (m *DiagramMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DiagramMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.instrument != nil {
 		fields = append(fields, diagram.FieldInstrumentID)
 	}
@@ -12546,6 +15098,9 @@ func (m *DiagramMutation) Fields() []string {
 	}
 	if m.created_by != nil {
 		fields = append(fields, diagram.FieldCreatedBy)
+	}
+	if m.purpose != nil {
+		fields = append(fields, diagram.FieldPurpose)
 	}
 	if m.root_note != nil {
 		fields = append(fields, diagram.FieldRootNote)
@@ -12584,6 +15139,8 @@ func (m *DiagramMutation) Field(name string) (ent.Value, bool) {
 		return m.Kind()
 	case diagram.FieldCreatedBy:
 		return m.CreatedBy()
+	case diagram.FieldPurpose:
+		return m.Purpose()
 	case diagram.FieldRootNote:
 		return m.RootNote()
 	case diagram.FieldLabelDisplay:
@@ -12615,6 +15172,8 @@ func (m *DiagramMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldKind(ctx)
 	case diagram.FieldCreatedBy:
 		return m.OldCreatedBy(ctx)
+	case diagram.FieldPurpose:
+		return m.OldPurpose(ctx)
 	case diagram.FieldRootNote:
 		return m.OldRootNote(ctx)
 	case diagram.FieldLabelDisplay:
@@ -12665,6 +15224,13 @@ func (m *DiagramMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedBy(v)
+		return nil
+	case diagram.FieldPurpose:
+		v, ok := value.(diagram.Purpose)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPurpose(v)
 		return nil
 	case diagram.FieldRootNote:
 		v, ok := value.(string)
@@ -12802,6 +15368,9 @@ func (m *DiagramMutation) ResetField(name string) error {
 		return nil
 	case diagram.FieldCreatedBy:
 		m.ResetCreatedBy()
+		return nil
+	case diagram.FieldPurpose:
+		m.ResetPurpose()
 		return nil
 	case diagram.FieldRootNote:
 		m.ResetRootNote()

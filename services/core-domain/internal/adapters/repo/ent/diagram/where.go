@@ -166,6 +166,26 @@ func CreatedByLTE(v uuid.UUID) predicate.Diagram {
 	return predicate.Diagram(sql.FieldLTE(FieldCreatedBy, v))
 }
 
+// PurposeEQ applies the EQ predicate on the "purpose" field.
+func PurposeEQ(v Purpose) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldPurpose, v))
+}
+
+// PurposeNEQ applies the NEQ predicate on the "purpose" field.
+func PurposeNEQ(v Purpose) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldPurpose, v))
+}
+
+// PurposeIn applies the In predicate on the "purpose" field.
+func PurposeIn(vs ...Purpose) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldPurpose, vs...))
+}
+
+// PurposeNotIn applies the NotIn predicate on the "purpose" field.
+func PurposeNotIn(vs ...Purpose) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldPurpose, vs...))
+}
+
 // RootNoteEQ applies the EQ predicate on the "root_note" field.
 func RootNoteEQ(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldRootNote, v))

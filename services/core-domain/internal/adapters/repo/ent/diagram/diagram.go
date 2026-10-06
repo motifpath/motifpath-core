@@ -25,6 +25,8 @@ const (
 	FieldKind = "kind"
 	// FieldCreatedBy holds the string denoting the created_by field in the database.
 	FieldCreatedBy = "created_by"
+	// FieldPurpose holds the string denoting the purpose field in the database.
+	FieldPurpose = "purpose"
 	// FieldRootNote holds the string denoting the root_note field in the database.
 	FieldRootNote = "root_note"
 	// FieldLabelDisplay holds the string denoting the label_display field in the database.
@@ -125,6 +127,7 @@ var Columns = []string{
 	FieldNames,
 	FieldKind,
 	FieldCreatedBy,
+	FieldPurpose,
 	FieldRootNote,
 	FieldLabelDisplay,
 	FieldColor,
@@ -185,6 +188,32 @@ func KindValidator(k Kind) error {
 		return nil
 	default:
 		return fmt.Errorf("diagram: invalid enum value for kind field: %q", k)
+	}
+}
+
+// Purpose defines the type for the "purpose" enum field.
+type Purpose string
+
+// PurposeGeneral is the default value of the Purpose enum.
+const DefaultPurpose = PurposeGeneral
+
+// Purpose values.
+const (
+	PurposeGeneral      Purpose = "general"
+	PurposeChordVoicing Purpose = "chord_voicing"
+)
+
+func (pu Purpose) String() string {
+	return string(pu)
+}
+
+// PurposeValidator is a validator for the "purpose" field enum values. It is called by the builders before save.
+func PurposeValidator(pu Purpose) error {
+	switch pu {
+	case PurposeGeneral, PurposeChordVoicing:
+		return nil
+	default:
+		return fmt.Errorf("diagram: invalid enum value for purpose field: %q", pu)
 	}
 }
 
@@ -264,6 +293,11 @@ func ByKind(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedBy orders the results by the created_by field.
 func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedBy, opts...).ToFunc()
+}
+
+// ByPurpose orders the results by the purpose field.
+func ByPurpose(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPurpose, opts...).ToFunc()
 }
 
 // ByRootNote orders the results by the root_note field.

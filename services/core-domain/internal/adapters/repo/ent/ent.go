@@ -14,6 +14,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -118,6 +120,8 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			challenge.Table:               challenge.ValidColumn,
 			challengeexercise.Table:       challengeexercise.ValidColumn,
+			chorddefinition.Table:         chorddefinition.ValidColumn,
+			chordvoicing.Table:            chordvoicing.ValidColumn,
 			contentnode.Table:             contentnode.ValidColumn,
 			contentnodeconcept.Table:      contentnodeconcept.ValidColumn,
 			contentnodeexercise.Table:     contentnodeexercise.ValidColumn,
