@@ -312,9 +312,10 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	practiceActivity := repo.NewMongoPracticeActivityReader(mongoClient.Database(cfg.mongoDatabase))
 	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, practiceActivity, practiceActivity, newID, now)
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, now)
+	chordCatalogService := application.NewChordCatalogService(repo.NewEntChordCatalogRepository(entClient))
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
-		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, learningGraphPinger, completionReader), nil
+		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, learningGraphPinger, completionReader), nil
 }
 
 // newS3Client builds the client MediaService's presigned uploads go

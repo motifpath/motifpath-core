@@ -63,6 +63,7 @@ type Handler struct {
 	diagram          *application.DiagramService
 	practiceSession  *application.PracticeSessionService
 	practiceSummary  *application.PracticeSummaryService
+	chordCatalog     *application.ChordCatalogService
 
 	// pingers back the readiness probe only; the health probes never touch
 	// the application services above.
@@ -90,6 +91,7 @@ func NewHandler(
 	diagram *application.DiagramService,
 	practiceSession *application.PracticeSessionService,
 	practiceSummary *application.PracticeSummaryService,
+	chordCatalog *application.ChordCatalogService,
 	learningGraphPinger ports.Pinger,
 	completionStatePinger ports.Pinger,
 ) *Handler {
@@ -111,6 +113,7 @@ func NewHandler(
 		diagram:               diagram,
 		practiceSession:       practiceSession,
 		practiceSummary:       practiceSummary,
+		chordCatalog:          chordCatalog,
 		learningGraphPinger:   learningGraphPinger,
 		completionStatePinger: completionStatePinger,
 	}
@@ -2175,6 +2178,9 @@ func (h *Handler) UpdateDiagram(ctx context.Context, request generated.UpdateDia
 	update := toDiagramUpdate(request.Body)
 	diagram, err := h.diagram.UpdateDiagram(ctx, caller, request.DiagramId.String(), update)
 	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			return generated.UpdateDiagram409JSONResponse(conflictError("this diagram is a chord voicing, which only the chord catalog can change")), nil
+		}
 		kind, valErr := classify(err)
 		switch kind {
 		case errKindValidation:

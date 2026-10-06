@@ -68,6 +68,85 @@ var (
 			},
 		},
 	}
+	// ChordDefinitionsColumns holds the columns for the "chord_definitions" table.
+	ChordDefinitionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "canonical_symbol", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "root", Type: field.TypeString, Size: 2},
+		{Name: "root_pitch_class", Type: field.TypeInt},
+		{Name: "quality", Type: field.TypeString, Size: 32},
+		{Name: "formula", Type: field.TypeJSON},
+		{Name: "omittable", Type: field.TypeJSON},
+		{Name: "bass", Type: field.TypeString, Nullable: true, Size: 2},
+		{Name: "bass_pitch_class", Type: field.TypeInt, Nullable: true},
+		{Name: "aliases", Type: field.TypeJSON},
+	}
+	// ChordDefinitionsTable holds the schema information for the "chord_definitions" table.
+	ChordDefinitionsTable = &schema.Table{
+		Name:       "chord_definitions",
+		Columns:    ChordDefinitionsColumns,
+		PrimaryKey: []*schema.Column{ChordDefinitionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chorddefinition_root_pitch_class_quality_bass_pitch_class",
+				Unique:  true,
+				Columns: []*schema.Column{ChordDefinitionsColumns[3], ChordDefinitionsColumns[4], ChordDefinitionsColumns[8]},
+			},
+		},
+	}
+	// ChordVoicingsColumns holds the columns for the "chord_voicings" table.
+	ChordVoicingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "tuning_fingerprint", Type: field.TypeString, Size: 100},
+		{Name: "lowest_fret", Type: field.TypeInt},
+		{Name: "highest_fret", Type: field.TypeInt},
+		{Name: "fingering", Type: field.TypeJSON},
+		{Name: "muted_strings", Type: field.TypeJSON},
+		{Name: "omitted_intervals", Type: field.TypeJSON},
+		{Name: "difficulty", Type: field.TypeEnum, Enums: []string{"beginner", "intermediate", "advanced"}},
+		{Name: "technique_tags", Type: field.TypeJSON},
+		{Name: "shape_family", Type: field.TypeEnum, Nullable: true, Enums: []string{"open", "e_shape", "a_shape", "d_shape", "shell", "drop_2", "drop_3"}},
+		{Name: "is_movable", Type: field.TypeBool},
+		{Name: "recommended_rank", Type: field.TypeInt},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "withdrawn"}, Default: "active"},
+		{Name: "template_key", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "chord_definition_id", Type: field.TypeUUID},
+		{Name: "diagram_id", Type: field.TypeUUID},
+		{Name: "instrument_id", Type: field.TypeUUID},
+	}
+	// ChordVoicingsTable holds the schema information for the "chord_voicings" table.
+	ChordVoicingsTable = &schema.Table{
+		Name:       "chord_voicings",
+		Columns:    ChordVoicingsColumns,
+		PrimaryKey: []*schema.Column{ChordVoicingsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "chord_voicings_chord_definitions_chord_definition",
+				Columns:    []*schema.Column{ChordVoicingsColumns[14]},
+				RefColumns: []*schema.Column{ChordDefinitionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chord_voicings_diagrams_diagram",
+				Columns:    []*schema.Column{ChordVoicingsColumns[15]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "chord_voicings_instruments_instrument",
+				Columns:    []*schema.Column{ChordVoicingsColumns[16]},
+				RefColumns: []*schema.Column{InstrumentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "chordvoicing_diagram_id",
+				Unique:  true,
+				Columns: []*schema.Column{ChordVoicingsColumns[15]},
+			},
+		},
+	}
 	// ContentNodesColumns holds the columns for the "content_nodes" table.
 	ContentNodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -432,6 +511,7 @@ var (
 		{Name: "names", Type: field.TypeJSON},
 		{Name: "kind", Type: field.TypeEnum, Enums: []string{"basic", "custom"}},
 		{Name: "created_by", Type: field.TypeUUID},
+		{Name: "purpose", Type: field.TypeEnum, Enums: []string{"general", "chord_voicing"}, Default: "general"},
 		{Name: "root_note", Type: field.TypeString, Nullable: true},
 		{Name: "label_display", Type: field.TypeEnum, Enums: []string{"interval", "note", "hidden"}, Default: "interval"},
 		{Name: "color", Type: field.TypeString, Nullable: true},
@@ -449,7 +529,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[11]},
+				Columns:    []*schema.Column{DiagramsColumns[12]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -1254,6 +1334,8 @@ var (
 	Tables = []*schema.Table{
 		ChallengesTable,
 		ChallengeExercisesTable,
+		ChordDefinitionsTable,
+		ChordVoicingsTable,
 		ContentNodesTable,
 		ContentNodeConceptsTable,
 		ContentNodeExercisesTable,
@@ -1302,6 +1384,9 @@ var (
 func init() {
 	ChallengeExercisesTable.ForeignKeys[0].RefTable = ChallengesTable
 	ChallengeExercisesTable.ForeignKeys[1].RefTable = ExercisesTable
+	ChordVoicingsTable.ForeignKeys[0].RefTable = ChordDefinitionsTable
+	ChordVoicingsTable.ForeignKeys[1].RefTable = DiagramsTable
+	ChordVoicingsTable.ForeignKeys[2].RefTable = InstrumentsTable
 	ContentNodeConceptsTable.ForeignKeys[0].RefTable = ContentNodesTable
 	ContentNodeConceptsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	ContentNodeExercisesTable.ForeignKeys[0].RefTable = ContentNodesTable

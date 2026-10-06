@@ -30,6 +30,7 @@ func noShuffle(int, func(i, j int)) {}
 // full isolation without an explicit teardown step.
 type world struct {
 	users             *fakeUserRepo
+	chords            *fakeChordCatalog
 	nodes             *fakeContentNodeRepo
 	challenges        *fakeChallengeRepo
 	exercises         *fakeExerciseRepo
@@ -259,6 +260,7 @@ func newWorld() *world {
 		instruments:       newFakeInstrumentRepo(),
 		voices:            newFakeVoiceRepo(),
 		diagrams:          newFakeDiagramRepo(knowledge),
+		chords:            newFakeChordCatalog(),
 		pgPinger:          &fakePinger{},
 		mongoPinger:       &fakePinger{},
 		userMotifID:       map[string]uuid.UUID{},
@@ -306,7 +308,7 @@ func newWorld() *world {
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, summaryNow)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), w.pgPinger, w.mongoPinger)
 	return w
 }
 
