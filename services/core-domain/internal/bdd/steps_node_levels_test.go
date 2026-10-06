@@ -33,7 +33,7 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 	var items []domain.ClassifiedItem
 	f.diagrams.mu.Lock()
 	for _, d := range f.diagrams.byID {
-		if d.Kind == domain.DiagramKindBasic && d.TempoBPM != nil && slices.Contains(d.InstrumentIDs, instrumentID) {
+		if d.Kind == domain.DiagramKindBasic && d.DefaultPlaybackID != nil && slices.Contains(d.InstrumentIDs, instrumentID) {
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: append(d.SkillIDs(), d.ConceptIDs()...)})
 		}
 	}

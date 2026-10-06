@@ -128,10 +128,14 @@ type world struct {
 	// that the source itself did not change.
 	copySource generated.Diagram
 
-	// pendingDiagram is a create request a "creates a diagram ... at N BPM"
-	// step started, which the "the sequence:" step after it completes and
-	// sends.
+	// pendingDiagram is a create request a "creates a diagram ... with
+	// fretted positions:" step started, which the "a playback" steps after
+	// it add to; it is sent before the first step that isn't one of them.
 	pendingDiagram *generated.CreateDiagramRequest
+
+	// playingNode is the content node a "has diagram ... as expanded
+	// content, playing playback ..." step seeded its item on.
+	playingNode string
 
 	// multiResp is lastResp's repeated-call counterpart, for a "does X
 	// twice" or "does X and Y" step (repeated list calls, two generated
