@@ -411,18 +411,11 @@ func (c *composer) warmUp(candidates []playAlongCandidate) {
 // betterWarmUp prefers the higher shown level, then the more recently
 // played.
 func betterWarmUp(a, b playAlongCandidate, now time.Time) bool {
-	la, lb := levelRank(a.state.ShownLevel(now)), levelRank(b.state.ShownLevel(now))
+	la, lb := a.state.ShownLevel(now).Rank(), b.state.ShownLevel(now).Rank()
 	if la != lb {
 		return la > lb
 	}
 	return compareDueAt(a.state.LastAt, b.state.LastAt) > 0
-}
-
-func levelRank(l domain.KnowledgeLevel) int {
-	return slices.Index([]domain.KnowledgeLevel{
-		domain.KnowledgeLevelNew, domain.KnowledgeLevelLearning, domain.KnowledgeLevelAccurate,
-		domain.KnowledgeLevelFluent, domain.KnowledgeLevelRetained,
-	}, l)
 }
 
 // fill adds candidates with reason, in order, while they fit until limit
