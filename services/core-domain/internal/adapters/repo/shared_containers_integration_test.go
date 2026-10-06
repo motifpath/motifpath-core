@@ -52,6 +52,10 @@ func runWithSharedContainers(m *testing.M) int {
 		tcpostgres.WithDatabase("core_domain_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
+		// The image restarts once after initdb; wait for the second "ready"
+		// log and the mapped port, or the first statement can hit
+		// "the database system is starting up".
+		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
 		log.Printf("failed starting shared postgres container: %v", err)

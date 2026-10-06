@@ -71,6 +71,10 @@ func startMigrationPostgres(t *testing.T, ctx context.Context) *sql.DB {
 		tcpostgres.WithDatabase("core_domain_migrate_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
+		// The image restarts once after initdb; wait for the second "ready"
+		// log and the mapped port, or the first statement can hit
+		// "the database system is starting up".
+		tcpostgres.BasicWaitStrategies(),
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
