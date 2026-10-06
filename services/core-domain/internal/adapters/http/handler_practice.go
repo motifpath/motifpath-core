@@ -18,6 +18,10 @@ func (h *Handler) GetPracticeSummary(context.Context, generated.GetPracticeSumma
 	return nil, errNotImplemented
 }
 
+func (h *Handler) GetPracticeOverview(context.Context, generated.GetPracticeOverviewRequestObject) (generated.GetPracticeOverviewResponseObject, error) {
+	return nil, errNotImplemented
+}
+
 func (h *Handler) CreatePracticeSessionPlan(ctx context.Context, request generated.CreatePracticeSessionPlanRequestObject) (generated.CreatePracticeSessionPlanResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
