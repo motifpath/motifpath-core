@@ -278,9 +278,10 @@ func newWorld() *world {
 	voice := application.NewVoiceService(w.voices, voiceSamplesBaseURL)
 	diagram := application.NewDiagramService(w.diagrams, w.instruments, w.knowledge, newFakeLanguageRepo(), w.users, discardPracticeReferences{}, newID, now)
 
-	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.practiceStates, newID, now)
+
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.exercises, w.rollup, newID, now)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, w.pgPinger, w.mongoPinger)
 	return w

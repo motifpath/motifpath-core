@@ -308,7 +308,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	// uploaded media.
 	voiceService := application.NewVoiceService(voiceRepo, cfg.mediaPublicBaseURL)
 	diagramService := application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeNodeRepo, languageRepo, userRepo, practiceReferences, newID, now)
-	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, nodeRepo, diagramRepo, repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), newID, now)
+	rollupService := application.NewKnowledgeRollupService(knowledgeNodeRepo, knowledgeEdgeRepo, repo.NewEntNodeItemSource(entClient), repo.NewMongoPracticeItemStateReader(mongoClient.Database(cfg.mongoDatabase)), now)
+	practiceSessionService := application.NewPracticeSessionService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, nodeRepo, diagramRepo, exerciseRepo, rollupService, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, learningGraphPinger, completionReader), nil
