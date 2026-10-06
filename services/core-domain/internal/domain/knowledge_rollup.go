@@ -270,6 +270,9 @@ type KnowledgeView struct {
 	// Applies lists every applies edge, which connects nodes without
 	// requiring anything.
 	Applies []KnowledgeEdge
+	// Items lists the items that suit the instrument, each with the nodes
+	// it is classified under directly.
+	Items []ClassifiedItem
 }
 
 // Practised reports whether the student has a counted answer on an item in

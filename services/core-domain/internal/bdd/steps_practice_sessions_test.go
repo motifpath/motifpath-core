@@ -58,6 +58,7 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" composes a caught-up (\d+)-minute session with "([^"]+)" in hand$`, w.composesCaughtUpSession)
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with an instrument that doesn't exist in hand$`, w.composesSessionWithMissingInstrument)
 	sc.Step(`^"([^"]+)" is picked as a (due|new) item$`, w.isPickedAs)
+	registerHeadSessionSteps(sc, w)
 
 	sc.Step(`^the session starts with "([^"]+)" with the reason (\w+) at (\d+) BPM$`, w.sessionStartsWith)
 	sc.Step(`^no item in the session has the reason (\w+)$`, w.noItemHasReason)
@@ -113,8 +114,14 @@ func (w *world) enrolledInPracticePath(name string) error {
 		AssignedAt:       fixedNow,
 		Items:            []domain.StudentPathItemRecord{{Position: 1, ContentNodeID: node.ID}},
 	})
+	w.paths.put(domain.LearningPath{
+		ID:            pathID("practice-path").String(),
+		InstrumentIDs: []string{instrumentID("guitar").String(), instrumentID("electric-bass").String()},
+	})
 	w.putPlayAlong("guitar-lick", "guitar", 100)
 	w.putPlayAlong("bass-line", "electric-bass", 100)
+	w.putCells("guitar", practiceSkill, 2, 6)
+	w.putCells("electric-bass", practiceSkill, 2, 4)
 	return nil
 }
 
@@ -251,8 +258,14 @@ func (w *world) everyItemSuits(instrument string) error {
 			}
 			continue
 		}
+		if item.FretboardCell != nil {
+			if item.FretboardCell.LayoutInstrumentId != instrumentID(instrument) {
+				return fmt.Errorf("expected every item to suit %q, but %s is on another layout", instrument, item.ItemKey)
+			}
+			continue
+		}
 		if item.PlayAlong == nil {
-			return fmt.Errorf("expected a play-along or an exercise, got %s", item.ItemKey)
+			return fmt.Errorf("expected a play-along, an exercise or a fretboard cell, got %s", item.ItemKey)
 		}
 		d, err := w.diagrams.GetByID(w.ctx(), item.PlayAlong.DiagramId.String())
 		if err != nil {
@@ -427,12 +440,26 @@ func (w *world) hasKnownItemsComingDue(name string) error {
 
 func (w *world) hasNothingDueOnPath(name string) error {
 	w.cleanGuitarLick(name, 3)
+	w.knownItems(name, 3, w.backgroundCells()...)
 	return nil
 }
 
 func (w *world) hasNothingComingDueOnPath(name string) error {
 	w.cleanGuitarLick(name, 30)
+	w.knownItems(name, 30, w.backgroundCells()...)
 	return nil
+}
+
+// backgroundCells lists the item keys of the fretboard cells the practice
+// path's background declares.
+func (w *world) backgroundCells() []string {
+	var keys []string
+	for _, instrument := range []string{"guitar", "electric-bass"} {
+		for _, item := range w.practiceItems.cells[instrumentID(instrument).String()] {
+			keys = append(keys, item.ItemKey)
+		}
+	}
+	return keys
 }
 
 // isReadyToStart makes skill, with plenty of unseen items, build on a

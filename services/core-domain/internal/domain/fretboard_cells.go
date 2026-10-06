@@ -32,6 +32,37 @@ type FretboardCell struct {
 	Fret   int
 }
 
+// FretboardDrill is a way of asking a fretboard cell.
+type FretboardDrill string
+
+const (
+	// FretboardDrillNameTheNote shows the cell; the student names its note.
+	FretboardDrillNameTheNote FretboardDrill = "name_the_note"
+	// FretboardDrillFindTheNote names the note and string; the student taps
+	// the cell.
+	FretboardDrillFindTheNote FretboardDrill = "find_the_note"
+)
+
+// FretboardCellSeconds is how long a fretboard cell is estimated to take in
+// a session.
+const FretboardCellSeconds = 8
+
+// NextFretboardDrill is the way to ask a cell next: the one with the fewer
+// right answers on it, naming the note on a tie, so both ways get practised
+// and a cell never answered right starts from the easier one. state is nil
+// for a cell never practised.
+func NextFretboardDrill(state *PracticeItemState) FretboardDrill {
+	if state == nil {
+		return FretboardDrillNameTheNote
+	}
+	named := state.RightByResponse[string(FretboardDrillNameTheNote)]
+	found := state.RightByResponse[string(FretboardDrillFindTheNote)]
+	if found < named {
+		return FretboardDrillFindTheNote
+	}
+	return FretboardDrillNameTheNote
+}
+
 // ParseFretboardCellItemKey reads the cell a fretboard cell item key names.
 // It reports false for any other item key, or one with no layout, a string
 // below 1 or a negative fret.

@@ -163,3 +163,27 @@ func TestAFretboardMapWithoutCellsHasNoLayout(t *testing.T) {
 	assert.Empty(t, got.Cells)
 	assert.NotNil(t, got.Cells)
 }
+
+func TestAFretboardCellIsAskedTheWayItHasFewerRightAnswersNamingTheNoteOnATie(t *testing.T) {
+	tests := []struct {
+		name  string
+		state *domain.PracticeItemState
+		want  domain.FretboardDrill
+	}{
+		{"never practised", nil, domain.FretboardDrillNameTheNote},
+		{"practised, never right", &domain.PracticeItemState{Counted: 2}, domain.FretboardDrillNameTheNote},
+		{"named 4 times, found once", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1}}, domain.FretboardDrillFindTheNote},
+		{"found more often than named", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 1, "find_the_note": 3}}, domain.FretboardDrillNameTheNote},
+		{"named and found as often", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 2, "find_the_note": 2}}, domain.FretboardDrillNameTheNote},
+		{"only named so far", &domain.PracticeItemState{RightByResponse: map[string]int{"name_the_note": 1}}, domain.FretboardDrillFindTheNote},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, domain.NextFretboardDrill(tt.state))
+		})
+	}
+}
+
+func TestAFretboardCellTakesAbout8Seconds(t *testing.T) {
+	assert.Equal(t, 8, domain.FretboardCellSeconds)
+}

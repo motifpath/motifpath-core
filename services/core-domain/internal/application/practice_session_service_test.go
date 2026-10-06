@@ -67,6 +67,8 @@ type practiceFixture struct {
 	knowledgeNodes *fakeKnowledgeNodeRepository
 	edges          *fakeKnowledgeEdgeRepository
 	states         *fakePracticeItemStateReader
+	learningPaths  *fakeLearningPathRepository
+	courseVersions *fakeCourseVersionRepository
 	// cells holds the fretboard cells that suit each instrument.
 	cells     map[string][]domain.ClassifiedItem
 	now       time.Time
@@ -110,6 +112,8 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		knowledgeNodes: newFakeKnowledgeNodeRepository(),
 		edges:          newFakeKnowledgeEdgeRepository(),
 		states:         newFakePracticeItemStateReader(),
+		learningPaths:  newFakeLearningPathRepository(),
+		courseVersions: newFakeCourseVersionRepository(),
 		cells:          map[string][]domain.ClassifiedItem{},
 		now:            time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC),
 		t:              t,
@@ -119,7 +123,7 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f}, f.states, now)
 	f.svc = application.NewPracticeSessionService(
-		f.instruments, f.studentPaths, f.enrollments, f.contentNodes, f.diagrams, f.exercises, rollup,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup,
 		func() string { return "session-1" },
 		now,
 	)
@@ -201,6 +205,25 @@ func (f *practiceFixture) onPath(skillIDs ...string) {
 		AssignedAt:       f.now.Add(time.Duration(f.pathCount) * time.Minute),
 		Items:            []domain.StudentPathItemRecord{{Position: 1, ContentNodeID: node.ID}},
 	}))
+}
+
+// onPathFor puts the student on a path teaching skillIDs whose template is
+// for instrumentIDs (none: every instrument).
+func (f *practiceFixture) onPathFor(instrumentIDs []string, skillIDs ...string) {
+	f.onPath(skillIDs...)
+	f.learningPaths.put(domain.LearningPath{ID: f.lastTemplateID(), InstrumentIDs: instrumentIDs})
+}
+
+func (f *practiceFixture) lastTemplateID() string {
+	paths, err := f.studentPaths.ListActiveStandaloneByStudentID(context.Background(), studentCaller().ID)
+	require.NoError(f.t, err)
+	latest := paths[0]
+	for _, p := range paths {
+		if p.AssignedAt.After(latest.AssignedAt) {
+			latest = p
+		}
+	}
+	return latest.SourceTemplateID
 }
 
 // playAlong puts a diagram of eight quarter notes in 4/4 for instrumentID
@@ -314,9 +337,9 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("a session in the head has nothing to practise yet, so it is not found", func(t *testing.T) {
+	t.Run("a session in the head never picks a play-along, so one with only play-alongs is not found", func(t *testing.T) {
 		f := newPracticeFixture(t)
-		f.onPath("skill-1")
+		f.onPathFor([]string{practiceGuitar}, "skill-1")
 		f.playAlong("d1", "Lick", practiceGuitar, "skill-1", 120)
 
 		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 10)
@@ -1000,5 +1023,182 @@ func TestPracticeSessionService_ComposePlanApplication(t *testing.T) {
 
 			assert.NotContains(t, planReasons(plan), domain.PracticePickApplication, tc.name)
 		}
+	})
+}
+
+// cellsOn puts the fretboard cells of strs at frets 0 to frets-1 on
+// instrumentID's own layout, classified under skillID, and returns their
+// item keys.
+func (f *practiceFixture) cellsOn(instrumentID, skillID string, frets int, strs ...int) []string {
+	f.skill(skillID)
+	var keys []string
+	for _, str := range strs {
+		for fret := range frets {
+			key := domain.FretboardCellItemKey(instrumentID, str, fret)
+			f.cells[instrumentID] = append(f.cells[instrumentID], domain.ClassifiedItem{ItemKey: key, NodeIDs: []string{skillID}})
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+func (f *practiceFixture) composeInTheHead(t *testing.T, minutes int) domain.PracticeSessionPlan {
+	t.Helper()
+	plan, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, minutes)
+	require.NoError(t, err)
+	return plan
+}
+
+// itemsOfKind lists the plan's items of kind.
+func itemsOfKind(plan domain.PracticeSessionPlan, kind domain.PracticeItemKind) []domain.PracticeSessionItem {
+	var items []domain.PracticeSessionItem
+	for _, item := range plan.Items {
+		if item.Kind == kind {
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("in the head: cells of every layout among the student's instruments and exercises, no play-along", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 2, 6)
+		f.cellsOn(practiceBass, "root-strings", 2, 4)
+		f.exercise("name-the-root", "root-strings", 30)
+		f.playAlong("lick", "Lick", practiceGuitar, "root-strings", 100)
+
+		plan := f.composeInTheHead(t, 5)
+
+		assert.Nil(t, plan.InstrumentID)
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindPlayAlong))
+		layouts := map[string]bool{}
+		for _, item := range itemsOfKind(plan, domain.PracticeItemKindFretboardCell) {
+			require.NotNil(t, item.FretboardCell)
+			layouts[item.FretboardCell.LayoutInstrumentID] = true
+		}
+		assert.Equal(t, map[string]bool{practiceGuitar: true, practiceBass: true}, layouts)
+		assert.Contains(t, planKeys(plan), domain.ExerciseItemKey("name-the-root"))
+	})
+
+	t.Run("in the head: no warm-up and no application ending, even with a clean play-along", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.playAlong("lick", "Lick", practiceGuitar, "root-strings", 100)
+		f.playAlong("riff", "Riff", practiceGuitar, "root-strings", 100)
+		clean := 100
+		f.state("lick", domain.PracticeItemState{Level: domain.KnowledgeLevelFluent, Counted: 6, Box: 4, DueAt: f.inDays(5), LastAt: f.daysAgo(1), BestCleanBPM: &clean})
+
+		plan := f.composeInTheHead(t, 15)
+
+		for _, item := range plan.Items {
+			assert.NotEqual(t, domain.PracticePickWarmUp, item.Reason, item.ItemKey)
+			assert.NotEqual(t, domain.PracticePickApplication, item.Reason, item.ItemKey)
+		}
+	})
+
+	t.Run("a cell is asked the way it has fewer right answers, and takes 8 seconds", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 1, 6, 5)
+		f.stateOf(keys[0], domain.PracticeItemState{
+			Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 1, DueAt: f.daysAgo(1), LastAt: f.daysAgo(2),
+			RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1},
+		})
+
+		plan := f.composeInTheHead(t, 5)
+
+		cells := map[string]domain.PracticeSessionItem{}
+		for _, item := range itemsOfKind(plan, domain.PracticeItemKindFretboardCell) {
+			cells[item.ItemKey] = item
+		}
+		require.Contains(t, cells, keys[0])
+		require.Contains(t, cells, keys[1])
+		assert.Equal(t, domain.PlannedFretboardCell{
+			FretboardCell: domain.FretboardCell{LayoutInstrumentID: practiceGuitar, String: 6, Fret: 0},
+			Drill:         domain.FretboardDrillFindTheNote,
+		}, *cells[keys[0]].FretboardCell)
+		assert.Equal(t, domain.FretboardDrillNameTheNote, cells[keys[1]].FretboardCell.Drill)
+		for _, item := range cells {
+			assert.Equal(t, domain.FretboardCellSeconds, item.EstimatedSeconds)
+		}
+	})
+
+	t.Run("with an instrument in hand, cells of its layout are picked like any focus item", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		guitarCells := f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.cellsOn(practiceBass, "root-strings", 12, 4, 3)
+
+		plan := f.compose(t, practiceGuitar, 10)
+
+		cells := itemsOfKind(plan, domain.PracticeItemKindFretboardCell)
+		require.NotEmpty(t, cells)
+		assert.Equal(t, domain.PracticePickNew, cells[0].Reason)
+		for _, item := range cells {
+			assert.Contains(t, guitarCells, item.ItemKey)
+			assert.Contains(t, []domain.PracticePickReason{domain.PracticePickNew, domain.PracticePickStretch}, item.Reason)
+		}
+	})
+
+	t.Run("new items are balanced across the student's instruments", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 10, 6, 5, 4, 3)
+		f.cellsOn(practiceBass, "root-strings", 10, 4, 3, 2, 1)
+
+		plan := f.composeInTheHead(t, 10)
+
+		count := map[string]int{}
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickNew {
+				count[item.FretboardCell.LayoutInstrumentID]++
+			}
+		}
+		require.NotZero(t, count[practiceGuitar])
+		assert.InDelta(t, count[practiceGuitar], count[practiceBass], 1, "%v", count)
+	})
+
+	t.Run("past the new share, stretch is balanced across the student's instruments too", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4, 3)
+		f.cellsOn(practiceBass, "root-strings", 12, 4, 3, 2, 1)
+
+		plan := f.composeInTheHead(t, 10)
+
+		count := map[string]int{}
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickStretch {
+				count[item.FretboardCell.LayoutInstrumentID]++
+			}
+		}
+		require.NotZero(t, count[practiceGuitar])
+		assert.InDelta(t, count[practiceGuitar], count[practiceBass], 1, "%v", count)
+	})
+
+	t.Run("in the head, a student with no history learning the fretboard gets a new cell", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+
+		plan := f.composeInTheHead(t, 5)
+
+		cells := itemsOfKind(plan, domain.PracticeItemKindFretboardCell)
+		require.NotEmpty(t, cells)
+		assert.Equal(t, domain.PracticePickNew, cells[0].Reason)
+	})
+
+	t.Run("in the head, a student learning nothing gets no session", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 5)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 }

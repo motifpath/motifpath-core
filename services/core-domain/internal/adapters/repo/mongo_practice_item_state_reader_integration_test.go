@@ -45,6 +45,11 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 			{Key: "level", Value: "new"}, {Key: "counted", Value: 0}, {Key: "box", Value: 0},
 			{Key: "due_at", Value: nil}, {Key: "last_at", Value: lastAt}, {Key: "best_clean_bpm", Value: nil},
 		}),
+		stateDoc("alice", "fretboard_cell:g:6:3", bson.D{
+			{Key: "level", Value: "learning"}, {Key: "counted", Value: 5}, {Key: "box", Value: 2},
+			{Key: "due_at", Value: dueAt}, {Key: "last_at", Value: lastAt},
+			{Key: "right_by_response", Value: bson.D{{Key: "name_the_note", Value: 4}, {Key: "find_the_note", Value: 1}}},
+		}),
 		// Different student — must never leak into alice's result.
 		stateDoc("bob", "play_along:d1", bson.D{
 			{Key: "level", Value: "fluent"}, {Key: "counted", Value: 6}, {Key: "box", Value: 4},
@@ -55,12 +60,17 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 
 	reader := NewMongoPracticeItemStateReader(db)
 
-	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3"})
+	states, err := reader.GetStates(ctx, "alice", []string{"play_along:d1", "play_along:d2", "play_along:d3", "fretboard_cell:g:6:3"})
 	require.NoError(t, err)
 	bpm := 90
 	assert.Equal(t, map[string]domain.PracticeItemState{
 		"play_along:d1": {ItemKey: "play_along:d1", RulesVersion: 1, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5, BestCleanBPM: &bpm},
 		"play_along:d2": {ItemKey: "play_along:d2", RulesVersion: 1, Level: domain.KnowledgeLevelNew, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5},
+		"fretboard_cell:g:6:3": {
+			ItemKey: "fretboard_cell:g:6:3", RulesVersion: 1, Level: domain.KnowledgeLevelLearning, Counted: 5, Box: 2,
+			DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5,
+			RightByResponse: map[string]int{"name_the_note": 4, "find_the_note": 1},
+		},
 	}, states)
 
 	none, err := reader.GetStates(ctx, "alice", nil)

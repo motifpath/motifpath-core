@@ -21,13 +21,11 @@ const topNextSteps = 3
 // PracticeSummaryService derives the practice home from a student's
 // evidence and activity. Reading it changes nothing.
 type PracticeSummaryService struct {
-	instruments    ports.InstrumentRepository
-	learning       studentLearning
-	learningPaths  ports.LearningPathRepository
-	courseVersions ports.CourseVersionRepository
-	rollup         *KnowledgeRollupService
-	activity       ports.PracticeActivityReader
-	now            func() time.Time
+	instruments ports.InstrumentRepository
+	learning    studentLearning
+	rollup      *KnowledgeRollupService
+	activity    ports.PracticeActivityReader
+	now         func() time.Time
 }
 
 func NewPracticeSummaryService(
@@ -42,13 +40,14 @@ func NewPracticeSummaryService(
 	now func() time.Time,
 ) *PracticeSummaryService {
 	return &PracticeSummaryService{
-		instruments:    instruments,
-		learning:       studentLearning{studentPaths: studentPaths, enrollments: enrollments, contentNodes: contentNodes},
-		learningPaths:  learningPaths,
-		courseVersions: courseVersions,
-		rollup:         rollup,
-		activity:       activity,
-		now:            now,
+		instruments: instruments,
+		learning: studentLearning{
+			studentPaths: studentPaths, enrollments: enrollments, contentNodes: contentNodes,
+			learningPaths: learningPaths, courseVersions: courseVersions, instruments: instruments,
+		},
+		rollup:   rollup,
+		activity: activity,
+		now:      now,
 	}
 }
 
@@ -120,7 +119,7 @@ func (s *PracticeSummaryService) Summary(ctx context.Context, caller domain.User
 	if err := s.requireInstrument(ctx, instrumentID); err != nil {
 		return PracticeSummary{}, err
 	}
-	instrumentIDs, err := s.studentInstrumentIDs(ctx, caller.ID)
+	instrumentIDs, err := s.learning.instrumentIDs(ctx, caller.ID)
 	if err != nil {
 		return PracticeSummary{}, err
 	}
@@ -195,7 +194,7 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	if err != nil {
 		return PracticeOverview{}, err
 	}
-	instrumentIDs, err := s.studentInstrumentIDs(ctx, caller.ID)
+	instrumentIDs, err := s.learning.instrumentIDs(ctx, caller.ID)
 	if err != nil {
 		return PracticeOverview{}, err
 	}
@@ -261,74 +260,6 @@ func (s *PracticeSummaryService) progress(ctx context.Context, studentID string,
 	}
 	domain.RankSkillProgress(lines)
 	return lines, nil
-}
-
-// studentInstrumentIDs lists the instruments of the student's active
-// standalone paths and course enrollments, in the instruments' order. A
-// path or course for every instrument adds none.
-func (s *PracticeSummaryService) studentInstrumentIDs(ctx context.Context, studentID string) ([]string, error) {
-	plays := map[string]bool{}
-	if err := s.addPathInstruments(ctx, studentID, plays); err != nil {
-		return nil, err
-	}
-	if err := s.addCourseInstruments(ctx, studentID, plays); err != nil {
-		return nil, err
-	}
-	instruments, err := s.instruments.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var ids []string
-	for _, instrument := range instruments {
-		if plays[instrument.ID] {
-			ids = append(ids, instrument.ID)
-		}
-	}
-	return ids, nil
-}
-
-// addPathInstruments marks in plays the instruments of the templates of
-// the student's active standalone paths. A deleted template adds none.
-func (s *PracticeSummaryService) addPathInstruments(ctx context.Context, studentID string, plays map[string]bool) error {
-	paths, err := s.learning.studentPaths.ListActiveStandaloneByStudentID(ctx, studentID)
-	if err != nil {
-		return err
-	}
-	for _, p := range paths {
-		template, err := s.learningPaths.GetByID(ctx, p.SourceTemplateID)
-		if errors.Is(err, domain.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		for _, id := range template.InstrumentIDs {
-			plays[id] = true
-		}
-	}
-	return nil
-}
-
-// addCourseInstruments marks in plays the instruments of the course
-// versions the student is actively enrolled in.
-func (s *PracticeSummaryService) addCourseInstruments(ctx context.Context, studentID string, plays map[string]bool) error {
-	enrollments, err := s.learning.enrollments.ListActiveByStudentID(ctx, studentID)
-	if err != nil {
-		return err
-	}
-	for _, e := range enrollments {
-		version, err := s.courseVersions.GetByCourseIDAndVersionNumber(ctx, e.CourseID, e.CourseVersionNumber)
-		if errors.Is(err, domain.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		for _, id := range version.InstrumentIDsSnapshot {
-			plays[id] = true
-		}
-	}
-	return nil
 }
 
 // sessionEnds lists when the sessions with instrumentID in hand (nil: in

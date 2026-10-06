@@ -255,5 +255,18 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 		exercise := toExercise(*e, names)
 		out.Exercise = &exercise
 	}
+	if c := item.FretboardCell; c != nil {
+		out.FretboardCell = &struct {
+			Drill              generated.FretboardDrill `json:"drill"`
+			Fret               int                      `json:"fret"`
+			LayoutInstrumentId openapi_types.UUID       `json:"layout_instrument_id"`
+			String             int                      `json:"string"`
+		}{
+			Drill:              generated.FretboardDrill(c.Drill),
+			Fret:               c.Fret,
+			LayoutInstrumentId: mustUUID(c.LayoutInstrumentID),
+			String:             c.String,
+		}
+	}
 	return out
 }

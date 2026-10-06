@@ -24,6 +24,8 @@ type practiceItemStateDocument struct {
 	Accuracy     float64    `bson:"accuracy"`
 	Fluency      float64    `bson:"fluency"`
 	BestCleanBPM *int       `bson:"best_clean_bpm"`
+	// RightByResponse is absent until the item has a right answer.
+	RightByResponse map[string]int `bson:"right_by_response"`
 }
 
 // MongoPracticeItemStateReader reads the `practice_item_state` collection
@@ -57,16 +59,17 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			return nil, err
 		}
 		result[doc.ItemKey] = domain.PracticeItemState{
-			ItemKey:      doc.ItemKey,
-			RulesVersion: doc.RulesVersion,
-			Level:        domain.KnowledgeLevel(doc.Level),
-			Counted:      doc.Counted,
-			Box:          doc.Box,
-			DueAt:        utcTime(doc.DueAt),
-			LastAt:       utcTime(doc.LastAt),
-			Accuracy:     doc.Accuracy,
-			Fluency:      doc.Fluency,
-			BestCleanBPM: doc.BestCleanBPM,
+			ItemKey:         doc.ItemKey,
+			RulesVersion:    doc.RulesVersion,
+			Level:           domain.KnowledgeLevel(doc.Level),
+			Counted:         doc.Counted,
+			Box:             doc.Box,
+			DueAt:           utcTime(doc.DueAt),
+			LastAt:          utcTime(doc.LastAt),
+			Accuracy:        doc.Accuracy,
+			Fluency:         doc.Fluency,
+			BestCleanBPM:    doc.BestCleanBPM,
+			RightByResponse: doc.RightByResponse,
 		}
 	}
 	if err := cursor.Err(); err != nil {

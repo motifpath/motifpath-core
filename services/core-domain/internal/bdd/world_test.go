@@ -289,7 +289,7 @@ func newWorld() *world {
 
 	w.practiceItems = newFakeNodeItemSource(w.diagrams, w.exercises)
 	w.rollup = application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, now)
-	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.nodes, w.diagrams, w.exercises, w.rollup, newID, now)
+	practiceSession := application.NewPracticeSessionService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, w.diagrams, w.exercises, w.rollup, newID, now)
 	w.practiceActivity = newFakePracticeActivity()
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
