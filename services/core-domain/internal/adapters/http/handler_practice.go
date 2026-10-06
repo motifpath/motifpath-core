@@ -51,6 +51,43 @@ func (h *Handler) GetPracticeOverview(ctx context.Context, request generated.Get
 	}
 }
 
+func (h *Handler) GetFretboardMap(ctx context.Context, request generated.GetFretboardMapRequestObject) (generated.GetFretboardMapResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.GetFretboardMap401JSONResponse(unauthorizedError()), nil
+	}
+
+	fretboard, err := h.practiceSummary.FretboardMap(ctx, caller, request.Params.InstrumentId.String())
+	switch kind, valErr := classify(err); {
+	case err == nil:
+		return generated.GetFretboardMap200JSONResponse(toGeneratedFretboardMap(fretboard)), nil
+	case kind == errKindValidation:
+		return generated.GetFretboardMap400JSONResponse(validationErrorResponse(valErr)), nil
+	case kind == errKindNotFound:
+		return generated.GetFretboardMap404JSONResponse(notFoundError(notFoundMessage(err))), nil
+	default:
+		return nil, err
+	}
+}
+
+func toGeneratedFretboardMap(m domain.FretboardMap) generated.FretboardMap {
+	out := generated.FretboardMap{
+		InstrumentId:       mustUUID(m.InstrumentID),
+		LayoutInstrumentId: uuidPtrFromStringPtr(m.LayoutInstrumentID),
+		Cells:              make([]generated.FretboardMapCell, len(m.Cells)),
+	}
+	for i, c := range m.Cells {
+		out.Cells[i] = generated.FretboardMapCell{
+			ItemKey: c.ItemKey,
+			String:  c.String,
+			Fret:    c.Fret,
+			Level:   generated.KnowledgeLevel(c.Level),
+			Fading:  c.Fading,
+		}
+	}
+	return out
+}
+
 func toGeneratedPracticeSummary(summary application.PracticeSummary) generated.PracticeSummary {
 	out := generated.PracticeSummary{
 		InstrumentId:         uuidPtrFromStringPtr(summary.InstrumentID),
@@ -188,6 +225,7 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userN
 		InstrumentId:      uuidPtrFromStringPtr(plan.InstrumentID),
 		Minutes:           plan.Minutes,
 		Items:             items,
+		FeltQuestions:     []string{},
 	}
 }
 

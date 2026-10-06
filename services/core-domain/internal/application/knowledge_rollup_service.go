@@ -45,6 +45,30 @@ func (s *KnowledgeRollupService) Standings(ctx context.Context, studentID, instr
 	return m.Standings, nil
 }
 
+// FretboardMap returns how well the student knows each fretboard cell that
+// suits instrumentID, reading the states of those cells only.
+func (s *KnowledgeRollupService) FretboardMap(ctx context.Context, studentID, instrumentID string) (domain.FretboardMap, error) {
+	items, err := s.items.ClassifiedItems(ctx, instrumentID)
+	if err != nil {
+		return domain.FretboardMap{}, err
+	}
+	var cells []domain.ClassifiedItem
+	keys := make([]string, 0, len(items))
+	for _, item := range items {
+		if _, ok := domain.ParseFretboardCellItemKey(item.ItemKey); ok {
+			cells = append(cells, item)
+			keys = append(keys, item.ItemKey)
+		}
+	}
+	states := map[string]domain.PracticeItemState{}
+	if len(keys) > 0 {
+		if states, err = s.states.GetStates(ctx, studentID, keys); err != nil {
+			return domain.FretboardMap{}, err
+		}
+	}
+	return domain.NewFretboardMap(instrumentID, cells, states, s.now()), nil
+}
+
 // Map returns the student's standings on the knowledge map for
 // instrumentID, with the items and states they were rolled up from.
 func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentID string) (KnowledgeMap, error) {

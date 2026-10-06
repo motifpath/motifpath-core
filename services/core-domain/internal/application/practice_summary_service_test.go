@@ -275,3 +275,59 @@ func TestPracticeSummaryService_Overview(t *testing.T) {
 		assert.Equal(t, "time_zone", valErr.Fields[0].Field)
 	})
 }
+
+func TestPracticeSummaryService_FretboardMap(t *testing.T) {
+	cell := func(str, fret int) string { return domain.FretboardCellItemKey(practiceGuitar, str, fret) }
+
+	t.Run("every cell that suits the instrument, with the student's level, and nothing else", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.skill("root-strings")
+		f.cells[practiceGuitar] = []domain.ClassifiedItem{
+			{ItemKey: cell(6, 1), NodeIDs: []string{"root-strings"}},
+			{ItemKey: cell(6, 0), NodeIDs: []string{"root-strings"}},
+		}
+		f.exercise("name-the-third", "root-strings", 30)
+		due := f.now.AddDate(0, 0, 2)
+		f.states.put(studentCaller().ID, domain.PracticeItemState{ItemKey: cell(6, 1), RulesVersion: domain.PracticeRulesVersion, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &due})
+
+		got, err := f.svc.FretboardMap(context.Background(), studentCaller(), practiceGuitar)
+
+		require.NoError(t, err)
+		assert.Equal(t, practiceGuitar, got.InstrumentID)
+		require.NotNil(t, got.LayoutInstrumentID)
+		assert.Equal(t, practiceGuitar, *got.LayoutInstrumentID)
+		require.Len(t, got.Cells, 2)
+		assert.Equal(t, cell(6, 0), got.Cells[0].ItemKey)
+		assert.Equal(t, domain.KnowledgeLevelNew, got.Cells[0].Level)
+		assert.Equal(t, cell(6, 1), got.Cells[1].ItemKey)
+		assert.Equal(t, domain.KnowledgeLevelAccurate, got.Cells[1].Level)
+	})
+
+	t.Run("an instrument without cells has an empty map", func(t *testing.T) {
+		f := newSummaryFixture(t)
+
+		got, err := f.svc.FretboardMap(context.Background(), studentCaller(), practiceBass)
+
+		require.NoError(t, err)
+		assert.Nil(t, got.LayoutInstrumentID)
+		assert.Empty(t, got.Cells)
+	})
+
+	t.Run("an instrument that doesn't exist is not found", func(t *testing.T) {
+		f := newSummaryFixture(t)
+
+		_, err := f.svc.FretboardMap(context.Background(), studentCaller(), "missing")
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a failure reading states fails the request", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.cells[practiceGuitar] = []domain.ClassifiedItem{{ItemKey: cell(6, 0)}}
+		f.states.err = errors.New("mongo down")
+
+		_, err := f.svc.FretboardMap(context.Background(), studentCaller(), practiceGuitar)
+
+		require.Error(t, err)
+	})
+}
