@@ -1163,6 +1163,24 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		assert.InDelta(t, count[practiceGuitar], count[practiceBass], 1, "%v", count)
 	})
 
+	t.Run("past the new share, stretch is balanced across the student's instruments too", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4, 3)
+		f.cellsOn(practiceBass, "root-strings", 12, 4, 3, 2, 1)
+
+		plan := f.composeInTheHead(t, 10)
+
+		count := map[string]int{}
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickStretch {
+				count[item.FretboardCell.LayoutInstrumentID]++
+			}
+		}
+		require.NotZero(t, count[practiceGuitar])
+		assert.InDelta(t, count[practiceGuitar], count[practiceBass], 1, "%v", count)
+	})
+
 	t.Run("in the head, a student with no history learning the fretboard gets a new cell", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPathFor([]string{practiceGuitar}, "root-strings")

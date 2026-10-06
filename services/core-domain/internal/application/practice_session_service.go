@@ -144,8 +144,9 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 //   - the time still left is shared half and half between reviewing known
 //     items coming due within a week, soonest first, and stretching to
 //     unseen items of nodes the student is ready to start and that connect
-//     to what they are learning, their paths' skills first, each taking
-//     over the other's half when it runs out.
+//     to what they are learning, their paths' skills first and taken in
+//     turn from each instrument, each taking over the other's half when it
+//     runs out.
 //
 // Each pick is fitted to the minutes by its estimated time; a session too
 // short for any of them still offers the first. A session with nothing to
@@ -186,7 +187,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 			}
 			stretch = append(stretch, found...)
 		}
-		c.catchUp(p.known, stretch)
+		c.catchUp(p.known, takeInTurn(stretch))
 	}
 	c.neverEmpty()
 	items := c.plan()
@@ -540,7 +541,8 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 // takeInTurn reorders candidates one instrument at a time, in the order
 // the instruments first appear, keeping each instrument's own order, so
 // whatever share of them fits is balanced across the student's
-// instruments.
+// instruments, and no instrument fills a session before the next is
+// reached.
 func takeInTurn(candidates []practiceCandidate) []practiceCandidate {
 	var order []string
 	byInstrument := map[string][]practiceCandidate{}
