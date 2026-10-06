@@ -55,6 +55,7 @@ func TestNewExerciseReference(t *testing.T) {
 			OptionIDs:        []string{"o-1", "o-2", "o-3"},
 			CorrectOptionIDs: []string{"o-2", "o-3"},
 			InstrumentIDs:    []string{"guitar"},
+			Options:          options,
 		}, got)
 	})
 
@@ -73,4 +74,29 @@ func TestNewExerciseReference(t *testing.T) {
 
 		assert.Equal(t, []string{"guitar"}, got.InstrumentIDs)
 	})
+}
+func TestAnExercisesReferenceKeepsEveryOptionAsShown(t *testing.T) {
+	c, d := "C", "D"
+	options := []domain.Option{{ID: "o-c", IsCorrect: true, Label: &c}, {ID: "o-d", Label: &d}}
+	e := domain.Exercise{ID: "e-1", ExerciseType: domain.ExerciseTypeTextResponse, Options: options}
+
+	ref := domain.NewExerciseReference(e)
+
+	assert.Equal(t, options, ref.Options)
+	assert.Equal(t, []string{"o-c", "o-d"}, ref.OptionIDs)
+	assert.Equal(t, []string{"o-c"}, ref.CorrectOptionIDs)
+	options[0].IsCorrect = false
+	assert.True(t, ref.Options[0].IsCorrect, "the reference keeps its own copy")
+}
+
+func TestAnInstrumentsReferenceKeepsItsStringsAndTuning(t *testing.T) {
+	six := 6
+	tuning := []string{"E2", "A2", "D3", "G3", "B3", "E4"}
+	i := domain.Instrument{ID: "i-1", Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: tuning, Icon: "acoustic_guitar"}
+
+	ref := domain.NewInstrumentReference(i)
+
+	assert.Equal(t, domain.InstrumentReference{ID: "i-1", Family: domain.InstrumentFamilyFretted, StringCount: &six, Tuning: tuning}, ref)
+	tuning[0] = "D2"
+	assert.Equal(t, "E2", ref.Tuning[0], "the reference keeps its own copy")
 }

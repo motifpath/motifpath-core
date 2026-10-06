@@ -27,6 +27,16 @@ func putDiagramReference(ctx context.Context, references ports.PracticeReference
 	}
 }
 
+// putInstrumentReference writes i's practice reference after i is created,
+// under the same rules as putDiagramReference.
+func putInstrumentReference(ctx context.Context, references ports.PracticeReferenceWriter, i domain.Instrument) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), referenceWriteTimeout)
+	defer cancel()
+	if err := references.PutInstruments(ctx, []domain.InstrumentReference{domain.NewInstrumentReference(i)}); err != nil {
+		slog.ErrorContext(ctx, "write the instrument's practice reference", "instrument_id", i.ID, "error", err)
+	}
+}
+
 // putExerciseReference refreshes e's practice reference after e is saved,
 // under the same rules as putDiagramReference.
 func putExerciseReference(ctx context.Context, references ports.PracticeReferenceWriter, e domain.Exercise) {
@@ -42,20 +52,22 @@ func putExerciseReference(ctx context.Context, references ports.PracticeReferenc
 // repairing any write lost after a commit and covering rows installed by
 // migrations.
 type PracticeReferenceService struct {
-	diagrams   ports.DiagramRepository
-	exercises  ports.ExerciseRepository
-	thresholds ports.DrillThresholdRepository
-	references ports.PracticeReferenceWriter
+	diagrams    ports.DiagramRepository
+	exercises   ports.ExerciseRepository
+	instruments ports.InstrumentRepository
+	thresholds  ports.DrillThresholdRepository
+	references  ports.PracticeReferenceWriter
 }
 
-func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, thresholds ports.DrillThresholdRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
-	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, thresholds: thresholds, references: references}
+func NewPracticeReferenceService(diagrams ports.DiagramRepository, exercises ports.ExerciseRepository, instruments ports.InstrumentRepository, thresholds ports.DrillThresholdRepository, references ports.PracticeReferenceWriter) *PracticeReferenceService {
+	return &PracticeReferenceService{diagrams: diagrams, exercises: exercises, instruments: instruments, thresholds: thresholds, references: references}
 }
 
 // PracticeReferenceSynced counts the references a Sync wrote, by kind.
 type PracticeReferenceSynced struct {
 	Diagrams        int
 	Exercises       int
+	Instruments     int
 	DrillThresholds int
 }
 
@@ -65,11 +77,30 @@ type PracticeReferenceSynced struct {
 // part that failed.
 func (s *PracticeReferenceService) Sync(ctx context.Context) (PracticeReferenceSynced, error) {
 	var synced PracticeReferenceSynced
-	var errs [3]error
+	var errs [4]error
 	synced.DrillThresholds, errs[0] = s.SyncDrillThresholds(ctx)
-	synced.Diagrams, errs[1] = s.SyncDiagrams(ctx)
-	synced.Exercises, errs[2] = s.SyncExercises(ctx)
+	synced.Instruments, errs[1] = s.SyncInstruments(ctx)
+	synced.Diagrams, errs[2] = s.SyncDiagrams(ctx)
+	synced.Exercises, errs[3] = s.SyncExercises(ctx)
 	return synced, errors.Join(errs[:]...)
+}
+
+// SyncInstruments writes every instrument's reference, all in one write, and
+// returns how many it wrote. The catalog instruments come only from
+// migrations, so this sync is how they reach the snapshot.
+func (s *PracticeReferenceService) SyncInstruments(ctx context.Context) (int, error) {
+	instruments, err := s.instruments.List(ctx)
+	if err != nil || len(instruments) == 0 {
+		return 0, err
+	}
+	refs := make([]domain.InstrumentReference, len(instruments))
+	for i, instrument := range instruments {
+		refs[i] = domain.NewInstrumentReference(instrument)
+	}
+	if err := s.references.PutInstruments(ctx, refs); err != nil {
+		return 0, err
+	}
+	return len(refs), nil
 }
 
 // SyncDrillThresholds writes every installed fluent time version, all in one

@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -13,8 +15,9 @@ import (
 
 // practiceReferenceSnapshotVersion is the shape of the documents this
 // writer stores. Bump it when a document's fields change, so a reader can
-// tell the shapes apart.
-const practiceReferenceSnapshotVersion = 1
+// tell the shapes apart. Version 2 added the exercise options and the
+// instrument documents.
+const practiceReferenceSnapshotVersion = 2
 
 // diagramReferenceDocument is a `practice_reference` document of kind
 // "diagram", in the shape ADR-047 fixes for the Aggregation Worker's
@@ -32,14 +35,58 @@ type diagramReferenceDocument struct {
 // "exercise". InstrumentIDs is empty, never null, for an exercise for every
 // instrument.
 type exerciseReferenceDocument struct {
-	Kind             string    `bson:"kind"`
-	ID               string    `bson:"id"`
-	ExerciseType     string    `bson:"exercise_type"`
-	OptionIDs        []string  `bson:"option_ids"`
-	CorrectOptionIDs []string  `bson:"correct_option_ids"`
-	InstrumentIDs    []string  `bson:"instrument_ids"`
-	UpdatedAt        time.Time `bson:"updated_at"`
-	SnapshotVersion  int       `bson:"snapshot_version"`
+	Kind             string   `bson:"kind"`
+	ID               string   `bson:"id"`
+	ExerciseType     string   `bson:"exercise_type"`
+	OptionIDs        []string `bson:"option_ids"`
+	CorrectOptionIDs []string `bson:"correct_option_ids"`
+	InstrumentIDs    []string `bson:"instrument_ids"`
+	// Options keeps every option in the shape the API shows it, so a grader
+	// can copy what the student saw into the evidence as it is.
+	Options         []optionDocument `bson:"options"`
+	UpdatedAt       time.Time        `bson:"updated_at"`
+	SnapshotVersion int              `bson:"snapshot_version"`
+}
+
+// optionDocument is an exercise option as the API shows it; an absent part
+// is left out, as the API leaves it out.
+type optionDocument struct {
+	OptionID          string                `bson:"option_id"`
+	IsCorrect         bool                  `bson:"is_correct"`
+	Label             *string               `bson:"label,omitempty"`
+	ImageURL          *string               `bson:"image_url,omitempty"`
+	DiagramRef        bson.D                `bson:"diagram_ref,omitempty"`
+	AudioURL          *string               `bson:"audio_url,omitempty"`
+	Region            *optionRegionDocument `bson:"region,omitempty"`
+	DiagramID         *string               `bson:"diagram_id,omitempty"`
+	DiagramPositionID *string               `bson:"diagram_position_id,omitempty"`
+	FretCell          *fretCellDocument     `bson:"fret_cell,omitempty"`
+}
+
+type optionRegionDocument struct {
+	X      float64 `bson:"x"`
+	Y      float64 `bson:"y"`
+	Width  float64 `bson:"width"`
+	Height float64 `bson:"height"`
+	Shape  string  `bson:"shape"`
+}
+
+type fretCellDocument struct {
+	String int `bson:"string"`
+	Fret   int `bson:"fret"`
+}
+
+// instrumentReferenceDocument is a `practice_reference` document of kind
+// "instrument": what gives each fretboard cell its pitch. StringCount is null
+// and Tuning empty for an instrument without strings.
+type instrumentReferenceDocument struct {
+	Kind            string    `bson:"kind"`
+	ID              string    `bson:"id"`
+	Family          string    `bson:"family"`
+	StringCount     *int      `bson:"string_count"`
+	Tuning          []string  `bson:"tuning"`
+	UpdatedAt       time.Time `bson:"updated_at"`
+	SnapshotVersion int       `bson:"snapshot_version"`
 }
 
 // drillThresholdDocument is a `practice_reference` document of kind
@@ -57,7 +104,7 @@ type drillThresholdDocument struct {
 }
 
 // MongoPracticeReferenceWriter keeps the `practice_reference` collection
-// (ADR-047). This service is its only writer; the Aggregation Worker reads
+// This service is its only writer; the Aggregation Worker reads
 // it. Documents are keyed by {kind, id}, replaced in place, never removed.
 type MongoPracticeReferenceWriter struct {
 	collection *mongo.Collection
@@ -82,6 +129,10 @@ func (w *MongoPracticeReferenceWriter) PutExercises(ctx context.Context, refs []
 	at := w.now()
 	docs := make([]exerciseReferenceDocument, len(refs))
 	for i, ref := range refs {
+		options, err := optionDocuments(ref.Options)
+		if err != nil {
+			return fmt.Errorf("exercise %s: %w", ref.ID, err)
+		}
 		docs[i] = exerciseReferenceDocument{
 			Kind:             "exercise",
 			ID:               ref.ID,
@@ -89,11 +140,59 @@ func (w *MongoPracticeReferenceWriter) PutExercises(ctx context.Context, refs []
 			OptionIDs:        nonNil(ref.OptionIDs),
 			CorrectOptionIDs: nonNil(ref.CorrectOptionIDs),
 			InstrumentIDs:    nonNil(ref.InstrumentIDs),
+			Options:          options,
 			UpdatedAt:        at,
 			SnapshotVersion:  practiceReferenceSnapshotVersion,
 		}
 	}
 	return upsert(ctx, w.collection, docs, func(d exerciseReferenceDocument) (string, string) { return d.Kind, d.ID })
+}
+
+// optionDocuments converts options to their API shape. A diagram ref is
+// stored as the document its JSON form describes.
+func optionDocuments(options []domain.Option) ([]optionDocument, error) {
+	docs := make([]optionDocument, len(options))
+	for i, o := range options {
+		doc := optionDocument{
+			OptionID: o.ID, IsCorrect: o.IsCorrect, Label: o.Label, ImageURL: o.ImageURL, AudioURL: o.AudioURL,
+			DiagramID: o.DiagramID, DiagramPositionID: o.DiagramPositionID,
+		}
+		if o.Region != nil {
+			doc.Region = &optionRegionDocument{X: o.Region.X, Y: o.Region.Y, Width: o.Region.Width, Height: o.Region.Height, Shape: string(o.Region.Shape)}
+		}
+		if o.FretCell != nil {
+			doc.FretCell = &fretCellDocument{String: o.FretCell.String, Fret: o.FretCell.Fret}
+		}
+		if o.DiagramRef != nil {
+			data, err := json.Marshal(o.DiagramRef)
+			if err != nil {
+				return nil, err
+			}
+			if err := bson.UnmarshalExtJSON(data, false, &doc.DiagramRef); err != nil {
+				return nil, err
+			}
+		}
+		docs[i] = doc
+	}
+	return docs, nil
+}
+
+// PutInstruments upserts every reference in one unordered bulk write.
+func (w *MongoPracticeReferenceWriter) PutInstruments(ctx context.Context, refs []domain.InstrumentReference) error {
+	at := w.now()
+	docs := make([]instrumentReferenceDocument, len(refs))
+	for i, ref := range refs {
+		docs[i] = instrumentReferenceDocument{
+			Kind:            "instrument",
+			ID:              ref.ID,
+			Family:          string(ref.Family),
+			StringCount:     ref.StringCount,
+			Tuning:          nonNil(ref.Tuning),
+			UpdatedAt:       at,
+			SnapshotVersion: practiceReferenceSnapshotVersion,
+		}
+	}
+	return upsert(ctx, w.collection, docs, func(d instrumentReferenceDocument) (string, string) { return d.Kind, d.ID })
 }
 
 // PutDrillThresholds upserts every version in one unordered bulk write.
