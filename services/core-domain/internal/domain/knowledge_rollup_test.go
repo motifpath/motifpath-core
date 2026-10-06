@@ -124,6 +124,19 @@ func TestRollUpNode(t *testing.T) {
 		assert.True(t, got.Fading)
 	})
 
+	t.Run("a state folded under older mastery rules is not fading while its review isn't due", func(t *testing.T) {
+		keys := itemKeys("exercise", 1)
+		states := map[string]domain.PracticeItemState{}
+		statesAt(states, keys, domain.KnowledgeLevelAccurate)
+		s := states[keys[0]]
+		s.RulesVersion = domain.PracticeRulesVersion - 1
+		states[keys[0]] = s
+
+		got := domain.RollUpNode(keys, states, rollupNow)
+
+		assert.False(t, got.Fading)
+	})
+
 	t.Run("a node is not fading while no review is due, nor for unseen items", func(t *testing.T) {
 		keys := itemKeys("exercise", 3)
 		states := map[string]domain.PracticeItemState{}

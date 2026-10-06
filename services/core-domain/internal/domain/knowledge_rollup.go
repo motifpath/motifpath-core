@@ -44,7 +44,9 @@ type NodeRollup struct {
 	// Level is the highest level at least 80% of the items reach, unseen
 	// items counting as new; nil when the node has nothing to practise.
 	Level *KnowledgeLevel
-	// Fading reports whether a practised item's review is due.
+	// Fading reports whether a practised item's review is due. A state
+	// folded under older rules is only waiting to be rebuilt, which is not
+	// a review the student owes.
 	Fading bool
 }
 
@@ -61,7 +63,7 @@ func RollUpNode(itemKeys []string, states map[string]PracticeItemState, now time
 		level := KnowledgeLevelNew
 		if state, ok := states[key]; ok && state.Counted > 0 {
 			level = state.ShownLevel(now)
-			rollup.Fading = rollup.Fading || state.Due(now)
+			rollup.Fading = rollup.Fading || state.ReviewDue(now)
 		}
 		for rank := 0; rank <= level.Rank(); rank++ {
 			reached[rank]++

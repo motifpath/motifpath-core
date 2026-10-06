@@ -69,10 +69,17 @@ func (s PracticeItemState) Stale() bool {
 	return s.RulesVersion < PracticeRulesVersion
 }
 
-// Due reports whether s's review is due at now. A stale state is always
-// due: answering it rebuilds it under the current rules.
+// Due reports whether s should be offered for review at now: its review is
+// due, or it is stale, since answering it rebuilds it under the current
+// rules.
 func (s PracticeItemState) Due(now time.Time) bool {
-	return s.Stale() || (s.DueAt != nil && !s.DueAt.After(now))
+	return s.Stale() || s.ReviewDue(now)
+}
+
+// ReviewDue reports whether s's review date has come at now, whatever rules
+// it was folded under.
+func (s PracticeItemState) ReviewDue(now time.Time) bool {
+	return s.DueAt != nil && !s.DueAt.After(now)
 }
 
 // ShownLevel is the level shown at now: the earned level, one step lower
