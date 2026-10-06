@@ -158,6 +158,7 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 			OccurredAt:        w.OccurredAt,
 			LeftEarly:         w.LeftEarly,
 			AnsweredCount:     w.AnsweredCount,
+			FeltRatings:       toFeltRatings(w.FeltRatings),
 		}
 	case domain.EventTypeLessonStarted, domain.EventTypeLessonResumed, domain.EventTypeLessonCompleted:
 		// A lesson event carries only its content node, set above.
@@ -208,4 +209,16 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		},
 		TapMs: w.TapMs,
 	}
+}
+
+// toFeltRatings maps a session's felt ratings; none is nil.
+func toFeltRatings(wire []feltRatingWire) []domain.FeltRating {
+	if len(wire) == 0 {
+		return nil
+	}
+	ratings := make([]domain.FeltRating, len(wire))
+	for i, r := range wire {
+		ratings[i] = domain.FeltRating{DrillTemplateKey: r.DrillTemplateKey, Felt: domain.Felt(r.Felt)}
+	}
+	return ratings
 }

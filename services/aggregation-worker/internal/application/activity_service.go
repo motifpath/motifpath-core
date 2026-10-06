@@ -30,10 +30,12 @@ func (s *ActivityService) SessionStarted(ctx context.Context, e domain.PracticeS
 
 // ItemAnswered records that the student answered in a session at the given time,
 // whether or not the answer could be graded: either way they were practising.
-func (s *ActivityService) ItemAnswered(ctx context.Context, studentID, sessionID string, at time.Time) error {
+// template is the timed drill the answer practised, empty when it practised none
+// or couldn't be graded.
+func (s *ActivityService) ItemAnswered(ctx context.Context, studentID, sessionID string, at time.Time, template string) error {
 	return s.update(ctx, studentID, sessionID, func(p domain.PracticeSession) domain.PracticeSession {
 		p.ID, p.StudentID = sessionID, studentID
-		return p.Answered(at)
+		return p.Answered(at, template)
 	})
 }
 

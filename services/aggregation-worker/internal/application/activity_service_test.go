@@ -335,3 +335,33 @@ func TestActivityService_ReturnsStorageFailuresForARetry(t *testing.T) {
 }
 
 func ptrTo[T any](v T) *T { return &v }
+
+func TestActivityService_KeepsEachSessionsPractisedDrillsAndFeltRatings(t *testing.T) {
+	latency := 3500
+	inSession := func(answer domain.PracticeAnswer) domain.TrackingEvent {
+		answer.PracticeSessionID = sessionOne
+		return domain.TrackingEvent{
+			EventType: domain.EventTypePracticeItemAnswered, EventID: answer.EventID, StudentID: alice,
+			OccurredAt: answer.OccurredAt, PracticeSessionID: sessionOne, PracticeAnswer: &answer,
+		}
+	}
+	named := inSession(cellAnswer("e0000000-0000-4000-8000-0000000000c1", clock(18, 3),
+		domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency}))
+	rejected := inSession(cellAnswer("e0000000-0000-4000-8000-0000000000c2", clock(18, 4),
+		domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, LatencyMs: &latency}))
+	take := answeredEvent("e0000000-0000-4000-8000-0000000000c3", clock(18, 5), sessionOne)
+	ended := sessionEndEvent("e0000000-0000-4000-8000-0000000000e1", clock(18, 11), false, 3)
+	ended.SessionEnd.FeltRatings = []domain.FeltRating{
+		{DrillTemplateKey: "fretboard_cell:name_the_note", Felt: domain.FeltHard},
+		{DrillTemplateKey: "exercise:image_choice", Felt: domain.FeltEasy},
+	}
+
+	f := newActivityFixture()
+	f.handle(t, sessionStartEvent(clock(18, 0)), named, rejected, take, ended)
+
+	s := f.session(t)
+	assert.Equal(t, []string{"fretboard_cell:name_the_note"}, s.PractisedTemplates, "a rejected answer and a rated take practise no timed drill")
+	assert.Equal(t, ended.SessionEnd.FeltRatings, s.End.FeltRatings)
+	assert.Equal(t, []string{"fretboard_cell:name_the_note"}, s.FeltRatedTemplates())
+	assert.Equal(t, clock(18, 11), s.LastEventAt)
+}

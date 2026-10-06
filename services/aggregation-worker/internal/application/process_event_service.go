@@ -74,16 +74,18 @@ func (s *ProcessEventService) updateCompletion(ctx context.Context, event domain
 	return s.repo.Upsert(ctx, event.StudentID, event.ContentNodeID, next)
 }
 
-// handleAnswer records the answer in its session, if it was given in one, then
-// grades it.
+// handleAnswer grades the answer, then records it in its session, if it was given
+// in one, with the timed drill it practised.
 func (s *ProcessEventService) handleAnswer(ctx context.Context, event domain.TrackingEvent) error {
-	if event.PracticeSessionID != "" {
-		if err := s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.OccurredAt); err != nil {
+	var template string
+	if event.PracticeAnswer != nil {
+		var err error
+		if template, err = s.practice.process(ctx, *event.PracticeAnswer); err != nil {
 			return err
 		}
 	}
-	if event.PracticeAnswer == nil {
+	if event.PracticeSessionID == "" {
 		return nil
 	}
-	return s.practice.Process(ctx, *event.PracticeAnswer)
+	return s.activity.ItemAnswered(ctx, event.StudentID, event.PracticeSessionID, event.OccurredAt, template)
 }

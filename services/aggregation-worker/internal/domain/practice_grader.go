@@ -100,6 +100,23 @@ func (e ExerciseReference) DrillTemplateKey() string {
 	return string(PracticeItemKindExercise) + ":" + e.ExerciseType
 }
 
+// TimedDrillTemplate is the timed drill template an answer to key practises:
+// a fretboard cell's way of being asked, or an exercise's type. A play-along
+// or a chord change is rated, not timed, so it practises none, and neither
+// does an exercise missing from ref.
+func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref PracticeReference) string {
+	switch key.Kind {
+	case PracticeItemKindFretboardCell:
+		return string(PracticeItemKindFretboardCell) + ":" + string(response.Type)
+	case PracticeItemKindExercise:
+		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
+			return e.DrillTemplateKey()
+		}
+	case PracticeItemKindPlayAlong, PracticeItemKindChordChange:
+	}
+	return ""
+}
+
 // PracticeReference is the reference data a grade runs against. Anything an item key
 // points at that is missing here is unknown.
 type PracticeReference struct {
