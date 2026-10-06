@@ -451,14 +451,14 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		assert.Equal(t, domain.PlannedPlayAlong{DiagramID: "d1", StartTempoBPM: 90, TargetTempoBPM: 120, BestCleanTempoBPM: intPtr(90)}, *plan.Items[0].PlayAlong)
 	})
 
-	t.Run("start tempos stay between 20 BPM and the target", func(t *testing.T) {
+	t.Run("start tempos stay between 20 BPM and the target, or a best clean tempo past it", func(t *testing.T) {
 		for _, tc := range []struct {
 			name      string
 			target    int
 			bestClean *int
 			want      int
 		}{
-			{name: "a best clean tempo above the target starts at the target", target: 100, bestClean: intPtr(130), want: 100},
+			{name: "a best clean tempo past the target is kept", target: 100, bestClean: intPtr(130), want: 130},
 			{name: "60% of a slow target below 20 BPM starts at 20 BPM", target: 25, want: 20},
 		} {
 			f := newPracticeFixture(t)

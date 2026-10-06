@@ -219,3 +219,41 @@ func TestPlanDrillTemplates(t *testing.T) {
 
 	assert.Equal(t, []string{"exercise:image_choice", "fretboard_cell:name_the_note"}, domain.PlanDrillTemplates(items))
 }
+
+func TestPlayAlongStartTempo(t *testing.T) {
+	bpm := func(v int) *int { return &v }
+
+	for _, tc := range []struct {
+		name      string
+		target    int
+		bestClean *int
+		want      int
+	}{
+		{name: "starts at the best clean tempo", target: 120, bestClean: bpm(90), want: 90},
+		{name: "starts at 60% of the target, rounded down to 5 BPM, with no clean take yet", target: 120, bestClean: nil, want: 70},
+		{name: "keeps a best clean tempo past the target", target: 120, bestClean: bpm(150), want: 150},
+		{name: "never starts below the slowest playable tempo", target: 30, bestClean: nil, want: domain.MinTempoBPM},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, domain.PlayAlongStartTempo(tc.target, tc.bestClean))
+		})
+	}
+}
+
+func TestWarmUpTempo(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		target    int
+		bestClean int
+		want      int
+	}{
+		{name: "is 80% of the best clean tempo, rounded down to 5 BPM", target: 120, bestClean: 100, want: 80},
+		{name: "is 80% of a best clean tempo past the target", target: 120, bestClean: 150, want: 120},
+		{name: "may itself be past the target", target: 120, bestClean: 200, want: 160},
+		{name: "never goes below the slowest playable tempo", target: 120, bestClean: 20, want: domain.MinTempoBPM},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, domain.WarmUpTempo(tc.target, tc.bestClean))
+		})
+	}
+}
