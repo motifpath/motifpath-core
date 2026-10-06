@@ -112,6 +112,13 @@ func TestEntNodeItemSource_ClassifiedItems(t *testing.T) {
 				{ItemKey: domain.ExerciseItemKey(bassDrill.ID), NodeIDs: []string{skill.ID}},
 			},
 		},
+		{
+			name:       "no instrument has only the items for every instrument",
+			instrument: "",
+			want: []domain.ClassifiedItem{
+				{ItemKey: domain.ExerciseItemKey(anyDrill.ID), NodeIDs: both},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

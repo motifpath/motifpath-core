@@ -27,6 +27,9 @@ func NewEntNodeItemSource(client *ent.Client) *EntNodeItemSource {
 // custom diagrams are theirs alone, never offered for practice — and it
 // suits every instrument it is linked to. A malformed id has no items.
 func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
+	if instrumentID == "" {
+		return s.everyInstrumentItems(ctx)
+	}
 	parsed, err := uuid.Parse(instrumentID)
 	if err != nil {
 		return nil, nil
@@ -62,12 +65,7 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 			NodeIDs: classifiedNodeIDs(row.Edges.Skills, row.Edges.Concepts),
 		})
 	}
-	for _, row := range exercises {
-		items = append(items, domain.ClassifiedItem{
-			ItemKey: domain.ExerciseItemKey(row.ID.String()),
-			NodeIDs: classifiedNodeIDs(row.Edges.Skills, row.Edges.Concepts),
-		})
-	}
+	items = append(items, exerciseItems(exercises)...)
 	return items, nil
 }
 
@@ -79,4 +77,30 @@ func classifiedNodeIDs(skills, concepts []*ent.KnowledgeNode) []string {
 		}
 	}
 	return ids
+}
+
+// everyInstrumentItems lists the items for every instrument: exercises
+// linked to no instrument. A play-along is always for some instrument.
+func (s *EntNodeItemSource) everyInstrumentItems(ctx context.Context) ([]domain.ClassifiedItem, error) {
+	exercises, err := s.client.Exercise.Query().
+		Where(exercise.Not(exercise.HasInstruments())).
+		WithSkills().
+		WithConcepts().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return exerciseItems(exercises), nil
+}
+
+// exerciseItems classifies exercises, read with their skills and concepts.
+func exerciseItems(exercises []*ent.Exercise) []domain.ClassifiedItem {
+	items := make([]domain.ClassifiedItem, 0, len(exercises))
+	for _, row := range exercises {
+		items = append(items, domain.ClassifiedItem{
+			ItemKey: domain.ExerciseItemKey(row.ID.String()),
+			NodeIDs: classifiedNodeIDs(row.Edges.Skills, row.Edges.Concepts),
+		})
+	}
+	return items
 }

@@ -37,6 +37,8 @@ func TestFeatures(t *testing.T) {
 				// knowledge state run in the Aggregation Worker.
 				featuresBase + "/practice/compose-practice-session.feature",
 				featuresBase + "/practice/node-levels.feature",
+				featuresBase + "/practice/practice-summary.feature",
+				featuresBase + "/practice/practice-overview.feature",
 			},
 			TestingT: t,
 			// Without this, godog reports an undefined step as a warning and
@@ -105,5 +107,6 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerHealthSteps(sc, w)
 	registerListingSteps(sc, w)
 	registerPracticeSessionSteps(sc, w)
+	registerPracticeSummarySteps(sc, w)
 	registerNodeLevelSteps(sc, w)
 }

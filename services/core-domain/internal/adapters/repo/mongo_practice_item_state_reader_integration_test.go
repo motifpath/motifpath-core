@@ -59,8 +59,8 @@ func TestMongoPracticeItemStateReader_ReadsAggregationWorkerShape(t *testing.T) 
 	require.NoError(t, err)
 	bpm := 90
 	assert.Equal(t, map[string]domain.PracticeItemState{
-		"play_along:d1": {ItemKey: "play_along:d1", RulesVersion: 1, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &dueAt, LastAt: &lastAt, BestCleanBPM: &bpm},
-		"play_along:d2": {ItemKey: "play_along:d2", RulesVersion: 1, Level: domain.KnowledgeLevelNew, LastAt: &lastAt},
+		"play_along:d1": {ItemKey: "play_along:d1", RulesVersion: 1, Level: domain.KnowledgeLevelAccurate, Counted: 3, Box: 2, DueAt: &dueAt, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5, BestCleanBPM: &bpm},
+		"play_along:d2": {ItemKey: "play_along:d2", RulesVersion: 1, Level: domain.KnowledgeLevelNew, LastAt: &lastAt, Accuracy: 0.7, Fluency: 0.5},
 	}, states)
 
 	none, err := reader.GetStates(ctx, "alice", nil)

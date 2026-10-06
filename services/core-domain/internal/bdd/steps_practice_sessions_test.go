@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/motifpath/core-domain/internal/adapters/http/generated"
@@ -37,9 +38,11 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has known items coming due within the week$`, w.hasKnownItemsComingDue)
 	sc.Step(`^"([^"]+)" has nothing due, weak or new on their path for guitar$`, w.hasNothingDueOnPath)
 	sc.Step(`^"([^"]+)" has nothing due, weak, new or coming due on their path for guitar$`, w.hasNothingComingDueOnPath)
-	sc.Step(`^"([^"]+)" is ready to start the skill "([^"]+)"$`, w.isReadyToStart)
+	sc.Step(`^"([^"]+)" is ready to start the skill "([^"]+)"(?:, which builds on a skill they have met)?$`, w.isReadyToStart)
 	sc.Step(`^"([^"]+)" is ready to start "([^"]+)", which requires a skill they have met$`, w.isReadyToStartBuildingOn)
-	sc.Step(`^"([^"]+)" is ready to start "([^"]+)", which requires nothing$`, w.isReadyToStartFromScratch)
+	sc.Step(`^"([^"]+)" is ready to start the concept "([^"]+)", which requires nothing and a skill on their path applies$`, w.isReadyToStartAppliedConcept)
+	sc.Step(`^"([^"]+)" is ready to start the skill "([^"]+)", which requires nothing and a skill on their path is part of$`, w.isReadyToStartPathParent)
+	sc.Step(`^"([^"]+)" is ready to start the skill "([^"]+)", which requires nothing and has no link to their path$`, w.isReadyToStartUnlinked)
 	sc.Step(`^"([^"]+)" is accurate but not fluent on "([^"]+)", and its review isn't due$`, w.isAccurateNotDueOn)
 	sc.Step(`^"([^"]+)" is fluent on "([^"]+)", and its review isn't due$`, w.isFluentNotDueOn)
 	sc.Step(`^"([^"]+)"'s path skill "([^"]+)" has exercises and the play-along "([^"]+)" on guitar$`, w.pathSkillHasExercisesAndPlayAlong)
@@ -72,6 +75,8 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the session includes "([^"]+)" with the reason (\w+)$`, w.sessionIncludesWithReason)
 	sc.Step(`^"([^"]+)" is not in the session with the reason (\w+)$`, w.notInSessionWithReason)
 	sc.Step(`^the session includes items of "([^"]+)"$`, w.sessionIncludesItemsOf)
+	sc.Step(`^the session has items of "([^"]+)" with the reason (\w+)$`, w.sessionHasItemsOfWithReason)
+	sc.Step(`^no item in the session is of "([^"]+)"$`, w.noItemIsOf)
 	sc.Step(`^the focus time left after the due and new items is split about evenly between review_ahead and stretch items$`, w.leftoverSplitEvenly)
 	sc.Step(`^no more than (\d+) minutes go to new items$`, w.noMoreMinutesToNew)
 	sc.Step(`^about half the session is items with the reason (\w+)$`, w.halfTheSessionHasReason)
@@ -430,9 +435,11 @@ func (w *world) hasNothingComingDueOnPath(name string) error {
 	return nil
 }
 
-func (w *world) isReadyToStart(_, skill string) error {
-	w.putGuitarExercises(skill, skill, plentyOfItems)
-	return nil
+// isReadyToStart makes skill, with plenty of unseen items, build on a
+// foundation skill the student is accurate on, which connects it to what
+// they are learning.
+func (w *world) isReadyToStart(name, skill string) error {
+	return w.buildOnFoundation(name, skill, plentyOfItems)
 }
 
 // rankedStretchItems is how many unseen items each node of a stretch
@@ -442,17 +449,51 @@ const rankedStretchItems = 4
 // isReadyToStartBuildingOn makes skill require a foundation skill the
 // student is accurate on.
 func (w *world) isReadyToStartBuildingOn(name, skill string) error {
+	return w.buildOnFoundation(name, skill, rankedStretchItems)
+}
+
+// buildOnFoundation gives skill count unseen guitar items and makes it
+// require a foundation skill the student is accurate on.
+func (w *world) buildOnFoundation(name, skill string, count int) error {
 	foundation := skill + "-foundation"
 	w.putItemStates(name, domain.KnowledgeLevelAccurate, 3, 2, 3, w.putGuitarExercises(foundation, foundation, rankedStretchItems)...)
 	if err := w.skillRequiresSkill(skill, foundation, string(domain.KnowledgeLevelAccurate)); err != nil {
 		return err
 	}
-	w.putGuitarExercises(skill, skill, rankedStretchItems)
+	w.putGuitarExercises(skill, skill, count)
 	return nil
 }
 
-func (w *world) isReadyToStartFromScratch(_, skill string) error {
-	w.putGuitarExercises(skill, skill, rankedStretchItems)
+// isReadyToStartAppliedConcept gives concept unseen guitar exercises and
+// has the background's path skill apply it.
+func (w *world) isReadyToStartAppliedConcept(_, concept string) error {
+	conceptID := w.conceptIDFor(concept)
+	for i := range rankedStretchItems {
+		seconds := practiceExerciseSeconds
+		w.exercises.put(domain.Exercise{
+			ID: exerciseID(fmt.Sprintf("%s-%02d", concept, i)).String(), Title: concept, ExerciseType: domain.ExerciseTypeTextResponse,
+			Concepts:                 []domain.KnowledgeNode{{ID: conceptID.String()}},
+			EstimatedDurationSeconds: &seconds,
+			InstrumentIDs:            []string{instrumentID("guitar").String()},
+			CreatedAt:                fixedNow,
+		})
+	}
+	return w.putEdge(w.skillIDFor(practiceSkill).String(), conceptID.String(), domain.KnowledgeEdgeTypeApplies, nil)
+}
+
+// isReadyToStartPathParent gives skill plenty of unseen guitar items and
+// makes it the parent of the background's path skill.
+func (w *world) isReadyToStartPathParent(_, skill string) error {
+	parentID := w.skillIDFor(skill)
+	w.putSkill(practiceSkill, &parentID)
+	w.putGuitarExercises(skill, skill, plentyOfItems)
+	return nil
+}
+
+// isReadyToStartUnlinked gives skill plenty of unseen guitar items and no
+// link to anything.
+func (w *world) isReadyToStartUnlinked(_, skill string) error {
+	w.putGuitarExercises(skill, skill, plentyOfItems)
 	return nil
 }
 
@@ -724,6 +765,40 @@ func (w *world) notInSessionWithReason(slug, reason string) error {
 	return nil
 }
 
+// nodeIDByName resolves a skill or concept a scenario named.
+func (w *world) nodeIDByName(name string) uuid.UUID {
+	if id, ok := w.conceptIDByName[name]; ok {
+		return id
+	}
+	return w.skillIDFor(name)
+}
+
+func (w *world) sessionHasItemsOfWithReason(node, reason string) error {
+	plan, err := w.composedPlan()
+	if err != nil {
+		return err
+	}
+	for _, item := range plan.Items {
+		if item.NodeId != nil && *item.NodeId == w.nodeIDByName(node) && string(item.Reason) == reason {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected items of %q with the reason %s in the session", node, reason)
+}
+
+func (w *world) noItemIsOf(node string) error {
+	plan, err := w.composedPlan()
+	if err != nil {
+		return err
+	}
+	for _, item := range plan.Items {
+		if item.NodeId != nil && *item.NodeId == w.nodeIDByName(node) {
+			return fmt.Errorf("expected no item of %q, found %s", node, item.ItemKey)
+		}
+	}
+	return nil
+}
+
 func (w *world) sessionIncludesItemsOf(skill string) error {
 	plan, err := w.composedPlan()
 	if err != nil {
@@ -820,10 +895,10 @@ func (w *world) stretchItemsOfBefore(first, second string) error {
 		if item.Reason != generated.Stretch || item.NodeId == nil {
 			continue
 		}
-		if *item.NodeId == w.skillIDFor(first) && firstAt < 0 {
+		if *item.NodeId == w.nodeIDByName(first) && firstAt < 0 {
 			firstAt = i
 		}
-		if *item.NodeId == w.skillIDFor(second) && secondAt < 0 {
+		if *item.NodeId == w.nodeIDByName(second) && secondAt < 0 {
 			secondAt = i
 		}
 	}

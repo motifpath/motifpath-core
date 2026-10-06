@@ -184,33 +184,23 @@ func requiresFrom(nodeID string, edges []KnowledgeEdge, nodes map[string]Knowled
 
 // RankStretchNodes lists the ids of nodes a student may stretch to, in the
 // order to start them: those with something to practise and every
-// requirement met, keyed in standings (the nodes for the instrument). The
+// requirement met, keyed in standings (the nodes for the instrument), and
+// connected to what the student is learning (see ConnectedNodes). The
 // nodes in pathNodeIDs, the student's own path, come first; then nodes that
 // build on something the student meets, having requirements; then the
 // shallowest requires depth; then nodes' own order.
-func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string) []string {
+func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string, applies []KnowledgeEdge) []string {
+	connected := ConnectedNodes(nodes, standings, pathNodeIDs, applies)
 	var ready []KnowledgeNode
 	for _, n := range nodes {
-		if s, ok := standings[n.ID]; ok && s.Level != nil && s.Readiness.Complete() {
+		if s, ok := standings[n.ID]; ok && s.Level != nil && s.Readiness.Complete() && connected[n.ID] {
 			ready = append(ready, n)
 		}
 	}
-	offPath := func(id string) int {
-		if slices.Contains(pathNodeIDs, id) {
-			return 0
-		}
-		return 1
-	}
-	buildsOn := func(id string) int {
-		if standings[id].Readiness.Total > 0 {
-			return 0
-		}
-		return 1
-	}
 	slices.SortStableFunc(ready, func(a, b KnowledgeNode) int {
 		return cmp.Or(
-			cmp.Compare(offPath(a.ID), offPath(b.ID)),
-			cmp.Compare(buildsOn(a.ID), buildsOn(b.ID)),
+			cmp.Compare(offPath(a.ID, pathNodeIDs), offPath(b.ID, pathNodeIDs)),
+			cmp.Compare(buildsOnRank(standings[a.ID]), buildsOnRank(standings[b.ID])),
 			cmp.Compare(standings[a.ID].RequiresDepth, standings[b.ID].RequiresDepth),
 		)
 	})
@@ -219,4 +209,88 @@ func RankStretchNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, 
 		ids[i] = n.ID
 	}
 	return ids
+}
+
+// ConnectedNodes reports which of nodes connect to what the student is
+// learning: the nodes in pathNodeIDs; their parents and children; nodes
+// linked to them by an applies edge, either way; and nodes that build on
+// something the student meets, having every requirement in standings met.
+func ConnectedNodes(nodes []KnowledgeNode, standings map[string]NodeStanding, pathNodeIDs []string, applies []KnowledgeEdge) map[string]bool {
+	connected := map[string]bool{}
+	for _, id := range pathNodeIDs {
+		connected[id] = true
+	}
+	for _, n := range nodes {
+		if s, ok := standings[n.ID]; ok && s.Readiness.Total > 0 && s.Readiness.Complete() {
+			connected[n.ID] = true
+		}
+	}
+	for _, link := range pathLinks(nodes, applies) {
+		if slices.Contains(pathNodeIDs, link[0]) {
+			connected[link[1]] = true
+		}
+		if slices.Contains(pathNodeIDs, link[1]) {
+			connected[link[0]] = true
+		}
+	}
+	return connected
+}
+
+// pathLinks lists the pairs of node ids that connect each other to what a
+// student is learning: each node and its parent, and the two ends of each
+// applies edge.
+func pathLinks(nodes []KnowledgeNode, applies []KnowledgeEdge) [][2]string {
+	var links [][2]string
+	for _, n := range nodes {
+		if n.ParentID != nil {
+			links = append(links, [2]string{n.ID, *n.ParentID})
+		}
+	}
+	for _, e := range applies {
+		if e.Type == KnowledgeEdgeTypeApplies {
+			links = append(links, [2]string{e.FromID, e.ToID})
+		}
+	}
+	return links
+}
+
+// KnowledgeView is where a student stands on the knowledge map for one
+// instrument.
+type KnowledgeView struct {
+	// Nodes lists the nodes for the instrument in catalog order.
+	Nodes []KnowledgeNode
+	// Standings holds each of Nodes' standing, keyed by node id.
+	Standings map[string]NodeStanding
+	// Subtrees maps each of Nodes to the keys of the items that suit the
+	// instrument in its subtree.
+	Subtrees map[string][]string
+	// States holds the student's states on those items, keyed by item key;
+	// an item never practised has none.
+	States map[string]PracticeItemState
+	// Applies lists every applies edge, which connects nodes without
+	// requiring anything.
+	Applies []KnowledgeEdge
+}
+
+// Practised reports whether the student has a counted answer on an item in
+// nodeID's subtree.
+func (v KnowledgeView) Practised(nodeID string) bool {
+	for _, key := range v.Subtrees[nodeID] {
+		if state, ok := v.States[key]; ok && state.Counted > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// Wide reports whether nodeID has a child among the view's nodes with
+// something to practise: such a node is shown through its coverage and its
+// children, never by a level of its own.
+func (v KnowledgeView) Wide(nodeID string) bool {
+	for _, n := range v.Nodes {
+		if n.ParentID != nil && *n.ParentID == nodeID && v.Standings[n.ID].Total > 0 {
+			return true
+		}
+	}
+	return false
 }

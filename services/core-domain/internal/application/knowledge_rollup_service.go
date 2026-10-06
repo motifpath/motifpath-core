@@ -31,18 +31,7 @@ func NewKnowledgeRollupService(
 
 // KnowledgeMap is where a student stands on the knowledge map for one
 // instrument.
-type KnowledgeMap struct {
-	// Nodes lists the nodes for the instrument in catalog order.
-	Nodes []domain.KnowledgeNode
-	// Standings holds each of Nodes' standing, keyed by node id.
-	Standings map[string]domain.NodeStanding
-	// Subtrees maps each of Nodes to the keys of the items that suit the
-	// instrument in its subtree.
-	Subtrees map[string][]string
-	// States holds the student's states on those items, keyed by item key;
-	// an item never practised has none.
-	States map[string]domain.PracticeItemState
-}
+type KnowledgeMap = domain.KnowledgeView
 
 // Standings returns the student's standing on every knowledge node for
 // instrumentID, keyed by node id: its level over the items in its subtree
@@ -63,10 +52,18 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 	if err != nil {
 		return KnowledgeMap{}, err
 	}
-	requires := domain.KnowledgeEdgeTypeRequires
-	edges, err := s.edges.List(ctx, ports.KnowledgeEdgeFilter{Type: &requires})
+	allEdges, err := s.edges.List(ctx, ports.KnowledgeEdgeFilter{})
 	if err != nil {
 		return KnowledgeMap{}, err
+	}
+	var edges, applies []domain.KnowledgeEdge
+	for _, e := range allEdges {
+		switch e.Type {
+		case domain.KnowledgeEdgeTypeRequires:
+			edges = append(edges, e)
+		case domain.KnowledgeEdgeTypeApplies:
+			applies = append(applies, e)
+		}
 	}
 	items, err := s.items.ClassifiedItems(ctx, instrumentID)
 	if err != nil {
@@ -91,7 +88,7 @@ func (s *KnowledgeRollupService) Map(ctx context.Context, studentID, instrumentI
 		byID[n.ID] = n
 		rollups[n.ID] = domain.RollUpNode(subtrees[n.ID], states, now)
 	}
-	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states}
+	m := KnowledgeMap{Standings: map[string]domain.NodeStanding{}, Subtrees: map[string][]string{}, States: states, Applies: applies}
 	for _, n := range nodes {
 		if !n.For(instrumentID) {
 			continue
