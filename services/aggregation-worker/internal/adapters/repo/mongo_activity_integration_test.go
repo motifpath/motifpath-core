@@ -44,7 +44,7 @@ func TestMongoPracticeSessionRepository(t *testing.T) {
 			PlannedItems: []domain.PlannedPracticeItem{{ItemKey: "play_along:" + diagram1, Reason: "due"}},
 		})
 		require.NoError(t, repo.Put(ctx, started))
-		ended := started.Answered(start.Add(3 * time.Minute)).Ended(domain.PracticeSessionEnd{
+		ended := started.Answered(start.Add(3*time.Minute), "").Ended(domain.PracticeSessionEnd{
 			EventID: "e2", StudentID: studentA, PracticeSessionID: session1,
 			OccurredAt: start.Add(11 * time.Minute), LeftEarly: true, AnsweredCount: 6,
 		})
@@ -58,6 +58,30 @@ func TestMongoPracticeSessionRepository(t *testing.T) {
 		count, err := db.Collection("practice_sessions").CountDocuments(ctx, bson.D{{Key: "student_id", Value: studentA}})
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, count)
+	})
+
+	t.Run("practised drills and felt ratings round-trip, and the felt-rated drills are stored for counting", func(t *testing.T) {
+		rated := domain.PracticeSession{}.Started(domain.PracticeSessionStart{
+			EventID: "e3", StudentID: studentC, PracticeSessionID: session1, OccurredAt: start, Minutes: 5,
+		}).Answered(start.Add(time.Minute), "fretboard_cell:name_the_note").Ended(domain.PracticeSessionEnd{
+			EventID: "e4", StudentID: studentC, PracticeSessionID: session1, OccurredAt: start.Add(5 * time.Minute), AnsweredCount: 4,
+			FeltRatings: []domain.FeltRating{
+				{DrillTemplateKey: "fretboard_cell:name_the_note", Felt: domain.FeltHard},
+				{DrillTemplateKey: "exercise:image_choice", Felt: domain.FeltEasy},
+			},
+		})
+		require.NoError(t, repo.Put(ctx, rated))
+
+		got, found, err := repo.Get(ctx, studentC, session1)
+		require.NoError(t, err)
+		require.True(t, found)
+		assert.Equal(t, rated, got)
+
+		var raw struct {
+			FeltRatedTemplates []string `bson:"felt_rated_templates"`
+		}
+		require.NoError(t, db.Collection("practice_sessions").FindOne(ctx, bson.D{{Key: "student_id", Value: studentC}}).Decode(&raw))
+		assert.Equal(t, []string{"fretboard_cell:name_the_note"}, raw.FeltRatedTemplates)
 	})
 }
 

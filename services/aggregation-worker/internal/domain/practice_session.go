@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 const (
 	EventTypePracticeSessionStarted EventType = "practice.session_started"
@@ -37,6 +40,25 @@ type PracticeSessionEnd struct {
 	OccurredAt        time.Time
 	LeftEarly         bool
 	AnsweredCount     int
+	// FeltRatings are the student's answers to "How did it feel?", at most
+	// two, about timed drills the plan asked about.
+	FeltRatings []FeltRating
+}
+
+// Felt is the student's answer to "How did it feel?" about a timed drill.
+type Felt string
+
+const (
+	FeltEasy       Felt = "easy"
+	FeltAboutRight Felt = "about_right"
+	FeltHard       Felt = "hard"
+)
+
+// FeltRating is how one timed drill felt to the student in a session. It
+// only ever calibrates the drill's fluent time, never the student's mastery.
+type FeltRating struct {
+	DrillTemplateKey string
+	Felt             Felt
 }
 
 // PracticeSessionStatus is how a session stands when it is read.
@@ -63,6 +85,9 @@ type PracticeSession struct {
 	InstrumentID string
 	Minutes      int
 	PlannedItems []PlannedPracticeItem
+	// PractisedTemplates are the timed drill templates of the session's
+	// graded answers, each once, in order.
+	PractisedTemplates []string
 	// LastEventAt is the latest practice event recorded for the session.
 	LastEventAt time.Time
 	End         *PracticeSessionEnd
@@ -77,9 +102,31 @@ func (s PracticeSession) Started(e PracticeSessionStart) PracticeSession {
 	return s.touched(at)
 }
 
-// Answered records an answer given in the session at the given time.
-func (s PracticeSession) Answered(at time.Time) PracticeSession {
+// Answered records an answer given in the session at the given time, and
+// the timed drill template it practised; empty when it practised none.
+func (s PracticeSession) Answered(at time.Time, template string) PracticeSession {
+	if template != "" && !slices.Contains(s.PractisedTemplates, template) {
+		s.PractisedTemplates = append(slices.Clone(s.PractisedTemplates), template)
+		slices.Sort(s.PractisedTemplates)
+	}
 	return s.touched(at)
+}
+
+// FeltRatedTemplates are the templates of the session's felt ratings that
+// it practised, in its ratings' order. A rating about a drill the session
+// didn't practise says nothing about that drill, so it is left out. Answers
+// may arrive after the end, so this is read from whatever has arrived.
+func (s PracticeSession) FeltRatedTemplates() []string {
+	if s.End == nil {
+		return nil
+	}
+	var templates []string
+	for _, r := range s.End.FeltRatings {
+		if slices.Contains(s.PractisedTemplates, r.DrillTemplateKey) && !slices.Contains(templates, r.DrillTemplateKey) {
+			templates = append(templates, r.DrillTemplateKey)
+		}
+	}
+	return templates
 }
 
 // Ended records the session's end. A redelivered end changes nothing, and an end

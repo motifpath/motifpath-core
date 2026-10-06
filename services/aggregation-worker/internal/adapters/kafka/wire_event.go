@@ -30,6 +30,13 @@ type wireEvent struct {
 	PlannedItems  []plannedItemWire `json:"planned_items,omitempty"`
 	AnsweredCount int               `json:"answered_count,omitempty"`
 	LeftEarly     bool              `json:"left_early,omitempty"`
+	FeltRatings   []feltRatingWire  `json:"felt_ratings,omitempty"`
+}
+
+// feltRatingWire is how a timed drill felt to the student in a session.
+type feltRatingWire struct {
+	DrillTemplateKey string `json:"drill_template_key"`
+	Felt             string `json:"felt"`
 }
 
 // triggerContextWire is where an answer outside a practice session was given.

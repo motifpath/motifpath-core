@@ -166,3 +166,16 @@ func TestToDomainEvent_AnAnswerOutsideASessionHasNoSession(t *testing.T) {
 	require.NotNil(t, event.PracticeAnswer)
 	assert.Empty(t, event.PracticeAnswer.PracticeSessionID)
 }
+
+func TestToDomainEvent_APracticeSessionEndCarriesItsFeltRatings(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"practice.session_ended","student_id":"s","occurred_at":"2026-10-05T18:11:00Z","practice_session_id":"p","answered_count":6,"left_early":false,"felt_ratings":[{"drill_template_key":"fretboard_cell:name_the_note","felt":"hard"},{"drill_template_key":"exercise:text_response","felt":"about_right"}]}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	require.NotNil(t, event.SessionEnd)
+	assert.Equal(t, []domain.FeltRating{
+		{DrillTemplateKey: "fretboard_cell:name_the_note", Felt: domain.FeltHard},
+		{DrillTemplateKey: "exercise:text_response", Felt: domain.FeltAboutRight},
+	}, event.SessionEnd.FeltRatings)
+}

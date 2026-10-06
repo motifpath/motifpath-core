@@ -23,8 +23,9 @@ func NewMongoPracticeSessionRepository(db *mongo.Database) *MongoPracticeSession
 	return &MongoPracticeSessionRepository{collection: db.Collection("practice_sessions"), now: time.Now}
 }
 
-// EnsureIndexes creates the unique (student_id, practice_session_id) index, and
-// the index a student's sessions are read by, newest first. It is idempotent.
+// EnsureIndexes creates the unique (student_id, practice_session_id) index, the
+// index a student's sessions are read by, newest first, and the index sessions
+// are counted by per felt-rated drill. It is idempotent.
 func (r *MongoPracticeSessionRepository) EnsureIndexes(ctx context.Context) error {
 	_, err := r.collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
@@ -32,6 +33,7 @@ func (r *MongoPracticeSessionRepository) EnsureIndexes(ctx context.Context) erro
 			Options: options.Index().SetUnique(true),
 		},
 		{Keys: bson.D{{Key: "student_id", Value: 1}, {Key: "last_event_at", Value: -1}}},
+		{Keys: bson.D{{Key: "felt_rated_templates", Value: 1}}},
 	})
 	return err
 }

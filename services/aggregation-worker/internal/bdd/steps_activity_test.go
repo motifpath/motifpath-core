@@ -5,6 +5,7 @@ package bdd
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
 	"time"
 
@@ -312,7 +313,7 @@ func (w *world) sessionIsFinishedOnce() error {
 	if err != nil {
 		return err
 	}
-	if *s.End != *w.activity.firstEnd {
+	if !reflect.DeepEqual(*s.End, *w.activity.firstEnd) {
 		return fmt.Errorf("the session's end is %+v, want the first delivery's %+v", *s.End, *w.activity.firstEnd)
 	}
 	return nil

@@ -41,39 +41,49 @@ func NewPracticeEvidenceService(
 // A state folded under other mastery rules is rebuilt too, the next time the item
 // is answered.
 func (s *PracticeEvidenceService) Process(ctx context.Context, answer domain.PracticeAnswer) error {
+	_, err := s.process(ctx, answer)
+	return err
+}
+
+// process is Process, returning the timed drill template the answer practised:
+// empty when it practised none or couldn't be graded.
+func (s *PracticeEvidenceService) process(ctx context.Context, answer domain.PracticeAnswer) (string, error) {
 	log := s.logger.With("event_id", answer.EventID, "student_id", answer.StudentID, "item_key", answer.ItemKey)
 
 	key, err := domain.ParsePracticeItemKey(answer.ItemKey)
 	if err != nil {
 		log.WarnContext(ctx, "practice answer has an invalid item key, dropping")
-		return nil
+		return "", nil
 	}
 	grader, ok := domain.GraderFor(key.Kind)
 	if !ok {
 		log.InfoContext(ctx, "no grader for this item kind yet, dropping", "kind", key.Kind)
-		return nil
+		return "", nil
 	}
 
 	ref, err := s.referenceFor(ctx, key)
 	if err != nil {
-		return err
+		return "", err
 	}
 	result := grader.Grade(key, answer.Response, ref)
 	if result.Rejection != "" {
 		log.InfoContext(ctx, "practice answer rejected by its grader", "grader", grader.ID(), "reason", result.Rejection)
-		return nil
+		return "", nil
 	}
 	goal, err := s.goalOf(ctx, key, ref)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	evidence := toEvidence(answer, grader.ID(), result.Evidence)
 	inserted, err := s.evidence.Insert(ctx, evidence)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return s.foldInto(ctx, evidence, goal, inserted)
+	if err := s.foldInto(ctx, evidence, goal, inserted); err != nil {
+		return "", err
+	}
+	return domain.TimedDrillTemplate(key, answer.Response, ref), nil
 }
 
 // referenceFor reads the reference data the item's key points at.
