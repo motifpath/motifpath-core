@@ -39,7 +39,7 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	diagrams, err := s.client.Diagram.Query().
 		Where(
 			diagram.KindEQ(diagram.KindBasic),
-			diagram.TempoBpmNotNil(),
+			diagram.DefaultPlaybackIDNotNil(),
 			diagram.HasCompatibleInstrumentsWith(instrument.ID(parsed)),
 		).
 		WithSkills().

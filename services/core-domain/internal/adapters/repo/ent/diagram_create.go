@@ -109,51 +109,23 @@ func (_c *DiagramCreate) SetNillableMode(v *diagram.Mode) *DiagramCreate {
 	return _c
 }
 
-// SetTempoBpm sets the "tempo_bpm" field.
-func (_c *DiagramCreate) SetTempoBpm(v int) *DiagramCreate {
-	_c.mutation.SetTempoBpm(v)
+// SetPlaybacks sets the "playbacks" field.
+func (_c *DiagramCreate) SetPlaybacks(v []schema.Playback) *DiagramCreate {
+	_c.mutation.SetPlaybacks(v)
 	return _c
 }
 
-// SetNillableTempoBpm sets the "tempo_bpm" field if the given value is not nil.
-func (_c *DiagramCreate) SetNillableTempoBpm(v *int) *DiagramCreate {
+// SetDefaultPlaybackID sets the "default_playback_id" field.
+func (_c *DiagramCreate) SetDefaultPlaybackID(v string) *DiagramCreate {
+	_c.mutation.SetDefaultPlaybackID(v)
+	return _c
+}
+
+// SetNillableDefaultPlaybackID sets the "default_playback_id" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableDefaultPlaybackID(v *string) *DiagramCreate {
 	if v != nil {
-		_c.SetTempoBpm(*v)
+		_c.SetDefaultPlaybackID(*v)
 	}
-	return _c
-}
-
-// SetTimeSignatureBeats sets the "time_signature_beats" field.
-func (_c *DiagramCreate) SetTimeSignatureBeats(v int) *DiagramCreate {
-	_c.mutation.SetTimeSignatureBeats(v)
-	return _c
-}
-
-// SetNillableTimeSignatureBeats sets the "time_signature_beats" field if the given value is not nil.
-func (_c *DiagramCreate) SetNillableTimeSignatureBeats(v *int) *DiagramCreate {
-	if v != nil {
-		_c.SetTimeSignatureBeats(*v)
-	}
-	return _c
-}
-
-// SetTimeSignatureBeatValue sets the "time_signature_beat_value" field.
-func (_c *DiagramCreate) SetTimeSignatureBeatValue(v int) *DiagramCreate {
-	_c.mutation.SetTimeSignatureBeatValue(v)
-	return _c
-}
-
-// SetNillableTimeSignatureBeatValue sets the "time_signature_beat_value" field if the given value is not nil.
-func (_c *DiagramCreate) SetNillableTimeSignatureBeatValue(v *int) *DiagramCreate {
-	if v != nil {
-		_c.SetTimeSignatureBeatValue(*v)
-	}
-	return _c
-}
-
-// SetSequence sets the "sequence" field.
-func (_c *DiagramCreate) SetSequence(v []schema.SequenceStep) *DiagramCreate {
-	_c.mutation.SetSequence(v)
 	return _c
 }
 
@@ -349,17 +321,9 @@ func (_c *DiagramCreate) defaults() {
 		v := diagram.DefaultLabelDisplay
 		_c.mutation.SetLabelDisplay(v)
 	}
-	if _, ok := _c.mutation.TimeSignatureBeats(); !ok {
-		v := diagram.DefaultTimeSignatureBeats
-		_c.mutation.SetTimeSignatureBeats(v)
-	}
-	if _, ok := _c.mutation.TimeSignatureBeatValue(); !ok {
-		v := diagram.DefaultTimeSignatureBeatValue
-		_c.mutation.SetTimeSignatureBeatValue(v)
-	}
-	if _, ok := _c.mutation.Sequence(); !ok {
-		v := diagram.DefaultSequence
-		_c.mutation.SetSequence(v)
+	if _, ok := _c.mutation.Playbacks(); !ok {
+		v := diagram.DefaultPlaybacks
+		_c.mutation.SetPlaybacks(v)
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := diagram.DefaultCreatedAt()
@@ -403,14 +367,8 @@ func (_c *DiagramCreate) check() error {
 			return &ValidationError{Name: "mode", err: fmt.Errorf(`ent: validator failed for field "Diagram.mode": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.TimeSignatureBeats(); !ok {
-		return &ValidationError{Name: "time_signature_beats", err: errors.New(`ent: missing required field "Diagram.time_signature_beats"`)}
-	}
-	if _, ok := _c.mutation.TimeSignatureBeatValue(); !ok {
-		return &ValidationError{Name: "time_signature_beat_value", err: errors.New(`ent: missing required field "Diagram.time_signature_beat_value"`)}
-	}
-	if _, ok := _c.mutation.Sequence(); !ok {
-		return &ValidationError{Name: "sequence", err: errors.New(`ent: missing required field "Diagram.sequence"`)}
+	if _, ok := _c.mutation.Playbacks(); !ok {
+		return &ValidationError{Name: "playbacks", err: errors.New(`ent: missing required field "Diagram.playbacks"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Diagram.created_at"`)}
@@ -481,21 +439,13 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 		_spec.SetField(diagram.FieldMode, field.TypeEnum, value)
 		_node.Mode = &value
 	}
-	if value, ok := _c.mutation.TempoBpm(); ok {
-		_spec.SetField(diagram.FieldTempoBpm, field.TypeInt, value)
-		_node.TempoBpm = &value
+	if value, ok := _c.mutation.Playbacks(); ok {
+		_spec.SetField(diagram.FieldPlaybacks, field.TypeJSON, value)
+		_node.Playbacks = value
 	}
-	if value, ok := _c.mutation.TimeSignatureBeats(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeats, field.TypeInt, value)
-		_node.TimeSignatureBeats = value
-	}
-	if value, ok := _c.mutation.TimeSignatureBeatValue(); ok {
-		_spec.SetField(diagram.FieldTimeSignatureBeatValue, field.TypeInt, value)
-		_node.TimeSignatureBeatValue = value
-	}
-	if value, ok := _c.mutation.Sequence(); ok {
-		_spec.SetField(diagram.FieldSequence, field.TypeJSON, value)
-		_node.Sequence = value
+	if value, ok := _c.mutation.DefaultPlaybackID(); ok {
+		_spec.SetField(diagram.FieldDefaultPlaybackID, field.TypeString, value)
+		_node.DefaultPlaybackID = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(diagram.FieldCreatedAt, field.TypeTime, value)

@@ -76,19 +76,9 @@ func Color(v string) predicate.Diagram {
 	return predicate.Diagram(sql.FieldEQ(FieldColor, v))
 }
 
-// TempoBpm applies equality check predicate on the "tempo_bpm" field. It's identical to TempoBpmEQ.
-func TempoBpm(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTempoBpm, v))
-}
-
-// TimeSignatureBeats applies equality check predicate on the "time_signature_beats" field. It's identical to TimeSignatureBeatsEQ.
-func TimeSignatureBeats(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeats, v))
-}
-
-// TimeSignatureBeatValue applies equality check predicate on the "time_signature_beat_value" field. It's identical to TimeSignatureBeatValueEQ.
-func TimeSignatureBeatValue(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeatValue, v))
+// DefaultPlaybackID applies equality check predicate on the "default_playback_id" field. It's identical to DefaultPlaybackIDEQ.
+func DefaultPlaybackID(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldDefaultPlaybackID, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -376,134 +366,79 @@ func ModeNotNil() predicate.Diagram {
 	return predicate.Diagram(sql.FieldNotNull(FieldMode))
 }
 
-// TempoBpmEQ applies the EQ predicate on the "tempo_bpm" field.
-func TempoBpmEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTempoBpm, v))
+// DefaultPlaybackIDEQ applies the EQ predicate on the "default_playback_id" field.
+func DefaultPlaybackIDEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEQ(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmNEQ applies the NEQ predicate on the "tempo_bpm" field.
-func TempoBpmNEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNEQ(FieldTempoBpm, v))
+// DefaultPlaybackIDNEQ applies the NEQ predicate on the "default_playback_id" field.
+func DefaultPlaybackIDNEQ(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNEQ(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmIn applies the In predicate on the "tempo_bpm" field.
-func TempoBpmIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldIn(FieldTempoBpm, vs...))
+// DefaultPlaybackIDIn applies the In predicate on the "default_playback_id" field.
+func DefaultPlaybackIDIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldIn(FieldDefaultPlaybackID, vs...))
 }
 
-// TempoBpmNotIn applies the NotIn predicate on the "tempo_bpm" field.
-func TempoBpmNotIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNotIn(FieldTempoBpm, vs...))
+// DefaultPlaybackIDNotIn applies the NotIn predicate on the "default_playback_id" field.
+func DefaultPlaybackIDNotIn(vs ...string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotIn(FieldDefaultPlaybackID, vs...))
 }
 
-// TempoBpmGT applies the GT predicate on the "tempo_bpm" field.
-func TempoBpmGT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGT(FieldTempoBpm, v))
+// DefaultPlaybackIDGT applies the GT predicate on the "default_playback_id" field.
+func DefaultPlaybackIDGT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGT(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmGTE applies the GTE predicate on the "tempo_bpm" field.
-func TempoBpmGTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGTE(FieldTempoBpm, v))
+// DefaultPlaybackIDGTE applies the GTE predicate on the "default_playback_id" field.
+func DefaultPlaybackIDGTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldGTE(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmLT applies the LT predicate on the "tempo_bpm" field.
-func TempoBpmLT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLT(FieldTempoBpm, v))
+// DefaultPlaybackIDLT applies the LT predicate on the "default_playback_id" field.
+func DefaultPlaybackIDLT(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLT(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmLTE applies the LTE predicate on the "tempo_bpm" field.
-func TempoBpmLTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLTE(FieldTempoBpm, v))
+// DefaultPlaybackIDLTE applies the LTE predicate on the "default_playback_id" field.
+func DefaultPlaybackIDLTE(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldLTE(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmIsNil applies the IsNil predicate on the "tempo_bpm" field.
-func TempoBpmIsNil() predicate.Diagram {
-	return predicate.Diagram(sql.FieldIsNull(FieldTempoBpm))
+// DefaultPlaybackIDContains applies the Contains predicate on the "default_playback_id" field.
+func DefaultPlaybackIDContains(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContains(FieldDefaultPlaybackID, v))
 }
 
-// TempoBpmNotNil applies the NotNil predicate on the "tempo_bpm" field.
-func TempoBpmNotNil() predicate.Diagram {
-	return predicate.Diagram(sql.FieldNotNull(FieldTempoBpm))
+// DefaultPlaybackIDHasPrefix applies the HasPrefix predicate on the "default_playback_id" field.
+func DefaultPlaybackIDHasPrefix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasPrefix(FieldDefaultPlaybackID, v))
 }
 
-// TimeSignatureBeatsEQ applies the EQ predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeats, v))
+// DefaultPlaybackIDHasSuffix applies the HasSuffix predicate on the "default_playback_id" field.
+func DefaultPlaybackIDHasSuffix(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldHasSuffix(FieldDefaultPlaybackID, v))
 }
 
-// TimeSignatureBeatsNEQ applies the NEQ predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsNEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNEQ(FieldTimeSignatureBeats, v))
+// DefaultPlaybackIDIsNil applies the IsNil predicate on the "default_playback_id" field.
+func DefaultPlaybackIDIsNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldIsNull(FieldDefaultPlaybackID))
 }
 
-// TimeSignatureBeatsIn applies the In predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldIn(FieldTimeSignatureBeats, vs...))
+// DefaultPlaybackIDNotNil applies the NotNil predicate on the "default_playback_id" field.
+func DefaultPlaybackIDNotNil() predicate.Diagram {
+	return predicate.Diagram(sql.FieldNotNull(FieldDefaultPlaybackID))
 }
 
-// TimeSignatureBeatsNotIn applies the NotIn predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsNotIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNotIn(FieldTimeSignatureBeats, vs...))
+// DefaultPlaybackIDEqualFold applies the EqualFold predicate on the "default_playback_id" field.
+func DefaultPlaybackIDEqualFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldEqualFold(FieldDefaultPlaybackID, v))
 }
 
-// TimeSignatureBeatsGT applies the GT predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsGT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGT(FieldTimeSignatureBeats, v))
-}
-
-// TimeSignatureBeatsGTE applies the GTE predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsGTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGTE(FieldTimeSignatureBeats, v))
-}
-
-// TimeSignatureBeatsLT applies the LT predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsLT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLT(FieldTimeSignatureBeats, v))
-}
-
-// TimeSignatureBeatsLTE applies the LTE predicate on the "time_signature_beats" field.
-func TimeSignatureBeatsLTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLTE(FieldTimeSignatureBeats, v))
-}
-
-// TimeSignatureBeatValueEQ applies the EQ predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldEQ(FieldTimeSignatureBeatValue, v))
-}
-
-// TimeSignatureBeatValueNEQ applies the NEQ predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueNEQ(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNEQ(FieldTimeSignatureBeatValue, v))
-}
-
-// TimeSignatureBeatValueIn applies the In predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldIn(FieldTimeSignatureBeatValue, vs...))
-}
-
-// TimeSignatureBeatValueNotIn applies the NotIn predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueNotIn(vs ...int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldNotIn(FieldTimeSignatureBeatValue, vs...))
-}
-
-// TimeSignatureBeatValueGT applies the GT predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueGT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGT(FieldTimeSignatureBeatValue, v))
-}
-
-// TimeSignatureBeatValueGTE applies the GTE predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueGTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldGTE(FieldTimeSignatureBeatValue, v))
-}
-
-// TimeSignatureBeatValueLT applies the LT predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueLT(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLT(FieldTimeSignatureBeatValue, v))
-}
-
-// TimeSignatureBeatValueLTE applies the LTE predicate on the "time_signature_beat_value" field.
-func TimeSignatureBeatValueLTE(v int) predicate.Diagram {
-	return predicate.Diagram(sql.FieldLTE(FieldTimeSignatureBeatValue, v))
+// DefaultPlaybackIDContainsFold applies the ContainsFold predicate on the "default_playback_id" field.
+func DefaultPlaybackIDContainsFold(v string) predicate.Diagram {
+	return predicate.Diagram(sql.FieldContainsFold(FieldDefaultPlaybackID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

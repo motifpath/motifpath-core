@@ -28,18 +28,23 @@ func TestBasicCatalog(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(catalogDir, "catalog.json"))
 	require.NoError(t, err, "generate the catalog first")
 	var entries []struct {
-		ID       string              `json:"diagram_id"`
-		Key      string              `json:"key"`
-		Names    map[string]string   `json:"names"`
-		Root     string              `json:"root_note"`
-		Mode     *domain.DiagramMode `json:"mode"`
-		Tempo    *int                `json:"tempo_bpm"`
-		Sequence []struct {
-			IDs   []string         `json:"position_ids"`
-			Value domain.NoteValue `json:"value"`
-			Strum domain.Strum     `json:"strum"`
-		} `json:"sequence"`
-		Positions []struct {
+		ID        string              `json:"diagram_id"`
+		Key       string              `json:"key"`
+		Names     map[string]string   `json:"names"`
+		Root      string              `json:"root_note"`
+		Mode      *domain.DiagramMode `json:"mode"`
+		Playbacks []struct {
+			ID    string            `json:"playback_id"`
+			Names map[string]string `json:"names"`
+			Tempo int               `json:"tempo_bpm"`
+			Steps []struct {
+				IDs   []string         `json:"position_ids"`
+				Value domain.NoteValue `json:"value"`
+				Strum domain.Strum     `json:"strum"`
+			} `json:"steps"`
+		} `json:"playbacks"`
+		DefaultPlaybackID *string `json:"default_playback_id"`
+		Positions         []struct {
 			ID       string               `json:"position_id"`
 			Interval string               `json:"interval"`
 			Name     string               `json:"note_name"`
@@ -60,11 +65,15 @@ func TestBasicCatalog(t *testing.T) {
 		for i, p := range e.Positions {
 			ps[i] = domain.Position{ID: p.ID, Interval: p.Interval, NoteName: p.Name, Shape: p.Shape, Color: p.Color, String: &p.String, Fret: &p.Fret}
 		}
-		steps := make([]domain.SequenceStep, len(e.Sequence))
-		for i, s := range e.Sequence {
-			steps[i] = domain.SequenceStep{PositionIDs: s.IDs, Value: s.Value, Strum: s.Strum}
+		playbacks := make([]domain.DiagramPlayback, len(e.Playbacks))
+		for i, p := range e.Playbacks {
+			steps := make([]domain.SequenceStep, len(p.Steps))
+			for j, s := range p.Steps {
+				steps[j] = domain.SequenceStep{PositionIDs: s.IDs, Value: s.Value, Strum: s.Strum}
+			}
+			playbacks[i] = domain.DiagramPlayback{ID: p.ID, Names: p.Names, TempoBPM: p.Tempo, Steps: steps}
 		}
-		_, err := domain.NewDiagram(e.ID, owner, instrument, e.Names, []string{"en", "pt_BR"}, ps, []string{uuid.NewString()}, []string{uuid.NewString()}, domain.DiagramOptions{Kind: domain.DiagramKindBasic, RootNote: &e.Root, Mode: e.Mode, TempoBPM: e.Tempo, Sequence: steps}, time.Now())
+		_, err := domain.NewDiagram(e.ID, owner, instrument, e.Names, []string{"en", "pt_BR"}, ps, []string{uuid.NewString()}, []string{uuid.NewString()}, domain.DiagramOptions{Kind: domain.DiagramKindBasic, RootNote: &e.Root, Mode: e.Mode, Playbacks: playbacks, DefaultPlaybackID: e.DefaultPlaybackID}, time.Now())
 		require.NoError(t, err, e.Key)
 		positionsCount += len(ps)
 	}
