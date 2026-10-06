@@ -31,21 +31,7 @@ func NewKnowledgeRollupService(
 
 // KnowledgeMap is where a student stands on the knowledge map for one
 // instrument.
-type KnowledgeMap struct {
-	// Nodes lists the nodes for the instrument in catalog order.
-	Nodes []domain.KnowledgeNode
-	// Standings holds each of Nodes' standing, keyed by node id.
-	Standings map[string]domain.NodeStanding
-	// Subtrees maps each of Nodes to the keys of the items that suit the
-	// instrument in its subtree.
-	Subtrees map[string][]string
-	// States holds the student's states on those items, keyed by item key;
-	// an item never practised has none.
-	States map[string]domain.PracticeItemState
-	// Applies lists every applies edge, which connects nodes without
-	// requiring anything.
-	Applies []domain.KnowledgeEdge
-}
+type KnowledgeMap = domain.KnowledgeView
 
 // Standings returns the student's standing on every knowledge node for
 // instrumentID, keyed by node id: its level over the items in its subtree

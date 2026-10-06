@@ -59,6 +59,10 @@ type PracticeItemState struct {
 	Box          int
 	DueAt        *time.Time
 	LastAt       *time.Time
+	// Accuracy and Fluency are the shares, from 0 to 1, of the item's
+	// counted answers that were correct and that were fluent.
+	Accuracy float64
+	Fluency  float64
 	// BestCleanBPM is the best tempo rated clean since the latest teacher
 	// review; nil with no clean take.
 	BestCleanBPM *int

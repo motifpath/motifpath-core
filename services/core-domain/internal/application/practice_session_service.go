@@ -76,6 +76,10 @@ func NewPracticeSessionService(
 	}
 }
 
+func (s *PracticeSessionService) learning() studentLearning {
+	return studentLearning{studentPaths: s.studentPaths, enrollments: s.enrollments, contentNodes: s.contentNodes}
+}
+
 // practiceCandidate is an item that can be practised in a session, either
 // a play-along or an exercise, with the node it is offered for and the
 // student's state on it, if any.
@@ -153,7 +157,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
-	skillIDs, err := s.pathSkillIDs(ctx, caller.ID)
+	skillIDs, err := s.learning().pathSkillIDs(ctx, caller.ID)
 	if err != nil {
 		return domain.PracticeSessionPlan{}, err
 	}
@@ -321,61 +325,6 @@ func (s *PracticeSessionService) candidate(ctx context.Context, itemKey string) 
 	return practiceCandidate{}, false, nil
 }
 
-// pathSkillIDs lists the skills taught on the student's active paths, in
-// path order, without repeats.
-func (s *PracticeSessionService) pathSkillIDs(ctx context.Context, studentID string) ([]string, error) {
-	paths, err := s.activePaths(ctx, studentID)
-	if err != nil {
-		return nil, err
-	}
-	var nodeIDs []string
-	for _, p := range paths {
-		for _, item := range p.Items {
-			nodeIDs = append(nodeIDs, item.ContentNodeID)
-		}
-	}
-	nodes, err := s.contentNodes.GetByIDs(ctx, nodeIDs)
-	if err != nil {
-		return nil, err
-	}
-	var skillIDs []string
-	for _, id := range nodeIDs {
-		for _, skillID := range nodes[id].Classification.SkillIDs() {
-			if !slices.Contains(skillIDs, skillID) {
-				skillIDs = append(skillIDs, skillID)
-			}
-		}
-	}
-	return skillIDs, nil
-}
-
-// activePaths lists the student's active standalone paths by assignment,
-// then the active checkpoint of each active course enrollment.
-func (s *PracticeSessionService) activePaths(ctx context.Context, studentID string) ([]domain.StudentPath, error) {
-	paths, err := s.studentPaths.ListActiveStandaloneByStudentID(ctx, studentID)
-	if err != nil {
-		return nil, err
-	}
-	slices.SortFunc(paths, func(a, b domain.StudentPath) int {
-		return cmp.Or(a.AssignedAt.Compare(b.AssignedAt), cmp.Compare(a.ID, b.ID))
-	})
-	enrollments, err := s.enrollments.ListActiveByStudentID(ctx, studentID)
-	if err != nil {
-		return nil, err
-	}
-	slices.SortFunc(enrollments, func(a, b domain.CourseEnrollment) int { return cmp.Compare(a.ID, b.ID) })
-	for _, e := range enrollments {
-		if e.ActiveCheckpointStudentPathID == nil {
-			continue
-		}
-		path, err := s.studentPaths.GetByID(ctx, *e.ActiveCheckpointStudentPathID)
-		if err != nil {
-			return nil, err
-		}
-		paths = append(paths, path)
-	}
-	return paths, nil
-}
 
 func (s *PracticeSessionService) listDiagrams(ctx context.Context, filter domain.DiagramListFilter) ([]domain.Diagram, error) {
 	page := domain.PageRequest{Limit: domain.MaxPageLimit}

@@ -21,6 +21,8 @@ type practiceItemStateDocument struct {
 	Box          int        `bson:"box"`
 	DueAt        *time.Time `bson:"due_at"`
 	LastAt       *time.Time `bson:"last_at"`
+	Accuracy     float64    `bson:"accuracy"`
+	Fluency      float64    `bson:"fluency"`
 	BestCleanBPM *int       `bson:"best_clean_bpm"`
 }
 
@@ -62,6 +64,8 @@ func (r *MongoPracticeItemStateReader) GetStates(ctx context.Context, studentID 
 			Box:          doc.Box,
 			DueAt:        utcTime(doc.DueAt),
 			LastAt:       utcTime(doc.LastAt),
+			Accuracy:     doc.Accuracy,
+			Fluency:      doc.Fluency,
 			BestCleanBPM: doc.BestCleanBPM,
 		}
 	}
