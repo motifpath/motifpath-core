@@ -88,6 +88,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerDiagramSteps(sc, w)
 	registerChordSteps(sc, w)
 	registerSongChartSteps(sc, w)
+	registerSongChartChordProSteps(sc, w)
 	registerDiagramPlaybackSteps(sc, w)
 	registerVoiceSteps(sc, w)
 	registerDiagramAnnotationSteps(sc, w)
