@@ -14,6 +14,10 @@ type DiagramRepository interface {
 	// id. Skills and Concepts come back fully populated, not id-only.
 	GetByID(ctx context.Context, id string) (domain.Diagram, error)
 
+	// GetByIDs returns the diagrams with these ids, as GetByID would, keyed
+	// by id; an id with no diagram is left out.
+	GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error)
+
 	// List returns one page of the diagrams matching filter, ordered by
 	// name then id, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error)

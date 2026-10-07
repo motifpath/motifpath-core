@@ -1770,6 +1770,16 @@ func (f *fakeDiagramRepository) GetByID(_ context.Context, id string) (domain.Di
 	return diagram, nil
 }
 
+func (f *fakeDiagramRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+	found := map[string]domain.Diagram{}
+	for _, id := range ids {
+		if d, err := f.GetByID(ctx, id); err == nil {
+			found[id] = d
+		}
+	}
+	return found, nil
+}
+
 func (f *fakeDiagramRepository) List(_ context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -1936,17 +1946,62 @@ func (f *fakePracticeReferenceWriter) diagram(id string) (domain.DiagramReferenc
 
 // fakeChordCatalogRepository holds chords with their active voicings already
 // ranked, as the catalog installs them.
+//
+// voicings, when set, holds every voicing by id, withdrawn ones included; a
+// chord is then read with only the voicings it marks active.
 type fakeChordCatalogRepository struct {
-	chords []domain.ChordDefinition
+	chords   []domain.ChordDefinition
+	voicings map[string]domain.ChordVoicing
 }
 
 func (f *fakeChordCatalogRepository) GetChord(_ context.Context, id string) (domain.ChordDefinition, error) {
 	for _, c := range f.chords {
 		if c.ID == id {
-			return c, nil
+			return f.activeOnly(c), nil
 		}
 	}
 	return domain.ChordDefinition{}, domain.ErrNotFound
+}
+
+func (f *fakeChordCatalogRepository) GetChords(ctx context.Context, ids []string) (map[string]domain.ChordDefinition, error) {
+	found := map[string]domain.ChordDefinition{}
+	for _, id := range ids {
+		if c, err := f.GetChord(ctx, id); err == nil {
+			found[id] = c
+		}
+	}
+	return found, nil
+}
+
+func (f *fakeChordCatalogRepository) GetVoicings(_ context.Context, ids []string) (map[string]domain.ChordVoicing, error) {
+	found := map[string]domain.ChordVoicing{}
+	for _, id := range ids {
+		if v, ok := f.voicings[id]; ok {
+			found[id] = v
+		}
+	}
+	return found, nil
+}
+
+// withdraw marks a voicing withdrawn, as the catalog would.
+func (f *fakeChordCatalogRepository) withdraw(id string) {
+	v := f.voicings[id]
+	v.Status = domain.ChordVoicingWithdrawn
+	f.voicings[id] = v
+}
+
+func (f *fakeChordCatalogRepository) activeOnly(c domain.ChordDefinition) domain.ChordDefinition {
+	if f.voicings == nil {
+		return c
+	}
+	var active []domain.ChordVoicing
+	for _, v := range c.Voicings {
+		if f.voicings[v.ID].Status == domain.ChordVoicingActive {
+			active = append(active, v)
+		}
+	}
+	c.Voicings = active
+	return c
 }
 
 func (f *fakeChordCatalogRepository) FindChord(_ context.Context, rootPitchClass int, quality domain.ChordQuality, bassPitchClass *int) (domain.ChordDefinition, error) {
@@ -1954,8 +2009,93 @@ func (f *fakeChordCatalogRepository) FindChord(_ context.Context, rootPitchClass
 		sameBass := (c.BassPitchClass == nil && bassPitchClass == nil) ||
 			(c.BassPitchClass != nil && bassPitchClass != nil && *c.BassPitchClass == *bassPitchClass)
 		if c.RootPitchClass == rootPitchClass && c.Quality == quality && sameBass {
-			return c, nil
+			return f.activeOnly(c), nil
 		}
 	}
 	return domain.ChordDefinition{}, domain.ErrNotFound
+}
+
+// fakeSongChartRepository is an in-memory ports.SongChartRepository.
+type fakeSongChartRepository struct {
+	mu        sync.Mutex
+	charts    map[string]domain.SongChart
+	revisions map[string][]domain.SongChartRevision
+}
+
+func newFakeSongChartRepository() *fakeSongChartRepository {
+	return &fakeSongChartRepository{charts: map[string]domain.SongChart{}, revisions: map[string][]domain.SongChartRevision{}}
+}
+
+func (f *fakeSongChartRepository) Create(_ context.Context, chart domain.SongChart) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.charts[chart.ID] = chart
+	return nil
+}
+
+func (f *fakeSongChartRepository) GetByID(_ context.Context, id string) (domain.SongChart, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	chart, ok := f.charts[id]
+	if !ok {
+		return domain.SongChart{}, domain.ErrNotFound
+	}
+	return chart, nil
+}
+
+func (f *fakeSongChartRepository) List(_ context.Context, filter domain.SongChartFilter, page domain.PageRequest) (domain.Page[domain.SongChart], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var matched []domain.SongChart
+	for _, c := range f.charts {
+		if filter.Status != nil && c.Status != *filter.Status {
+			continue
+		}
+		if filter.Q != "" && !containsFold(c.Draft.Title, filter.Q) && !containsFold(c.Draft.Artist, filter.Q) {
+			continue
+		}
+		matched = append(matched, c)
+	}
+	sort.Slice(matched, func(i, j int) bool {
+		if !matched[i].Draft.UpdatedAt.Equal(matched[j].Draft.UpdatedAt) {
+			return matched[i].Draft.UpdatedAt.After(matched[j].Draft.UpdatedAt)
+		}
+		return matched[i].ID < matched[j].ID
+	})
+	return paginate(matched, page), nil
+}
+
+func (f *fakeSongChartRepository) Save(_ context.Context, chart domain.SongChart) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.charts[chart.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	f.charts[chart.ID] = chart
+	return nil
+}
+
+func (f *fakeSongChartRepository) Publish(_ context.Context, chart domain.SongChart, rev domain.SongChartRevision) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.charts[chart.ID] = chart
+	f.revisions[chart.ID] = append([]domain.SongChartRevision{rev}, f.revisions[chart.ID]...)
+	return nil
+}
+
+func (f *fakeSongChartRepository) ListRevisions(_ context.Context, chartID string) ([]domain.SongChartRevision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]domain.SongChartRevision(nil), f.revisions[chartID]...), nil
+}
+
+func (f *fakeSongChartRepository) GetRevision(_ context.Context, chartID string, number int) (domain.SongChartRevision, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, rev := range f.revisions[chartID] {
+		if rev.Number == number {
+			return rev, nil
+		}
+	}
+	return domain.SongChartRevision{}, domain.ErrNotFound
 }
