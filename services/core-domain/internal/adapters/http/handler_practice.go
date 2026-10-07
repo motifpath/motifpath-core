@@ -279,13 +279,15 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 
 // generatedDiagramShape is the generated PracticeSessionItem's diagram_shape.
 type generatedDiagramShape = struct {
-	AskedInterval *generated.ShapeInterval    `json:"asked_interval"`
-	DiagramId     openapi_types.UUID          `json:"diagram_id"`
-	Drill         generated.DiagramShapeDrill `json:"drill"`
-	Options       []struct {
+	AskedInterval      *generated.ShapeInterval    `json:"asked_interval"`
+	DiagramId          openapi_types.UUID          `json:"diagram_id"`
+	Drill              generated.DiagramShapeDrill `json:"drill"`
+	LayoutInstrumentId openapi_types.UUID          `json:"layout_instrument_id"`
+	Options            []struct {
 		Name  string `json:"name"`
 		Shape string `json:"shape"`
 	} `json:"options"`
+	Shape       string `json:"shape"`
 	ShapeFamily string `json:"shape_family"`
 }
 
@@ -293,9 +295,11 @@ type generatedDiagramShape = struct {
 // and always a list, empty for a degree to find.
 func toGeneratedDiagramShape(d domain.PlannedDiagramShape, locale string) *generatedDiagramShape {
 	out := &generatedDiagramShape{
-		DiagramId:   mustUUID(d.DiagramID),
-		Drill:       generated.DiagramShapeDrill(d.Drill),
-		ShapeFamily: d.Family,
+		DiagramId:          mustUUID(d.DiagramID),
+		Drill:              generated.DiagramShapeDrill(d.Drill),
+		LayoutInstrumentId: mustUUID(d.LayoutInstrumentID),
+		Shape:              d.Shape,
+		ShapeFamily:        d.Family,
 		Options: make([]struct {
 			Name  string `json:"name"`
 			Shape string `json:"shape"`

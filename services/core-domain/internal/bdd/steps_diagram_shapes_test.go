@@ -93,9 +93,11 @@ type diagramShapeWorld struct {
 	// pending is a drill catalog a scenario declares, matched on install.
 	pending    []shapeFamilyEntry
 	installErr error
-	// asked is the shape a session asked, from "is asked as" steps.
-	asked    *generated.PracticeSessionItem
-	standing domain.NodeStanding
+	// asked is the shape a session asked, from "is asked" steps, and
+	// askedShape the catalog shape it asked.
+	asked      *generated.PracticeSessionItem
+	askedShape catalogShape
+	standing   domain.NodeStanding
 }
 
 func registerDiagramShapeSteps(sc *godog.ScenarioContext, w *world) {
@@ -116,6 +118,9 @@ func registerDiagramShapeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the installation fails, naming the family "([^"]+)" and the member "([^"]+)"$`, w.installationFailsNamingFamilyAndMember)
 
 	sc.Step(`^the shape "([^"]+)" is asked as (name_the_shape|find_the_degree)$`, w.shapeIsAskedAs)
+	sc.Step(`^the shape "([^"]+)" is asked$`, w.shapeIsAsked)
+	sc.Step(`^the item's shape is "([^"]+)"$`, w.theItemsShapeIs)
+	sc.Step(`^the item is drawn on the diagram's layout instrument$`, w.theItemIsDrawnOnLayoutInstrument)
 	sc.Step(`^the options are "([^"]+)", "([^"]+)", "([^"]+)", "([^"]+)" and "([^"]+)", in that order$`, w.theOptionsAre)
 	sc.Step(`^the asked degree is one of "([^"]+)", "([^"]+)", "([^"]+)" and "([^"]+)"$`, w.theAskedDegreeIsOneOf)
 	sc.Step(`^the options include "([^"]+)", although B has no C-shape grip inside frets 0–12$`, w.theOptionsIncludeMissingMember)
@@ -468,6 +473,41 @@ func (w *world) shapeIsAskedAs(name, drill string) error {
 		return fmt.Errorf("the shape is asked as %s, want %s", item.DiagramShape.Drill, drill)
 	}
 	w.diagramShapes().asked = &item
+	w.diagramShapes().askedShape = shape
+	return nil
+}
+
+// shapeIsAsked asks the catalog shape the way a shape never practised is
+// asked.
+func (w *world) shapeIsAsked(name string) error {
+	return w.shapeIsAskedAs(name, string(domain.DiagramShapeDrillNameTheShape))
+}
+
+func (w *world) theItemsShapeIs(want string) error {
+	asked, err := w.askedShape()
+	if err != nil {
+		return err
+	}
+	if asked.DiagramShape.Shape != want {
+		return fmt.Errorf("the item's shape is %q, want %q", asked.DiagramShape.Shape, want)
+	}
+	return nil
+}
+
+// theItemIsDrawnOnLayoutInstrument checks the item's layout instrument is
+// the asked diagram's, its first linked instrument.
+func (w *world) theItemIsDrawnOnLayoutInstrument() error {
+	asked, err := w.askedShape()
+	if err != nil {
+		return err
+	}
+	layout, err := w.ensureCatalogInstrument(w.diagramShapes().askedShape.diagram.Instruments[0])
+	if err != nil {
+		return err
+	}
+	if got := asked.DiagramShape.LayoutInstrumentId.String(); got != layout.ID {
+		return fmt.Errorf("the item is drawn on instrument %s, want the diagram's layout instrument %s", got, layout.ID)
+	}
 	return nil
 }
 

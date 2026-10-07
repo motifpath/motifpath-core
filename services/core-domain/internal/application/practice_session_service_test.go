@@ -1386,7 +1386,8 @@ func TestPracticeSessionService_ComposePlanDiagramShapes(t *testing.T) {
 		assert.Equal(t, domain.PracticePickNew, shapes[0].Reason)
 		assert.Equal(t, domain.DiagramShapeSeconds, shapes[0].EstimatedSeconds)
 		assert.Equal(t, &domain.PlannedDiagramShape{
-			DiagramID: "grip-c-a3", Drill: domain.DiagramShapeDrillNameTheShape, Family: "caged-grip", Options: shapeFamily.Members,
+			DiagramID: "grip-c-a3", LayoutInstrumentID: "guitar", Drill: domain.DiagramShapeDrillNameTheShape, Family: "caged-grip", Shape: "A",
+			Options: shapeFamily.Members,
 		}, shapes[0].DiagramShape)
 		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindPlayAlong))
 	})

@@ -133,9 +133,13 @@ func NextDiagramShapeDrill(state *PracticeItemState) DiagramShapeDrill {
 // PlannedDiagramShape is a diagram shape as a session asks it.
 type PlannedDiagramShape struct {
 	DiagramID string
-	Drill     DiagramShapeDrill
+	// LayoutInstrumentID is the instrument the diagram is drawn on.
+	LayoutInstrumentID string
+	Drill              DiagramShapeDrill
 	// Family is the shape's family key.
 	Family string
+	// Shape is the member the diagram is: the right shape to name.
+	Shape string
 	// Options are every member of the family, in catalog order, for a shape
 	// to name, including members with no shape at this root, so the choices
 	// never narrow the answer down; empty for a degree to find.
@@ -149,7 +153,9 @@ type PlannedDiagramShape struct {
 // shown: pick chooses among them, given how many there are. A shape with
 // nothing but roots has no degree to find, so it is named instead.
 func PlanDiagramShape(d Diagram, drill DiagramShapeDrill, pick func(n int) int) PlannedDiagramShape {
-	planned := PlannedDiagramShape{DiagramID: d.ID, Drill: drill, Family: d.Shape.Family.Key}
+	planned := PlannedDiagramShape{
+		DiagramID: d.ID, LayoutInstrumentID: d.InstrumentID, Drill: drill, Family: d.Shape.Family.Key, Shape: d.Shape.Shape,
+	}
 	if drill == DiagramShapeDrillFindTheDegree {
 		if degrees := shapeDegrees(d); len(degrees) > 0 {
 			asked := degrees[pick(len(degrees))]
