@@ -18,6 +18,11 @@ const (
 	SongChartWithdrawn   SongChartStatus = "withdrawn"
 )
 
+// Valid says whether s is one of the statuses a chart can have.
+func (s SongChartStatus) Valid() bool {
+	return s == SongChartDraftStatus || s == SongChartPublished || s == SongChartWithdrawn
+}
+
 // StandardGuitarTuningFingerprint is the tuning every song chart's chords
 // are written for: standard six-string guitar, lowest string first.
 const StandardGuitarTuningFingerprint = "E2-A2-D3-G3-B3-E4"

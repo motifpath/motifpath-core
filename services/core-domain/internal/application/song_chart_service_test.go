@@ -548,6 +548,16 @@ func TestSongChartService_List(t *testing.T) {
 		assert.Equal(t, 1, page.Total)
 	})
 
+	t.Run("a status the API doesn't know is a validation error, not an empty list", func(t *testing.T) {
+		unknown := domain.SongChartStatus("bogus")
+
+		_, err := newSongChartFixture().service.List(ctx, adminCaller(), domain.SongChartFilter{Status: &unknown}, domain.PageRequest{Limit: 20})
+
+		var valErr *domain.ValidationError
+		require.ErrorAs(t, err, &valErr)
+		assert.Equal(t, "status", valErr.Fields[0].Field)
+	})
+
 	t.Run("a teacher cannot list song charts", func(t *testing.T) {
 		_, err := newSongChartFixture().service.List(ctx, teacherCaller(), domain.SongChartFilter{}, domain.PageRequest{Limit: 20})
 

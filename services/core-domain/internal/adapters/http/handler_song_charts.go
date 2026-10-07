@@ -60,10 +60,15 @@ func (h *Handler) ListSongCharts(ctx context.Context, request generated.ListSong
 		filter.Status = &status
 	}
 	result, err := h.songChart.List(ctx, caller, filter, page)
-	if errors.Is(err, domain.ErrForbidden) {
-		return generated.ListSongCharts403JSONResponse(forbiddenError(onlyAdminsAuthorSongCharts)), nil
-	}
 	if err != nil {
+		kind, valErr := classify(err)
+		switch kind {
+		case errKindValidation:
+			return generated.ListSongCharts400JSONResponse(validationErrorResponse(valErr)), nil
+		case errKindForbidden:
+			return generated.ListSongCharts403JSONResponse(forbiddenError(onlyAdminsAuthorSongCharts)), nil
+		case errKindNotFound, errKindOther:
+		}
 		return nil, err
 	}
 	ids := make([]string, 0, len(result.Items))

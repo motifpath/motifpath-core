@@ -148,6 +148,11 @@ func (s *SongChartService) List(ctx context.Context, caller domain.User, filter 
 	if err := requireAdmin(caller); err != nil {
 		return domain.Page[domain.SongChart]{}, err
 	}
+	// Nothing checks an enum query parameter before it gets here, so an
+	// unknown status would otherwise match no chart and read as an empty list.
+	if filter.Status != nil && !filter.Status.Valid() {
+		return domain.Page[domain.SongChart]{}, domain.NewValidationError("status", "must be draft, published or withdrawn")
+	}
 	return s.charts.List(ctx, filter, page)
 }
 
