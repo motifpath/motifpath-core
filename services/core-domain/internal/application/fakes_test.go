@@ -1933,3 +1933,29 @@ func (f *fakePracticeReferenceWriter) diagram(id string) (domain.DiagramReferenc
 	ref, ok := f.diagrams[id]
 	return ref, ok
 }
+
+// fakeChordCatalogRepository holds chords with their active voicings already
+// ranked, as the catalog installs them.
+type fakeChordCatalogRepository struct {
+	chords []domain.ChordDefinition
+}
+
+func (f *fakeChordCatalogRepository) GetChord(_ context.Context, id string) (domain.ChordDefinition, error) {
+	for _, c := range f.chords {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+	return domain.ChordDefinition{}, domain.ErrNotFound
+}
+
+func (f *fakeChordCatalogRepository) FindChord(_ context.Context, rootPitchClass int, quality domain.ChordQuality, bassPitchClass *int) (domain.ChordDefinition, error) {
+	for _, c := range f.chords {
+		sameBass := (c.BassPitchClass == nil && bassPitchClass == nil) ||
+			(c.BassPitchClass != nil && bassPitchClass != nil && *c.BassPitchClass == *bassPitchClass)
+		if c.RootPitchClass == rootPitchClass && c.Quality == quality && sameBass {
+			return c, nil
+		}
+	}
+	return domain.ChordDefinition{}, domain.ErrNotFound
+}

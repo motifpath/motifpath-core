@@ -18,6 +18,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -71,6 +73,10 @@ type Client struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
+	// ChordDefinition is the client for interacting with the ChordDefinition builders.
+	ChordDefinition *ChordDefinitionClient
+	// ChordVoicing is the client for interacting with the ChordVoicing builders.
+	ChordVoicing *ChordVoicingClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -168,6 +174,8 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Challenge = NewChallengeClient(c.config)
 	c.ChallengeExercise = NewChallengeExerciseClient(c.config)
+	c.ChordDefinition = NewChordDefinitionClient(c.config)
+	c.ChordVoicing = NewChordVoicingClient(c.config)
 	c.ContentNode = NewContentNodeClient(c.config)
 	c.ContentNodeConcept = NewContentNodeConceptClient(c.config)
 	c.ContentNodeExercise = NewContentNodeExerciseClient(c.config)
@@ -304,6 +312,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                  cfg,
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
+		ChordDefinition:         NewChordDefinitionClient(cfg),
+		ChordVoicing:            NewChordVoicingClient(cfg),
 		ContentNode:             NewContentNodeClient(cfg),
 		ContentNodeConcept:      NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:     NewContentNodeExerciseClient(cfg),
@@ -367,6 +377,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                  cfg,
 		Challenge:               NewChallengeClient(cfg),
 		ChallengeExercise:       NewChallengeExerciseClient(cfg),
+		ChordDefinition:         NewChordDefinitionClient(cfg),
+		ChordVoicing:            NewChordVoicingClient(cfg),
 		ContentNode:             NewContentNodeClient(cfg),
 		ContentNodeConcept:      NewContentNodeConceptClient(cfg),
 		ContentNodeExercise:     NewContentNodeExerciseClient(cfg),
@@ -438,16 +450,17 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeConcept,
-		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
-		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
-		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
-		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange, c.Instrument,
-		c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language,
-		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.Challenge, c.ChallengeExercise, c.ChordDefinition, c.ChordVoicing,
+		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
+		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
+		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
+		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramSkill,
+		c.DrillTemplate, c.DrillThreshold, c.Exercise, c.ExerciseConcept,
+		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.FretboardCellRange, c.Instrument, c.KnowledgeEdge,
+		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
@@ -458,16 +471,17 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Challenge, c.ChallengeExercise, c.ContentNode, c.ContentNodeConcept,
-		c.ContentNodeExercise, c.ContentNodeInstrument, c.ContentNodeLanguage,
-		c.ContentNodeSkill, c.ContentNodeVersion, c.Course, c.CourseCheckpoint,
-		c.CourseEnrollment, c.CourseInstrument, c.CourseVersion,
-		c.CourseVersionCheckpoint, c.Diagram, c.DiagramConcept, c.DiagramInstrument,
-		c.DiagramRegion, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold, c.Exercise,
-		c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption,
-		c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange, c.Instrument,
-		c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language,
-		c.LearningPath, c.LearningPathInstrument, c.LearningPathItem, c.Position,
+		c.Challenge, c.ChallengeExercise, c.ChordDefinition, c.ChordVoicing,
+		c.ContentNode, c.ContentNodeConcept, c.ContentNodeExercise,
+		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
+		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
+		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
+		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramSkill,
+		c.DrillTemplate, c.DrillThreshold, c.Exercise, c.ExerciseConcept,
+		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
+		c.ExpandedContent, c.FretboardCellRange, c.Instrument, c.KnowledgeEdge,
+		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
+		c.LearningPathInstrument, c.LearningPathItem, c.Position,
 		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
@@ -481,6 +495,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Challenge.mutate(ctx, m)
 	case *ChallengeExerciseMutation:
 		return c.ChallengeExercise.mutate(ctx, m)
+	case *ChordDefinitionMutation:
+		return c.ChordDefinition.mutate(ctx, m)
+	case *ChordVoicingMutation:
+		return c.ChordVoicing.mutate(ctx, m)
 	case *ContentNodeMutation:
 		return c.ContentNode.mutate(ctx, m)
 	case *ContentNodeConceptMutation:
@@ -897,6 +915,336 @@ func (c *ChallengeExerciseClient) mutate(ctx context.Context, m *ChallengeExerci
 		return (&ChallengeExerciseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown ChallengeExercise mutation op: %q", m.Op())
+	}
+}
+
+// ChordDefinitionClient is a client for the ChordDefinition schema.
+type ChordDefinitionClient struct {
+	config
+}
+
+// NewChordDefinitionClient returns a client for the ChordDefinition from the given config.
+func NewChordDefinitionClient(c config) *ChordDefinitionClient {
+	return &ChordDefinitionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `chorddefinition.Hooks(f(g(h())))`.
+func (c *ChordDefinitionClient) Use(hooks ...Hook) {
+	c.hooks.ChordDefinition = append(c.hooks.ChordDefinition, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `chorddefinition.Intercept(f(g(h())))`.
+func (c *ChordDefinitionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChordDefinition = append(c.inters.ChordDefinition, interceptors...)
+}
+
+// Create returns a builder for creating a ChordDefinition entity.
+func (c *ChordDefinitionClient) Create() *ChordDefinitionCreate {
+	mutation := newChordDefinitionMutation(c.config, OpCreate)
+	return &ChordDefinitionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChordDefinition entities.
+func (c *ChordDefinitionClient) CreateBulk(builders ...*ChordDefinitionCreate) *ChordDefinitionCreateBulk {
+	return &ChordDefinitionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChordDefinitionClient) MapCreateBulk(slice any, setFunc func(*ChordDefinitionCreate, int)) *ChordDefinitionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChordDefinitionCreateBulk{err: fmt.Errorf("calling to ChordDefinitionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChordDefinitionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChordDefinitionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChordDefinition.
+func (c *ChordDefinitionClient) Update() *ChordDefinitionUpdate {
+	mutation := newChordDefinitionMutation(c.config, OpUpdate)
+	return &ChordDefinitionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChordDefinitionClient) UpdateOne(_m *ChordDefinition) *ChordDefinitionUpdateOne {
+	mutation := newChordDefinitionMutation(c.config, OpUpdateOne, withChordDefinition(_m))
+	return &ChordDefinitionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChordDefinitionClient) UpdateOneID(id uuid.UUID) *ChordDefinitionUpdateOne {
+	mutation := newChordDefinitionMutation(c.config, OpUpdateOne, withChordDefinitionID(id))
+	return &ChordDefinitionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChordDefinition.
+func (c *ChordDefinitionClient) Delete() *ChordDefinitionDelete {
+	mutation := newChordDefinitionMutation(c.config, OpDelete)
+	return &ChordDefinitionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChordDefinitionClient) DeleteOne(_m *ChordDefinition) *ChordDefinitionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChordDefinitionClient) DeleteOneID(id uuid.UUID) *ChordDefinitionDeleteOne {
+	builder := c.Delete().Where(chorddefinition.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChordDefinitionDeleteOne{builder}
+}
+
+// Query returns a query builder for ChordDefinition.
+func (c *ChordDefinitionClient) Query() *ChordDefinitionQuery {
+	return &ChordDefinitionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChordDefinition},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChordDefinition entity by its id.
+func (c *ChordDefinitionClient) Get(ctx context.Context, id uuid.UUID) (*ChordDefinition, error) {
+	return c.Query().Where(chorddefinition.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChordDefinitionClient) GetX(ctx context.Context, id uuid.UUID) *ChordDefinition {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryVoicings queries the voicings edge of a ChordDefinition.
+func (c *ChordDefinitionClient) QueryVoicings(_m *ChordDefinition) *ChordVoicingQuery {
+	query := (&ChordVoicingClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chorddefinition.Table, chorddefinition.FieldID, id),
+			sqlgraph.To(chordvoicing.Table, chordvoicing.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, chorddefinition.VoicingsTable, chorddefinition.VoicingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChordDefinitionClient) Hooks() []Hook {
+	return c.hooks.ChordDefinition
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChordDefinitionClient) Interceptors() []Interceptor {
+	return c.inters.ChordDefinition
+}
+
+func (c *ChordDefinitionClient) mutate(ctx context.Context, m *ChordDefinitionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChordDefinitionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChordDefinitionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChordDefinitionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChordDefinitionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChordDefinition mutation op: %q", m.Op())
+	}
+}
+
+// ChordVoicingClient is a client for the ChordVoicing schema.
+type ChordVoicingClient struct {
+	config
+}
+
+// NewChordVoicingClient returns a client for the ChordVoicing from the given config.
+func NewChordVoicingClient(c config) *ChordVoicingClient {
+	return &ChordVoicingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `chordvoicing.Hooks(f(g(h())))`.
+func (c *ChordVoicingClient) Use(hooks ...Hook) {
+	c.hooks.ChordVoicing = append(c.hooks.ChordVoicing, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `chordvoicing.Intercept(f(g(h())))`.
+func (c *ChordVoicingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ChordVoicing = append(c.inters.ChordVoicing, interceptors...)
+}
+
+// Create returns a builder for creating a ChordVoicing entity.
+func (c *ChordVoicingClient) Create() *ChordVoicingCreate {
+	mutation := newChordVoicingMutation(c.config, OpCreate)
+	return &ChordVoicingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ChordVoicing entities.
+func (c *ChordVoicingClient) CreateBulk(builders ...*ChordVoicingCreate) *ChordVoicingCreateBulk {
+	return &ChordVoicingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ChordVoicingClient) MapCreateBulk(slice any, setFunc func(*ChordVoicingCreate, int)) *ChordVoicingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ChordVoicingCreateBulk{err: fmt.Errorf("calling to ChordVoicingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ChordVoicingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ChordVoicingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ChordVoicing.
+func (c *ChordVoicingClient) Update() *ChordVoicingUpdate {
+	mutation := newChordVoicingMutation(c.config, OpUpdate)
+	return &ChordVoicingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ChordVoicingClient) UpdateOne(_m *ChordVoicing) *ChordVoicingUpdateOne {
+	mutation := newChordVoicingMutation(c.config, OpUpdateOne, withChordVoicing(_m))
+	return &ChordVoicingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ChordVoicingClient) UpdateOneID(id uuid.UUID) *ChordVoicingUpdateOne {
+	mutation := newChordVoicingMutation(c.config, OpUpdateOne, withChordVoicingID(id))
+	return &ChordVoicingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ChordVoicing.
+func (c *ChordVoicingClient) Delete() *ChordVoicingDelete {
+	mutation := newChordVoicingMutation(c.config, OpDelete)
+	return &ChordVoicingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ChordVoicingClient) DeleteOne(_m *ChordVoicing) *ChordVoicingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ChordVoicingClient) DeleteOneID(id uuid.UUID) *ChordVoicingDeleteOne {
+	builder := c.Delete().Where(chordvoicing.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ChordVoicingDeleteOne{builder}
+}
+
+// Query returns a query builder for ChordVoicing.
+func (c *ChordVoicingClient) Query() *ChordVoicingQuery {
+	return &ChordVoicingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeChordVoicing},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ChordVoicing entity by its id.
+func (c *ChordVoicingClient) Get(ctx context.Context, id uuid.UUID) (*ChordVoicing, error) {
+	return c.Query().Where(chordvoicing.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ChordVoicingClient) GetX(ctx context.Context, id uuid.UUID) *ChordVoicing {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryChordDefinition queries the chord_definition edge of a ChordVoicing.
+func (c *ChordVoicingClient) QueryChordDefinition(_m *ChordVoicing) *ChordDefinitionQuery {
+	query := (&ChordDefinitionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chordvoicing.Table, chordvoicing.FieldID, id),
+			sqlgraph.To(chorddefinition.Table, chorddefinition.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, chordvoicing.ChordDefinitionTable, chordvoicing.ChordDefinitionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDiagram queries the diagram edge of a ChordVoicing.
+func (c *ChordVoicingClient) QueryDiagram(_m *ChordVoicing) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chordvoicing.Table, chordvoicing.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, chordvoicing.DiagramTable, chordvoicing.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryInstrument queries the instrument edge of a ChordVoicing.
+func (c *ChordVoicingClient) QueryInstrument(_m *ChordVoicing) *InstrumentQuery {
+	query := (&InstrumentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(chordvoicing.Table, chordvoicing.FieldID, id),
+			sqlgraph.To(instrument.Table, instrument.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, chordvoicing.InstrumentTable, chordvoicing.InstrumentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ChordVoicingClient) Hooks() []Hook {
+	return c.hooks.ChordVoicing
+}
+
+// Interceptors returns the client interceptors.
+func (c *ChordVoicingClient) Interceptors() []Interceptor {
+	return c.inters.ChordVoicing
+}
+
+func (c *ChordVoicingClient) mutate(ctx context.Context, m *ChordVoicingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ChordVoicingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ChordVoicingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ChordVoicingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ChordVoicingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ChordVoicing mutation op: %q", m.Op())
 	}
 }
 
@@ -8297,29 +8645,29 @@ func (c *VoiceClient) mutate(ctx context.Context, m *VoiceMutation) (Value, erro
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Challenge, ChallengeExercise, ContentNode, ContentNodeConcept,
-		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
-		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
-		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
-		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
-		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
-		User, Voice []ent.Hook
+		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
+		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
+		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
+		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
+		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
+		DiagramRegion, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
+		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
+		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
+		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
-		Challenge, ChallengeExercise, ContentNode, ContentNodeConcept,
-		ContentNodeExercise, ContentNodeInstrument, ContentNodeLanguage,
-		ContentNodeSkill, ContentNodeVersion, Course, CourseCheckpoint,
-		CourseEnrollment, CourseInstrument, CourseVersion, CourseVersionCheckpoint,
-		Diagram, DiagramConcept, DiagramInstrument, DiagramRegion, DiagramSkill,
-		DrillTemplate, DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
-		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
-		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
-		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
-		User, Voice []ent.Interceptor
+		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
+		ContentNodeConcept, ContentNodeExercise, ContentNodeInstrument,
+		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
+		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
+		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
+		DiagramRegion, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
+		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
+		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
+		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
+		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
 	}
 )

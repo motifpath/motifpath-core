@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challenge"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/challengeexercise"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chorddefinition"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/chordvoicing"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnode"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/contentnodeexercise"
@@ -80,6 +82,110 @@ func init() {
 	challengeexerciseDescLinkedAt := challengeexerciseFields[2].Descriptor()
 	// challengeexercise.DefaultLinkedAt holds the default value on creation for the linked_at field.
 	challengeexercise.DefaultLinkedAt = challengeexerciseDescLinkedAt.Default.(func() time.Time)
+	chorddefinitionFields := schema.ChordDefinition{}.Fields()
+	_ = chorddefinitionFields
+	// chorddefinitionDescCanonicalSymbol is the schema descriptor for canonical_symbol field.
+	chorddefinitionDescCanonicalSymbol := chorddefinitionFields[1].Descriptor()
+	// chorddefinition.CanonicalSymbolValidator is a validator for the "canonical_symbol" field. It is called by the builders before save.
+	chorddefinition.CanonicalSymbolValidator = func() func(string) error {
+		validators := chorddefinitionDescCanonicalSymbol.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(canonical_symbol string) error {
+			for _, fn := range fns {
+				if err := fn(canonical_symbol); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chorddefinitionDescRoot is the schema descriptor for root field.
+	chorddefinitionDescRoot := chorddefinitionFields[2].Descriptor()
+	// chorddefinition.RootValidator is a validator for the "root" field. It is called by the builders before save.
+	chorddefinition.RootValidator = func() func(string) error {
+		validators := chorddefinitionDescRoot.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(root string) error {
+			for _, fn := range fns {
+				if err := fn(root); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chorddefinitionDescRootPitchClass is the schema descriptor for root_pitch_class field.
+	chorddefinitionDescRootPitchClass := chorddefinitionFields[3].Descriptor()
+	// chorddefinition.RootPitchClassValidator is a validator for the "root_pitch_class" field. It is called by the builders before save.
+	chorddefinition.RootPitchClassValidator = chorddefinitionDescRootPitchClass.Validators[0].(func(int) error)
+	// chorddefinitionDescQuality is the schema descriptor for quality field.
+	chorddefinitionDescQuality := chorddefinitionFields[4].Descriptor()
+	// chorddefinition.QualityValidator is a validator for the "quality" field. It is called by the builders before save.
+	chorddefinition.QualityValidator = func() func(string) error {
+		validators := chorddefinitionDescQuality.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(quality string) error {
+			for _, fn := range fns {
+				if err := fn(quality); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chorddefinitionDescBass is the schema descriptor for bass field.
+	chorddefinitionDescBass := chorddefinitionFields[7].Descriptor()
+	// chorddefinition.BassValidator is a validator for the "bass" field. It is called by the builders before save.
+	chorddefinition.BassValidator = chorddefinitionDescBass.Validators[0].(func(string) error)
+	// chorddefinitionDescBassPitchClass is the schema descriptor for bass_pitch_class field.
+	chorddefinitionDescBassPitchClass := chorddefinitionFields[8].Descriptor()
+	// chorddefinition.BassPitchClassValidator is a validator for the "bass_pitch_class" field. It is called by the builders before save.
+	chorddefinition.BassPitchClassValidator = chorddefinitionDescBassPitchClass.Validators[0].(func(int) error)
+	chordvoicingFields := schema.ChordVoicing{}.Fields()
+	_ = chordvoicingFields
+	// chordvoicingDescTuningFingerprint is the schema descriptor for tuning_fingerprint field.
+	chordvoicingDescTuningFingerprint := chordvoicingFields[4].Descriptor()
+	// chordvoicing.TuningFingerprintValidator is a validator for the "tuning_fingerprint" field. It is called by the builders before save.
+	chordvoicing.TuningFingerprintValidator = func() func(string) error {
+		validators := chordvoicingDescTuningFingerprint.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(tuning_fingerprint string) error {
+			for _, fn := range fns {
+				if err := fn(tuning_fingerprint); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// chordvoicingDescLowestFret is the schema descriptor for lowest_fret field.
+	chordvoicingDescLowestFret := chordvoicingFields[5].Descriptor()
+	// chordvoicing.LowestFretValidator is a validator for the "lowest_fret" field. It is called by the builders before save.
+	chordvoicing.LowestFretValidator = chordvoicingDescLowestFret.Validators[0].(func(int) error)
+	// chordvoicingDescHighestFret is the schema descriptor for highest_fret field.
+	chordvoicingDescHighestFret := chordvoicingFields[6].Descriptor()
+	// chordvoicing.HighestFretValidator is a validator for the "highest_fret" field. It is called by the builders before save.
+	chordvoicing.HighestFretValidator = chordvoicingDescHighestFret.Validators[0].(func(int) error)
+	// chordvoicingDescRecommendedRank is the schema descriptor for recommended_rank field.
+	chordvoicingDescRecommendedRank := chordvoicingFields[14].Descriptor()
+	// chordvoicing.RecommendedRankValidator is a validator for the "recommended_rank" field. It is called by the builders before save.
+	chordvoicing.RecommendedRankValidator = chordvoicingDescRecommendedRank.Validators[0].(func(int) error)
+	// chordvoicingDescTemplateKey is the schema descriptor for template_key field.
+	chordvoicingDescTemplateKey := chordvoicingFields[16].Descriptor()
+	// chordvoicing.TemplateKeyValidator is a validator for the "template_key" field. It is called by the builders before save.
+	chordvoicing.TemplateKeyValidator = chordvoicingDescTemplateKey.Validators[0].(func(string) error)
 	contentnodeFields := schema.ContentNode{}.Fields()
 	_ = contentnodeFields
 	// contentnodeDescCreatedAt is the schema descriptor for created_at field.
@@ -193,11 +299,11 @@ func init() {
 	diagramFields := schema.Diagram{}.Fields()
 	_ = diagramFields
 	// diagramDescPlaybacks is the schema descriptor for playbacks field.
-	diagramDescPlaybacks := diagramFields[9].Descriptor()
+	diagramDescPlaybacks := diagramFields[10].Descriptor()
 	// diagram.DefaultPlaybacks holds the default value on creation for the playbacks field.
 	diagram.DefaultPlaybacks = diagramDescPlaybacks.Default.([]schema.Playback)
 	// diagramDescCreatedAt is the schema descriptor for created_at field.
-	diagramDescCreatedAt := diagramFields[11].Descriptor()
+	diagramDescCreatedAt := diagramFields[12].Descriptor()
 	// diagram.DefaultCreatedAt holds the default value on creation for the created_at field.
 	diagram.DefaultCreatedAt = diagramDescCreatedAt.Default.(func() time.Time)
 	// diagramDescID is the schema descriptor for id field.

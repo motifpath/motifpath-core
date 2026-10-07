@@ -287,3 +287,30 @@ func TestDiagramAnswerCellMapping(t *testing.T) {
 		assert.Equal(t, &ref, back)
 	})
 }
+
+func TestDiagramPurposeMapping(t *testing.T) {
+	t.Run("a diagram's purpose reaches the response", func(t *testing.T) {
+		owner := uuid.New()
+		diagram := domain.Diagram{
+			ID: uuid.NewString(), InstrumentID: uuid.NewString(), Names: domain.LocalizedText{"en": "Am — open"},
+			Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeChordVoicing, CreatedBy: owner.String(), LabelDisplay: domain.LabelDisplayInterval,
+		}
+
+		got := toGeneratedDiagram(diagram, userNames{owner.String(): "MotifPath Catalog"})
+
+		assert.Equal(t, generated.DiagramPurposeChordVoicing, got.Purpose)
+	})
+
+	t.Run("the purpose list parameter maps onto the filter", func(t *testing.T) {
+		for param, want := range map[generated.ListDiagramsParamsPurpose]domain.DiagramPurposeFilter{
+			generated.ListDiagramsParamsPurposeGeneral:      domain.DiagramPurposeFilterGeneral,
+			generated.ListDiagramsParamsPurposeChordVoicing: domain.DiagramPurposeFilterChordVoicing,
+			generated.ListDiagramsParamsPurposeAny:          domain.DiagramPurposeFilterAny,
+		} {
+			got, err := diagramListFilter(generated.ListDiagramsParams{Purpose: &param})
+
+			require.NoError(t, err)
+			assert.Equal(t, want, got.Purpose, string(param))
+		}
+	})
+}

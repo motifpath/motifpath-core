@@ -66,6 +66,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetInstrumentID(instrumentID).
 		SetNames(d.Names).
 		SetKind(diagram.Kind(d.Kind)).
+		SetPurpose(entPurpose(d.Purpose)).
 		SetCreatedBy(createdBy).
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
@@ -210,6 +211,9 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 	var predicates []predicate.Diagram
 	if filter.Kind != "" {
 		predicates = append(predicates, diagram.KindEQ(diagram.Kind(filter.Kind)))
+	}
+	if filter.Purpose != "" && filter.Purpose != domain.DiagramPurposeFilterAny {
+		predicates = append(predicates, diagram.PurposeEQ(diagram.Purpose(filter.Purpose)))
 	}
 	byID := []struct {
 		value string
@@ -445,6 +449,7 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		InstrumentIDs:     instrumentIDs,
 		Names:             domain.LocalizedText(row.Names),
 		Kind:              domain.DiagramKind(row.Kind),
+		Purpose:           domain.DiagramPurpose(row.Purpose),
 		CreatedBy:         row.CreatedBy.String(),
 		RootNote:          row.RootNote,
 		LabelDisplay:      domain.LabelDisplay(row.LabelDisplay),
@@ -550,4 +555,13 @@ func localizedTextOrNil(text map[string]string) domain.LocalizedText {
 		return nil
 	}
 	return domain.LocalizedText(text)
+}
+
+// entPurpose stores d's purpose, reading an unset one as general: only the
+// chord catalog installs a diagram of another purpose.
+func entPurpose(p domain.DiagramPurpose) diagram.Purpose {
+	if p == "" {
+		return diagram.PurposeGeneral
+	}
+	return diagram.Purpose(p)
 }

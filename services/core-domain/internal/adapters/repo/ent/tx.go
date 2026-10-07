@@ -16,6 +16,10 @@ type Tx struct {
 	Challenge *ChallengeClient
 	// ChallengeExercise is the client for interacting with the ChallengeExercise builders.
 	ChallengeExercise *ChallengeExerciseClient
+	// ChordDefinition is the client for interacting with the ChordDefinition builders.
+	ChordDefinition *ChordDefinitionClient
+	// ChordVoicing is the client for interacting with the ChordVoicing builders.
+	ChordVoicing *ChordVoicingClient
 	// ContentNode is the client for interacting with the ContentNode builders.
 	ContentNode *ContentNodeClient
 	// ContentNodeConcept is the client for interacting with the ContentNodeConcept builders.
@@ -233,6 +237,8 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Challenge = NewChallengeClient(tx.config)
 	tx.ChallengeExercise = NewChallengeExerciseClient(tx.config)
+	tx.ChordDefinition = NewChordDefinitionClient(tx.config)
+	tx.ChordVoicing = NewChordVoicingClient(tx.config)
 	tx.ContentNode = NewContentNodeClient(tx.config)
 	tx.ContentNodeConcept = NewContentNodeConceptClient(tx.config)
 	tx.ContentNodeExercise = NewContentNodeExerciseClient(tx.config)

@@ -173,6 +173,7 @@ type DiagramListFilter struct {
 	SkillID      string
 	ConceptID    string
 	Kind         DiagramKind
+	Purpose      DiagramPurposeFilter
 	CreatedBy    string
 	VisibleTo    string
 	Language     string
@@ -187,13 +188,16 @@ func (f DiagramListFilter) Matches(d Diagram) bool {
 	return f.matchesScope(d) && f.matchesContent(d)
 }
 
-// matchesScope checks who may see d and who made it: VisibleTo, Kind and
-// CreatedBy.
+// matchesScope checks who may see d, what it is for and who made it:
+// VisibleTo, Kind, Purpose and CreatedBy.
 func (f DiagramListFilter) matchesScope(d Diagram) bool {
 	if f.VisibleTo != "" && d.Kind != DiagramKindBasic && d.CreatedBy != f.VisibleTo {
 		return false
 	}
 	if f.Kind != "" && d.Kind != f.Kind {
+		return false
+	}
+	if !f.Purpose.Matches(d.Purpose) {
 		return false
 	}
 	return f.CreatedBy == "" || d.CreatedBy == f.CreatedBy

@@ -414,7 +414,7 @@ func (w *world) firstLessonShowsCompleted(slug string) error {
 	if !ok {
 		return fmt.Errorf("expected the copy's path view, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	if len(view.Items) == 0 || view.Items[0].Status != generated.StudentPathItemStatusCompleted {
+	if len(view.Items) == 0 || view.Items[0].Status != generated.Completed {
 		return fmt.Errorf("expected the first lesson of %q completed, got %#v", slug, view.Items)
 	}
 	return nil

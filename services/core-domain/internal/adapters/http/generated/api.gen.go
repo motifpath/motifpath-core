@@ -21,6 +21,122 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// Defines values for ChordInterval.
+const (
+	ChordIntervalB3    ChordInterval = "b3"
+	ChordIntervalB5    ChordInterval = "b5"
+	ChordIntervalB7    ChordInterval = "b7"
+	ChordIntervalB9    ChordInterval = "b9"
+	ChordIntervalBb7   ChordInterval = "bb7"
+	ChordIntervalHash5 ChordInterval = "#5"
+	ChordIntervalHash9 ChordInterval = "#9"
+	ChordIntervalN11   ChordInterval = "11"
+	ChordIntervalN13   ChordInterval = "13"
+	ChordIntervalN2    ChordInterval = "2"
+	ChordIntervalN3    ChordInterval = "3"
+	ChordIntervalN4    ChordInterval = "4"
+	ChordIntervalN5    ChordInterval = "5"
+	ChordIntervalN6    ChordInterval = "6"
+	ChordIntervalN7    ChordInterval = "7"
+	ChordIntervalN9    ChordInterval = "9"
+	ChordIntervalR     ChordInterval = "R"
+)
+
+// Defines values for ChordQuality.
+const (
+	ChordQualityAdd9            ChordQuality = "add_9"
+	ChordQualityAugmented       ChordQuality = "augmented"
+	ChordQualityDiminished      ChordQuality = "diminished"
+	ChordQualityDiminished7     ChordQuality = "diminished_7"
+	ChordQualityDominant11      ChordQuality = "dominant_11"
+	ChordQualityDominant13      ChordQuality = "dominant_13"
+	ChordQualityDominant7       ChordQuality = "dominant_7"
+	ChordQualityDominant7Flat5  ChordQuality = "dominant_7_flat_5"
+	ChordQualityDominant7Flat9  ChordQuality = "dominant_7_flat_9"
+	ChordQualityDominant7Sharp5 ChordQuality = "dominant_7_sharp_5"
+	ChordQualityDominant7Sharp9 ChordQuality = "dominant_7_sharp_9"
+	ChordQualityDominant7Sus4   ChordQuality = "dominant_7_sus4"
+	ChordQualityDominant9       ChordQuality = "dominant_9"
+	ChordQualityHalfDiminished7 ChordQuality = "half_diminished_7"
+	ChordQualityMajor           ChordQuality = "major"
+	ChordQualityMajor6          ChordQuality = "major_6"
+	ChordQualityMajor7          ChordQuality = "major_7"
+	ChordQualityMajor9          ChordQuality = "major_9"
+	ChordQualityMinor           ChordQuality = "minor"
+	ChordQualityMinor11         ChordQuality = "minor_11"
+	ChordQualityMinor6          ChordQuality = "minor_6"
+	ChordQualityMinor7          ChordQuality = "minor_7"
+	ChordQualityMinor9          ChordQuality = "minor_9"
+	ChordQualityMinorAdd9       ChordQuality = "minor_add_9"
+	ChordQualityMinorMajor7     ChordQuality = "minor_major_7"
+	ChordQualityPower           ChordQuality = "power"
+	ChordQualitySus2            ChordQuality = "sus2"
+	ChordQualitySus4            ChordQuality = "sus4"
+)
+
+// Defines values for ChordSearchResultStatus.
+const (
+	NoChord  ChordSearchResultStatus = "no_chord"
+	Parsed   ChordSearchResultStatus = "parsed"
+	Unparsed ChordSearchResultStatus = "unparsed"
+)
+
+// Defines values for ChordSearchResultWarning.
+const (
+	ChordSearchResultWarningLessThannil        ChordSearchResultWarning = "<nil>"
+	ChordSearchResultWarningUnparsedSymbol     ChordSearchResultWarning = "unparsed_symbol"
+	ChordSearchResultWarningUnsupportedQuality ChordSearchResultWarning = "unsupported_quality"
+)
+
+// Defines values for ChordVoicingCatalogStatus.
+const (
+	ChordVoicingCatalogStatusActive    ChordVoicingCatalogStatus = "active"
+	ChordVoicingCatalogStatusWithdrawn ChordVoicingCatalogStatus = "withdrawn"
+)
+
+// Defines values for ChordVoicingDifficulty.
+const (
+	ChordVoicingDifficultyAdvanced     ChordVoicingDifficulty = "advanced"
+	ChordVoicingDifficultyBeginner     ChordVoicingDifficulty = "beginner"
+	ChordVoicingDifficultyIntermediate ChordVoicingDifficulty = "intermediate"
+)
+
+// Defines values for ChordVoicingFingeringFinger.
+const (
+	ChordVoicingFingeringFingerN1    ChordVoicingFingeringFinger = "1"
+	ChordVoicingFingeringFingerN2    ChordVoicingFingeringFinger = "2"
+	ChordVoicingFingeringFingerN3    ChordVoicingFingeringFinger = "3"
+	ChordVoicingFingeringFingerN4    ChordVoicingFingeringFinger = "4"
+	ChordVoicingFingeringFingerThumb ChordVoicingFingeringFinger = "thumb"
+)
+
+// Defines values for ChordVoicingProvenanceSource.
+const (
+	HandAuthored ChordVoicingProvenanceSource = "hand_authored"
+	Template     ChordVoicingProvenanceSource = "template"
+)
+
+// Defines values for ChordVoicingShapeFamily.
+const (
+	ChordVoicingShapeFamilyAShape      ChordVoicingShapeFamily = "a_shape"
+	ChordVoicingShapeFamilyDShape      ChordVoicingShapeFamily = "d_shape"
+	ChordVoicingShapeFamilyDrop2       ChordVoicingShapeFamily = "drop_2"
+	ChordVoicingShapeFamilyDrop3       ChordVoicingShapeFamily = "drop_3"
+	ChordVoicingShapeFamilyEShape      ChordVoicingShapeFamily = "e_shape"
+	ChordVoicingShapeFamilyLessThannil ChordVoicingShapeFamily = "<nil>"
+	ChordVoicingShapeFamilyOpen        ChordVoicingShapeFamily = "open"
+	ChordVoicingShapeFamilyShell       ChordVoicingShapeFamily = "shell"
+)
+
+// Defines values for ChordVoicingTechniqueTags.
+const (
+	ChordVoicingTechniqueTagsBarre        ChordVoicingTechniqueTags = "barre"
+	ChordVoicingTechniqueTagsOpen         ChordVoicingTechniqueTags = "open"
+	ChordVoicingTechniqueTagsPartialBarre ChordVoicingTechniqueTags = "partial_barre"
+	ChordVoicingTechniqueTagsStretch      ChordVoicingTechniqueTags = "stretch"
+	ChordVoicingTechniqueTagsThumb        ChordVoicingTechniqueTags = "thumb"
+)
+
 // Defines values for ClassificationDifficultyLevel.
 const (
 	ClassificationDifficultyLevelAdvanced          ClassificationDifficultyLevel = "advanced"
@@ -211,15 +327,21 @@ const (
 	DiagramLabelDisplayNote     DiagramLabelDisplay = "note"
 )
 
+// Defines values for DiagramPurpose.
+const (
+	DiagramPurposeChordVoicing DiagramPurpose = "chord_voicing"
+	DiagramPurposeGeneral      DiagramPurpose = "general"
+)
+
 // Defines values for DiagramMode.
 const (
-	Dorian     DiagramMode = "dorian"
-	Locrian    DiagramMode = "locrian"
-	Lydian     DiagramMode = "lydian"
-	Major      DiagramMode = "major"
-	Minor      DiagramMode = "minor"
-	Mixolydian DiagramMode = "mixolydian"
-	Phrygian   DiagramMode = "phrygian"
+	DiagramModeDorian     DiagramMode = "dorian"
+	DiagramModeLocrian    DiagramMode = "locrian"
+	DiagramModeLydian     DiagramMode = "lydian"
+	DiagramModeMajor      DiagramMode = "major"
+	DiagramModeMinor      DiagramMode = "minor"
+	DiagramModeMixolydian DiagramMode = "mixolydian"
+	DiagramModePhrygian   DiagramMode = "phrygian"
 )
 
 // Defines values for DiagramPositionInterval.
@@ -411,14 +533,14 @@ const (
 
 // Defines values for PracticePickReason.
 const (
-	Application      PracticePickReason = "application"
-	Due              PracticePickReason = "due"
-	New              PracticePickReason = "new"
-	ReviewAhead      PracticePickReason = "review_ahead"
-	Stretch          PracticePickReason = "stretch"
-	TeacherSuggested PracticePickReason = "teacher_suggested"
-	WarmUp           PracticePickReason = "warm_up"
-	Weak             PracticePickReason = "weak"
+	PracticePickReasonApplication      PracticePickReason = "application"
+	PracticePickReasonDue              PracticePickReason = "due"
+	PracticePickReasonNew              PracticePickReason = "new"
+	PracticePickReasonReviewAhead      PracticePickReason = "review_ahead"
+	PracticePickReasonStretch          PracticePickReason = "stretch"
+	PracticePickReasonTeacherSuggested PracticePickReason = "teacher_suggested"
+	PracticePickReasonWarmUp           PracticePickReason = "warm_up"
+	PracticePickReasonWeak             PracticePickReason = "weak"
 )
 
 // Defines values for PromptDocumentType.
@@ -509,10 +631,10 @@ const (
 
 // Defines values for StudentPathItemStatus.
 const (
-	StudentPathItemStatusCompleted  StudentPathItemStatus = "completed"
-	StudentPathItemStatusInProgress StudentPathItemStatus = "in_progress"
-	StudentPathItemStatusLocked     StudentPathItemStatus = "locked"
-	StudentPathItemStatusNotStarted StudentPathItemStatus = "not_started"
+	Completed  StudentPathItemStatus = "completed"
+	InProgress StudentPathItemStatus = "in_progress"
+	Locked     StudentPathItemStatus = "locked"
+	NotStarted StudentPathItemStatus = "not_started"
 )
 
 // Defines values for TimeSignatureBeatValue.
@@ -608,6 +730,13 @@ const (
 	Custom ListDiagramsParamsKind = "custom"
 )
 
+// Defines values for ListDiagramsParamsPurpose.
+const (
+	ListDiagramsParamsPurposeAny          ListDiagramsParamsPurpose = "any"
+	ListDiagramsParamsPurposeChordVoicing ListDiagramsParamsPurpose = "chord_voicing"
+	ListDiagramsParamsPurposeGeneral      ListDiagramsParamsPurpose = "general"
+)
+
 // Defines values for ListExercisesParamsExerciseType.
 const (
 	AudioRecognition ListExercisesParamsExerciseType = "audio_recognition"
@@ -619,11 +748,11 @@ const (
 
 // Defines values for ListLearningPathsParamsLevels.
 const (
-	ListLearningPathsParamsLevelsAdvanced          ListLearningPathsParamsLevels = "advanced"
-	ListLearningPathsParamsLevelsBeginner          ListLearningPathsParamsLevels = "beginner"
-	ListLearningPathsParamsLevelsEarlyIntermediate ListLearningPathsParamsLevels = "early_intermediate"
-	ListLearningPathsParamsLevelsExpert            ListLearningPathsParamsLevels = "expert"
-	ListLearningPathsParamsLevelsIntermediate      ListLearningPathsParamsLevels = "intermediate"
+	Advanced          ListLearningPathsParamsLevels = "advanced"
+	Beginner          ListLearningPathsParamsLevels = "beginner"
+	EarlyIntermediate ListLearningPathsParamsLevels = "early_intermediate"
+	Expert            ListLearningPathsParamsLevels = "expert"
+	Intermediate      ListLearningPathsParamsLevels = "intermediate"
 )
 
 // Defines values for ListLearningPathsParamsSort.
@@ -685,6 +814,214 @@ type Challenge struct {
 	// set, so there is nothing to sum.
 	TimeThresholdMs *int `json:"time_threshold_ms,omitempty"`
 }
+
+// ChordDefinition A chord of the chord catalog: what it is musically, independent of
+// any fingering. A chord has many voicings, each one fingering of it.
+type ChordDefinition struct {
+	// Aliases Other spellings of this chord that the parser accepts, for
+	// display in a picker (e.g. ["BbM7", "BbΔ7", "B♭maj7"]). Not
+	// exhaustive: searchChords accepts every supported spelling.
+	Aliases []string `json:"aliases"`
+
+	// Bass The slash bass as the catalog spells it; null for a chord with no slash bass.
+	Bass *string `json:"bass"`
+
+	// CanonicalSymbol The chord's symbol in the catalog's spelling (e.g. "Bbmaj7", "D/F#").
+	CanonicalSymbol string `json:"canonical_symbol"`
+
+	// ChordDefinitionId Stable identifier for this chord, the same in every environment.
+	ChordDefinitionId openapi_types.UUID `json:"chord_definition_id"`
+
+	// Formula The chord's tones as intervals above the root, starting with R
+	// (e.g. ["R", "3", "5", "7"] for maj7). Every voicing sounds
+	// exactly these pitch classes, less the ones it declares omitted.
+	Formula []ChordInterval `json:"formula"`
+
+	// Quality The kind of chord, independent of its root. Each quality has one
+	// formula (see ChordDefinition.formula) and one canonical suffix in
+	// a chord symbol: major "", minor "m", power "5", diminished "dim",
+	// augmented "aug", sus2 "sus2", sus4 "sus4", major_6 "6", minor_6
+	// "m6", dominant_7 "7", major_7 "maj7", minor_7 "m7", minor_major_7
+	// "mMaj7", half_diminished_7 "m7b5", diminished_7 "dim7",
+	// dominant_7_sus4 "7sus4", add_9 "add9", minor_add_9 "madd9",
+	// dominant_9 "9", major_9 "maj9", minor_9 "m9", dominant_11 "11",
+	// minor_11 "m11", dominant_13 "13", dominant_7_flat_5 "7b5",
+	// dominant_7_sharp_5 "7#5", dominant_7_flat_9 "7b9",
+	// dominant_7_sharp_9 "7#9".
+	Quality ChordQuality `json:"quality"`
+
+	// Root The root as the catalog spells it.
+	Root string `json:"root"`
+
+	// RootPitchClass The root's pitch class, C = 0 through B = 11.
+	RootPitchClass int `json:"root_pitch_class"`
+
+	// Voicings The chord's active voicings, best first (by recommended_rank,
+	// then id). May be empty.
+	Voicings []ChordVoicing `json:"voicings"`
+}
+
+// ChordInterval An interval of a chord formula, as the same canonical code a
+// diagram position uses (R is the root).
+type ChordInterval string
+
+// ChordQuality The kind of chord, independent of its root. Each quality has one
+// formula (see ChordDefinition.formula) and one canonical suffix in
+// a chord symbol: major "", minor "m", power "5", diminished "dim",
+// augmented "aug", sus2 "sus2", sus4 "sus4", major_6 "6", minor_6
+// "m6", dominant_7 "7", major_7 "maj7", minor_7 "m7", minor_major_7
+// "mMaj7", half_diminished_7 "m7b5", diminished_7 "dim7",
+// dominant_7_sus4 "7sus4", add_9 "add9", minor_add_9 "madd9",
+// dominant_9 "9", major_9 "maj9", minor_9 "m9", dominant_11 "11",
+// minor_11 "m11", dominant_13 "13", dominant_7_flat_5 "7b5",
+// dominant_7_sharp_5 "7#5", dominant_7_flat_9 "7b9",
+// dominant_7_sharp_9 "7#9".
+type ChordQuality string
+
+// ChordSearchResult The result of reading one chord symbol: whether it parsed, what it
+// means, and the catalog's chord for it.
+type ChordSearchResult struct {
+	// Chord The catalog's chord with the same root, quality and bass
+	// pitch classes, with its active voicings; null when the symbol
+	// didn't parse or the catalog has no such chord.
+	Chord *ChordDefinition `json:"chord"`
+
+	// ChordWithoutBass For a slash chord the catalog doesn't have (chord is null),
+	// the catalog's chord with the same root and quality and no
+	// bass, so the chord can still be played without its bass note.
+	// Null otherwise.
+	ChordWithoutBass *ChordDefinition `json:"chord_without_bass"`
+
+	// Parsed The parsed meaning; null unless status is parsed.
+	Parsed *ParsedChordSymbol `json:"parsed"`
+
+	// Status parsed: the symbol names a chord (see parsed). unparsed: it
+	// doesn't, in any spelling the parser supports, and it stays
+	// text. no_chord: it is a no-chord marking ("N.C.", "NC").
+	Status ChordSearchResultStatus `json:"status"`
+
+	// Warning Why a symbol didn't parse; null unless status is unparsed.
+	// unsupported_quality: the root reads as a note but the rest
+	// isn't one of the supported qualities (e.g. "C7#11").
+	// unparsed_symbol: anything else (e.g. "H7", "cm", "C/").
+	Warning *ChordSearchResultWarning `json:"warning"`
+
+	// WrittenSymbol The symbol exactly as it was sent.
+	WrittenSymbol string `json:"written_symbol"`
+}
+
+// ChordSearchResultStatus parsed: the symbol names a chord (see parsed). unparsed: it
+// doesn't, in any spelling the parser supports, and it stays
+// text. no_chord: it is a no-chord marking ("N.C.", "NC").
+type ChordSearchResultStatus string
+
+// ChordSearchResultWarning Why a symbol didn't parse; null unless status is unparsed.
+// unsupported_quality: the root reads as a note but the rest
+// isn't one of the supported qualities (e.g. "C7#11").
+// unparsed_symbol: anything else (e.g. "H7", "cm", "C/").
+type ChordSearchResultWarning string
+
+// ChordVoicing One playable fingering of a chord. Its positions, playbacks and
+// sound are those of its diagram, which it references and never
+// copies; the diagram's purpose is chord_voicing. Every voicing was
+// checked before it entered the catalog: its diagram sounds exactly
+// the chord's pitch classes, less the declared omissions, its lowest
+// sounded string is the bass of a slash chord, and its tuning is its
+// instrument's.
+type ChordVoicing struct {
+	// CatalogStatus withdrawn voicings stay for the content that embeds their
+	// diagram but are no longer offered. Only active voicings are
+	// listed in a ChordDefinition.
+	CatalogStatus ChordVoicingCatalogStatus `json:"catalog_status"`
+
+	// ChordDefinitionId The chord this voicing plays.
+	ChordDefinitionId openapi_types.UUID `json:"chord_definition_id"`
+
+	// ChordVoicingId Stable identifier for this voicing, the same in every environment.
+	ChordVoicingId openapi_types.UUID `json:"chord_voicing_id"`
+
+	// DiagramId The diagram that holds this voicing's positions and playbacks.
+	DiagramId openapi_types.UUID `json:"diagram_id"`
+
+	// Difficulty How hard the voicing is to fret cleanly.
+	Difficulty ChordVoicingDifficulty `json:"difficulty"`
+
+	// Fingering Which finger frets each fretted position. Open strings have no
+	// entry. A barre is the same finger on several positions.
+	Fingering []struct {
+		// Finger The fretting-hand finger, 1 (index) to 4 (little), or the thumb.
+		Finger ChordVoicingFingeringFinger `json:"finger"`
+
+		// PositionId A fretted position of the voicing's diagram.
+		PositionId string `json:"position_id"`
+	} `json:"fingering"`
+
+	// FretWindow The frets the voicing's fretted notes span; open strings don't count.
+	FretWindow struct {
+		// HighestFret The highest fretted fret, or 0 when every sounded string is open.
+		HighestFret int `json:"highest_fret"`
+
+		// LowestFret The lowest fretted fret, or 0 when every sounded string is open.
+		LowestFret int `json:"lowest_fret"`
+	} `json:"fret_window"`
+
+	// InstrumentId The layout instrument of the voicing's diagram.
+	InstrumentId openapi_types.UUID `json:"instrument_id"`
+
+	// IsMovable Whether the shape keeps its fingering when moved along the neck
+	// (no open strings among its sounded notes).
+	IsMovable bool `json:"is_movable"`
+
+	// MutedStrings Strings that must not sound, numbered from 1, the highest-pitched; empty when none.
+	MutedStrings []int `json:"muted_strings"`
+
+	// OmittedIntervals Tones of the chord's formula this voicing leaves out on
+	// purpose (e.g. ["5"] in a shell voicing); empty when none.
+	OmittedIntervals []ChordInterval `json:"omitted_intervals"`
+
+	// Provenance Where the voicing came from.
+	Provenance struct {
+		// Source hand_authored voicings are written one by one; template voicings are generated from a movable shape.
+		Source ChordVoicingProvenanceSource `json:"source"`
+
+		// TemplateKey The shape template that generated the voicing; null for a hand-authored one.
+		TemplateKey *string `json:"template_key"`
+	} `json:"provenance"`
+
+	// RecommendedRank 1 is the voicing offered first for its chord. Ranks are unique
+	// within a chord.
+	RecommendedRank int `json:"recommended_rank"`
+
+	// ShapeFamily The shape the voicing belongs to; null when it fits none.
+	ShapeFamily *ChordVoicingShapeFamily `json:"shape_family"`
+
+	// TechniqueTags What the voicing asks of the fretting hand; empty when nothing in particular.
+	TechniqueTags []ChordVoicingTechniqueTags `json:"technique_tags"`
+
+	// TuningFingerprint The open-string pitches the voicing was checked against, lowest
+	// string first, joined by "-" (e.g. "E2-A2-D3-G3-B3-E4").
+	TuningFingerprint string `json:"tuning_fingerprint"`
+}
+
+// ChordVoicingCatalogStatus withdrawn voicings stay for the content that embeds their
+// diagram but are no longer offered. Only active voicings are
+// listed in a ChordDefinition.
+type ChordVoicingCatalogStatus string
+
+// ChordVoicingDifficulty How hard the voicing is to fret cleanly.
+type ChordVoicingDifficulty string
+
+// ChordVoicingFingeringFinger The fretting-hand finger, 1 (index) to 4 (little), or the thumb.
+type ChordVoicingFingeringFinger string
+
+// ChordVoicingProvenanceSource hand_authored voicings are written one by one; template voicings are generated from a movable shape.
+type ChordVoicingProvenanceSource string
+
+// ChordVoicingShapeFamily The shape the voicing belongs to; null when it fits none.
+type ChordVoicingShapeFamily string
+
+// ChordVoicingTechniqueTags defines model for ChordVoicing.TechniqueTags.
+type ChordVoicingTechniqueTags string
 
 // Classification The classification of a content node as returned by the API —
 // skills/concepts are embedded as full KnowledgeNodes rather than
@@ -1882,6 +2219,19 @@ type Diagram struct {
 	// family.
 	Positions []DiagramPosition `json:"positions"`
 
+	// Purpose What the diagram is for. chord_voicing marks a diagram that is
+	// the fingering of a voicing in the chord catalog: it is listed
+	// only when GET /diagrams asks for it, found through the chord
+	// catalog instead, and its positions and playbacks can't be
+	// changed through updateDiagram, so a fingering can't drift from
+	// the chord it is validated against. Every other diagram is
+	// general. Set by the server, never by a request: a diagram is
+	// chord_voicing exactly when the chord catalog installed it as a
+	// voicing, and a diagram created through createDiagram, including
+	// a copy saved from a chord_voicing diagram, is general. A
+	// diagram's purpose doesn't change how it renders or plays.
+	Purpose DiagramPurpose `json:"purpose"`
+
 	// Regions The diagram's highlighted regions, in drawing order (later ones
 	// on top); empty when there are none.
 	Regions []DiagramRegion `json:"regions"`
@@ -1908,6 +2258,19 @@ type DiagramKind string
 // diagram_ref's own layers.intervals visibility toggle for one
 // particular embedding.
 type DiagramLabelDisplay string
+
+// DiagramPurpose What the diagram is for. chord_voicing marks a diagram that is
+// the fingering of a voicing in the chord catalog: it is listed
+// only when GET /diagrams asks for it, found through the chord
+// catalog instead, and its positions and playbacks can't be
+// changed through updateDiagram, so a fingering can't drift from
+// the chord it is validated against. Every other diagram is
+// general. Set by the server, never by a request: a diagram is
+// chord_voicing exactly when the chord catalog installed it as a
+// voicing, and a diagram created through createDiagram, including
+// a copy saved from a chord_voicing diagram, is general. A
+// diagram's purpose doesn't change how it renders or plays.
+type DiagramPurpose string
 
 // DiagramClassification A Diagram's classification as returned by the API — skills/concepts
 // embedded as full KnowledgeNodes, the same convention
@@ -3069,6 +3432,40 @@ type PagedPathCatalog struct {
 
 	// Total Number of items matching the filters across all pages.
 	Total int `json:"total"`
+}
+
+// ParsedChordSymbol What a chord symbol means, once parsed.
+type ParsedChordSymbol struct {
+	// Bass The slash bass as written (e.g. "F#" in "D/F#"); null when the
+	// symbol has no slash, or when its bass is the root itself.
+	Bass *string `json:"bass"`
+
+	// BassPitchClass The bass's pitch class; null exactly when bass is null.
+	BassPitchClass *int `json:"bass_pitch_class"`
+
+	// CanonicalSymbol The symbol in the catalog's own spelling: the root and bass as
+	// written, then the quality's canonical suffix (e.g. "Bbmaj7" for
+	// "B♭Δ7", "F#m7b5" for "F♯ø").
+	CanonicalSymbol string `json:"canonical_symbol"`
+
+	// Quality The kind of chord, independent of its root. Each quality has one
+	// formula (see ChordDefinition.formula) and one canonical suffix in
+	// a chord symbol: major "", minor "m", power "5", diminished "dim",
+	// augmented "aug", sus2 "sus2", sus4 "sus4", major_6 "6", minor_6
+	// "m6", dominant_7 "7", major_7 "maj7", minor_7 "m7", minor_major_7
+	// "mMaj7", half_diminished_7 "m7b5", diminished_7 "dim7",
+	// dominant_7_sus4 "7sus4", add_9 "add9", minor_add_9 "madd9",
+	// dominant_9 "9", major_9 "maj9", minor_9 "m9", dominant_11 "11",
+	// minor_11 "m11", dominant_13 "13", dominant_7_flat_5 "7b5",
+	// dominant_7_sharp_5 "7#5", dominant_7_flat_9 "7b9",
+	// dominant_7_sharp_9 "7#9".
+	Quality ChordQuality `json:"quality"`
+
+	// Root The root as written, with ♭ and ♯ read as b and
+	Root string `json:"root"`
+
+	// RootPitchClass The root's pitch class, C = 0 through B = 11.
+	RootPitchClass int `json:"root_pitch_class"`
 }
 
 // PathCatalogEntry A published learning path as it appears in the path catalog — enough to browse and pick one, never authoring detail such as an item's content_node_id.
@@ -4485,6 +4882,12 @@ type ListCatalogPathsParams struct {
 // ListCatalogPathsParamsLevels defines parameters for ListCatalogPaths.
 type ListCatalogPathsParamsLevels string
 
+// SearchChordsParams defines parameters for SearchChords.
+type SearchChordsParams struct {
+	// Symbol The chord symbol as written, e.g. "Bbmaj7", "F#m7♭5", "D/F#".
+	Symbol string `form:"symbol" json:"symbol"`
+}
+
 // ListContentNodesParams defines parameters for ListContentNodes.
 type ListContentNodesParams struct {
 	// Q Case-insensitive substring match against the item's title (and summary, where it has one).
@@ -4604,10 +5007,18 @@ type ListDiagramsParams struct {
 
 	// ConceptId When given, only diagrams with this exact concept id among their linked concepts are returned.
 	ConceptId *openapi_types.UUID `form:"concept_id,omitempty" json:"concept_id,omitempty"`
+
+	// Purpose Restricts the results to diagrams of this purpose (see
+	// Diagram.purpose). Omitted, it is general, so chord voicings are
+	// listed only when asked for; any lists both.
+	Purpose *ListDiagramsParamsPurpose `form:"purpose,omitempty" json:"purpose,omitempty"`
 }
 
 // ListDiagramsParamsKind defines parameters for ListDiagrams.
 type ListDiagramsParamsKind string
+
+// ListDiagramsParamsPurpose defines parameters for ListDiagrams.
+type ListDiagramsParamsPurpose string
 
 // ListDiagramCreatorsParams defines parameters for ListDiagramCreators.
 type ListDiagramCreatorsParams struct {
@@ -4879,6 +5290,12 @@ type ServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID)
+	// Find a chord in the chord catalog by its symbol
+	// (GET /chords)
+	SearchChords(w http.ResponseWriter, r *http.Request, params SearchChordsParams)
+	// Get a chord from the chord catalog with its voicings
+	// (GET /chords/{chord_definition_id})
+	GetChord(w http.ResponseWriter, r *http.Request, chordDefinitionId openapi_types.UUID)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(w http.ResponseWriter, r *http.Request, params ListContentNodesParams)
@@ -5167,6 +5584,18 @@ func (_ Unimplemented) UnlinkExerciseFromChallenge(w http.ResponseWriter, r *htt
 // Link an existing exercise to a challenge
 // (POST /challenges/{challenge_id}/exercises/{exercise_id})
 func (_ Unimplemented) LinkExerciseToChallenge(w http.ResponseWriter, r *http.Request, challengeId openapi_types.UUID, exerciseId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Find a chord in the chord catalog by its symbol
+// (GET /chords)
+func (_ Unimplemented) SearchChords(w http.ResponseWriter, r *http.Request, params SearchChordsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a chord from the chord catalog with its voicings
+// (GET /chords/{chord_definition_id})
+func (_ Unimplemented) GetChord(w http.ResponseWriter, r *http.Request, chordDefinitionId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -6093,6 +6522,77 @@ func (siw *ServerInterfaceWrapper) LinkExerciseToChallenge(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// SearchChords operation middleware
+func (siw *ServerInterfaceWrapper) SearchChords(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchChordsParams
+
+	// ------------- Required query parameter "symbol" -------------
+
+	if paramValue := r.URL.Query().Get("symbol"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "symbol"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "symbol", r.URL.Query(), &params.Symbol)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "symbol", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchChords(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetChord operation middleware
+func (siw *ServerInterfaceWrapper) GetChord(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "chord_definition_id" -------------
+	var chordDefinitionId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "chord_definition_id", chi.URLParam(r, "chord_definition_id"), &chordDefinitionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "chord_definition_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetChord(w, r, chordDefinitionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListContentNodes operation middleware
 func (siw *ServerInterfaceWrapper) ListContentNodes(w http.ResponseWriter, r *http.Request) {
 
@@ -6996,6 +7496,14 @@ func (siw *ServerInterfaceWrapper) ListDiagrams(w http.ResponseWriter, r *http.R
 	err = runtime.BindQueryParameter("form", true, false, "concept_id", r.URL.Query(), &params.ConceptId)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "concept_id", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "purpose" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "purpose", r.URL.Query(), &params.Purpose)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "purpose", Err: err})
 		return
 	}
 
@@ -8726,6 +9234,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/challenges/{challenge_id}/exercises/{exercise_id}", wrapper.LinkExerciseToChallenge)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/chords", wrapper.SearchChords)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/chords/{chord_definition_id}", wrapper.GetChord)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/content-nodes", wrapper.ListContentNodes)
 	})
 	r.Group(func(r chi.Router) {
@@ -9347,6 +9861,103 @@ type LinkExerciseToChallenge409JSONResponse ConflictError
 func (response LinkExerciseToChallenge409JSONResponse) VisitLinkExerciseToChallengeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchChordsRequestObject struct {
+	Params SearchChordsParams
+}
+
+type SearchChordsResponseObject interface {
+	VisitSearchChordsResponse(w http.ResponseWriter) error
+}
+
+type SearchChords200JSONResponse ChordSearchResult
+
+func (response SearchChords200JSONResponse) VisitSearchChordsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchChords400JSONResponse ValidationError
+
+func (response SearchChords400JSONResponse) VisitSearchChordsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchChords401JSONResponse UnauthorizedError
+
+func (response SearchChords401JSONResponse) VisitSearchChordsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchChords403JSONResponse ForbiddenError
+
+func (response SearchChords403JSONResponse) VisitSearchChordsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetChordRequestObject struct {
+	ChordDefinitionId openapi_types.UUID `json:"chord_definition_id"`
+}
+
+type GetChordResponseObject interface {
+	VisitGetChordResponse(w http.ResponseWriter) error
+}
+
+type GetChord200JSONResponse ChordDefinition
+
+func (response GetChord200JSONResponse) VisitGetChordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetChord400JSONResponse ValidationError
+
+func (response GetChord400JSONResponse) VisitGetChordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetChord401JSONResponse UnauthorizedError
+
+func (response GetChord401JSONResponse) VisitGetChordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetChord403JSONResponse ForbiddenError
+
+func (response GetChord403JSONResponse) VisitGetChordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetChord404JSONResponse NotFoundError
+
+func (response GetChord404JSONResponse) VisitGetChordResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -10565,6 +11176,15 @@ type UpdateDiagram404JSONResponse NotFoundError
 func (response UpdateDiagram404JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateDiagram409JSONResponse ConflictError
+
+func (response UpdateDiagram409JSONResponse) VisitUpdateDiagramResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -12735,6 +13355,12 @@ type StrictServerInterface interface {
 	// Link an existing exercise to a challenge
 	// (POST /challenges/{challenge_id}/exercises/{exercise_id})
 	LinkExerciseToChallenge(ctx context.Context, request LinkExerciseToChallengeRequestObject) (LinkExerciseToChallengeResponseObject, error)
+	// Find a chord in the chord catalog by its symbol
+	// (GET /chords)
+	SearchChords(ctx context.Context, request SearchChordsRequestObject) (SearchChordsResponseObject, error)
+	// Get a chord from the chord catalog with its voicings
+	// (GET /chords/{chord_definition_id})
+	GetChord(ctx context.Context, request GetChordRequestObject) (GetChordResponseObject, error)
 	// List content nodes for authoring
 	// (GET /content-nodes)
 	ListContentNodes(ctx context.Context, request ListContentNodesRequestObject) (ListContentNodesResponseObject, error)
@@ -13253,6 +13879,58 @@ func (sh *strictHandler) LinkExerciseToChallenge(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LinkExerciseToChallengeResponseObject); ok {
 		if err := validResponse.VisitLinkExerciseToChallengeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchChords operation middleware
+func (sh *strictHandler) SearchChords(w http.ResponseWriter, r *http.Request, params SearchChordsParams) {
+	var request SearchChordsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchChords(ctx, request.(SearchChordsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchChords")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchChordsResponseObject); ok {
+		if err := validResponse.VisitSearchChordsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetChord operation middleware
+func (sh *strictHandler) GetChord(w http.ResponseWriter, r *http.Request, chordDefinitionId openapi_types.UUID) {
+	var request GetChordRequestObject
+
+	request.ChordDefinitionId = chordDefinitionId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetChord(ctx, request.(GetChordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetChord")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetChordResponseObject); ok {
+		if err := validResponse.VisitGetChordResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

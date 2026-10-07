@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 	"unicode/utf8"
@@ -207,10 +208,18 @@ func (s *DiagramService) GetDiagram(ctx context.Context, id string) (domain.Diag
 // diagrams at all. A teacher sees every basic diagram plus their own custom
 // ones, and an admin every diagram; the other filters, filter.CreatedBy
 // included, only narrow that. filter.VisibleTo is set here from caller's
-// role; any value the caller supplied is overwritten.
+// role; any value the caller supplied is overwritten. An empty
+// filter.Purpose lists general diagrams only, so chord voicings appear only
+// when asked for.
 func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	if filter.Kind != "" && !filter.Kind.Valid() {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("kind", "must be one of: basic, custom")
+	}
+	if !filter.Purpose.Valid() {
+		return domain.Page[domain.Diagram]{}, domain.NewValidationError("purpose", "must be one of: general, chord_voicing, any")
+	}
+	if filter.Purpose == "" {
+		filter.Purpose = domain.DiagramPurposeFilterGeneral
 	}
 	if utf8.RuneCountInString(filter.Name) > maxDiagramNameSearchLength {
 		return domain.Page[domain.Diagram]{}, domain.NewValidationError("name", "must be at most 200 characters")
@@ -237,7 +246,7 @@ func (s *DiagramService) ListDiagrams(ctx context.Context, caller domain.User, f
 }
 
 // ListDiagramCreators returns the distinct creators of the diagrams caller
-// may discover in ListDiagrams, so a picker can offer a complete creator
+// may discover in ListDiagrams with its default purpose, so a picker can offer a complete creator
 // filter without paging: a teacher gets the creators of basic diagrams plus
 // themselves once they have a custom diagram, an admin every creator.
 // Students are refused. A non-empty nameQuery keeps only the creators whose
@@ -247,7 +256,7 @@ func (s *DiagramService) ListDiagramCreators(ctx context.Context, caller domain.
 	if err != nil {
 		return nil, err
 	}
-	ids, err := s.diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{VisibleTo: visibleTo})
+	ids, err := s.diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{VisibleTo: visibleTo, Purpose: domain.DiagramPurposeFilterGeneral})
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +282,9 @@ func diagramVisibility(caller domain.User) (string, error) {
 
 // UpdateDiagram applies update to an existing diagram. Only an admin may
 // update a basic diagram; a custom one may be updated by its creator or an
-// admin. Kind and CreatedBy are never changed. The result is re-validated
+// admin. Kind, Purpose and CreatedBy are never changed, and a chord voicing
+// diagram is refused with domain.ErrConflict, since only the chord catalog
+// may change it. The result is re-validated
 // as a whole, so replaced positions and regions are checked against the
 // diagram's own instrument, and every custom label, note and region
 // description against the languages of the names as updated — a rename that
@@ -284,11 +295,8 @@ func (s *DiagramService) UpdateDiagram(ctx context.Context, caller domain.User, 
 		return domain.Diagram{}, domain.ErrForbidden
 	}
 
-	current, err := s.diagrams.GetByID(ctx, id)
+	current, err := s.editableDiagram(ctx, caller, id)
 	if err != nil {
-		return domain.Diagram{}, err
-	}
-	if err := requireDiagramEditor(caller, current); err != nil {
 		return domain.Diagram{}, err
 	}
 	instrument, err := s.instruments.GetByID(ctx, current.InstrumentID)
@@ -406,6 +414,24 @@ func updatedDefaultPlaybackID(current domain.Diagram, update DiagramUpdate, play
 	default:
 		return domain.KeptDefaultPlaybackID(current.DefaultPlaybackID, playbacks), nil
 	}
+}
+
+// editableDiagram returns the diagram caller is about to update: refused
+// with domain.ErrForbidden unless caller may edit it, and with
+// domain.ErrConflict when it is a chord voicing, which only the chord
+// catalog may change.
+func (s *DiagramService) editableDiagram(ctx context.Context, caller domain.User, id string) (domain.Diagram, error) {
+	current, err := s.diagrams.GetByID(ctx, id)
+	if err != nil {
+		return domain.Diagram{}, err
+	}
+	if err := requireDiagramEditor(caller, current); err != nil {
+		return domain.Diagram{}, err
+	}
+	if current.Purpose == domain.DiagramPurposeChordVoicing {
+		return domain.Diagram{}, fmt.Errorf("%w: a chord voicing's diagram changes only through the chord catalog", domain.ErrConflict)
+	}
+	return current, nil
 }
 
 // requireDiagramEditor returns domain.ErrForbidden unless caller may update

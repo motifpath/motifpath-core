@@ -117,7 +117,7 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 	// Deliberately not in id order: the repository must return positions in
 	// the order the author listed them, not in primary-key order.
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Position 1"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Position 1"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: "ffffffff-0000-4000-8000-000000000001", Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: "00000000-0000-4000-8000-000000000002", Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -168,7 +168,7 @@ func TestEntDiagramRepository_KeyboardPositionsRoundTrip(t *testing.T) {
 
 	a3, c4 := "A3", "C4"
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Piano"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Minor Pentatonic — Piano"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &a3},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, Key: &c4},
@@ -205,17 +205,17 @@ func TestEntDiagramRepository_List(t *testing.T) {
 	// Names are deliberately out of creation order, so the name ordering is
 	// observable.
 	basic := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindBasic, CreatedBy: admin, Names: domain.LocalizedText{"en": "C Basic"}, RootNote: &rootA, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeGeneral, CreatedBy: admin, Names: domain.LocalizedText{"en": "C Basic"}, RootNote: &rootA, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 		Skills:    []domain.KnowledgeNode{skillA}, Concepts: []domain.KnowledgeNode{conceptA}, CreatedAt: fixedAt,
 	}
 	mine := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, CreatedBy: me, Names: domain.LocalizedText{"en": "A Mine"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: me, Names: domain.LocalizedText{"en": "A Mine"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, Key: &key}},
 		Skills:    []domain.KnowledgeNode{skillB}, Concepts: []domain.KnowledgeNode{conceptB}, CreatedAt: fixedAt,
 	}
 	theirs := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: them, Names: domain.LocalizedText{"en": "B Theirs", "pt_BR": "0 Delés"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: them, Names: domain.LocalizedText{"en": "B Theirs", "pt_BR": "0 Delés"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(5), Fret: intPtr(7)}},
 		Skills:    []domain.KnowledgeNode{skillA}, Concepts: []domain.KnowledgeNode{conceptB}, CreatedAt: fixedAt,
 	}
@@ -308,7 +308,7 @@ func TestEntDiagramRepository_Update(t *testing.T) {
 	conceptB := seedConcept(t, ctx, client, "b-"+uuid.NewString())
 
 	original := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Original"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Original"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8)},
@@ -386,7 +386,7 @@ func TestEntDiagramRepository_CompatibleInstruments(t *testing.T) {
 	concept := seedConcept(t, ctx, client, "c-"+uuid.NewString())
 	diagramOn := func(instrumentIDs []string) domain.Diagram {
 		return domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: layout.ID, InstrumentIDs: instrumentIDs, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Shared"}, LabelDisplay: domain.LabelDisplayInterval,
+			ID: uuid.NewString(), InstrumentID: layout.ID, InstrumentIDs: instrumentIDs, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Shared"}, LabelDisplay: domain.LabelDisplayInterval,
 			Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 			Skills:    []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
 		}
@@ -447,7 +447,7 @@ func TestEntDiagramRepository_PositionIDOwnedByAnotherDiagramIsRejected(t *testi
 
 	newDiagram := func(positionID string) domain.Diagram {
 		return domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "D"}, LabelDisplay: domain.LabelDisplayInterval,
+			ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "D"}, LabelDisplay: domain.LabelDisplayInterval,
 			Positions: []domain.Position{{ID: positionID, Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
 			Skills:    []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
 		}
@@ -513,7 +513,7 @@ func TestEntDiagramRepository_ColorsRoundTrip(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Colored"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Colored"}, LabelDisplay: domain.LabelDisplayInterval,
 		Color: strPtr("#3B82F6"),
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5), Color: strPtr("#EF4444")},
@@ -557,7 +557,7 @@ func TestEntDiagramRepository_AnnotationsRoundTrip(t *testing.T) {
 
 	// Regions deliberately not in id order: they come back in drawing order.
 	d := domain.Diagram{
-		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Two Boxes", "pt_BR": "Duas caixas"}, LabelDisplay: domain.LabelDisplayInterval,
+		ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Two Boxes", "pt_BR": "Duas caixas"}, LabelDisplay: domain.LabelDisplayInterval,
 		Positions: []domain.Position{
 			{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)},
 			{ID: uuid.NewString(), Interval: "b3", NoteName: "C", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(8),
@@ -585,7 +585,7 @@ func TestEntDiagramRepository_AnnotationsRoundTrip(t *testing.T) {
 
 	t.Run("keyboard regions round-trip their key range", func(t *testing.T) {
 		k := domain.Diagram{
-			ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Octave"}, LabelDisplay: domain.LabelDisplayInterval,
+			ID: uuid.NewString(), InstrumentID: piano.ID, InstrumentIDs: []string{piano.ID}, Kind: domain.DiagramKindCustom, Purpose: domain.DiagramPurposeGeneral, CreatedBy: uuid.NewString(), Names: domain.LocalizedText{"en": "Octave"}, LabelDisplay: domain.LabelDisplayInterval,
 			Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "C", Shape: domain.PositionShapeDot, Key: strPtr("C4")}},
 			Regions:   []domain.Region{{ID: uuid.NewString(), KeyStart: strPtr("C4"), KeyEnd: strPtr("B4"), Description: domain.LocalizedText{"en": "Octave 4"}}},
 			Skills:    []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
@@ -636,5 +636,62 @@ func TestEntDiagramRepository_AnnotationsRoundTrip(t *testing.T) {
 		var valErr *domain.ValidationError
 		require.ErrorAs(t, err, &valErr)
 		assert.Equal(t, "regions", valErr.Fields[0].Field)
+	})
+}
+
+func TestEntDiagramRepository_Purpose(t *testing.T) {
+	client := setupPostgres(t)
+	ctx := context.Background()
+	instruments, diagrams := NewEntInstrumentRepository(client), NewEntDiagramRepository(client)
+	guitar := frettedInstrument()
+	require.NoError(t, instruments.Create(ctx, guitar))
+	skill := seedSkill(t, ctx, client, "s-"+uuid.NewString())
+	concept := seedConcept(t, ctx, client, "c-"+uuid.NewString())
+	admin, catalog := uuid.NewString(), uuid.NewString()
+
+	mk := func(name string, purpose domain.DiagramPurpose, owner string) domain.Diagram {
+		return domain.Diagram{
+			ID: uuid.NewString(), InstrumentID: guitar.ID, InstrumentIDs: []string{guitar.ID}, Kind: domain.DiagramKindBasic, Purpose: purpose, CreatedBy: owner, Names: domain.LocalizedText{"en": name}, LabelDisplay: domain.LabelDisplayInterval,
+			Positions: []domain.Position{{ID: uuid.NewString(), Interval: "R", NoteName: "A", Shape: domain.PositionShapeDot, String: intPtr(6), Fret: intPtr(5)}},
+			Skills:    []domain.KnowledgeNode{skill}, Concepts: []domain.KnowledgeNode{concept}, CreatedAt: fixedAt,
+		}
+	}
+	general, voicing := mk("A scale", domain.DiagramPurposeGeneral, admin), mk("Am — open", domain.DiagramPurposeChordVoicing, catalog)
+	require.NoError(t, diagrams.Create(ctx, general))
+	require.NoError(t, diagrams.Create(ctx, voicing))
+	all := domain.PageRequest{Limit: domain.MaxPageLimit}
+
+	t.Run("a diagram keeps its purpose", func(t *testing.T) {
+		got, err := diagrams.GetByID(ctx, voicing.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.DiagramPurposeChordVoicing, got.Purpose)
+	})
+
+	tests := []struct {
+		name   string
+		filter domain.DiagramPurposeFilter
+		want   []domain.Diagram
+	}{
+		{"no purpose filter lists every purpose", "", []domain.Diagram{general, voicing}},
+		{"any lists every purpose", domain.DiagramPurposeFilterAny, []domain.Diagram{general, voicing}},
+		{"general lists only general diagrams", domain.DiagramPurposeFilterGeneral, []domain.Diagram{general}},
+		{"chord_voicing lists only chord voicings", domain.DiagramPurposeFilterChordVoicing, []domain.Diagram{voicing}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := diagrams.List(ctx, domain.DiagramListFilter{Purpose: tt.filter}, all)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got.Items)
+			assert.Equal(t, len(tt.want), got.Total)
+		})
+	}
+
+	t.Run("creator ids follow the purpose filter", func(t *testing.T) {
+		got, err := diagrams.ListCreatorIDs(ctx, domain.DiagramListFilter{Purpose: domain.DiagramPurposeFilterGeneral})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{admin}, got)
 	})
 }

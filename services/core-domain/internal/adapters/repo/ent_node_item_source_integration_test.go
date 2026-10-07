@@ -60,7 +60,11 @@ func TestEntNodeItemSource_ClassifiedItems(t *testing.T) {
 	silent := playAlongDiagram(domain.DiagramKindBasic, false, []domain.KnowledgeNode{skill}, none, guitar.ID)
 	custom := playAlongDiagram(domain.DiagramKindCustom, true, []domain.KnowledgeNode{skill}, none, guitar.ID)
 	bassLine := playAlongDiagram(domain.DiagramKindBasic, true, []domain.KnowledgeNode{skill}, none, bass.ID)
-	for _, d := range []domain.Diagram{shared, silent, custom, bassLine} {
+	// A chord catalog voicing plays like a play-along but is not practised
+	// on its own yet, so it never counts toward a node's level.
+	voicing := playAlongDiagram(domain.DiagramKindBasic, true, []domain.KnowledgeNode{skill}, []domain.KnowledgeNode{concept}, guitar.ID, electric.ID)
+	voicing.Purpose = domain.DiagramPurposeChordVoicing
+	for _, d := range []domain.Diagram{shared, silent, custom, bassLine, voicing} {
 		require.NoError(t, diagrams.Create(ctx, d))
 	}
 	anyDrill := instrumentExercise("Any-instrument drill", skill)
@@ -74,6 +78,7 @@ func TestEntNodeItemSource_ClassifiedItems(t *testing.T) {
 	// catalog items too.
 	created := []string{
 		domain.PlayAlongItemKey(shared.ID), domain.PlayAlongItemKey(silent.ID), domain.PlayAlongItemKey(custom.ID), domain.PlayAlongItemKey(bassLine.ID),
+		domain.PlayAlongItemKey(voicing.ID),
 		domain.ExerciseItemKey(anyDrill.ID), domain.ExerciseItemKey(guitarDrill.ID), domain.ExerciseItemKey(bassDrill.ID),
 	}
 	mine := func(items []domain.ClassifiedItem) []domain.ClassifiedItem {

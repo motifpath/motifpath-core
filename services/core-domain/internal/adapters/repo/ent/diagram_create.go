@@ -53,6 +53,20 @@ func (_c *DiagramCreate) SetCreatedBy(v uuid.UUID) *DiagramCreate {
 	return _c
 }
 
+// SetPurpose sets the "purpose" field.
+func (_c *DiagramCreate) SetPurpose(v diagram.Purpose) *DiagramCreate {
+	_c.mutation.SetPurpose(v)
+	return _c
+}
+
+// SetNillablePurpose sets the "purpose" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillablePurpose(v *diagram.Purpose) *DiagramCreate {
+	if v != nil {
+		_c.SetPurpose(*v)
+	}
+	return _c
+}
+
 // SetRootNote sets the "root_note" field.
 func (_c *DiagramCreate) SetRootNote(v string) *DiagramCreate {
 	_c.mutation.SetRootNote(v)
@@ -317,6 +331,10 @@ func (_c *DiagramCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *DiagramCreate) defaults() {
+	if _, ok := _c.mutation.Purpose(); !ok {
+		v := diagram.DefaultPurpose
+		_c.mutation.SetPurpose(v)
+	}
 	if _, ok := _c.mutation.LabelDisplay(); !ok {
 		v := diagram.DefaultLabelDisplay
 		_c.mutation.SetLabelDisplay(v)
@@ -353,6 +371,14 @@ func (_c *DiagramCreate) check() error {
 	}
 	if _, ok := _c.mutation.CreatedBy(); !ok {
 		return &ValidationError{Name: "created_by", err: errors.New(`ent: missing required field "Diagram.created_by"`)}
+	}
+	if _, ok := _c.mutation.Purpose(); !ok {
+		return &ValidationError{Name: "purpose", err: errors.New(`ent: missing required field "Diagram.purpose"`)}
+	}
+	if v, ok := _c.mutation.Purpose(); ok {
+		if err := diagram.PurposeValidator(v); err != nil {
+			return &ValidationError{Name: "purpose", err: fmt.Errorf(`ent: validator failed for field "Diagram.purpose": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.LabelDisplay(); !ok {
 		return &ValidationError{Name: "label_display", err: errors.New(`ent: missing required field "Diagram.label_display"`)}
@@ -422,6 +448,10 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedBy(); ok {
 		_spec.SetField(diagram.FieldCreatedBy, field.TypeUUID, value)
 		_node.CreatedBy = value
+	}
+	if value, ok := _c.mutation.Purpose(); ok {
+		_spec.SetField(diagram.FieldPurpose, field.TypeEnum, value)
+		_node.Purpose = value
 	}
 	if value, ok := _c.mutation.RootNote(); ok {
 		_spec.SetField(diagram.FieldRootNote, field.TypeString, value)

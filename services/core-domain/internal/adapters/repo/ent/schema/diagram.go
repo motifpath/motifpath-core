@@ -42,6 +42,14 @@ func (Diagram) Fields() []ent.Field {
 		field.UUID("created_by", uuid.UUID{}).
 			Immutable(),
 
+		// purpose is set by whoever installs the diagram: chord_voicing
+		// diagrams come only from the chord catalog, and nothing changes
+		// a diagram's purpose afterwards.
+		field.Enum("purpose").
+			Values("general", "chord_voicing").
+			Default("general").
+			Immutable(),
+
 		field.String("root_note").
 			Optional().
 			Nillable(),

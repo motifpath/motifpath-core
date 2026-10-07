@@ -29,6 +29,8 @@ type Diagram struct {
 	Kind diagram.Kind `json:"kind,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy uuid.UUID `json:"created_by,omitempty"`
+	// Purpose holds the value of the "purpose" field.
+	Purpose diagram.Purpose `json:"purpose,omitempty"`
 	// RootNote holds the value of the "root_note" field.
 	RootNote *string `json:"root_note,omitempty"`
 	// LabelDisplay holds the value of the "label_display" field.
@@ -164,7 +166,7 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case diagram.FieldNames, diagram.FieldPlaybacks:
 			values[i] = new([]byte)
-		case diagram.FieldKind, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor, diagram.FieldMode, diagram.FieldDefaultPlaybackID:
+		case diagram.FieldKind, diagram.FieldPurpose, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor, diagram.FieldMode, diagram.FieldDefaultPlaybackID:
 			values[i] = new(sql.NullString)
 		case diagram.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -216,6 +218,12 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_by", values[i])
 			} else if value != nil {
 				_m.CreatedBy = *value
+			}
+		case diagram.FieldPurpose:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field purpose", values[i])
+			} else if value.Valid {
+				_m.Purpose = diagram.Purpose(value.String)
 			}
 		case diagram.FieldRootNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -357,6 +365,9 @@ func (_m *Diagram) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_by=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CreatedBy))
+	builder.WriteString(", ")
+	builder.WriteString("purpose=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Purpose))
 	builder.WriteString(", ")
 	if v := _m.RootNote; v != nil {
 		builder.WriteString("root_note=")
