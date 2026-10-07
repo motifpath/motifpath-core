@@ -505,7 +505,9 @@ type contentNodeSpec struct {
 
 // contentNodeSpecs lists every seeded content node. The two fretboard-notes
 // articles teach the skills fretboard cells are generated for, so a path
-// holding them gets note drills in a session in the head.
+// holding them gets note drills in a session in the head; the CAGED and
+// pentatonic articles teach skills the catalog's drill shapes belong to, so
+// it gets shape drills too.
 func contentNodeSpecs() []contentNodeSpec {
 	return []contentNodeSpec{
 		{"video-beginner", "Open position C major scale", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "play-major-scale-open", "major-scale"},
@@ -516,6 +518,8 @@ func contentNodeSpecs() []contentNodeSpec {
 		{"article-advanced", "Modal interchange in blues turnarounds", domain.ContentTypeArticle, domain.DifficultyLevelAdvanced, "use-modal-interchange", "modal-interchange"},
 		{"article-notes-root-strings", "Notes on the E and A strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-root-strings", "notes-fretboard"},
 		{"article-notes-top-strings", "Notes on the D, G, B and high E strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-top-strings", "notes-fretboard"},
+		{"article-caged-grips", "The five CAGED grips", domain.ContentTypeArticle, domain.DifficultyLevelIntermediate, "map-fretboard-caged", "caged-system"},
+		{"article-pentatonic-boxes", "The five pentatonic boxes", domain.ContentTypeArticle, domain.DifficultyLevelIntermediate, "play-pentatonic-positions", "pentatonic-shapes"},
 	}
 }
 
@@ -867,8 +871,12 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 
 // adminPathNodeKeys are the admin's standalone path items, in order: two
 // lessons to watch and practise, then the fretboard-notes articles, so a
-// session in the head has notes to drill.
-var adminPathNodeKeys = []string{"video-beginner", "video-intermediate", "article-notes-root-strings", "article-notes-top-strings"}
+// session in the head has notes to drill, and the CAGED and pentatonic
+// articles, so it has shapes to name and degrees to find.
+var adminPathNodeKeys = []string{
+	"video-beginner", "video-intermediate", "article-notes-root-strings", "article-notes-top-strings",
+	"article-caged-grips", "article-pentatonic-boxes",
+}
 
 // adminPathInstrumentIDs makes the admin's path a guitar path, so the home
 // has a guitar tab with its fretboard map.
