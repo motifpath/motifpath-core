@@ -4604,8 +4604,7 @@ type SongChartDraft struct {
 	// null when not stated.
 	ConcertKey *string `json:"concert_key"`
 
-	// Language The Language.code of the lyrics (not "any"). The chart's rights
-	// record must cover it.
+	// Language The Language.code of the lyrics (not "any").
 	Language string `json:"language"`
 
 	// RightsConfirmation Who confirmed the rights and when; null exactly when rights_confirmed is false.
@@ -4664,8 +4663,7 @@ type SongChartDraftInput struct {
 	// null when not stated.
 	ConcertKey *string `json:"concert_key"`
 
-	// Language The Language.code of the lyrics (not "any"). The chart's rights
-	// record must cover it.
+	// Language The Language.code of the lyrics (not "any").
 	Language string `json:"language"`
 
 	// RightsConfirmed Whether an admin confirms that the song's rights were checked.
