@@ -340,20 +340,9 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 // voicings play like play-alongs but aren't practised on their own, so only
 // general diagrams are offered.
 func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
-	var candidates, shapes []practiceCandidate
-	if instrumentID != "" {
-		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range diagrams {
-			if inHand && playable(d) {
-				candidates = append(candidates, practiceCandidate{diagram: &d, nodeID: &skillID})
-			}
-			if d.Shape != nil {
-				shapes = append(shapes, practiceCandidate{shape: &d, nodeID: &skillID})
-			}
-		}
+	candidates, shapes, err := s.diagramCandidates(ctx, skillID, instrumentID, inHand)
+	if err != nil {
+		return nil, err
 	}
 	filter := domain.ExerciseFilter{SkillID: skillID}
 	if instrumentID != "" {
@@ -370,6 +359,28 @@ func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, i
 		candidates = append(candidates, practiceCandidate{exercise: &e, nodeID: &skillID})
 	}
 	return append(candidates, shapes...), nil
+}
+
+// diagramCandidates lists the play-alongs for instrumentID when it is in
+// hand, and the diagram shapes linked to it, classified under skillID. With
+// no instrumentID, neither.
+func (s *PracticeSessionService) diagramCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) (playAlongs, shapes []practiceCandidate, err error) {
+	if instrumentID == "" {
+		return nil, nil, nil
+	}
+	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, d := range diagrams {
+		if inHand && playable(d) {
+			playAlongs = append(playAlongs, practiceCandidate{diagram: &d, nodeID: &skillID})
+		}
+		if d.Shape != nil {
+			shapes = append(shapes, practiceCandidate{shape: &d, nodeID: &skillID})
+		}
+	}
+	return playAlongs, shapes, nil
 }
 
 // skillCells lists the fretboard cells among knowledge's items classified
@@ -448,6 +459,15 @@ func (s *PracticeSessionService) loadedOr(ctx context.Context, loaded map[string
 	return s.candidate(ctx, itemKey)
 }
 
+// diagram loads the diagram id; false when it no longer exists.
+func (s *PracticeSessionService) diagram(ctx context.Context, id string) (domain.Diagram, bool, error) {
+	d, err := s.diagrams.GetByID(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.Diagram{}, false, nil
+	}
+	return d, err == nil, err
+}
+
 // candidate loads the play-along, exercise, fretboard cell or diagram shape
 // itemKey names. It reports false for any other kind of item, and for one
 // that no longer exists, can't be played along with or is no drill shape.
@@ -456,24 +476,12 @@ func (s *PracticeSessionService) candidate(ctx context.Context, itemKey string) 
 		return practiceCandidate{cell: &cell}, true, nil
 	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindPlayAlong)+":"); ok {
-		d, err := s.diagrams.GetByID(ctx, id)
-		if errors.Is(err, domain.ErrNotFound) {
-			return practiceCandidate{}, false, nil
-		}
-		if err != nil {
-			return practiceCandidate{}, false, err
-		}
-		return practiceCandidate{diagram: &d}, d.Kind == domain.DiagramKindBasic && playable(d), nil
+		d, found, err := s.diagram(ctx, id)
+		return practiceCandidate{diagram: &d}, found && d.Kind == domain.DiagramKindBasic && playable(d), err
 	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindDiagramShape)+":"); ok {
-		d, err := s.diagrams.GetByID(ctx, id)
-		if errors.Is(err, domain.ErrNotFound) {
-			return practiceCandidate{}, false, nil
-		}
-		if err != nil {
-			return practiceCandidate{}, false, err
-		}
-		return practiceCandidate{shape: &d}, d.Shape != nil, nil
+		d, found, err := s.diagram(ctx, id)
+		return practiceCandidate{shape: &d}, found && d.Shape != nil, err
 	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindExercise)+":"); ok {
 		e, err := s.exercises.GetByID(ctx, id)
