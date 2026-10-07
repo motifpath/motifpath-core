@@ -416,6 +416,20 @@ func TestSongChartService_Publish(t *testing.T) {
 		assert.Equal(t, domain.AnchorVoicingUnavailable, refusal.AnchorWarnings[0].Kind)
 	})
 
+	t.Run("a pick of a chord's only voicing, withdrawn since, blocks publication", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := asaBranca()
+		in.Body = chartBody(pickedRun("a1", "C", "La", "c-open"))
+		chart, _ := f.service.Create(ctx, adminCaller(), in)
+		f.catalog.withdraw("c-open")
+
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+
+		var refusal *domain.SongChartNotPublishableError
+		require.ErrorAs(t, err, &refusal)
+		assert.Equal(t, []domain.AnchorWarning{{AnchorID: "a1", WrittenSymbol: "C", Kind: domain.AnchorVoicingUnavailable}}, refusal.AnchorWarnings)
+	})
+
 	t.Run("a slash chord missing from the catalog publishes", func(t *testing.T) {
 		f := newSongChartFixture()
 		in := asaBranca()
