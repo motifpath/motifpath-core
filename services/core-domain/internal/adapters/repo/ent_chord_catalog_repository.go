@@ -42,13 +42,40 @@ func (r *EntChordCatalogRepository) FindChord(ctx context.Context, rootPitchClas
 	return r.first(ctx, query)
 }
 
+func (r *EntChordCatalogRepository) GetChords(ctx context.Context, ids []string) (map[string]domain.ChordDefinition, error) {
+	rows, err := r.client.ChordDefinition.Query().Where(chorddefinition.IDIn(parseUUIDsSkippingInvalid(ids)...)).
+		WithVoicings(activeVoicingsBestFirst).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	found := make(map[string]domain.ChordDefinition, len(rows))
+	for _, row := range rows {
+		found[row.ID.String()] = toDomainChord(row)
+	}
+	return found, nil
+}
+
+func (r *EntChordCatalogRepository) GetVoicings(ctx context.Context, ids []string) (map[string]domain.ChordVoicing, error) {
+	rows, err := r.client.ChordVoicing.Query().Where(chordvoicing.IDIn(parseUUIDsSkippingInvalid(ids)...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	found := make(map[string]domain.ChordVoicing, len(rows))
+	for _, row := range rows {
+		found[row.ID.String()] = toDomainVoicing(row)
+	}
+	return found, nil
+}
+
+func activeVoicingsBestFirst(q *ent.ChordVoicingQuery) {
+	q.Where(chordvoicing.StatusEQ(chordvoicing.StatusActive)).
+		Order(ent.Asc(chordvoicing.FieldRecommendedRank), ent.Asc(chordvoicing.FieldID))
+}
+
 // first returns the one chord query selects, with its active voicings best
 // first, or domain.ErrNotFound.
 func (r *EntChordCatalogRepository) first(ctx context.Context, query *ent.ChordDefinitionQuery) (domain.ChordDefinition, error) {
-	row, err := query.WithVoicings(func(q *ent.ChordVoicingQuery) {
-		q.Where(chordvoicing.StatusEQ(chordvoicing.StatusActive)).
-			Order(ent.Asc(chordvoicing.FieldRecommendedRank), ent.Asc(chordvoicing.FieldID))
-	}).Only(ctx)
+	row, err := query.WithVoicings(activeVoicingsBestFirst).Only(ctx)
 	if ent.IsNotFound(err) {
 		return domain.ChordDefinition{}, domain.ErrNotFound
 	}

@@ -154,6 +154,22 @@ func TestEntDiagramRepository_CreateAndGet(t *testing.T) {
 
 	_, err = diagrams.GetByID(ctx, uuid.NewString())
 	require.ErrorIs(t, err, domain.ErrNotFound)
+
+	t.Run("several diagrams are read at once, keyed by id, leaving out unknown ids", func(t *testing.T) {
+		missing := uuid.NewString()
+
+		byID, err := diagrams.GetByIDs(ctx, []string{d.ID, missing, "not-a-uuid"})
+
+		require.NoError(t, err)
+		assert.Equal(t, map[string]domain.Diagram{d.ID: d}, byID)
+	})
+
+	t.Run("no ids read no diagrams", func(t *testing.T) {
+		byID, err := diagrams.GetByIDs(ctx, nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, byID)
+	})
 }
 
 func TestEntDiagramRepository_KeyboardPositionsRoundTrip(t *testing.T) {

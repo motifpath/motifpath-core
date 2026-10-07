@@ -15,4 +15,10 @@ type ChordCatalogRepository interface {
 	// FindChord returns the chord with this root pitch class, quality and
 	// bass pitch class (nil: no slash bass), or domain.ErrNotFound.
 	FindChord(ctx context.Context, rootPitchClass int, quality domain.ChordQuality, bassPitchClass *int) (domain.ChordDefinition, error)
+	// GetChords returns the chords with these ids, keyed by id; an id with
+	// no chord is left out.
+	GetChords(ctx context.Context, ids []string) (map[string]domain.ChordDefinition, error)
+	// GetVoicings returns the voicings with these ids, withdrawn ones
+	// included, keyed by id; an id with no voicing is left out.
+	GetVoicings(ctx context.Context, ids []string) (map[string]domain.ChordVoicing, error)
 }

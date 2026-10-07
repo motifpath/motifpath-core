@@ -31,6 +31,7 @@ func noShuffle(int, func(i, j int)) {}
 type world struct {
 	users             *fakeUserRepo
 	chords            *fakeChordCatalog
+	songChartRepo     *fakeSongChartRepo
 	nodes             *fakeContentNodeRepo
 	challenges        *fakeChallengeRepo
 	exercises         *fakeExerciseRepo
@@ -47,6 +48,7 @@ type world struct {
 	practiceItems     *fakeNodeItemSource
 	fretboardCells    *fretboardCellWorld
 	shapeWorld        *diagramShapeWorld
+	songCharts        *songChartWorld
 	// dueDays holds the cells a scenario made due on two days.
 	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
@@ -266,6 +268,7 @@ func newWorld() *world {
 		voices:            newFakeVoiceRepo(),
 		diagrams:          newFakeDiagramRepo(knowledge),
 		chords:            newFakeChordCatalog(),
+		songChartRepo:     newFakeSongChartRepo(),
 		pgPinger:          &fakePinger{},
 		mongoPinger:       &fakePinger{},
 		userMotifID:       map[string]uuid.UUID{},
@@ -313,7 +316,8 @@ func newWorld() *world {
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, summaryNow)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords), w.pgPinger, w.mongoPinger)
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
+		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now), w.pgPinger, w.mongoPinger)
 	return w
 }
 

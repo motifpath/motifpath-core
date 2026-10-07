@@ -55,6 +55,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -163,6 +165,8 @@ func checkColumn(t, c string) error {
 			learningpathinstrument.Table:  learningpathinstrument.ValidColumn,
 			learningpathitem.Table:        learningpathitem.ValidColumn,
 			position.Table:                position.ValidColumn,
+			songchart.Table:               songchart.ValidColumn,
+			songchartrevision.Table:       songchartrevision.ValidColumn,
 			studentlearningstate.Table:    studentlearningstate.ValidColumn,
 			studentpath.Table:             studentpath.ValidColumn,
 			studentpathitem.Table:         studentpathitem.ValidColumn,

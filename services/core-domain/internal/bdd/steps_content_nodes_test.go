@@ -490,7 +490,7 @@ func diagramPromptNode(diagramSlug string) generated.PromptNode {
 }
 
 func (w *world) createsArticleContentNodeWithDiagramEmbed(name, title, diagramSlug, skills, concepts, difficulty string) error {
-	doc := generated.PromptDocument{Type: generated.Doc, Content: []generated.PromptNode{diagramPromptNode(diagramSlug)}}
+	doc := generated.PromptDocument{Type: generated.PromptDocumentTypeDoc, Content: []generated.PromptNode{diagramPromptNode(diagramSlug)}}
 	return w.createsContentNodeWithBody(domain.ContentTypeArticle, title, skills, concepts, difficulty, nil, &doc)
 }
 

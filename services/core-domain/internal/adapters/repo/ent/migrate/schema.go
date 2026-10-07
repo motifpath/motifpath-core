@@ -1266,6 +1266,87 @@ var (
 			},
 		},
 	}
+	// SongChartsColumns holds the columns for the "song_charts" table.
+	SongChartsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "published", "withdrawn"}},
+		{Name: "created_by", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "title", Type: field.TypeString, Size: 200},
+		{Name: "artist", Type: field.TypeString, Size: 200},
+		{Name: "language", Type: field.TypeString},
+		{Name: "concert_key", Type: field.TypeString, Nullable: true},
+		{Name: "capo_fret", Type: field.TypeInt},
+		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
+		{Name: "time_signature", Type: field.TypeJSON, Nullable: true},
+		{Name: "rights_confirmed_by", Type: field.TypeUUID, Nullable: true},
+		{Name: "rights_confirmed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "body", Type: field.TypeString, Size: 2147483647},
+		{Name: "warnings", Type: field.TypeJSON},
+		{Name: "updated_by", Type: field.TypeUUID},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "published_revision_number", Type: field.TypeInt, Nullable: true},
+		{Name: "published_title", Type: field.TypeString, Nullable: true},
+		{Name: "published_language", Type: field.TypeString, Nullable: true},
+		{Name: "published_by", Type: field.TypeUUID, Nullable: true},
+		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "withdrawn_by", Type: field.TypeUUID, Nullable: true},
+		{Name: "withdrawn_at", Type: field.TypeTime, Nullable: true},
+		{Name: "withdrawal_reason", Type: field.TypeString, Nullable: true, Size: 2147483647},
+	}
+	// SongChartsTable holds the schema information for the "song_charts" table.
+	SongChartsTable = &schema.Table{
+		Name:       "song_charts",
+		Columns:    SongChartsColumns,
+		PrimaryKey: []*schema.Column{SongChartsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "songchart_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{SongChartsColumns[16]},
+			},
+		},
+	}
+	// SongChartRevisionsColumns holds the columns for the "song_chart_revisions" table.
+	SongChartRevisionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "revision_number", Type: field.TypeInt},
+		{Name: "title", Type: field.TypeString},
+		{Name: "artist", Type: field.TypeString},
+		{Name: "language", Type: field.TypeString},
+		{Name: "concert_key", Type: field.TypeString, Nullable: true},
+		{Name: "capo_fret", Type: field.TypeInt},
+		{Name: "tempo_bpm", Type: field.TypeInt, Nullable: true},
+		{Name: "time_signature", Type: field.TypeJSON, Nullable: true},
+		{Name: "tuning_fingerprint", Type: field.TypeString},
+		{Name: "body", Type: field.TypeString, Size: 2147483647},
+		{Name: "rights_confirmed_by", Type: field.TypeUUID},
+		{Name: "rights_confirmed_at", Type: field.TypeTime},
+		{Name: "published_by", Type: field.TypeUUID},
+		{Name: "published_at", Type: field.TypeTime},
+		{Name: "song_chart_id", Type: field.TypeUUID},
+	}
+	// SongChartRevisionsTable holds the schema information for the "song_chart_revisions" table.
+	SongChartRevisionsTable = &schema.Table{
+		Name:       "song_chart_revisions",
+		Columns:    SongChartRevisionsColumns,
+		PrimaryKey: []*schema.Column{SongChartRevisionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "song_chart_revisions_song_charts_song_chart",
+				Columns:    []*schema.Column{SongChartRevisionsColumns[15]},
+				RefColumns: []*schema.Column{SongChartsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "songchartrevision_song_chart_id_revision_number",
+				Unique:  true,
+				Columns: []*schema.Column{SongChartRevisionsColumns[15], SongChartRevisionsColumns[1]},
+			},
+		},
+	}
 	// StudentLearningStatesColumns holds the columns for the "student_learning_states" table.
 	StudentLearningStatesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -1415,6 +1496,8 @@ var (
 		LearningPathInstrumentsTable,
 		LearningPathItemsTable,
 		PositionsTable,
+		SongChartsTable,
+		SongChartRevisionsTable,
 		StudentLearningStatesTable,
 		StudentPathsTable,
 		StudentPathItemsTable,
@@ -1472,5 +1555,6 @@ func init() {
 	LearningPathInstrumentsTable.ForeignKeys[0].RefTable = LearningPathsTable
 	LearningPathInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	PositionsTable.ForeignKeys[0].RefTable = DiagramsTable
+	SongChartRevisionsTable.ForeignKeys[0].RefTable = SongChartsTable
 	UsersTable.ForeignKeys[0].RefTable = LanguagesTable
 }

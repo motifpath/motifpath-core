@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -40,6 +41,15 @@ const (
 	ChordIntervalN7    ChordInterval = "7"
 	ChordIntervalN9    ChordInterval = "9"
 	ChordIntervalR     ChordInterval = "R"
+)
+
+// Defines values for ChordProImportWarningKind.
+const (
+	EmptySection         ChordProImportWarningKind = "empty_section"
+	MalformedDirective   ChordProImportWarningKind = "malformed_directive"
+	UnbalancedSection    ChordProImportWarningKind = "unbalanced_section"
+	UnclosedChord        ChordProImportWarningKind = "unclosed_chord"
+	UnsupportedDirective ChordProImportWarningKind = "unsupported_directive"
 )
 
 // Defines values for ChordQuality.
@@ -552,7 +562,7 @@ const (
 
 // Defines values for PromptDocumentType.
 const (
-	Doc PromptDocumentType = "doc"
+	PromptDocumentTypeDoc PromptDocumentType = "doc"
 )
 
 // Defines values for PromptMarkType.
@@ -646,6 +656,74 @@ const (
 	Accuracy          SkillProgressMeasure = "accuracy"
 	BestCleanTempoBpm SkillProgressMeasure = "best_clean_tempo_bpm"
 	Fluency           SkillProgressMeasure = "fluency"
+)
+
+// Defines values for SongChartAnchorWarningWarning.
+const (
+	BassNotInCatalog   SongChartAnchorWarningWarning = "bass_not_in_catalog"
+	ChordNotInCatalog  SongChartAnchorWarningWarning = "chord_not_in_catalog"
+	UnparsedSymbol     SongChartAnchorWarningWarning = "unparsed_symbol"
+	UnsupportedQuality SongChartAnchorWarningWarning = "unsupported_quality"
+	VoicingUnavailable SongChartAnchorWarningWarning = "voicing_unavailable"
+)
+
+// Defines values for SongChartChordAnchorType.
+const (
+	ChordAnchor SongChartChordAnchorType = "chordAnchor"
+)
+
+// Defines values for SongChartCommentContentType.
+const (
+	SongChartCommentContentTypeText SongChartCommentContentType = "text"
+)
+
+// Defines values for SongChartCommentType.
+const (
+	Comment SongChartCommentType = "comment"
+)
+
+// Defines values for SongChartDocumentType.
+const (
+	SongChartDocumentTypeDoc SongChartDocumentType = "doc"
+)
+
+// Defines values for SongChartLyricLineType.
+const (
+	LyricLine SongChartLyricLineType = "lyricLine"
+)
+
+// Defines values for SongChartNotPublishableErrorReasons.
+const (
+	RightsNotConfirmed SongChartNotPublishableErrorReasons = "rights_not_confirmed"
+	UnresolvedChords   SongChartNotPublishableErrorReasons = "unresolved_chords"
+)
+
+// Defines values for SongChartSectionAttrsKind.
+const (
+	Bridge       SongChartSectionAttrsKind = "bridge"
+	Chorus       SongChartSectionAttrsKind = "chorus"
+	Instrumental SongChartSectionAttrsKind = "instrumental"
+	Intro        SongChartSectionAttrsKind = "intro"
+	Other        SongChartSectionAttrsKind = "other"
+	Outro        SongChartSectionAttrsKind = "outro"
+	Verse        SongChartSectionAttrsKind = "verse"
+)
+
+// Defines values for SongChartSectionType.
+const (
+	Section SongChartSectionType = "section"
+)
+
+// Defines values for SongChartStatus.
+const (
+	SongChartStatusDraft     SongChartStatus = "draft"
+	SongChartStatusPublished SongChartStatus = "published"
+	SongChartStatusWithdrawn SongChartStatus = "withdrawn"
+)
+
+// Defines values for SongChartTextType.
+const (
+	SongChartTextTypeText SongChartTextType = "text"
 )
 
 // Defines values for StudentPathLevel.
@@ -797,8 +875,8 @@ const (
 
 // Defines values for ListLearningPathsParamsStatus.
 const (
-	ListLearningPathsParamsStatusDraft     ListLearningPathsParamsStatus = "draft"
-	ListLearningPathsParamsStatusPublished ListLearningPathsParamsStatus = "published"
+	Draft     ListLearningPathsParamsStatus = "draft"
+	Published ListLearningPathsParamsStatus = "published"
 )
 
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
@@ -898,6 +976,35 @@ type ChordDefinition struct {
 // ChordInterval An interval of a chord formula, as the same canonical code a
 // diagram position uses (R is the root).
 type ChordInterval string
+
+// ChordProImportWarning A part of a ChordPro text the import skipped.
+type ChordProImportWarning struct {
+	// Kind unsupported_directive: a directive outside the supported subset
+	// (e.g. {define}). malformed_directive: a line starting with "{"
+	// that isn't a whole directive. unclosed_chord: a "[" with no "]"
+	// on its line; the line is read as plain text.
+	// unbalanced_section: an end_of_ with no matching start_of_, or a
+	// start_of_ inside another section; the section is closed there.
+	// empty_section: a section environment with no lines; it is
+	// dropped.
+	Kind ChordProImportWarningKind `json:"kind"`
+
+	// Line The line of the text it is on, numbered from 1.
+	Line int `json:"line"`
+
+	// Text The skipped text, as written.
+	Text string `json:"text"`
+}
+
+// ChordProImportWarningKind unsupported_directive: a directive outside the supported subset
+// (e.g. {define}). malformed_directive: a line starting with "{"
+// that isn't a whole directive. unclosed_chord: a "[" with no "]"
+// on its line; the line is read as plain text.
+// unbalanced_section: an end_of_ with no matching start_of_, or a
+// start_of_ inside another section; the section is closed there.
+// empty_section: a section environment with no lines; it is
+// dropped.
+type ChordProImportWarningKind string
 
 // ChordQuality The kind of chord, independent of its root. Each quality has one
 // formula (see ChordDefinition.formula) and one canonical suffix in
@@ -3129,6 +3236,60 @@ type Language struct {
 	Name string `json:"name"`
 }
 
+// LearnerSongChart A song chart as a learner reads it: the lyrics with their chords,
+// and every chord it uses with that chord's voicings and their
+// diagrams, so the reader needs no further call. It carries nothing
+// about who wrote or published the chart, or about its rights.
+type LearnerSongChart struct {
+	// Artist The song's artist.
+	Artist string `json:"artist"`
+
+	// Body The body of a song chart: lyrics with chords anchored to the words
+	// they fall on, as ProseMirror JSON from the song chart editor. It is
+	// its own document type, not a PromptDocument: it holds only
+	// sections, lyric lines and comments, and its only mark is the
+	// chordAnchor. Lines are kept as written; the reader lays chords out
+	// over the words itself, so the document never holds spaces that
+	// exist only to line chords up.
+	Body SongChartDocument `json:"body"`
+
+	// CapoFret The fret the capo goes on; 0 means no capo.
+	CapoFret int `json:"capo_fret"`
+
+	// Chords Every catalog chord an anchor resolves to, once each. A chord's
+	// voicings are its active voicings, best first, plus any voicing
+	// an anchor picked that has since been withdrawn, last.
+	Chords []ChordDefinition `json:"chords"`
+
+	// ConcertKey The key the song sounds in; null when not stated.
+	ConcertKey *string `json:"concert_key"`
+
+	// Diagrams The diagram of every voicing in chords, once each.
+	Diagrams []Diagram `json:"diagrams"`
+
+	// Language The Language.code of the lyrics.
+	Language string `json:"language"`
+
+	// RevisionNumber The published revision being read; tracking events carry it.
+	// null in a preview of the draft.
+	RevisionNumber *int `json:"revision_number"`
+
+	// SongChartId The chart's identifier.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// TempoBpm Beats per minute; null when not stated.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The song's meter; null when not stated.
+	TimeSignature *TimeSignature `json:"time_signature"`
+
+	// Title The song's title.
+	Title string `json:"title"`
+
+	// TuningFingerprint The open-string pitches the chords are written for, lowest string first.
+	TuningFingerprint string `json:"tuning_fingerprint"`
+}
+
 // LearningPath An ordered sequence of content nodes assigned to students as a structured curriculum.
 type LearningPath struct {
 	// CreatedAt Timestamp at which this learning path was created.
@@ -3465,6 +3626,21 @@ type PagedLearningPaths struct {
 // PagedPathCatalog defines model for PagedPathCatalog.
 type PagedPathCatalog struct {
 	Items []PathCatalogEntry `json:"items"`
+
+	// Limit The page size that was applied.
+	Limit int `json:"limit"`
+
+	// Offset The number of matching items skipped before this page.
+	Offset int `json:"offset"`
+
+	// Total Number of items matching the filters across all pages.
+	Total int `json:"total"`
+}
+
+// PagedSongCharts defines model for PagedSongCharts.
+type PagedSongCharts struct {
+	// Items The charts on this page, most recently updated first, then by id.
+	Items []SongChartSummary `json:"items"`
 
 	// Limit The page size that was applied.
 	Limit int `json:"limit"`
@@ -4167,6 +4343,22 @@ type ReplaceLearningPathRequest struct {
 // ReplaceLearningPathRequestLevel The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
 type ReplaceLearningPathRequestLevel string
 
+// RightsConfirmation An admin's statement that a song's rights were checked. Rights are
+// cleared outside MotifPath; this records only who confirmed it, and
+// when.
+type RightsConfirmation struct {
+	// ConfirmedAt When the rights were confirmed.
+	ConfirmedAt time.Time `json:"confirmed_at"`
+
+	// ConfirmedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	ConfirmedBy UserRef `json:"confirmed_by"`
+}
+
 // SequenceStep One step of a diagram playback. Its positions start together (or
 // strummed), sound for the step's value, and the next step starts
 // when this one ends. A step with no positions is a rest.
@@ -4239,6 +4431,477 @@ type SkillProgress struct {
 // SkillProgressMeasure What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
 // practised items; best_clean_tempo_bpm is a tempo.
 type SkillProgressMeasure string
+
+// SongChart A song chart as admins see it: its draft and what learners are
+// served.
+type SongChart struct {
+	// CreatedAt When the chart was created.
+	CreatedAt time.Time `json:"created_at"`
+
+	// CreatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	CreatedBy UserRef        `json:"created_by"`
+	Draft     SongChartDraft `json:"draft"`
+
+	// PublishedRevision The latest published revision, the one learners are served while
+	// the chart is published; null when the chart was never published.
+	PublishedRevision *SongChartRevisionSummary `json:"published_revision"`
+
+	// SongChartId Stable identifier for this chart.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// Status Where a chart stands with learners. draft: never published.
+	// published: learners are served its latest published revision.
+	// withdrawn: taken away from learners until it is published again.
+	Status SongChartStatus `json:"status"`
+
+	// Withdrawal Who withdrew the chart, when and why; null unless status is withdrawn.
+	Withdrawal *SongChartWithdrawal `json:"withdrawal"`
+}
+
+// SongChartAnchorWarning A chord anchor whose symbol didn't fully resolve to a playable
+// catalog chord.
+type SongChartAnchorWarning struct {
+	// AnchorId The anchor's anchorId.
+	AnchorId string `json:"anchor_id"`
+
+	// BlocksPublication Whether the warning stops the draft from being published. Only
+	// bass_not_in_catalog doesn't.
+	BlocksPublication bool `json:"blocks_publication"`
+
+	// LineIndex The line within that section, numbered from 0, comments included.
+	LineIndex int `json:"line_index"`
+
+	// SectionIndex The section the anchor is in, numbered from 0.
+	SectionIndex int `json:"section_index"`
+
+	// Warning unparsed_symbol and unsupported_quality: the symbol isn't a
+	// supported chord (as in searchChords). chord_not_in_catalog: it
+	// parses, but the catalog has no such chord, or no voicing of it.
+	// voicing_unavailable: the picked voicing has been withdrawn
+	// from the catalog. bass_not_in_catalog: a slash chord the catalog
+	// doesn't have; the learner is shown the chord without its bass.
+	Warning SongChartAnchorWarningWarning `json:"warning"`
+
+	// WrittenSymbol The anchor's symbol as written.
+	WrittenSymbol string `json:"written_symbol"`
+}
+
+// SongChartAnchorWarningWarning unparsed_symbol and unsupported_quality: the symbol isn't a
+// supported chord (as in searchChords). chord_not_in_catalog: it
+// parses, but the catalog has no such chord, or no voicing of it.
+// voicing_unavailable: the picked voicing has been withdrawn
+// from the catalog. bass_not_in_catalog: a slash chord the catalog
+// doesn't have; the learner is shown the chord without its bass.
+type SongChartAnchorWarningWarning string
+
+// SongChartChordAnchor A chord played at the start of the text run it marks. attrs keys are
+// camelCase, the rich-text editor's convention.
+type SongChartChordAnchor struct {
+	Attrs struct {
+		// AnchorId Identifies the anchor, unique within its document. It keeps
+		// two neighbouring runs with the same chord as two anchors, and
+		// warnings point at an anchor by it.
+		AnchorId string `json:"anchorId"`
+
+		// ChordDefinitionId The catalog chord the symbol resolves to, set by the server
+		// whenever the document is saved; a value sent by a client is
+		// ignored. null when the symbol is a no-chord marking or
+		// doesn't resolve. For a slash chord the catalog doesn't have,
+		// it is the chord without the bass.
+		ChordDefinitionId *openapi_types.UUID `json:"chordDefinitionId"`
+
+		// ChordVoicingId The voicing the author picked for this anchor, offered first
+		// to the learner; null offers the chord's top-ranked voicing.
+		// Must be a voicing of the chord the symbol resolves to.
+		ChordVoicingId *openapi_types.UUID `json:"chordVoicingId"`
+
+		// WrittenSymbol The chord symbol as the author wrote it. This is what the
+		// learner sees, whatever it resolves to.
+		WrittenSymbol string `json:"writtenSymbol"`
+	} `json:"attrs"`
+
+	// Type Discriminates this mark as a chord anchor.
+	Type SongChartChordAnchorType `json:"type"`
+}
+
+// SongChartChordAnchorType Discriminates this mark as a chord anchor.
+type SongChartChordAnchorType string
+
+// SongChartChordProImport The result of importing ChordPro text into a song chart's draft.
+type SongChartChordProImport struct {
+	// ImportWarnings What the import skipped, in line order; empty when it read everything.
+	ImportWarnings []ChordProImportWarning `json:"import_warnings"`
+
+	// SongChart A song chart as admins see it: its draft and what learners are
+	// served.
+	SongChart SongChart `json:"song_chart"`
+}
+
+// SongChartComment A performance note between lines (e.g. "Repeat twice", "Slower").
+// Shown to the learner; carries no chords.
+type SongChartComment struct {
+	// Content The comment's text.
+	Content []struct {
+		// Text The comment's text.
+		Text string `json:"text"`
+
+		// Type Discriminates this node as text.
+		Type SongChartCommentContentType `json:"type"`
+	} `json:"content"`
+
+	// Type Discriminates this node as a comment.
+	Type SongChartCommentType `json:"type"`
+}
+
+// SongChartCommentContentType Discriminates this node as text.
+type SongChartCommentContentType string
+
+// SongChartCommentType Discriminates this node as a comment.
+type SongChartCommentType string
+
+// SongChartDocument The body of a song chart: lyrics with chords anchored to the words
+// they fall on, as ProseMirror JSON from the song chart editor. It is
+// its own document type, not a PromptDocument: it holds only
+// sections, lyric lines and comments, and its only mark is the
+// chordAnchor. Lines are kept as written; the reader lays chords out
+// over the words itself, so the document never holds spaces that
+// exist only to line chords up.
+type SongChartDocument struct {
+	// Content The chart's sections, in the order they are played.
+	Content []SongChartSection `json:"content"`
+
+	// Type Discriminates this object as a song chart document's root node.
+	Type SongChartDocumentType `json:"type"`
+}
+
+// SongChartDocumentType Discriminates this object as a song chart document's root node.
+type SongChartDocumentType string
+
+// SongChartDraft defines model for SongChartDraft.
+type SongChartDraft struct {
+	// Artist The performer or composer the song is known by.
+	Artist string `json:"artist"`
+
+	// Body The body of a song chart: lyrics with chords anchored to the words
+	// they fall on, as ProseMirror JSON from the song chart editor. It is
+	// its own document type, not a PromptDocument: it holds only
+	// sections, lyric lines and comments, and its only mark is the
+	// chordAnchor. Lines are kept as written; the reader lays chords out
+	// over the words itself, so the document never holds spaces that
+	// exist only to line chords up.
+	Body SongChartDocument `json:"body"`
+
+	// CapoFret The fret the capo goes on; 0 means no capo. Chord symbols are
+	// written as fingered with the capo on.
+	CapoFret int `json:"capo_fret"`
+
+	// ConcertKey The key the song sounds in, regardless of capo (e.g. "G", "F#m");
+	// null when not stated.
+	ConcertKey *string `json:"concert_key"`
+
+	// Language The Language.code of the lyrics (not "any").
+	Language string `json:"language"`
+
+	// RightsConfirmation Who confirmed the rights and when; null exactly when rights_confirmed is false.
+	RightsConfirmation *RightsConfirmation `json:"rights_confirmation"`
+
+	// RightsConfirmed Whether an admin confirms that the song's rights were checked.
+	// Rights are cleared outside MotifPath; this only records that
+	// they were. Required to be true before the draft can be
+	// published.
+	RightsConfirmed bool `json:"rights_confirmed"`
+
+	// TempoBpm Beats per minute; null when not stated.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The song's meter; null when not stated.
+	TimeSignature *TimeSignature `json:"time_signature"`
+
+	// Title The song's title as shown to learners.
+	Title string `json:"title"`
+
+	// UpdatedAt When the draft was last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// UpdatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	UpdatedBy UserRef `json:"updated_by"`
+
+	// Warnings Every chord anchor the server couldn't fully resolve, in
+	// document order; empty when every anchor resolved.
+	Warnings []SongChartAnchorWarning `json:"warnings"`
+}
+
+// SongChartDraftInput The fields of a song chart's draft that authors write.
+type SongChartDraftInput struct {
+	// Artist The performer or composer the song is known by.
+	Artist string `json:"artist"`
+
+	// Body The body of a song chart: lyrics with chords anchored to the words
+	// they fall on, as ProseMirror JSON from the song chart editor. It is
+	// its own document type, not a PromptDocument: it holds only
+	// sections, lyric lines and comments, and its only mark is the
+	// chordAnchor. Lines are kept as written; the reader lays chords out
+	// over the words itself, so the document never holds spaces that
+	// exist only to line chords up.
+	Body SongChartDocument `json:"body"`
+
+	// CapoFret The fret the capo goes on; 0 means no capo. Chord symbols are
+	// written as fingered with the capo on.
+	CapoFret int `json:"capo_fret"`
+
+	// ConcertKey The key the song sounds in, regardless of capo (e.g. "G", "F#m");
+	// null when not stated.
+	ConcertKey *string `json:"concert_key"`
+
+	// Language The Language.code of the lyrics (not "any").
+	Language string `json:"language"`
+
+	// RightsConfirmed Whether an admin confirms that the song's rights were checked.
+	// Rights are cleared outside MotifPath; this only records that
+	// they were. Required to be true before the draft can be
+	// published.
+	RightsConfirmed bool `json:"rights_confirmed"`
+
+	// TempoBpm Beats per minute; null when not stated.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The song's meter; null when not stated.
+	TimeSignature *TimeSignature `json:"time_signature"`
+
+	// Title The song's title as shown to learners.
+	Title string `json:"title"`
+}
+
+// SongChartLyricLine One line of lyrics. Its text runs may carry a chordAnchor; a chord
+// with no lyric under it (an instrumental bar, a chord at the end of a
+// line) anchors to a single space.
+type SongChartLyricLine struct {
+	// Content The line's text runs, in order.
+	Content []SongChartText `json:"content"`
+
+	// Type Discriminates this node as a lyric line.
+	Type SongChartLyricLineType `json:"type"`
+}
+
+// SongChartLyricLineType Discriminates this node as a lyric line.
+type SongChartLyricLineType string
+
+// SongChartNotPublishableError Returned when a song chart's draft can't be published as it stands,
+// with everything that stops it.
+type SongChartNotPublishableError struct {
+	// AnchorWarnings The anchors whose warnings block publication; empty unless reasons has unresolved_chords.
+	AnchorWarnings []SongChartAnchorWarning `json:"anchor_warnings"`
+
+	// Message Human-readable summary of the refusal.
+	Message string `json:"message"`
+
+	// Reasons rights_not_confirmed: no admin has confirmed the song's rights
+	// were checked. unresolved_chords: at least one anchor has a
+	// warning that blocks publication (see anchor_warnings).
+	Reasons []SongChartNotPublishableErrorReasons `json:"reasons"`
+}
+
+// SongChartNotPublishableErrorReasons defines model for SongChartNotPublishableError.Reasons.
+type SongChartNotPublishableErrorReasons string
+
+// SongChartRevision A published revision of a song chart. A revision never changes: a
+// correction is published as a new revision.
+type SongChartRevision struct {
+	// Artist The song's artist in this revision.
+	Artist string `json:"artist"`
+
+	// Body The body of a song chart: lyrics with chords anchored to the words
+	// they fall on, as ProseMirror JSON from the song chart editor. It is
+	// its own document type, not a PromptDocument: it holds only
+	// sections, lyric lines and comments, and its only mark is the
+	// chordAnchor. Lines are kept as written; the reader lays chords out
+	// over the words itself, so the document never holds spaces that
+	// exist only to line chords up.
+	Body SongChartDocument `json:"body"`
+
+	// CapoFret The fret the capo goes on; 0 means no capo.
+	CapoFret int `json:"capo_fret"`
+
+	// ConcertKey The key the song sounds in; null when not stated.
+	ConcertKey *string `json:"concert_key"`
+
+	// Language The Language.code of this revision's lyrics.
+	Language string `json:"language"`
+
+	// PublishedAt When the revision was published.
+	PublishedAt time.Time `json:"published_at"`
+
+	// PublishedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	PublishedBy UserRef `json:"published_by"`
+
+	// RevisionNumber The revision's number, 1 for the chart's first publication.
+	RevisionNumber int `json:"revision_number"`
+
+	// RightsConfirmation An admin's statement that a song's rights were checked. Rights are
+	// cleared outside MotifPath; this records only who confirmed it, and
+	// when.
+	RightsConfirmation RightsConfirmation `json:"rights_confirmation"`
+
+	// SongChartId The chart this is a revision of.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// TempoBpm Beats per minute; null when not stated.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The song's meter; null when not stated.
+	TimeSignature *TimeSignature `json:"time_signature"`
+
+	// Title The song's title in this revision.
+	Title string `json:"title"`
+
+	// TuningFingerprint The open-string pitches the chords are written for, lowest
+	// string first (e.g. "E2-A2-D3-G3-B3-E4", standard guitar tuning).
+	TuningFingerprint string `json:"tuning_fingerprint"`
+}
+
+// SongChartRevisionSummary Which revision learners are served, and who published it.
+type SongChartRevisionSummary struct {
+	// Language The revision's Language.code.
+	Language string `json:"language"`
+
+	// PublishedAt When the revision was published.
+	PublishedAt time.Time `json:"published_at"`
+
+	// PublishedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	PublishedBy UserRef `json:"published_by"`
+
+	// RevisionNumber The revision's number, 1 for the chart's first publication.
+	RevisionNumber int `json:"revision_number"`
+
+	// Title The revision's title.
+	Title string `json:"title"`
+}
+
+// SongChartSection A section of a song (a verse, a chorus, ...), holding its lines.
+// Sections are numbered from 0 in document order; the reader reports
+// a section the learner marks as played by that number.
+type SongChartSection struct {
+	Attrs struct {
+		// Kind What part of the song this is. other is a section with no standard kind.
+		Kind SongChartSectionAttrsKind `json:"kind"`
+
+		// Label The section's heading as the author wrote it (e.g. "Verse 2",
+		// "Refrão"); null shows no heading.
+		Label *string `json:"label"`
+	} `json:"attrs"`
+
+	// Content The section's lines and comments, in order.
+	Content []SongChartSection_Content_Item `json:"content"`
+
+	// Type Discriminates this node as a section.
+	Type SongChartSectionType `json:"type"`
+}
+
+// SongChartSectionAttrsKind What part of the song this is. other is a section with no standard kind.
+type SongChartSectionAttrsKind string
+
+// SongChartSection_Content_Item defines model for SongChartSection.content.Item.
+type SongChartSection_Content_Item struct {
+	union json.RawMessage
+}
+
+// SongChartSectionType Discriminates this node as a section.
+type SongChartSectionType string
+
+// SongChartStatus Where a chart stands with learners. draft: never published.
+// published: learners are served its latest published revision.
+// withdrawn: taken away from learners until it is published again.
+type SongChartStatus string
+
+// SongChartSummary A song chart in a list, without its body.
+type SongChartSummary struct {
+	// Artist The draft's artist.
+	Artist string `json:"artist"`
+
+	// Language The draft's Language.code.
+	Language string `json:"language"`
+
+	// PublishedRevisionNumber The latest published revision's number; null when never published.
+	PublishedRevisionNumber *int `json:"published_revision_number"`
+
+	// RightsConfirmed Whether the draft's rights are confirmed.
+	RightsConfirmed bool `json:"rights_confirmed"`
+
+	// SongChartId Stable identifier for this chart.
+	SongChartId openapi_types.UUID `json:"song_chart_id"`
+
+	// Status Where a chart stands with learners. draft: never published.
+	// published: learners are served its latest published revision.
+	// withdrawn: taken away from learners until it is published again.
+	Status SongChartStatus `json:"status"`
+
+	// Title The draft's title.
+	Title string `json:"title"`
+
+	// UpdatedAt When the draft was last changed.
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// UpdatedBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	UpdatedBy UserRef `json:"updated_by"`
+}
+
+// SongChartText A run of lyric text. With a chordAnchor mark, the chord is played
+// at the start of the run.
+type SongChartText struct {
+	// Marks The run's chord anchor; absent when no chord falls on it.
+	Marks *[]SongChartChordAnchor `json:"marks,omitempty"`
+
+	// Text The literal text.
+	Text string `json:"text"`
+
+	// Type Discriminates this node as text.
+	Type SongChartTextType `json:"type"`
+}
+
+// SongChartTextType Discriminates this node as text.
+type SongChartTextType string
+
+// SongChartWithdrawal Who withdrew a song chart, when and why.
+type SongChartWithdrawal struct {
+	// Reason Why it was withdrawn, as the admin wrote it.
+	Reason string `json:"reason"`
+
+	// WithdrawnAt When the chart was withdrawn.
+	WithdrawnAt time.Time `json:"withdrawn_at"`
+
+	// WithdrawnBy A reference to another MotifPath user, as it appears in any response
+	// that points at a user (ADR-035). display_name is read from the
+	// user's record when the response is built, never copied onto the
+	// referencing entity, so a rename shows everywhere at once. A UserRef
+	// appears only in responses the caller is already authorized to
+	// receive.
+	WithdrawnBy UserRef `json:"withdrawn_by"`
+}
 
 // StudentPath A student's own copy of a learning path template's items. Created by
 // copying a LearningPath at assign time; independently editable
@@ -4888,6 +5551,12 @@ type VoiceSample struct {
 	Url string `json:"url"`
 }
 
+// WithdrawSongChartRequest Payload for withdrawing a published song chart.
+type WithdrawSongChartRequest struct {
+	// Reason Why the chart is withdrawn, kept with the chart for audit.
+	Reason string `json:"reason"`
+}
+
 // Limit defines model for Limit.
 type Limit = int
 
@@ -4896,6 +5565,9 @@ type Offset = int
 
 // SearchText defines model for SearchText.
 type SearchText = string
+
+// SongChartId defines model for SongChartId.
+type SongChartId = openapi_types.UUID
 
 // ListCatalogCoursesParams defines parameters for ListCatalogCourses.
 type ListCatalogCoursesParams struct {
@@ -5245,6 +5917,25 @@ type ListLearningPathCreatorsParams struct {
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// ListSongChartsParams defines parameters for ListSongCharts.
+type ListSongChartsParams struct {
+	// Limit Maximum number of items to return in this page (ADR-031).
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of matching items to skip before this page (ADR-031).
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Q Case- and accent-insensitive substring match against the
+	// draft's title and artist.
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Status Restricts the results to charts with this status.
+	Status *SongChartStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ImportSongChartChordProTextBody defines parameters for ImportSongChartChordPro.
+type ImportSongChartChordProTextBody = string
+
 // GetFretboardMapParams defines parameters for GetFretboardMap.
 type GetFretboardMapParams struct {
 	// InstrumentId The instrument whose fretboard to show.
@@ -5332,6 +6023,18 @@ type ReplaceLearningPathJSONRequestBody = ReplaceLearningPathRequest
 // CreateMediaUploadUrlJSONRequestBody defines body for CreateMediaUploadUrl for application/json ContentType.
 type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
+// CreateSongChartJSONRequestBody defines body for CreateSongChart for application/json ContentType.
+type CreateSongChartJSONRequestBody = SongChartDraftInput
+
+// UpdateSongChartDraftJSONRequestBody defines body for UpdateSongChartDraft for application/json ContentType.
+type UpdateSongChartDraftJSONRequestBody = SongChartDraftInput
+
+// ImportSongChartChordProTextRequestBody defines body for ImportSongChartChordPro for text/plain ContentType.
+type ImportSongChartChordProTextRequestBody = ImportSongChartChordProTextBody
+
+// WithdrawSongChartJSONRequestBody defines body for WithdrawSongChart for application/json ContentType.
+type WithdrawSongChartJSONRequestBody = WithdrawSongChartRequest
+
 // CreateCourseEnrollmentJSONRequestBody defines body for CreateCourseEnrollment for application/json ContentType.
 type CreateCourseEnrollmentJSONRequestBody = CreateCourseEnrollmentRequest
 
@@ -5352,6 +6055,68 @@ type RegisterUserJSONRequestBody = RegisterUserRequest
 
 // UpdateMyLocaleJSONRequestBody defines body for UpdateMyLocale for application/json ContentType.
 type UpdateMyLocaleJSONRequestBody = UpdateMyLocaleRequest
+
+// AsSongChartLyricLine returns the union data inside the SongChartSection_Content_Item as a SongChartLyricLine
+func (t SongChartSection_Content_Item) AsSongChartLyricLine() (SongChartLyricLine, error) {
+	var body SongChartLyricLine
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSongChartLyricLine overwrites any union data inside the SongChartSection_Content_Item as the provided SongChartLyricLine
+func (t *SongChartSection_Content_Item) FromSongChartLyricLine(v SongChartLyricLine) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSongChartLyricLine performs a merge with any union data inside the SongChartSection_Content_Item, using the provided SongChartLyricLine
+func (t *SongChartSection_Content_Item) MergeSongChartLyricLine(v SongChartLyricLine) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSongChartComment returns the union data inside the SongChartSection_Content_Item as a SongChartComment
+func (t SongChartSection_Content_Item) AsSongChartComment() (SongChartComment, error) {
+	var body SongChartComment
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSongChartComment overwrites any union data inside the SongChartSection_Content_Item as the provided SongChartComment
+func (t *SongChartSection_Content_Item) FromSongChartComment(v SongChartComment) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSongChartComment performs a merge with any union data inside the SongChartSection_Content_Item, using the provided SongChartComment
+func (t *SongChartSection_Content_Item) MergeSongChartComment(v SongChartComment) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SongChartSection_Content_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SongChartSection_Content_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -5565,6 +6330,39 @@ type ServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(w http.ResponseWriter, r *http.Request)
+	// List song charts for authoring and review
+	// (GET /song-charts)
+	ListSongCharts(w http.ResponseWriter, r *http.Request, params ListSongChartsParams)
+	// Start a new song chart
+	// (POST /song-charts)
+	CreateSongChart(w http.ResponseWriter, r *http.Request)
+	// Get a song chart with its draft
+	// (GET /song-charts/{song_chart_id})
+	GetSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Replace a song chart's draft
+	// (PUT /song-charts/{song_chart_id})
+	UpdateSongChartDraft(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Export a song chart's draft as ChordPro
+	// (GET /song-charts/{song_chart_id}/chordpro)
+	ExportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Replace a song chart's draft from ChordPro
+	// (PUT /song-charts/{song_chart_id}/chordpro)
+	ImportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Preview a song chart's draft as a learner would read it
+	// (GET /song-charts/{song_chart_id}/preview)
+	PreviewSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Publish a song chart's draft
+	// (POST /song-charts/{song_chart_id}/publish)
+	PublishSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Read a published song chart
+	// (GET /song-charts/{song_chart_id}/published)
+	GetPublishedSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// List a song chart's published revisions
+	// (GET /song-charts/{song_chart_id}/revisions)
+	ListSongChartRevisions(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
+	// Stop serving a published song chart
+	// (POST /song-charts/{song_chart_id}/withdraw)
+	WithdrawSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
 	// List the authenticated student's course enrollments
 	// (GET /students/me/course-enrollments)
 	ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request)
@@ -6039,6 +6837,72 @@ func (_ Unimplemented) CreateMediaUploadUrl(w http.ResponseWriter, r *http.Reque
 // Readiness probe
 // (GET /readyz)
 func (_ Unimplemented) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List song charts for authoring and review
+// (GET /song-charts)
+func (_ Unimplemented) ListSongCharts(w http.ResponseWriter, r *http.Request, params ListSongChartsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Start a new song chart
+// (POST /song-charts)
+func (_ Unimplemented) CreateSongChart(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get a song chart with its draft
+// (GET /song-charts/{song_chart_id})
+func (_ Unimplemented) GetSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace a song chart's draft
+// (PUT /song-charts/{song_chart_id})
+func (_ Unimplemented) UpdateSongChartDraft(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Export a song chart's draft as ChordPro
+// (GET /song-charts/{song_chart_id}/chordpro)
+func (_ Unimplemented) ExportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Replace a song chart's draft from ChordPro
+// (PUT /song-charts/{song_chart_id}/chordpro)
+func (_ Unimplemented) ImportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Preview a song chart's draft as a learner would read it
+// (GET /song-charts/{song_chart_id}/preview)
+func (_ Unimplemented) PreviewSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Publish a song chart's draft
+// (POST /song-charts/{song_chart_id}/publish)
+func (_ Unimplemented) PublishSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Read a published song chart
+// (GET /song-charts/{song_chart_id}/published)
+func (_ Unimplemented) GetPublishedSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List a song chart's published revisions
+// (GET /song-charts/{song_chart_id}/revisions)
+func (_ Unimplemented) ListSongChartRevisions(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Stop serving a published song chart
+// (POST /song-charts/{song_chart_id}/withdraw)
+func (_ Unimplemented) WithdrawSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8758,6 +9622,362 @@ func (siw *ServerInterfaceWrapper) ReadinessCheck(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
+// ListSongCharts operation middleware
+func (siw *ServerInterfaceWrapper) ListSongCharts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListSongChartsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSongCharts(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSongChart operation middleware
+func (siw *ServerInterfaceWrapper) CreateSongChart(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSongChart(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSongChart operation middleware
+func (siw *ServerInterfaceWrapper) GetSongChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSongChart(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSongChartDraft operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSongChartDraft(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSongChartDraft(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ExportSongChartChordPro operation middleware
+func (siw *ServerInterfaceWrapper) ExportSongChartChordPro(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ExportSongChartChordPro(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ImportSongChartChordPro operation middleware
+func (siw *ServerInterfaceWrapper) ImportSongChartChordPro(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ImportSongChartChordPro(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PreviewSongChart operation middleware
+func (siw *ServerInterfaceWrapper) PreviewSongChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PreviewSongChart(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishSongChart operation middleware
+func (siw *ServerInterfaceWrapper) PublishSongChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishSongChart(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPublishedSongChart operation middleware
+func (siw *ServerInterfaceWrapper) GetPublishedSongChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPublishedSongChart(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSongChartRevisions operation middleware
+func (siw *ServerInterfaceWrapper) ListSongChartRevisions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSongChartRevisions(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// WithdrawSongChart operation middleware
+func (siw *ServerInterfaceWrapper) WithdrawSongChart(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "song_chart_id" -------------
+	var songChartId SongChartId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "song_chart_id", chi.URLParam(r, "song_chart_id"), &songChartId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "song_chart_id", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.WithdrawSongChart(w, r, songChartId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListMyCourseEnrollments operation middleware
 func (siw *ServerInterfaceWrapper) ListMyCourseEnrollments(w http.ResponseWriter, r *http.Request) {
 
@@ -9507,6 +10727,39 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/readyz", wrapper.ReadinessCheck)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts", wrapper.ListSongCharts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/song-charts", wrapper.CreateSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts/{song_chart_id}", wrapper.GetSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/song-charts/{song_chart_id}", wrapper.UpdateSongChartDraft)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts/{song_chart_id}/chordpro", wrapper.ExportSongChartChordPro)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/song-charts/{song_chart_id}/chordpro", wrapper.ImportSongChartChordPro)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts/{song_chart_id}/preview", wrapper.PreviewSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/song-charts/{song_chart_id}/publish", wrapper.PublishSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts/{song_chart_id}/published", wrapper.GetPublishedSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/song-charts/{song_chart_id}/revisions", wrapper.ListSongChartRevisions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/song-charts/{song_chart_id}/withdraw", wrapper.WithdrawSongChart)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/students/me/course-enrollments", wrapper.ListMyCourseEnrollments)
@@ -12701,6 +13954,584 @@ func (response ReadinessCheck503JSONResponse) VisitReadinessCheckResponse(w http
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListSongChartsRequestObject struct {
+	Params ListSongChartsParams
+}
+
+type ListSongChartsResponseObject interface {
+	VisitListSongChartsResponse(w http.ResponseWriter) error
+}
+
+type ListSongCharts200JSONResponse PagedSongCharts
+
+func (response ListSongCharts200JSONResponse) VisitListSongChartsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongCharts400JSONResponse ValidationError
+
+func (response ListSongCharts400JSONResponse) VisitListSongChartsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongCharts401JSONResponse UnauthorizedError
+
+func (response ListSongCharts401JSONResponse) VisitListSongChartsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongCharts403JSONResponse ForbiddenError
+
+func (response ListSongCharts403JSONResponse) VisitListSongChartsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSongChartRequestObject struct {
+	Body *CreateSongChartJSONRequestBody
+}
+
+type CreateSongChartResponseObject interface {
+	VisitCreateSongChartResponse(w http.ResponseWriter) error
+}
+
+type CreateSongChart201JSONResponse SongChart
+
+func (response CreateSongChart201JSONResponse) VisitCreateSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSongChart400JSONResponse ValidationError
+
+func (response CreateSongChart400JSONResponse) VisitCreateSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSongChart401JSONResponse UnauthorizedError
+
+func (response CreateSongChart401JSONResponse) VisitCreateSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateSongChart403JSONResponse ForbiddenError
+
+func (response CreateSongChart403JSONResponse) VisitCreateSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSongChartRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type GetSongChartResponseObject interface {
+	VisitGetSongChartResponse(w http.ResponseWriter) error
+}
+
+type GetSongChart200JSONResponse SongChart
+
+func (response GetSongChart200JSONResponse) VisitGetSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSongChart400JSONResponse ValidationError
+
+func (response GetSongChart400JSONResponse) VisitGetSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSongChart401JSONResponse UnauthorizedError
+
+func (response GetSongChart401JSONResponse) VisitGetSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSongChart403JSONResponse ForbiddenError
+
+func (response GetSongChart403JSONResponse) VisitGetSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSongChart404JSONResponse NotFoundError
+
+func (response GetSongChart404JSONResponse) VisitGetSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateSongChartDraftRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+	Body        *UpdateSongChartDraftJSONRequestBody
+}
+
+type UpdateSongChartDraftResponseObject interface {
+	VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error
+}
+
+type UpdateSongChartDraft200JSONResponse SongChart
+
+func (response UpdateSongChartDraft200JSONResponse) VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateSongChartDraft400JSONResponse ValidationError
+
+func (response UpdateSongChartDraft400JSONResponse) VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateSongChartDraft401JSONResponse UnauthorizedError
+
+func (response UpdateSongChartDraft401JSONResponse) VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateSongChartDraft403JSONResponse ForbiddenError
+
+func (response UpdateSongChartDraft403JSONResponse) VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateSongChartDraft404JSONResponse NotFoundError
+
+func (response UpdateSongChartDraft404JSONResponse) VisitUpdateSongChartDraftResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExportSongChartChordProRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type ExportSongChartChordProResponseObject interface {
+	VisitExportSongChartChordProResponse(w http.ResponseWriter) error
+}
+
+type ExportSongChartChordPro200TextResponse string
+
+func (response ExportSongChartChordPro200TextResponse) VisitExportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(200)
+
+	_, err := w.Write([]byte(response))
+	return err
+}
+
+type ExportSongChartChordPro400JSONResponse ValidationError
+
+func (response ExportSongChartChordPro400JSONResponse) VisitExportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExportSongChartChordPro401JSONResponse UnauthorizedError
+
+func (response ExportSongChartChordPro401JSONResponse) VisitExportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExportSongChartChordPro403JSONResponse ForbiddenError
+
+func (response ExportSongChartChordPro403JSONResponse) VisitExportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ExportSongChartChordPro404JSONResponse NotFoundError
+
+func (response ExportSongChartChordPro404JSONResponse) VisitExportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportSongChartChordProRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+	Body        *ImportSongChartChordProTextRequestBody
+}
+
+type ImportSongChartChordProResponseObject interface {
+	VisitImportSongChartChordProResponse(w http.ResponseWriter) error
+}
+
+type ImportSongChartChordPro200JSONResponse SongChartChordProImport
+
+func (response ImportSongChartChordPro200JSONResponse) VisitImportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportSongChartChordPro400JSONResponse ValidationError
+
+func (response ImportSongChartChordPro400JSONResponse) VisitImportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportSongChartChordPro401JSONResponse UnauthorizedError
+
+func (response ImportSongChartChordPro401JSONResponse) VisitImportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportSongChartChordPro403JSONResponse ForbiddenError
+
+func (response ImportSongChartChordPro403JSONResponse) VisitImportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ImportSongChartChordPro404JSONResponse NotFoundError
+
+func (response ImportSongChartChordPro404JSONResponse) VisitImportSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PreviewSongChartRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type PreviewSongChartResponseObject interface {
+	VisitPreviewSongChartResponse(w http.ResponseWriter) error
+}
+
+type PreviewSongChart200JSONResponse LearnerSongChart
+
+func (response PreviewSongChart200JSONResponse) VisitPreviewSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PreviewSongChart400JSONResponse ValidationError
+
+func (response PreviewSongChart400JSONResponse) VisitPreviewSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PreviewSongChart401JSONResponse UnauthorizedError
+
+func (response PreviewSongChart401JSONResponse) VisitPreviewSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PreviewSongChart403JSONResponse ForbiddenError
+
+func (response PreviewSongChart403JSONResponse) VisitPreviewSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PreviewSongChart404JSONResponse NotFoundError
+
+func (response PreviewSongChart404JSONResponse) VisitPreviewSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChartRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type PublishSongChartResponseObject interface {
+	VisitPublishSongChartResponse(w http.ResponseWriter) error
+}
+
+type PublishSongChart201JSONResponse SongChartRevision
+
+func (response PublishSongChart201JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChart400JSONResponse ValidationError
+
+func (response PublishSongChart400JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChart401JSONResponse UnauthorizedError
+
+func (response PublishSongChart401JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChart403JSONResponse ForbiddenError
+
+func (response PublishSongChart403JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChart404JSONResponse NotFoundError
+
+func (response PublishSongChart404JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PublishSongChart409JSONResponse SongChartNotPublishableError
+
+func (response PublishSongChart409JSONResponse) VisitPublishSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedSongChartRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type GetPublishedSongChartResponseObject interface {
+	VisitGetPublishedSongChartResponse(w http.ResponseWriter) error
+}
+
+type GetPublishedSongChart200JSONResponse LearnerSongChart
+
+func (response GetPublishedSongChart200JSONResponse) VisitGetPublishedSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedSongChart400JSONResponse ValidationError
+
+func (response GetPublishedSongChart400JSONResponse) VisitGetPublishedSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedSongChart401JSONResponse UnauthorizedError
+
+func (response GetPublishedSongChart401JSONResponse) VisitGetPublishedSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetPublishedSongChart404JSONResponse NotFoundError
+
+func (response GetPublishedSongChart404JSONResponse) VisitGetPublishedSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongChartRevisionsRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+}
+
+type ListSongChartRevisionsResponseObject interface {
+	VisitListSongChartRevisionsResponse(w http.ResponseWriter) error
+}
+
+type ListSongChartRevisions200JSONResponse []SongChartRevision
+
+func (response ListSongChartRevisions200JSONResponse) VisitListSongChartRevisionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongChartRevisions400JSONResponse ValidationError
+
+func (response ListSongChartRevisions400JSONResponse) VisitListSongChartRevisionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongChartRevisions401JSONResponse UnauthorizedError
+
+func (response ListSongChartRevisions401JSONResponse) VisitListSongChartRevisionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongChartRevisions403JSONResponse ForbiddenError
+
+func (response ListSongChartRevisions403JSONResponse) VisitListSongChartRevisionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListSongChartRevisions404JSONResponse NotFoundError
+
+func (response ListSongChartRevisions404JSONResponse) VisitListSongChartRevisionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChartRequestObject struct {
+	SongChartId SongChartId `json:"song_chart_id"`
+	Body        *WithdrawSongChartJSONRequestBody
+}
+
+type WithdrawSongChartResponseObject interface {
+	VisitWithdrawSongChartResponse(w http.ResponseWriter) error
+}
+
+type WithdrawSongChart200JSONResponse SongChart
+
+func (response WithdrawSongChart200JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChart400JSONResponse ValidationError
+
+func (response WithdrawSongChart400JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChart401JSONResponse UnauthorizedError
+
+func (response WithdrawSongChart401JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChart403JSONResponse ForbiddenError
+
+func (response WithdrawSongChart403JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChart404JSONResponse NotFoundError
+
+func (response WithdrawSongChart404JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type WithdrawSongChart409JSONResponse ConflictError
+
+func (response WithdrawSongChart409JSONResponse) VisitWithdrawSongChartResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListMyCourseEnrollmentsRequestObject struct {
 }
 
@@ -13630,6 +15461,39 @@ type StrictServerInterface interface {
 	// Readiness probe
 	// (GET /readyz)
 	ReadinessCheck(ctx context.Context, request ReadinessCheckRequestObject) (ReadinessCheckResponseObject, error)
+	// List song charts for authoring and review
+	// (GET /song-charts)
+	ListSongCharts(ctx context.Context, request ListSongChartsRequestObject) (ListSongChartsResponseObject, error)
+	// Start a new song chart
+	// (POST /song-charts)
+	CreateSongChart(ctx context.Context, request CreateSongChartRequestObject) (CreateSongChartResponseObject, error)
+	// Get a song chart with its draft
+	// (GET /song-charts/{song_chart_id})
+	GetSongChart(ctx context.Context, request GetSongChartRequestObject) (GetSongChartResponseObject, error)
+	// Replace a song chart's draft
+	// (PUT /song-charts/{song_chart_id})
+	UpdateSongChartDraft(ctx context.Context, request UpdateSongChartDraftRequestObject) (UpdateSongChartDraftResponseObject, error)
+	// Export a song chart's draft as ChordPro
+	// (GET /song-charts/{song_chart_id}/chordpro)
+	ExportSongChartChordPro(ctx context.Context, request ExportSongChartChordProRequestObject) (ExportSongChartChordProResponseObject, error)
+	// Replace a song chart's draft from ChordPro
+	// (PUT /song-charts/{song_chart_id}/chordpro)
+	ImportSongChartChordPro(ctx context.Context, request ImportSongChartChordProRequestObject) (ImportSongChartChordProResponseObject, error)
+	// Preview a song chart's draft as a learner would read it
+	// (GET /song-charts/{song_chart_id}/preview)
+	PreviewSongChart(ctx context.Context, request PreviewSongChartRequestObject) (PreviewSongChartResponseObject, error)
+	// Publish a song chart's draft
+	// (POST /song-charts/{song_chart_id}/publish)
+	PublishSongChart(ctx context.Context, request PublishSongChartRequestObject) (PublishSongChartResponseObject, error)
+	// Read a published song chart
+	// (GET /song-charts/{song_chart_id}/published)
+	GetPublishedSongChart(ctx context.Context, request GetPublishedSongChartRequestObject) (GetPublishedSongChartResponseObject, error)
+	// List a song chart's published revisions
+	// (GET /song-charts/{song_chart_id}/revisions)
+	ListSongChartRevisions(ctx context.Context, request ListSongChartRevisionsRequestObject) (ListSongChartRevisionsResponseObject, error)
+	// Stop serving a published song chart
+	// (POST /song-charts/{song_chart_id}/withdraw)
+	WithdrawSongChart(ctx context.Context, request WithdrawSongChartRequestObject) (WithdrawSongChartResponseObject, error)
 	// List the authenticated student's course enrollments
 	// (GET /students/me/course-enrollments)
 	ListMyCourseEnrollments(ctx context.Context, request ListMyCourseEnrollmentsRequestObject) (ListMyCourseEnrollmentsResponseObject, error)
@@ -15652,6 +17516,319 @@ func (sh *strictHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ReadinessCheckResponseObject); ok {
 		if err := validResponse.VisitReadinessCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSongCharts operation middleware
+func (sh *strictHandler) ListSongCharts(w http.ResponseWriter, r *http.Request, params ListSongChartsParams) {
+	var request ListSongChartsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSongCharts(ctx, request.(ListSongChartsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSongCharts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSongChartsResponseObject); ok {
+		if err := validResponse.VisitListSongChartsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSongChart operation middleware
+func (sh *strictHandler) CreateSongChart(w http.ResponseWriter, r *http.Request) {
+	var request CreateSongChartRequestObject
+
+	var body CreateSongChartJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSongChart(ctx, request.(CreateSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSongChartResponseObject); ok {
+		if err := validResponse.VisitCreateSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSongChart operation middleware
+func (sh *strictHandler) GetSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request GetSongChartRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSongChart(ctx, request.(GetSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSongChartResponseObject); ok {
+		if err := validResponse.VisitGetSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSongChartDraft operation middleware
+func (sh *strictHandler) UpdateSongChartDraft(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request UpdateSongChartDraftRequestObject
+
+	request.SongChartId = songChartId
+
+	var body UpdateSongChartDraftJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSongChartDraft(ctx, request.(UpdateSongChartDraftRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSongChartDraft")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSongChartDraftResponseObject); ok {
+		if err := validResponse.VisitUpdateSongChartDraftResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ExportSongChartChordPro operation middleware
+func (sh *strictHandler) ExportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request ExportSongChartChordProRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ExportSongChartChordPro(ctx, request.(ExportSongChartChordProRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ExportSongChartChordPro")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ExportSongChartChordProResponseObject); ok {
+		if err := validResponse.VisitExportSongChartChordProResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ImportSongChartChordPro operation middleware
+func (sh *strictHandler) ImportSongChartChordPro(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request ImportSongChartChordProRequestObject
+
+	request.SongChartId = songChartId
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't read body: %w", err))
+		return
+	}
+	body := ImportSongChartChordProTextRequestBody(data)
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ImportSongChartChordPro(ctx, request.(ImportSongChartChordProRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ImportSongChartChordPro")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ImportSongChartChordProResponseObject); ok {
+		if err := validResponse.VisitImportSongChartChordProResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PreviewSongChart operation middleware
+func (sh *strictHandler) PreviewSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request PreviewSongChartRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PreviewSongChart(ctx, request.(PreviewSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PreviewSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PreviewSongChartResponseObject); ok {
+		if err := validResponse.VisitPreviewSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublishSongChart operation middleware
+func (sh *strictHandler) PublishSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request PublishSongChartRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishSongChart(ctx, request.(PublishSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishSongChartResponseObject); ok {
+		if err := validResponse.VisitPublishSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPublishedSongChart operation middleware
+func (sh *strictHandler) GetPublishedSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request GetPublishedSongChartRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPublishedSongChart(ctx, request.(GetPublishedSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPublishedSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPublishedSongChartResponseObject); ok {
+		if err := validResponse.VisitGetPublishedSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSongChartRevisions operation middleware
+func (sh *strictHandler) ListSongChartRevisions(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request ListSongChartRevisionsRequestObject
+
+	request.SongChartId = songChartId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListSongChartRevisions(ctx, request.(ListSongChartRevisionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSongChartRevisions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSongChartRevisionsResponseObject); ok {
+		if err := validResponse.VisitListSongChartRevisionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// WithdrawSongChart operation middleware
+func (sh *strictHandler) WithdrawSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId) {
+	var request WithdrawSongChartRequestObject
+
+	request.SongChartId = songChartId
+
+	var body WithdrawSongChartJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.WithdrawSongChart(ctx, request.(WithdrawSongChartRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "WithdrawSongChart")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(WithdrawSongChartResponseObject); ok {
+		if err := validResponse.VisitWithdrawSongChartResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

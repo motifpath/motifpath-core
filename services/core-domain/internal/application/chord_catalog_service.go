@@ -9,10 +9,6 @@ import (
 	"github.com/motifpath/core-domain/internal/ports"
 )
 
-// maxChordSymbolLength is the longest chord symbol, in characters, a search
-// accepts.
-const maxChordSymbolLength = 32
-
 // ChordCatalogService finds chords of the chord catalog and their voicings.
 // Only teachers and admins read the catalog; students see voicings only
 // where content embeds their diagrams.
@@ -42,7 +38,7 @@ func (s *ChordCatalogService) SearchChords(ctx context.Context, caller domain.Us
 	if !canManageContent(caller.Role) {
 		return ChordSearch{}, domain.ErrForbidden
 	}
-	if length := utf8.RuneCountInString(symbol); length == 0 || length > maxChordSymbolLength {
+	if length := utf8.RuneCountInString(symbol); length == 0 || length > domain.MaxChordSymbolLength {
 		return ChordSearch{}, domain.NewValidationError("symbol", "must be 1 to 32 characters")
 	}
 	search := ChordSearch{WrittenSymbol: symbol, Reading: domain.ParseChordSymbol(symbol)}

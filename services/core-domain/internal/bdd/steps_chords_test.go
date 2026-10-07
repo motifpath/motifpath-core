@@ -120,13 +120,7 @@ func (w *world) chordCatalogHasVoicing(key, instrumentName string) error {
 }
 
 func (w *world) chordCatalogHasChord(symbol string, table *godog.Table) error {
-	reading := domain.ParseChordSymbol(symbol)
-	if reading.Parsed == nil {
-		return fmt.Errorf("%q is not a chord symbol", symbol)
-	}
-	p := reading.Parsed
-	chord := domain.ChordDefinition{ID: chordID(symbol).String(), CanonicalSymbol: p.CanonicalSymbol, Root: p.Root, RootPitchClass: p.RootPitchClass,
-		Quality: p.Quality, Formula: scenarioFormulas[p.Quality], Bass: p.Bass, BassPitchClass: p.BassPitchClass}
+	var keys []string
 	for row := 1; row < len(table.Rows); row++ {
 		key, err := cell(table, row, "voicing")
 		if err != nil {
@@ -140,12 +134,31 @@ func (w *world) chordCatalogHasChord(symbol string, table *godog.Table) error {
 		if _, err := fmt.Sscan(rankCell, &rank); err != nil {
 			return fmt.Errorf("rank %q: %w", rankCell, err)
 		}
+		if rank != len(keys)+1 {
+			return fmt.Errorf("voicings must be listed in rank order, got rank %d in row %d", rank, row)
+		}
+		keys = append(keys, key)
+	}
+	return w.seedCatalogChord(symbol, keys...)
+}
+
+// seedCatalogChord installs the chord symbol in the catalog with the voicings keys,
+// ranked in the order given, as the catalog's migrations would.
+func (w *world) seedCatalogChord(symbol string, keys ...string) error {
+	reading := domain.ParseChordSymbol(symbol)
+	if reading.Parsed == nil {
+		return fmt.Errorf("%q is not a chord symbol", symbol)
+	}
+	p := reading.Parsed
+	chord := domain.ChordDefinition{ID: chordID(symbol).String(), CanonicalSymbol: p.CanonicalSymbol, Root: p.Root, RootPitchClass: p.RootPitchClass,
+		Quality: p.Quality, Formula: scenarioFormulas[p.Quality], Bass: p.Bass, BassPitchClass: p.BassPitchClass}
+	for i, key := range keys {
 		diagram, err := w.seedVoicingDiagram(key, "guitar", map[int]int{5: 0}, p.Root)
 		if err != nil {
 			return err
 		}
 		chord.Voicings = append(chord.Voicings, domain.ChordVoicing{ID: voicingID(key).String(), ChordDefinitionID: chord.ID, DiagramID: diagram.ID,
-			InstrumentID: diagram.InstrumentID, TuningFingerprint: "E2-A2-D3-G3-B3-E4", Difficulty: "beginner", RecommendedRank: rank, Status: domain.ChordVoicingActive})
+			InstrumentID: diagram.InstrumentID, TuningFingerprint: "E2-A2-D3-G3-B3-E4", Difficulty: "beginner", RecommendedRank: i + 1, Status: domain.ChordVoicingActive})
 	}
 	w.chords.put(chord)
 	return nil

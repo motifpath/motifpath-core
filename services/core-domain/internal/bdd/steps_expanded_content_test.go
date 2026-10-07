@@ -128,7 +128,7 @@ func richTextDoc(withVideo bool) generated.PromptDocument {
 	if withVideo {
 		content = append(content, generated.PromptNode{Type: generated.PromptNodeTypeVideo})
 	}
-	return generated.PromptDocument{Type: generated.Doc, Content: content}
+	return generated.PromptDocument{Type: generated.PromptDocumentTypeDoc, Content: content}
 }
 
 func (w *world) addsRichTextExpandedContentAtSeconds(name, nodeSlug, triggerStr, hideStr string) error {

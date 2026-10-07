@@ -56,7 +56,7 @@ func TestEntChordCatalogRepository(t *testing.T) {
 	dOverFSharp := seedChord("D/F#", 2, &fSharp, &six)
 	second := seedVoicing(d, 2, chordvoicing.StatusActive)
 	first := seedVoicing(d, 1, chordvoicing.StatusActive)
-	seedVoicing(d, 3, chordvoicing.StatusWithdrawn)
+	withdrawn := seedVoicing(d, 3, chordvoicing.StatusWithdrawn)
 
 	t.Run("a chord is read with its active voicings, best first", func(t *testing.T) {
 		got, err := chords.GetChord(ctx, d.ID.String())
@@ -103,5 +103,24 @@ func TestEntChordCatalogRepository(t *testing.T) {
 		_, err := chords.FindChord(ctx, 2, domain.ChordQualityMinor, nil)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("several chords are read at once with their active voicings, leaving out unknown ids", func(t *testing.T) {
+		got, err := chords.GetChords(ctx, []string{d.ID.String(), dOverFSharp.ID.String(), uuid.NewString(), "not-a-uuid"})
+
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		require.Len(t, got[d.ID.String()].Voicings, 2)
+		assert.Equal(t, first.String(), got[d.ID.String()].Voicings[0].ID)
+		assert.Equal(t, "D/F#", got[dOverFSharp.ID.String()].CanonicalSymbol)
+	})
+
+	t.Run("voicings are read by id, withdrawn ones included", func(t *testing.T) {
+		got, err := chords.GetVoicings(ctx, []string{first.String(), withdrawn.String(), uuid.NewString()})
+
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, domain.ChordVoicingWithdrawn, got[withdrawn.String()].Status)
+		assert.Equal(t, d.ID.String(), got[first.String()].ChordDefinitionID)
 	})
 }

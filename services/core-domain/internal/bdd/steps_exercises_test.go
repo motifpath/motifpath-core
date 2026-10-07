@@ -487,7 +487,7 @@ func (w *world) putExerciseWithType(slug, exerciseType string) error {
 // input.
 func promptDocFor(text string) generated.PromptDocument {
 	return generated.PromptDocument{
-		Type: generated.Doc,
+		Type: generated.PromptDocumentTypeDoc,
 		Content: []generated.PromptNode{
 			{
 				Type: generated.PromptNodeTypeParagraph,
@@ -702,7 +702,7 @@ func richPromptDoc() generated.PromptDocument {
 	heading, item, key, cMajor := "Circle of fifths", "Major keys", "Key", "C major"
 
 	return generated.PromptDocument{
-		Type: generated.Doc,
+		Type: generated.PromptDocumentTypeDoc,
 		Content: []generated.PromptNode{
 			{
 				Type: generated.PromptNodeTypeHeading,
@@ -746,7 +746,7 @@ func richPromptDoc() generated.PromptDocument {
 func boldBulletListPromptDoc() generated.PromptDocument {
 	bold, item := "bold text", "a list item"
 	return generated.PromptDocument{
-		Type: generated.Doc,
+		Type: generated.PromptDocumentTypeDoc,
 		Content: []generated.PromptNode{
 			{
 				Type: generated.PromptNodeTypeParagraph,
@@ -809,7 +809,7 @@ func textStyleMark(color, backgroundColor string) generated.PromptMark {
 
 func (w *world) createsExerciseWithTextStylePrompt(name, title string) error {
 	w.lastPromptSent = generated.PromptDocument{
-		Type: generated.Doc,
+		Type: generated.PromptDocumentTypeDoc,
 		Content: []generated.PromptNode{
 			{
 				Type: generated.PromptNodeTypeParagraph,
@@ -885,7 +885,7 @@ func (w *world) submitsExerciseUnsupportedPromptNode(string) error {
 			SkillIds: w.skillIDsFor("skill-1"), ConceptIds: w.conceptIDsFor("concept-1"),
 			Title: "title",
 			Prompt: generated.PromptDocument{
-				Type:    generated.Doc,
+				Type:    generated.PromptDocumentTypeDoc,
 				Content: []generated.PromptNode{{Type: generated.PromptNodeType("footnote")}},
 			},
 			ExerciseType:  generated.CreateExerciseRequestExerciseTypeTextResponse,

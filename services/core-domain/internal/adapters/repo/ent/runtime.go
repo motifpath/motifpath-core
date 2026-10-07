@@ -50,6 +50,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -548,6 +550,62 @@ func init() {
 	positionDescID := positionFields[0].Descriptor()
 	// position.DefaultID holds the default value on creation for the id field.
 	position.DefaultID = positionDescID.Default.(func() uuid.UUID)
+	songchartFields := schema.SongChart{}.Fields()
+	_ = songchartFields
+	// songchartDescTitle is the schema descriptor for title field.
+	songchartDescTitle := songchartFields[4].Descriptor()
+	// songchart.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	songchart.TitleValidator = func() func(string) error {
+		validators := songchartDescTitle.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(title string) error {
+			for _, fn := range fns {
+				if err := fn(title); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// songchartDescArtist is the schema descriptor for artist field.
+	songchartDescArtist := songchartFields[5].Descriptor()
+	// songchart.ArtistValidator is a validator for the "artist" field. It is called by the builders before save.
+	songchart.ArtistValidator = func() func(string) error {
+		validators := songchartDescArtist.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(artist string) error {
+			for _, fn := range fns {
+				if err := fn(artist); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// songchartDescLanguage is the schema descriptor for language field.
+	songchartDescLanguage := songchartFields[6].Descriptor()
+	// songchart.LanguageValidator is a validator for the "language" field. It is called by the builders before save.
+	songchart.LanguageValidator = songchartDescLanguage.Validators[0].(func(string) error)
+	// songchartDescCapoFret is the schema descriptor for capo_fret field.
+	songchartDescCapoFret := songchartFields[8].Descriptor()
+	// songchart.CapoFretValidator is a validator for the "capo_fret" field. It is called by the builders before save.
+	songchart.CapoFretValidator = songchartDescCapoFret.Validators[0].(func(int) error)
+	songchartrevisionFields := schema.SongChartRevision{}.Fields()
+	_ = songchartrevisionFields
+	// songchartrevisionDescRevisionNumber is the schema descriptor for revision_number field.
+	songchartrevisionDescRevisionNumber := songchartrevisionFields[2].Descriptor()
+	// songchartrevision.RevisionNumberValidator is a validator for the "revision_number" field. It is called by the builders before save.
+	songchartrevision.RevisionNumberValidator = songchartrevisionDescRevisionNumber.Validators[0].(func(int) error)
+	// songchartrevisionDescID is the schema descriptor for id field.
+	songchartrevisionDescID := songchartrevisionFields[0].Descriptor()
+	// songchartrevision.DefaultID holds the default value on creation for the id field.
+	songchartrevision.DefaultID = songchartrevisionDescID.Default.(func() uuid.UUID)
 	studentlearningstateFields := schema.StudentLearningState{}.Fields()
 	_ = studentlearningstateFields
 	// studentlearningstateDescID is the schema descriptor for id field.

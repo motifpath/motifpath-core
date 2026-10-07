@@ -57,6 +57,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/predicate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -116,6 +118,8 @@ const (
 	TypeLearningPathInstrument  = "LearningPathInstrument"
 	TypeLearningPathItem        = "LearningPathItem"
 	TypePosition                = "Position"
+	TypeSongChart               = "SongChart"
+	TypeSongChartRevision       = "SongChartRevision"
 	TypeStudentLearningState    = "StudentLearningState"
 	TypeStudentPath             = "StudentPath"
 	TypeStudentPathItem         = "StudentPathItem"
@@ -38104,6 +38108,3348 @@ func (m *PositionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Position edge %s", name)
+}
+
+// SongChartMutation represents an operation that mutates the SongChart nodes in the graph.
+type SongChartMutation struct {
+	config
+	op                           Op
+	typ                          string
+	id                           *uuid.UUID
+	status                       *songchart.Status
+	created_by                   *uuid.UUID
+	created_at                   *time.Time
+	title                        *string
+	artist                       *string
+	language                     *string
+	concert_key                  *string
+	capo_fret                    *int
+	addcapo_fret                 *int
+	tempo_bpm                    *int
+	addtempo_bpm                 *int
+	time_signature               **schema.SongChartTimeSignature
+	rights_confirmed_by          *uuid.UUID
+	rights_confirmed_at          *time.Time
+	body                         *string
+	warnings                     *[]schema.SongChartWarning
+	appendwarnings               []schema.SongChartWarning
+	updated_by                   *uuid.UUID
+	updated_at                   *time.Time
+	published_revision_number    *int
+	addpublished_revision_number *int
+	published_title              *string
+	published_language           *string
+	published_by                 *uuid.UUID
+	published_at                 *time.Time
+	withdrawn_by                 *uuid.UUID
+	withdrawn_at                 *time.Time
+	withdrawal_reason            *string
+	clearedFields                map[string]struct{}
+	revisions                    map[uuid.UUID]struct{}
+	removedrevisions             map[uuid.UUID]struct{}
+	clearedrevisions             bool
+	done                         bool
+	oldValue                     func(context.Context) (*SongChart, error)
+	predicates                   []predicate.SongChart
+}
+
+var _ ent.Mutation = (*SongChartMutation)(nil)
+
+// songchartOption allows management of the mutation configuration using functional options.
+type songchartOption func(*SongChartMutation)
+
+// newSongChartMutation creates new mutation for the SongChart entity.
+func newSongChartMutation(c config, op Op, opts ...songchartOption) *SongChartMutation {
+	m := &SongChartMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSongChart,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSongChartID sets the ID field of the mutation.
+func withSongChartID(id uuid.UUID) songchartOption {
+	return func(m *SongChartMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SongChart
+		)
+		m.oldValue = func(ctx context.Context) (*SongChart, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SongChart.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSongChart sets the old SongChart of the mutation.
+func withSongChart(node *SongChart) songchartOption {
+	return func(m *SongChartMutation) {
+		m.oldValue = func(context.Context) (*SongChart, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SongChartMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SongChartMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of SongChart entities.
+func (m *SongChartMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SongChartMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SongChartMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SongChart.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStatus sets the "status" field.
+func (m *SongChartMutation) SetStatus(s songchart.Status) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *SongChartMutation) Status() (r songchart.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldStatus(ctx context.Context) (v songchart.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *SongChartMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetCreatedBy sets the "created_by" field.
+func (m *SongChartMutation) SetCreatedBy(u uuid.UUID) {
+	m.created_by = &u
+}
+
+// CreatedBy returns the value of the "created_by" field in the mutation.
+func (m *SongChartMutation) CreatedBy() (r uuid.UUID, exists bool) {
+	v := m.created_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedBy returns the old "created_by" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldCreatedBy(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedBy: %w", err)
+	}
+	return oldValue.CreatedBy, nil
+}
+
+// ResetCreatedBy resets all changes to the "created_by" field.
+func (m *SongChartMutation) ResetCreatedBy() {
+	m.created_by = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *SongChartMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *SongChartMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *SongChartMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetTitle sets the "title" field.
+func (m *SongChartMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *SongChartMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *SongChartMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetArtist sets the "artist" field.
+func (m *SongChartMutation) SetArtist(s string) {
+	m.artist = &s
+}
+
+// Artist returns the value of the "artist" field in the mutation.
+func (m *SongChartMutation) Artist() (r string, exists bool) {
+	v := m.artist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldArtist returns the old "artist" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldArtist(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldArtist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldArtist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldArtist: %w", err)
+	}
+	return oldValue.Artist, nil
+}
+
+// ResetArtist resets all changes to the "artist" field.
+func (m *SongChartMutation) ResetArtist() {
+	m.artist = nil
+}
+
+// SetLanguage sets the "language" field.
+func (m *SongChartMutation) SetLanguage(s string) {
+	m.language = &s
+}
+
+// Language returns the value of the "language" field in the mutation.
+func (m *SongChartMutation) Language() (r string, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguage returns the old "language" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldLanguage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguage: %w", err)
+	}
+	return oldValue.Language, nil
+}
+
+// ResetLanguage resets all changes to the "language" field.
+func (m *SongChartMutation) ResetLanguage() {
+	m.language = nil
+}
+
+// SetConcertKey sets the "concert_key" field.
+func (m *SongChartMutation) SetConcertKey(s string) {
+	m.concert_key = &s
+}
+
+// ConcertKey returns the value of the "concert_key" field in the mutation.
+func (m *SongChartMutation) ConcertKey() (r string, exists bool) {
+	v := m.concert_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConcertKey returns the old "concert_key" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldConcertKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConcertKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConcertKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConcertKey: %w", err)
+	}
+	return oldValue.ConcertKey, nil
+}
+
+// ClearConcertKey clears the value of the "concert_key" field.
+func (m *SongChartMutation) ClearConcertKey() {
+	m.concert_key = nil
+	m.clearedFields[songchart.FieldConcertKey] = struct{}{}
+}
+
+// ConcertKeyCleared returns if the "concert_key" field was cleared in this mutation.
+func (m *SongChartMutation) ConcertKeyCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldConcertKey]
+	return ok
+}
+
+// ResetConcertKey resets all changes to the "concert_key" field.
+func (m *SongChartMutation) ResetConcertKey() {
+	m.concert_key = nil
+	delete(m.clearedFields, songchart.FieldConcertKey)
+}
+
+// SetCapoFret sets the "capo_fret" field.
+func (m *SongChartMutation) SetCapoFret(i int) {
+	m.capo_fret = &i
+	m.addcapo_fret = nil
+}
+
+// CapoFret returns the value of the "capo_fret" field in the mutation.
+func (m *SongChartMutation) CapoFret() (r int, exists bool) {
+	v := m.capo_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCapoFret returns the old "capo_fret" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldCapoFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCapoFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCapoFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCapoFret: %w", err)
+	}
+	return oldValue.CapoFret, nil
+}
+
+// AddCapoFret adds i to the "capo_fret" field.
+func (m *SongChartMutation) AddCapoFret(i int) {
+	if m.addcapo_fret != nil {
+		*m.addcapo_fret += i
+	} else {
+		m.addcapo_fret = &i
+	}
+}
+
+// AddedCapoFret returns the value that was added to the "capo_fret" field in this mutation.
+func (m *SongChartMutation) AddedCapoFret() (r int, exists bool) {
+	v := m.addcapo_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCapoFret resets all changes to the "capo_fret" field.
+func (m *SongChartMutation) ResetCapoFret() {
+	m.capo_fret = nil
+	m.addcapo_fret = nil
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (m *SongChartMutation) SetTempoBpm(i int) {
+	m.tempo_bpm = &i
+	m.addtempo_bpm = nil
+}
+
+// TempoBpm returns the value of the "tempo_bpm" field in the mutation.
+func (m *SongChartMutation) TempoBpm() (r int, exists bool) {
+	v := m.tempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTempoBpm returns the old "tempo_bpm" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldTempoBpm(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTempoBpm is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTempoBpm requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTempoBpm: %w", err)
+	}
+	return oldValue.TempoBpm, nil
+}
+
+// AddTempoBpm adds i to the "tempo_bpm" field.
+func (m *SongChartMutation) AddTempoBpm(i int) {
+	if m.addtempo_bpm != nil {
+		*m.addtempo_bpm += i
+	} else {
+		m.addtempo_bpm = &i
+	}
+}
+
+// AddedTempoBpm returns the value that was added to the "tempo_bpm" field in this mutation.
+func (m *SongChartMutation) AddedTempoBpm() (r int, exists bool) {
+	v := m.addtempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearTempoBpm clears the value of the "tempo_bpm" field.
+func (m *SongChartMutation) ClearTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	m.clearedFields[songchart.FieldTempoBpm] = struct{}{}
+}
+
+// TempoBpmCleared returns if the "tempo_bpm" field was cleared in this mutation.
+func (m *SongChartMutation) TempoBpmCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldTempoBpm]
+	return ok
+}
+
+// ResetTempoBpm resets all changes to the "tempo_bpm" field.
+func (m *SongChartMutation) ResetTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	delete(m.clearedFields, songchart.FieldTempoBpm)
+}
+
+// SetTimeSignature sets the "time_signature" field.
+func (m *SongChartMutation) SetTimeSignature(scts *schema.SongChartTimeSignature) {
+	m.time_signature = &scts
+}
+
+// TimeSignature returns the value of the "time_signature" field in the mutation.
+func (m *SongChartMutation) TimeSignature() (r *schema.SongChartTimeSignature, exists bool) {
+	v := m.time_signature
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeSignature returns the old "time_signature" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldTimeSignature(ctx context.Context) (v *schema.SongChartTimeSignature, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeSignature is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeSignature requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeSignature: %w", err)
+	}
+	return oldValue.TimeSignature, nil
+}
+
+// ClearTimeSignature clears the value of the "time_signature" field.
+func (m *SongChartMutation) ClearTimeSignature() {
+	m.time_signature = nil
+	m.clearedFields[songchart.FieldTimeSignature] = struct{}{}
+}
+
+// TimeSignatureCleared returns if the "time_signature" field was cleared in this mutation.
+func (m *SongChartMutation) TimeSignatureCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldTimeSignature]
+	return ok
+}
+
+// ResetTimeSignature resets all changes to the "time_signature" field.
+func (m *SongChartMutation) ResetTimeSignature() {
+	m.time_signature = nil
+	delete(m.clearedFields, songchart.FieldTimeSignature)
+}
+
+// SetRightsConfirmedBy sets the "rights_confirmed_by" field.
+func (m *SongChartMutation) SetRightsConfirmedBy(u uuid.UUID) {
+	m.rights_confirmed_by = &u
+}
+
+// RightsConfirmedBy returns the value of the "rights_confirmed_by" field in the mutation.
+func (m *SongChartMutation) RightsConfirmedBy() (r uuid.UUID, exists bool) {
+	v := m.rights_confirmed_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRightsConfirmedBy returns the old "rights_confirmed_by" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldRightsConfirmedBy(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRightsConfirmedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRightsConfirmedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRightsConfirmedBy: %w", err)
+	}
+	return oldValue.RightsConfirmedBy, nil
+}
+
+// ClearRightsConfirmedBy clears the value of the "rights_confirmed_by" field.
+func (m *SongChartMutation) ClearRightsConfirmedBy() {
+	m.rights_confirmed_by = nil
+	m.clearedFields[songchart.FieldRightsConfirmedBy] = struct{}{}
+}
+
+// RightsConfirmedByCleared returns if the "rights_confirmed_by" field was cleared in this mutation.
+func (m *SongChartMutation) RightsConfirmedByCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldRightsConfirmedBy]
+	return ok
+}
+
+// ResetRightsConfirmedBy resets all changes to the "rights_confirmed_by" field.
+func (m *SongChartMutation) ResetRightsConfirmedBy() {
+	m.rights_confirmed_by = nil
+	delete(m.clearedFields, songchart.FieldRightsConfirmedBy)
+}
+
+// SetRightsConfirmedAt sets the "rights_confirmed_at" field.
+func (m *SongChartMutation) SetRightsConfirmedAt(t time.Time) {
+	m.rights_confirmed_at = &t
+}
+
+// RightsConfirmedAt returns the value of the "rights_confirmed_at" field in the mutation.
+func (m *SongChartMutation) RightsConfirmedAt() (r time.Time, exists bool) {
+	v := m.rights_confirmed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRightsConfirmedAt returns the old "rights_confirmed_at" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldRightsConfirmedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRightsConfirmedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRightsConfirmedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRightsConfirmedAt: %w", err)
+	}
+	return oldValue.RightsConfirmedAt, nil
+}
+
+// ClearRightsConfirmedAt clears the value of the "rights_confirmed_at" field.
+func (m *SongChartMutation) ClearRightsConfirmedAt() {
+	m.rights_confirmed_at = nil
+	m.clearedFields[songchart.FieldRightsConfirmedAt] = struct{}{}
+}
+
+// RightsConfirmedAtCleared returns if the "rights_confirmed_at" field was cleared in this mutation.
+func (m *SongChartMutation) RightsConfirmedAtCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldRightsConfirmedAt]
+	return ok
+}
+
+// ResetRightsConfirmedAt resets all changes to the "rights_confirmed_at" field.
+func (m *SongChartMutation) ResetRightsConfirmedAt() {
+	m.rights_confirmed_at = nil
+	delete(m.clearedFields, songchart.FieldRightsConfirmedAt)
+}
+
+// SetBody sets the "body" field.
+func (m *SongChartMutation) SetBody(s string) {
+	m.body = &s
+}
+
+// Body returns the value of the "body" field in the mutation.
+func (m *SongChartMutation) Body() (r string, exists bool) {
+	v := m.body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBody returns the old "body" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBody: %w", err)
+	}
+	return oldValue.Body, nil
+}
+
+// ResetBody resets all changes to the "body" field.
+func (m *SongChartMutation) ResetBody() {
+	m.body = nil
+}
+
+// SetWarnings sets the "warnings" field.
+func (m *SongChartMutation) SetWarnings(scw []schema.SongChartWarning) {
+	m.warnings = &scw
+	m.appendwarnings = nil
+}
+
+// Warnings returns the value of the "warnings" field in the mutation.
+func (m *SongChartMutation) Warnings() (r []schema.SongChartWarning, exists bool) {
+	v := m.warnings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWarnings returns the old "warnings" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldWarnings(ctx context.Context) (v []schema.SongChartWarning, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWarnings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWarnings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWarnings: %w", err)
+	}
+	return oldValue.Warnings, nil
+}
+
+// AppendWarnings adds scw to the "warnings" field.
+func (m *SongChartMutation) AppendWarnings(scw []schema.SongChartWarning) {
+	m.appendwarnings = append(m.appendwarnings, scw...)
+}
+
+// AppendedWarnings returns the list of values that were appended to the "warnings" field in this mutation.
+func (m *SongChartMutation) AppendedWarnings() ([]schema.SongChartWarning, bool) {
+	if len(m.appendwarnings) == 0 {
+		return nil, false
+	}
+	return m.appendwarnings, true
+}
+
+// ResetWarnings resets all changes to the "warnings" field.
+func (m *SongChartMutation) ResetWarnings() {
+	m.warnings = nil
+	m.appendwarnings = nil
+}
+
+// SetUpdatedBy sets the "updated_by" field.
+func (m *SongChartMutation) SetUpdatedBy(u uuid.UUID) {
+	m.updated_by = &u
+}
+
+// UpdatedBy returns the value of the "updated_by" field in the mutation.
+func (m *SongChartMutation) UpdatedBy() (r uuid.UUID, exists bool) {
+	v := m.updated_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedBy returns the old "updated_by" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldUpdatedBy(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedBy: %w", err)
+	}
+	return oldValue.UpdatedBy, nil
+}
+
+// ResetUpdatedBy resets all changes to the "updated_by" field.
+func (m *SongChartMutation) ResetUpdatedBy() {
+	m.updated_by = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *SongChartMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *SongChartMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *SongChartMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetPublishedRevisionNumber sets the "published_revision_number" field.
+func (m *SongChartMutation) SetPublishedRevisionNumber(i int) {
+	m.published_revision_number = &i
+	m.addpublished_revision_number = nil
+}
+
+// PublishedRevisionNumber returns the value of the "published_revision_number" field in the mutation.
+func (m *SongChartMutation) PublishedRevisionNumber() (r int, exists bool) {
+	v := m.published_revision_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedRevisionNumber returns the old "published_revision_number" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedRevisionNumber(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedRevisionNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedRevisionNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedRevisionNumber: %w", err)
+	}
+	return oldValue.PublishedRevisionNumber, nil
+}
+
+// AddPublishedRevisionNumber adds i to the "published_revision_number" field.
+func (m *SongChartMutation) AddPublishedRevisionNumber(i int) {
+	if m.addpublished_revision_number != nil {
+		*m.addpublished_revision_number += i
+	} else {
+		m.addpublished_revision_number = &i
+	}
+}
+
+// AddedPublishedRevisionNumber returns the value that was added to the "published_revision_number" field in this mutation.
+func (m *SongChartMutation) AddedPublishedRevisionNumber() (r int, exists bool) {
+	v := m.addpublished_revision_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPublishedRevisionNumber clears the value of the "published_revision_number" field.
+func (m *SongChartMutation) ClearPublishedRevisionNumber() {
+	m.published_revision_number = nil
+	m.addpublished_revision_number = nil
+	m.clearedFields[songchart.FieldPublishedRevisionNumber] = struct{}{}
+}
+
+// PublishedRevisionNumberCleared returns if the "published_revision_number" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedRevisionNumberCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedRevisionNumber]
+	return ok
+}
+
+// ResetPublishedRevisionNumber resets all changes to the "published_revision_number" field.
+func (m *SongChartMutation) ResetPublishedRevisionNumber() {
+	m.published_revision_number = nil
+	m.addpublished_revision_number = nil
+	delete(m.clearedFields, songchart.FieldPublishedRevisionNumber)
+}
+
+// SetPublishedTitle sets the "published_title" field.
+func (m *SongChartMutation) SetPublishedTitle(s string) {
+	m.published_title = &s
+}
+
+// PublishedTitle returns the value of the "published_title" field in the mutation.
+func (m *SongChartMutation) PublishedTitle() (r string, exists bool) {
+	v := m.published_title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedTitle returns the old "published_title" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedTitle(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedTitle: %w", err)
+	}
+	return oldValue.PublishedTitle, nil
+}
+
+// ClearPublishedTitle clears the value of the "published_title" field.
+func (m *SongChartMutation) ClearPublishedTitle() {
+	m.published_title = nil
+	m.clearedFields[songchart.FieldPublishedTitle] = struct{}{}
+}
+
+// PublishedTitleCleared returns if the "published_title" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedTitleCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedTitle]
+	return ok
+}
+
+// ResetPublishedTitle resets all changes to the "published_title" field.
+func (m *SongChartMutation) ResetPublishedTitle() {
+	m.published_title = nil
+	delete(m.clearedFields, songchart.FieldPublishedTitle)
+}
+
+// SetPublishedLanguage sets the "published_language" field.
+func (m *SongChartMutation) SetPublishedLanguage(s string) {
+	m.published_language = &s
+}
+
+// PublishedLanguage returns the value of the "published_language" field in the mutation.
+func (m *SongChartMutation) PublishedLanguage() (r string, exists bool) {
+	v := m.published_language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedLanguage returns the old "published_language" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedLanguage(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedLanguage: %w", err)
+	}
+	return oldValue.PublishedLanguage, nil
+}
+
+// ClearPublishedLanguage clears the value of the "published_language" field.
+func (m *SongChartMutation) ClearPublishedLanguage() {
+	m.published_language = nil
+	m.clearedFields[songchart.FieldPublishedLanguage] = struct{}{}
+}
+
+// PublishedLanguageCleared returns if the "published_language" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedLanguageCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedLanguage]
+	return ok
+}
+
+// ResetPublishedLanguage resets all changes to the "published_language" field.
+func (m *SongChartMutation) ResetPublishedLanguage() {
+	m.published_language = nil
+	delete(m.clearedFields, songchart.FieldPublishedLanguage)
+}
+
+// SetPublishedBy sets the "published_by" field.
+func (m *SongChartMutation) SetPublishedBy(u uuid.UUID) {
+	m.published_by = &u
+}
+
+// PublishedBy returns the value of the "published_by" field in the mutation.
+func (m *SongChartMutation) PublishedBy() (r uuid.UUID, exists bool) {
+	v := m.published_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedBy returns the old "published_by" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedBy(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedBy: %w", err)
+	}
+	return oldValue.PublishedBy, nil
+}
+
+// ClearPublishedBy clears the value of the "published_by" field.
+func (m *SongChartMutation) ClearPublishedBy() {
+	m.published_by = nil
+	m.clearedFields[songchart.FieldPublishedBy] = struct{}{}
+}
+
+// PublishedByCleared returns if the "published_by" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedByCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedBy]
+	return ok
+}
+
+// ResetPublishedBy resets all changes to the "published_by" field.
+func (m *SongChartMutation) ResetPublishedBy() {
+	m.published_by = nil
+	delete(m.clearedFields, songchart.FieldPublishedBy)
+}
+
+// SetPublishedAt sets the "published_at" field.
+func (m *SongChartMutation) SetPublishedAt(t time.Time) {
+	m.published_at = &t
+}
+
+// PublishedAt returns the value of the "published_at" field in the mutation.
+func (m *SongChartMutation) PublishedAt() (r time.Time, exists bool) {
+	v := m.published_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedAt returns the old "published_at" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedAt: %w", err)
+	}
+	return oldValue.PublishedAt, nil
+}
+
+// ClearPublishedAt clears the value of the "published_at" field.
+func (m *SongChartMutation) ClearPublishedAt() {
+	m.published_at = nil
+	m.clearedFields[songchart.FieldPublishedAt] = struct{}{}
+}
+
+// PublishedAtCleared returns if the "published_at" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedAtCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedAt]
+	return ok
+}
+
+// ResetPublishedAt resets all changes to the "published_at" field.
+func (m *SongChartMutation) ResetPublishedAt() {
+	m.published_at = nil
+	delete(m.clearedFields, songchart.FieldPublishedAt)
+}
+
+// SetWithdrawnBy sets the "withdrawn_by" field.
+func (m *SongChartMutation) SetWithdrawnBy(u uuid.UUID) {
+	m.withdrawn_by = &u
+}
+
+// WithdrawnBy returns the value of the "withdrawn_by" field in the mutation.
+func (m *SongChartMutation) WithdrawnBy() (r uuid.UUID, exists bool) {
+	v := m.withdrawn_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWithdrawnBy returns the old "withdrawn_by" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldWithdrawnBy(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWithdrawnBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWithdrawnBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWithdrawnBy: %w", err)
+	}
+	return oldValue.WithdrawnBy, nil
+}
+
+// ClearWithdrawnBy clears the value of the "withdrawn_by" field.
+func (m *SongChartMutation) ClearWithdrawnBy() {
+	m.withdrawn_by = nil
+	m.clearedFields[songchart.FieldWithdrawnBy] = struct{}{}
+}
+
+// WithdrawnByCleared returns if the "withdrawn_by" field was cleared in this mutation.
+func (m *SongChartMutation) WithdrawnByCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldWithdrawnBy]
+	return ok
+}
+
+// ResetWithdrawnBy resets all changes to the "withdrawn_by" field.
+func (m *SongChartMutation) ResetWithdrawnBy() {
+	m.withdrawn_by = nil
+	delete(m.clearedFields, songchart.FieldWithdrawnBy)
+}
+
+// SetWithdrawnAt sets the "withdrawn_at" field.
+func (m *SongChartMutation) SetWithdrawnAt(t time.Time) {
+	m.withdrawn_at = &t
+}
+
+// WithdrawnAt returns the value of the "withdrawn_at" field in the mutation.
+func (m *SongChartMutation) WithdrawnAt() (r time.Time, exists bool) {
+	v := m.withdrawn_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWithdrawnAt returns the old "withdrawn_at" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldWithdrawnAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWithdrawnAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWithdrawnAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWithdrawnAt: %w", err)
+	}
+	return oldValue.WithdrawnAt, nil
+}
+
+// ClearWithdrawnAt clears the value of the "withdrawn_at" field.
+func (m *SongChartMutation) ClearWithdrawnAt() {
+	m.withdrawn_at = nil
+	m.clearedFields[songchart.FieldWithdrawnAt] = struct{}{}
+}
+
+// WithdrawnAtCleared returns if the "withdrawn_at" field was cleared in this mutation.
+func (m *SongChartMutation) WithdrawnAtCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldWithdrawnAt]
+	return ok
+}
+
+// ResetWithdrawnAt resets all changes to the "withdrawn_at" field.
+func (m *SongChartMutation) ResetWithdrawnAt() {
+	m.withdrawn_at = nil
+	delete(m.clearedFields, songchart.FieldWithdrawnAt)
+}
+
+// SetWithdrawalReason sets the "withdrawal_reason" field.
+func (m *SongChartMutation) SetWithdrawalReason(s string) {
+	m.withdrawal_reason = &s
+}
+
+// WithdrawalReason returns the value of the "withdrawal_reason" field in the mutation.
+func (m *SongChartMutation) WithdrawalReason() (r string, exists bool) {
+	v := m.withdrawal_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWithdrawalReason returns the old "withdrawal_reason" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldWithdrawalReason(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWithdrawalReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWithdrawalReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWithdrawalReason: %w", err)
+	}
+	return oldValue.WithdrawalReason, nil
+}
+
+// ClearWithdrawalReason clears the value of the "withdrawal_reason" field.
+func (m *SongChartMutation) ClearWithdrawalReason() {
+	m.withdrawal_reason = nil
+	m.clearedFields[songchart.FieldWithdrawalReason] = struct{}{}
+}
+
+// WithdrawalReasonCleared returns if the "withdrawal_reason" field was cleared in this mutation.
+func (m *SongChartMutation) WithdrawalReasonCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldWithdrawalReason]
+	return ok
+}
+
+// ResetWithdrawalReason resets all changes to the "withdrawal_reason" field.
+func (m *SongChartMutation) ResetWithdrawalReason() {
+	m.withdrawal_reason = nil
+	delete(m.clearedFields, songchart.FieldWithdrawalReason)
+}
+
+// AddRevisionIDs adds the "revisions" edge to the SongChartRevision entity by ids.
+func (m *SongChartMutation) AddRevisionIDs(ids ...uuid.UUID) {
+	if m.revisions == nil {
+		m.revisions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.revisions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRevisions clears the "revisions" edge to the SongChartRevision entity.
+func (m *SongChartMutation) ClearRevisions() {
+	m.clearedrevisions = true
+}
+
+// RevisionsCleared reports if the "revisions" edge to the SongChartRevision entity was cleared.
+func (m *SongChartMutation) RevisionsCleared() bool {
+	return m.clearedrevisions
+}
+
+// RemoveRevisionIDs removes the "revisions" edge to the SongChartRevision entity by IDs.
+func (m *SongChartMutation) RemoveRevisionIDs(ids ...uuid.UUID) {
+	if m.removedrevisions == nil {
+		m.removedrevisions = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.revisions, ids[i])
+		m.removedrevisions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRevisions returns the removed IDs of the "revisions" edge to the SongChartRevision entity.
+func (m *SongChartMutation) RemovedRevisionsIDs() (ids []uuid.UUID) {
+	for id := range m.removedrevisions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RevisionsIDs returns the "revisions" edge IDs in the mutation.
+func (m *SongChartMutation) RevisionsIDs() (ids []uuid.UUID) {
+	for id := range m.revisions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRevisions resets all changes to the "revisions" edge.
+func (m *SongChartMutation) ResetRevisions() {
+	m.revisions = nil
+	m.clearedrevisions = false
+	m.removedrevisions = nil
+}
+
+// Where appends a list predicates to the SongChartMutation builder.
+func (m *SongChartMutation) Where(ps ...predicate.SongChart) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SongChartMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SongChartMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SongChart, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SongChartMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SongChartMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SongChart).
+func (m *SongChartMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SongChartMutation) Fields() []string {
+	fields := make([]string, 0, 24)
+	if m.status != nil {
+		fields = append(fields, songchart.FieldStatus)
+	}
+	if m.created_by != nil {
+		fields = append(fields, songchart.FieldCreatedBy)
+	}
+	if m.created_at != nil {
+		fields = append(fields, songchart.FieldCreatedAt)
+	}
+	if m.title != nil {
+		fields = append(fields, songchart.FieldTitle)
+	}
+	if m.artist != nil {
+		fields = append(fields, songchart.FieldArtist)
+	}
+	if m.language != nil {
+		fields = append(fields, songchart.FieldLanguage)
+	}
+	if m.concert_key != nil {
+		fields = append(fields, songchart.FieldConcertKey)
+	}
+	if m.capo_fret != nil {
+		fields = append(fields, songchart.FieldCapoFret)
+	}
+	if m.tempo_bpm != nil {
+		fields = append(fields, songchart.FieldTempoBpm)
+	}
+	if m.time_signature != nil {
+		fields = append(fields, songchart.FieldTimeSignature)
+	}
+	if m.rights_confirmed_by != nil {
+		fields = append(fields, songchart.FieldRightsConfirmedBy)
+	}
+	if m.rights_confirmed_at != nil {
+		fields = append(fields, songchart.FieldRightsConfirmedAt)
+	}
+	if m.body != nil {
+		fields = append(fields, songchart.FieldBody)
+	}
+	if m.warnings != nil {
+		fields = append(fields, songchart.FieldWarnings)
+	}
+	if m.updated_by != nil {
+		fields = append(fields, songchart.FieldUpdatedBy)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, songchart.FieldUpdatedAt)
+	}
+	if m.published_revision_number != nil {
+		fields = append(fields, songchart.FieldPublishedRevisionNumber)
+	}
+	if m.published_title != nil {
+		fields = append(fields, songchart.FieldPublishedTitle)
+	}
+	if m.published_language != nil {
+		fields = append(fields, songchart.FieldPublishedLanguage)
+	}
+	if m.published_by != nil {
+		fields = append(fields, songchart.FieldPublishedBy)
+	}
+	if m.published_at != nil {
+		fields = append(fields, songchart.FieldPublishedAt)
+	}
+	if m.withdrawn_by != nil {
+		fields = append(fields, songchart.FieldWithdrawnBy)
+	}
+	if m.withdrawn_at != nil {
+		fields = append(fields, songchart.FieldWithdrawnAt)
+	}
+	if m.withdrawal_reason != nil {
+		fields = append(fields, songchart.FieldWithdrawalReason)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SongChartMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case songchart.FieldStatus:
+		return m.Status()
+	case songchart.FieldCreatedBy:
+		return m.CreatedBy()
+	case songchart.FieldCreatedAt:
+		return m.CreatedAt()
+	case songchart.FieldTitle:
+		return m.Title()
+	case songchart.FieldArtist:
+		return m.Artist()
+	case songchart.FieldLanguage:
+		return m.Language()
+	case songchart.FieldConcertKey:
+		return m.ConcertKey()
+	case songchart.FieldCapoFret:
+		return m.CapoFret()
+	case songchart.FieldTempoBpm:
+		return m.TempoBpm()
+	case songchart.FieldTimeSignature:
+		return m.TimeSignature()
+	case songchart.FieldRightsConfirmedBy:
+		return m.RightsConfirmedBy()
+	case songchart.FieldRightsConfirmedAt:
+		return m.RightsConfirmedAt()
+	case songchart.FieldBody:
+		return m.Body()
+	case songchart.FieldWarnings:
+		return m.Warnings()
+	case songchart.FieldUpdatedBy:
+		return m.UpdatedBy()
+	case songchart.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case songchart.FieldPublishedRevisionNumber:
+		return m.PublishedRevisionNumber()
+	case songchart.FieldPublishedTitle:
+		return m.PublishedTitle()
+	case songchart.FieldPublishedLanguage:
+		return m.PublishedLanguage()
+	case songchart.FieldPublishedBy:
+		return m.PublishedBy()
+	case songchart.FieldPublishedAt:
+		return m.PublishedAt()
+	case songchart.FieldWithdrawnBy:
+		return m.WithdrawnBy()
+	case songchart.FieldWithdrawnAt:
+		return m.WithdrawnAt()
+	case songchart.FieldWithdrawalReason:
+		return m.WithdrawalReason()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SongChartMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case songchart.FieldStatus:
+		return m.OldStatus(ctx)
+	case songchart.FieldCreatedBy:
+		return m.OldCreatedBy(ctx)
+	case songchart.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case songchart.FieldTitle:
+		return m.OldTitle(ctx)
+	case songchart.FieldArtist:
+		return m.OldArtist(ctx)
+	case songchart.FieldLanguage:
+		return m.OldLanguage(ctx)
+	case songchart.FieldConcertKey:
+		return m.OldConcertKey(ctx)
+	case songchart.FieldCapoFret:
+		return m.OldCapoFret(ctx)
+	case songchart.FieldTempoBpm:
+		return m.OldTempoBpm(ctx)
+	case songchart.FieldTimeSignature:
+		return m.OldTimeSignature(ctx)
+	case songchart.FieldRightsConfirmedBy:
+		return m.OldRightsConfirmedBy(ctx)
+	case songchart.FieldRightsConfirmedAt:
+		return m.OldRightsConfirmedAt(ctx)
+	case songchart.FieldBody:
+		return m.OldBody(ctx)
+	case songchart.FieldWarnings:
+		return m.OldWarnings(ctx)
+	case songchart.FieldUpdatedBy:
+		return m.OldUpdatedBy(ctx)
+	case songchart.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case songchart.FieldPublishedRevisionNumber:
+		return m.OldPublishedRevisionNumber(ctx)
+	case songchart.FieldPublishedTitle:
+		return m.OldPublishedTitle(ctx)
+	case songchart.FieldPublishedLanguage:
+		return m.OldPublishedLanguage(ctx)
+	case songchart.FieldPublishedBy:
+		return m.OldPublishedBy(ctx)
+	case songchart.FieldPublishedAt:
+		return m.OldPublishedAt(ctx)
+	case songchart.FieldWithdrawnBy:
+		return m.OldWithdrawnBy(ctx)
+	case songchart.FieldWithdrawnAt:
+		return m.OldWithdrawnAt(ctx)
+	case songchart.FieldWithdrawalReason:
+		return m.OldWithdrawalReason(ctx)
+	}
+	return nil, fmt.Errorf("unknown SongChart field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SongChartMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case songchart.FieldStatus:
+		v, ok := value.(songchart.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case songchart.FieldCreatedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedBy(v)
+		return nil
+	case songchart.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case songchart.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case songchart.FieldArtist:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetArtist(v)
+		return nil
+	case songchart.FieldLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguage(v)
+		return nil
+	case songchart.FieldConcertKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConcertKey(v)
+		return nil
+	case songchart.FieldCapoFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCapoFret(v)
+		return nil
+	case songchart.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTempoBpm(v)
+		return nil
+	case songchart.FieldTimeSignature:
+		v, ok := value.(*schema.SongChartTimeSignature)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeSignature(v)
+		return nil
+	case songchart.FieldRightsConfirmedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRightsConfirmedBy(v)
+		return nil
+	case songchart.FieldRightsConfirmedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRightsConfirmedAt(v)
+		return nil
+	case songchart.FieldBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBody(v)
+		return nil
+	case songchart.FieldWarnings:
+		v, ok := value.([]schema.SongChartWarning)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWarnings(v)
+		return nil
+	case songchart.FieldUpdatedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedBy(v)
+		return nil
+	case songchart.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case songchart.FieldPublishedRevisionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedRevisionNumber(v)
+		return nil
+	case songchart.FieldPublishedTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedTitle(v)
+		return nil
+	case songchart.FieldPublishedLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedLanguage(v)
+		return nil
+	case songchart.FieldPublishedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedBy(v)
+		return nil
+	case songchart.FieldPublishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedAt(v)
+		return nil
+	case songchart.FieldWithdrawnBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWithdrawnBy(v)
+		return nil
+	case songchart.FieldWithdrawnAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWithdrawnAt(v)
+		return nil
+	case songchart.FieldWithdrawalReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWithdrawalReason(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SongChart field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SongChartMutation) AddedFields() []string {
+	var fields []string
+	if m.addcapo_fret != nil {
+		fields = append(fields, songchart.FieldCapoFret)
+	}
+	if m.addtempo_bpm != nil {
+		fields = append(fields, songchart.FieldTempoBpm)
+	}
+	if m.addpublished_revision_number != nil {
+		fields = append(fields, songchart.FieldPublishedRevisionNumber)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SongChartMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case songchart.FieldCapoFret:
+		return m.AddedCapoFret()
+	case songchart.FieldTempoBpm:
+		return m.AddedTempoBpm()
+	case songchart.FieldPublishedRevisionNumber:
+		return m.AddedPublishedRevisionNumber()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SongChartMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case songchart.FieldCapoFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCapoFret(v)
+		return nil
+	case songchart.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTempoBpm(v)
+		return nil
+	case songchart.FieldPublishedRevisionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPublishedRevisionNumber(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SongChart numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SongChartMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(songchart.FieldConcertKey) {
+		fields = append(fields, songchart.FieldConcertKey)
+	}
+	if m.FieldCleared(songchart.FieldTempoBpm) {
+		fields = append(fields, songchart.FieldTempoBpm)
+	}
+	if m.FieldCleared(songchart.FieldTimeSignature) {
+		fields = append(fields, songchart.FieldTimeSignature)
+	}
+	if m.FieldCleared(songchart.FieldRightsConfirmedBy) {
+		fields = append(fields, songchart.FieldRightsConfirmedBy)
+	}
+	if m.FieldCleared(songchart.FieldRightsConfirmedAt) {
+		fields = append(fields, songchart.FieldRightsConfirmedAt)
+	}
+	if m.FieldCleared(songchart.FieldPublishedRevisionNumber) {
+		fields = append(fields, songchart.FieldPublishedRevisionNumber)
+	}
+	if m.FieldCleared(songchart.FieldPublishedTitle) {
+		fields = append(fields, songchart.FieldPublishedTitle)
+	}
+	if m.FieldCleared(songchart.FieldPublishedLanguage) {
+		fields = append(fields, songchart.FieldPublishedLanguage)
+	}
+	if m.FieldCleared(songchart.FieldPublishedBy) {
+		fields = append(fields, songchart.FieldPublishedBy)
+	}
+	if m.FieldCleared(songchart.FieldPublishedAt) {
+		fields = append(fields, songchart.FieldPublishedAt)
+	}
+	if m.FieldCleared(songchart.FieldWithdrawnBy) {
+		fields = append(fields, songchart.FieldWithdrawnBy)
+	}
+	if m.FieldCleared(songchart.FieldWithdrawnAt) {
+		fields = append(fields, songchart.FieldWithdrawnAt)
+	}
+	if m.FieldCleared(songchart.FieldWithdrawalReason) {
+		fields = append(fields, songchart.FieldWithdrawalReason)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SongChartMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SongChartMutation) ClearField(name string) error {
+	switch name {
+	case songchart.FieldConcertKey:
+		m.ClearConcertKey()
+		return nil
+	case songchart.FieldTempoBpm:
+		m.ClearTempoBpm()
+		return nil
+	case songchart.FieldTimeSignature:
+		m.ClearTimeSignature()
+		return nil
+	case songchart.FieldRightsConfirmedBy:
+		m.ClearRightsConfirmedBy()
+		return nil
+	case songchart.FieldRightsConfirmedAt:
+		m.ClearRightsConfirmedAt()
+		return nil
+	case songchart.FieldPublishedRevisionNumber:
+		m.ClearPublishedRevisionNumber()
+		return nil
+	case songchart.FieldPublishedTitle:
+		m.ClearPublishedTitle()
+		return nil
+	case songchart.FieldPublishedLanguage:
+		m.ClearPublishedLanguage()
+		return nil
+	case songchart.FieldPublishedBy:
+		m.ClearPublishedBy()
+		return nil
+	case songchart.FieldPublishedAt:
+		m.ClearPublishedAt()
+		return nil
+	case songchart.FieldWithdrawnBy:
+		m.ClearWithdrawnBy()
+		return nil
+	case songchart.FieldWithdrawnAt:
+		m.ClearWithdrawnAt()
+		return nil
+	case songchart.FieldWithdrawalReason:
+		m.ClearWithdrawalReason()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChart nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SongChartMutation) ResetField(name string) error {
+	switch name {
+	case songchart.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case songchart.FieldCreatedBy:
+		m.ResetCreatedBy()
+		return nil
+	case songchart.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case songchart.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case songchart.FieldArtist:
+		m.ResetArtist()
+		return nil
+	case songchart.FieldLanguage:
+		m.ResetLanguage()
+		return nil
+	case songchart.FieldConcertKey:
+		m.ResetConcertKey()
+		return nil
+	case songchart.FieldCapoFret:
+		m.ResetCapoFret()
+		return nil
+	case songchart.FieldTempoBpm:
+		m.ResetTempoBpm()
+		return nil
+	case songchart.FieldTimeSignature:
+		m.ResetTimeSignature()
+		return nil
+	case songchart.FieldRightsConfirmedBy:
+		m.ResetRightsConfirmedBy()
+		return nil
+	case songchart.FieldRightsConfirmedAt:
+		m.ResetRightsConfirmedAt()
+		return nil
+	case songchart.FieldBody:
+		m.ResetBody()
+		return nil
+	case songchart.FieldWarnings:
+		m.ResetWarnings()
+		return nil
+	case songchart.FieldUpdatedBy:
+		m.ResetUpdatedBy()
+		return nil
+	case songchart.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case songchart.FieldPublishedRevisionNumber:
+		m.ResetPublishedRevisionNumber()
+		return nil
+	case songchart.FieldPublishedTitle:
+		m.ResetPublishedTitle()
+		return nil
+	case songchart.FieldPublishedLanguage:
+		m.ResetPublishedLanguage()
+		return nil
+	case songchart.FieldPublishedBy:
+		m.ResetPublishedBy()
+		return nil
+	case songchart.FieldPublishedAt:
+		m.ResetPublishedAt()
+		return nil
+	case songchart.FieldWithdrawnBy:
+		m.ResetWithdrawnBy()
+		return nil
+	case songchart.FieldWithdrawnAt:
+		m.ResetWithdrawnAt()
+		return nil
+	case songchart.FieldWithdrawalReason:
+		m.ResetWithdrawalReason()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChart field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SongChartMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.revisions != nil {
+		edges = append(edges, songchart.EdgeRevisions)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SongChartMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case songchart.EdgeRevisions:
+		ids := make([]ent.Value, 0, len(m.revisions))
+		for id := range m.revisions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SongChartMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedrevisions != nil {
+		edges = append(edges, songchart.EdgeRevisions)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SongChartMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case songchart.EdgeRevisions:
+		ids := make([]ent.Value, 0, len(m.removedrevisions))
+		for id := range m.removedrevisions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SongChartMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedrevisions {
+		edges = append(edges, songchart.EdgeRevisions)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SongChartMutation) EdgeCleared(name string) bool {
+	switch name {
+	case songchart.EdgeRevisions:
+		return m.clearedrevisions
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SongChartMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown SongChart unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SongChartMutation) ResetEdge(name string) error {
+	switch name {
+	case songchart.EdgeRevisions:
+		m.ResetRevisions()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChart edge %s", name)
+}
+
+// SongChartRevisionMutation represents an operation that mutates the SongChartRevision nodes in the graph.
+type SongChartRevisionMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	revision_number     *int
+	addrevision_number  *int
+	title               *string
+	artist              *string
+	language            *string
+	concert_key         *string
+	capo_fret           *int
+	addcapo_fret        *int
+	tempo_bpm           *int
+	addtempo_bpm        *int
+	time_signature      **schema.SongChartTimeSignature
+	tuning_fingerprint  *string
+	body                *string
+	rights_confirmed_by *uuid.UUID
+	rights_confirmed_at *time.Time
+	published_by        *uuid.UUID
+	published_at        *time.Time
+	clearedFields       map[string]struct{}
+	song_chart          *uuid.UUID
+	clearedsong_chart   bool
+	done                bool
+	oldValue            func(context.Context) (*SongChartRevision, error)
+	predicates          []predicate.SongChartRevision
+}
+
+var _ ent.Mutation = (*SongChartRevisionMutation)(nil)
+
+// songchartrevisionOption allows management of the mutation configuration using functional options.
+type songchartrevisionOption func(*SongChartRevisionMutation)
+
+// newSongChartRevisionMutation creates new mutation for the SongChartRevision entity.
+func newSongChartRevisionMutation(c config, op Op, opts ...songchartrevisionOption) *SongChartRevisionMutation {
+	m := &SongChartRevisionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSongChartRevision,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSongChartRevisionID sets the ID field of the mutation.
+func withSongChartRevisionID(id uuid.UUID) songchartrevisionOption {
+	return func(m *SongChartRevisionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SongChartRevision
+		)
+		m.oldValue = func(ctx context.Context) (*SongChartRevision, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SongChartRevision.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSongChartRevision sets the old SongChartRevision of the mutation.
+func withSongChartRevision(node *SongChartRevision) songchartrevisionOption {
+	return func(m *SongChartRevisionMutation) {
+		m.oldValue = func(context.Context) (*SongChartRevision, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SongChartRevisionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SongChartRevisionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of SongChartRevision entities.
+func (m *SongChartRevisionMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SongChartRevisionMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SongChartRevisionMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SongChartRevision.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSongChartID sets the "song_chart_id" field.
+func (m *SongChartRevisionMutation) SetSongChartID(u uuid.UUID) {
+	m.song_chart = &u
+}
+
+// SongChartID returns the value of the "song_chart_id" field in the mutation.
+func (m *SongChartRevisionMutation) SongChartID() (r uuid.UUID, exists bool) {
+	v := m.song_chart
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSongChartID returns the old "song_chart_id" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldSongChartID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSongChartID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSongChartID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSongChartID: %w", err)
+	}
+	return oldValue.SongChartID, nil
+}
+
+// ResetSongChartID resets all changes to the "song_chart_id" field.
+func (m *SongChartRevisionMutation) ResetSongChartID() {
+	m.song_chart = nil
+}
+
+// SetRevisionNumber sets the "revision_number" field.
+func (m *SongChartRevisionMutation) SetRevisionNumber(i int) {
+	m.revision_number = &i
+	m.addrevision_number = nil
+}
+
+// RevisionNumber returns the value of the "revision_number" field in the mutation.
+func (m *SongChartRevisionMutation) RevisionNumber() (r int, exists bool) {
+	v := m.revision_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevisionNumber returns the old "revision_number" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldRevisionNumber(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevisionNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevisionNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevisionNumber: %w", err)
+	}
+	return oldValue.RevisionNumber, nil
+}
+
+// AddRevisionNumber adds i to the "revision_number" field.
+func (m *SongChartRevisionMutation) AddRevisionNumber(i int) {
+	if m.addrevision_number != nil {
+		*m.addrevision_number += i
+	} else {
+		m.addrevision_number = &i
+	}
+}
+
+// AddedRevisionNumber returns the value that was added to the "revision_number" field in this mutation.
+func (m *SongChartRevisionMutation) AddedRevisionNumber() (r int, exists bool) {
+	v := m.addrevision_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRevisionNumber resets all changes to the "revision_number" field.
+func (m *SongChartRevisionMutation) ResetRevisionNumber() {
+	m.revision_number = nil
+	m.addrevision_number = nil
+}
+
+// SetTitle sets the "title" field.
+func (m *SongChartRevisionMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *SongChartRevisionMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *SongChartRevisionMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetArtist sets the "artist" field.
+func (m *SongChartRevisionMutation) SetArtist(s string) {
+	m.artist = &s
+}
+
+// Artist returns the value of the "artist" field in the mutation.
+func (m *SongChartRevisionMutation) Artist() (r string, exists bool) {
+	v := m.artist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldArtist returns the old "artist" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldArtist(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldArtist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldArtist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldArtist: %w", err)
+	}
+	return oldValue.Artist, nil
+}
+
+// ResetArtist resets all changes to the "artist" field.
+func (m *SongChartRevisionMutation) ResetArtist() {
+	m.artist = nil
+}
+
+// SetLanguage sets the "language" field.
+func (m *SongChartRevisionMutation) SetLanguage(s string) {
+	m.language = &s
+}
+
+// Language returns the value of the "language" field in the mutation.
+func (m *SongChartRevisionMutation) Language() (r string, exists bool) {
+	v := m.language
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLanguage returns the old "language" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldLanguage(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLanguage is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLanguage requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLanguage: %w", err)
+	}
+	return oldValue.Language, nil
+}
+
+// ResetLanguage resets all changes to the "language" field.
+func (m *SongChartRevisionMutation) ResetLanguage() {
+	m.language = nil
+}
+
+// SetConcertKey sets the "concert_key" field.
+func (m *SongChartRevisionMutation) SetConcertKey(s string) {
+	m.concert_key = &s
+}
+
+// ConcertKey returns the value of the "concert_key" field in the mutation.
+func (m *SongChartRevisionMutation) ConcertKey() (r string, exists bool) {
+	v := m.concert_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConcertKey returns the old "concert_key" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldConcertKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConcertKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConcertKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConcertKey: %w", err)
+	}
+	return oldValue.ConcertKey, nil
+}
+
+// ClearConcertKey clears the value of the "concert_key" field.
+func (m *SongChartRevisionMutation) ClearConcertKey() {
+	m.concert_key = nil
+	m.clearedFields[songchartrevision.FieldConcertKey] = struct{}{}
+}
+
+// ConcertKeyCleared returns if the "concert_key" field was cleared in this mutation.
+func (m *SongChartRevisionMutation) ConcertKeyCleared() bool {
+	_, ok := m.clearedFields[songchartrevision.FieldConcertKey]
+	return ok
+}
+
+// ResetConcertKey resets all changes to the "concert_key" field.
+func (m *SongChartRevisionMutation) ResetConcertKey() {
+	m.concert_key = nil
+	delete(m.clearedFields, songchartrevision.FieldConcertKey)
+}
+
+// SetCapoFret sets the "capo_fret" field.
+func (m *SongChartRevisionMutation) SetCapoFret(i int) {
+	m.capo_fret = &i
+	m.addcapo_fret = nil
+}
+
+// CapoFret returns the value of the "capo_fret" field in the mutation.
+func (m *SongChartRevisionMutation) CapoFret() (r int, exists bool) {
+	v := m.capo_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCapoFret returns the old "capo_fret" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldCapoFret(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCapoFret is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCapoFret requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCapoFret: %w", err)
+	}
+	return oldValue.CapoFret, nil
+}
+
+// AddCapoFret adds i to the "capo_fret" field.
+func (m *SongChartRevisionMutation) AddCapoFret(i int) {
+	if m.addcapo_fret != nil {
+		*m.addcapo_fret += i
+	} else {
+		m.addcapo_fret = &i
+	}
+}
+
+// AddedCapoFret returns the value that was added to the "capo_fret" field in this mutation.
+func (m *SongChartRevisionMutation) AddedCapoFret() (r int, exists bool) {
+	v := m.addcapo_fret
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCapoFret resets all changes to the "capo_fret" field.
+func (m *SongChartRevisionMutation) ResetCapoFret() {
+	m.capo_fret = nil
+	m.addcapo_fret = nil
+}
+
+// SetTempoBpm sets the "tempo_bpm" field.
+func (m *SongChartRevisionMutation) SetTempoBpm(i int) {
+	m.tempo_bpm = &i
+	m.addtempo_bpm = nil
+}
+
+// TempoBpm returns the value of the "tempo_bpm" field in the mutation.
+func (m *SongChartRevisionMutation) TempoBpm() (r int, exists bool) {
+	v := m.tempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTempoBpm returns the old "tempo_bpm" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldTempoBpm(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTempoBpm is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTempoBpm requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTempoBpm: %w", err)
+	}
+	return oldValue.TempoBpm, nil
+}
+
+// AddTempoBpm adds i to the "tempo_bpm" field.
+func (m *SongChartRevisionMutation) AddTempoBpm(i int) {
+	if m.addtempo_bpm != nil {
+		*m.addtempo_bpm += i
+	} else {
+		m.addtempo_bpm = &i
+	}
+}
+
+// AddedTempoBpm returns the value that was added to the "tempo_bpm" field in this mutation.
+func (m *SongChartRevisionMutation) AddedTempoBpm() (r int, exists bool) {
+	v := m.addtempo_bpm
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearTempoBpm clears the value of the "tempo_bpm" field.
+func (m *SongChartRevisionMutation) ClearTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	m.clearedFields[songchartrevision.FieldTempoBpm] = struct{}{}
+}
+
+// TempoBpmCleared returns if the "tempo_bpm" field was cleared in this mutation.
+func (m *SongChartRevisionMutation) TempoBpmCleared() bool {
+	_, ok := m.clearedFields[songchartrevision.FieldTempoBpm]
+	return ok
+}
+
+// ResetTempoBpm resets all changes to the "tempo_bpm" field.
+func (m *SongChartRevisionMutation) ResetTempoBpm() {
+	m.tempo_bpm = nil
+	m.addtempo_bpm = nil
+	delete(m.clearedFields, songchartrevision.FieldTempoBpm)
+}
+
+// SetTimeSignature sets the "time_signature" field.
+func (m *SongChartRevisionMutation) SetTimeSignature(scts *schema.SongChartTimeSignature) {
+	m.time_signature = &scts
+}
+
+// TimeSignature returns the value of the "time_signature" field in the mutation.
+func (m *SongChartRevisionMutation) TimeSignature() (r *schema.SongChartTimeSignature, exists bool) {
+	v := m.time_signature
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimeSignature returns the old "time_signature" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldTimeSignature(ctx context.Context) (v *schema.SongChartTimeSignature, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimeSignature is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimeSignature requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimeSignature: %w", err)
+	}
+	return oldValue.TimeSignature, nil
+}
+
+// ClearTimeSignature clears the value of the "time_signature" field.
+func (m *SongChartRevisionMutation) ClearTimeSignature() {
+	m.time_signature = nil
+	m.clearedFields[songchartrevision.FieldTimeSignature] = struct{}{}
+}
+
+// TimeSignatureCleared returns if the "time_signature" field was cleared in this mutation.
+func (m *SongChartRevisionMutation) TimeSignatureCleared() bool {
+	_, ok := m.clearedFields[songchartrevision.FieldTimeSignature]
+	return ok
+}
+
+// ResetTimeSignature resets all changes to the "time_signature" field.
+func (m *SongChartRevisionMutation) ResetTimeSignature() {
+	m.time_signature = nil
+	delete(m.clearedFields, songchartrevision.FieldTimeSignature)
+}
+
+// SetTuningFingerprint sets the "tuning_fingerprint" field.
+func (m *SongChartRevisionMutation) SetTuningFingerprint(s string) {
+	m.tuning_fingerprint = &s
+}
+
+// TuningFingerprint returns the value of the "tuning_fingerprint" field in the mutation.
+func (m *SongChartRevisionMutation) TuningFingerprint() (r string, exists bool) {
+	v := m.tuning_fingerprint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTuningFingerprint returns the old "tuning_fingerprint" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldTuningFingerprint(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTuningFingerprint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTuningFingerprint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTuningFingerprint: %w", err)
+	}
+	return oldValue.TuningFingerprint, nil
+}
+
+// ResetTuningFingerprint resets all changes to the "tuning_fingerprint" field.
+func (m *SongChartRevisionMutation) ResetTuningFingerprint() {
+	m.tuning_fingerprint = nil
+}
+
+// SetBody sets the "body" field.
+func (m *SongChartRevisionMutation) SetBody(s string) {
+	m.body = &s
+}
+
+// Body returns the value of the "body" field in the mutation.
+func (m *SongChartRevisionMutation) Body() (r string, exists bool) {
+	v := m.body
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBody returns the old "body" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldBody(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBody is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBody requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBody: %w", err)
+	}
+	return oldValue.Body, nil
+}
+
+// ResetBody resets all changes to the "body" field.
+func (m *SongChartRevisionMutation) ResetBody() {
+	m.body = nil
+}
+
+// SetRightsConfirmedBy sets the "rights_confirmed_by" field.
+func (m *SongChartRevisionMutation) SetRightsConfirmedBy(u uuid.UUID) {
+	m.rights_confirmed_by = &u
+}
+
+// RightsConfirmedBy returns the value of the "rights_confirmed_by" field in the mutation.
+func (m *SongChartRevisionMutation) RightsConfirmedBy() (r uuid.UUID, exists bool) {
+	v := m.rights_confirmed_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRightsConfirmedBy returns the old "rights_confirmed_by" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldRightsConfirmedBy(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRightsConfirmedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRightsConfirmedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRightsConfirmedBy: %w", err)
+	}
+	return oldValue.RightsConfirmedBy, nil
+}
+
+// ResetRightsConfirmedBy resets all changes to the "rights_confirmed_by" field.
+func (m *SongChartRevisionMutation) ResetRightsConfirmedBy() {
+	m.rights_confirmed_by = nil
+}
+
+// SetRightsConfirmedAt sets the "rights_confirmed_at" field.
+func (m *SongChartRevisionMutation) SetRightsConfirmedAt(t time.Time) {
+	m.rights_confirmed_at = &t
+}
+
+// RightsConfirmedAt returns the value of the "rights_confirmed_at" field in the mutation.
+func (m *SongChartRevisionMutation) RightsConfirmedAt() (r time.Time, exists bool) {
+	v := m.rights_confirmed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRightsConfirmedAt returns the old "rights_confirmed_at" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldRightsConfirmedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRightsConfirmedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRightsConfirmedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRightsConfirmedAt: %w", err)
+	}
+	return oldValue.RightsConfirmedAt, nil
+}
+
+// ResetRightsConfirmedAt resets all changes to the "rights_confirmed_at" field.
+func (m *SongChartRevisionMutation) ResetRightsConfirmedAt() {
+	m.rights_confirmed_at = nil
+}
+
+// SetPublishedBy sets the "published_by" field.
+func (m *SongChartRevisionMutation) SetPublishedBy(u uuid.UUID) {
+	m.published_by = &u
+}
+
+// PublishedBy returns the value of the "published_by" field in the mutation.
+func (m *SongChartRevisionMutation) PublishedBy() (r uuid.UUID, exists bool) {
+	v := m.published_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedBy returns the old "published_by" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldPublishedBy(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedBy: %w", err)
+	}
+	return oldValue.PublishedBy, nil
+}
+
+// ResetPublishedBy resets all changes to the "published_by" field.
+func (m *SongChartRevisionMutation) ResetPublishedBy() {
+	m.published_by = nil
+}
+
+// SetPublishedAt sets the "published_at" field.
+func (m *SongChartRevisionMutation) SetPublishedAt(t time.Time) {
+	m.published_at = &t
+}
+
+// PublishedAt returns the value of the "published_at" field in the mutation.
+func (m *SongChartRevisionMutation) PublishedAt() (r time.Time, exists bool) {
+	v := m.published_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedAt returns the old "published_at" field's value of the SongChartRevision entity.
+// If the SongChartRevision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartRevisionMutation) OldPublishedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedAt: %w", err)
+	}
+	return oldValue.PublishedAt, nil
+}
+
+// ResetPublishedAt resets all changes to the "published_at" field.
+func (m *SongChartRevisionMutation) ResetPublishedAt() {
+	m.published_at = nil
+}
+
+// ClearSongChart clears the "song_chart" edge to the SongChart entity.
+func (m *SongChartRevisionMutation) ClearSongChart() {
+	m.clearedsong_chart = true
+	m.clearedFields[songchartrevision.FieldSongChartID] = struct{}{}
+}
+
+// SongChartCleared reports if the "song_chart" edge to the SongChart entity was cleared.
+func (m *SongChartRevisionMutation) SongChartCleared() bool {
+	return m.clearedsong_chart
+}
+
+// SongChartIDs returns the "song_chart" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SongChartID instead. It exists only for internal usage by the builders.
+func (m *SongChartRevisionMutation) SongChartIDs() (ids []uuid.UUID) {
+	if id := m.song_chart; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSongChart resets all changes to the "song_chart" edge.
+func (m *SongChartRevisionMutation) ResetSongChart() {
+	m.song_chart = nil
+	m.clearedsong_chart = false
+}
+
+// Where appends a list predicates to the SongChartRevisionMutation builder.
+func (m *SongChartRevisionMutation) Where(ps ...predicate.SongChartRevision) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SongChartRevisionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SongChartRevisionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SongChartRevision, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SongChartRevisionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SongChartRevisionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SongChartRevision).
+func (m *SongChartRevisionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SongChartRevisionMutation) Fields() []string {
+	fields := make([]string, 0, 15)
+	if m.song_chart != nil {
+		fields = append(fields, songchartrevision.FieldSongChartID)
+	}
+	if m.revision_number != nil {
+		fields = append(fields, songchartrevision.FieldRevisionNumber)
+	}
+	if m.title != nil {
+		fields = append(fields, songchartrevision.FieldTitle)
+	}
+	if m.artist != nil {
+		fields = append(fields, songchartrevision.FieldArtist)
+	}
+	if m.language != nil {
+		fields = append(fields, songchartrevision.FieldLanguage)
+	}
+	if m.concert_key != nil {
+		fields = append(fields, songchartrevision.FieldConcertKey)
+	}
+	if m.capo_fret != nil {
+		fields = append(fields, songchartrevision.FieldCapoFret)
+	}
+	if m.tempo_bpm != nil {
+		fields = append(fields, songchartrevision.FieldTempoBpm)
+	}
+	if m.time_signature != nil {
+		fields = append(fields, songchartrevision.FieldTimeSignature)
+	}
+	if m.tuning_fingerprint != nil {
+		fields = append(fields, songchartrevision.FieldTuningFingerprint)
+	}
+	if m.body != nil {
+		fields = append(fields, songchartrevision.FieldBody)
+	}
+	if m.rights_confirmed_by != nil {
+		fields = append(fields, songchartrevision.FieldRightsConfirmedBy)
+	}
+	if m.rights_confirmed_at != nil {
+		fields = append(fields, songchartrevision.FieldRightsConfirmedAt)
+	}
+	if m.published_by != nil {
+		fields = append(fields, songchartrevision.FieldPublishedBy)
+	}
+	if m.published_at != nil {
+		fields = append(fields, songchartrevision.FieldPublishedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SongChartRevisionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case songchartrevision.FieldSongChartID:
+		return m.SongChartID()
+	case songchartrevision.FieldRevisionNumber:
+		return m.RevisionNumber()
+	case songchartrevision.FieldTitle:
+		return m.Title()
+	case songchartrevision.FieldArtist:
+		return m.Artist()
+	case songchartrevision.FieldLanguage:
+		return m.Language()
+	case songchartrevision.FieldConcertKey:
+		return m.ConcertKey()
+	case songchartrevision.FieldCapoFret:
+		return m.CapoFret()
+	case songchartrevision.FieldTempoBpm:
+		return m.TempoBpm()
+	case songchartrevision.FieldTimeSignature:
+		return m.TimeSignature()
+	case songchartrevision.FieldTuningFingerprint:
+		return m.TuningFingerprint()
+	case songchartrevision.FieldBody:
+		return m.Body()
+	case songchartrevision.FieldRightsConfirmedBy:
+		return m.RightsConfirmedBy()
+	case songchartrevision.FieldRightsConfirmedAt:
+		return m.RightsConfirmedAt()
+	case songchartrevision.FieldPublishedBy:
+		return m.PublishedBy()
+	case songchartrevision.FieldPublishedAt:
+		return m.PublishedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SongChartRevisionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case songchartrevision.FieldSongChartID:
+		return m.OldSongChartID(ctx)
+	case songchartrevision.FieldRevisionNumber:
+		return m.OldRevisionNumber(ctx)
+	case songchartrevision.FieldTitle:
+		return m.OldTitle(ctx)
+	case songchartrevision.FieldArtist:
+		return m.OldArtist(ctx)
+	case songchartrevision.FieldLanguage:
+		return m.OldLanguage(ctx)
+	case songchartrevision.FieldConcertKey:
+		return m.OldConcertKey(ctx)
+	case songchartrevision.FieldCapoFret:
+		return m.OldCapoFret(ctx)
+	case songchartrevision.FieldTempoBpm:
+		return m.OldTempoBpm(ctx)
+	case songchartrevision.FieldTimeSignature:
+		return m.OldTimeSignature(ctx)
+	case songchartrevision.FieldTuningFingerprint:
+		return m.OldTuningFingerprint(ctx)
+	case songchartrevision.FieldBody:
+		return m.OldBody(ctx)
+	case songchartrevision.FieldRightsConfirmedBy:
+		return m.OldRightsConfirmedBy(ctx)
+	case songchartrevision.FieldRightsConfirmedAt:
+		return m.OldRightsConfirmedAt(ctx)
+	case songchartrevision.FieldPublishedBy:
+		return m.OldPublishedBy(ctx)
+	case songchartrevision.FieldPublishedAt:
+		return m.OldPublishedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown SongChartRevision field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SongChartRevisionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case songchartrevision.FieldSongChartID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSongChartID(v)
+		return nil
+	case songchartrevision.FieldRevisionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevisionNumber(v)
+		return nil
+	case songchartrevision.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case songchartrevision.FieldArtist:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetArtist(v)
+		return nil
+	case songchartrevision.FieldLanguage:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLanguage(v)
+		return nil
+	case songchartrevision.FieldConcertKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConcertKey(v)
+		return nil
+	case songchartrevision.FieldCapoFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCapoFret(v)
+		return nil
+	case songchartrevision.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTempoBpm(v)
+		return nil
+	case songchartrevision.FieldTimeSignature:
+		v, ok := value.(*schema.SongChartTimeSignature)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimeSignature(v)
+		return nil
+	case songchartrevision.FieldTuningFingerprint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTuningFingerprint(v)
+		return nil
+	case songchartrevision.FieldBody:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBody(v)
+		return nil
+	case songchartrevision.FieldRightsConfirmedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRightsConfirmedBy(v)
+		return nil
+	case songchartrevision.FieldRightsConfirmedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRightsConfirmedAt(v)
+		return nil
+	case songchartrevision.FieldPublishedBy:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedBy(v)
+		return nil
+	case songchartrevision.FieldPublishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SongChartRevisionMutation) AddedFields() []string {
+	var fields []string
+	if m.addrevision_number != nil {
+		fields = append(fields, songchartrevision.FieldRevisionNumber)
+	}
+	if m.addcapo_fret != nil {
+		fields = append(fields, songchartrevision.FieldCapoFret)
+	}
+	if m.addtempo_bpm != nil {
+		fields = append(fields, songchartrevision.FieldTempoBpm)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SongChartRevisionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case songchartrevision.FieldRevisionNumber:
+		return m.AddedRevisionNumber()
+	case songchartrevision.FieldCapoFret:
+		return m.AddedCapoFret()
+	case songchartrevision.FieldTempoBpm:
+		return m.AddedTempoBpm()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SongChartRevisionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case songchartrevision.FieldRevisionNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRevisionNumber(v)
+		return nil
+	case songchartrevision.FieldCapoFret:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCapoFret(v)
+		return nil
+	case songchartrevision.FieldTempoBpm:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTempoBpm(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SongChartRevisionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(songchartrevision.FieldConcertKey) {
+		fields = append(fields, songchartrevision.FieldConcertKey)
+	}
+	if m.FieldCleared(songchartrevision.FieldTempoBpm) {
+		fields = append(fields, songchartrevision.FieldTempoBpm)
+	}
+	if m.FieldCleared(songchartrevision.FieldTimeSignature) {
+		fields = append(fields, songchartrevision.FieldTimeSignature)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SongChartRevisionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SongChartRevisionMutation) ClearField(name string) error {
+	switch name {
+	case songchartrevision.FieldConcertKey:
+		m.ClearConcertKey()
+		return nil
+	case songchartrevision.FieldTempoBpm:
+		m.ClearTempoBpm()
+		return nil
+	case songchartrevision.FieldTimeSignature:
+		m.ClearTimeSignature()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SongChartRevisionMutation) ResetField(name string) error {
+	switch name {
+	case songchartrevision.FieldSongChartID:
+		m.ResetSongChartID()
+		return nil
+	case songchartrevision.FieldRevisionNumber:
+		m.ResetRevisionNumber()
+		return nil
+	case songchartrevision.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case songchartrevision.FieldArtist:
+		m.ResetArtist()
+		return nil
+	case songchartrevision.FieldLanguage:
+		m.ResetLanguage()
+		return nil
+	case songchartrevision.FieldConcertKey:
+		m.ResetConcertKey()
+		return nil
+	case songchartrevision.FieldCapoFret:
+		m.ResetCapoFret()
+		return nil
+	case songchartrevision.FieldTempoBpm:
+		m.ResetTempoBpm()
+		return nil
+	case songchartrevision.FieldTimeSignature:
+		m.ResetTimeSignature()
+		return nil
+	case songchartrevision.FieldTuningFingerprint:
+		m.ResetTuningFingerprint()
+		return nil
+	case songchartrevision.FieldBody:
+		m.ResetBody()
+		return nil
+	case songchartrevision.FieldRightsConfirmedBy:
+		m.ResetRightsConfirmedBy()
+		return nil
+	case songchartrevision.FieldRightsConfirmedAt:
+		m.ResetRightsConfirmedAt()
+		return nil
+	case songchartrevision.FieldPublishedBy:
+		m.ResetPublishedBy()
+		return nil
+	case songchartrevision.FieldPublishedAt:
+		m.ResetPublishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SongChartRevisionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.song_chart != nil {
+		edges = append(edges, songchartrevision.EdgeSongChart)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SongChartRevisionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case songchartrevision.EdgeSongChart:
+		if id := m.song_chart; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SongChartRevisionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SongChartRevisionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SongChartRevisionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedsong_chart {
+		edges = append(edges, songchartrevision.EdgeSongChart)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SongChartRevisionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case songchartrevision.EdgeSongChart:
+		return m.clearedsong_chart
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SongChartRevisionMutation) ClearEdge(name string) error {
+	switch name {
+	case songchartrevision.EdgeSongChart:
+		m.ClearSongChart()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SongChartRevisionMutation) ResetEdge(name string) error {
+	switch name {
+	case songchartrevision.EdgeSongChart:
+		m.ResetSongChart()
+		return nil
+	}
+	return fmt.Errorf("unknown SongChartRevision edge %s", name)
 }
 
 // StudentLearningStateMutation represents an operation that mutates the StudentLearningState nodes in the graph.

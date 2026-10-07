@@ -59,6 +59,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathinstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/learningpathitem"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/position"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchart"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/songchartrevision"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentlearningstate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpath"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/studentpathitem"
@@ -157,6 +159,10 @@ type Client struct {
 	LearningPathItem *LearningPathItemClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
+	// SongChart is the client for interacting with the SongChart builders.
+	SongChart *SongChartClient
+	// SongChartRevision is the client for interacting with the SongChartRevision builders.
+	SongChartRevision *SongChartRevisionClient
 	// StudentLearningState is the client for interacting with the StudentLearningState builders.
 	StudentLearningState *StudentLearningStateClient
 	// StudentPath is the client for interacting with the StudentPath builders.
@@ -221,6 +227,8 @@ func (c *Client) init() {
 	c.LearningPathInstrument = NewLearningPathInstrumentClient(c.config)
 	c.LearningPathItem = NewLearningPathItemClient(c.config)
 	c.Position = NewPositionClient(c.config)
+	c.SongChart = NewSongChartClient(c.config)
+	c.SongChartRevision = NewSongChartRevisionClient(c.config)
 	c.StudentLearningState = NewStudentLearningStateClient(c.config)
 	c.StudentPath = NewStudentPathClient(c.config)
 	c.StudentPathItem = NewStudentPathItemClient(c.config)
@@ -361,6 +369,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		SongChart:               NewSongChartClient(cfg),
+		SongChartRevision:       NewSongChartRevisionClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
 		StudentPath:             NewStudentPathClient(cfg),
 		StudentPathItem:         NewStudentPathItemClient(cfg),
@@ -428,6 +438,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		LearningPathInstrument:  NewLearningPathInstrumentClient(cfg),
 		LearningPathItem:        NewLearningPathItemClient(cfg),
 		Position:                NewPositionClient(cfg),
+		SongChart:               NewSongChartClient(cfg),
+		SongChartRevision:       NewSongChartRevisionClient(cfg),
 		StudentLearningState:    NewStudentLearningStateClient(cfg),
 		StudentPath:             NewStudentPathClient(cfg),
 		StudentPathItem:         NewStudentPathItemClient(cfg),
@@ -473,8 +485,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
-		c.Voice,
+		c.Position, c.SongChart, c.SongChartRevision, c.StudentLearningState,
+		c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -495,8 +507,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
 		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
 		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
-		c.Position, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
-		c.Voice,
+		c.Position, c.SongChart, c.SongChartRevision, c.StudentLearningState,
+		c.StudentPath, c.StudentPathItem, c.User, c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -591,6 +603,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LearningPathItem.mutate(ctx, m)
 	case *PositionMutation:
 		return c.Position.mutate(ctx, m)
+	case *SongChartMutation:
+		return c.SongChart.mutate(ctx, m)
+	case *SongChartRevisionMutation:
+		return c.SongChartRevision.mutate(ctx, m)
 	case *StudentLearningStateMutation:
 		return c.StudentLearningState.mutate(ctx, m)
 	case *StudentPathMutation:
@@ -8293,6 +8309,304 @@ func (c *PositionClient) mutate(ctx context.Context, m *PositionMutation) (Value
 	}
 }
 
+// SongChartClient is a client for the SongChart schema.
+type SongChartClient struct {
+	config
+}
+
+// NewSongChartClient returns a client for the SongChart from the given config.
+func NewSongChartClient(c config) *SongChartClient {
+	return &SongChartClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `songchart.Hooks(f(g(h())))`.
+func (c *SongChartClient) Use(hooks ...Hook) {
+	c.hooks.SongChart = append(c.hooks.SongChart, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `songchart.Intercept(f(g(h())))`.
+func (c *SongChartClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SongChart = append(c.inters.SongChart, interceptors...)
+}
+
+// Create returns a builder for creating a SongChart entity.
+func (c *SongChartClient) Create() *SongChartCreate {
+	mutation := newSongChartMutation(c.config, OpCreate)
+	return &SongChartCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SongChart entities.
+func (c *SongChartClient) CreateBulk(builders ...*SongChartCreate) *SongChartCreateBulk {
+	return &SongChartCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SongChartClient) MapCreateBulk(slice any, setFunc func(*SongChartCreate, int)) *SongChartCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SongChartCreateBulk{err: fmt.Errorf("calling to SongChartClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SongChartCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SongChartCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SongChart.
+func (c *SongChartClient) Update() *SongChartUpdate {
+	mutation := newSongChartMutation(c.config, OpUpdate)
+	return &SongChartUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SongChartClient) UpdateOne(_m *SongChart) *SongChartUpdateOne {
+	mutation := newSongChartMutation(c.config, OpUpdateOne, withSongChart(_m))
+	return &SongChartUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SongChartClient) UpdateOneID(id uuid.UUID) *SongChartUpdateOne {
+	mutation := newSongChartMutation(c.config, OpUpdateOne, withSongChartID(id))
+	return &SongChartUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SongChart.
+func (c *SongChartClient) Delete() *SongChartDelete {
+	mutation := newSongChartMutation(c.config, OpDelete)
+	return &SongChartDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SongChartClient) DeleteOne(_m *SongChart) *SongChartDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SongChartClient) DeleteOneID(id uuid.UUID) *SongChartDeleteOne {
+	builder := c.Delete().Where(songchart.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SongChartDeleteOne{builder}
+}
+
+// Query returns a query builder for SongChart.
+func (c *SongChartClient) Query() *SongChartQuery {
+	return &SongChartQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSongChart},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SongChart entity by its id.
+func (c *SongChartClient) Get(ctx context.Context, id uuid.UUID) (*SongChart, error) {
+	return c.Query().Where(songchart.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SongChartClient) GetX(ctx context.Context, id uuid.UUID) *SongChart {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRevisions queries the revisions edge of a SongChart.
+func (c *SongChartClient) QueryRevisions(_m *SongChart) *SongChartRevisionQuery {
+	query := (&SongChartRevisionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(songchart.Table, songchart.FieldID, id),
+			sqlgraph.To(songchartrevision.Table, songchartrevision.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, songchart.RevisionsTable, songchart.RevisionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SongChartClient) Hooks() []Hook {
+	return c.hooks.SongChart
+}
+
+// Interceptors returns the client interceptors.
+func (c *SongChartClient) Interceptors() []Interceptor {
+	return c.inters.SongChart
+}
+
+func (c *SongChartClient) mutate(ctx context.Context, m *SongChartMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SongChartCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SongChartUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SongChartUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SongChartDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SongChart mutation op: %q", m.Op())
+	}
+}
+
+// SongChartRevisionClient is a client for the SongChartRevision schema.
+type SongChartRevisionClient struct {
+	config
+}
+
+// NewSongChartRevisionClient returns a client for the SongChartRevision from the given config.
+func NewSongChartRevisionClient(c config) *SongChartRevisionClient {
+	return &SongChartRevisionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `songchartrevision.Hooks(f(g(h())))`.
+func (c *SongChartRevisionClient) Use(hooks ...Hook) {
+	c.hooks.SongChartRevision = append(c.hooks.SongChartRevision, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `songchartrevision.Intercept(f(g(h())))`.
+func (c *SongChartRevisionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SongChartRevision = append(c.inters.SongChartRevision, interceptors...)
+}
+
+// Create returns a builder for creating a SongChartRevision entity.
+func (c *SongChartRevisionClient) Create() *SongChartRevisionCreate {
+	mutation := newSongChartRevisionMutation(c.config, OpCreate)
+	return &SongChartRevisionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SongChartRevision entities.
+func (c *SongChartRevisionClient) CreateBulk(builders ...*SongChartRevisionCreate) *SongChartRevisionCreateBulk {
+	return &SongChartRevisionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SongChartRevisionClient) MapCreateBulk(slice any, setFunc func(*SongChartRevisionCreate, int)) *SongChartRevisionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SongChartRevisionCreateBulk{err: fmt.Errorf("calling to SongChartRevisionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SongChartRevisionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SongChartRevisionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SongChartRevision.
+func (c *SongChartRevisionClient) Update() *SongChartRevisionUpdate {
+	mutation := newSongChartRevisionMutation(c.config, OpUpdate)
+	return &SongChartRevisionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SongChartRevisionClient) UpdateOne(_m *SongChartRevision) *SongChartRevisionUpdateOne {
+	mutation := newSongChartRevisionMutation(c.config, OpUpdateOne, withSongChartRevision(_m))
+	return &SongChartRevisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SongChartRevisionClient) UpdateOneID(id uuid.UUID) *SongChartRevisionUpdateOne {
+	mutation := newSongChartRevisionMutation(c.config, OpUpdateOne, withSongChartRevisionID(id))
+	return &SongChartRevisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SongChartRevision.
+func (c *SongChartRevisionClient) Delete() *SongChartRevisionDelete {
+	mutation := newSongChartRevisionMutation(c.config, OpDelete)
+	return &SongChartRevisionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SongChartRevisionClient) DeleteOne(_m *SongChartRevision) *SongChartRevisionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SongChartRevisionClient) DeleteOneID(id uuid.UUID) *SongChartRevisionDeleteOne {
+	builder := c.Delete().Where(songchartrevision.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SongChartRevisionDeleteOne{builder}
+}
+
+// Query returns a query builder for SongChartRevision.
+func (c *SongChartRevisionClient) Query() *SongChartRevisionQuery {
+	return &SongChartRevisionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSongChartRevision},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SongChartRevision entity by its id.
+func (c *SongChartRevisionClient) Get(ctx context.Context, id uuid.UUID) (*SongChartRevision, error) {
+	return c.Query().Where(songchartrevision.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SongChartRevisionClient) GetX(ctx context.Context, id uuid.UUID) *SongChartRevision {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySongChart queries the song_chart edge of a SongChartRevision.
+func (c *SongChartRevisionClient) QuerySongChart(_m *SongChartRevision) *SongChartQuery {
+	query := (&SongChartClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(songchartrevision.Table, songchartrevision.FieldID, id),
+			sqlgraph.To(songchart.Table, songchart.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, songchartrevision.SongChartTable, songchartrevision.SongChartColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SongChartRevisionClient) Hooks() []Hook {
+	return c.hooks.SongChartRevision
+}
+
+// Interceptors returns the client interceptors.
+func (c *SongChartRevisionClient) Interceptors() []Interceptor {
+	return c.inters.SongChartRevision
+}
+
+func (c *SongChartRevisionClient) mutate(ctx context.Context, m *SongChartRevisionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SongChartRevisionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SongChartRevisionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SongChartRevisionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SongChartRevisionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SongChartRevision mutation op: %q", m.Op())
+	}
+}
+
 // StudentLearningStateClient is a client for the StudentLearningState schema.
 type StudentLearningStateClient struct {
 	config
@@ -9003,8 +9317,8 @@ type (
 		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
 		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
 		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
-		User, Voice []ent.Hook
+		LearningPathItem, Position, SongChart, SongChartRevision, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
@@ -9017,7 +9331,7 @@ type (
 		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
 		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
 		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
-		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
-		User, Voice []ent.Interceptor
+		LearningPathItem, Position, SongChart, SongChartRevision, StudentLearningState,
+		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
 	}
 )
