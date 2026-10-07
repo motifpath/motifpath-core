@@ -1251,21 +1251,26 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		}
 	})
 
-	t.Run("with an instrument in hand, cells of its layout are picked like any focus item", func(t *testing.T) {
+	t.Run("with an instrument in hand, no cell is picked, though cells of its layout suit it: they are recalled in the head", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
-		guitarCells := f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
-		f.cellsOn(practiceBass, "root-strings", 12, 4, 3)
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.exercise("name-the-root", "root-strings", 30, practiceGuitar)
 
 		plan := f.compose(t, practiceGuitar, 10)
 
-		cells := itemsOfKind(plan, domain.PracticeItemKindFretboardCell)
-		require.NotEmpty(t, cells)
-		assert.Equal(t, domain.PracticePickNew, cells[0].Reason)
-		for _, item := range cells {
-			assert.Contains(t, guitarCells, item.ItemKey)
-			assert.Contains(t, []domain.PracticePickReason{domain.PracticePickNew, domain.PracticePickStretch}, item.Reason)
-		}
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindFretboardCell))
+		assert.Contains(t, planKeys(plan), domain.ExerciseItemKey("name-the-root"))
+	})
+
+	t.Run("with an instrument in hand and nothing but cells to practise, there is no session", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
 	t.Run("new items are balanced across the student's instruments", func(t *testing.T) {
@@ -1405,17 +1410,16 @@ func TestPracticeSessionService_ComposePlanDiagramShapes(t *testing.T) {
 		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindPlayAlong))
 	})
 
-	t.Run("with an instrument in hand, shapes linked to it are picked", func(t *testing.T) {
+	t.Run("with an instrument in hand, a shape is played along with, never recalled", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPathFor([]string{practiceGuitar}, "caged")
-		key := f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+		f.shapeOn("grip-c-a3", "caged", practiceGuitar)
 
 		plan, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
 
 		require.NoError(t, err)
-		shapes := itemsOfKind(plan, domain.PracticeItemKindDiagramShape)
-		require.Len(t, shapes, 1)
-		assert.Equal(t, key, shapes[0].ItemKey)
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindDiagramShape))
+		assert.Contains(t, planKeys(plan), domain.PlayAlongItemKey("grip-c-a3"))
 	})
 
 	t.Run("a shape named right more often than its degrees were found is asked to find a degree other than its root", func(t *testing.T) {

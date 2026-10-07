@@ -125,6 +125,18 @@ func (c practiceCandidate) key() string {
 	}
 }
 
+// suitsSession reports whether c belongs in a session with the instrument
+// in hand (inHand) or in the head. In hand is for playing: play-alongs and
+// exercises. In the head is for recall on the screen: fretboard cells,
+// diagram shapes and exercises. A cell or a shape suits its instrument,
+// but is only ever recalled in the head.
+func (c practiceCandidate) suitsSession(inHand bool) bool {
+	if inHand {
+		return c.cell == nil && c.shape == nil
+	}
+	return c.diagram == nil
+}
+
 // practised reports whether the student has a counted answer on c.
 func (c practiceCandidate) practised() bool {
 	return c.state != nil && c.state.Counted > 0
@@ -152,13 +164,16 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 
 // ComposePlan composes a session of minutes for caller with instrumentID
 // in hand, or in the head when instrumentID is nil:
-//   - with the instrument in hand, a session of 5 minutes or more starts
+//   - with the instrument in hand, the session is for playing: play-alongs
+//     and exercises, never a fretboard cell or a diagram shape, which are
+//     recalled in the head; a session of 5 minutes or more starts
 //     with a warm-up on a play-along already played clean, and one of 10
 //     minutes or more ends by applying a skill to music: a play-along on a
 //     skill the focus items practise, or else on another skill of the
 //     student's paths;
 //   - in the head, the session covers all the student's instruments and
-//     offers no play-along, so it has no warm-up and no ending;
+//     is for recall on the screen: fretboard cells, diagram shapes and
+//     exercises, no play-along, so it has no warm-up and no ending;
 //   - the focus time goes 60% to due items, most overdue first, 25% to weak
 //     ones and at most 15% to new ones, taken in turn from each of the
 //     student's instruments, from the skills of the student's paths. Due
@@ -329,7 +344,7 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 		}
 		found = append(found, skillCells(knowledge, skillID)...)
 		for _, c := range found {
-			if seen[c.key()] {
+			if seen[c.key()] || !c.suitsSession(inHand) {
 				continue
 			}
 			seen[c.key()] = true
@@ -411,8 +426,8 @@ func skillCells(knowledge KnowledgeMap, skillID string) []practiceCandidate {
 // stretchCandidates lists unseen items for instrumentID not yet picked,
 // about seconds of them, from the nodes the student is ready to start in
 // the order to start them, the skills of their paths, pathSkillIDs, first.
-// Each is offered for the node it starts. Play-alongs are offered only with
-// the instrument in hand.
+// Each is offered for the node it starts, if it suits the session: see
+// suitsSession.
 func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int, shuffle func(n int, swap func(i, j int))) ([]practiceCandidate, error) {
 	loaded := make(map[string]practiceCandidate, len(onPath))
 	for _, c := range onPath {
@@ -428,7 +443,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		if err != nil {
 			return nil, err
 		}
-		if ok && (inHand || c.diagram == nil) {
+		if ok && c.suitsSession(inHand) {
 			c.nodeID = &pick.nodeID
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)

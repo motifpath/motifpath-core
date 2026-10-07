@@ -17,6 +17,9 @@ func registerShortSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has nothing due or weak, and (\d+) new fretboard cells and (\d+) new shapes on guitar$`, w.hasNewCellsAndShapes)
 	sc.Step(`^"([^"]+)" has (\d+) fretboard cells due since 3 days ago and (\d+) due since yesterday on guitar$`, w.hasCellsDueOnTwoDays)
 
+	sc.Step(`^student "([^"]+)"'s only path skill is "([^"]+)", practised by fretboard cells on guitar$`, w.onlyPathSkillIsCells)
+	sc.Step(`^no item in the session is a fretboard cell or a diagram shape$`, w.noCellOrShapeInSession)
+
 	sc.Step(`^no drill has more than (\d+) items in the session$`, w.noDrillHasMoreThan)
 	sc.Step(`^the session's items take less than (\d+) minutes$`, w.sessionTakesLessThan)
 	sc.Step(`^the session has more than (\d+) exercises of one type$`, w.sessionHasMoreExercisesOfOneType)
@@ -283,6 +286,27 @@ func (w *world) drillsTakeTurns() error {
 			if drillOf(later) != drill {
 				return fmt.Errorf("item %d repeats %s while %s has items left", i+1, drill, drillOf(later))
 			}
+		}
+	}
+	return nil
+}
+
+// onlyPathSkillIsCells signs name in on a path whose only skill is
+// practised by guitar fretboard cells: nothing to play. (A catalog shape
+// plays, so with the instrument in hand its diagram is a play-along.)
+func (w *world) onlyPathSkillIsCells(name, skill string) error {
+	w.authenticateAs(name, domain.RoleStudent)
+	return w.noHistoryPathHasSkill(name, skill)
+}
+
+func (w *world) noCellOrShapeInSession() error {
+	plan, err := w.composedPlan()
+	if err != nil {
+		return err
+	}
+	for _, item := range plan.Items {
+		if item.FretboardCell != nil || item.DiagramShape != nil {
+			return fmt.Errorf("the session has %s, which is recalled in the head", item.ItemKey)
 		}
 	}
 	return nil
