@@ -33,8 +33,8 @@ class ChordCatalogTests(unittest.TestCase):
 
     def test_counts(self):
         self.assertEqual(len(self.catalog['chords']), 341)
-        self.assertEqual(len(self.catalog['voicings']), 454)
-        self.assertEqual(len(self.catalog['diagrams']), 454)
+        self.assertEqual(len(self.catalog['voicings']), 538)
+        self.assertEqual(len(self.catalog['diagrams']), 538)
 
     def test_ids_are_stable_names(self):
         am = self.chords['Am']
@@ -105,6 +105,8 @@ class ChordCatalogTests(unittest.TestCase):
         self.assertEqual([p['names']['en'] for p in open_am['playbacks']], ['Strum down', 'Arpeggio'])
         bbmaj7 = self.diagram_of(next(v for v in self.voicings_of('Bbmaj7') if v['template_key'] == 'major-7-a-shape'))
         self.assertEqual(bbmaj7['names'], {'en': 'Bbmaj7 — A shape, fret 1', 'pt_BR': 'Bbmaj7 — forma de Lá, casa 1'})
+        f = self.diagram_of(next(v for v in self.voicings_of('F') if v['template_key'] == 'major-d-shape'))
+        self.assertEqual(f['names'], {'en': 'F — D shape, fret 3', 'pt_BR': 'F — forma de Ré, casa 3'})
         dim7 = self.diagram_of(next(v for v in self.voicings_of('Cdim7') if v['template_key'] == 'diminished-7-5th-string'))
         self.assertEqual(dim7['names'], {'en': 'Cdim7 — root on string 5, fret 3', 'pt_BR': 'Cdim7 — tônica na 5ª corda, casa 3'})
 

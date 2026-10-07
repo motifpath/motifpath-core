@@ -73,6 +73,7 @@ QUALITY_SKILL = {
 SHAPE_NAMES = {
     'e_shape': ('E shape', 'forma de Mi'),
     'a_shape': ('A shape', 'forma de Lá'),
+    'd_shape': ('D shape', 'forma de Ré'),
 }
 DIFFICULTY_ORDER = {'beginner': 0, 'intermediate': 1, 'advanced': 2}
 
