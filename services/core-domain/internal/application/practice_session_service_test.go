@@ -173,8 +173,20 @@ func newPracticeFixture(t *testing.T) *practiceFixture {
 		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, f.diagrams, f.exercises, rollup, f.tapChecks, f.feltRatings,
 		func() string { return "session-1" },
 		now,
-	)
+	).WithShuffle(keepOrder)
 	return f
+}
+
+// keepOrder is a shuffle that leaves the order as it is, so a test can tell
+// what the composer picks without chance.
+func keepOrder(int, func(i, j int)) {}
+
+// reverseOrder is a shuffle that reverses the order, so a test can tell the
+// composer shuffled where it should.
+func reverseOrder(n int, swap func(i, j int)) {
+	for i := range n / 2 {
+		swap(i, n-1-i)
+	}
 }
 
 // skill puts a skill for every instrument on the knowledge map, keyed by
@@ -1239,21 +1251,26 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		}
 	})
 
-	t.Run("with an instrument in hand, cells of its layout are picked like any focus item", func(t *testing.T) {
+	t.Run("with an instrument in hand, no cell is picked, though cells of its layout suit it: they are recalled in the head", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPathFor([]string{practiceGuitar}, "root-strings")
-		guitarCells := f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
-		f.cellsOn(practiceBass, "root-strings", 12, 4, 3)
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+		f.exercise("name-the-root", "root-strings", 30, practiceGuitar)
 
 		plan := f.compose(t, practiceGuitar, 10)
 
-		cells := itemsOfKind(plan, domain.PracticeItemKindFretboardCell)
-		require.NotEmpty(t, cells)
-		assert.Equal(t, domain.PracticePickNew, cells[0].Reason)
-		for _, item := range cells {
-			assert.Contains(t, guitarCells, item.ItemKey)
-			assert.Contains(t, []domain.PracticePickReason{domain.PracticePickNew, domain.PracticePickStretch}, item.Reason)
-		}
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindFretboardCell))
+		assert.Contains(t, planKeys(plan), domain.ExerciseItemKey("name-the-root"))
+	})
+
+	t.Run("with an instrument in hand and nothing but cells to practise, there is no session", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5)
+
+		_, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
+
+		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
 	t.Run("new items are balanced across the student's instruments", func(t *testing.T) {
@@ -1280,7 +1297,8 @@ func TestPracticeSessionService_ComposePlanFretboardCells(t *testing.T) {
 		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4, 3)
 		f.cellsOn(practiceBass, "root-strings", 12, 4, 3, 2, 1)
 
-		plan := f.composeInTheHead(t, 10)
+		// Short enough that the new share leaves some of the cells' cap to stretch.
+		plan := f.composeInTheHead(t, 5)
 
 		count := map[string]int{}
 		for _, item := range plan.Items {
@@ -1392,17 +1410,16 @@ func TestPracticeSessionService_ComposePlanDiagramShapes(t *testing.T) {
 		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindPlayAlong))
 	})
 
-	t.Run("with an instrument in hand, shapes linked to it are picked", func(t *testing.T) {
+	t.Run("with an instrument in hand, a shape is played along with, never recalled", func(t *testing.T) {
 		f := newPracticeFixture(t)
 		f.onPathFor([]string{practiceGuitar}, "caged")
-		key := f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+		f.shapeOn("grip-c-a3", "caged", practiceGuitar)
 
 		plan, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
 
 		require.NoError(t, err)
-		shapes := itemsOfKind(plan, domain.PracticeItemKindDiagramShape)
-		require.Len(t, shapes, 1)
-		assert.Equal(t, key, shapes[0].ItemKey)
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindDiagramShape))
+		assert.Contains(t, planKeys(plan), domain.PlayAlongItemKey("grip-c-a3"))
 	})
 
 	t.Run("a shape named right more often than its degrees were found is asked to find a degree other than its root", func(t *testing.T) {
@@ -1499,5 +1516,124 @@ func TestPracticeSessionService_ComposePlanFeltQuestions(t *testing.T) {
 		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
 
 		assert.ErrorIs(t, err, boom)
+	})
+}
+
+func TestPracticeSessionService_ComposePlanShortAndShuffled(t *testing.T) {
+	templates := func(plan domain.PracticeSessionPlan) []string {
+		keys := make([]string, len(plan.Items))
+		for i, item := range plan.Items {
+			keys[i] = item.DrillTemplateKey()
+		}
+		return keys
+	}
+	countTemplates := func(plan domain.PracticeSessionPlan) map[string]int {
+		counts := map[string]int{}
+		for _, key := range templates(plan) {
+			counts[key]++
+		}
+		return counts
+	}
+
+	t.Run("a session asks at most 10 items of each generated drill, and may end before its minutes", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings", "caged")
+		f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4)
+		for i := range 15 {
+			f.shapeOn(fmt.Sprintf("shape-%02d", i), "caged", practiceGuitar)
+		}
+
+		plan := f.composeInTheHead(t, 30)
+
+		counts := countTemplates(plan)
+		assert.Equal(t, domain.MaxGeneratedDrillItems, counts["fretboard_cell:name_the_note"])
+		assert.Equal(t, domain.MaxGeneratedDrillItems, counts["diagram_shape:name_the_shape"])
+		assert.Less(t, planSeconds(plan), 30*60)
+	})
+
+	t.Run("authored exercises are not capped", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("scales")
+		f.due(f.exerciseBatch("due", "scales", 20, 30)...)
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Greater(t, countTemplates(plan)["exercise:text_response"], domain.MaxGeneratedDrillItems)
+	})
+
+	t.Run("new items of a node are picked at random, not in the generator's order", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.svc.WithShuffle(reverseOrder)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 10, 6, 5)
+
+		plan := f.composeInTheHead(t, 5)
+
+		var fresh []string
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickNew {
+				fresh = append(fresh, item.ItemKey)
+			}
+		}
+		require.NotEmpty(t, fresh)
+		// Reversed, the generator's last cells come first: string 5's, not string 6's open string.
+		assert.ElementsMatch(t, keys[len(keys)-len(fresh):], fresh)
+	})
+
+	t.Run("due items are taken most overdue day first, at random within a day", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.svc.WithShuffle(reverseOrder)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 12, 6, 5, 4)
+		oldest, yesterday := keys[:4], keys[4:34]
+		for _, k := range oldest {
+			f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: f.daysAgo(3)})
+		}
+		for i, k := range yesterday {
+			// Each fell due a minute after the one before, the way answers in one session do.
+			dueAt := f.daysAgo(1).Add(time.Duration(i) * time.Minute)
+			f.stateOf(k, domain.PracticeItemState{Level: domain.KnowledgeLevelLearning, Counted: 2, Box: 1, DueAt: &dueAt})
+		}
+
+		plan := f.composeInTheHead(t, 5)
+
+		var due []string
+		for _, item := range plan.Items {
+			if item.Reason == domain.PracticePickDue {
+				due = append(due, item.ItemKey)
+			}
+		}
+		require.Len(t, due, domain.MaxGeneratedDrillItems)
+		assert.Subset(t, due, oldest)
+		// Strictly by due time they would be yesterday's earliest; reversed within the day, the latest.
+		assert.ElementsMatch(t, append(slices.Clone(oldest), yesterday[len(yesterday)-6:]...), due)
+	})
+
+	t.Run("the drills take turns, the one with the most left first", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings", "caged")
+		cells := f.cellsOn(practiceGuitar, "root-strings", 5, 6)
+		var shapes []string
+		for i := range 3 {
+			shapes = append(shapes, f.shapeOn(fmt.Sprintf("shape-%d", i), "caged", practiceGuitar))
+		}
+		f.due(append(cells, shapes...)...)
+
+		plan := f.composeInTheHead(t, 10)
+
+		const note, shape = "fretboard_cell:name_the_note", "diagram_shape:name_the_shape"
+		assert.Equal(t, []string{note, shape, note, shape, note, shape, note, note}, templates(plan)[:8])
+	})
+
+	t.Run("two fretboard cells in a row are never on the same string while another can go there", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "root-strings")
+		keys := f.cellsOn(practiceGuitar, "root-strings", 3, 6, 5)
+		f.due(keys...)
+
+		plan := f.composeInTheHead(t, 5)
+
+		cell := func(str, fret int) string { return domain.FretboardCellItemKey(practiceGuitar, str, fret) }
+		assert.Equal(t, []string{cell(6, 0), cell(5, 0), cell(6, 1), cell(5, 1), cell(6, 2), cell(5, 2)}, planKeys(plan)[:6])
 	})
 }
