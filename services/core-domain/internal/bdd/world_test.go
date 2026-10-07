@@ -46,6 +46,7 @@ type world struct {
 	practiceStates    *fakePracticeItemStateReader
 	practiceItems     *fakeNodeItemSource
 	fretboardCells    *fretboardCellWorld
+	shapeWorld        *diagramShapeWorld
 	// lastCell is the fretboard cell a step answered, for a following step.
 	lastCell         *lastCell
 	practiceActivity *fakePracticeActivity
