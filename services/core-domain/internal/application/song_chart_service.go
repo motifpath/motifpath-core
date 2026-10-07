@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -354,6 +355,9 @@ type ChordProImportResult struct {
 func (s *SongChartService) ImportChordPro(ctx context.Context, caller domain.User, id, text string) (ChordProImportResult, error) {
 	if err := requireAdmin(caller); err != nil {
 		return ChordProImportResult{}, err
+	}
+	if utf8.RuneCountInString(text) > domain.MaxChordProTextLength {
+		return ChordProImportResult{}, domain.NewValidationError("body", "must be at most 100000 characters")
 	}
 	chart, err := s.charts.GetByID(ctx, id)
 	if err != nil {

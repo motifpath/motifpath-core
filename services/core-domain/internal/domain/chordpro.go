@@ -9,6 +9,10 @@ import (
 	"unicode"
 )
 
+// MaxChordProTextLength is the longest ChordPro text, in characters, an
+// import reads.
+const MaxChordProTextLength = 100_000
+
 // ChordProWarningKind is why an import skipped part of a ChordPro text.
 type ChordProWarningKind string
 

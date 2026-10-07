@@ -745,6 +745,7 @@ func TestSongChartService_ImportChordPro(t *testing.T) {
 		wantField string
 	}{
 		{name: "text with no lyric line", text: "{title: Song}\n{comment: Softly}\n", wantField: "body"},
+		{name: "text longer than an import reads", text: "[G]" + strings.Repeat("a", domain.MaxChordProTextLength), wantField: "body"},
 		{name: "a chord symbol longer than a chart holds", text: "[" + strings.Repeat("G", domain.MaxChordSymbolLength+1) + "]La\n", wantField: "body/content/0/content/0/content/0/marks/0/attrs/writtenSymbol"},
 		{name: "a title longer than a chart holds", text: "{title: " + strings.Repeat("a", domain.MaxSongChartTitleLength+1) + "}\n[G]La\n", wantField: "title"},
 	}
