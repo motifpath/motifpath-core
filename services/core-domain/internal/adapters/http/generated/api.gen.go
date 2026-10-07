@@ -3763,7 +3763,8 @@ type PracticePickReason string
 // kind.
 type PracticeSessionItem struct {
 	// DiagramShape Present when kind is diagram_shape. The client loads the diagram to draw it, with
-	// its labels hidden. The drill is the way of asking the shape has the fewer right
+	// its labels hidden, and gives instant feedback from it and from shape, graded the
+	// way the server grades. The drill is the way of asking the shape has the fewer right
 	// answers so far, name_the_shape on a tie.
 	DiagramShape *struct {
 		// AskedInterval For find_the_degree: the degree to tap, picked at random among the shape's
@@ -3778,6 +3779,10 @@ type PracticeSessionItem struct {
 		// root marked and its other positions unlabelled, and the student taps the asked degree.
 		Drill DiagramShapeDrill `json:"drill"`
 
+		// LayoutInstrumentId The instrument whose fretboard layout and tuning the diagram is drawn on, so a
+		// tap check can be shown before the diagram has loaded.
+		LayoutInstrumentId openapi_types.UUID `json:"layout_instrument_id"`
+
 		// Options For name_the_shape: every member of the shape's family, in the catalog's
 		// order (at least two), including members that have no shape at this root, so
 		// the choices never narrow the answer down. The names never mention the root, so
@@ -3789,6 +3794,10 @@ type PracticeSessionItem struct {
 			// Shape The member's key, sent back as the answer.
 			Shape string `json:"shape"`
 		} `json:"options"`
+
+		// Shape The member of its family this diagram is, by its key in the practice drill
+		// catalog: the right answer to name_the_shape, one of the options' shape.
+		Shape string `json:"shape"`
 
 		// ShapeFamily The shape's family in the practice drill catalog, such as caged-grip.
 		ShapeFamily string `json:"shape_family"`
