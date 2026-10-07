@@ -261,6 +261,30 @@ func (f DiagramRegionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramRegionMutation", m)
 }
 
+// The DiagramShapeFunc type is an adapter to allow the use of ordinary
+// function as DiagramShape mutator.
+type DiagramShapeFunc func(context.Context, *ent.DiagramShapeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramShapeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramShapeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramShapeMutation", m)
+}
+
+// The DiagramShapeFamilyFunc type is an adapter to allow the use of ordinary
+// function as DiagramShapeFamily mutator.
+type DiagramShapeFamilyFunc func(context.Context, *ent.DiagramShapeFamilyMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DiagramShapeFamilyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DiagramShapeFamilyMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DiagramShapeFamilyMutation", m)
+}
+
 // The DiagramSkillFunc type is an adapter to allow the use of ordinary
 // function as DiagramSkill mutator.
 type DiagramSkillFunc func(context.Context, *ent.DiagramSkillMutation) (ent.Value, error)

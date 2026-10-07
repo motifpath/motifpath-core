@@ -15,6 +15,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -249,6 +250,25 @@ func (_c *DiagramCreate) AddConcepts(v ...*KnowledgeNode) *DiagramCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddConceptIDs(ids...)
+}
+
+// SetShapeID sets the "shape" edge to the DiagramShape entity by ID.
+func (_c *DiagramCreate) SetShapeID(id uuid.UUID) *DiagramCreate {
+	_c.mutation.SetShapeID(id)
+	return _c
+}
+
+// SetNillableShapeID sets the "shape" edge to the DiagramShape entity by ID if the given value is not nil.
+func (_c *DiagramCreate) SetNillableShapeID(id *uuid.UUID) *DiagramCreate {
+	if id != nil {
+		_c = _c.SetShapeID(*id)
+	}
+	return _c
+}
+
+// SetShape sets the "shape" edge to the DiagramShape entity.
+func (_c *DiagramCreate) SetShape(v *DiagramShape) *DiagramCreate {
+	return _c.SetShapeID(v.ID)
 }
 
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
@@ -588,6 +608,22 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ShapeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   diagram.ShapeTable,
+			Columns: []string{diagram.ShapeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramshape.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.DiagramInstrumentsIDs(); len(nodes) > 0 {

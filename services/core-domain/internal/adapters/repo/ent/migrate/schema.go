@@ -638,6 +638,46 @@ var (
 			},
 		},
 	}
+	// DiagramShapesColumns holds the columns for the "diagram_shapes" table.
+	DiagramShapesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "shape", Type: field.TypeString},
+		{Name: "diagram_id", Type: field.TypeUUID, Unique: true},
+		{Name: "family_id", Type: field.TypeUUID},
+	}
+	// DiagramShapesTable holds the schema information for the "diagram_shapes" table.
+	DiagramShapesTable = &schema.Table{
+		Name:       "diagram_shapes",
+		Columns:    DiagramShapesColumns,
+		PrimaryKey: []*schema.Column{DiagramShapesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "diagram_shapes_diagrams_shape",
+				Columns:    []*schema.Column{DiagramShapesColumns[2]},
+				RefColumns: []*schema.Column{DiagramsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "diagram_shapes_diagram_shape_families_family",
+				Columns:    []*schema.Column{DiagramShapesColumns[3]},
+				RefColumns: []*schema.Column{DiagramShapeFamiliesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// DiagramShapeFamiliesColumns holds the columns for the "diagram_shape_families" table.
+	DiagramShapeFamiliesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "names", Type: field.TypeJSON},
+		{Name: "members", Type: field.TypeJSON},
+	}
+	// DiagramShapeFamiliesTable holds the schema information for the "diagram_shape_families" table.
+	DiagramShapeFamiliesTable = &schema.Table{
+		Name:       "diagram_shape_families",
+		Columns:    DiagramShapeFamiliesColumns,
+		PrimaryKey: []*schema.Column{DiagramShapeFamiliesColumns[0]},
+	}
 	// DiagramSkillsColumns holds the columns for the "diagram_skills" table.
 	DiagramSkillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1353,6 +1393,8 @@ var (
 		DiagramConceptsTable,
 		DiagramInstrumentsTable,
 		DiagramRegionsTable,
+		DiagramShapesTable,
+		DiagramShapeFamiliesTable,
 		DiagramSkillsTable,
 		DrillTemplatesTable,
 		DrillThresholdsTable,
@@ -1405,6 +1447,8 @@ func init() {
 	DiagramInstrumentsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramInstrumentsTable.ForeignKeys[1].RefTable = InstrumentsTable
 	DiagramRegionsTable.ForeignKeys[0].RefTable = DiagramsTable
+	DiagramShapesTable.ForeignKeys[0].RefTable = DiagramsTable
+	DiagramShapesTable.ForeignKeys[1].RefTable = DiagramShapeFamiliesTable
 	DiagramSkillsTable.ForeignKeys[0].RefTable = DiagramsTable
 	DiagramSkillsTable.ForeignKeys[1].RefTable = KnowledgeNodesTable
 	DrillThresholdsTable.ForeignKeys[0].RefTable = DrillTemplatesTable

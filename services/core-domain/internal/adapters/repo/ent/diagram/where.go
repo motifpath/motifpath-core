@@ -639,6 +639,29 @@ func HasConceptsWith(preds ...predicate.KnowledgeNode) predicate.Diagram {
 	})
 }
 
+// HasShape applies the HasEdge predicate on the "shape" edge.
+func HasShape() predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, ShapeTable, ShapeColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasShapeWith applies the HasEdge predicate on the "shape" edge with a given conditions (other predicates).
+func HasShapeWith(preds ...predicate.DiagramShape) predicate.Diagram {
+	return predicate.Diagram(func(s *sql.Selector) {
+		step := newShapeStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasDiagramInstruments applies the HasEdge predicate on the "diagram_instruments" edge.
 func HasDiagramInstruments() predicate.Diagram {
 	return predicate.Diagram(func(s *sql.Selector) {

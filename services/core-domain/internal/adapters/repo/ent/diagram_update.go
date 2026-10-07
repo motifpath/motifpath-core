@@ -16,6 +16,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -224,6 +225,25 @@ func (_u *DiagramUpdate) AddConcepts(v ...*KnowledgeNode) *DiagramUpdate {
 	return _u.AddConceptIDs(ids...)
 }
 
+// SetShapeID sets the "shape" edge to the DiagramShape entity by ID.
+func (_u *DiagramUpdate) SetShapeID(id uuid.UUID) *DiagramUpdate {
+	_u.mutation.SetShapeID(id)
+	return _u
+}
+
+// SetNillableShapeID sets the "shape" edge to the DiagramShape entity by ID if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableShapeID(id *uuid.UUID) *DiagramUpdate {
+	if id != nil {
+		_u = _u.SetShapeID(*id)
+	}
+	return _u
+}
+
+// SetShape sets the "shape" edge to the DiagramShape entity.
+func (_u *DiagramUpdate) SetShape(v *DiagramShape) *DiagramUpdate {
+	return _u.SetShapeID(v.ID)
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
 func (_u *DiagramUpdate) AddDiagramInstrumentIDs(ids ...int) *DiagramUpdate {
 	_u.mutation.AddDiagramInstrumentIDs(ids...)
@@ -377,6 +397,12 @@ func (_u *DiagramUpdate) RemoveConcepts(v ...*KnowledgeNode) *DiagramUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveConceptIDs(ids...)
+}
+
+// ClearShape clears the "shape" edge to the DiagramShape entity.
+func (_u *DiagramUpdate) ClearShape() *DiagramUpdate {
+	_u.mutation.ClearShape()
+	return _u
 }
 
 // ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
@@ -798,6 +824,35 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ShapeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   diagram.ShapeTable,
+			Columns: []string{diagram.ShapeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramshape.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ShapeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   diagram.ShapeTable,
+			Columns: []string{diagram.ShapeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramshape.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.DiagramInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1140,6 +1195,25 @@ func (_u *DiagramUpdateOne) AddConcepts(v ...*KnowledgeNode) *DiagramUpdateOne {
 	return _u.AddConceptIDs(ids...)
 }
 
+// SetShapeID sets the "shape" edge to the DiagramShape entity by ID.
+func (_u *DiagramUpdateOne) SetShapeID(id uuid.UUID) *DiagramUpdateOne {
+	_u.mutation.SetShapeID(id)
+	return _u
+}
+
+// SetNillableShapeID sets the "shape" edge to the DiagramShape entity by ID if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableShapeID(id *uuid.UUID) *DiagramUpdateOne {
+	if id != nil {
+		_u = _u.SetShapeID(*id)
+	}
+	return _u
+}
+
+// SetShape sets the "shape" edge to the DiagramShape entity.
+func (_u *DiagramUpdateOne) SetShape(v *DiagramShape) *DiagramUpdateOne {
+	return _u.SetShapeID(v.ID)
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by IDs.
 func (_u *DiagramUpdateOne) AddDiagramInstrumentIDs(ids ...int) *DiagramUpdateOne {
 	_u.mutation.AddDiagramInstrumentIDs(ids...)
@@ -1293,6 +1367,12 @@ func (_u *DiagramUpdateOne) RemoveConcepts(v ...*KnowledgeNode) *DiagramUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveConceptIDs(ids...)
+}
+
+// ClearShape clears the "shape" edge to the DiagramShape entity.
+func (_u *DiagramUpdateOne) ClearShape() *DiagramUpdateOne {
+	_u.mutation.ClearShape()
+	return _u
 }
 
 // ClearDiagramInstruments clears all "diagram_instruments" edges to the DiagramInstrument entity.
@@ -1742,6 +1822,35 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ShapeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   diagram.ShapeTable,
+			Columns: []string{diagram.ShapeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramshape.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ShapeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   diagram.ShapeTable,
+			Columns: []string{diagram.ShapeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(diagramshape.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.DiagramInstrumentsCleared() {
