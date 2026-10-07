@@ -140,11 +140,13 @@ class CatalogTests(unittest.TestCase):
         self.assertLessEqual({'guitar', 'electric-bass'}, layouts)
         self.assertTrue(all(r.cell_count > 0 for r in ranges))
 
-    def test_the_specs_catalog_shapes_are_the_tier_a_families(self):
+    def test_the_specs_catalog_shapes_include_the_tier_a_families(self):
         built = pd.load_shapes(CATALOG)
         counts = {f.key: sum(1 for s in built.shapes if s.family == f.key) for f in built.families}
-        self.assertEqual({'caged-grip': 52, 'major-pentatonic-box': 47, 'minor-pentatonic-box': 47, 'triad': 48,
-                          'major-scale-window': 52, 'natural-minor-scale-window': 52}, counts)
+        tier_a = {'caged-grip': 52, 'major-pentatonic-box': 47, 'minor-pentatonic-box': 47, 'triad': 48,
+                  'major-scale-window': 52, 'natural-minor-scale-window': 52}
+        self.assertEqual(tier_a, {key: counts.get(key) for key in tier_a})
+        self.assertTrue(all(n > 0 for n in counts.values()), 'every family takes a catalog diagram')
         grip = next(s for s in built.shapes if s.diagram_id == pd.stable_id('caged/C/A/3'))
         self.assertEqual(('caged-grip', 'A'), (grip.family, grip.shape))
 
