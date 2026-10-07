@@ -22,8 +22,19 @@ type goldenCaseFile struct {
 	Grader    string `json:"grader"`
 	Reference struct {
 		Diagrams map[string]struct {
-			Name string `json:"name"`
+			Name               string `json:"name"`
+			LayoutInstrumentID string `json:"layout_instrument_id"`
+			ShapeFamily        string `json:"shape_family"`
+			Shape              string `json:"shape"`
+			Positions          []struct {
+				String   int    `json:"string"`
+				Fret     int    `json:"fret"`
+				Interval string `json:"interval"`
+			} `json:"positions"`
 		} `json:"diagrams"`
+		ShapeFamilies map[string]struct {
+			Members []string `json:"members"`
+		} `json:"shape_families"`
 		Exercises map[string]struct {
 			OptionIDs        []string `json:"option_ids"`
 			CorrectOptionIDs []string `json:"correct_option_ids"`
@@ -55,6 +66,13 @@ type goldenCaseFile struct {
 						OptionID  string `json:"option_id"`
 						IsCorrect bool   `json:"is_correct"`
 					} `json:"options"`
+					ShapeFamily string `json:"shape_family"`
+					Shape       string `json:"shape"`
+					Interval    string `json:"interval"`
+					Cells       []struct {
+						String int `json:"string"`
+						Fret   int `json:"fret"`
+					} `json:"cells"`
 				} `json:"answer_key"`
 			} `json:"evidence"`
 		} `json:"expected"`
@@ -75,8 +93,15 @@ func TestGraderGoldenCases(t *testing.T) {
 			require.Equal(t, grader.ID(), file.Grader)
 
 			ref := domain.PracticeReference{Diagrams: map[string]domain.DiagramReference{}, Exercises: map[string]domain.ExerciseReference{}, Instruments: map[string]domain.InstrumentReference{}}
-			for id := range file.Reference.Diagrams {
-				ref.Diagrams[id] = domain.DiagramReference{ID: id}
+			for id, d := range file.Reference.Diagrams {
+				diagram := domain.DiagramReference{ID: id, LayoutInstrumentID: d.LayoutInstrumentID, ShapeFamily: d.ShapeFamily, Shape: d.Shape}
+				if d.ShapeFamily != "" {
+					diagram.FamilyMembers = file.Reference.ShapeFamilies[d.ShapeFamily].Members
+				}
+				for _, p := range d.Positions {
+					diagram.Positions = append(diagram.Positions, domain.DiagramPosition{String: p.String, Fret: p.Fret, Interval: p.Interval})
+				}
+				ref.Diagrams[id] = diagram
 			}
 			for id, e := range file.Reference.Exercises {
 				options := make([]domain.AnswerOption, len(e.OptionIDs))
@@ -124,6 +149,13 @@ func TestGraderGoldenCases(t *testing.T) {
 						assert.Equal(t, o.OptionID, got.Evidence.AnswerKey.Options[i].OptionID)
 						assert.Equal(t, o.IsCorrect, got.Evidence.AnswerKey.Options[i].IsCorrect)
 					}
+					assert.Equal(t, want.AnswerKey.ShapeFamily, got.Evidence.AnswerKey.ShapeFamily)
+					assert.Equal(t, want.AnswerKey.Shape, got.Evidence.AnswerKey.Shape)
+					assert.Equal(t, want.AnswerKey.Interval, got.Evidence.AnswerKey.Interval)
+					require.Len(t, got.Evidence.AnswerKey.Cells, len(want.AnswerKey.Cells))
+					for i, c := range want.AnswerKey.Cells {
+						assert.Equal(t, domain.AnswerCell{String: c.String, Fret: c.Fret}, got.Evidence.AnswerKey.Cells[i])
+					}
 				})
 			}
 		})
@@ -136,6 +168,8 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 	var w struct {
 		ResponseType     string   `json:"response_type"`
 		NoteName         string   `json:"note_name"`
+		Shape            string   `json:"shape"`
+		Interval         string   `json:"interval"`
 		String           *int     `json:"string"`
 		Fret             *int     `json:"fret"`
 		OptionIDs        []string `json:"option_ids"`
@@ -151,6 +185,8 @@ func decodeGoldenResponse(raw json.RawMessage) (domain.PracticeResponse, error) 
 	return domain.PracticeResponse{
 		Type:             domain.PracticeResponseType(w.ResponseType),
 		NoteName:         w.NoteName,
+		Shape:            w.Shape,
+		Interval:         w.Interval,
 		String:           w.String,
 		Fret:             w.Fret,
 		OptionIDs:        w.OptionIDs,

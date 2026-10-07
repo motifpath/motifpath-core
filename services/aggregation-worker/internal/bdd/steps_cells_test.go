@@ -262,8 +262,10 @@ func (w *world) evidenceKeepsTheResponse(student string) error {
 	return nil
 }
 
+// evidenceNamesTheGrader checks the evidence of the latest answer's item, a
+// fretboard cell or a diagram shape.
 func (w *world) evidenceNamesTheGrader(grader string) error {
-	e, err := w.onlyCellEvidence(w.lastStudent)
+	e, err := w.onlyEvidenceFor(w.lastStudent, w.lastItemKey)
 	if err != nil {
 		return err
 	}

@@ -260,6 +260,8 @@ type world struct {
 	lastStudent string
 	lastItemKey string
 	before      domain.ItemFold
+	// shapeKey is the diagram shape the latest catalog step named.
+	shapeKey string
 
 	// lastTemplate is the drill template the latest fluent time step named.
 	lastTemplate string
