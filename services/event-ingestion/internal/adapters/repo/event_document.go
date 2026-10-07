@@ -54,6 +54,8 @@ type plannedItemDoc struct {
 type practiceResponseDoc struct {
 	ResponseType     string   `bson:"response_type"`
 	NoteName         string   `bson:"note_name,omitempty"`
+	Shape            string   `bson:"shape,omitempty"`
+	Interval         string   `bson:"interval,omitempty"`
 	String           *int     `bson:"string,omitempty"`
 	Fret             *int     `bson:"fret,omitempty"`
 	OptionIDs        []string `bson:"option_ids,omitempty"`
@@ -250,6 +252,8 @@ func toPracticeResponseDoc(r domain.PracticeResponse) *practiceResponseDoc {
 	return &practiceResponseDoc{
 		ResponseType:     string(r.Type),
 		NoteName:         r.NoteName,
+		Shape:            r.Shape,
+		Interval:         r.Interval,
 		String:           r.String,
 		Fret:             r.Fret,
 		OptionIDs:        r.OptionIDs,
@@ -268,6 +272,8 @@ func fromPracticeResponseDoc(d *practiceResponseDoc) domain.PracticeResponse {
 	return domain.PracticeResponse{
 		Type:             domain.PracticeResponseType(d.ResponseType),
 		NoteName:         d.NoteName,
+		Shape:            d.Shape,
+		Interval:         d.Interval,
 		String:           d.String,
 		Fret:             d.Fret,
 		OptionIDs:        d.OptionIDs,

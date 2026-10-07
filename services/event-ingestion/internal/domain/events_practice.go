@@ -10,6 +10,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|exercise:` + uuidPattern +
 	`|play_along:` + uuidPattern +
 	`|chord_change:` + uuidPattern + `:` + uuidPattern +
+	`|diagram_shape:` + uuidPattern +
 	`)$`)
 
 const uuidPattern = `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
@@ -23,10 +24,12 @@ func ValidPracticeItemKey(key string) bool {
 type PracticeResponseType string
 
 const (
-	PracticeResponseNameTheNote  PracticeResponseType = "name_the_note"
-	PracticeResponseFindTheNote  PracticeResponseType = "find_the_note"
-	PracticeResponseOptionChoice PracticeResponseType = "option_choice"
-	PracticeResponseSelfRating   PracticeResponseType = "self_rating"
+	PracticeResponseNameTheNote   PracticeResponseType = "name_the_note"
+	PracticeResponseFindTheNote   PracticeResponseType = "find_the_note"
+	PracticeResponseOptionChoice  PracticeResponseType = "option_choice"
+	PracticeResponseSelfRating    PracticeResponseType = "self_rating"
+	PracticeResponseNameTheShape  PracticeResponseType = "name_the_shape"
+	PracticeResponseFindTheDegree PracticeResponseType = "find_the_degree"
 )
 
 // SelfRating is the student's own judgement of a take.
@@ -49,8 +52,15 @@ type PracticeResponse struct {
 	// NoteName (name_the_note) is a letter with an optional # or b, without an octave.
 	NoteName string
 
-	// String and Fret (find_the_note) are the cell tapped; strings count from 1, the
-	// highest-pitched, and fret 0 is the open string.
+	// Shape (name_the_shape) is the member of its family the student named, by its
+	// key in the practice drill catalog.
+	Shape string
+
+	// Interval (find_the_degree) is the degree the student was asked to find.
+	Interval string
+
+	// String and Fret (find_the_note, find_the_degree) are the cell tapped; strings
+	// count from 1, the highest-pitched, and fret 0 is the open string.
 	String *int
 	Fret   *int
 
