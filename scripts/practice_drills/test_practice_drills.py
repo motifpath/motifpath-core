@@ -140,6 +140,14 @@ class CatalogTests(unittest.TestCase):
         self.assertLessEqual({'guitar', 'electric-bass'}, layouts)
         self.assertTrue(all(r.cell_count > 0 for r in ranges))
 
+    def test_the_specs_catalog_shapes_are_the_tier_a_families(self):
+        built = pd.load_shapes(CATALOG)
+        counts = {f.key: sum(1 for s in built.shapes if s.family == f.key) for f in built.families}
+        self.assertEqual({'caged-grip': 52, 'major-pentatonic-box': 47, 'minor-pentatonic-box': 47, 'triad': 48,
+                          'major-scale-window': 52, 'natural-minor-scale-window': 52}, counts)
+        grip = next(s for s in built.shapes if s.diagram_id == pd.stable_id('caged/C/A/3'))
+        self.assertEqual(('caged-grip', 'A'), (grip.family, grip.shape))
+
 
 def cell_entry(skill='find-notes-root-strings', **layouts):
     return {'skill': skill, 'layouts': layouts or {'guitar': {'strings': [6, 5], 'frets': [0, 11]}}}
@@ -201,6 +209,81 @@ class CellTests(unittest.TestCase):
         self.assertIn('INSERT INTO "fretboard_cell_ranges"', sql)
         self.assertIn(f"('{pd.stable_id('fretboard-cells/find-notes-root-strings/guitar')}', "
                       f"'{pd.km.stable_id('knowledge-node/find-notes-root-strings')}', '{pd.km.instrument_id('guitar')}', '[6,5]', 0, 11)", sql)
+
+
+def family(key='caged-grip', diagrams='caged/{root}/{shape}/{shift}', members=('C', 'A', 'G', 'E', 'D')):
+    return {'family': key, 'diagrams': diagrams, 'names': {'en': key, 'pt_BR': key},
+            'members': [{'shape': m, 'names': {'en': f'{m} shape', 'pt_BR': f'Forma de {m}'}} for m in members]}
+
+
+def diagrams(*keys):
+    """Catalog entries, as the diagram catalog generates them, for keys."""
+    return [{'key': k, 'diagram_id': pd.stable_id(k)} for k in keys]
+
+
+GRIPS = diagrams('caged/C/A/3', 'caged/C/E/8', 'caged/D/A/5', 'chromatic/C')
+
+
+class ShapeTests(unittest.TestCase):
+    def assertRejected(self, entries, catalog_diagrams, *fragments):
+        with self.assertRaises(ValueError) as ctx:
+            pd.build_shapes(entries, catalog_diagrams)
+        for fragment in fragments:
+            self.assertIn(fragment, str(ctx.exception))
+
+    def test_each_matching_catalog_diagram_is_a_shape_of_its_member(self):
+        built = pd.build_shapes([family()], GRIPS)
+        self.assertEqual([(pd.stable_id('caged/C/A/3'), 'caged-grip', 'A'), (pd.stable_id('caged/C/E/8'), 'caged-grip', 'E'),
+                          (pd.stable_id('caged/D/A/5'), 'caged-grip', 'A')],
+                         [(s.diagram_id, s.family, s.shape) for s in built.shapes])
+
+    def test_a_family_keeps_its_members_in_catalog_order_with_a_fixed_id(self):
+        [f] = pd.build_shapes([family()], GRIPS).families
+        self.assertEqual(['C', 'A', 'G', 'E', 'D'], [m['shape'] for m in f.members])
+        self.assertEqual({'en': 'A shape', 'pt_BR': 'Forma de A'}, f.members[1]['names'])
+        self.assertEqual(pd.stable_id('diagram-shape-family/caged-grip'), f.id)
+
+    def test_a_diagram_matching_no_family_is_not_a_shape(self):
+        built = pd.build_shapes([family()], GRIPS)
+        self.assertNotIn(pd.stable_id('chromatic/C'), {s.diagram_id for s in built.shapes})
+
+    def test_a_placeholder_matches_one_key_segment_only(self):
+        built = pd.build_shapes([family()], diagrams('caged/C/A/3', 'caged/C/A/3/extra'))
+        self.assertEqual([pd.stable_id('caged/C/A/3')], [s.diagram_id for s in built.shapes])
+
+    def test_a_family_matching_no_catalog_diagram_is_rejected(self):
+        self.assertRejected([family(), family('lydian-window', 'caged-window/lydian/{root}/{shape}/{shift}')], GRIPS,
+                            "'lydian-window'")
+
+    def test_a_diagram_whose_shape_is_not_a_member_is_rejected(self):
+        self.assertRejected([family(members=('C', 'A', 'G', 'E'))], diagrams('caged/C/A/3', 'caged/C/D/10'),
+                            "'caged-grip'", "'D'")
+
+    def test_a_diagram_in_two_families_is_rejected(self):
+        self.assertRejected([family(), family('grips-again')], GRIPS, "'caged/C/A/3'", "'caged-grip'", "'grips-again'")
+
+    def test_a_pattern_without_a_shape_placeholder_is_rejected(self):
+        self.assertRejected([family(diagrams='caged/{root}/A/{shift}')], GRIPS, "'caged-grip'", '{shape}')
+
+    def test_a_family_appears_once(self):
+        self.assertRejected([family(), family()], GRIPS, "'caged-grip'")
+
+    def test_a_member_appears_once(self):
+        self.assertRejected([family(members=('C', 'A', 'A', 'G', 'E', 'D'))], GRIPS, "'caged-grip'", "'A'")
+
+    def test_a_member_needs_a_name_in_each_language(self):
+        entry = family()
+        entry['members'][0]['names'] = {'en': 'C shape'}
+        self.assertRejected([entry], GRIPS, "'caged-grip'", "'C'")
+
+    def test_the_sql_installs_every_family_and_shape_with_fixed_ids(self):
+        sql = pd.render_shapes_sql(pd.build_shapes([family()], GRIPS))
+        self.assertIn('INSERT INTO "diagram_shape_families"', sql)
+        self.assertIn(f"('{pd.stable_id('diagram-shape-family/caged-grip')}', 'caged-grip', ", sql)
+        self.assertIn('{"names":{"en":"C shape","pt_BR":"Forma de C"},"shape":"C"}', sql)
+        self.assertIn('INSERT INTO "diagram_shapes"', sql)
+        self.assertIn(f"('{pd.stable_id('diagram-shape/' + pd.stable_id('caged/C/A/3'))}', '{pd.stable_id('caged/C/A/3')}', "
+                      f"'{pd.stable_id('diagram-shape-family/caged-grip')}', 'A')", sql)
 
 
 if __name__ == '__main__':
