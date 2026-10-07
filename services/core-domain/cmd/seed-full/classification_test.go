@@ -76,3 +76,19 @@ func TestAdminPathTeachesFindingNotesOnTheFretboard(t *testing.T) {
 	assert.Contains(t, taught, "find-notes-top-strings")
 	assert.Equal(t, []string{acousticGuitarID}, adminPathInstrumentIDs)
 }
+
+func TestAdminPathTeachesDiagramShapes(t *testing.T) {
+	skills := map[string]string{}
+	for _, s := range contentNodeSpecs() {
+		skills[s.key] = s.skill
+	}
+
+	var taught []string
+	for _, key := range adminPathNodeKeys {
+		taught = append(taught, skills[key])
+	}
+	// A session asks diagram shapes only for the skills a path teaches: the CAGED grips and the
+	// pentatonic boxes, so both a five-member and a numbered family can be named.
+	assert.Contains(t, taught, "map-fretboard-caged")
+	assert.Contains(t, taught, "play-pentatonic-positions")
+}
