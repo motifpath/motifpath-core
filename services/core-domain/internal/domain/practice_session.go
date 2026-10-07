@@ -195,6 +195,19 @@ func PlanDrillTemplates(items []PracticeSessionItem) []string {
 	return templates
 }
 
+// MaxGeneratedDrillItems is the most items of one generated drill, a
+// fretboard cell's or a diagram shape's way of being asked, that a session
+// asks: past it, the same kind of question over and over is a chore, not
+// practice. Authored exercises and play-alongs aren't capped, since each one
+// is different content.
+const MaxGeneratedDrillItems = 10
+
+// IsGeneratedDrill reports whether the item is asked by a generated drill:
+// a fretboard cell or a diagram shape.
+func (i PracticeSessionItem) IsGeneratedDrill() bool {
+	return i.FretboardCell != nil || i.DiagramShape != nil
+}
+
 // MaxFeltQuestions is the most "How did it feel?" questions a session asks,
 // so the end of a session stays short.
 const MaxFeltQuestions = 2

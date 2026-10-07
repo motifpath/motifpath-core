@@ -54,6 +54,8 @@ type PracticeSessionService struct {
 	feltRatings ports.FeltRatingReader
 	newID       func() string
 	now         func() time.Time
+	// shuffle puts equally urgent candidates in random order.
+	shuffle func(n int, swap func(i, j int))
 }
 
 func NewPracticeSessionService(
@@ -84,7 +86,15 @@ func NewPracticeSessionService(
 		feltRatings: feltRatings,
 		newID:       newID,
 		now:         now,
+		shuffle:     rand.Shuffle,
 	}
+}
+
+// WithShuffle replaces how equally urgent candidates are put in random
+// order, so a test can tell what is picked without chance.
+func (s *PracticeSessionService) WithShuffle(shuffle func(n int, swap func(i, j int))) *PracticeSessionService {
+	s.shuffle = shuffle
+	return s
 }
 
 // practiceCandidate is an item that can be practised in a session, a
@@ -115,6 +125,18 @@ func (c practiceCandidate) key() string {
 	}
 }
 
+// suitsSession reports whether c belongs in a session with the instrument
+// in hand (inHand) or in the head. In hand is for playing: play-alongs and
+// exercises. In the head is for recall on the screen: fretboard cells,
+// diagram shapes and exercises. A cell or a shape suits its instrument,
+// but is only ever recalled in the head.
+func (c practiceCandidate) suitsSession(inHand bool) bool {
+	if inHand {
+		return c.cell == nil && c.shape == nil
+	}
+	return c.diagram == nil
+}
+
 // practised reports whether the student has a counted answer on c.
 func (c practiceCandidate) practised() bool {
 	return c.state != nil && c.state.Counted > 0
@@ -142,13 +164,16 @@ func knowledgeNodeIDs(nodes []domain.KnowledgeNode) []string {
 
 // ComposePlan composes a session of minutes for caller with instrumentID
 // in hand, or in the head when instrumentID is nil:
-//   - with the instrument in hand, a session of 5 minutes or more starts
+//   - with the instrument in hand, the session is for playing: play-alongs
+//     and exercises, never a fretboard cell or a diagram shape, which are
+//     recalled in the head; a session of 5 minutes or more starts
 //     with a warm-up on a play-along already played clean, and one of 10
 //     minutes or more ends by applying a skill to music: a play-along on a
 //     skill the focus items practise, or else on another skill of the
 //     student's paths;
 //   - in the head, the session covers all the student's instruments and
-//     offers no play-along, so it has no warm-up and no ending;
+//     is for recall on the screen: fretboard cells, diagram shapes and
+//     exercises, no play-along, so it has no warm-up and no ending;
 //   - the focus time goes 60% to due items, most overdue first, 25% to weak
 //     ones and at most 15% to new ones, taken in turn from each of the
 //     student's instruments, from the skills of the student's paths. Due
@@ -181,7 +206,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 		return domain.PracticeSessionPlan{}, err
 	}
 
-	c := newComposer(s.now(), minutes)
+	c := newComposer(s.now(), minutes, s.shuffle)
 	if inHand && minutes >= warmUpMinMinutes {
 		c.warmUp(onPath)
 	}
@@ -193,7 +218,7 @@ func (s *PracticeSessionService) ComposePlan(ctx context.Context, caller domain.
 	if c.remaining() > 0 {
 		var stretch []practiceCandidate
 		for i, id := range instrumentIDs {
-			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.remaining())
+			found, err := s.stretchCandidates(ctx, maps[i], id, inHand, skillIDs, onPath, c.picked, c.remaining(), s.shuffle)
 			if err != nil {
 				return domain.PracticeSessionPlan{}, err
 			}
@@ -319,7 +344,7 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 		}
 		found = append(found, skillCells(knowledge, skillID)...)
 		for _, c := range found {
-			if seen[c.key()] {
+			if seen[c.key()] || !c.suitsSession(inHand) {
 				continue
 			}
 			seen[c.key()] = true
@@ -401,16 +426,16 @@ func skillCells(knowledge KnowledgeMap, skillID string) []practiceCandidate {
 // stretchCandidates lists unseen items for instrumentID not yet picked,
 // about seconds of them, from the nodes the student is ready to start in
 // the order to start them, the skills of their paths, pathSkillIDs, first.
-// Each is offered for the node it starts. Play-alongs are offered only with
-// the instrument in hand.
-func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int) ([]practiceCandidate, error) {
+// Each is offered for the node it starts, if it suits the session: see
+// suitsSession.
+func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledge KnowledgeMap, instrumentID string, inHand bool, pathSkillIDs []string, onPath []practiceCandidate, picked map[string]bool, seconds int, shuffle func(n int, swap func(i, j int))) ([]practiceCandidate, error) {
 	loaded := make(map[string]practiceCandidate, len(onPath))
 	for _, c := range onPath {
 		loaded[c.key()] = c
 	}
 	var stretch []practiceCandidate
 	found := 0
-	for _, pick := range stretchOrder(knowledge, pathSkillIDs, picked) {
+	for _, pick := range stretchOrder(knowledge, pathSkillIDs, picked, shuffle) {
 		if found >= seconds {
 			break
 		}
@@ -418,7 +443,7 @@ func (s *PracticeSessionService) stretchCandidates(ctx context.Context, knowledg
 		if err != nil {
 			return nil, err
 		}
-		if ok && (inHand || c.diagram == nil) {
+		if ok && c.suitsSession(inHand) {
 			c.nodeID = &pick.nodeID
 			c.instrumentID = instrumentID
 			stretch = append(stretch, c)
@@ -435,12 +460,15 @@ type stretchPick struct {
 }
 
 // stretchOrder lists the unseen items not in picked, each once, in the
-// order to stretch to them: node by node, ranked with pathSkillIDs first.
-func stretchOrder(knowledge KnowledgeMap, pathSkillIDs []string, picked map[string]bool) []stretchPick {
+// order to stretch to them: node by node, ranked with pathSkillIDs first,
+// and at random within a node.
+func stretchOrder(knowledge KnowledgeMap, pathSkillIDs []string, picked map[string]bool, shuffle func(n int, swap func(i, j int))) []stretchPick {
 	skip := maps.Clone(picked)
 	var order []stretchPick
 	for _, nodeID := range domain.RankStretchNodes(knowledge.Nodes, knowledge.Standings, pathSkillIDs, knowledge.Applies) {
-		for _, key := range knowledge.Subtrees[nodeID] {
+		keys := slices.Clone(knowledge.Subtrees[nodeID])
+		shuffle(len(keys), func(i, j int) { keys[i], keys[j] = keys[j], keys[i] })
+		for _, key := range keys {
 			if state, ok := knowledge.States[key]; skip[key] || ok && state.Counted > 0 {
 				continue
 			}
@@ -579,10 +607,14 @@ var reasonOrder = []domain.PracticePickReason{
 // composer builds a session's items within its time budget, offering each
 // item at most once.
 type composer struct {
-	now    time.Time
-	budget int
-	used   int
-	picked map[string]bool
+	now     time.Time
+	budget  int
+	used    int
+	shuffle func(n int, swap func(i, j int))
+	picked  map[string]bool
+	// drills counts the picks of each generated drill, which stop at
+	// domain.MaxGeneratedDrillItems.
+	drills map[string]int
 	warm   *domain.PracticeSessionItem
 	items  []domain.PracticeSessionItem
 	ending *domain.PracticeSessionItem
@@ -591,15 +623,17 @@ type composer struct {
 	first *domain.PracticeSessionItem
 }
 
-func newComposer(now time.Time, minutes int) *composer {
-	return &composer{now: now, budget: minutes * 60, picked: map[string]bool{}}
+func newComposer(now time.Time, minutes int, shuffle func(n int, swap func(i, j int))) *composer {
+	return &composer{now: now, budget: minutes * 60, shuffle: shuffle, picked: map[string]bool{}, drills: map[string]int{}}
 }
 
 func (c *composer) remaining() int { return c.budget - c.used }
 
 // pools sorts a student's path items by what they need: due ones, most
-// overdue first; weak ones and new ones in path order; and known ones
-// coming due within a week, weak ones among them, soonest due first.
+// overdue day first; weak ones and new ones in path order; and known ones
+// coming due within a week, weak ones among them, soonest day first. Items
+// equally urgent, due the same day or of the same node, come in random
+// order, so a session never walks the generator's order string by string.
 type pools struct {
 	due, weak, fresh, known []practiceCandidate
 }
@@ -622,11 +656,42 @@ func (c *composer) split(candidates []practiceCandidate) pools {
 			}
 		}
 	}
-	byDueAt := func(a, b practiceCandidate) int { return compareDueAt(a.state.DueAt, b.state.DueAt) }
-	slices.SortStableFunc(p.due, byDueAt)
-	slices.SortStableFunc(p.known, byDueAt)
-	p.fresh = takeInTurn(p.fresh)
+	byDueDay := func(a, b practiceCandidate) int { return compareDueDay(a.state.DueAt, b.state.DueAt) }
+	for _, pool := range [][]practiceCandidate{p.due, p.known} {
+		c.shuffleCandidates(pool)
+		slices.SortStableFunc(pool, byDueDay)
+	}
+	p.weak = c.shuffleWithinNodes(p.weak)
+	p.fresh = takeInTurn(c.shuffleWithinNodes(p.fresh))
 	return p
+}
+
+func (c *composer) shuffleCandidates(candidates []practiceCandidate) {
+	c.shuffle(len(candidates), func(i, j int) { candidates[i], candidates[j] = candidates[j], candidates[i] })
+}
+
+// shuffleWithinNodes keeps candidates' nodes in the order they first
+// appear, and puts each node's candidates in random order.
+func (c *composer) shuffleWithinNodes(candidates []practiceCandidate) []practiceCandidate {
+	var order []string
+	byNode := map[string][]practiceCandidate{}
+	for _, cand := range candidates {
+		node := ""
+		if cand.nodeID != nil {
+			node = *cand.nodeID
+		}
+		if _, ok := byNode[node]; !ok {
+			order = append(order, node)
+		}
+		byNode[node] = append(byNode[node], cand)
+	}
+	shuffled := make([]practiceCandidate, 0, len(candidates))
+	for _, node := range order {
+		group := byNode[node]
+		c.shuffleCandidates(group)
+		shuffled = append(shuffled, group...)
+	}
+	return shuffled
 }
 
 // takeInTurn reorders candidates one instrument at a time, in the order
@@ -655,7 +720,7 @@ func takeInTurn(candidates []practiceCandidate) []practiceCandidate {
 	return turns
 }
 
-// compareDueAt orders review dates soonest first, no date before any.
+// compareDueAt orders dates soonest first, no date before any.
 func compareDueAt(a, b *time.Time) int {
 	switch {
 	case a == nil && b == nil:
@@ -667,6 +732,27 @@ func compareDueAt(a, b *time.Time) int {
 	default:
 		return a.Compare(*b)
 	}
+}
+
+// compareDueDay orders review dates by their day (UTC), soonest first, no
+// date before any. Items answered in one session fall due seconds apart, so
+// ordering by the exact time would replay that session's order.
+func compareDueDay(a, b *time.Time) int {
+	switch {
+	case a == nil && b == nil:
+		return 0
+	case a == nil:
+		return -1
+	case b == nil:
+		return 1
+	default:
+		return dayOf(*a).Compare(dayOf(*b))
+	}
+}
+
+func dayOf(t time.Time) time.Time {
+	y, m, d := t.UTC().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 
 // warmUp opens the session with the best-known play-along already played
@@ -775,14 +861,18 @@ func (c *composer) catchUp(known, stretch []practiceCandidate) {
 }
 
 // fill adds candidates with reason, in order, while they fit until limit
-// seconds are used. The first one refused for lack of time is remembered
-// for neverEmpty.
+// seconds are used, passing over a generated drill already asked as often
+// as a session asks one. The first one refused for lack of time is
+// remembered for neverEmpty.
 func (c *composer) fill(candidates []practiceCandidate, reason domain.PracticePickReason, limit int) {
 	for _, cand := range candidates {
 		if c.picked[cand.key()] {
 			continue
 		}
 		item := c.pick(cand, reason)
+		if item.IsGeneratedDrill() && c.drills[item.DrillTemplateKey()] >= domain.MaxGeneratedDrillItems {
+			continue
+		}
 		if c.used+item.EstimatedSeconds > limit {
 			if c.first == nil {
 				c.first = &item
@@ -807,10 +897,13 @@ func (c *composer) neverEmpty() {
 func (c *composer) reserve(item domain.PracticeSessionItem) {
 	c.picked[item.ItemKey] = true
 	c.used += item.EstimatedSeconds
+	if item.IsGeneratedDrill() {
+		c.drills[item.DrillTemplateKey()]++
+	}
 }
 
-// plan lists the session's items in order: the warm-up, the picks by
-// reason, then the application ending.
+// plan lists the session's items in order: the warm-up, the picks with
+// their drills taking turns, then the application ending.
 func (c *composer) plan() []domain.PracticeSessionItem {
 	var items []domain.PracticeSessionItem
 	if c.warm != nil {
@@ -820,7 +913,7 @@ func (c *composer) plan() []domain.PracticeSessionItem {
 	slices.SortStableFunc(picks, func(a, b domain.PracticeSessionItem) int {
 		return cmp.Compare(slices.Index(reasonOrder, a.Reason), slices.Index(reasonOrder, b.Reason))
 	})
-	items = append(items, picks...)
+	items = append(items, takeTurns(picks)...)
 	if c.ending != nil {
 		items = append(items, *c.ending)
 	}
@@ -871,4 +964,73 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 		}
 	}
 	return item
+}
+
+// takeTurns orders picks so their drills take turns: each next pick comes
+// from the drill with the most picks left, the earliest such drill on a
+// tie, other than the previous pick's drill while another has picks left.
+// Within a drill the picks keep their order, except that a fretboard cell
+// right after another is never on the same string of the same layout while
+// a cell of that drill on another string is left. Each exercise type is a
+// drill, and the play-alongs are one.
+func takeTurns(picks []domain.PracticeSessionItem) []domain.PracticeSessionItem {
+	var drills []string
+	queues := map[string][]domain.PracticeSessionItem{}
+	for _, item := range picks {
+		drill := item.DrillTemplateKey()
+		if drill == "" {
+			drill = string(item.Kind)
+		}
+		if _, ok := queues[drill]; !ok {
+			drills = append(drills, drill)
+		}
+		queues[drill] = append(queues[drill], item)
+	}
+	ordered := make([]domain.PracticeSessionItem, 0, len(picks))
+	previous := ""
+	var lastCell *domain.PlannedFretboardCell
+	for len(ordered) < len(picks) {
+		next := nextDrill(drills, queues, previous, len(picks)-len(ordered))
+		queue := queues[next]
+		i := nextInQueue(queue, lastCell)
+		item := queue[i]
+		queues[next] = slices.Delete(slices.Clone(queue), i, i+1)
+		ordered = append(ordered, item)
+		previous, lastCell = next, item.FretboardCell
+	}
+	return ordered
+}
+
+// nextDrill is the drill with the most picks left in queues, the earliest
+// in drills on a tie, other than previous unless it holds all left picks.
+func nextDrill(drills []string, queues map[string][]domain.PracticeSessionItem, previous string, left int) string {
+	next := ""
+	for _, drill := range drills {
+		n := len(queues[drill])
+		if n == 0 || drill == previous && n < left {
+			continue
+		}
+		if next == "" || n > len(queues[next]) {
+			next = drill
+		}
+	}
+	return next
+}
+
+// nextInQueue is the index of queue's next pick: its first, or after a
+// fretboard cell, its first that isn't on that cell's string, if any.
+func nextInQueue(queue []domain.PracticeSessionItem, lastCell *domain.PlannedFretboardCell) int {
+	if lastCell == nil {
+		return 0
+	}
+	if j := slices.IndexFunc(queue, func(item domain.PracticeSessionItem) bool { return !sameString(item.FretboardCell, lastCell) }); j >= 0 {
+		return j
+	}
+	return 0
+}
+
+// sameString reports whether cell is a fretboard cell on last's string of
+// the same layout.
+func sameString(cell, last *domain.PlannedFretboardCell) bool {
+	return cell != nil && cell.LayoutInstrumentID == last.LayoutInstrumentID && cell.String == last.String
 }

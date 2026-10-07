@@ -47,6 +47,8 @@ type world struct {
 	practiceItems     *fakeNodeItemSource
 	fretboardCells    *fretboardCellWorld
 	shapeWorld        *diagramShapeWorld
+	// dueDays holds the cells a scenario made due on two days.
+	dueDays *cellsDueOnTwoDays
 	// lastCell is the fretboard cell a step answered, for a following step.
 	lastCell *lastCell
 	// lastShapeKey is the diagram shape a step set up, for a following step.
