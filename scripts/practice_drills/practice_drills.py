@@ -1,8 +1,10 @@
 """Compiles the practice drill catalog (motifpath-specs catalogs/practice-drills.yaml)
-into the SQL that installs its drill templates, its timed thresholds and the
-fretboard cell ranges each skill's generated cells come from. Deterministic and
+into the SQL that installs its drill templates, its timed thresholds, the
+fretboard cell ranges each skill's generated cells come from, and the diagram
+shape families with the catalog diagrams each one takes. Deterministic and
 offline; needs PyYAML. Cell ranges are checked against the knowledge map
-(catalogs/knowledge-map.yaml) and the catalog instruments.
+(catalogs/knowledge-map.yaml) and the catalog instruments; shape families
+against the basic-guitar diagram catalog (scripts/diagram_catalog).
 scripts/reference_data/build.py writes that SQL into the baseline_reference_data
 migration, keeping the threshold versions it already installs; run on its own,
 this prints the catalog's counts.
@@ -22,6 +24,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'knowledge_map'))
 import knowledge_map as km  # noqa: E402  (a sibling script, not a package)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'diagram_catalog'))
+import catalog as diagram_catalog  # noqa: E402  (a sibling script, not a package)
 
 NAMESPACE = uuid.UUID('4ac75155-7804-5527-a6ba-01b73c0e3e1a')
 LANGUAGES = ('en', 'pt_BR')
@@ -209,6 +214,106 @@ def load_cells(path, map_path):
     return build_cells(entries, nodes)
 
 
+@dataclass
+class ShapeFamily:
+    key: str
+    pattern: re.Pattern
+    names: dict
+    # members lists the family's shapes in catalog order, each a {shape, names} dict:
+    # the options a name-the-shape drill offers, in the order it offers them.
+    members: list
+
+    @property
+    def id(self):
+        return stable_id('diagram-shape-family/' + self.key)
+
+
+@dataclass
+class Shape:
+    diagram_id: str
+    family: str
+    shape: str
+
+    @property
+    def id(self):
+        return stable_id('diagram-shape/' + self.diagram_id)
+
+
+@dataclass
+class Shapes:
+    families: list
+    shapes: list
+
+
+PLACEHOLDER = re.compile(r'\\\{([a-z]+)\\\}')
+
+
+def shape_pattern(family, diagrams):
+    """The regular expression a family's diagrams pattern stands for: each {name}
+    placeholder matches one key segment, and {shape} names the member."""
+    if '{shape}' not in diagrams:
+        raise ValueError(f'family {family!r} has diagrams {diagrams!r}, which have no {{shape}} placeholder')
+    return re.compile('^' + PLACEHOLDER.sub(lambda m: f'(?P<{m.group(1)}>[^/]+)', re.escape(diagrams)) + '$')
+
+
+def localized(names):
+    names = names or {}
+    return set(names) == set(LANGUAGES) and all(str(names[lang]).strip() for lang in LANGUAGES)
+
+
+def build_shapes(entries, diagrams):
+    """Validates the catalog's diagram_shapes entries against diagrams (the diagram
+    catalog's entries, each with its key and diagram_id) and returns the families in
+    catalog order and their shapes in diagram catalog order. Every diagram whose key
+    matches a family's pattern is a shape of the member its {shape} names; a family
+    matching no diagram, a shape that isn't a member, or a diagram in two families is
+    an error."""
+    families = []
+    for entry in entries or []:
+        key = entry.get('family', '')
+        if not key or any(f.key == key for f in families):
+            raise ValueError(f'shape family {key!r} is empty or appears more than once')
+        if not localized(entry.get('names')):
+            raise ValueError(f'shape family {key!r} needs exactly a name in each of {LANGUAGES}')
+        members = []
+        for member in entry.get('members') or []:
+            shape = str(member.get('shape', ''))
+            if not shape or any(m['shape'] == shape for m in members):
+                raise ValueError(f'shape family {key!r} lists member {shape!r} empty or more than once')
+            if not localized(member.get('names')):
+                raise ValueError(f'member {shape!r} of shape family {key!r} needs exactly a name in each of {LANGUAGES}')
+            members.append(dict(shape=shape, names={lang: member['names'][lang] for lang in LANGUAGES}))
+        if not members:
+            raise ValueError(f'shape family {key!r} lists no members')
+        families.append(ShapeFamily(key, shape_pattern(key, entry.get('diagrams', '')),
+                                    {lang: entry['names'][lang] for lang in LANGUAGES}, members))
+
+    shapes = []
+    owner = {}
+    for d in diagrams:
+        for f in families:
+            match = f.pattern.match(d['key'])
+            if not match:
+                continue
+            other = owner.setdefault(d['key'], f.key)
+            if other != f.key:
+                raise ValueError(f'diagram {d["key"]!r} is a shape of both {other!r} and {f.key!r}')
+            shape = match.group('shape')
+            if not any(m['shape'] == shape for m in f.members):
+                raise ValueError(f'diagram {d["key"]!r} is shape {shape!r}, which is not a member of family {f.key!r}')
+            shapes.append(Shape(d['diagram_id'], f.key, shape))
+    for f in families:
+        if not any(s.family == f.key for s in shapes):
+            raise ValueError(f'shape family {f.key!r} matches no catalog diagram')
+    return Shapes(families, shapes)
+
+
+def load_shapes(path):
+    with open(path, encoding='utf-8') as f:
+        entries = (yaml.safe_load(f) or {}).get('diagram_shapes')
+    return build_shapes(entries, diagram_catalog.generate())
+
+
 def load(path, installed=frozenset(), today=None):
     with open(path, encoding='utf-8') as f:
         return build(yaml.safe_load(f), installed, today)
@@ -262,14 +367,34 @@ def render_cells_sql(ranges):
     return '\n'.join(out) + '\n'
 
 
+def render_shapes_sql(built):
+    out = ['-- Frozen diagram shapes, compiled from motifpath-specs catalogs/practice-drills.yaml by',
+           '-- scripts/practice_drills. Each id is the UUID v5 of diagram-shape-family/<family key> or',
+           '-- diagram-shape/<diagram id>. Every shape is a generated practice item of its diagram.']
+    if built.families:
+        out.append('INSERT INTO "diagram_shape_families" ("id", "key", "names", "members") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(f.id)}, {sql_text(f.key)}, {sql_text(compact(f.names))}, {sql_text(compact(f.members))})"
+            for f in built.families) + ';')
+    if built.shapes:
+        family_ids = {f.key: f.id for f in built.families}
+        out.append('INSERT INTO "diagram_shapes" ("id", "diagram_id", "family_id", "shape") VALUES')
+        out.append(',\n'.join(
+            f"  ({sql_text(s.id)}, {sql_text(s.diagram_id)}, {sql_text(family_ids[s.family])}, {sql_text(s.shape)})"
+            for s in built.shapes) + ';')
+    return '\n'.join(out) + '\n'
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--specs', type=Path, default=Path(__file__).resolve().parents[3] / 'motifpath-specs')
     args = parser.parse_args()
     drills = load(args.specs / 'catalogs/practice-drills.yaml', set(), datetime.date.today())
     ranges = load_cells(args.specs / 'catalogs/practice-drills.yaml', args.specs / 'catalogs/knowledge-map.yaml')
+    shapes = load_shapes(args.specs / 'catalogs/practice-drills.yaml')
     print(json.dumps(dict(templates=len(drills.templates), thresholds=len(drills.thresholds),
-                          cell_ranges=len(ranges), cells=sum(r.cell_count for r in ranges))))
+                          cell_ranges=len(ranges), cells=sum(r.cell_count for r in ranges),
+                          shape_families=len(shapes.families), shapes=len(shapes.shapes))))
 
 
 if __name__ == '__main__':

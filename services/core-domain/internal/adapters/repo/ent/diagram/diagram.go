@@ -53,6 +53,8 @@ const (
 	EdgeSkills = "skills"
 	// EdgeConcepts holds the string denoting the concepts edge name in mutations.
 	EdgeConcepts = "concepts"
+	// EdgeShape holds the string denoting the shape edge name in mutations.
+	EdgeShape = "shape"
 	// EdgeDiagramInstruments holds the string denoting the diagram_instruments edge name in mutations.
 	EdgeDiagramInstruments = "diagram_instruments"
 	// EdgeDiagramSkills holds the string denoting the diagram_skills edge name in mutations.
@@ -97,6 +99,13 @@ const (
 	// ConceptsInverseTable is the table name for the KnowledgeNode entity.
 	// It exists in this package in order to avoid circular dependency with the "knowledgenode" package.
 	ConceptsInverseTable = "knowledge_nodes"
+	// ShapeTable is the table that holds the shape relation/edge.
+	ShapeTable = "diagram_shapes"
+	// ShapeInverseTable is the table name for the DiagramShape entity.
+	// It exists in this package in order to avoid circular dependency with the "diagramshape" package.
+	ShapeInverseTable = "diagram_shapes"
+	// ShapeColumn is the table column denoting the shape relation/edge.
+	ShapeColumn = "diagram_id"
 	// DiagramInstrumentsTable is the table that holds the diagram_instruments relation/edge.
 	DiagramInstrumentsTable = "diagram_instruments"
 	// DiagramInstrumentsInverseTable is the table name for the DiagramInstrument entity.
@@ -407,6 +416,13 @@ func ByConcepts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByShapeField orders the results by shape field.
+func ByShapeField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newShapeStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByDiagramInstrumentsCount orders the results by diagram_instruments count.
 func ByDiagramInstrumentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -488,6 +504,13 @@ func newConceptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ConceptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, ConceptsTable, ConceptsPrimaryKey...),
+	)
+}
+func newShapeStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ShapeInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, ShapeTable, ShapeColumn),
 	)
 }
 func newDiagramInstrumentsStep() *sqlgraph.Step {

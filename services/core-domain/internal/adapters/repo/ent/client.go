@@ -37,6 +37,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshapefamily"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
@@ -111,6 +113,10 @@ type Client struct {
 	DiagramInstrument *DiagramInstrumentClient
 	// DiagramRegion is the client for interacting with the DiagramRegion builders.
 	DiagramRegion *DiagramRegionClient
+	// DiagramShape is the client for interacting with the DiagramShape builders.
+	DiagramShape *DiagramShapeClient
+	// DiagramShapeFamily is the client for interacting with the DiagramShapeFamily builders.
+	DiagramShapeFamily *DiagramShapeFamilyClient
 	// DiagramSkill is the client for interacting with the DiagramSkill builders.
 	DiagramSkill *DiagramSkillClient
 	// DrillTemplate is the client for interacting with the DrillTemplate builders.
@@ -193,6 +199,8 @@ func (c *Client) init() {
 	c.DiagramConcept = NewDiagramConceptClient(c.config)
 	c.DiagramInstrument = NewDiagramInstrumentClient(c.config)
 	c.DiagramRegion = NewDiagramRegionClient(c.config)
+	c.DiagramShape = NewDiagramShapeClient(c.config)
+	c.DiagramShapeFamily = NewDiagramShapeFamilyClient(c.config)
 	c.DiagramSkill = NewDiagramSkillClient(c.config)
 	c.DrillTemplate = NewDrillTemplateClient(c.config)
 	c.DrillThreshold = NewDrillThresholdClient(c.config)
@@ -331,6 +339,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DiagramConcept:          NewDiagramConceptClient(cfg),
 		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
+		DiagramShape:            NewDiagramShapeClient(cfg),
+		DiagramShapeFamily:      NewDiagramShapeFamilyClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		DrillTemplate:           NewDrillTemplateClient(cfg),
 		DrillThreshold:          NewDrillThresholdClient(cfg),
@@ -396,6 +406,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DiagramConcept:          NewDiagramConceptClient(cfg),
 		DiagramInstrument:       NewDiagramInstrumentClient(cfg),
 		DiagramRegion:           NewDiagramRegionClient(cfg),
+		DiagramShape:            NewDiagramShapeClient(cfg),
+		DiagramShapeFamily:      NewDiagramShapeFamilyClient(cfg),
 		DiagramSkill:            NewDiagramSkillClient(cfg),
 		DrillTemplate:           NewDrillTemplateClient(cfg),
 		DrillThreshold:          NewDrillThresholdClient(cfg),
@@ -455,13 +467,14 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
 		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
-		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramSkill,
-		c.DrillTemplate, c.DrillThreshold, c.Exercise, c.ExerciseConcept,
-		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
-		c.ExpandedContent, c.FretboardCellRange, c.Instrument, c.KnowledgeEdge,
-		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramShape,
+		c.DiagramShapeFamily, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold,
+		c.Exercise, c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage,
+		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
+		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
+		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
+		c.Position, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.Voice,
 	} {
 		n.Use(hooks...)
 	}
@@ -476,13 +489,14 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ContentNodeInstrument, c.ContentNodeLanguage, c.ContentNodeSkill,
 		c.ContentNodeVersion, c.Course, c.CourseCheckpoint, c.CourseEnrollment,
 		c.CourseInstrument, c.CourseVersion, c.CourseVersionCheckpoint, c.Diagram,
-		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramSkill,
-		c.DrillTemplate, c.DrillThreshold, c.Exercise, c.ExerciseConcept,
-		c.ExerciseInstrument, c.ExerciseLanguage, c.ExerciseOption, c.ExerciseSkill,
-		c.ExpandedContent, c.FretboardCellRange, c.Instrument, c.KnowledgeEdge,
-		c.KnowledgeNode, c.KnowledgeNodeInstrument, c.Language, c.LearningPath,
-		c.LearningPathInstrument, c.LearningPathItem, c.Position,
-		c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User, c.Voice,
+		c.DiagramConcept, c.DiagramInstrument, c.DiagramRegion, c.DiagramShape,
+		c.DiagramShapeFamily, c.DiagramSkill, c.DrillTemplate, c.DrillThreshold,
+		c.Exercise, c.ExerciseConcept, c.ExerciseInstrument, c.ExerciseLanguage,
+		c.ExerciseOption, c.ExerciseSkill, c.ExpandedContent, c.FretboardCellRange,
+		c.Instrument, c.KnowledgeEdge, c.KnowledgeNode, c.KnowledgeNodeInstrument,
+		c.Language, c.LearningPath, c.LearningPathInstrument, c.LearningPathItem,
+		c.Position, c.StudentLearningState, c.StudentPath, c.StudentPathItem, c.User,
+		c.Voice,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -533,6 +547,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DiagramInstrument.mutate(ctx, m)
 	case *DiagramRegionMutation:
 		return c.DiagramRegion.mutate(ctx, m)
+	case *DiagramShapeMutation:
+		return c.DiagramShape.mutate(ctx, m)
+	case *DiagramShapeFamilyMutation:
+		return c.DiagramShapeFamily.mutate(ctx, m)
 	case *DiagramSkillMutation:
 		return c.DiagramSkill.mutate(ctx, m)
 	case *DrillTemplateMutation:
@@ -3565,6 +3583,22 @@ func (c *DiagramClient) QueryConcepts(_m *Diagram) *KnowledgeNodeQuery {
 	return query
 }
 
+// QueryShape queries the shape edge of a Diagram.
+func (c *DiagramClient) QueryShape(_m *Diagram) *DiagramShapeQuery {
+	query := (&DiagramShapeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, id),
+			sqlgraph.To(diagramshape.Table, diagramshape.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, diagram.ShapeTable, diagram.ShapeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryDiagramInstruments queries the diagram_instruments edge of a Diagram.
 func (c *DiagramClient) QueryDiagramInstruments(_m *Diagram) *DiagramInstrumentQuery {
 	query := (&DiagramInstrumentClient{config: c.config}).Query()
@@ -4114,6 +4148,320 @@ func (c *DiagramRegionClient) mutate(ctx context.Context, m *DiagramRegionMutati
 		return (&DiagramRegionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown DiagramRegion mutation op: %q", m.Op())
+	}
+}
+
+// DiagramShapeClient is a client for the DiagramShape schema.
+type DiagramShapeClient struct {
+	config
+}
+
+// NewDiagramShapeClient returns a client for the DiagramShape from the given config.
+func NewDiagramShapeClient(c config) *DiagramShapeClient {
+	return &DiagramShapeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagramshape.Hooks(f(g(h())))`.
+func (c *DiagramShapeClient) Use(hooks ...Hook) {
+	c.hooks.DiagramShape = append(c.hooks.DiagramShape, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagramshape.Intercept(f(g(h())))`.
+func (c *DiagramShapeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramShape = append(c.inters.DiagramShape, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramShape entity.
+func (c *DiagramShapeClient) Create() *DiagramShapeCreate {
+	mutation := newDiagramShapeMutation(c.config, OpCreate)
+	return &DiagramShapeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramShape entities.
+func (c *DiagramShapeClient) CreateBulk(builders ...*DiagramShapeCreate) *DiagramShapeCreateBulk {
+	return &DiagramShapeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramShapeClient) MapCreateBulk(slice any, setFunc func(*DiagramShapeCreate, int)) *DiagramShapeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramShapeCreateBulk{err: fmt.Errorf("calling to DiagramShapeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramShapeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramShapeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramShape.
+func (c *DiagramShapeClient) Update() *DiagramShapeUpdate {
+	mutation := newDiagramShapeMutation(c.config, OpUpdate)
+	return &DiagramShapeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramShapeClient) UpdateOne(_m *DiagramShape) *DiagramShapeUpdateOne {
+	mutation := newDiagramShapeMutation(c.config, OpUpdateOne, withDiagramShape(_m))
+	return &DiagramShapeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramShapeClient) UpdateOneID(id uuid.UUID) *DiagramShapeUpdateOne {
+	mutation := newDiagramShapeMutation(c.config, OpUpdateOne, withDiagramShapeID(id))
+	return &DiagramShapeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramShape.
+func (c *DiagramShapeClient) Delete() *DiagramShapeDelete {
+	mutation := newDiagramShapeMutation(c.config, OpDelete)
+	return &DiagramShapeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramShapeClient) DeleteOne(_m *DiagramShape) *DiagramShapeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramShapeClient) DeleteOneID(id uuid.UUID) *DiagramShapeDeleteOne {
+	builder := c.Delete().Where(diagramshape.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramShapeDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramShape.
+func (c *DiagramShapeClient) Query() *DiagramShapeQuery {
+	return &DiagramShapeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramShape},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramShape entity by its id.
+func (c *DiagramShapeClient) Get(ctx context.Context, id uuid.UUID) (*DiagramShape, error) {
+	return c.Query().Where(diagramshape.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramShapeClient) GetX(ctx context.Context, id uuid.UUID) *DiagramShape {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDiagram queries the diagram edge of a DiagramShape.
+func (c *DiagramShapeClient) QueryDiagram(_m *DiagramShape) *DiagramQuery {
+	query := (&DiagramClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramshape.Table, diagramshape.FieldID, id),
+			sqlgraph.To(diagram.Table, diagram.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, diagramshape.DiagramTable, diagramshape.DiagramColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryFamily queries the family edge of a DiagramShape.
+func (c *DiagramShapeClient) QueryFamily(_m *DiagramShape) *DiagramShapeFamilyQuery {
+	query := (&DiagramShapeFamilyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramshape.Table, diagramshape.FieldID, id),
+			sqlgraph.To(diagramshapefamily.Table, diagramshapefamily.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, diagramshape.FamilyTable, diagramshape.FamilyColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramShapeClient) Hooks() []Hook {
+	return c.hooks.DiagramShape
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramShapeClient) Interceptors() []Interceptor {
+	return c.inters.DiagramShape
+}
+
+func (c *DiagramShapeClient) mutate(ctx context.Context, m *DiagramShapeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramShapeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramShapeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramShapeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramShapeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramShape mutation op: %q", m.Op())
+	}
+}
+
+// DiagramShapeFamilyClient is a client for the DiagramShapeFamily schema.
+type DiagramShapeFamilyClient struct {
+	config
+}
+
+// NewDiagramShapeFamilyClient returns a client for the DiagramShapeFamily from the given config.
+func NewDiagramShapeFamilyClient(c config) *DiagramShapeFamilyClient {
+	return &DiagramShapeFamilyClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `diagramshapefamily.Hooks(f(g(h())))`.
+func (c *DiagramShapeFamilyClient) Use(hooks ...Hook) {
+	c.hooks.DiagramShapeFamily = append(c.hooks.DiagramShapeFamily, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `diagramshapefamily.Intercept(f(g(h())))`.
+func (c *DiagramShapeFamilyClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DiagramShapeFamily = append(c.inters.DiagramShapeFamily, interceptors...)
+}
+
+// Create returns a builder for creating a DiagramShapeFamily entity.
+func (c *DiagramShapeFamilyClient) Create() *DiagramShapeFamilyCreate {
+	mutation := newDiagramShapeFamilyMutation(c.config, OpCreate)
+	return &DiagramShapeFamilyCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DiagramShapeFamily entities.
+func (c *DiagramShapeFamilyClient) CreateBulk(builders ...*DiagramShapeFamilyCreate) *DiagramShapeFamilyCreateBulk {
+	return &DiagramShapeFamilyCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DiagramShapeFamilyClient) MapCreateBulk(slice any, setFunc func(*DiagramShapeFamilyCreate, int)) *DiagramShapeFamilyCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DiagramShapeFamilyCreateBulk{err: fmt.Errorf("calling to DiagramShapeFamilyClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DiagramShapeFamilyCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DiagramShapeFamilyCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DiagramShapeFamily.
+func (c *DiagramShapeFamilyClient) Update() *DiagramShapeFamilyUpdate {
+	mutation := newDiagramShapeFamilyMutation(c.config, OpUpdate)
+	return &DiagramShapeFamilyUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DiagramShapeFamilyClient) UpdateOne(_m *DiagramShapeFamily) *DiagramShapeFamilyUpdateOne {
+	mutation := newDiagramShapeFamilyMutation(c.config, OpUpdateOne, withDiagramShapeFamily(_m))
+	return &DiagramShapeFamilyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DiagramShapeFamilyClient) UpdateOneID(id uuid.UUID) *DiagramShapeFamilyUpdateOne {
+	mutation := newDiagramShapeFamilyMutation(c.config, OpUpdateOne, withDiagramShapeFamilyID(id))
+	return &DiagramShapeFamilyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DiagramShapeFamily.
+func (c *DiagramShapeFamilyClient) Delete() *DiagramShapeFamilyDelete {
+	mutation := newDiagramShapeFamilyMutation(c.config, OpDelete)
+	return &DiagramShapeFamilyDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DiagramShapeFamilyClient) DeleteOne(_m *DiagramShapeFamily) *DiagramShapeFamilyDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DiagramShapeFamilyClient) DeleteOneID(id uuid.UUID) *DiagramShapeFamilyDeleteOne {
+	builder := c.Delete().Where(diagramshapefamily.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DiagramShapeFamilyDeleteOne{builder}
+}
+
+// Query returns a query builder for DiagramShapeFamily.
+func (c *DiagramShapeFamilyClient) Query() *DiagramShapeFamilyQuery {
+	return &DiagramShapeFamilyQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDiagramShapeFamily},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DiagramShapeFamily entity by its id.
+func (c *DiagramShapeFamilyClient) Get(ctx context.Context, id uuid.UUID) (*DiagramShapeFamily, error) {
+	return c.Query().Where(diagramshapefamily.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DiagramShapeFamilyClient) GetX(ctx context.Context, id uuid.UUID) *DiagramShapeFamily {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryShapes queries the shapes edge of a DiagramShapeFamily.
+func (c *DiagramShapeFamilyClient) QueryShapes(_m *DiagramShapeFamily) *DiagramShapeQuery {
+	query := (&DiagramShapeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagramshapefamily.Table, diagramshapefamily.FieldID, id),
+			sqlgraph.To(diagramshape.Table, diagramshape.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, diagramshapefamily.ShapesTable, diagramshapefamily.ShapesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DiagramShapeFamilyClient) Hooks() []Hook {
+	return c.hooks.DiagramShapeFamily
+}
+
+// Interceptors returns the client interceptors.
+func (c *DiagramShapeFamilyClient) Interceptors() []Interceptor {
+	return c.inters.DiagramShapeFamily
+}
+
+func (c *DiagramShapeFamilyClient) mutate(ctx context.Context, m *DiagramShapeFamilyMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DiagramShapeFamilyCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DiagramShapeFamilyUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DiagramShapeFamilyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DiagramShapeFamilyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DiagramShapeFamily mutation op: %q", m.Op())
 	}
 }
 
@@ -8650,12 +8998,13 @@ type (
 		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
 		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
-		DiagramRegion, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
-		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
-		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Hook
+		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
+		DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
+		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
+		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
+		User, Voice []ent.Hook
 	}
 	inters struct {
 		Challenge, ChallengeExercise, ChordDefinition, ChordVoicing, ContentNode,
@@ -8663,11 +9012,12 @@ type (
 		ContentNodeLanguage, ContentNodeSkill, ContentNodeVersion, Course,
 		CourseCheckpoint, CourseEnrollment, CourseInstrument, CourseVersion,
 		CourseVersionCheckpoint, Diagram, DiagramConcept, DiagramInstrument,
-		DiagramRegion, DiagramSkill, DrillTemplate, DrillThreshold, Exercise,
-		ExerciseConcept, ExerciseInstrument, ExerciseLanguage, ExerciseOption,
-		ExerciseSkill, ExpandedContent, FretboardCellRange, Instrument, KnowledgeEdge,
-		KnowledgeNode, KnowledgeNodeInstrument, Language, LearningPath,
-		LearningPathInstrument, LearningPathItem, Position, StudentLearningState,
-		StudentPath, StudentPathItem, User, Voice []ent.Interceptor
+		DiagramRegion, DiagramShape, DiagramShapeFamily, DiagramSkill, DrillTemplate,
+		DrillThreshold, Exercise, ExerciseConcept, ExerciseInstrument,
+		ExerciseLanguage, ExerciseOption, ExerciseSkill, ExpandedContent,
+		FretboardCellRange, Instrument, KnowledgeEdge, KnowledgeNode,
+		KnowledgeNodeInstrument, Language, LearningPath, LearningPathInstrument,
+		LearningPathItem, Position, StudentLearningState, StudentPath, StudentPathItem,
+		User, Voice []ent.Interceptor
 	}
 )

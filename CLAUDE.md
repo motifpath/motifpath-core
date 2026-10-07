@@ -118,7 +118,10 @@ NEVER access the database directly from the domain layer.
   (`scripts/chord_catalog`, from motifpath-specs `catalogs/chord-voicings.yaml`) needs tables
   added after the baseline, so the same build writes it as a second generated migration,
   `chord_catalog_reference_data`, one second after the `chord_catalog` migration; every voicing
-  passes the musical validator first. Run `atlas migrate hash` afterwards.
+  passes the musical validator first. The drill catalog's diagram shapes (each `diagram_shapes`
+  family takes the basic-guitar diagrams whose key matches its pattern) are a third,
+  `diagram_shapes_reference_data`, one second after the `diagram_shapes` migration, for the same
+  reason. Run `atlas migrate hash` afterwards.
 
 ## Auth
 JWT validation uses `clerk-sdk-go/v2` (ADR-009). Each service instantiates one `clerk.Client`

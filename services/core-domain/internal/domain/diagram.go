@@ -196,9 +196,13 @@ type Diagram struct {
 	// DefaultPlaybackID names the playback a usage plays when it doesn't
 	// choose one; nil exactly when there are no Playbacks.
 	DefaultPlaybackID *string
-	Skills            []KnowledgeNode
-	Concepts          []KnowledgeNode
-	CreatedAt         time.Time
+	// Shape is what makes a catalog diagram a drill shape; nil for every
+	// other diagram. Only the practice drill catalog sets it, never a
+	// request.
+	Shape     *DiagramShape
+	Skills    []KnowledgeNode
+	Concepts  []KnowledgeNode
+	CreatedAt time.Time
 }
 
 // IntervalCodes is every interval a Position may carry: canonical codes

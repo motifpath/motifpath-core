@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/schema"
 )
@@ -65,6 +66,8 @@ type DiagramEdges struct {
 	Skills []*KnowledgeNode `json:"skills,omitempty"`
 	// Concepts holds the value of the concepts edge.
 	Concepts []*KnowledgeNode `json:"concepts,omitempty"`
+	// Shape holds the value of the shape edge.
+	Shape *DiagramShape `json:"shape,omitempty"`
 	// DiagramInstruments holds the value of the diagram_instruments edge.
 	DiagramInstruments []*DiagramInstrument `json:"diagram_instruments,omitempty"`
 	// DiagramSkills holds the value of the diagram_skills edge.
@@ -73,7 +76,7 @@ type DiagramEdges struct {
 	DiagramConcepts []*DiagramConcept `json:"diagram_concepts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [10]bool
 }
 
 // InstrumentOrErr returns the Instrument value or an error if the edge
@@ -132,10 +135,21 @@ func (e DiagramEdges) ConceptsOrErr() ([]*KnowledgeNode, error) {
 	return nil, &NotLoadedError{edge: "concepts"}
 }
 
+// ShapeOrErr returns the Shape value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DiagramEdges) ShapeOrErr() (*DiagramShape, error) {
+	if e.Shape != nil {
+		return e.Shape, nil
+	} else if e.loadedTypes[6] {
+		return nil, &NotFoundError{label: diagramshape.Label}
+	}
+	return nil, &NotLoadedError{edge: "shape"}
+}
+
 // DiagramInstrumentsOrErr returns the DiagramInstruments value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) DiagramInstrumentsOrErr() ([]*DiagramInstrument, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.DiagramInstruments, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_instruments"}
@@ -144,7 +158,7 @@ func (e DiagramEdges) DiagramInstrumentsOrErr() ([]*DiagramInstrument, error) {
 // DiagramSkillsOrErr returns the DiagramSkills value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) DiagramSkillsOrErr() ([]*DiagramSkill, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.DiagramSkills, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_skills"}
@@ -153,7 +167,7 @@ func (e DiagramEdges) DiagramSkillsOrErr() ([]*DiagramSkill, error) {
 // DiagramConceptsOrErr returns the DiagramConcepts value or an error if the edge
 // was not loaded in eager-loading.
 func (e DiagramEdges) DiagramConceptsOrErr() ([]*DiagramConcept, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.DiagramConcepts, nil
 	}
 	return nil, &NotLoadedError{edge: "diagram_concepts"}
@@ -314,6 +328,11 @@ func (_m *Diagram) QuerySkills() *KnowledgeNodeQuery {
 // QueryConcepts queries the "concepts" edge of the Diagram entity.
 func (_m *Diagram) QueryConcepts() *KnowledgeNodeQuery {
 	return NewDiagramClient(_m.config).QueryConcepts(_m)
+}
+
+// QueryShape queries the "shape" edge of the Diagram entity.
+func (_m *Diagram) QueryShape() *DiagramShapeQuery {
+	return NewDiagramClient(_m.config).QueryShape(_m)
 }
 
 // QueryDiagramInstruments queries the "diagram_instruments" edge of the Diagram entity.

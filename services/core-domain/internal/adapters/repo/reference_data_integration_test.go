@@ -123,16 +123,18 @@ func TestFreshInstall(t *testing.T) {
 	})
 
 	t.Run("the drill catalog has its templates and every exercise family's default fluent time, with fixed ids", func(t *testing.T) {
-		assert.Equal(t, 7, count(t, "SELECT count(*) FROM drill_templates"))
+		assert.Equal(t, 9, count(t, "SELECT count(*) FROM drill_templates"))
 		assert.Equal(t, 1, count(t, "SELECT count(*) FROM drill_templates WHERE key = 'fretboard_cell:name_the_note' AND id = '"+catalogID("drill-template/fretboard_cell:name_the_note")+"'"))
 		assert.Equal(t, map[string]string{
-			catalogID("drill-threshold/exercise:text_response/v1"):       "exercise:text_response|1|2026-10-01|6000|default",
-			catalogID("drill-threshold/exercise:audio_recognition/v1"):   "exercise:audio_recognition|1|2026-10-01|4000|default",
-			catalogID("drill-threshold/exercise:image_recognition/v1"):   "exercise:image_recognition|1|2026-10-01|5000|default",
-			catalogID("drill-threshold/exercise:image_choice/v1"):        "exercise:image_choice|1|2026-10-01|5000|default",
-			catalogID("drill-threshold/exercise:audio_selection/v1"):     "exercise:audio_selection|1|2026-10-01|4000|default",
-			catalogID("drill-threshold/fretboard_cell:name_the_note/v1"): "fretboard_cell:name_the_note|1|2026-10-06|3000|default",
-			catalogID("drill-threshold/fretboard_cell:find_the_note/v1"): "fretboard_cell:find_the_note|1|2026-10-06|4000|default",
+			catalogID("drill-threshold/exercise:text_response/v1"):        "exercise:text_response|1|2026-10-01|6000|default",
+			catalogID("drill-threshold/exercise:audio_recognition/v1"):    "exercise:audio_recognition|1|2026-10-01|4000|default",
+			catalogID("drill-threshold/exercise:image_recognition/v1"):    "exercise:image_recognition|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:image_choice/v1"):         "exercise:image_choice|1|2026-10-01|5000|default",
+			catalogID("drill-threshold/exercise:audio_selection/v1"):      "exercise:audio_selection|1|2026-10-01|4000|default",
+			catalogID("drill-threshold/fretboard_cell:name_the_note/v1"):  "fretboard_cell:name_the_note|1|2026-10-06|3000|default",
+			catalogID("drill-threshold/fretboard_cell:find_the_note/v1"):  "fretboard_cell:find_the_note|1|2026-10-06|4000|default",
+			catalogID("drill-threshold/diagram_shape:name_the_shape/v1"):  "diagram_shape:name_the_shape|1|2026-10-07|4000|default",
+			catalogID("drill-threshold/diagram_shape:find_the_degree/v1"): "diagram_shape:find_the_degree|1|2026-10-07|4000|default",
 		}, stringPairs(t, ctx, db, `SELECT th.id::text, concat_ws('|', te.key, th.version, to_char(th.effective_from AT TIME ZONE 'UTC', 'YYYY-MM-DD'), th.fluent_net_ms, th.source)
 			FROM drill_thresholds th JOIN drill_templates te ON te.id = th.template_id`))
 	})
@@ -145,6 +147,20 @@ func TestFreshInstall(t *testing.T) {
 			catalogID("fretboard-cells/find-notes-top-strings/electric-bass"):  "find-notes-top-strings|" + electricBassID + "|[2, 1]|0|11",
 		}, stringPairs(t, ctx, db, `SELECT r.id::text, concat_ws('|', n.key, r.layout_instrument_id, r.strings::text, r.from_fret, r.to_fret)
 			FROM fretboard_cell_ranges r JOIN knowledge_nodes n ON n.id = r.skill_id`))
+	})
+
+	t.Run("the diagram shapes are the tier A families' catalog diagrams, with fixed ids", func(t *testing.T) {
+		assert.Equal(t, map[string]string{
+			catalogID("diagram-shape-family/caged-grip"):                 "caged-grip|52",
+			catalogID("diagram-shape-family/major-pentatonic-box"):       "major-pentatonic-box|47",
+			catalogID("diagram-shape-family/minor-pentatonic-box"):       "minor-pentatonic-box|47",
+			catalogID("diagram-shape-family/triad"):                      "triad|48",
+			catalogID("diagram-shape-family/major-scale-window"):         "major-scale-window|52",
+			catalogID("diagram-shape-family/natural-minor-scale-window"): "natural-minor-scale-window|52",
+		}, stringPairs(t, ctx, db, `SELECT f.id::text, concat_ws('|', f.key, count(s.id))
+			FROM diagram_shape_families f LEFT JOIN diagram_shapes s ON s.family_id = f.id GROUP BY f.id, f.key`))
+		cAGrip := catalogID("caged/C/A/3")
+		assert.Equal(t, 1, count(t, "SELECT count(*) FROM diagram_shapes WHERE id = '"+catalogID("diagram-shape/"+cAGrip)+"' AND diagram_id = '"+cAGrip+"' AND shape = 'A'"))
 	})
 }
 

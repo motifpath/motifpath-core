@@ -40,7 +40,7 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		"instrument_ids":   bson.A{"guitar", "electric"},
 		"tempo_bpm":        int32(90),
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(2),
+		"snapshot_version": int32(3),
 	}, doc)
 
 	t.Run("every reference in one write is stored", func(t *testing.T) {
@@ -63,6 +63,36 @@ func TestMongoPracticeReferenceWriter_DiagramShape(t *testing.T) {
 		require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "id", Value: "d-1"}}).Decode(&got))
 		assert.Nil(t, got["tempo_bpm"], "no playback → tempo_bpm null")
 		assert.Equal(t, bson.A{"guitar"}, got["instrument_ids"])
+	})
+
+	t.Run("a drill shape also holds its layout, family, member, the family's members and its positions", func(t *testing.T) {
+		require.NoError(t, writer.PutDiagrams(ctx, []domain.DiagramReference{{
+			ID: "d-shape", InstrumentIDs: []string{"guitar", "electric"},
+			Shape: &domain.DiagramShapeReference{
+				LayoutInstrumentID: "guitar", Family: "caged-grip", Shape: "A", FamilyMembers: []string{"C", "A", "G", "E", "D"},
+				Positions: []domain.ShapePosition{{String: 5, Fret: 3, Interval: "R"}, {String: 2, Fret: 5, Interval: "3"}},
+			},
+		}}))
+
+		var got bson.M
+		require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "d-shape"}}).Decode(&got))
+		assert.Equal(t, "guitar", got["layout_instrument_id"])
+		assert.Equal(t, "caged-grip", got["shape_family"])
+		assert.Equal(t, "A", got["shape"])
+		assert.Equal(t, bson.A{"C", "A", "G", "E", "D"}, got["family_members"])
+		assert.Equal(t, bson.A{
+			bson.D{{Key: "string", Value: int32(5)}, {Key: "fret", Value: int32(3)}, {Key: "interval", Value: "R"}},
+			bson.D{{Key: "string", Value: int32(2)}, {Key: "fret", Value: int32(5)}, {Key: "interval", Value: "3"}},
+		}, got["positions"])
+		assert.Equal(t, int32(3), got["snapshot_version"])
+	})
+
+	t.Run("a diagram that isn't a drill shape leaves the shape fields out", func(t *testing.T) {
+		var got bson.M
+		require.NoError(t, db.Collection("practice_reference").FindOne(ctx, bson.D{{Key: "kind", Value: "diagram"}, {Key: "id", Value: "d-2"}}).Decode(&got))
+		for _, field := range []string{"layout_instrument_id", "shape_family", "shape", "family_members", "positions"} {
+			assert.NotContains(t, got, field)
+		}
 	})
 
 	t.Run("{kind, id} is unique", func(t *testing.T) {
@@ -98,7 +128,7 @@ func TestMongoPracticeReferenceWriter_ExerciseShape(t *testing.T) {
 		"instrument_ids":     bson.A{"guitar"},
 		"options":            bson.A{},
 		"updated_at":         bson.NewDateTimeFromTime(at),
-		"snapshot_version":   int32(2),
+		"snapshot_version":   int32(3),
 	}, doc)
 
 	t.Run("an exercise for every instrument stores an empty list", func(t *testing.T) {
@@ -152,7 +182,7 @@ func TestMongoPracticeReferenceWriter_DrillThresholdShape(t *testing.T) {
 		"fluent_net_ms":    int32(6000),
 		"source":           "default",
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(2),
+		"snapshot_version": int32(3),
 	}, doc)
 
 	t.Run("an empty write stores nothing and succeeds", func(t *testing.T) {
@@ -221,7 +251,7 @@ func TestMongoPracticeReferenceWriter_InstrumentShape(t *testing.T) {
 		"string_count":     int32(6),
 		"tuning":           bson.A{"E2", "A2", "D3", "G3", "B3", "E4"},
 		"updated_at":       bson.NewDateTimeFromTime(at),
-		"snapshot_version": int32(2),
+		"snapshot_version": int32(3),
 	}, doc)
 
 	t.Run("an instrument without strings stores none and an empty tuning", func(t *testing.T) {

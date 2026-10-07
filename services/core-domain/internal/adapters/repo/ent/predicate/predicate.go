@@ -69,6 +69,12 @@ type DiagramInstrument func(*sql.Selector)
 // DiagramRegion is the predicate function for diagramregion builders.
 type DiagramRegion func(*sql.Selector)
 
+// DiagramShape is the predicate function for diagramshape builders.
+type DiagramShape func(*sql.Selector)
+
+// DiagramShapeFamily is the predicate function for diagramshapefamily builders.
+type DiagramShapeFamily func(*sql.Selector)
+
 // DiagramSkill is the predicate function for diagramskill builders.
 type DiagramSkill func(*sql.Selector)
 

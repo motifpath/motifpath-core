@@ -33,6 +33,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshapefamily"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
@@ -139,6 +141,8 @@ func checkColumn(t, c string) error {
 			diagramconcept.Table:          diagramconcept.ValidColumn,
 			diagraminstrument.Table:       diagraminstrument.ValidColumn,
 			diagramregion.Table:           diagramregion.ValidColumn,
+			diagramshape.Table:            diagramshape.ValidColumn,
+			diagramshapefamily.Table:      diagramshapefamily.ValidColumn,
 			diagramskill.Table:            diagramskill.ValidColumn,
 			drilltemplate.Table:           drilltemplate.ValidColumn,
 			drillthreshold.Table:          drillthreshold.ValidColumn,

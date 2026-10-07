@@ -16,19 +16,34 @@ import (
 // practiceReferenceSnapshotVersion is the shape of the documents this
 // writer stores. Bump it when a document's fields change, so a reader can
 // tell the shapes apart. Version 2 added the exercise options and the
-// instrument documents.
-const practiceReferenceSnapshotVersion = 2
+// instrument documents; version 3 the drill shape fields of a diagram.
+const practiceReferenceSnapshotVersion = 3
 
 // diagramReferenceDocument is a `practice_reference` document of kind
 // "diagram", in the shape ADR-047 fixes for the Aggregation Worker's
-// graders. TempoBPM is stored as null for a diagram without playback.
+// graders. TempoBPM is stored as null for a diagram without playback. A
+// drill shape also holds its layout, family, member, its family's members
+// and its positions; every other diagram leaves them out.
 type diagramReferenceDocument struct {
-	Kind            string    `bson:"kind"`
-	ID              string    `bson:"id"`
-	InstrumentIDs   []string  `bson:"instrument_ids"`
-	TempoBPM        *int      `bson:"tempo_bpm"`
-	UpdatedAt       time.Time `bson:"updated_at"`
-	SnapshotVersion int       `bson:"snapshot_version"`
+	Kind               string                  `bson:"kind"`
+	ID                 string                  `bson:"id"`
+	InstrumentIDs      []string                `bson:"instrument_ids"`
+	TempoBPM           *int                    `bson:"tempo_bpm"`
+	LayoutInstrumentID string                  `bson:"layout_instrument_id,omitempty"`
+	ShapeFamily        string                  `bson:"shape_family,omitempty"`
+	Shape              string                  `bson:"shape,omitempty"`
+	FamilyMembers      []string                `bson:"family_members,omitempty"`
+	Positions          []shapePositionDocument `bson:"positions,omitempty"`
+	UpdatedAt          time.Time               `bson:"updated_at"`
+	SnapshotVersion    int                     `bson:"snapshot_version"`
+}
+
+// shapePositionDocument is one marker of a drill shape: where it is, and its
+// interval from the diagram's root.
+type shapePositionDocument struct {
+	String   int    `bson:"string"`
+	Fret     int    `bson:"fret"`
+	Interval string `bson:"interval"`
 }
 
 // exerciseReferenceDocument is a `practice_reference` document of kind
@@ -228,6 +243,16 @@ func (w *MongoPracticeReferenceWriter) PutDiagrams(ctx context.Context, refs []d
 			TempoBPM:        ref.TempoBPM,
 			UpdatedAt:       at,
 			SnapshotVersion: practiceReferenceSnapshotVersion,
+		}
+		if shape := ref.Shape; shape != nil {
+			docs[i].LayoutInstrumentID = shape.LayoutInstrumentID
+			docs[i].ShapeFamily = shape.Family
+			docs[i].Shape = shape.Shape
+			docs[i].FamilyMembers = shape.FamilyMembers
+			docs[i].Positions = make([]shapePositionDocument, len(shape.Positions))
+			for j, p := range shape.Positions {
+				docs[i].Positions[j] = shapePositionDocument{String: p.String, Fret: p.Fret, Interval: p.Interval}
+			}
 		}
 	}
 	return upsert(ctx, w.collection, docs, func(d diagramReferenceDocument) (string, string) { return d.Kind, d.ID })

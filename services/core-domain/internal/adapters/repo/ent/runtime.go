@@ -27,6 +27,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshapefamily"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
@@ -328,6 +330,18 @@ func init() {
 	diagramregionDescID := diagramregionFields[0].Descriptor()
 	// diagramregion.DefaultID holds the default value on creation for the id field.
 	diagramregion.DefaultID = diagramregionDescID.Default.(func() uuid.UUID)
+	diagramshapeFields := schema.DiagramShape{}.Fields()
+	_ = diagramshapeFields
+	// diagramshapeDescShape is the schema descriptor for shape field.
+	diagramshapeDescShape := diagramshapeFields[3].Descriptor()
+	// diagramshape.ShapeValidator is a validator for the "shape" field. It is called by the builders before save.
+	diagramshape.ShapeValidator = diagramshapeDescShape.Validators[0].(func(string) error)
+	diagramshapefamilyFields := schema.DiagramShapeFamily{}.Fields()
+	_ = diagramshapefamilyFields
+	// diagramshapefamilyDescKey is the schema descriptor for key field.
+	diagramshapefamilyDescKey := diagramshapefamilyFields[1].Descriptor()
+	// diagramshapefamily.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	diagramshapefamily.KeyValidator = diagramshapefamilyDescKey.Validators[0].(func(string) error)
 	diagramskillFields := schema.DiagramSkill{}.Fields()
 	_ = diagramskillFields
 	// diagramskillDescLinkedAt is the schema descriptor for linked_at field.

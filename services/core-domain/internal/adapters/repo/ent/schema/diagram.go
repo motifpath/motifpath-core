@@ -135,5 +135,10 @@ func (Diagram) Edges() []ent.Edge {
 
 		edge.To("concepts", KnowledgeNode.Type).
 			Through("diagram_concepts", DiagramConcept.Type),
+
+		// shape is set only for a catalog diagram the practice drill
+		// catalog makes a drill shape.
+		edge.To("shape", DiagramShape.Type).
+			Unique(),
 	}
 }

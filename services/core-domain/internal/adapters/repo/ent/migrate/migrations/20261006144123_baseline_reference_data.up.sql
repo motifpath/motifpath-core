@@ -1269,6 +1269,8 @@ INSERT INTO diagram_concepts (diagram_id,concept_id,linked_at) VALUES ('d59be890
 INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "timed", "names") VALUES
   ('4c6ffb77-ee8b-5fda-b243-784f4209bc65', 'fretboard_cell:name_the_note', 'fretboard_cell', 'name_the_note', true, '{"en":"Name the note","pt_BR":"Diga a nota"}'),
   ('6e38da0b-df26-5aa8-ab14-3b6640582174', 'fretboard_cell:find_the_note', 'fretboard_cell', 'find_the_note', true, '{"en":"Find the note","pt_BR":"Ache a nota"}'),
+  ('30abb724-d181-56d0-8255-889411531213', 'diagram_shape:name_the_shape', 'diagram_shape', 'name_the_shape', true, '{"en":"Name the shape","pt_BR":"Diga a forma"}'),
+  ('c11e550e-1612-5414-ba78-298e158700d0', 'diagram_shape:find_the_degree', 'diagram_shape', 'find_the_degree', true, '{"en":"Find the degree","pt_BR":"Ache o grau"}'),
   ('eee88cdc-8c03-5246-b798-3ccf6941875f', 'exercise:text_response', 'exercise', 'option_choice', true, '{"en":"Text exercises","pt_BR":"Exercícios de texto"}'),
   ('e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 'exercise:audio_recognition', 'exercise', 'option_choice', true, '{"en":"Listening exercises","pt_BR":"Exercícios de escuta"}'),
   ('bfe9f72d-a2e9-5f43-a774-115b7da268f8', 'exercise:image_recognition', 'exercise', 'option_choice', true, '{"en":"Image recognition exercises","pt_BR":"Exercícios de reconhecimento de imagem"}'),
@@ -1277,6 +1279,8 @@ INSERT INTO "drill_templates" ("id", "key", "item_kind", "response_type", "timed
 INSERT INTO "drill_thresholds" ("id", "template_id", "version", "effective_from", "fluent_net_ms", "source", "sessions", "students") VALUES
   ('bf63ad0e-f1c7-52ba-a303-230472134f6c', '4c6ffb77-ee8b-5fda-b243-784f4209bc65', 1, '2026-10-06T00:00:00Z', 3000, 'default', 0, 0),
   ('b4038212-bd6e-5749-8b39-cc8862e1974e', '6e38da0b-df26-5aa8-ab14-3b6640582174', 1, '2026-10-06T00:00:00Z', 4000, 'default', 0, 0),
+  ('1d23d8ce-4370-5f08-9fcb-13c617874643', '30abb724-d181-56d0-8255-889411531213', 1, '2026-10-07T00:00:00Z', 4000, 'default', 0, 0),
+  ('9015ea31-c12f-5cd5-a5ce-6e0c0b507644', 'c11e550e-1612-5414-ba78-298e158700d0', 1, '2026-10-07T00:00:00Z', 4000, 'default', 0, 0),
   ('a2ccf5a4-31e5-5aac-991d-5b17904b4ea8', 'eee88cdc-8c03-5246-b798-3ccf6941875f', 1, '2026-10-01T00:00:00Z', 6000, 'default', 0, 0),
   ('e0364add-6753-58c3-a781-a9589288510e', 'e11fdaf6-8f60-5348-ab8b-0333cb31c31f', 1, '2026-10-01T00:00:00Z', 4000, 'default', 0, 0),
   ('1fa82f45-7f4f-51ee-b974-cf0673eda4a7', 'bfe9f72d-a2e9-5f43-a774-115b7da268f8', 1, '2026-10-01T00:00:00Z', 5000, 'default', 0, 0),

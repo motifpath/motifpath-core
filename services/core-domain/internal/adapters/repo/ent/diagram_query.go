@@ -17,6 +17,7 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/knowledgenode"
@@ -37,6 +38,7 @@ type DiagramQuery struct {
 	withRegions               *DiagramRegionQuery
 	withSkills                *KnowledgeNodeQuery
 	withConcepts              *KnowledgeNodeQuery
+	withShape                 *DiagramShapeQuery
 	withDiagramInstruments    *DiagramInstrumentQuery
 	withDiagramSkills         *DiagramSkillQuery
 	withDiagramConcepts       *DiagramConceptQuery
@@ -201,6 +203,28 @@ func (_q *DiagramQuery) QueryConcepts() *KnowledgeNodeQuery {
 			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
 			sqlgraph.To(knowledgenode.Table, knowledgenode.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, diagram.ConceptsTable, diagram.ConceptsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryShape chains the current query on the "shape" edge.
+func (_q *DiagramQuery) QueryShape() *DiagramShapeQuery {
+	query := (&DiagramShapeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(diagram.Table, diagram.FieldID, selector),
+			sqlgraph.To(diagramshape.Table, diagramshape.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, diagram.ShapeTable, diagram.ShapeColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -472,6 +496,7 @@ func (_q *DiagramQuery) Clone() *DiagramQuery {
 		withRegions:               _q.withRegions.Clone(),
 		withSkills:                _q.withSkills.Clone(),
 		withConcepts:              _q.withConcepts.Clone(),
+		withShape:                 _q.withShape.Clone(),
 		withDiagramInstruments:    _q.withDiagramInstruments.Clone(),
 		withDiagramSkills:         _q.withDiagramSkills.Clone(),
 		withDiagramConcepts:       _q.withDiagramConcepts.Clone(),
@@ -544,6 +569,17 @@ func (_q *DiagramQuery) WithConcepts(opts ...func(*KnowledgeNodeQuery)) *Diagram
 		opt(query)
 	}
 	_q.withConcepts = query
+	return _q
+}
+
+// WithShape tells the query-builder to eager-load the nodes that are connected to
+// the "shape" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *DiagramQuery) WithShape(opts ...func(*DiagramShapeQuery)) *DiagramQuery {
+	query := (&DiagramShapeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withShape = query
 	return _q
 }
 
@@ -658,13 +694,14 @@ func (_q *DiagramQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Diag
 	var (
 		nodes       = []*Diagram{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [10]bool{
 			_q.withInstrument != nil,
 			_q.withCompatibleInstruments != nil,
 			_q.withPositions != nil,
 			_q.withRegions != nil,
 			_q.withSkills != nil,
 			_q.withConcepts != nil,
+			_q.withShape != nil,
 			_q.withDiagramInstruments != nil,
 			_q.withDiagramSkills != nil,
 			_q.withDiagramConcepts != nil,
@@ -728,6 +765,12 @@ func (_q *DiagramQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Diag
 		if err := _q.loadConcepts(ctx, query, nodes,
 			func(n *Diagram) { n.Edges.Concepts = []*KnowledgeNode{} },
 			func(n *Diagram, e *KnowledgeNode) { n.Edges.Concepts = append(n.Edges.Concepts, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withShape; query != nil {
+		if err := _q.loadShape(ctx, query, nodes, nil,
+			func(n *Diagram, e *DiagramShape) { n.Edges.Shape = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -1026,6 +1069,33 @@ func (_q *DiagramQuery) loadConcepts(ctx context.Context, query *KnowledgeNodeQu
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *DiagramQuery) loadShape(ctx context.Context, query *DiagramShapeQuery, nodes []*Diagram, init func(*Diagram), assign func(*Diagram, *DiagramShape)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Diagram)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(diagramshape.FieldDiagramID)
+	}
+	query.Where(predicate.DiagramShape(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(diagram.ShapeColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.DiagramID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "diagram_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

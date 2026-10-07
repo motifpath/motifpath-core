@@ -18,7 +18,8 @@ import (
 )
 
 // drillCatalogFile is the part of motifpath-specs' practice drill catalog
-// the fretboard cell steps read: its templates and its cell ranges.
+// the fretboard cell and diagram shape steps read: its templates, its cell
+// ranges and its shape families.
 type drillCatalogFile struct {
 	Templates []struct {
 		Key      string `yaml:"key"`
@@ -31,6 +32,7 @@ type drillCatalogFile struct {
 			Frets   []int `yaml:"frets"`
 		} `yaml:"layouts"`
 	} `yaml:"fretboard_cells"`
+	DiagramShapes []shapeFamilyEntry `yaml:"diagram_shapes"`
 }
 
 // fretboardCellWorld is what the fretboard cell steps share in a scenario.
@@ -108,6 +110,7 @@ func (w *world) practiceDrillCatalogIsInstalled() error {
 	if err := yaml.Unmarshal(raw, &file); err != nil {
 		return err
 	}
+	w.installShapeFamilies(file)
 	f := w.fretboard()
 	for _, t := range file.Templates {
 		if t.ItemKind == string(domain.PracticeItemKindFretboardCell) {
@@ -286,17 +289,24 @@ func (w *world) cellsBelongToOneSkill(count int) error {
 	return nil
 }
 
+// cellCanBeAskedThrough checks the drill templates of the item picked for
+// practice: a diagram shape when one was picked, a fretboard cell otherwise.
 func (w *world) cellCanBeAskedThrough(first, second string) error {
 	f := w.fretboard()
-	if len(f.cells) != 1 {
-		return fmt.Errorf("no cell was picked")
+	var got []string
+	switch {
+	case w.shapeWorld != nil && w.shapeWorld.picked != nil:
+		got = slices.Clone(w.shapeWorld.templates)
+	case len(f.cells) == 1:
+		got = slices.Clone(f.templates)
+	default:
+		return fmt.Errorf("no cell or shape was picked")
 	}
-	got := slices.Clone(f.templates)
 	want := []string{first, second}
 	slices.Sort(got)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
-		return fmt.Errorf("a fretboard cell is asked through %v, want %v", got, want)
+		return fmt.Errorf("the picked item is asked through %v, want %v", got, want)
 	}
 	return nil
 }
@@ -322,6 +332,10 @@ func (w *world) catalogListingGuitarOnlySkill(layout string) error {
 }
 
 func (w *world) drillCatalogIsInstalled() error {
+	if s := w.shapeWorld; s != nil && s.pending != nil {
+		_, s.installErr = matchShapes(s.pending, s.catalog)
+		return nil
+	}
 	f := w.fretboard()
 	if f.pending == nil {
 		return fmt.Errorf("the scenario declared no catalog entry")

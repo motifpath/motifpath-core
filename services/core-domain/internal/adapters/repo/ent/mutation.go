@@ -33,6 +33,8 @@ import (
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramconcept"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagraminstrument"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramregion"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
+	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshapefamily"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramskill"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drilltemplate"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/drillthreshold"
@@ -92,6 +94,8 @@ const (
 	TypeDiagramConcept          = "DiagramConcept"
 	TypeDiagramInstrument       = "DiagramInstrument"
 	TypeDiagramRegion           = "DiagramRegion"
+	TypeDiagramShape            = "DiagramShape"
+	TypeDiagramShapeFamily      = "DiagramShapeFamily"
 	TypeDiagramSkill            = "DiagramSkill"
 	TypeDrillTemplate           = "DrillTemplate"
 	TypeDrillThreshold          = "DrillThreshold"
@@ -13976,6 +13980,8 @@ type DiagramMutation struct {
 	concepts                      map[uuid.UUID]struct{}
 	removedconcepts               map[uuid.UUID]struct{}
 	clearedconcepts               bool
+	shape                         *uuid.UUID
+	clearedshape                  bool
 	diagram_instruments           map[int]struct{}
 	removeddiagram_instruments    map[int]struct{}
 	cleareddiagram_instruments    bool
@@ -14890,6 +14896,45 @@ func (m *DiagramMutation) ResetConcepts() {
 	m.removedconcepts = nil
 }
 
+// SetShapeID sets the "shape" edge to the DiagramShape entity by id.
+func (m *DiagramMutation) SetShapeID(id uuid.UUID) {
+	m.shape = &id
+}
+
+// ClearShape clears the "shape" edge to the DiagramShape entity.
+func (m *DiagramMutation) ClearShape() {
+	m.clearedshape = true
+}
+
+// ShapeCleared reports if the "shape" edge to the DiagramShape entity was cleared.
+func (m *DiagramMutation) ShapeCleared() bool {
+	return m.clearedshape
+}
+
+// ShapeID returns the "shape" edge ID in the mutation.
+func (m *DiagramMutation) ShapeID() (id uuid.UUID, exists bool) {
+	if m.shape != nil {
+		return *m.shape, true
+	}
+	return
+}
+
+// ShapeIDs returns the "shape" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ShapeID instead. It exists only for internal usage by the builders.
+func (m *DiagramMutation) ShapeIDs() (ids []uuid.UUID) {
+	if id := m.shape; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetShape resets all changes to the "shape" edge.
+func (m *DiagramMutation) ResetShape() {
+	m.shape = nil
+	m.clearedshape = false
+}
+
 // AddDiagramInstrumentIDs adds the "diagram_instruments" edge to the DiagramInstrument entity by ids.
 func (m *DiagramMutation) AddDiagramInstrumentIDs(ids ...int) {
 	if m.diagram_instruments == nil {
@@ -15399,7 +15444,7 @@ func (m *DiagramMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DiagramMutation) AddedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.instrument != nil {
 		edges = append(edges, diagram.EdgeInstrument)
 	}
@@ -15417,6 +15462,9 @@ func (m *DiagramMutation) AddedEdges() []string {
 	}
 	if m.concepts != nil {
 		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.shape != nil {
+		edges = append(edges, diagram.EdgeShape)
 	}
 	if m.diagram_instruments != nil {
 		edges = append(edges, diagram.EdgeDiagramInstruments)
@@ -15468,6 +15516,10 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case diagram.EdgeShape:
+		if id := m.shape; id != nil {
+			return []ent.Value{*id}
+		}
 	case diagram.EdgeDiagramInstruments:
 		ids := make([]ent.Value, 0, len(m.diagram_instruments))
 		for id := range m.diagram_instruments {
@@ -15492,7 +15544,7 @@ func (m *DiagramMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DiagramMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.removedcompatible_instruments != nil {
 		edges = append(edges, diagram.EdgeCompatibleInstruments)
 	}
@@ -15578,7 +15630,7 @@ func (m *DiagramMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DiagramMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 9)
+	edges := make([]string, 0, 10)
 	if m.clearedinstrument {
 		edges = append(edges, diagram.EdgeInstrument)
 	}
@@ -15596,6 +15648,9 @@ func (m *DiagramMutation) ClearedEdges() []string {
 	}
 	if m.clearedconcepts {
 		edges = append(edges, diagram.EdgeConcepts)
+	}
+	if m.clearedshape {
+		edges = append(edges, diagram.EdgeShape)
 	}
 	if m.cleareddiagram_instruments {
 		edges = append(edges, diagram.EdgeDiagramInstruments)
@@ -15625,6 +15680,8 @@ func (m *DiagramMutation) EdgeCleared(name string) bool {
 		return m.clearedskills
 	case diagram.EdgeConcepts:
 		return m.clearedconcepts
+	case diagram.EdgeShape:
+		return m.clearedshape
 	case diagram.EdgeDiagramInstruments:
 		return m.cleareddiagram_instruments
 	case diagram.EdgeDiagramSkills:
@@ -15641,6 +15698,9 @@ func (m *DiagramMutation) ClearEdge(name string) error {
 	switch name {
 	case diagram.EdgeInstrument:
 		m.ClearInstrument()
+		return nil
+	case diagram.EdgeShape:
+		m.ClearShape()
 		return nil
 	}
 	return fmt.Errorf("unknown Diagram unique edge %s", name)
@@ -15667,6 +15727,9 @@ func (m *DiagramMutation) ResetEdge(name string) error {
 		return nil
 	case diagram.EdgeConcepts:
 		m.ResetConcepts()
+		return nil
+	case diagram.EdgeShape:
+		m.ResetShape()
 		return nil
 	case diagram.EdgeDiagramInstruments:
 		m.ResetDiagramInstruments()
@@ -17927,6 +17990,1095 @@ func (m *DiagramRegionMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown DiagramRegion edge %s", name)
+}
+
+// DiagramShapeMutation represents an operation that mutates the DiagramShape nodes in the graph.
+type DiagramShapeMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	shape          *string
+	clearedFields  map[string]struct{}
+	diagram        *uuid.UUID
+	cleareddiagram bool
+	family         *uuid.UUID
+	clearedfamily  bool
+	done           bool
+	oldValue       func(context.Context) (*DiagramShape, error)
+	predicates     []predicate.DiagramShape
+}
+
+var _ ent.Mutation = (*DiagramShapeMutation)(nil)
+
+// diagramshapeOption allows management of the mutation configuration using functional options.
+type diagramshapeOption func(*DiagramShapeMutation)
+
+// newDiagramShapeMutation creates new mutation for the DiagramShape entity.
+func newDiagramShapeMutation(c config, op Op, opts ...diagramshapeOption) *DiagramShapeMutation {
+	m := &DiagramShapeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramShape,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramShapeID sets the ID field of the mutation.
+func withDiagramShapeID(id uuid.UUID) diagramshapeOption {
+	return func(m *DiagramShapeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramShape
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramShape, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramShape.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramShape sets the old DiagramShape of the mutation.
+func withDiagramShape(node *DiagramShape) diagramshapeOption {
+	return func(m *DiagramShapeMutation) {
+		m.oldValue = func(context.Context) (*DiagramShape, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramShapeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramShapeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DiagramShape entities.
+func (m *DiagramShapeMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramShapeMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramShapeMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramShape.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDiagramID sets the "diagram_id" field.
+func (m *DiagramShapeMutation) SetDiagramID(u uuid.UUID) {
+	m.diagram = &u
+}
+
+// DiagramID returns the value of the "diagram_id" field in the mutation.
+func (m *DiagramShapeMutation) DiagramID() (r uuid.UUID, exists bool) {
+	v := m.diagram
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiagramID returns the old "diagram_id" field's value of the DiagramShape entity.
+// If the DiagramShape object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeMutation) OldDiagramID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiagramID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiagramID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiagramID: %w", err)
+	}
+	return oldValue.DiagramID, nil
+}
+
+// ResetDiagramID resets all changes to the "diagram_id" field.
+func (m *DiagramShapeMutation) ResetDiagramID() {
+	m.diagram = nil
+}
+
+// SetFamilyID sets the "family_id" field.
+func (m *DiagramShapeMutation) SetFamilyID(u uuid.UUID) {
+	m.family = &u
+}
+
+// FamilyID returns the value of the "family_id" field in the mutation.
+func (m *DiagramShapeMutation) FamilyID() (r uuid.UUID, exists bool) {
+	v := m.family
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFamilyID returns the old "family_id" field's value of the DiagramShape entity.
+// If the DiagramShape object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeMutation) OldFamilyID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFamilyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFamilyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFamilyID: %w", err)
+	}
+	return oldValue.FamilyID, nil
+}
+
+// ResetFamilyID resets all changes to the "family_id" field.
+func (m *DiagramShapeMutation) ResetFamilyID() {
+	m.family = nil
+}
+
+// SetShape sets the "shape" field.
+func (m *DiagramShapeMutation) SetShape(s string) {
+	m.shape = &s
+}
+
+// Shape returns the value of the "shape" field in the mutation.
+func (m *DiagramShapeMutation) Shape() (r string, exists bool) {
+	v := m.shape
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShape returns the old "shape" field's value of the DiagramShape entity.
+// If the DiagramShape object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeMutation) OldShape(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShape is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShape requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShape: %w", err)
+	}
+	return oldValue.Shape, nil
+}
+
+// ResetShape resets all changes to the "shape" field.
+func (m *DiagramShapeMutation) ResetShape() {
+	m.shape = nil
+}
+
+// ClearDiagram clears the "diagram" edge to the Diagram entity.
+func (m *DiagramShapeMutation) ClearDiagram() {
+	m.cleareddiagram = true
+	m.clearedFields[diagramshape.FieldDiagramID] = struct{}{}
+}
+
+// DiagramCleared reports if the "diagram" edge to the Diagram entity was cleared.
+func (m *DiagramShapeMutation) DiagramCleared() bool {
+	return m.cleareddiagram
+}
+
+// DiagramIDs returns the "diagram" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DiagramID instead. It exists only for internal usage by the builders.
+func (m *DiagramShapeMutation) DiagramIDs() (ids []uuid.UUID) {
+	if id := m.diagram; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDiagram resets all changes to the "diagram" edge.
+func (m *DiagramShapeMutation) ResetDiagram() {
+	m.diagram = nil
+	m.cleareddiagram = false
+}
+
+// ClearFamily clears the "family" edge to the DiagramShapeFamily entity.
+func (m *DiagramShapeMutation) ClearFamily() {
+	m.clearedfamily = true
+	m.clearedFields[diagramshape.FieldFamilyID] = struct{}{}
+}
+
+// FamilyCleared reports if the "family" edge to the DiagramShapeFamily entity was cleared.
+func (m *DiagramShapeMutation) FamilyCleared() bool {
+	return m.clearedfamily
+}
+
+// FamilyIDs returns the "family" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// FamilyID instead. It exists only for internal usage by the builders.
+func (m *DiagramShapeMutation) FamilyIDs() (ids []uuid.UUID) {
+	if id := m.family; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetFamily resets all changes to the "family" edge.
+func (m *DiagramShapeMutation) ResetFamily() {
+	m.family = nil
+	m.clearedfamily = false
+}
+
+// Where appends a list predicates to the DiagramShapeMutation builder.
+func (m *DiagramShapeMutation) Where(ps ...predicate.DiagramShape) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramShapeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramShapeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramShape, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramShapeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramShapeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramShape).
+func (m *DiagramShapeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramShapeMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.diagram != nil {
+		fields = append(fields, diagramshape.FieldDiagramID)
+	}
+	if m.family != nil {
+		fields = append(fields, diagramshape.FieldFamilyID)
+	}
+	if m.shape != nil {
+		fields = append(fields, diagramshape.FieldShape)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramShapeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagramshape.FieldDiagramID:
+		return m.DiagramID()
+	case diagramshape.FieldFamilyID:
+		return m.FamilyID()
+	case diagramshape.FieldShape:
+		return m.Shape()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramShapeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagramshape.FieldDiagramID:
+		return m.OldDiagramID(ctx)
+	case diagramshape.FieldFamilyID:
+		return m.OldFamilyID(ctx)
+	case diagramshape.FieldShape:
+		return m.OldShape(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramShape field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramShapeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagramshape.FieldDiagramID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiagramID(v)
+		return nil
+	case diagramshape.FieldFamilyID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFamilyID(v)
+		return nil
+	case diagramshape.FieldShape:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShape(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShape field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramShapeMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramShapeMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramShapeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramShape numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramShapeMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramShapeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramShapeMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DiagramShape nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramShapeMutation) ResetField(name string) error {
+	switch name {
+	case diagramshape.FieldDiagramID:
+		m.ResetDiagramID()
+		return nil
+	case diagramshape.FieldFamilyID:
+		m.ResetFamilyID()
+		return nil
+	case diagramshape.FieldShape:
+		m.ResetShape()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShape field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramShapeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.diagram != nil {
+		edges = append(edges, diagramshape.EdgeDiagram)
+	}
+	if m.family != nil {
+		edges = append(edges, diagramshape.EdgeFamily)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramShapeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagramshape.EdgeDiagram:
+		if id := m.diagram; id != nil {
+			return []ent.Value{*id}
+		}
+	case diagramshape.EdgeFamily:
+		if id := m.family; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramShapeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramShapeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramShapeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.cleareddiagram {
+		edges = append(edges, diagramshape.EdgeDiagram)
+	}
+	if m.clearedfamily {
+		edges = append(edges, diagramshape.EdgeFamily)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramShapeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagramshape.EdgeDiagram:
+		return m.cleareddiagram
+	case diagramshape.EdgeFamily:
+		return m.clearedfamily
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramShapeMutation) ClearEdge(name string) error {
+	switch name {
+	case diagramshape.EdgeDiagram:
+		m.ClearDiagram()
+		return nil
+	case diagramshape.EdgeFamily:
+		m.ClearFamily()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShape unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramShapeMutation) ResetEdge(name string) error {
+	switch name {
+	case diagramshape.EdgeDiagram:
+		m.ResetDiagram()
+		return nil
+	case diagramshape.EdgeFamily:
+		m.ResetFamily()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShape edge %s", name)
+}
+
+// DiagramShapeFamilyMutation represents an operation that mutates the DiagramShapeFamily nodes in the graph.
+type DiagramShapeFamilyMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	key           *string
+	names         *map[string]string
+	members       *[]schema.ShapeMember
+	appendmembers []schema.ShapeMember
+	clearedFields map[string]struct{}
+	shapes        map[uuid.UUID]struct{}
+	removedshapes map[uuid.UUID]struct{}
+	clearedshapes bool
+	done          bool
+	oldValue      func(context.Context) (*DiagramShapeFamily, error)
+	predicates    []predicate.DiagramShapeFamily
+}
+
+var _ ent.Mutation = (*DiagramShapeFamilyMutation)(nil)
+
+// diagramshapefamilyOption allows management of the mutation configuration using functional options.
+type diagramshapefamilyOption func(*DiagramShapeFamilyMutation)
+
+// newDiagramShapeFamilyMutation creates new mutation for the DiagramShapeFamily entity.
+func newDiagramShapeFamilyMutation(c config, op Op, opts ...diagramshapefamilyOption) *DiagramShapeFamilyMutation {
+	m := &DiagramShapeFamilyMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDiagramShapeFamily,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDiagramShapeFamilyID sets the ID field of the mutation.
+func withDiagramShapeFamilyID(id uuid.UUID) diagramshapefamilyOption {
+	return func(m *DiagramShapeFamilyMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DiagramShapeFamily
+		)
+		m.oldValue = func(ctx context.Context) (*DiagramShapeFamily, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DiagramShapeFamily.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDiagramShapeFamily sets the old DiagramShapeFamily of the mutation.
+func withDiagramShapeFamily(node *DiagramShapeFamily) diagramshapefamilyOption {
+	return func(m *DiagramShapeFamilyMutation) {
+		m.oldValue = func(context.Context) (*DiagramShapeFamily, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DiagramShapeFamilyMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DiagramShapeFamilyMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of DiagramShapeFamily entities.
+func (m *DiagramShapeFamilyMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DiagramShapeFamilyMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DiagramShapeFamilyMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DiagramShapeFamily.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetKey sets the "key" field.
+func (m *DiagramShapeFamilyMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *DiagramShapeFamilyMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the DiagramShapeFamily entity.
+// If the DiagramShapeFamily object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeFamilyMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *DiagramShapeFamilyMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetNames sets the "names" field.
+func (m *DiagramShapeFamilyMutation) SetNames(value map[string]string) {
+	m.names = &value
+}
+
+// Names returns the value of the "names" field in the mutation.
+func (m *DiagramShapeFamilyMutation) Names() (r map[string]string, exists bool) {
+	v := m.names
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNames returns the old "names" field's value of the DiagramShapeFamily entity.
+// If the DiagramShapeFamily object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeFamilyMutation) OldNames(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNames is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNames requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNames: %w", err)
+	}
+	return oldValue.Names, nil
+}
+
+// ResetNames resets all changes to the "names" field.
+func (m *DiagramShapeFamilyMutation) ResetNames() {
+	m.names = nil
+}
+
+// SetMembers sets the "members" field.
+func (m *DiagramShapeFamilyMutation) SetMembers(sm []schema.ShapeMember) {
+	m.members = &sm
+	m.appendmembers = nil
+}
+
+// Members returns the value of the "members" field in the mutation.
+func (m *DiagramShapeFamilyMutation) Members() (r []schema.ShapeMember, exists bool) {
+	v := m.members
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMembers returns the old "members" field's value of the DiagramShapeFamily entity.
+// If the DiagramShapeFamily object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DiagramShapeFamilyMutation) OldMembers(ctx context.Context) (v []schema.ShapeMember, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMembers is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMembers requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMembers: %w", err)
+	}
+	return oldValue.Members, nil
+}
+
+// AppendMembers adds sm to the "members" field.
+func (m *DiagramShapeFamilyMutation) AppendMembers(sm []schema.ShapeMember) {
+	m.appendmembers = append(m.appendmembers, sm...)
+}
+
+// AppendedMembers returns the list of values that were appended to the "members" field in this mutation.
+func (m *DiagramShapeFamilyMutation) AppendedMembers() ([]schema.ShapeMember, bool) {
+	if len(m.appendmembers) == 0 {
+		return nil, false
+	}
+	return m.appendmembers, true
+}
+
+// ResetMembers resets all changes to the "members" field.
+func (m *DiagramShapeFamilyMutation) ResetMembers() {
+	m.members = nil
+	m.appendmembers = nil
+}
+
+// AddShapeIDs adds the "shapes" edge to the DiagramShape entity by ids.
+func (m *DiagramShapeFamilyMutation) AddShapeIDs(ids ...uuid.UUID) {
+	if m.shapes == nil {
+		m.shapes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.shapes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearShapes clears the "shapes" edge to the DiagramShape entity.
+func (m *DiagramShapeFamilyMutation) ClearShapes() {
+	m.clearedshapes = true
+}
+
+// ShapesCleared reports if the "shapes" edge to the DiagramShape entity was cleared.
+func (m *DiagramShapeFamilyMutation) ShapesCleared() bool {
+	return m.clearedshapes
+}
+
+// RemoveShapeIDs removes the "shapes" edge to the DiagramShape entity by IDs.
+func (m *DiagramShapeFamilyMutation) RemoveShapeIDs(ids ...uuid.UUID) {
+	if m.removedshapes == nil {
+		m.removedshapes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.shapes, ids[i])
+		m.removedshapes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedShapes returns the removed IDs of the "shapes" edge to the DiagramShape entity.
+func (m *DiagramShapeFamilyMutation) RemovedShapesIDs() (ids []uuid.UUID) {
+	for id := range m.removedshapes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ShapesIDs returns the "shapes" edge IDs in the mutation.
+func (m *DiagramShapeFamilyMutation) ShapesIDs() (ids []uuid.UUID) {
+	for id := range m.shapes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetShapes resets all changes to the "shapes" edge.
+func (m *DiagramShapeFamilyMutation) ResetShapes() {
+	m.shapes = nil
+	m.clearedshapes = false
+	m.removedshapes = nil
+}
+
+// Where appends a list predicates to the DiagramShapeFamilyMutation builder.
+func (m *DiagramShapeFamilyMutation) Where(ps ...predicate.DiagramShapeFamily) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DiagramShapeFamilyMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DiagramShapeFamilyMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DiagramShapeFamily, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DiagramShapeFamilyMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DiagramShapeFamilyMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DiagramShapeFamily).
+func (m *DiagramShapeFamilyMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DiagramShapeFamilyMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.key != nil {
+		fields = append(fields, diagramshapefamily.FieldKey)
+	}
+	if m.names != nil {
+		fields = append(fields, diagramshapefamily.FieldNames)
+	}
+	if m.members != nil {
+		fields = append(fields, diagramshapefamily.FieldMembers)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DiagramShapeFamilyMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case diagramshapefamily.FieldKey:
+		return m.Key()
+	case diagramshapefamily.FieldNames:
+		return m.Names()
+	case diagramshapefamily.FieldMembers:
+		return m.Members()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DiagramShapeFamilyMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case diagramshapefamily.FieldKey:
+		return m.OldKey(ctx)
+	case diagramshapefamily.FieldNames:
+		return m.OldNames(ctx)
+	case diagramshapefamily.FieldMembers:
+		return m.OldMembers(ctx)
+	}
+	return nil, fmt.Errorf("unknown DiagramShapeFamily field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramShapeFamilyMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case diagramshapefamily.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case diagramshapefamily.FieldNames:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNames(v)
+		return nil
+	case diagramshapefamily.FieldMembers:
+		v, ok := value.([]schema.ShapeMember)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMembers(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShapeFamily field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DiagramShapeFamilyMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DiagramShapeFamilyMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DiagramShapeFamilyMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramShapeFamily numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DiagramShapeFamilyMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DiagramShapeFamilyMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DiagramShapeFamilyMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DiagramShapeFamily nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DiagramShapeFamilyMutation) ResetField(name string) error {
+	switch name {
+	case diagramshapefamily.FieldKey:
+		m.ResetKey()
+		return nil
+	case diagramshapefamily.FieldNames:
+		m.ResetNames()
+		return nil
+	case diagramshapefamily.FieldMembers:
+		m.ResetMembers()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShapeFamily field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DiagramShapeFamilyMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.shapes != nil {
+		edges = append(edges, diagramshapefamily.EdgeShapes)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DiagramShapeFamilyMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case diagramshapefamily.EdgeShapes:
+		ids := make([]ent.Value, 0, len(m.shapes))
+		for id := range m.shapes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DiagramShapeFamilyMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedshapes != nil {
+		edges = append(edges, diagramshapefamily.EdgeShapes)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DiagramShapeFamilyMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case diagramshapefamily.EdgeShapes:
+		ids := make([]ent.Value, 0, len(m.removedshapes))
+		for id := range m.removedshapes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DiagramShapeFamilyMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedshapes {
+		edges = append(edges, diagramshapefamily.EdgeShapes)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DiagramShapeFamilyMutation) EdgeCleared(name string) bool {
+	switch name {
+	case diagramshapefamily.EdgeShapes:
+		return m.clearedshapes
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DiagramShapeFamilyMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DiagramShapeFamily unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DiagramShapeFamilyMutation) ResetEdge(name string) error {
+	switch name {
+	case diagramshapefamily.EdgeShapes:
+		m.ResetShapes()
+		return nil
+	}
+	return fmt.Errorf("unknown DiagramShapeFamily edge %s", name)
 }
 
 // DiagramSkillMutation represents an operation that mutates the DiagramSkill nodes in the graph.
