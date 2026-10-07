@@ -24,7 +24,9 @@ var sectionKinds = map[SectionKind]bool{
 	SectionOutro: true, SectionInstrumental: true, SectionOther: true,
 }
 
-// The bounds of a song chart document's parts.
+// The bounds of a song chart document's parts. MaxChordSymbolLength is
+// also the longest symbol a chord catalog search accepts, so a chart can
+// hold exactly the symbols the search reads.
 const (
 	MaxSectionLabelLength = 100
 	MaxAnchorIDLength     = 64
