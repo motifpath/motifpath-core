@@ -170,7 +170,12 @@ func (w *world) noItemHasEitherReason(first, second string) error {
 	return w.noItemHasReason(second)
 }
 
+// cellIsAskedAs checks the drill the cell, or the diagram shape, set up
+// before is asked through.
 func (w *world) cellIsAskedAs(drill string) error {
+	if w.lastShapeKey != "" {
+		return w.shapeIsAskedAsDrill(drill)
+	}
 	if w.lastCell == nil {
 		return fmt.Errorf("no cell was set up before")
 	}
