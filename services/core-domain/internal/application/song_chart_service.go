@@ -2,8 +2,10 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/motifpath/core-domain/internal/domain"
 	"github.com/motifpath/core-domain/internal/ports"
@@ -337,4 +339,95 @@ func (s *SongChartService) voicingDiagrams(ctx context.Context, chords []domain.
 		}
 	}
 	return diagrams, nil
+}
+
+// ChordProImportResult is a chart after a ChordPro import, with what the
+// import skipped.
+type ChordProImportResult struct {
+	Chart    domain.SongChart
+	Warnings []domain.ChordProWarning
+}
+
+// ImportChordPro replaces a chart's draft from ChordPro text: its body, and
+// every metadata field the text sets. Fields the text doesn't set keep their
+// draft values, as does the rights confirmation. Anchors are resolved as on
+// any other edit of the draft.
+func (s *SongChartService) ImportChordPro(ctx context.Context, caller domain.User, id, text string) (ChordProImportResult, error) {
+	if err := requireAdmin(caller); err != nil {
+		return ChordProImportResult{}, err
+	}
+	if utf8.RuneCountInString(text) > domain.MaxChordProTextLength {
+		return ChordProImportResult{}, domain.NewValidationError("body", "must be at most 100000 characters")
+	}
+	chart, err := s.charts.GetByID(ctx, id)
+	if err != nil {
+		return ChordProImportResult{}, err
+	}
+	imported := domain.ImportChordPro(text)
+	body, err := checkedImportBody(imported.Body)
+	if err != nil {
+		return ChordProImportResult{}, err
+	}
+	in := importedInput(chart.Draft, imported.Metadata, body)
+	draft, err := s.buildDraft(ctx, caller, chart.Draft.RightsConfirmation, in, s.now())
+	if err != nil {
+		return ChordProImportResult{}, err
+	}
+	chart.Draft = draft
+	if err := s.charts.Save(ctx, chart); err != nil {
+		return ChordProImportResult{}, err
+	}
+	return ChordProImportResult{Chart: chart, Warnings: imported.Warnings}, nil
+}
+
+// checkedImportBody checks an imported body against the bounds of the
+// chart's own document, the same way a body sent as JSON is checked, so a
+// label or chord symbol too long for a chart is refused, never stored.
+func checkedImportBody(body domain.SongChartDocument) (domain.SongChartDocument, error) {
+	if !body.HasLyrics() {
+		return domain.SongChartDocument{}, domain.NewValidationError("body", "must hold at least one lyric line")
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return domain.SongChartDocument{}, err
+	}
+	return domain.ParseSongChartDocument(raw)
+}
+
+// importedInput is the draft with the imported body and every metadata
+// field the import set.
+func importedInput(draft domain.SongChartDraft, m domain.ChordProMetadata, body domain.SongChartDocument) SongChartInput {
+	in := SongChartInput{
+		Title: draft.Title, Artist: draft.Artist, Language: draft.Language, ConcertKey: draft.ConcertKey,
+		CapoFret: draft.CapoFret, TempoBPM: draft.TempoBPM, TimeSignature: draft.TimeSignature,
+		RightsConfirmed: draft.RightsConfirmation != nil, Body: body,
+	}
+	if m.Title != nil {
+		in.Title = *m.Title
+	}
+	if m.Artist != nil {
+		in.Artist = *m.Artist
+	}
+	if m.ConcertKey != nil {
+		in.ConcertKey = m.ConcertKey
+	}
+	if m.CapoFret != nil {
+		in.CapoFret = *m.CapoFret
+	}
+	if m.TempoBPM != nil {
+		in.TempoBPM = m.TempoBPM
+	}
+	if m.TimeSignature != nil {
+		in.TimeSignature = m.TimeSignature
+	}
+	return in
+}
+
+// ExportChordPro writes a chart's draft as ChordPro text.
+func (s *SongChartService) ExportChordPro(ctx context.Context, caller domain.User, id string) (string, error) {
+	chart, err := s.Get(ctx, caller, id)
+	if err != nil {
+		return "", err
+	}
+	return domain.ExportChordPro(chart.Draft), nil
 }

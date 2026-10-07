@@ -12,11 +12,6 @@ import (
 
 const onlyAdminsAuthorSongCharts = "only admins author song charts"
 
-// errChordProNotYetServed answers the ChordPro operations, which this
-// service doesn't implement yet; their scenarios are still marked as work
-// in progress in the spec.
-var errChordProNotYetServed = errors.New("ChordPro import and export are not implemented yet")
-
 func (h *Handler) CreateSongChart(ctx context.Context, request generated.CreateSongChartRequestObject) (generated.CreateSongChartResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
 	if !ok {
@@ -260,12 +255,51 @@ func (h *Handler) GetPublishedSongChart(ctx context.Context, request generated.G
 	return generated.GetPublishedSongChart200JSONResponse(out), err
 }
 
-func (h *Handler) ExportSongChartChordPro(context.Context, generated.ExportSongChartChordProRequestObject) (generated.ExportSongChartChordProResponseObject, error) {
-	return nil, errChordProNotYetServed
+func (h *Handler) ExportSongChartChordPro(ctx context.Context, request generated.ExportSongChartChordProRequestObject) (generated.ExportSongChartChordProResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ExportSongChartChordPro401JSONResponse(unauthorizedError()), nil
+	}
+	text, err := h.songChart.ExportChordPro(ctx, caller, request.SongChartId.String())
+	if err != nil {
+		kind, _ := classify(err)
+		switch kind {
+		case errKindForbidden:
+			return generated.ExportSongChartChordPro403JSONResponse(forbiddenError(onlyAdminsAuthorSongCharts)), nil
+		case errKindNotFound:
+			return generated.ExportSongChartChordPro404JSONResponse(notFoundError("no song chart exists with the given song_chart_id")), nil
+		case errKindValidation, errKindOther:
+		}
+		return nil, err
+	}
+	return generated.ExportSongChartChordPro200TextResponse(text), nil
 }
 
-func (h *Handler) ImportSongChartChordPro(context.Context, generated.ImportSongChartChordProRequestObject) (generated.ImportSongChartChordProResponseObject, error) {
-	return nil, errChordProNotYetServed
+func (h *Handler) ImportSongChartChordPro(ctx context.Context, request generated.ImportSongChartChordProRequestObject) (generated.ImportSongChartChordProResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ImportSongChartChordPro401JSONResponse(unauthorizedError()), nil
+	}
+	var text string
+	if request.Body != nil {
+		text = *request.Body
+	}
+	result, err := h.songChart.ImportChordPro(ctx, caller, request.SongChartId.String(), text)
+	if err == nil {
+		out, mapErr := h.toGeneratedSongChart(ctx, result.Chart)
+		return generated.ImportSongChartChordPro200JSONResponse{SongChart: out, ImportWarnings: toGeneratedChordProWarnings(result.Warnings)}, mapErr
+	}
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.ImportSongChartChordPro400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindForbidden:
+		return generated.ImportSongChartChordPro403JSONResponse(forbiddenError(onlyAdminsAuthorSongCharts)), nil
+	case errKindNotFound:
+		return generated.ImportSongChartChordPro404JSONResponse(notFoundError("no song chart exists with the given song_chart_id")), nil
+	case errKindOther:
+	}
+	return nil, err
 }
 
 // ── Mapping ──────────────────────────────────────────────────────────────────
@@ -434,4 +468,14 @@ func (h *Handler) toGeneratedLearnerSongChart(ctx context.Context, c application
 		TuningFingerprint: c.TuningFingerprint, Body: body,
 		Chords: chords, Diagrams: toGeneratedDiagrams(c.Diagrams, names),
 	}, nil
+}
+
+// toGeneratedChordProWarnings is never nil, so an import that read
+// everything reports an empty list.
+func toGeneratedChordProWarnings(warnings []domain.ChordProWarning) []generated.ChordProImportWarning {
+	out := make([]generated.ChordProImportWarning, len(warnings))
+	for i, w := range warnings {
+		out[i] = generated.ChordProImportWarning{Line: w.Line, Kind: generated.ChordProImportWarningKind(w.Kind), Text: w.Text}
+	}
+	return out
 }

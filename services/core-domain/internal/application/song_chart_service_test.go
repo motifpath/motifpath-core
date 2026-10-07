@@ -698,3 +698,119 @@ func TestSongChartService_WithdrawNeedsAReason(t *testing.T) {
 	require.ErrorAs(t, err, &valErr)
 	assert.Equal(t, "reason", valErr.Fields[0].Field)
 }
+
+func TestSongChartService_ImportChordPro(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("replaces the body and the metadata the text sets, resolving its anchors", func(t *testing.T) {
+		f := newSongChartFixture()
+		in := asaBranca()
+		in.CapoFret = 3
+		chart, err := f.service.Create(ctx, adminCaller(), in)
+		require.NoError(t, err)
+		f.now = f.now.Add(time.Hour)
+
+		got, err := f.service.ImportChordPro(ctx, adminCaller(), chart.ID, "{title: Que Nem Jiló}\n{start_of_verse}\n[Em]Se a gente [D]lembra\n{end_of_verse}\n")
+
+		require.NoError(t, err)
+		assert.Empty(t, got.Warnings)
+		draft := got.Chart.Draft
+		assert.Equal(t, "Que Nem Jiló", draft.Title)
+		assert.Equal(t, "Luiz Gonzaga", draft.Artist, "a field the text doesn't set keeps its value")
+		assert.Equal(t, 3, draft.CapoFret)
+		assert.Equal(t, "pt_BR", draft.Language)
+		assert.Equal(t, ptr("chord-em"), chordOf(t, got.Chart, "a1"))
+		assert.Equal(t, ptr("chord-d"), chordOf(t, got.Chart, "a2"))
+		assert.Equal(t, f.now, draft.UpdatedAt)
+		stored, _ := f.charts.GetByID(ctx, chart.ID)
+		assert.Equal(t, got.Chart, stored)
+	})
+
+	t.Run("reports what it skipped, and keeps the rights confirmation", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		rui := domain.User{ID: "admin-2", Role: domain.RoleAdmin}
+
+		got, err := f.service.ImportChordPro(ctx, rui, chart.ID, "[G]La la\n{define: G base-fret 1 frets 3 2 0 0 0 3}\n")
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ChordProWarning{{Line: 2, Kind: domain.ChordProUnsupportedDirective, Text: "{define: G base-fret 1 frets 3 2 0 0 0 3}"}}, got.Warnings)
+		require.NotNil(t, got.Chart.Draft.RightsConfirmation)
+		assert.Equal(t, adminCaller().ID, got.Chart.Draft.RightsConfirmation.ConfirmedBy)
+	})
+
+	refusals := []struct {
+		name      string
+		text      string
+		wantField string
+	}{
+		{name: "text with no lyric line", text: "{title: Song}\n{comment: Softly}\n", wantField: "body"},
+		{name: "text longer than an import reads", text: "[G]" + strings.Repeat("a", domain.MaxChordProTextLength), wantField: "body"},
+		{name: "a chord symbol longer than a chart holds", text: "[" + strings.Repeat("G", domain.MaxChordSymbolLength+1) + "]La\n", wantField: "body/content/0/content/0/content/0/marks/0/attrs/writtenSymbol"},
+		{name: "a title longer than a chart holds", text: "{title: " + strings.Repeat("a", domain.MaxSongChartTitleLength+1) + "}\n[G]La\n", wantField: "title"},
+	}
+	for _, tt := range refusals {
+		t.Run("refuses "+tt.name+", leaving the draft unchanged", func(t *testing.T) {
+			f := newSongChartFixture()
+			chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+
+			_, err := f.service.ImportChordPro(ctx, adminCaller(), chart.ID, tt.text)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, tt.wantField, valErr.Fields[0].Field)
+			stored, _ := f.charts.GetByID(ctx, chart.ID)
+			assert.Equal(t, chart, stored)
+		})
+	}
+
+	t.Run("an unknown chart is not found", func(t *testing.T) {
+		_, err := newSongChartFixture().service.ImportChordPro(ctx, adminCaller(), "nope", "[G]La\n")
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a teacher cannot import", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+
+		_, err := f.service.ImportChordPro(ctx, teacherCaller(), chart.ID, "[G]La\n")
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
+
+func TestSongChartService_ExportChordPro(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("writes the draft, not the published revision", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		_, err := f.service.Publish(ctx, adminCaller(), chart.ID)
+		require.NoError(t, err)
+		in := asaBranca()
+		in.CapoFret = 3
+		_, err = f.service.UpdateDraft(ctx, adminCaller(), chart.ID, in)
+		require.NoError(t, err)
+
+		got, err := f.service.ExportChordPro(ctx, adminCaller(), chart.ID)
+
+		require.NoError(t, err)
+		assert.Equal(t, "{title: Asa Branca}\n{artist: Luiz Gonzaga}\n{capo: 3}\n\n{start_of_verse}\n[G]Quando olhei a [C]terra ardendo\n{end_of_verse}\n", got)
+	})
+
+	t.Run("an unknown chart is not found", func(t *testing.T) {
+		_, err := newSongChartFixture().service.ExportChordPro(ctx, adminCaller(), "nope")
+
+		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a teacher cannot export", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+
+		_, err := f.service.ExportChordPro(ctx, teacherCaller(), chart.ID)
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}

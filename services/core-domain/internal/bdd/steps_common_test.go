@@ -511,6 +511,8 @@ func (w *world) validationErrors() ([]struct {
 		return resp.Errors, nil
 	case generated.UpdateSongChartDraft400JSONResponse:
 		return resp.Errors, nil
+	case generated.ImportSongChartChordPro400JSONResponse:
+		return resp.Errors, nil
 	case generated.GetPracticeSummary400JSONResponse:
 		return resp.Errors, nil
 	case generated.GetPracticeOverview400JSONResponse:

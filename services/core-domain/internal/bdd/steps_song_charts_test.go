@@ -35,6 +35,8 @@ type songChartWorld struct {
 	// last step wrote.
 	title  string
 	anchor string
+	// before is the chart as it was before the last import.
+	before *generated.SongChart
 }
 
 func registerSongChartSteps(sc *godog.ScenarioContext, w *world) {
@@ -592,6 +594,8 @@ func (w *world) lastChart() (generated.SongChart, error) {
 		return generated.SongChart(resp), nil
 	case generated.WithdrawSongChart200JSONResponse:
 		return generated.SongChart(resp), nil
+	case generated.ImportSongChartChordPro200JSONResponse:
+		return resp.SongChart, nil
 	}
 	return generated.SongChart{}, fmt.Errorf("expected a song chart, got %#v (err=%v)", w.lastResp, w.lastErr)
 }
@@ -721,7 +725,8 @@ func (w *world) rejectionIdentifiesVoicingField() error {
 
 func (w *world) refusedAsNotAdmin() error {
 	switch w.lastResp.(type) {
-	case generated.CreateSongChart403JSONResponse, generated.PublishSongChart403JSONResponse, generated.ListSongCharts403JSONResponse:
+	case generated.CreateSongChart403JSONResponse, generated.PublishSongChart403JSONResponse, generated.ListSongCharts403JSONResponse,
+		generated.ImportSongChartChordPro403JSONResponse, generated.ExportSongChartChordPro403JSONResponse:
 		return nil
 	}
 	return fmt.Errorf("expected a refusal because only admins author song charts, got %#v (err=%v)", w.lastResp, w.lastErr)
