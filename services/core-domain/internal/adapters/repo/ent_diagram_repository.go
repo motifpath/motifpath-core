@@ -336,7 +336,8 @@ func withDiagramEdges(q *ent.DiagramQuery) *ent.DiagramQuery {
 		WithPositions(func(pq *ent.PositionQuery) { pq.Order(ent.Asc(position.FieldOrdinal)) }).
 		WithRegions(func(rq *ent.DiagramRegionQuery) { rq.Order(ent.Asc(diagramregion.FieldOrdinal)) }).
 		WithSkills(withNodeInstruments).
-		WithConcepts(withNodeInstruments)
+		WithConcepts(withNodeInstruments).
+		WithShape(func(sq *ent.DiagramShapeQuery) { sq.WithFamily() })
 }
 
 func createPositions(ctx context.Context, tx *ent.Tx, diagramID uuid.UUID, positions []domain.Position) error {
@@ -462,6 +463,24 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		Skills:            domainKnowledgeNodesFromEdges(row.Edges.Skills),
 		Concepts:          domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 		CreatedAt:         row.CreatedAt,
+		Shape:             toDomainDiagramShape(row.Edges.Shape),
+	}
+}
+
+// toDomainDiagramShape is the drill shape a diagram is, read with its
+// family; nil for a diagram that isn't one.
+func toDomainDiagramShape(row *ent.DiagramShape) *domain.DiagramShape {
+	if row == nil || row.Edges.Family == nil {
+		return nil
+	}
+	family := row.Edges.Family
+	members := make([]domain.DiagramShapeMember, len(family.Members))
+	for i, m := range family.Members {
+		members[i] = domain.DiagramShapeMember{Shape: m.Shape, Names: domain.LocalizedText(m.Names)}
+	}
+	return &domain.DiagramShape{
+		Family: domain.DiagramShapeFamily{ID: family.ID.String(), Key: family.Key, Names: domain.LocalizedText(family.Names), Members: members},
+		Shape:  row.Shape,
 	}
 }
 
