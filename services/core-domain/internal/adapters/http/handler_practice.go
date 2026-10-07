@@ -199,7 +199,7 @@ func (h *Handler) CreatePracticeSessionPlan(ctx context.Context, request generat
 		if err != nil {
 			return nil, err
 		}
-		return generated.CreatePracticeSessionPlan200JSONResponse(toGeneratedPracticeSessionPlan(plan, names)), nil
+		return generated.CreatePracticeSessionPlan200JSONResponse(toGeneratedPracticeSessionPlan(plan, names, caller.Locale.Code)), nil
 	case kind == errKindValidation:
 		return generated.CreatePracticeSessionPlan400JSONResponse(validationErrorResponse(valErr)), nil
 	case kind == errKindNotFound:
@@ -215,10 +215,12 @@ func notFoundMessage(err error) string {
 	return strings.TrimPrefix(err.Error(), domain.ErrNotFound.Error()+": ")
 }
 
-func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userNames) generated.PracticeSessionPlan {
+// toGeneratedPracticeSessionPlan maps plan, naming each diagram shape option
+// in locale, the student's language.
+func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userNames, locale string) generated.PracticeSessionPlan {
 	items := make([]generated.PracticeSessionItem, len(plan.Items))
 	for i, item := range plan.Items {
-		items[i] = toGeneratedPracticeSessionItem(item, names)
+		items[i] = toGeneratedPracticeSessionItem(item, names, locale)
 	}
 	return generated.PracticeSessionPlan{
 		PracticeSessionId: mustUUID(plan.ID),
@@ -230,7 +232,7 @@ func toGeneratedPracticeSessionPlan(plan domain.PracticeSessionPlan, names userN
 	}
 }
 
-func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userNames) generated.PracticeSessionItem {
+func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userNames, locale string) generated.PracticeSessionItem {
 	out := generated.PracticeSessionItem{
 		ItemKey:          item.ItemKey,
 		Kind:             generated.PracticeItemKind(item.Kind),
@@ -268,6 +270,44 @@ func toGeneratedPracticeSessionItem(item domain.PracticeSessionItem, names userN
 			LayoutInstrumentId: mustUUID(c.LayoutInstrumentID),
 			String:             c.String,
 		}
+	}
+	if d := item.DiagramShape; d != nil {
+		out.DiagramShape = toGeneratedDiagramShape(*d, locale)
+	}
+	return out
+}
+
+// generatedDiagramShape is the generated PracticeSessionItem's diagram_shape.
+type generatedDiagramShape = struct {
+	AskedInterval *generated.ShapeInterval    `json:"asked_interval"`
+	DiagramId     openapi_types.UUID          `json:"diagram_id"`
+	Drill         generated.DiagramShapeDrill `json:"drill"`
+	Options       []struct {
+		Name  string `json:"name"`
+		Shape string `json:"shape"`
+	} `json:"options"`
+	ShapeFamily string `json:"shape_family"`
+}
+
+// toGeneratedDiagramShape maps a planned shape, its options named in locale
+// and always a list, empty for a degree to find.
+func toGeneratedDiagramShape(d domain.PlannedDiagramShape, locale string) *generatedDiagramShape {
+	out := &generatedDiagramShape{
+		DiagramId:   mustUUID(d.DiagramID),
+		Drill:       generated.DiagramShapeDrill(d.Drill),
+		ShapeFamily: d.Family,
+		Options: make([]struct {
+			Name  string `json:"name"`
+			Shape string `json:"shape"`
+		}, len(d.Options)),
+	}
+	for i, m := range d.Options {
+		out.Options[i].Name = m.Names.Resolve(locale)
+		out.Options[i].Shape = m.Shape
+	}
+	if d.AskedInterval != nil {
+		asked := generated.ShapeInterval(*d.AskedInterval)
+		out.AskedInterval = &asked
 	}
 	return out
 }
