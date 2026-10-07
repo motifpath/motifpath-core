@@ -60,6 +60,7 @@ func registerPracticeSessionSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" composes a (\d+)-minute session with an instrument that doesn't exist in hand$`, w.composesSessionWithMissingInstrument)
 	sc.Step(`^"([^"]+)" is picked as a (due|new) item$`, w.isPickedAs)
 	registerHeadSessionSteps(sc, w)
+	registerShortSessionSteps(sc, w)
 
 	sc.Step(`^the session starts with "([^"]+)" with the reason (\w+) at (\d+) BPM$`, w.sessionStartsWith)
 	sc.Step(`^no item in the session has the reason (\w+)$`, w.noItemHasReason)
