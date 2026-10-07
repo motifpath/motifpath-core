@@ -46,6 +46,7 @@ func TestDiagramListFilter_Matches(t *testing.T) {
 func TestDiagramListFilter_MatchesPurpose(t *testing.T) {
 	general := domain.Diagram{ID: "g", Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeGeneral}
 	voicing := domain.Diagram{ID: "v", Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeChordVoicing}
+	unset := domain.Diagram{ID: "u", Kind: domain.DiagramKindBasic}
 
 	tests := []struct {
 		name   string
@@ -56,12 +57,17 @@ func TestDiagramListFilter_MatchesPurpose(t *testing.T) {
 		{"any matches every purpose", domain.DiagramPurposeFilterAny, map[string]bool{"g": true, "v": true}},
 		{"general keeps only general diagrams", domain.DiagramPurposeFilterGeneral, map[string]bool{"g": true, "v": false}},
 		{"chord_voicing keeps only chord voicing diagrams", domain.DiagramPurposeFilterChordVoicing, map[string]bool{"g": false, "v": true}},
+		{"general keeps a diagram whose purpose was never set", domain.DiagramPurposeFilterGeneral, map[string]bool{"u": true, "v": false}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filter := domain.DiagramListFilter{Purpose: tt.filter}
-			for _, d := range []domain.Diagram{general, voicing} {
-				assert.Equal(t, tt.want[d.ID], filter.Matches(d), "diagram %s", d.ID)
+			for _, d := range []domain.Diagram{general, voicing, unset} {
+				want, listed := tt.want[d.ID]
+				if !listed {
+					continue
+				}
+				assert.Equal(t, want, filter.Matches(d), "diagram %s", d.ID)
 			}
 		})
 	}

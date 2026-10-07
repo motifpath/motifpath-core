@@ -122,7 +122,7 @@ type practiceFixture struct {
 type practiceItemSource struct{ f *practiceFixture }
 
 func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
-	diagrams, err := s.f.diagrams.List(ctx, domain.DiagramListFilter{InstrumentID: instrumentID, Kind: domain.DiagramKindBasic}, domain.PageRequest{Limit: 1000})
+	diagrams, err := s.f.diagrams.List(ctx, domain.DiagramListFilter{InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral}, domain.PageRequest{Limit: 1000})
 	if err != nil {
 		return nil, err
 	}
@@ -391,6 +391,22 @@ func TestPracticeSessionService_ComposePlan(t *testing.T) {
 		_, err := f.svc.ComposePlan(ctx, studentCaller(), nil, 10)
 
 		require.ErrorIs(t, err, domain.ErrNotFound)
+	})
+
+	t.Run("a chord catalog voicing is not offered as a play-along", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPath("skill-1")
+		f.playAlong("d1", "Pentatonic run", practiceGuitar, "skill-1", 120)
+		f.playAlong("voicing", "Am — open", practiceGuitar, "skill-1", 60)
+		voicing, err := f.diagrams.GetByID(context.Background(), "voicing")
+		require.NoError(t, err)
+		voicing.Purpose = domain.DiagramPurposeChordVoicing
+		require.NoError(t, f.diagrams.Create(context.Background(), voicing))
+
+		plan := f.compose(t, practiceGuitar, 20)
+
+		assert.Contains(t, planKeys(plan), "play_along:d1")
+		assert.NotContains(t, planKeys(plan), "play_along:voicing")
 	})
 
 	t.Run("a play-along with no clean take yet is new, starting at 60% of the diagram's tempo rounded down to 5 BPM", func(t *testing.T) {

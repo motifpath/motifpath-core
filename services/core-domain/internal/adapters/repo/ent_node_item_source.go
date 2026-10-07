@@ -25,9 +25,10 @@ func NewEntNodeItemSource(client *ent.Client) *EntNodeItemSource {
 }
 
 // ClassifiedItems returns the play-alongs, exercises and fretboard cells that
-// suit instrumentID. A play-along is a basic diagram with playback — a
-// teacher's custom diagrams are theirs alone, never offered for practice —
-// and it suits every instrument it is linked to. A malformed id has no items.
+// suit instrumentID. A play-along is a general basic diagram with playback —
+// a teacher's custom diagrams are theirs alone, never offered for practice,
+// and a chord catalog voicing isn't practised on its own — and it suits every
+// instrument it is linked to. A malformed id has no items.
 func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
 	if instrumentID == "" {
 		return s.everyInstrumentItems(ctx)
@@ -39,6 +40,7 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	diagrams, err := s.client.Diagram.Query().
 		Where(
 			diagram.KindEQ(diagram.KindBasic),
+			diagram.PurposeEQ(diagram.PurposeGeneral),
 			diagram.DefaultPlaybackIDNotNil(),
 			diagram.HasCompatibleInstrumentsWith(instrument.ID(parsed)),
 		).

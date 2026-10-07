@@ -330,10 +330,12 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 // skillCandidates lists the play-alongs for instrumentID when it is in
 // hand, then the exercises for it, classified under skillID, each offered
 // for it. With no instrumentID, only the exercises for every instrument.
+// Chord catalog voicings play like play-alongs but aren't practised on
+// their own, so only general diagrams are offered.
 func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
 	var candidates []practiceCandidate
 	if inHand {
-		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic})
+		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
 		if err != nil {
 			return nil, err
 		}

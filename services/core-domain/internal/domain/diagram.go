@@ -138,8 +138,12 @@ func (f DiagramPurposeFilter) Valid() bool {
 	return false
 }
 
-// Matches reports whether a diagram of purpose p passes f.
+// Matches reports whether a diagram of purpose p passes f. A purpose that
+// was never set is general, as it is when stored.
 func (f DiagramPurposeFilter) Matches(p DiagramPurpose) bool {
+	if p == "" {
+		p = DiagramPurposeGeneral
+	}
 	return f == "" || f == DiagramPurposeFilterAny || DiagramPurpose(f) == p
 }
 
