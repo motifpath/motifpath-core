@@ -105,6 +105,18 @@ func (r *EntDiagramRepository) GetByID(ctx context.Context, id string) (domain.D
 	return toDomainDiagram(row), nil
 }
 
+func (r *EntDiagramRepository) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+	rows, err := withDiagramEdges(r.client.Diagram.Query()).Where(diagram.IDIn(parseUUIDsSkippingInvalid(ids)...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	found := make(map[string]domain.Diagram, len(rows))
+	for _, row := range rows {
+		found[row.ID.String()] = toDomainDiagram(row)
+	}
+	return found, nil
+}
+
 func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	query, err := r.filteredQuery(ctx, filter)
 	if err != nil {
