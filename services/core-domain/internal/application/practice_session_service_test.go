@@ -118,7 +118,8 @@ type practiceFixture struct {
 }
 
 // practiceItemSource is a ports.NodeItemSource over the fixture's diagrams,
-// exercises and fretboard cells, classifying them as the Postgres source does.
+// exercises, fretboard cells and diagram shapes, classifying them as the
+// Postgres source does.
 type practiceItemSource struct{ f *practiceFixture }
 
 func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
@@ -130,6 +131,9 @@ func (s practiceItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	for _, d := range diagrams.Items {
 		if _, ok := d.DefaultPlayback(); ok {
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: d.SkillIDs()})
+		}
+		if d.Shape != nil {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.DiagramShapeItemKey(d.ID), NodeIDs: d.SkillIDs()})
 		}
 	}
 	exercises, err := s.f.exercises.List(ctx, domain.ExerciseFilter{InstrumentIDs: []string{instrumentID}}, domain.PageRequest{Limit: 1000})
@@ -287,6 +291,35 @@ func (f *practiceFixture) playAlong(id, name, instrumentID, skillID string, temp
 		d.DefaultPlaybackID = strPtr("pb-default")
 	}
 	require.NoError(f.t, f.diagrams.Create(context.Background(), d))
+}
+
+// shapeFamily is a three-member family of drill shapes.
+var shapeFamily = domain.DiagramShapeFamily{
+	ID: "fam-grips", Key: "caged-grip", Names: names("CAGED grips"),
+	Members: []domain.DiagramShapeMember{
+		{Shape: "C", Names: names("C shape")}, {Shape: "A", Names: names("A shape")}, {Shape: "E", Names: names("E shape")},
+	},
+}
+
+// shapeOn puts a catalog drill shape, the member "A" of shapeFamily with a
+// root, a 3 and a 5, linked to instrumentIDs (the first its layout) and
+// classified under skillID, and returns its item key. It plays, as catalog
+// shapes do, so with an instrument in hand it is a play-along too.
+func (f *practiceFixture) shapeOn(id, skillID string, instrumentIDs ...string) string {
+	f.skill(skillID)
+	require.NoError(f.t, f.diagrams.Create(context.Background(), domain.Diagram{
+		ID: id, InstrumentID: instrumentIDs[0], InstrumentIDs: instrumentIDs, Names: names(id),
+		Kind: domain.DiagramKindBasic, Skills: []domain.KnowledgeNode{{ID: skillID}},
+		Positions: []domain.Position{
+			{ID: "p1", Interval: "R", String: intPtr(5), Fret: intPtr(3)},
+			{ID: "p2", Interval: "5", String: intPtr(4), Fret: intPtr(5)},
+			{ID: "p3", Interval: "3", String: intPtr(2), Fret: intPtr(5)},
+		},
+		Playbacks:         []domain.DiagramPlayback{{ID: "pb-default", TempoBPM: 80, TimeSignature: domain.DefaultTimeSignature, Steps: quarterNotes(8)}},
+		DefaultPlaybackID: strPtr("pb-default"),
+		Shape:             &domain.DiagramShape{Family: shapeFamily, Shape: "A"},
+	}))
+	return domain.DiagramShapeItemKey(id)
 }
 
 // quarterNotes is n quarter-note steps on position p1.
@@ -1333,6 +1366,95 @@ func TestPracticeSessionService_ComposePlanTapCheck(t *testing.T) {
 		_, err := f.svc.ComposePlan(context.Background(), studentCaller(), nil, 5)
 
 		assert.ErrorIs(t, err, boom)
+	})
+}
+
+func TestPracticeSessionService_ComposePlanDiagramShapes(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("in the head: shapes linked to the student's instruments, named with every member of their family", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "caged")
+		guitarShape := f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+		f.shapeOn("bass-only", "caged", "ukulele")
+
+		plan := f.composeInTheHead(t, 10)
+
+		shapes := itemsOfKind(plan, domain.PracticeItemKindDiagramShape)
+		require.Len(t, shapes, 1)
+		assert.Equal(t, guitarShape, shapes[0].ItemKey)
+		assert.Equal(t, domain.PracticePickNew, shapes[0].Reason)
+		assert.Equal(t, domain.DiagramShapeSeconds, shapes[0].EstimatedSeconds)
+		assert.Equal(t, &domain.PlannedDiagramShape{
+			DiagramID: "grip-c-a3", Drill: domain.DiagramShapeDrillNameTheShape, Family: "caged-grip", Options: shapeFamily.Members,
+		}, shapes[0].DiagramShape)
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindPlayAlong))
+	})
+
+	t.Run("with an instrument in hand, shapes linked to it are picked", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "caged")
+		key := f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+
+		plan, err := f.svc.ComposePlan(ctx, studentCaller(), strPtr(practiceGuitar), 10)
+
+		require.NoError(t, err)
+		shapes := itemsOfKind(plan, domain.PracticeItemKindDiagramShape)
+		require.Len(t, shapes, 1)
+		assert.Equal(t, key, shapes[0].ItemKey)
+	})
+
+	t.Run("a shape named right more often than its degrees were found is asked to find a degree other than its root", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "caged")
+		key := f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+		f.stateOf(key, domain.PracticeItemState{
+			Level: domain.KnowledgeLevelLearning, Counted: 4, Box: 1, DueAt: f.daysAgo(1),
+			RightByResponse: map[string]int{"name_the_shape": 3, "find_the_degree": 1},
+		})
+
+		plan := f.composeInTheHead(t, 5)
+
+		shapes := itemsOfKind(plan, domain.PracticeItemKindDiagramShape)
+		require.Len(t, shapes, 1)
+		got := shapes[0].DiagramShape
+		assert.Equal(t, domain.DiagramShapeDrillFindTheDegree, got.Drill)
+		assert.Empty(t, got.Options)
+		require.NotNil(t, got.AskedInterval)
+		assert.Contains(t, []string{"3", "5"}, *got.AskedInterval)
+	})
+
+	t.Run("a session that unlocks a shape by stretching asks it like any other", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "caged")
+		f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+		f.applies("caged", "triads")
+		triad := f.shapeOn("triad-c", "triads", practiceGuitar)
+
+		plan := f.composeInTheHead(t, 10)
+
+		var stretched *domain.PracticeSessionItem
+		for _, item := range itemsOfKind(plan, domain.PracticeItemKindDiagramShape) {
+			if item.ItemKey == triad {
+				stretched = &item
+			}
+		}
+		require.NotNil(t, stretched)
+		assert.Equal(t, domain.PracticePickStretch, stretched.Reason)
+		require.NotNil(t, stretched.DiagramShape)
+		assert.Equal(t, "triad-c", stretched.DiagramShape.DiagramID)
+	})
+
+	t.Run("a plan of shapes asks for a tap check when the student never did one", func(t *testing.T) {
+		f := newPracticeFixture(t)
+		f.onPathFor([]string{practiceGuitar}, "caged")
+		f.shapeOn("grip-c-a3", "caged", practiceGuitar)
+
+		plan := f.composeInTheHead(t, 5)
+
+		require.NotEmpty(t, itemsOfKind(plan, domain.PracticeItemKindDiagramShape))
+		assert.Empty(t, itemsOfKind(plan, domain.PracticeItemKindFretboardCell))
+		assert.True(t, plan.TapCheckDue)
 	})
 }
 
