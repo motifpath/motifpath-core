@@ -12,10 +12,10 @@ import (
 
 const onlyAdminsAuthorSongCharts = "only admins author song charts"
 
-// errChordProNotYetServed answers the ChordPro operations until the slice
-// that implements them (MOT-45, Phase 2 ChordPro) lands; the spec marks
-// their scenarios as not implemented yet.
-var errChordProNotYetServed = errors.New("ChordPro import and export are not implemented yet (MOT-45)")
+// errChordProNotYetServed answers the ChordPro operations, which this
+// service doesn't implement yet; their scenarios are still marked as work
+// in progress in the spec.
+var errChordProNotYetServed = errors.New("ChordPro import and export are not implemented yet")
 
 func (h *Handler) CreateSongChart(ctx context.Context, request generated.CreateSongChartRequestObject) (generated.CreateSongChartResponseObject, error) {
 	caller, ok := h.resolveCaller(ctx)
