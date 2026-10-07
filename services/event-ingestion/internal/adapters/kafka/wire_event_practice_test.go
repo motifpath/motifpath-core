@@ -143,3 +143,38 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestToWireEvent_SongChartEvents(t *testing.T) {
+	chart := domain.SongChartContext{SongChartID: "44444444-4444-4444-8444-444444444444", RevisionNumber: 2}
+	const chartJSON = `"song_chart_context":{"song_chart_id":"44444444-4444-4444-8444-444444444444","revision_number":2}`
+
+	cases := []struct {
+		name  string
+		event domain.TrackingEvent
+		want  string
+	}{
+		{
+			name:  "opened",
+			event: domain.SongChartOpenedEvent{TrackingEventBase: practiceWireBase(domain.EventTypeSongChartOpened), SongChartContext: chart},
+			want:  `{` + wireBaseJSON + `,"event_type":"song_chart.opened",` + chartJSON + `}`,
+		},
+		{
+			name: "chord viewed",
+			event: domain.SongChartChordViewedEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypeSongChartChordViewed), SongChartContext: chart,
+				AnchorID: "a3", ChordDefinitionID: "55555555-5555-4555-8555-555555555555", ChordVoicingID: "66666666-6666-4666-8666-666666666666",
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"song_chart.chord_viewed",` + chartJSON + `,"anchor_id":"a3","chord_definition_id":"55555555-5555-4555-8555-555555555555","chord_voicing_id":"66666666-6666-4666-8666-666666666666"}`,
+		},
+		{
+			name:  "section completed on the first section keeps its index",
+			event: domain.SongChartSectionCompletedEvent{TrackingEventBase: practiceWireBase(domain.EventTypeSongChartSectionCompleted), SongChartContext: chart, SectionIndex: 0},
+			want:  `{` + wireBaseJSON + `,"event_type":"song_chart.section_completed",` + chartJSON + `,"section_index":0}`,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.JSONEq(t, tt.want, wireJSON(t, tt.event))
+		})
+	}
+}

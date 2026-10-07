@@ -21,6 +21,9 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 		domain.EventTypeExerciseStarted,
 		domain.EventTypeExerciseProgress,
 		domain.EventTypeExerciseEnded,
+		domain.EventTypeSongChartOpened,
+		domain.EventTypeSongChartChordViewed,
+		domain.EventTypeSongChartSectionCompleted,
 	}
 
 	for _, eventType := range eventTypes {

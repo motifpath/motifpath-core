@@ -217,6 +217,9 @@ func newEvent(eventType domain.EventType) domain.TrackingEvent {
 	return newEventWithID(eventType, "11111111-1111-1111-1111-111111111111")
 }
 
+// songChartRead is the chart revision the song_chart test events happen in.
+var songChartRead = domain.SongChartContext{SongChartID: "55555555-5555-5555-5555-555555555555", RevisionNumber: 2}
+
 func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingEvent {
 	base := domain.TrackingEventBase{
 		EventID:    eventID,
@@ -249,6 +252,13 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 		return domain.PracticeSessionEndedEvent{TrackingEventBase: base, PracticeSessionID: practiceSessionID, AnsweredCount: 1}
 	case domain.EventTypePracticeTapCheckCompleted:
 		return domain.PracticeTapCheckCompletedEvent{TrackingEventBase: base, MedianTapMs: 350, TapCount: 24}
+	case domain.EventTypeSongChartOpened:
+		return domain.SongChartOpenedEvent{TrackingEventBase: base, SongChartContext: songChartRead}
+	case domain.EventTypeSongChartChordViewed:
+		return domain.SongChartChordViewedEvent{TrackingEventBase: base, SongChartContext: songChartRead,
+			AnchorID: "a3", ChordDefinitionID: "chord-g", ChordVoicingID: "voicing-g-open"}
+	case domain.EventTypeSongChartSectionCompleted:
+		return domain.SongChartSectionCompletedEvent{TrackingEventBase: base, SongChartContext: songChartRead, SectionIndex: 0}
 	default:
 		panic("unhandled event type in test helper: " + string(eventType))
 	}

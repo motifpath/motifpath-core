@@ -43,6 +43,19 @@ type eventDocument struct {
 	FeltRatings       *[]feltRatingDoc     `bson:"felt_ratings,omitempty"`
 	MedianTapMs       *int                 `bson:"median_tap_ms,omitempty"`
 	TapCount          *int                 `bson:"tap_count,omitempty"`
+
+	// song_chart.* fields. section_index is a pointer, so the first section,
+	// 0, is still stored.
+	SongChartContext  *songChartContextDoc `bson:"song_chart_context,omitempty"`
+	AnchorID          string               `bson:"anchor_id,omitempty"`
+	ChordDefinitionID string               `bson:"chord_definition_id,omitempty"`
+	ChordVoicingID    string               `bson:"chord_voicing_id,omitempty"`
+	SectionIndex      *int                 `bson:"section_index,omitempty"`
+}
+
+type songChartContextDoc struct {
+	SongChartID    string `bson:"song_chart_id"`
+	RevisionNumber int    `bson:"revision_number"`
 }
 
 type plannedItemDoc struct {
@@ -142,6 +155,8 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 	case domain.PracticeTapCheckCompletedEvent:
 		doc.MedianTapMs = &e.MedianTapMs
 		doc.TapCount = &e.TapCount
+	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartSectionCompletedEvent:
+		addSongChartDoc(&doc, event)
 	}
 
 	return doc
@@ -205,6 +220,22 @@ func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
 		return fromPracticeSessionEndedDoc(base, doc), nil
 	case domain.EventTypePracticeTapCheckCompleted:
 		return fromPracticeTapCheckCompletedDoc(base, doc), nil
+	case domain.EventTypeSongChartOpened:
+		return domain.SongChartOpenedEvent{TrackingEventBase: base, SongChartContext: fromSongChartContextDoc(doc.SongChartContext)}, nil
+	case domain.EventTypeSongChartChordViewed:
+		return domain.SongChartChordViewedEvent{
+			TrackingEventBase: base,
+			SongChartContext:  fromSongChartContextDoc(doc.SongChartContext),
+			AnchorID:          doc.AnchorID,
+			ChordDefinitionID: doc.ChordDefinitionID,
+			ChordVoicingID:    doc.ChordVoicingID,
+		}, nil
+	case domain.EventTypeSongChartSectionCompleted:
+		return domain.SongChartSectionCompletedEvent{
+			TrackingEventBase: base,
+			SongChartContext:  fromSongChartContextDoc(doc.SongChartContext),
+			SectionIndex:      derefInt(doc.SectionIndex),
+		}, nil
 	default:
 		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, doc.EventType)
 	}
@@ -349,4 +380,31 @@ func fromPracticeTapCheckCompletedDoc(base domain.TrackingEventBase, doc eventDo
 		MedianTapMs:       derefInt(doc.MedianTapMs),
 		TapCount:          derefInt(doc.TapCount),
 	}
+}
+
+// addSongChartDoc sets the fields of a song_chart.* event.
+func addSongChartDoc(doc *eventDocument, event domain.TrackingEvent) {
+	switch e := event.(type) {
+	case domain.SongChartOpenedEvent:
+		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
+	case domain.SongChartChordViewedEvent:
+		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
+		doc.AnchorID = e.AnchorID
+		doc.ChordDefinitionID = e.ChordDefinitionID
+		doc.ChordVoicingID = e.ChordVoicingID
+	case domain.SongChartSectionCompletedEvent:
+		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
+		doc.SectionIndex = &e.SectionIndex
+	}
+}
+
+func toSongChartContextDoc(c domain.SongChartContext) *songChartContextDoc {
+	return &songChartContextDoc{SongChartID: c.SongChartID, RevisionNumber: c.RevisionNumber}
+}
+
+func fromSongChartContextDoc(d *songChartContextDoc) domain.SongChartContext {
+	if d == nil {
+		return domain.SongChartContext{}
+	}
+	return domain.SongChartContext{SongChartID: d.SongChartID, RevisionNumber: d.RevisionNumber}
 }

@@ -41,6 +41,19 @@ type wireEvent struct {
 	FeltRatings       *[]feltRatingWire     `json:"felt_ratings,omitempty"`
 	MedianTapMs       *int                  `json:"median_tap_ms,omitempty"`
 	TapCount          *int                  `json:"tap_count,omitempty"`
+
+	// song_chart.* fields. section_index is a pointer, so the first section,
+	// 0, is still carried.
+	SongChartContext  *songChartContextWire `json:"song_chart_context,omitempty"`
+	AnchorID          string                `json:"anchor_id,omitempty"`
+	ChordDefinitionID string                `json:"chord_definition_id,omitempty"`
+	ChordVoicingID    string                `json:"chord_voicing_id,omitempty"`
+	SectionIndex      *int                  `json:"section_index,omitempty"`
+}
+
+type songChartContextWire struct {
+	SongChartID    string `json:"song_chart_id"`
+	RevisionNumber int    `json:"revision_number"`
 }
 
 type plannedItemWire struct {
@@ -139,6 +152,8 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 	case domain.PracticeTapCheckCompletedEvent:
 		w.MedianTapMs = &e.MedianTapMs
 		w.TapCount = &e.TapCount
+	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartSectionCompletedEvent:
+		addSongChartWire(&w, event)
 	}
 
 	return w
@@ -175,4 +190,24 @@ func toTriggerContextWire(tc domain.TriggerContext) *triggerContextWire {
 		ContentNodeID: tc.ContentNodeID,
 		ChallengeID:   tc.ChallengeID,
 	}
+}
+
+// addSongChartWire sets the fields of a song_chart.* event.
+func addSongChartWire(w *wireEvent, event domain.TrackingEvent) {
+	switch e := event.(type) {
+	case domain.SongChartOpenedEvent:
+		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
+	case domain.SongChartChordViewedEvent:
+		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
+		w.AnchorID = e.AnchorID
+		w.ChordDefinitionID = e.ChordDefinitionID
+		w.ChordVoicingID = e.ChordVoicingID
+	case domain.SongChartSectionCompletedEvent:
+		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
+		w.SectionIndex = &e.SectionIndex
+	}
+}
+
+func toSongChartContextWire(c domain.SongChartContext) *songChartContextWire {
+	return &songChartContextWire{SongChartID: c.SongChartID, RevisionNumber: c.RevisionNumber}
 }
