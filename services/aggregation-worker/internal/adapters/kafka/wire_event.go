@@ -58,6 +58,8 @@ type plannedItemWire struct {
 type practiceResponseWire struct {
 	ResponseType     string   `json:"response_type"`
 	NoteName         string   `json:"note_name,omitempty"`
+	Shape            string   `json:"shape,omitempty"`
+	Interval         string   `json:"interval,omitempty"`
 	String           *int     `json:"string,omitempty"`
 	Fret             *int     `json:"fret,omitempty"`
 	OptionIDs        []string `json:"option_ids,omitempty"`

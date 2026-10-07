@@ -19,6 +19,7 @@ const (
 	PracticeItemKindExercise      PracticeItemKind = "exercise"
 	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
 	PracticeItemKindChordChange   PracticeItemKind = "chord_change"
+	PracticeItemKindDiagramShape  PracticeItemKind = "diagram_shape"
 )
 
 const uuidPattern = `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
@@ -30,6 +31,7 @@ var practiceItemKeyPattern = regexp.MustCompile(`^(` +
 	`|exercise:` + uuidPattern +
 	`|play_along:` + uuidPattern +
 	`|chord_change:` + uuidPattern + `:` + uuidPattern +
+	`|diagram_shape:` + uuidPattern +
 	`)$`)
 
 // PracticeItemKey identifies the practice item that evidence is about.
@@ -69,11 +71,11 @@ func (k PracticeItemKey) ExerciseID() string {
 	return k.parts[0]
 }
 
-// DiagramIDs are the diagrams the item points at: one for a play-along, the two
-// chords of a chord change, none for the other kinds.
+// DiagramIDs are the diagrams the item points at: one for a play-along or a
+// diagram shape, the two chords of a chord change, none for the other kinds.
 func (k PracticeItemKey) DiagramIDs() []string {
 	switch k.Kind {
-	case PracticeItemKindPlayAlong, PracticeItemKindChordChange:
+	case PracticeItemKindPlayAlong, PracticeItemKindChordChange, PracticeItemKindDiagramShape:
 		return k.parts
 	case PracticeItemKindFretboardCell, PracticeItemKindExercise:
 		return nil

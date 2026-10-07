@@ -206,6 +206,8 @@ func toPracticeAnswer(w wireEvent) *domain.PracticeAnswer {
 		Response: domain.PracticeResponse{
 			Type:             domain.PracticeResponseType(r.ResponseType),
 			NoteName:         r.NoteName,
+			Shape:            r.Shape,
+			Interval:         r.Interval,
 			String:           r.String,
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,

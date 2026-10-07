@@ -98,7 +98,12 @@ func (s *PracticeEvidenceService) referenceFor(ctx context.Context, key domain.P
 			return domain.PracticeReference{}, err
 		}
 	}
-	if id := key.LayoutInstrumentID(); id != "" {
+	id := key.LayoutInstrumentID()
+	if key.Kind == domain.PracticeItemKindDiagramShape {
+		// A shape is drawn on its diagram's layout, which bounds the taps.
+		id = diagrams[key.DiagramIDs()[0]].LayoutInstrumentID
+	}
+	if id != "" {
 		if ref.Instruments, err = s.reference.Instruments(ctx, []string{id}); err != nil {
 			return domain.PracticeReference{}, err
 		}
@@ -140,6 +145,20 @@ func (s *PracticeEvidenceService) foldInto(ctx context.Context, evidence domain.
 	return s.states.Put(ctx, evidence.StudentID, evidence.ItemKey, fold)
 }
 
+// goalByWayAsked is a goal with the fluent times of each way an item of kind is
+// asked, its drill templates being <kind>:<response type>.
+func (s *PracticeEvidenceService) goalByWayAsked(ctx context.Context, kind domain.PracticeItemKind, ways ...domain.PracticeResponseType) (domain.ItemGoal, error) {
+	goal := domain.ItemGoal{FluentTimesByResponse: map[domain.PracticeResponseType][]domain.FluentTime{}}
+	for _, asked := range ways {
+		fluentTimes, err := s.reference.FluentTimes(ctx, string(kind)+":"+string(asked))
+		if err != nil {
+			return domain.ItemGoal{}, err
+		}
+		goal.FluentTimesByResponse[asked] = fluentTimes
+	}
+	return goal, nil
+}
+
 func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.GradedEvidence) domain.PracticeEvidence {
 	return domain.PracticeEvidence{
 		EvidenceID:        answer.EventID,
@@ -164,7 +183,7 @@ func toEvidence(answer domain.PracticeAnswer, graderID string, graded domain.Gra
 
 // goalOf is what the item's fluency is measured against. A play-along is measured
 // against its diagram's tempo, an exercise against its type's fluent times, and a
-// fretboard cell against the fluent times of each way it is asked. Chord changes
+// fretboard cell or a diagram shape against the fluent times of each way it is asked. Chord changes
 // have no source for a target rate yet, so any clean minute counts as fully fluent.
 func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.PracticeItemKey, ref domain.PracticeReference) (domain.ItemGoal, error) {
 	switch key.Kind {
@@ -174,15 +193,9 @@ func (s *PracticeEvidenceService) goalOf(ctx context.Context, key domain.Practic
 		fluentTimes, err := s.reference.FluentTimes(ctx, ref.Exercises[key.ExerciseID()].DrillTemplateKey())
 		return domain.ItemGoal{FluentTimes: fluentTimes}, err
 	case domain.PracticeItemKindFretboardCell:
-		goal := domain.ItemGoal{FluentTimesByResponse: map[domain.PracticeResponseType][]domain.FluentTime{}}
-		for _, asked := range []domain.PracticeResponseType{domain.PracticeResponseNameTheNote, domain.PracticeResponseFindTheNote} {
-			fluentTimes, err := s.reference.FluentTimes(ctx, string(domain.PracticeItemKindFretboardCell)+":"+string(asked))
-			if err != nil {
-				return domain.ItemGoal{}, err
-			}
-			goal.FluentTimesByResponse[asked] = fluentTimes
-		}
-		return goal, nil
+		return s.goalByWayAsked(ctx, key.Kind, domain.PracticeResponseNameTheNote, domain.PracticeResponseFindTheNote)
+	case domain.PracticeItemKindDiagramShape:
+		return s.goalByWayAsked(ctx, key.Kind, domain.PracticeResponseNameTheShape, domain.PracticeResponseFindTheDegree)
 	case domain.PracticeItemKindChordChange:
 	}
 	return domain.ItemGoal{}, nil
