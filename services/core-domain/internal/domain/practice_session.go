@@ -159,20 +159,24 @@ type PracticeSessionItem struct {
 	NodeID           *string
 	Level            KnowledgeLevel
 	EstimatedSeconds int
-	// Exactly one of PlayAlong, Exercise and FretboardCell is set, matching
-	// Kind.
+	// Exactly one of PlayAlong, Exercise, FretboardCell and DiagramShape is
+	// set, matching Kind.
 	PlayAlong     *PlannedPlayAlong
 	Exercise      *Exercise
 	FretboardCell *PlannedFretboardCell
+	DiagramShape  *PlannedDiagramShape
 }
 
 // DrillTemplateKey is the timed drill template answering the item
-// practises: a fretboard cell's way of being asked, or an exercise's type.
+// practises: a fretboard cell's or a diagram shape's way of being asked, or
+// an exercise's type.
 // A play-along is rated, not timed, so it practises none ("").
 func (i PracticeSessionItem) DrillTemplateKey() string {
 	switch {
 	case i.FretboardCell != nil:
 		return string(PracticeItemKindFretboardCell) + ":" + string(i.FretboardCell.Drill)
+	case i.DiagramShape != nil:
+		return string(PracticeItemKindDiagramShape) + ":" + string(i.DiagramShape.Drill)
 	case i.Exercise != nil:
 		return string(PracticeItemKindExercise) + ":" + string(i.Exercise.ExerciseType)
 	}
@@ -244,10 +248,12 @@ type PracticeSessionPlan struct {
 const TapCheckValidity = 30 * 24 * time.Hour
 
 // TapCheckDue reports whether a plan of items asks for a tap check: when
-// it has a fretboard cell and the student's newest tap check, lastDone, is
-// older than TapCheckValidity, or there is none.
+// it has a fretboard cell or a diagram shape and the student's newest tap
+// check, lastDone, is older than TapCheckValidity, or there is none.
 func TapCheckDue(items []PracticeSessionItem, lastDone *time.Time, now time.Time) bool {
-	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool { return item.Kind == PracticeItemKindFretboardCell }) {
+	if !slices.ContainsFunc(items, func(item PracticeSessionItem) bool {
+		return item.Kind == PracticeItemKindFretboardCell || item.Kind == PracticeItemKindDiagramShape
+	}) {
 		return false
 	}
 	return lastDone == nil || lastDone.Before(now.Add(-TapCheckValidity))

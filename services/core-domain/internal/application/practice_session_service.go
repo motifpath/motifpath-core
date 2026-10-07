@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math/rand/v2"
 	"slices"
 	"strings"
 	"time"
@@ -38,8 +39,9 @@ const (
 
 // PracticeSessionService composes practice sessions from what a student
 // knows. It offers play-alongs, basic diagrams with playback, authored
-// exercises and fretboard cells: for the instrument in hand, or, in the
-// head, everything but play-alongs for all the student's instruments. A
+// exercises, fretboard cells and catalog diagram shapes: for the instrument
+// in hand, or, in the head, everything but play-alongs for all the
+// student's instruments. A
 // teacher's custom diagrams are theirs alone to find, so they are never
 // offered.
 type PracticeSessionService struct {
@@ -86,13 +88,15 @@ func NewPracticeSessionService(
 }
 
 // practiceCandidate is an item that can be practised in a session, a
-// play-along, an exercise or a fretboard cell, with the node it is offered
+// play-along, an exercise, a fretboard cell or a diagram shape (shape, a
+// diagram the drill catalog makes one), with the node it is offered
 // for, the student's state on it, if any, and the instrument it was found
 // for, which new items are balanced across.
 type practiceCandidate struct {
 	diagram      *domain.Diagram
 	exercise     *domain.Exercise
 	cell         *domain.FretboardCell
+	shape        *domain.Diagram
 	nodeID       *string
 	state        *domain.PracticeItemState
 	instrumentID string
@@ -104,6 +108,8 @@ func (c practiceCandidate) key() string {
 		return domain.PlayAlongItemKey(c.diagram.ID)
 	case c.cell != nil:
 		return domain.FretboardCellItemKey(c.cell.LayoutInstrumentID, c.cell.String, c.cell.Fret)
+	case c.shape != nil:
+		return domain.DiagramShapeItemKey(c.shape.ID)
 	default:
 		return domain.ExerciseItemKey(c.exercise.ID)
 	}
@@ -301,8 +307,8 @@ func (s *PracticeSessionService) sessionCandidates(ctx context.Context, studentI
 
 // pathCandidates lists, on each of the skills of the student's paths in
 // path order, the play-alongs for instrumentID when it is in hand, then
-// its exercises, then its fretboard cells from knowledge, each with the
-// student's state from knowledge.
+// its exercises, then its diagram shapes, then its fretboard cells from
+// knowledge, each with the student's state from knowledge.
 func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []string, instrumentID string, knowledge KnowledgeMap, inHand bool) ([]practiceCandidate, error) {
 	seen := map[string]bool{}
 	var candidates []practiceCandidate
@@ -328,22 +334,15 @@ func (s *PracticeSessionService) pathCandidates(ctx context.Context, skillIDs []
 }
 
 // skillCandidates lists the play-alongs for instrumentID when it is in
-// hand, then the exercises for it, classified under skillID, each offered
-// for it. With no instrumentID, only the exercises for every instrument.
-// Chord catalog voicings play like play-alongs but aren't practised on
-// their own, so only general diagrams are offered.
+// hand, then the exercises for it, then the diagram shapes linked to it, in
+// hand or in the head, classified under skillID, each offered for it. With
+// no instrumentID, only the exercises for every instrument. Chord catalog
+// voicings play like play-alongs but aren't practised on their own, so only
+// general diagrams are offered.
 func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) ([]practiceCandidate, error) {
-	var candidates []practiceCandidate
-	if inHand {
-		diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range diagrams {
-			if playable(d) {
-				candidates = append(candidates, practiceCandidate{diagram: &d, nodeID: &skillID})
-			}
-		}
+	candidates, shapes, err := s.diagramCandidates(ctx, skillID, instrumentID, inHand)
+	if err != nil {
+		return nil, err
 	}
 	filter := domain.ExerciseFilter{SkillID: skillID}
 	if instrumentID != "" {
@@ -359,7 +358,29 @@ func (s *PracticeSessionService) skillCandidates(ctx context.Context, skillID, i
 		}
 		candidates = append(candidates, practiceCandidate{exercise: &e, nodeID: &skillID})
 	}
-	return candidates, nil
+	return append(candidates, shapes...), nil
+}
+
+// diagramCandidates lists the play-alongs for instrumentID when it is in
+// hand, and the diagram shapes linked to it, classified under skillID. With
+// no instrumentID, neither.
+func (s *PracticeSessionService) diagramCandidates(ctx context.Context, skillID, instrumentID string, inHand bool) (playAlongs, shapes []practiceCandidate, err error) {
+	if instrumentID == "" {
+		return nil, nil, nil
+	}
+	diagrams, err := s.listDiagrams(ctx, domain.DiagramListFilter{SkillID: skillID, InstrumentID: instrumentID, Kind: domain.DiagramKindBasic, Purpose: domain.DiagramPurposeFilterGeneral})
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, d := range diagrams {
+		if inHand && playable(d) {
+			playAlongs = append(playAlongs, practiceCandidate{diagram: &d, nodeID: &skillID})
+		}
+		if d.Shape != nil {
+			shapes = append(shapes, practiceCandidate{shape: &d, nodeID: &skillID})
+		}
+	}
+	return playAlongs, shapes, nil
 }
 
 // skillCells lists the fretboard cells among knowledge's items classified
@@ -438,22 +459,29 @@ func (s *PracticeSessionService) loadedOr(ctx context.Context, loaded map[string
 	return s.candidate(ctx, itemKey)
 }
 
-// candidate loads the play-along, exercise or fretboard cell itemKey
-// names. It reports false for any other kind of item, and for one that no
-// longer exists or can't be played along with.
+// diagram loads the diagram id; false when it no longer exists.
+func (s *PracticeSessionService) diagram(ctx context.Context, id string) (domain.Diagram, bool, error) {
+	d, err := s.diagrams.GetByID(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.Diagram{}, false, nil
+	}
+	return d, err == nil, err
+}
+
+// candidate loads the play-along, exercise, fretboard cell or diagram shape
+// itemKey names. It reports false for any other kind of item, and for one
+// that no longer exists, can't be played along with or is no drill shape.
 func (s *PracticeSessionService) candidate(ctx context.Context, itemKey string) (practiceCandidate, bool, error) {
 	if cell, ok := domain.ParseFretboardCellItemKey(itemKey); ok {
 		return practiceCandidate{cell: &cell}, true, nil
 	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindPlayAlong)+":"); ok {
-		d, err := s.diagrams.GetByID(ctx, id)
-		if errors.Is(err, domain.ErrNotFound) {
-			return practiceCandidate{}, false, nil
-		}
-		if err != nil {
-			return practiceCandidate{}, false, err
-		}
-		return practiceCandidate{diagram: &d}, d.Kind == domain.DiagramKindBasic && playable(d), nil
+		d, found, err := s.diagram(ctx, id)
+		return practiceCandidate{diagram: &d}, found && d.Kind == domain.DiagramKindBasic && playable(d), err
+	}
+	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindDiagramShape)+":"); ok {
+		d, found, err := s.diagram(ctx, id)
+		return practiceCandidate{shape: &d}, found && d.Shape != nil, err
 	}
 	if id, ok := strings.CutPrefix(itemKey, string(domain.PracticeItemKindExercise)+":"); ok {
 		e, err := s.exercises.GetByID(ctx, id)
@@ -534,6 +562,8 @@ func (c practiceCandidate) seconds() int {
 		return domain.PlayAlongSeconds(*c.diagram, startTempo(c), false)
 	case c.cell != nil:
 		return domain.FretboardCellSeconds
+	case c.shape != nil:
+		return domain.DiagramShapeSeconds
 	default:
 		return domain.ExerciseSeconds(*c.exercise)
 	}
@@ -798,7 +828,7 @@ func (c *composer) plan() []domain.PracticeSessionItem {
 }
 
 // pick is cand picked for reason: a play-along on its tempo ladder, an
-// exercise or a fretboard cell.
+// exercise, a fretboard cell or a diagram shape.
 func (c *composer) pick(cand practiceCandidate, reason domain.PracticePickReason) domain.PracticeSessionItem {
 	if cand.diagram == nil {
 		return c.item(cand, reason, 0, cand.seconds())
@@ -825,6 +855,11 @@ func (c *composer) item(cand practiceCandidate, reason domain.PracticePickReason
 	if cand.cell != nil {
 		item.Kind = domain.PracticeItemKindFretboardCell
 		item.FretboardCell = &domain.PlannedFretboardCell{FretboardCell: *cand.cell, Drill: domain.NextFretboardDrill(cand.state)}
+	}
+	if cand.shape != nil {
+		item.Kind = domain.PracticeItemKindDiagramShape
+		planned := domain.PlanDiagramShape(*cand.shape, domain.NextDiagramShapeDrill(cand.state), rand.IntN)
+		item.DiagramShape = &planned
 	}
 	if cand.diagram != nil {
 		item.Kind = domain.PracticeItemKindPlayAlong

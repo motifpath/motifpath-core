@@ -13,9 +13,9 @@ import (
 )
 
 // fakeNodeItemSource is an in-memory ports.NodeItemSource. It reads the
-// play-alongs and exercises from the world's diagram and exercise fakes,
-// plus the fretboard cells a scenario declares, which belong to a layout
-// instrument and suit every instrument sharing that layout.
+// play-alongs, diagram shapes and exercises from the world's diagram and
+// exercise fakes, plus the fretboard cells a scenario declares, which belong
+// to a layout instrument and suit every instrument sharing that layout.
 type fakeNodeItemSource struct {
 	diagrams  *fakeDiagramRepo
 	exercises *fakeExerciseRepo
@@ -35,6 +35,9 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 	for _, d := range f.diagrams.byID {
 		if d.Kind == domain.DiagramKindBasic && domain.DiagramPurposeFilterGeneral.Matches(d.Purpose) && d.DefaultPlaybackID != nil && slices.Contains(d.InstrumentIDs, instrumentID) {
 			items = append(items, domain.ClassifiedItem{ItemKey: domain.PlayAlongItemKey(d.ID), NodeIDs: append(d.SkillIDs(), d.ConceptIDs()...)})
+		}
+		if d.Shape != nil && slices.Contains(d.InstrumentIDs, instrumentID) {
+			items = append(items, domain.ClassifiedItem{ItemKey: domain.DiagramShapeItemKey(d.ID), NodeIDs: append(d.SkillIDs(), d.ConceptIDs()...)})
 		}
 	}
 	f.diagrams.mu.Unlock()

@@ -1,5 +1,7 @@
 package domain
 
+import "slices"
+
 // PracticeItemKindDiagramShape is a catalog diagram's shape recalled in the
 // head: named among its family's members, or one of its degrees found on it.
 const PracticeItemKindDiagramShape PracticeItemKind = "diagram_shape"
@@ -94,4 +96,81 @@ func newDiagramShapeReference(d Diagram) *DiagramShapeReference {
 		FamilyMembers:      members,
 		Positions:          positions,
 	}
+}
+
+// DiagramShapeDrill is a way of asking a diagram shape.
+type DiagramShapeDrill string
+
+const (
+	// DiagramShapeDrillNameTheShape shows the shape without its name; the
+	// student picks it among its family's members.
+	DiagramShapeDrillNameTheShape DiagramShapeDrill = "name_the_shape"
+	// DiagramShapeDrillFindTheDegree shows the shape with its root marked;
+	// the student taps the asked degree.
+	DiagramShapeDrillFindTheDegree DiagramShapeDrill = "find_the_degree"
+)
+
+// DiagramShapeSeconds is how long a diagram shape is estimated to take in a
+// session.
+const DiagramShapeSeconds = 10
+
+// NextDiagramShapeDrill is the way to ask a shape next: the one with the
+// fewer right answers on it, naming the shape on a tie, so both ways get
+// practised and a shape never answered right starts from naming it. state is
+// nil for a shape never practised.
+func NextDiagramShapeDrill(state *PracticeItemState) DiagramShapeDrill {
+	if state == nil {
+		return DiagramShapeDrillNameTheShape
+	}
+	named := state.RightByResponse[string(DiagramShapeDrillNameTheShape)]
+	found := state.RightByResponse[string(DiagramShapeDrillFindTheDegree)]
+	if found < named {
+		return DiagramShapeDrillFindTheDegree
+	}
+	return DiagramShapeDrillNameTheShape
+}
+
+// PlannedDiagramShape is a diagram shape as a session asks it.
+type PlannedDiagramShape struct {
+	DiagramID string
+	Drill     DiagramShapeDrill
+	// Family is the shape's family key.
+	Family string
+	// Options are every member of the family, in catalog order, for a shape
+	// to name, including members with no shape at this root, so the choices
+	// never narrow the answer down; empty for a degree to find.
+	Options []DiagramShapeMember
+	// AskedInterval is the degree to find; nil for a shape to name.
+	AskedInterval *string
+}
+
+// PlanDiagramShape is d, a drill shape, asked through drill. A degree to find
+// is one of the shape's intervals other than its root, since the root is
+// shown: pick chooses among them, given how many there are. A shape with
+// nothing but roots has no degree to find, so it is named instead.
+func PlanDiagramShape(d Diagram, drill DiagramShapeDrill, pick func(n int) int) PlannedDiagramShape {
+	planned := PlannedDiagramShape{DiagramID: d.ID, Drill: drill, Family: d.Shape.Family.Key}
+	if drill == DiagramShapeDrillFindTheDegree {
+		if degrees := shapeDegrees(d); len(degrees) > 0 {
+			asked := degrees[pick(len(degrees))]
+			planned.AskedInterval = &asked
+			planned.Options = []DiagramShapeMember{}
+			return planned
+		}
+		planned.Drill = DiagramShapeDrillNameTheShape
+	}
+	planned.Options = d.Shape.Family.Members
+	return planned
+}
+
+// shapeDegrees lists d's intervals other than its root, each once, in the
+// order its positions first show them.
+func shapeDegrees(d Diagram) []string {
+	var degrees []string
+	for _, p := range d.Positions {
+		if p.Interval != "R" && !slices.Contains(degrees, p.Interval) {
+			degrees = append(degrees, p.Interval)
+		}
+	}
+	return degrees
 }
