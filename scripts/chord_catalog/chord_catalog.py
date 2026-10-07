@@ -2,9 +2,14 @@
 every chord definition, every voicing (open voicings as written, templates
 materialized per root) and the chord_voicing diagram each voicing plays.
 
-Every voicing passes the musical validator before anything is emitted; a
+Every voicing passes the musical validator before anything is emitted, and a
 voicing that fails aborts the build, so a wrong fingering never becomes a
-migration. Rules: motifpath-specs catalogs/chord-voicings.md.
+migration. A voicing is accepted only when its sounded pitch classes are the
+chord's formula less the tones it declares omitted (a slash bass may sound
+too), the root always sounds, only the quality's omittable tones are left
+out, a slash chord's lowest string sounds its bass, every fret is between 0
+and 15, a movable shape sounds no open string, and no other voicing of the
+chord plays the same frets.
 
 Usage: python chord_catalog.py --output catalog/chord-voicings-v1 [--specs ../../../motifpath-specs]
 """
@@ -30,8 +35,9 @@ TUNING_FINGERPRINT = 'E2-A2-D3-G3-B3-E4'
 MAX_FRET = 15
 INSTALLED_AT = "'2026-10-06T00:00:00Z'"
 
-# Each quality's canonical suffix and its other accepted ones, as the chord
-# symbol parser reads them (golden/chord-symbols in motifpath-specs).
+# Each quality's canonical suffix and its other accepted ones. They must
+# match what the chord symbol parser accepts, or a catalog alias would be a
+# spelling no search finds.
 SUFFIXES = {
     'major': ['', 'M', 'maj'], 'minor': ['m', 'min', '-'], 'power': ['5'],
     'diminished': ['dim', '°'], 'augmented': ['aug', '+'], 'sus2': ['sus2'], 'sus4': ['sus4', 'sus'],
