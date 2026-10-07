@@ -525,6 +525,30 @@ func (f PositionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PositionMutation", m)
 }
 
+// The SongChartFunc type is an adapter to allow the use of ordinary
+// function as SongChart mutator.
+type SongChartFunc func(context.Context, *ent.SongChartMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SongChartFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SongChartMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SongChartMutation", m)
+}
+
+// The SongChartRevisionFunc type is an adapter to allow the use of ordinary
+// function as SongChartRevision mutator.
+type SongChartRevisionFunc func(context.Context, *ent.SongChartRevisionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SongChartRevisionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SongChartRevisionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SongChartRevisionMutation", m)
+}
+
 // The StudentLearningStateFunc type is an adapter to allow the use of ordinary
 // function as StudentLearningState mutator.
 type StudentLearningStateFunc func(context.Context, *ent.StudentLearningStateMutation) (ent.Value, error)
