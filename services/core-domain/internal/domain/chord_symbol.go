@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // ChordQuality is the kind of chord, independent of its root. Each quality
 // has one formula and one canonical suffix in a chord symbol.
@@ -156,7 +159,7 @@ func ParseChordSymbol(raw string) ChordSymbolReading {
 	unparsed := func(w ChordSymbolWarning) ChordSymbolReading {
 		return ChordSymbolReading{Status: ChordSymbolUnparsed, Warning: w}
 	}
-	if strings.ContainsAny(raw, " \t\n\r ") {
+	if strings.IndexFunc(raw, unicode.IsSpace) >= 0 {
 		return unparsed(ChordSymbolWarningUnparsed)
 	}
 	text := strings.NewReplacer("♭", "b", "♯", "#").Replace(raw)
