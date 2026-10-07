@@ -17,7 +17,9 @@ import (
 )
 
 // TestDiagramShapes reads the shapes the migrations install, so it migrates
-// an empty database rather than creating the bare schema.
+// an empty database rather than creating the bare schema. A shape counts
+// toward node levels only once sessions can ask it: until then it would
+// hold every level of its skill down with items nobody can practise.
 func TestDiagramShapes(t *testing.T) {
 	ctx := context.Background()
 	db := startMigrationPostgres(t, ctx)
@@ -30,50 +32,15 @@ func TestDiagramShapes(t *testing.T) {
 	diagrams := NewEntDiagramRepository(client)
 	cAGrip := catalogID("caged/C/A/3")
 
-	// shapes keeps the diagram shape items of items, by item key.
-	shapes := func(items []domain.ClassifiedItem) map[string][]string {
-		byKey := map[string][]string{}
-		for _, item := range items {
-			if strings.HasPrefix(item.ItemKey, string(domain.PracticeItemKindDiagramShape)+":") {
-				byKey[item.ItemKey] = item.NodeIDs
+	t.Run("a shape is no practice item while no session can ask it", func(t *testing.T) {
+		for _, instrumentID := range []string{acousticGuitarID, electricGuitarID} {
+			got, err := source.ClassifiedItems(ctx, instrumentID)
+
+			require.NoError(t, err)
+			for _, item := range got {
+				assert.False(t, strings.HasPrefix(item.ItemKey, string(domain.PracticeItemKindDiagramShape)+":"), item.ItemKey)
 			}
 		}
-		return byKey
-	}
-
-	t.Run("the guitar has every catalog shape, under its diagram's skill and concept", func(t *testing.T) {
-		got, err := source.ClassifiedItems(ctx, acousticGuitarID)
-
-		require.NoError(t, err)
-		byKey := shapes(got)
-		assert.Len(t, byKey, 298)
-		assert.ElementsMatch(t,
-			[]string{catalogID("knowledge-node/map-fretboard-caged"), catalogID("knowledge-node/caged-system")},
-			byKey[domain.DiagramShapeItemKey(cAGrip)])
-		assert.NotContains(t, byKey, domain.DiagramShapeItemKey(catalogID("chromatic/C")), "a map of no family is no shape")
-	})
-
-	t.Run("the electric guitar has the same shapes, with the same item keys", func(t *testing.T) {
-		guitar, err := source.ClassifiedItems(ctx, acousticGuitarID)
-		require.NoError(t, err)
-		electric, err := source.ClassifiedItems(ctx, electricGuitarID)
-		require.NoError(t, err)
-
-		assert.Equal(t, shapes(guitar), shapes(electric))
-	})
-
-	t.Run("an instrument no shape diagram is linked to has none", func(t *testing.T) {
-		got, err := source.ClassifiedItems(ctx, electricBassID)
-
-		require.NoError(t, err)
-		assert.Empty(t, shapes(got))
-	})
-
-	t.Run("no instrument has no shapes", func(t *testing.T) {
-		got, err := source.ClassifiedItems(ctx, "")
-
-		require.NoError(t, err)
-		assert.Empty(t, shapes(got))
 	})
 
 	t.Run("a shape diagram reads back with its family and member", func(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagram"
-	"github.com/motifpath/core-domain/internal/adapters/repo/ent/diagramshape"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/exercise"
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent/instrument"
 	"github.com/motifpath/core-domain/internal/domain"
@@ -25,8 +24,8 @@ func NewEntNodeItemSource(client *ent.Client) *EntNodeItemSource {
 	return &EntNodeItemSource{client: client}
 }
 
-// ClassifiedItems returns the play-alongs, exercises, fretboard cells and
-// diagram shapes that suit instrumentID. A play-along is a general basic diagram with playback —
+// ClassifiedItems returns the play-alongs, exercises and fretboard cells that
+// suit instrumentID. A play-along is a general basic diagram with playback —
 // a teacher's custom diagrams are theirs alone, never offered for practice,
 // and a chord catalog voicing isn't practised on its own — and it suits every
 // instrument it is linked to. A malformed id has no items.
@@ -75,33 +74,7 @@ func (s *EntNodeItemSource) ClassifiedItems(ctx context.Context, instrumentID st
 	if err != nil {
 		return nil, err
 	}
-	shapes, err := s.diagramShapes(ctx, parsed)
-	if err != nil {
-		return nil, err
-	}
-	return append(append(items, cells...), shapes...), nil
-}
-
-// diagramShapes lists the catalog's drill shapes whose diagram is linked to
-// instrumentID, each classified under its diagram's skills and concepts.
-func (s *EntNodeItemSource) diagramShapes(ctx context.Context, instrumentID uuid.UUID) ([]domain.ClassifiedItem, error) {
-	rows, err := s.client.DiagramShape.Query().
-		Where(diagramshape.HasDiagramWith(diagram.HasCompatibleInstrumentsWith(instrument.ID(instrumentID)))).
-		WithDiagram(func(q *ent.DiagramQuery) { q.WithSkills().WithConcepts() }).
-		Order(ent.Asc(diagramshape.FieldDiagramID)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]domain.ClassifiedItem, len(rows))
-	for i, row := range rows {
-		d := row.Edges.Diagram
-		items[i] = domain.ClassifiedItem{
-			ItemKey: domain.DiagramShapeItemKey(d.ID.String()),
-			NodeIDs: classifiedNodeIDs(d.Edges.Skills, d.Edges.Concepts),
-		}
-	}
-	return items, nil
+	return append(items, cells...), nil
 }
 
 // fretboardCells generates the catalog's fretboard cells that suit

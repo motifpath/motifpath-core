@@ -15,8 +15,7 @@ import (
 // fakeNodeItemSource is an in-memory ports.NodeItemSource. It reads the
 // play-alongs and exercises from the world's diagram and exercise fakes,
 // plus the fretboard cells a scenario declares, which belong to a layout
-// instrument and suit every instrument sharing that layout, and the diagram
-// shapes the catalog steps install, per instrument.
+// instrument and suit every instrument sharing that layout.
 type fakeNodeItemSource struct {
 	diagrams  *fakeDiagramRepo
 	exercises *fakeExerciseRepo
@@ -24,11 +23,10 @@ type fakeNodeItemSource struct {
 	// it shares; cells holds the declared cells per layout instrument.
 	layouts map[string]string
 	cells   map[string][]domain.ClassifiedItem
-	shapes  map[string][]domain.ClassifiedItem
 }
 
 func newFakeNodeItemSource(diagrams *fakeDiagramRepo, exercises *fakeExerciseRepo) *fakeNodeItemSource {
-	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}, shapes: map[string][]domain.ClassifiedItem{}}
+	return &fakeNodeItemSource{diagrams: diagrams, exercises: exercises, layouts: map[string]string{}, cells: map[string][]domain.ClassifiedItem{}}
 }
 
 func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID string) ([]domain.ClassifiedItem, error) {
@@ -50,7 +48,6 @@ func (f *fakeNodeItemSource) ClassifiedItems(_ context.Context, instrumentID str
 	if layout, ok := f.layouts[instrumentID]; ok {
 		items = append(items, f.cells[layout]...)
 	}
-	items = append(items, f.shapes[instrumentID]...)
 	return items, nil
 }
 

@@ -20,16 +20,6 @@ import (
 // writes it, next to the reference data migration that installs it.
 const basicGuitarCatalogFile = "../../../../catalog/basic-guitar-v1/catalog.json"
 
-// catalogFamilyClassification is the skill and concept each catalog family's
-// diagrams are classified under, as the diagram catalog installs them. Only
-// the families a drill shape family takes its diagrams from are listed.
-var catalogFamilyClassification = map[string][2]string{
-	"caged":          {"map-fretboard-caged", "caged-system"},
-	"caged-window":   {"play-scale-positions", "scales"},
-	"pentatonic-box": {"play-pentatonic-positions", "pentatonic-shapes"},
-	"arpeggio":       {"play-arpeggios", "chords"},
-}
-
 // shapeFamilyEntry is one diagram_shapes family of the practice drill
 // catalog.
 type shapeFamilyEntry struct {
@@ -43,11 +33,9 @@ type shapeFamilyEntry struct {
 // catalogDiagram is the part of a basic-guitar catalog entry the shape steps
 // read.
 type catalogDiagram struct {
-	Key         string            `json:"key"`
-	DiagramID   string            `json:"diagram_id"`
-	Family      string            `json:"family"`
-	Names       map[string]string `json:"names"`
-	Instruments []string          `json:"instruments"`
+	Key       string            `json:"key"`
+	DiagramID string            `json:"diagram_id"`
+	Names     map[string]string `json:"names"`
 }
 
 // catalogShape is a catalog diagram a family takes: the member it is.
@@ -72,7 +60,6 @@ type diagramShapeWorld struct {
 	// pending is a drill catalog a scenario declares, matched on install.
 	pending    []shapeFamilyEntry
 	installErr error
-	standing   domain.NodeStanding
 }
 
 func registerDiagramShapeSteps(sc *godog.ScenarioContext, w *world) {
@@ -87,11 +74,6 @@ func registerDiagramShapeSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the diagram "([^"]+)" is the member "([^"]+)"$`, w.diagramIsTheMember)
 	sc.Step(`^they have different item keys$`, w.theyHaveDifferentItemKeys)
 	sc.Step(`^the diagram "([^"]+)" is not among them$`, w.diagramIsNotAmongThem)
-	sc.Step(`^it suits "([^"]+)" and "([^"]+)" and no other instrument$`, w.itSuitsOnly)
-	sc.Step(`^the only practice items of skill "([^"]+)" on guitar are (\d+) shapes$`, w.onlyItemsOfSkillAreShapes)
-	sc.Step(`^"([^"]+)" is fluent on (\d+) of those shapes$`, w.isFluentOnShapes)
-	sc.Step(`^"([^"]+)"'s level for "([^"]+)" on "?([^"]+?)"? is derived$`, w.levelForNodeIsDerived)
-	sc.Step(`^it is "([^"]+)"$`, w.derivedLevelIs)
 	sc.Step(`^a drill catalog listing the family "([^"]+)" with the pattern "([^"]+)"$`, w.catalogListingFamilyPattern)
 	sc.Step(`^a drill catalog listing the family "([^"]+)" with only the members "([^"]+)", "([^"]+)", "([^"]+)" and "([^"]+)"$`, w.catalogListingFamilyMembers)
 	sc.Step(`^the installation fails, naming the family "([^"]+)"$`, w.installationFailsNamingFamily)
@@ -118,10 +100,7 @@ func (w *world) installShapeFamilies(file drillCatalogFile) {
 }
 
 // basicGuitarDiagramCatalogIsInstalled reads the basic-guitar catalog and
-// makes every diagram a family takes a practice item of its diagram's
-// skill and concept on each instrument the diagram is linked to. The
-// diagrams themselves stay out of the diagram fakes: their playbacks would
-// make them play-alongs too, which no shape scenario is about.
+// matches the drill catalog's families against it.
 func (w *world) basicGuitarDiagramCatalogIsInstalled() error {
 	raw, err := os.ReadFile(basicGuitarCatalogFile)
 	if err != nil {
@@ -131,27 +110,8 @@ func (w *world) basicGuitarDiagramCatalogIsInstalled() error {
 	if err := json.Unmarshal(raw, &s.catalog); err != nil {
 		return err
 	}
-	if s.shapes, err = matchShapes(s.families, s.catalog); err != nil {
-		return err
-	}
-	for _, shape := range s.shapes {
-		classification, ok := catalogFamilyClassification[shape.diagram.Family]
-		if !ok {
-			return fmt.Errorf("no classification for catalog family %q", shape.diagram.Family)
-		}
-		item := domain.ClassifiedItem{
-			ItemKey: shape.itemKey(),
-			NodeIDs: []string{w.skillIDFor(classification[0]).String(), w.conceptIDFor(classification[1]).String()},
-		}
-		for _, name := range shape.diagram.Instruments {
-			instrument, err := w.ensureCatalogInstrument(name)
-			if err != nil {
-				return err
-			}
-			w.practiceItems.shapes[instrument.ID] = append(w.practiceItems.shapes[instrument.ID], item)
-		}
-	}
-	return nil
+	s.shapes, err = matchShapes(s.families, s.catalog)
+	return err
 }
 
 // matchShapes makes each catalog diagram whose key matches a family's
@@ -310,102 +270,6 @@ func (w *world) diagramIsNotAmongThem(name string) error {
 	}
 	if slices.ContainsFunc(s.listed, func(shape catalogShape) bool { return shape.diagram.Names["en"] == name }) {
 		return fmt.Errorf("%q is a shape", name)
-	}
-	return nil
-}
-
-// itSuitsOnly checks the listed shape is a practice item on exactly the
-// named instruments, among every catalog fretted instrument.
-func (w *world) itSuitsOnly(first, second string) error {
-	listed := w.diagramShapes().listed
-	if len(listed) != 1 {
-		return fmt.Errorf("no single shape was listed")
-	}
-	var suits []string
-	for name := range catalogTunings {
-		instrument, err := w.ensureCatalogInstrument(name)
-		if err != nil {
-			return err
-		}
-		items, err := w.practiceItems.ClassifiedItems(w.ctx(), instrument.ID)
-		if err != nil {
-			return err
-		}
-		if slices.ContainsFunc(items, func(item domain.ClassifiedItem) bool { return item.ItemKey == listed[0].itemKey() }) {
-			suits = append(suits, name)
-		}
-	}
-	slices.Sort(suits)
-	want := []string{first, second}
-	slices.Sort(want)
-	if !slices.Equal(suits, want) {
-		return fmt.Errorf("the shape suits %v, want %v", suits, want)
-	}
-	return nil
-}
-
-// onlyItemsOfSkillAreShapes keeps count of the skill's guitar shapes and
-// drops the rest, so they are the skill's only items on guitar.
-func (w *world) onlyItemsOfSkillAreShapes(skill string, count int) error {
-	guitar := instrumentID("guitar").String()
-	skillID := w.skillIDFor(skill).String()
-	var kept []domain.ClassifiedItem
-	ofSkill := 0
-	for _, item := range w.practiceItems.shapes[guitar] {
-		if !slices.Contains(item.NodeIDs, skillID) {
-			kept = append(kept, item)
-			continue
-		}
-		if ofSkill < count {
-			kept = append(kept, item)
-			ofSkill++
-		}
-	}
-	if ofSkill != count {
-		return fmt.Errorf("skill %q has %d guitar shapes, not %d", skill, ofSkill, count)
-	}
-	w.practiceItems.shapes[guitar] = kept
-	if electric := instrumentID("electric-guitar").String(); w.practiceItems.shapes[electric] != nil {
-		w.practiceItems.shapes[electric] = slices.Clone(kept)
-	}
-	w.diagramShapes().listed = nil
-	for _, item := range kept {
-		if slices.Contains(item.NodeIDs, skillID) {
-			w.diagramShapes().listed = append(w.diagramShapes().listed, catalogShape{diagram: catalogDiagram{DiagramID: strings.TrimPrefix(item.ItemKey, "diagram_shape:")}})
-		}
-	}
-	return nil
-}
-
-func (w *world) isFluentOnShapes(name string, count int) error {
-	listed := w.diagramShapes().listed
-	if count > len(listed) {
-		return fmt.Errorf("only %d shapes are the skill's items, not %d", len(listed), count)
-	}
-	items := make([]domain.ClassifiedItem, count)
-	for i, shape := range listed[:count] {
-		items[i] = domain.ClassifiedItem{ItemKey: shape.itemKey()}
-	}
-	w.holdCells(name, items, domain.KnowledgeLevelFluent)
-	return nil
-}
-
-func (w *world) levelForNodeIsDerived(name, nodeName, instrument string) error {
-	standing, err := w.standingOn(name, nodeName, instrument)
-	if err != nil {
-		return err
-	}
-	w.diagramShapes().standing = standing
-	return nil
-}
-
-func (w *world) derivedLevelIs(want string) error {
-	level := w.diagramShapes().standing.Level
-	if level == nil {
-		return fmt.Errorf("no level was derived, want %q", want)
-	}
-	if string(*level) != want {
-		return fmt.Errorf("the derived level is %q, want %q", *level, want)
 	}
 	return nil
 }
