@@ -116,11 +116,12 @@ func TestPlanDiagramShape(t *testing.T) {
 	first := func(int) int { return 0 }
 	last := func(n int) int { return n - 1 }
 
-	t.Run("naming the shape offers every member of its family, in order, and asks no degree", func(t *testing.T) {
+	t.Run("naming the shape offers every member of its family, in order, says which it is and asks no degree", func(t *testing.T) {
 		got := domain.PlanDiagramShape(aMinorBox1, domain.DiagramShapeDrillNameTheShape, first)
 
 		assert.Equal(t, domain.PlannedDiagramShape{
-			DiagramID: "d-am1", Drill: domain.DiagramShapeDrillNameTheShape, Family: "caged-grip", Options: cagedGrips.Members,
+			DiagramID: "d-am1", LayoutInstrumentID: "guitar", Drill: domain.DiagramShapeDrillNameTheShape, Family: "caged-grip", Shape: "A",
+			Options: cagedGrips.Members,
 		}, got)
 	})
 
@@ -129,7 +130,8 @@ func TestPlanDiagramShape(t *testing.T) {
 		lastDegree := domain.PlanDiagramShape(aMinorBox1, domain.DiagramShapeDrillFindTheDegree, last)
 
 		assert.Equal(t, domain.PlannedDiagramShape{
-			DiagramID: "d-am1", Drill: domain.DiagramShapeDrillFindTheDegree, Family: "caged-grip", Options: []domain.DiagramShapeMember{}, AskedInterval: strPtr("b3"),
+			DiagramID: "d-am1", LayoutInstrumentID: "guitar", Drill: domain.DiagramShapeDrillFindTheDegree, Family: "caged-grip", Shape: "A",
+			Options: []domain.DiagramShapeMember{}, AskedInterval: strPtr("b3"),
 		}, firstDegree)
 		assert.Equal(t, strPtr("b7"), lastDegree.AskedInterval)
 	})
