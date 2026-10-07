@@ -54,4 +54,5 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerHealthSteps(sc, w)
 	registerAdminSteps(sc, w)
 	registerPracticeSteps(sc, w)
+	registerSongChartSteps(sc, w)
 }

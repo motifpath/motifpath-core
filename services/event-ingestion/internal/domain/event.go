@@ -19,6 +19,10 @@ const (
 	EventTypePracticeItemAnswered      EventType = "practice.item_answered"
 	EventTypePracticeSessionEnded      EventType = "practice.session_ended"
 	EventTypePracticeTapCheckCompleted EventType = "practice.tap_check_completed"
+
+	EventTypeSongChartOpened           EventType = "song_chart.opened"
+	EventTypeSongChartChordViewed      EventType = "song_chart.chord_viewed"
+	EventTypeSongChartSectionCompleted EventType = "song_chart.section_completed"
 )
 
 // TrackingEventBase is the common envelope carried by every student tracking event.

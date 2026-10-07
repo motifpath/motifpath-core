@@ -48,6 +48,8 @@ func toDomainEvent(body *generated.TrackingEvent) (domain.TrackingEvent, error) 
 		return toPracticeSessionEndedEvent(eventType, body)
 	case domain.EventTypePracticeTapCheckCompleted:
 		return toPracticeTapCheckCompletedEvent(eventType, body)
+	case domain.EventTypeSongChartOpened, domain.EventTypeSongChartChordViewed, domain.EventTypeSongChartSectionCompleted:
+		return toSongChartEvent(eventType, body)
 	default:
 		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, eventTypeStr)
 	}

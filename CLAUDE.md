@@ -38,6 +38,8 @@ Tracking events (client-emitted; defined in openapi/components/schemas/events.ya
   practice.session_started, practice.item_answered, practice.session_ended,
   practice.tap_check_completed — event-ingestion stamps the student's latest tap time
   (tap_ms) on timed practice.item_answered events; a client-sent tap_ms is ignored
+  song_chart.opened, song_chart.chord_viewed, song_chart.section_completed — what students do in
+  a song chart's reader; stored and published, not processed by the aggregation worker
 
 Threshold logic: if a ThresholdOverride exists for a student+node pair, it takes
 precedence over the Node's default threshold. ALWAYS apply this rule in the application layer.
