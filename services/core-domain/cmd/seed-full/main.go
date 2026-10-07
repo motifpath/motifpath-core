@@ -492,6 +492,33 @@ func seedStudents(ctx context.Context, identity *application.IdentityService) (m
 	return result, nil
 }
 
+// contentNodeSpec is one seeded content node, keyed by a descriptive
+// lookup key.
+type contentNodeSpec struct {
+	key         string
+	title       string
+	contentType domain.ContentType
+	difficulty  domain.DifficultyLevel
+	skill       string
+	concept     string
+}
+
+// contentNodeSpecs lists every seeded content node. The two fretboard-notes
+// articles teach the skills fretboard cells are generated for, so a path
+// holding them gets note drills in a session in the head.
+func contentNodeSpecs() []contentNodeSpec {
+	return []contentNodeSpec{
+		{"video-beginner", "Open position C major scale", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "play-major-scale-open", "major-scale"},
+		{"article-beginner", "Reading a chord chart", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "read-chord-charts", "chord-charts"},
+		{"video-intermediate", "Call-and-response phrasing", domain.ContentTypeVideo, domain.DifficultyLevelIntermediate, "phrase-call-response", "call-and-response"},
+		{"video-beginner-rhythm", "A steady eighth-note strum", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "strum-steady", "strumming-patterns"},
+		{"video-advanced", "Phrasing over a blues turnaround", domain.ContentTypeVideo, domain.DifficultyLevelAdvanced, "improvise-blues", "blues-form"},
+		{"article-advanced", "Modal interchange in blues turnarounds", domain.ContentTypeArticle, domain.DifficultyLevelAdvanced, "use-modal-interchange", "modal-interchange"},
+		{"article-notes-root-strings", "Notes on the E and A strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-root-strings", "notes-fretboard"},
+		{"article-notes-top-strings", "Notes on the D, G, B and high E strings", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "find-notes-top-strings", "notes-fretboard"},
+	}
+}
+
 // seedContentNodes creates video and article nodes at a spread of
 // difficulty levels, keyed by a descriptive lookup key — every content
 // node created here is published immediately, since every downstream
@@ -505,22 +532,7 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 	// video-intermediate, the admin's current lesson, runs 30 s, so its playable diagram cue fits
 	// after its image cues.
 	longSeedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-30s.mp4"
-	type spec struct {
-		key         string
-		title       string
-		contentType domain.ContentType
-		difficulty  domain.DifficultyLevel
-		skill       string
-		concept     string
-	}
-	specs := []spec{
-		{"video-beginner", "Open position C major scale", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "play-major-scale-open", "major-scale"},
-		{"article-beginner", "Reading a chord chart", domain.ContentTypeArticle, domain.DifficultyLevelBeginner, "read-chord-charts", "chord-charts"},
-		{"video-intermediate", "Call-and-response phrasing", domain.ContentTypeVideo, domain.DifficultyLevelIntermediate, "phrase-call-response", "call-and-response"},
-		{"video-beginner-rhythm", "A steady eighth-note strum", domain.ContentTypeVideo, domain.DifficultyLevelBeginner, "strum-steady", "strumming-patterns"},
-		{"video-advanced", "Phrasing over a blues turnaround", domain.ContentTypeVideo, domain.DifficultyLevelAdvanced, "improvise-blues", "blues-form"},
-		{"article-advanced", "Modal interchange in blues turnarounds", domain.ContentTypeArticle, domain.DifficultyLevelAdvanced, "use-modal-interchange", "modal-interchange"},
-	}
+	specs := contentNodeSpecs()
 
 	result := make(map[string]domain.ContentNode, len(specs))
 	for _, s := range specs {
@@ -853,6 +865,15 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	})
 }
 
+// adminPathNodeKeys are the admin's standalone path items, in order: two
+// lessons to watch and practise, then the fretboard-notes articles, so a
+// session in the head has notes to drill.
+var adminPathNodeKeys = []string{"video-beginner", "video-intermediate", "article-notes-root-strings", "article-notes-top-strings"}
+
+// adminPathInstrumentIDs makes the admin's path a guitar path, so the home
+// has a guitar tab with its fretboard map.
+var adminPathInstrumentIDs = []string{acousticGuitarID}
+
 // seedAdminZeroUser enrolls the freshly-bootstrapped admin
 // (ADMIN_CLERK_USER_ID) in a course and a standalone path exactly like the
 // synthetic students — so signing in as yourself after a reset shows real,
@@ -865,7 +886,7 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 // below, and marking it completed in one context would silently mark it
 // completed in the other too, leaving nothing "current" to open there.
 //
-// The standalone path is built from video-beginner and video-intermediate,
+// The standalone path starts with video-beginner and video-intermediate,
 // and both get timed cues plus their own practice challenge, so the node
 // that ends up completed and the one that ends up current both have
 // something to watch and practice instead of an empty lesson screen.
@@ -895,10 +916,11 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 		return fmt.Errorf("link every exercise to video-intermediate's challenge: %w", err)
 	}
 
-	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Summary: seedStr("A short path to try the lesson and practice screens."), Language: seedStr("en"), Items: []application.PathItemInput{
-		{ContentNodeID: nodes["video-beginner"].ID},
-		{ContentNodeID: nodes["video-intermediate"].ID},
-	}})
+	items := make([]application.PathItemInput, 0, len(adminPathNodeKeys))
+	for _, key := range adminPathNodeKeys {
+		items = append(items, application.PathItemInput{ContentNodeID: nodes[key].ID})
+	}
+	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Summary: seedStr("A short path to try the lesson and practice screens."), Language: seedStr("en"), InstrumentIDs: adminPathInstrumentIDs, Items: items})
 	if err != nil {
 		return fmt.Errorf("create admin's standalone path: %w", err)
 	}
