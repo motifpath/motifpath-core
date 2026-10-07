@@ -3,8 +3,8 @@ package domain
 import "slices"
 
 // DiagramReference is what the practice graders may know about a Diagram
-// that it exists, the instruments it suits, and its playback
-// tempo. Core keeps it in the read-only practice reference snapshot; it
+// that it exists, the instruments it suits, its playback tempo and, for a
+// drill shape, what its shape is. Core keeps it in the read-only practice reference snapshot; it
 // carries nothing shown to users.
 type DiagramReference struct {
 	ID string
@@ -13,11 +13,13 @@ type DiagramReference struct {
 	// TempoBPM is the default playback's tempo; nil when the diagram has no
 	// playbacks.
 	TempoBPM *int
+	// Shape is nil for a diagram that isn't a drill shape.
+	Shape *DiagramShapeReference
 }
 
 // NewDiagramReference returns d's reference.
 func NewDiagramReference(d Diagram) DiagramReference {
-	ref := DiagramReference{ID: d.ID, InstrumentIDs: slices.Clone(d.InstrumentIDs)}
+	ref := DiagramReference{ID: d.ID, InstrumentIDs: slices.Clone(d.InstrumentIDs), Shape: newDiagramShapeReference(d)}
 	if playback, ok := d.DefaultPlayback(); ok {
 		tempo := playback.TempoBPM
 		ref.TempoBPM = &tempo
