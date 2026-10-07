@@ -405,6 +405,7 @@ func (w *world) requestRefusedAuthError() error {
 	switch w.lastResp.(type) {
 	case generated.RegisterUser401JSONResponse,
 		generated.SearchChords401JSONResponse,
+		generated.GetPublishedSongChart401JSONResponse,
 		generated.PublishLearningPath401JSONResponse,
 		generated.ListCatalogPaths401JSONResponse,
 		generated.ListCatalogPathCreators401JSONResponse,
@@ -505,6 +506,10 @@ func (w *world) validationErrors() ([]struct {
 	case generated.RegisterUser400JSONResponse:
 		return resp.Errors, nil
 	case generated.SearchChords400JSONResponse:
+		return resp.Errors, nil
+	case generated.CreateSongChart400JSONResponse:
+		return resp.Errors, nil
+	case generated.UpdateSongChartDraft400JSONResponse:
 		return resp.Errors, nil
 	case generated.GetPracticeSummary400JSONResponse:
 		return resp.Errors, nil

@@ -2010,6 +2010,16 @@ func (f *fakeDiagramRepo) GetByID(_ context.Context, id string) (domain.Diagram,
 	return f.resolveClassification(d), nil
 }
 
+func (f *fakeDiagramRepo) GetByIDs(ctx context.Context, ids []string) (map[string]domain.Diagram, error) {
+	found := map[string]domain.Diagram{}
+	for _, id := range ids {
+		if d, err := f.GetByID(ctx, id); err == nil {
+			found[id] = d
+		}
+	}
+	return found, nil
+}
+
 func (f *fakeDiagramRepo) List(_ context.Context, filter domain.DiagramListFilter, page domain.PageRequest) (domain.Page[domain.Diagram], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
