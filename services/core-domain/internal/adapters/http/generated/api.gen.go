@@ -3779,8 +3779,9 @@ type PracticeSessionItem struct {
 		Drill DiagramShapeDrill `json:"drill"`
 
 		// Options For name_the_shape: every member of the shape's family, in the catalog's
-		// order, whichever of them exist at this root. The names never mention the root,
-		// so the root shown never gives the answer away. Empty for find_the_degree.
+		// order (at least two), including members that have no shape at this root, so
+		// the choices never narrow the answer down. The names never mention the root, so
+		// the root shown never gives the answer away either. Empty for find_the_degree.
 		Options []struct {
 			// Name The member's name in the student's language, such as "A shape".
 			Name string `json:"name"`
