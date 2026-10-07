@@ -12,11 +12,26 @@ import (
 )
 
 // diagramReferenceDocument is a `practice_reference` document of kind "diagram",
-// as core-domain writes it. core-domain is the collection's only writer.
+// as core-domain writes it. core-domain is the collection's only writer. A drill
+// shape also carries its layout, family, member, its family's members and its
+// positions; the other diagrams leave them out.
 type diagramReferenceDocument struct {
-	ID            string   `bson:"id"`
-	InstrumentIDs []string `bson:"instrument_ids"`
-	TempoBPM      *int     `bson:"tempo_bpm"`
+	ID                 string                    `bson:"id"`
+	InstrumentIDs      []string                  `bson:"instrument_ids"`
+	TempoBPM           *int                      `bson:"tempo_bpm"`
+	LayoutInstrumentID string                    `bson:"layout_instrument_id,omitempty"`
+	ShapeFamily        string                    `bson:"shape_family,omitempty"`
+	Shape              string                    `bson:"shape,omitempty"`
+	FamilyMembers      []string                  `bson:"family_members,omitempty"`
+	Positions          []diagramPositionDocument `bson:"positions,omitempty"`
+}
+
+// diagramPositionDocument is one marker of a drill shape: where it is, and its
+// interval from the diagram's root.
+type diagramPositionDocument struct {
+	String   int    `bson:"string"`
+	Fret     int    `bson:"fret"`
+	Interval string `bson:"interval"`
 }
 
 // exerciseReferenceDocument is a `practice_reference` document of kind "exercise".
@@ -73,7 +88,14 @@ func (r *MongoPracticeReferenceReader) Diagrams(ctx context.Context, ids []strin
 		return nil, err
 	}
 	for _, d := range docs {
-		found[d.ID] = domain.DiagramReference{ID: d.ID, InstrumentIDs: d.InstrumentIDs, TempoBPM: d.TempoBPM}
+		diagram := domain.DiagramReference{
+			ID: d.ID, InstrumentIDs: d.InstrumentIDs, TempoBPM: d.TempoBPM, LayoutInstrumentID: d.LayoutInstrumentID,
+			ShapeFamily: d.ShapeFamily, Shape: d.Shape, FamilyMembers: d.FamilyMembers,
+		}
+		for _, p := range d.Positions {
+			diagram.Positions = append(diagram.Positions, domain.DiagramPosition(p))
+		}
+		found[d.ID] = diagram
 	}
 	return found, nil
 }

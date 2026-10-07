@@ -20,6 +20,7 @@ const (
 	studentC  = "c0c00000-0000-4000-8000-000000000003"
 	diagram1  = "00000000-0000-4000-8000-0000000000f1"
 	diagram2  = "00000000-0000-4000-8000-0000000000f2"
+	shape1    = "928330d5-903e-572c-9d41-5fde99d51ed1"
 	exercise1 = "00000000-0000-4000-8000-0000000000e1"
 	exercise2 = "00000000-0000-4000-8000-0000000000e2"
 	guitar    = "6ea2d087-ab9c-59dc-9657-8546025414d2"
@@ -39,16 +40,31 @@ func TestMongoPracticeReferenceReader_Diagrams(t *testing.T) {
 		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: diagram2}, {Key: "instrument_ids", Value: bson.A{}},
 			{Key: "tempo_bpm", Value: nil}, {Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 1}},
 		{{Key: "kind", Value: "exercise"}, {Key: "id", Value: diagram1}, {Key: "snapshot_version", Value: 1}},
+		// A drill shape also carries its layout, family, member, its family's
+		// members and its positions.
+		{{Key: "kind", Value: "diagram"}, {Key: "id", Value: shape1}, {Key: "instrument_ids", Value: bson.A{guitar}},
+			{Key: "tempo_bpm", Value: 60}, {Key: "layout_instrument_id", Value: guitar},
+			{Key: "shape_family", Value: "caged-grip"}, {Key: "shape", Value: "A"}, {Key: "family_members", Value: bson.A{"C", "A", "G", "E", "D"}},
+			{Key: "positions", Value: bson.A{
+				bson.D{{Key: "string", Value: 5}, {Key: "fret", Value: 3}, {Key: "interval", Value: "R"}},
+				bson.D{{Key: "string", Value: 2}, {Key: "fret", Value: 5}, {Key: "interval", Value: "3"}},
+			}},
+			{Key: "updated_at", Value: time.Now()}, {Key: "snapshot_version", Value: 2}},
 	})
 	require.NoError(t, err)
 	reader := NewMongoPracticeReferenceReader(db)
 
-	got, err := reader.Diagrams(ctx, []string{diagram1, diagram2, "00000000-0000-4000-8000-0000000000ff"})
+	got, err := reader.Diagrams(ctx, []string{diagram1, diagram2, shape1, "00000000-0000-4000-8000-0000000000ff"})
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]domain.DiagramReference{
 		diagram1: {ID: diagram1, InstrumentIDs: []string{guitar}, TempoBPM: intPtr(90)},
 		diagram2: {ID: diagram2, InstrumentIDs: []string{}},
+		shape1: {
+			ID: shape1, InstrumentIDs: []string{guitar}, TempoBPM: intPtr(60), LayoutInstrumentID: guitar,
+			ShapeFamily: "caged-grip", Shape: "A", FamilyMembers: []string{"C", "A", "G", "E", "D"},
+			Positions: []domain.DiagramPosition{{String: 5, Fret: 3, Interval: "R"}, {String: 2, Fret: 5, Interval: "3"}},
+		},
 	}, got)
 }
 
@@ -211,7 +227,23 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 			shownOption(t, "o-1", false, "B"), shownOption(t, "o-2", true, "C"),
 		}},
 	}
-	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge} {
+	named := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000006", StudentID: studentA,
+		ItemKey: "diagram_shape:" + shape1, Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday,
+		GraderID: "diagram_shape.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: "E", LatencyMs: intPtr(3100)},
+		Correct:  boolPtr(false), LatencyMs: intPtr(3100),
+		AnswerKey: &domain.AnswerKey{ShapeFamily: "caged-grip", Shape: "A"},
+	}
+	found := domain.PracticeEvidence{
+		EvidenceID: "e0000000-0000-4000-8000-000000000007", StudentID: studentA,
+		ItemKey: "diagram_shape:" + shape1, Source: domain.EvidenceSourceAutoGraded, OccurredAt: monday.Add(time.Minute),
+		GraderID: "diagram_shape.v1",
+		Response: domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "5", String: intPtr(1), Fret: intPtr(3), LatencyMs: intPtr(2200)},
+		Correct:  boolPtr(true), LatencyMs: intPtr(2200),
+		AnswerKey: &domain.AnswerKey{Interval: "5", Cells: []domain.AnswerCell{{String: 4, Fret: 5}, {String: 1, Fret: 3}}},
+	}
+	for _, e := range []domain.PracticeEvidence{later, earlier, other, timed, challenge, named, found} {
 		inserted, err := repo.Insert(ctx, e)
 		require.NoError(t, err)
 		require.True(t, inserted)
@@ -233,6 +265,12 @@ func TestMongoPracticeEvidenceRepository(t *testing.T) {
 		got, err := repo.ListForItem(ctx, studentA, timed.ItemKey)
 		require.NoError(t, err)
 		assert.Equal(t, []domain.PracticeEvidence{timed}, got)
+	})
+
+	t.Run("a diagram shape's answers keep their responses and answer keys", func(t *testing.T) {
+		got, err := repo.ListForItem(ctx, studentA, named.ItemKey)
+		require.NoError(t, err)
+		assert.Equal(t, []domain.PracticeEvidence{named, found}, got)
 	})
 
 	t.Run("a challenge answer keeps its trigger context and audio length", func(t *testing.T) {

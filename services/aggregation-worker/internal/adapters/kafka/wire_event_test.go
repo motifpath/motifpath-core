@@ -40,6 +40,22 @@ func TestToDomainEvent_PracticeItemAnswered(t *testing.T) {
 			},
 		},
 		{
+			name:    "named shape",
+			payload: `{` + base + `,"item_key":"diagram_shape:55555555-5555-4555-8555-555555555555","response":{"response_type":"name_the_shape","shape":"A","latency_ms":2600}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "diagram_shape:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: "A", LatencyMs: intPtr(2600)},
+			},
+		},
+		{
+			name:    "found degree",
+			payload: `{` + base + `,"item_key":"diagram_shape:55555555-5555-4555-8555-555555555555","response":{"response_type":"find_the_degree","interval":"b3","string":2,"fret":5,"latency_ms":2400}}`,
+			want: domain.PracticeAnswer{
+				ItemKey:  "diagram_shape:55555555-5555-4555-8555-555555555555",
+				Response: domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "b3", String: intPtr(2), Fret: intPtr(5), LatencyMs: intPtr(2400)},
+			},
+		},
+		{
 			name:    "found note and chosen options",
 			payload: `{` + base + `,"item_key":"exercise:55555555-5555-4555-8555-555555555555","response":{"response_type":"option_choice","option_ids":["a","b"],"latency_ms":900,"string":6,"fret":0}}`,
 			want: domain.PracticeAnswer{

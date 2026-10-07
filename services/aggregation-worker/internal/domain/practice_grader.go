@@ -9,6 +9,7 @@ const (
 	GradeRejectionInvalidCell            GradeRejection = "invalid_cell"
 	GradeRejectionUnknownOption          GradeRejection = "unknown_option"
 	GradeRejectionMeasureMissing         GradeRejection = "measure_missing"
+	GradeRejectionDegreeNotInShape       GradeRejection = "degree_not_in_shape"
 )
 
 // EvidenceSource is where a piece of evidence comes from.
@@ -37,15 +38,26 @@ type GradedEvidence struct {
 }
 
 // AnswerKey is what a right answer was when an answer was graded: the asked
-// cell and its note (fretboard cells), or every option the student was shown
-// (exercises).
+// cell and its note (fretboard cells), every option the student was shown
+// (exercises), a shape's family and member (a shape named), or the asked degree
+// and every position of the shape that is it (a degree found).
 type AnswerKey struct {
 	String *int
 	Fret   *int
 	// NoteName is the cell's note, spelled with sharps; any spelling of its pitch
 	// is right.
-	NoteName string
-	Options  []AnswerOption
+	NoteName    string
+	Options     []AnswerOption
+	ShapeFamily string
+	Shape       string
+	Interval    string
+	Cells       []AnswerCell
+}
+
+// AnswerCell is a string and fret where a right answer was.
+type AnswerCell struct {
+	String int
+	Fret   int
 }
 
 // AnswerOption is an exercise option as the student was shown it. Shown is the
@@ -67,11 +79,26 @@ func rejected(reason GradeRejection) GradeResult { return GradeResult{Rejection:
 
 // DiagramReference is what a grader may know about a diagram, from core's
 // practice_reference snapshot. TempoBPM is nil for a diagram without
-// playback.
+// playback. A diagram that is a drill shape also has its layout instrument, its
+// family and member, its family's members and its positions; ShapeFamily is
+// empty for any other diagram.
 type DiagramReference struct {
-	ID            string
-	InstrumentIDs []string
-	TempoBPM      *int
+	ID                 string
+	InstrumentIDs      []string
+	TempoBPM           *int
+	LayoutInstrumentID string
+	ShapeFamily        string
+	Shape              string
+	FamilyMembers      []string
+	Positions          []DiagramPosition
+}
+
+// DiagramPosition is one marker of a diagram: where it is, and the interval it
+// is from the diagram's root.
+type DiagramPosition struct {
+	String   int
+	Fret     int
+	Interval string
 }
 
 // ExerciseReference is what a grader may know about an authored exercise, from
@@ -101,13 +128,13 @@ func (e ExerciseReference) DrillTemplateKey() string {
 }
 
 // TimedDrillTemplate is the timed drill template an answer to key practises:
-// a fretboard cell's way of being asked, or an exercise's type. A play-along
+// a fretboard cell's or a diagram shape's way of being asked, or an exercise's type. A play-along
 // or a chord change is rated, not timed, so it practises none, and neither
 // does an exercise missing from ref.
 func TimedDrillTemplate(key PracticeItemKey, response PracticeResponse, ref PracticeReference) string {
 	switch key.Kind {
-	case PracticeItemKindFretboardCell:
-		return string(PracticeItemKindFretboardCell) + ":" + string(response.Type)
+	case PracticeItemKindFretboardCell, PracticeItemKindDiagramShape:
+		return string(key.Kind) + ":" + string(response.Type)
 	case PracticeItemKindExercise:
 		if e, ok := ref.Exercises[key.ExerciseID()]; ok {
 			return e.DrillTemplateKey()
@@ -140,6 +167,7 @@ var graderByKind = map[PracticeItemKind]Grader{
 	PracticeItemKindChordChange:   selfRatingV1{},
 	PracticeItemKindExercise:      exerciseOptionV1{},
 	PracticeItemKindFretboardCell: fretboardCellV1{},
+	PracticeItemKindDiagramShape:  diagramShapeV1{},
 }
 
 // GraderFor returns the grader for an item kind, and false when the worker has no
@@ -151,5 +179,5 @@ func GraderFor(kind PracticeItemKind) (Grader, bool) {
 
 // Graders lists each registered grader once.
 func Graders() []Grader {
-	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}}
+	return []Grader{selfRatingV1{}, exerciseOptionV1{}, fretboardCellV1{}, diagramShapeV1{}}
 }

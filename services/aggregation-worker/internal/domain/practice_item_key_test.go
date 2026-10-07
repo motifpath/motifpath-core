@@ -22,6 +22,7 @@ func TestParsePracticeItemKey(t *testing.T) {
 		{"chord_change:" + diagramA + ":" + diagramB, PracticeItemKindChordChange, []string{diagramA, diagramB}},
 		{"exercise:" + diagramA, PracticeItemKindExercise, nil},
 		{"fretboard_cell:" + diagramA + ":5:3", PracticeItemKindFretboardCell, nil},
+		{"diagram_shape:" + diagramA, PracticeItemKindDiagramShape, []string{diagramA}},
 	}
 	for _, c := range cases {
 		t.Run(c.raw, func(t *testing.T) {
@@ -42,6 +43,7 @@ func TestParsePracticeItemKey_RejectsMalformedKeys(t *testing.T) {
 		"rhythm:" + diagramA,
 		"chord_change:" + diagramA,
 		"fretboard_cell:" + diagramA + ":0:3",
+		"diagram_shape:" + diagramA + ":" + diagramB,
 	} {
 		t.Run(raw, func(t *testing.T) {
 			_, err := ParsePracticeItemKey(raw)

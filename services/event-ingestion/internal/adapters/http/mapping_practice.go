@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -33,7 +34,16 @@ const (
 var (
 	noteNamePattern         = regexp.MustCompile(`^[A-G][#b]?$`)
 	drillTemplateKeyPattern = regexp.MustCompile(`^[a-z][a-z_]*:[a-z][a-z_]*$`)
+	// shapeKeyPattern is a shape family member's key, such as A, 2 or minor.
+	shapeKeyPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*$`)
 )
+
+// shapeIntervals are the interval codes a diagram position can have.
+var shapeIntervals = map[string]bool{
+	"R": true, "b2": true, "2": true, "#2": true, "b3": true, "3": true, "4": true, "#4": true,
+	"b5": true, "5": true, "#5": true, "b6": true, "6": true, "bb7": true, "b7": true, "7": true,
+	"b9": true, "9": true, "#9": true, "11": true, "#11": true, "b13": true, "13": true,
+}
 
 func toPracticeSessionStartedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {
 	v, err := body.AsPracticeSessionStartedEvent()
@@ -245,6 +255,8 @@ func validPickReason(r domain.PracticePickReason) bool {
 type rawPracticeResponse struct {
 	ResponseType     string   `json:"response_type"`
 	NoteName         *string  `json:"note_name"`
+	Shape            *string  `json:"shape"`
+	Interval         *string  `json:"interval"`
 	String           *int     `json:"string"`
 	Fret             *int     `json:"fret"`
 	OptionIDs        []string `json:"option_ids"`
@@ -253,6 +265,26 @@ type rawPracticeResponse struct {
 	Rating           *string  `json:"rating"`
 	TempoBPM         *int     `json:"tempo_bpm"`
 	ChangesPerMinute *int     `json:"changes_per_minute"`
+}
+
+// strayProperty is the first property r carries that isn't one of shape's
+// properties, or "" when it carries none.
+func (r rawPracticeResponse) strayProperty(shape ...string) string {
+	carried := []struct {
+		name    string
+		present bool
+	}{
+		{"note_name", r.NoteName != nil}, {"shape", r.Shape != nil}, {"interval", r.Interval != nil},
+		{"string", r.String != nil}, {"fret", r.Fret != nil}, {"option_ids", r.OptionIDs != nil},
+		{"latency_ms", r.LatencyMs != nil}, {"audio_ms", r.AudioMs != nil}, {"rating", r.Rating != nil},
+		{"tempo_bpm", r.TempoBPM != nil}, {"changes_per_minute", r.ChangesPerMinute != nil},
+	}
+	for _, p := range carried {
+		if p.present && !slices.Contains(shape, p.name) {
+			return p.name
+		}
+	}
+	return ""
 }
 
 func toDomainPracticeResponse(raw []byte) (domain.PracticeResponse, error) {
@@ -276,18 +308,21 @@ func toDomainPracticeResponse(raw []byte) (domain.PracticeResponse, error) {
 		return invalidResponse("audio_ms belongs to option_choice only")
 	}
 
-	switch domain.PracticeResponseType(r.ResponseType) {
-	case domain.PracticeResponseNameTheNote:
-		return toNameTheNoteResponse(r)
-	case domain.PracticeResponseFindTheNote:
-		return toFindTheNoteResponse(r)
-	case domain.PracticeResponseOptionChoice:
-		return toOptionChoiceResponse(r)
-	case domain.PracticeResponseSelfRating:
-		return toSelfRatingResponse(r)
-	default:
+	toShape, ok := responseShapes[domain.PracticeResponseType(r.ResponseType)]
+	if !ok {
 		return invalidResponse(fmt.Sprintf("response_type %q is not a known response", r.ResponseType))
 	}
+	return toShape(r)
+}
+
+// responseShapes reads each response shape, by its response_type.
+var responseShapes = map[domain.PracticeResponseType]func(rawPracticeResponse) (domain.PracticeResponse, error){
+	domain.PracticeResponseNameTheNote:   toNameTheNoteResponse,
+	domain.PracticeResponseFindTheNote:   toFindTheNoteResponse,
+	domain.PracticeResponseOptionChoice:  toOptionChoiceResponse,
+	domain.PracticeResponseSelfRating:    toSelfRatingResponse,
+	domain.PracticeResponseNameTheShape:  toNameTheShapeResponse,
+	domain.PracticeResponseFindTheDegree: toFindTheDegreeResponse,
 }
 
 func invalidResponse(why string) (domain.PracticeResponse, error) {
@@ -295,8 +330,8 @@ func invalidResponse(why string) (domain.PracticeResponse, error) {
 }
 
 func toNameTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if r.String != nil || r.Fret != nil || r.OptionIDs != nil || r.Rating != nil || r.TempoBPM != nil || r.ChangesPerMinute != nil {
-		return invalidResponse("carries a property name_the_note does not have")
+	if property := r.strayProperty("note_name", "latency_ms"); property != "" {
+		return invalidResponse(property + " is not a property of name_the_note")
 	}
 	if r.NoteName == nil || !noteNamePattern.MatchString(*r.NoteName) {
 		return invalidResponse("note_name must be a note letter with an optional # or b")
@@ -308,8 +343,8 @@ func toNameTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, erro
 }
 
 func toFindTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if r.NoteName != nil || r.OptionIDs != nil || r.Rating != nil || r.TempoBPM != nil || r.ChangesPerMinute != nil {
-		return invalidResponse("carries a property find_the_note does not have")
+	if property := r.strayProperty("string", "fret", "latency_ms"); property != "" {
+		return invalidResponse(property + " is not a property of find_the_note")
 	}
 	if r.String == nil || *r.String < 1 {
 		return invalidResponse("string must be 1 or more")
@@ -323,9 +358,41 @@ func toFindTheNoteResponse(r rawPracticeResponse) (domain.PracticeResponse, erro
 	return domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: r.String, Fret: r.Fret, LatencyMs: r.LatencyMs}, nil
 }
 
+func toNameTheShapeResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("shape", "latency_ms"); property != "" {
+		return invalidResponse(property + " is not a property of name_the_shape")
+	}
+	if r.Shape == nil || !shapeKeyPattern.MatchString(*r.Shape) {
+		return invalidResponse("shape must be a member key: letters, digits and dashes")
+	}
+	if r.LatencyMs == nil {
+		return invalidResponse("latency_ms is required")
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: *r.Shape, LatencyMs: r.LatencyMs}, nil
+}
+
+func toFindTheDegreeResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
+	if property := r.strayProperty("interval", "string", "fret", "latency_ms"); property != "" {
+		return invalidResponse(property + " is not a property of find_the_degree")
+	}
+	if r.Interval == nil || !shapeIntervals[*r.Interval] {
+		return invalidResponse("interval must be an interval code such as R, b3 or 5")
+	}
+	if r.String == nil || *r.String < 1 {
+		return invalidResponse("string must be 1 or more")
+	}
+	if r.Fret == nil || *r.Fret < 0 {
+		return invalidResponse("fret must be 0 or more")
+	}
+	if r.LatencyMs == nil {
+		return invalidResponse("latency_ms is required")
+	}
+	return domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: *r.Interval, String: r.String, Fret: r.Fret, LatencyMs: r.LatencyMs}, nil
+}
+
 func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if r.NoteName != nil || r.String != nil || r.Fret != nil || r.Rating != nil || r.TempoBPM != nil || r.ChangesPerMinute != nil {
-		return invalidResponse("carries a property option_choice does not have")
+	if property := r.strayProperty("option_ids", "latency_ms", "audio_ms"); property != "" {
+		return invalidResponse(property + " is not a property of option_choice")
 	}
 	if len(r.OptionIDs) == 0 {
 		return invalidResponse("option_ids must select at least one option")
@@ -350,8 +417,8 @@ func toOptionChoiceResponse(r rawPracticeResponse) (domain.PracticeResponse, err
 }
 
 func toSelfRatingResponse(r rawPracticeResponse) (domain.PracticeResponse, error) {
-	if r.NoteName != nil || r.String != nil || r.Fret != nil || r.OptionIDs != nil || r.LatencyMs != nil {
-		return invalidResponse("carries a property self_rating does not have")
+	if property := r.strayProperty("rating", "tempo_bpm", "changes_per_minute"); property != "" {
+		return invalidResponse(property + " is not a property of self_rating")
 	}
 	if r.Rating == nil {
 		return invalidResponse("rating is required")

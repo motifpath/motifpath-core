@@ -22,6 +22,7 @@ func TestValidPracticeItemKey(t *testing.T) {
 		{"exercise:" + id, true},
 		{"play_along:" + id, true},
 		{"chord_change:" + id + ":" + other, true},
+		{"diagram_shape:" + id, true},
 
 		{"", false},
 		{"fretboard:" + id + ":5:3", false},
@@ -33,6 +34,7 @@ func TestValidPracticeItemKey(t *testing.T) {
 		{"exercise:not-a-uuid", false},
 		{"play_along:" + id + ":90", false},
 		{"chord_change:" + id, false},
+		{"diagram_shape:" + id + ":" + other, false},
 		{" exercise:" + id, false},
 	}
 

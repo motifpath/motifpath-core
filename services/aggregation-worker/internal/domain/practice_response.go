@@ -9,10 +9,12 @@ const EventTypePracticeItemAnswered EventType = "practice.item_answered"
 type PracticeResponseType string
 
 const (
-	PracticeResponseNameTheNote  PracticeResponseType = "name_the_note"
-	PracticeResponseFindTheNote  PracticeResponseType = "find_the_note"
-	PracticeResponseOptionChoice PracticeResponseType = "option_choice"
-	PracticeResponseSelfRating   PracticeResponseType = "self_rating"
+	PracticeResponseNameTheNote   PracticeResponseType = "name_the_note"
+	PracticeResponseFindTheNote   PracticeResponseType = "find_the_note"
+	PracticeResponseOptionChoice  PracticeResponseType = "option_choice"
+	PracticeResponseSelfRating    PracticeResponseType = "self_rating"
+	PracticeResponseNameTheShape  PracticeResponseType = "name_the_shape"
+	PracticeResponseFindTheDegree PracticeResponseType = "find_the_degree"
 )
 
 // SelfRating is the student's own judgement of a take.
@@ -36,8 +38,12 @@ func (r SelfRating) valid() bool {
 // one of several shapes; they are flattened into one struct tagged by Type, as
 // ingestion publishes them, and only the fields of Type's shape are set.
 type PracticeResponse struct {
-	Type      PracticeResponseType
-	NoteName  string
+	Type     PracticeResponseType
+	NoteName string
+	// Shape (name_the_shape) is the member of its family the student named.
+	Shape string
+	// Interval (find_the_degree) is the degree the student was asked to find.
+	Interval  string
 	String    *int
 	Fret      *int
 	OptionIDs []string

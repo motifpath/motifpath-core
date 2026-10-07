@@ -215,5 +215,8 @@ func TestTimedDrillTemplate(t *testing.T) {
 	assert.Equal(t, "fretboard_cell:name_the_note", TimedDrillTemplate(cell, PracticeResponse{Type: PracticeResponseNameTheNote}, ref))
 	assert.Equal(t, "fretboard_cell:find_the_note", TimedDrillTemplate(cell, PracticeResponse{Type: PracticeResponseFindTheNote}, ref))
 	assert.Equal(t, "exercise:image_choice", TimedDrillTemplate(exercise, PracticeResponse{Type: PracticeResponseOptionChoice}, ref))
+	shape := PracticeItemKey{Kind: PracticeItemKindDiagramShape}
+	assert.Equal(t, "diagram_shape:name_the_shape", TimedDrillTemplate(shape, PracticeResponse{Type: PracticeResponseNameTheShape}, ref))
+	assert.Equal(t, "diagram_shape:find_the_degree", TimedDrillTemplate(shape, PracticeResponse{Type: PracticeResponseFindTheDegree}, ref))
 	assert.Empty(t, TimedDrillTemplate(PracticeItemKey{Kind: PracticeItemKindPlayAlong}, PracticeResponse{Type: PracticeResponseSelfRating}, ref))
 }

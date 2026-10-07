@@ -69,6 +69,18 @@ func TestMongoEventRepository_FindByEventID_RoundTripsPracticeEvents(t *testing.
 			Response:          domain.PracticeResponse{Type: domain.PracticeResponseFindTheNote, String: intRef(6), Fret: intRef(0), LatencyMs: intRef(0)},
 		},
 		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-0000000000a1", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "diagram_shape:55555555-5555-4555-8555-555555555555",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: "A", LatencyMs: intRef(2600)},
+		},
+		domain.PracticeItemAnsweredEvent{
+			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-0000000000a2", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
+			PracticeSessionID: practiceSessionID,
+			ItemKey:           "diagram_shape:55555555-5555-4555-8555-555555555555",
+			Response:          domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "b3", String: intRef(2), Fret: intRef(5), LatencyMs: intRef(2400)},
+		},
+		domain.PracticeItemAnsweredEvent{
 			TrackingEventBase: practiceBase("a1000000-0000-4000-8000-000000000005", domain.EventTypePracticeItemAnswered, practiceStudentID, practiceAt),
 			PracticeSessionID: practiceSessionID,
 			ItemKey:           "exercise:55555555-5555-4555-8555-555555555555",

@@ -61,6 +61,26 @@ func TestToWireEvent_PracticeEvents(t *testing.T) {
 			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3","response":{"response_type":"name_the_note","note_name":"C","latency_ms":1800},"tap_ms":350}`,
 		},
 		{
+			name: "named shape",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "diagram_shape:55555555-5555-4555-8555-555555555555",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: "A", LatencyMs: &latency},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"diagram_shape:55555555-5555-4555-8555-555555555555","response":{"response_type":"name_the_shape","shape":"A","latency_ms":1800}}`,
+		},
+		{
+			name: "found degree",
+			event: domain.PracticeItemAnsweredEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),
+				PracticeSessionID: "44444444-4444-4444-8444-444444444444",
+				ItemKey:           "diagram_shape:55555555-5555-4555-8555-555555555555",
+				Response:          domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "b3", String: &str, Fret: &fret, LatencyMs: &latency},
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"practice.item_answered","practice_session_id":"44444444-4444-4444-8444-444444444444","item_key":"diagram_shape:55555555-5555-4555-8555-555555555555","response":{"response_type":"find_the_degree","interval":"b3","string":6,"fret":0,"latency_ms":1800}}`,
+		},
+		{
 			name: "find the note on an open string",
 			event: domain.PracticeItemAnsweredEvent{
 				TrackingEventBase: practiceWireBase(domain.EventTypePracticeItemAnswered),

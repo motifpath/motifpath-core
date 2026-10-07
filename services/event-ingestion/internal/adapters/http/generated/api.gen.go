@@ -120,6 +120,21 @@ func (e FeltRatingFelt) Valid() bool {
 	}
 }
 
+// Defines values for FindTheDegreeResponseResponseType.
+const (
+	FindTheDegree FindTheDegreeResponseResponseType = "find_the_degree"
+)
+
+// Valid indicates whether the value is a known member of the FindTheDegreeResponseResponseType enum.
+func (e FindTheDegreeResponseResponseType) Valid() bool {
+	switch e {
+	case FindTheDegree:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for FindTheNoteResponseResponseType.
 const (
 	FindTheNote FindTheNoteResponseResponseType = "find_the_note"
@@ -225,6 +240,21 @@ const (
 func (e NameTheNoteResponseResponseType) Valid() bool {
 	switch e {
 	case NameTheNote:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NameTheShapeResponseResponseType.
+const (
+	NameTheShape NameTheShapeResponseResponseType = "name_the_shape"
+)
+
+// Valid indicates whether the value is a known member of the NameTheShapeResponseResponseType enum.
+func (e NameTheShapeResponseResponseType) Valid() bool {
+	switch e {
+	case NameTheShape:
 		return true
 	default:
 		return false
@@ -396,6 +426,87 @@ const (
 func (e SelfRatingResponseResponseType) Valid() bool {
 	switch e {
 	case SelfRating:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ShapeInterval.
+const (
+	B13    ShapeInterval = "b13"
+	B2     ShapeInterval = "b2"
+	B3     ShapeInterval = "b3"
+	B5     ShapeInterval = "b5"
+	B6     ShapeInterval = "b6"
+	B7     ShapeInterval = "b7"
+	B9     ShapeInterval = "b9"
+	Bb7    ShapeInterval = "bb7"
+	Hash11 ShapeInterval = "#11"
+	Hash2  ShapeInterval = "#2"
+	Hash4  ShapeInterval = "#4"
+	Hash5  ShapeInterval = "#5"
+	Hash9  ShapeInterval = "#9"
+	N11    ShapeInterval = "11"
+	N13    ShapeInterval = "13"
+	N2     ShapeInterval = "2"
+	N3     ShapeInterval = "3"
+	N4     ShapeInterval = "4"
+	N5     ShapeInterval = "5"
+	N6     ShapeInterval = "6"
+	N7     ShapeInterval = "7"
+	N9     ShapeInterval = "9"
+	R      ShapeInterval = "R"
+)
+
+// Valid indicates whether the value is a known member of the ShapeInterval enum.
+func (e ShapeInterval) Valid() bool {
+	switch e {
+	case B13:
+		return true
+	case B2:
+		return true
+	case B3:
+		return true
+	case B5:
+		return true
+	case B6:
+		return true
+	case B7:
+		return true
+	case B9:
+		return true
+	case Bb7:
+		return true
+	case Hash11:
+		return true
+	case Hash2:
+		return true
+	case Hash4:
+		return true
+	case Hash5:
+		return true
+	case Hash9:
+		return true
+	case N11:
+		return true
+	case N13:
+		return true
+	case N2:
+		return true
+	case N3:
+		return true
+	case N4:
+		return true
+	case N5:
+		return true
+	case N6:
+		return true
+	case N7:
+		return true
+	case N9:
+		return true
+	case R:
 		return true
 	default:
 		return false
@@ -633,6 +744,30 @@ type FeltRating struct {
 // FeltRatingFelt The student's answer to "How did it feel?".
 type FeltRatingFelt string
 
+// FindTheDegreeResponse Answer to a degree asked on a diagram shape shown with its root marked and its other
+// positions unlabelled: the student taps the position that is the asked degree.
+type FindTheDegreeResponse struct {
+	// Fret The fret tapped; 0 is the open string.
+	Fret int `json:"fret"`
+
+	// Interval A diagram position's interval code, as in Position.interval. In a find the degree
+	// response, the degree that was asked: one of the shape's intervals other than R, since
+	// the root is shown.
+	Interval ShapeInterval `json:"interval"`
+
+	// LatencyMs Milliseconds from the moment the degree was asked to the tap.
+	LatencyMs int `json:"latency_ms"`
+
+	// ResponseType Discriminator. The student tapped a position to find the degree asked.
+	ResponseType FindTheDegreeResponseResponseType `json:"response_type"`
+
+	// String The string tapped, 1 being the highest-pitched.
+	String int `json:"string"`
+}
+
+// FindTheDegreeResponseResponseType Discriminator. The student tapped a position to find the degree asked.
+type FindTheDegreeResponseResponseType string
+
 // FindTheNoteResponse Answer to a note asked on a given string: the student taps where it is on the fretboard.
 type FindTheNoteResponse struct {
 	// Fret The fret tapped; 0 is the open string.
@@ -807,6 +942,24 @@ type NameTheNoteResponse struct {
 // NameTheNoteResponseResponseType Discriminator. The student named the note of the cell shown.
 type NameTheNoteResponseResponseType string
 
+// NameTheShapeResponse Answer to a diagram shape shown without its name: the student picks which member of its
+// family it is (a CAGED shape, a pentatonic box, a triad quality).
+type NameTheShapeResponse struct {
+	// LatencyMs Milliseconds from the moment the shape was shown to the answer.
+	LatencyMs int `json:"latency_ms"`
+
+	// ResponseType Discriminator. The student named the shape shown.
+	ResponseType NameTheShapeResponseResponseType `json:"response_type"`
+
+	// Shape The member of the shape's family the student picked, by its key in the practice
+	// drill catalog (for example "A" for the CAGED A shape, "2" for pentatonic box 2,
+	// "minor" for a minor triad).
+	Shape string `json:"shape"`
+}
+
+// NameTheShapeResponseResponseType Discriminator. The student named the shape shown.
+type NameTheShapeResponseResponseType string
+
 // NotFoundError Returned when the requested resource does not exist.
 type NotFoundError struct {
 	// Message Human-readable description of what was not found.
@@ -850,6 +1003,9 @@ type PlannedPracticeItem struct {
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+	//   family, or finding one of its degrees. One diagram is one item: the same shape in
+	//   another key has other positions, so it is another item.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -862,9 +1018,10 @@ type PlannedPracticeItem struct {
 	// student's edge and outside the evidence: its takes are not sent as practice.item_answered;
 	// application = one play-along at the end of a session of 10 minutes or more, applying a
 	// skill the session's focus items practised (or, with none, another skill of the student's
-	// paths), and evidence like any other take; review_ahead = a known item reviewed before it falls due, when nothing
-	// else is due; stretch = an unseen item of a node the student is ready to start, when
-	// nothing else is due.
+	// paths), and evidence like any other take; review_ahead = a known item coming due within the
+	// week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
+	// node the student is ready to start, the skills of their paths first, when nothing else is due
+	// or past the new share.
 	Reason PracticePickReason `json:"reason"`
 }
 
@@ -886,6 +1043,9 @@ type PracticeItemAnsweredEvent struct {
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+	//   family, or finding one of its degrees. One diagram is one item: the same shape in
+	//   another key has other positions, so it is another item.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -949,6 +1109,9 @@ type PracticeItemAnsweredEvent1 = interface{}
 //   - exercise:<exercise id> — an authored exercise.
 //   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 //   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//   - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+//     family, or finding one of its degrees. One diagram is one item: the same shape in
+//     another key has other positions, so it is another item.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -961,9 +1124,10 @@ type PracticeItemKey = string
 // student's edge and outside the evidence: its takes are not sent as practice.item_answered;
 // application = one play-along at the end of a session of 10 minutes or more, applying a
 // skill the session's focus items practised (or, with none, another skill of the student's
-// paths), and evidence like any other take; review_ahead = a known item reviewed before it falls due, when nothing
-// else is due; stretch = an unseen item of a node the student is ready to start, when
-// nothing else is due.
+// paths), and evidence like any other take; review_ahead = a known item coming due within the
+// week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
+// node the student is ready to start, the skills of their paths first, when nothing else is due
+// or past the new share.
 type PracticePickReason string
 
 // PracticeResponse The student's raw answer to one practice item, exactly as given. It never says whether
@@ -1154,6 +1318,11 @@ type ServiceUnavailableError struct {
 	// Message Human-readable description of which dependency was unavailable.
 	Message string `json:"message"`
 }
+
+// ShapeInterval A diagram position's interval code, as in Position.interval. In a find the degree
+// response, the degree that was asked: one of the shape's intervals other than R, since
+// the root is shown.
+type ShapeInterval string
 
 // TrackingEvent A student tracking event submitted by the Vue 3 SPA to the Event Ingestion Service.
 // Exactly one event-specific schema applies, discriminated by event_type. The Event
@@ -1694,6 +1863,74 @@ func (t *PracticeResponse) MergeSelfRatingResponse(v SelfRatingResponse) error {
 	return err
 }
 
+// AsNameTheShapeResponse returns the union data inside the PracticeResponse as a NameTheShapeResponse
+func (t PracticeResponse) AsNameTheShapeResponse() (NameTheShapeResponse, error) {
+	var body NameTheShapeResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNameTheShapeResponse overwrites any union data inside the PracticeResponse as the provided NameTheShapeResponse
+func (t *PracticeResponse) FromNameTheShapeResponse(v NameTheShapeResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"name_the_shape"}`))
+	t.union = b
+	return err
+}
+
+// MergeNameTheShapeResponse performs a merge with any union data inside the PracticeResponse, using the provided NameTheShapeResponse
+func (t *PracticeResponse) MergeNameTheShapeResponse(v NameTheShapeResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"name_the_shape"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsFindTheDegreeResponse returns the union data inside the PracticeResponse as a FindTheDegreeResponse
+func (t PracticeResponse) AsFindTheDegreeResponse() (FindTheDegreeResponse, error) {
+	var body FindTheDegreeResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromFindTheDegreeResponse overwrites any union data inside the PracticeResponse as the provided FindTheDegreeResponse
+func (t *PracticeResponse) FromFindTheDegreeResponse(v FindTheDegreeResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"find_the_degree"}`))
+	t.union = b
+	return err
+}
+
+// MergeFindTheDegreeResponse performs a merge with any union data inside the PracticeResponse, using the provided FindTheDegreeResponse
+func (t *PracticeResponse) MergeFindTheDegreeResponse(v FindTheDegreeResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"find_the_degree"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t PracticeResponse) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"response_type"`
@@ -1708,10 +1945,14 @@ func (t PracticeResponse) ValueByDiscriminator() (interface{}, error) {
 		return nil, err
 	}
 	switch discriminator {
+	case "find_the_degree":
+		return t.AsFindTheDegreeResponse()
 	case "find_the_note":
 		return t.AsFindTheNoteResponse()
 	case "name_the_note":
 		return t.AsNameTheNoteResponse()
+	case "name_the_shape":
+		return t.AsNameTheShapeResponse()
 	case "option_choice":
 		return t.AsOptionChoiceResponse()
 	case "self_rating":

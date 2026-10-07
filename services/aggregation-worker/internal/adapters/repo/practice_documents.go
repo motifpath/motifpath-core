@@ -13,6 +13,8 @@ import (
 type practiceResponseDocument struct {
 	ResponseType     string   `bson:"response_type"`
 	NoteName         string   `bson:"note_name,omitempty"`
+	Shape            string   `bson:"shape,omitempty"`
+	Interval         string   `bson:"interval,omitempty"`
 	String           *int     `bson:"string,omitempty"`
 	Fret             *int     `bson:"fret,omitempty"`
 	OptionIDs        []string `bson:"option_ids,omitempty"`
@@ -45,20 +47,34 @@ type practiceEvidenceDocument struct {
 	AnswerKey         *answerKeyDocument       `bson:"answer_key,omitempty"`
 }
 
-// answerKeyDocument is what a right answer was: the asked cell and its note, or
-// every exercise option as the student was shown it, stored as core kept it.
+// answerKeyDocument is what a right answer was: the asked cell and its note,
+// every exercise option as the student was shown it (stored as core kept it), a
+// shape's family and member, or the asked degree and where it is in the shape.
 type answerKeyDocument struct {
-	String   *int       `bson:"string,omitempty"`
-	Fret     *int       `bson:"fret,omitempty"`
-	NoteName string     `bson:"note_name,omitempty"`
-	Options  []bson.Raw `bson:"options,omitempty"`
+	String      *int                 `bson:"string,omitempty"`
+	Fret        *int                 `bson:"fret,omitempty"`
+	NoteName    string               `bson:"note_name,omitempty"`
+	Options     []bson.Raw           `bson:"options,omitempty"`
+	ShapeFamily string               `bson:"shape_family,omitempty"`
+	Shape       string               `bson:"shape,omitempty"`
+	Interval    string               `bson:"interval,omitempty"`
+	Cells       []answerCellDocument `bson:"cells,omitempty"`
+}
+
+// answerCellDocument is a string and fret where a right answer was.
+type answerCellDocument struct {
+	String int `bson:"string"`
+	Fret   int `bson:"fret"`
 }
 
 func toAnswerKeyDocument(k *domain.AnswerKey) (*answerKeyDocument, error) {
 	if k == nil {
 		return nil, nil
 	}
-	doc := &answerKeyDocument{String: k.String, Fret: k.Fret, NoteName: k.NoteName}
+	doc := &answerKeyDocument{String: k.String, Fret: k.Fret, NoteName: k.NoteName, ShapeFamily: k.ShapeFamily, Shape: k.Shape, Interval: k.Interval}
+	for _, c := range k.Cells {
+		doc.Cells = append(doc.Cells, answerCellDocument(c))
+	}
 	for _, o := range k.Options {
 		raw := bson.Raw(o.Shown)
 		if len(raw) == 0 {
@@ -80,7 +96,11 @@ func (d *answerKeyDocument) toDomain() (*domain.AnswerKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domain.AnswerKey{String: d.String, Fret: d.Fret, NoteName: d.NoteName, Options: options}, nil
+	key := &domain.AnswerKey{String: d.String, Fret: d.Fret, NoteName: d.NoteName, Options: options, ShapeFamily: d.ShapeFamily, Shape: d.Shape, Interval: d.Interval}
+	for _, c := range d.Cells {
+		key.Cells = append(key.Cells, domain.AnswerCell(c))
+	}
+	return key, nil
 }
 
 // triggerContextDocument is where an answer outside a practice session was given.
@@ -122,6 +142,8 @@ func toEvidenceDocument(e domain.PracticeEvidence) (practiceEvidenceDocument, er
 		Response: practiceResponseDocument{
 			ResponseType:     string(r.Type),
 			NoteName:         r.NoteName,
+			Shape:            r.Shape,
+			Interval:         r.Interval,
 			String:           r.String,
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,
@@ -160,6 +182,8 @@ func (d practiceEvidenceDocument) toDomain() (domain.PracticeEvidence, error) {
 		Response: domain.PracticeResponse{
 			Type:             domain.PracticeResponseType(r.ResponseType),
 			NoteName:         r.NoteName,
+			Shape:            r.Shape,
+			Interval:         r.Interval,
 			String:           r.String,
 			Fret:             r.Fret,
 			OptionIDs:        r.OptionIDs,

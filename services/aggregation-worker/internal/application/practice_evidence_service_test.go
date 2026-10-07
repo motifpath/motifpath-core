@@ -167,6 +167,11 @@ func newPracticeFixture() *practiceFixture {
 		reference: &fakeReference{
 			diagrams: map[string]domain.DiagramReference{
 				pentatonic: {ID: pentatonic, TempoBPM: &tempo},
+				cagedA: {
+					ID: cagedA, LayoutInstrumentID: guitarLayout,
+					ShapeFamily: "caged-grip", Shape: "A", FamilyMembers: []string{"C", "A", "G", "E", "D"},
+					Positions: []domain.DiagramPosition{{String: 5, Fret: 3, Interval: "R"}, {String: 2, Fret: 5, Interval: "3"}},
+				},
 			},
 			exercises: map[string]domain.ExerciseReference{
 				minorThird: {ID: minorThird, ExerciseType: "text_response", OptionIDs: []string{wrongOption, rightOption}, CorrectOptionIDs: []string{rightOption}},
@@ -175,9 +180,11 @@ func newPracticeFixture() *practiceFixture {
 				guitarLayout: {ID: guitarLayout, Tuning: []string{"E2", "A2", "D3", "G3", "B3", "E4"}},
 			},
 			fluentTimes: map[string][]domain.FluentTime{
-				"exercise:text_response":       {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
-				"fretboard_cell:name_the_note": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
-				"fretboard_cell:find_the_note": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"exercise:text_response":        {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 6000}},
+				"fretboard_cell:name_the_note":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 3000}},
+				"fretboard_cell:find_the_note":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:name_the_shape":  {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 4000}},
+				"diagram_shape:find_the_degree": {{Version: 1, EffectiveFrom: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), FluentNetMs: 2000}},
 			},
 		},
 		evidence: &fakeEvidence{},
@@ -339,6 +346,67 @@ func TestPracticeEvidenceService_GradesAndFoldsAFretboardCellAnswer(t *testing.T
 
 		require.NoError(t, f.service.Process(context.Background(), cellAnswer("e0000000-0000-4000-8000-0000000000c3", monday,
 			domain.PracticeResponse{Type: domain.PracticeResponseNameTheNote, NoteName: "C", LatencyMs: &latency})))
+
+		assert.Empty(t, f.evidence.stored)
+	})
+}
+
+// cagedA is C major's CAGED A grip at shift 3, with its root on string 5 at
+// fret 3 and its 3 on string 2 at fret 5.
+const cagedA = "928330d5-903e-572c-9d41-5fde99d51ed1"
+
+// shapeAnswer is alice's answer to the cagedA shape, after a tap check of 300 ms.
+func shapeAnswer(eventID string, response domain.PracticeResponse) domain.PracticeAnswer {
+	tap := 300
+	return domain.PracticeAnswer{
+		EventID: eventID, StudentID: alice, OccurredAt: monday, PracticeSessionID: "5e550000-0000-4000-8000-000000000002",
+		ItemKey: "diagram_shape:" + cagedA, Response: response, TapMs: &tap,
+	}
+}
+
+func TestPracticeEvidenceService_GradesAndFoldsADiagramShapeAnswer(t *testing.T) {
+	latency := 3500
+
+	t.Run("a named shape is graded, keeps its answer key and is judged by naming's fluent time", func(t *testing.T) {
+		f := newPracticeFixture()
+		answer := shapeAnswer("e0000000-0000-4000-8000-0000000000d1", domain.PracticeResponse{Type: domain.PracticeResponseNameTheShape, Shape: "A", LatencyMs: &latency})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		require.Len(t, f.evidence.stored, 1)
+		e := f.evidence.stored[0]
+		assert.Equal(t, "diagram_shape.v1", e.GraderID)
+		require.NotNil(t, e.Correct)
+		assert.True(t, *e.Correct)
+		assert.Equal(t, &domain.AnswerKey{ShapeFamily: "caged-grip", Shape: "A"}, e.AnswerKey)
+		fold, ok := f.fold(t, answer.ItemKey)
+		require.True(t, ok)
+		assert.InDelta(t, 1, fold.Fluency, 1e-9, "3200 ms is within naming's 4000 ms")
+		assert.Equal(t, 1, fold.RightByResponse[domain.PracticeResponseNameTheShape])
+	})
+
+	t.Run("a found degree is graded on the shape's layout and judged by finding's fluent time", func(t *testing.T) {
+		f := newPracticeFixture()
+		two, five := 2, 5
+		answer := shapeAnswer("e0000000-0000-4000-8000-0000000000d2", domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "3", String: &two, Fret: &five, LatencyMs: &latency})
+
+		require.NoError(t, f.service.Process(context.Background(), answer))
+
+		require.Len(t, f.evidence.stored, 1)
+		assert.True(t, *f.evidence.stored[0].Correct)
+		fold, ok := f.fold(t, answer.ItemKey)
+		require.True(t, ok)
+		// 3500 ms less the 300 ms tap is 3200 ms against finding's 2000 ms.
+		assert.InDelta(t, 2000.0/3200, fold.Fluency, 1e-9)
+	})
+
+	t.Run("a shape whose layout instrument the snapshot doesn't know stores nothing", func(t *testing.T) {
+		f := newPracticeFixture()
+		delete(f.reference.instruments, guitarLayout)
+		two, five := 2, 5
+
+		require.NoError(t, f.service.Process(context.Background(), shapeAnswer("e0000000-0000-4000-8000-0000000000d3",
+			domain.PracticeResponse{Type: domain.PracticeResponseFindTheDegree, Interval: "3", String: &two, Fret: &five, LatencyMs: &latency})))
 
 		assert.Empty(t, f.evidence.stored)
 	})
