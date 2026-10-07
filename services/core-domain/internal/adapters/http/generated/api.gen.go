@@ -393,6 +393,12 @@ const (
 	Reversed   DiagramRefPlaybackDirection = "reversed"
 )
 
+// Defines values for DiagramShapeDrill.
+const (
+	FindTheDegree DiagramShapeDrill = "find_the_degree"
+	NameTheShape  DiagramShapeDrill = "name_the_shape"
+)
+
 // Defines values for ExerciseExerciseType.
 const (
 	ExerciseExerciseTypeAudioRecognition ExerciseExerciseType = "audio_recognition"
@@ -519,6 +525,7 @@ const (
 // Defines values for PracticeItemKind.
 const (
 	PracticeItemKindChordChange   PracticeItemKind = "chord_change"
+	PracticeItemKindDiagramShape  PracticeItemKind = "diagram_shape"
 	PracticeItemKindExercise      PracticeItemKind = "exercise"
 	PracticeItemKindFretboardCell PracticeItemKind = "fretboard_cell"
 	PracticeItemKindPlayAlong     PracticeItemKind = "play_along"
@@ -607,6 +614,33 @@ const (
 	SequenceStepStrumUp   SequenceStepStrum = "up"
 )
 
+// Defines values for ShapeInterval.
+const (
+	ShapeIntervalB13    ShapeInterval = "b13"
+	ShapeIntervalB2     ShapeInterval = "b2"
+	ShapeIntervalB3     ShapeInterval = "b3"
+	ShapeIntervalB5     ShapeInterval = "b5"
+	ShapeIntervalB6     ShapeInterval = "b6"
+	ShapeIntervalB7     ShapeInterval = "b7"
+	ShapeIntervalB9     ShapeInterval = "b9"
+	ShapeIntervalBb7    ShapeInterval = "bb7"
+	ShapeIntervalHash11 ShapeInterval = "#11"
+	ShapeIntervalHash2  ShapeInterval = "#2"
+	ShapeIntervalHash4  ShapeInterval = "#4"
+	ShapeIntervalHash5  ShapeInterval = "#5"
+	ShapeIntervalHash9  ShapeInterval = "#9"
+	ShapeIntervalN11    ShapeInterval = "11"
+	ShapeIntervalN13    ShapeInterval = "13"
+	ShapeIntervalN2     ShapeInterval = "2"
+	ShapeIntervalN3     ShapeInterval = "3"
+	ShapeIntervalN4     ShapeInterval = "4"
+	ShapeIntervalN5     ShapeInterval = "5"
+	ShapeIntervalN6     ShapeInterval = "6"
+	ShapeIntervalN7     ShapeInterval = "7"
+	ShapeIntervalN9     ShapeInterval = "9"
+	ShapeIntervalR      ShapeInterval = "R"
+)
+
 // Defines values for SkillProgressMeasure.
 const (
 	Accuracy          SkillProgressMeasure = "accuracy"
@@ -639,12 +673,12 @@ const (
 
 // Defines values for TimeSignatureBeatValue.
 const (
-	TimeSignatureBeatValueN1  TimeSignatureBeatValue = 1
-	TimeSignatureBeatValueN16 TimeSignatureBeatValue = 16
-	TimeSignatureBeatValueN2  TimeSignatureBeatValue = 2
-	TimeSignatureBeatValueN32 TimeSignatureBeatValue = 32
-	TimeSignatureBeatValueN4  TimeSignatureBeatValue = 4
-	TimeSignatureBeatValueN8  TimeSignatureBeatValue = 8
+	N1  TimeSignatureBeatValue = 1
+	N16 TimeSignatureBeatValue = 16
+	N2  TimeSignatureBeatValue = 2
+	N32 TimeSignatureBeatValue = 32
+	N4  TimeSignatureBeatValue = 4
+	N8  TimeSignatureBeatValue = 8
 )
 
 // Defines values for UpdateDiagramRequestLabelDisplay.
@@ -2631,6 +2665,11 @@ type DiagramRegion struct {
 	StringStart *int `json:"string_start,omitempty"`
 }
 
+// DiagramShapeDrill How a diagram shape is asked. name_the_shape = the shape is shown without its name and the
+// student picks it among its family's members; find_the_degree = the shape is shown with its
+// root marked and its other positions unlabelled, and the student taps the asked degree.
+type DiagramShapeDrill string
+
 // DiagramStackRef Two or more DiagramRefs composited into one view — e.g. a scale
 // overlaid on its relative major, at the same fretboard position.
 // Painted in array order; later entries render on top of earlier
@@ -2863,6 +2902,9 @@ type FretboardMapCell struct {
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+	//   family, or finding one of its degrees. One diagram is one item: the same shape in
+	//   another key has other positions, so it is another item.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -3581,6 +3623,9 @@ type PracticeInstrumentCard struct {
 //   - exercise:<exercise id> — an authored exercise.
 //   - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 //   - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+//   - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+//     family, or finding one of its degrees. One diagram is one item: the same shape in
+//     another key has other positions, so it is another item.
 //
 // Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 // grader, and its golden cases.
@@ -3714,8 +3759,40 @@ type PracticeOverview struct {
 type PracticePickReason string
 
 // PracticeSessionItem One item of a composed session, with what the client needs to present it. Exactly
-// one of fretboard_cell, exercise and play_along is present, matching kind.
+// one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
+// kind.
 type PracticeSessionItem struct {
+	// DiagramShape Present when kind is diagram_shape. The client loads the diagram to draw it, with
+	// its labels hidden. The drill is the way of asking the shape has the fewer right
+	// answers so far, name_the_shape on a tie.
+	DiagramShape *struct {
+		// AskedInterval For find_the_degree: the degree to tap, picked at random among the shape's
+		// intervals other than its root. Null for name_the_shape.
+		AskedInterval *ShapeInterval `json:"asked_interval"`
+
+		// DiagramId The catalog diagram whose shape is asked.
+		DiagramId openapi_types.UUID `json:"diagram_id"`
+
+		// Drill How a diagram shape is asked. name_the_shape = the shape is shown without its name and the
+		// student picks it among its family's members; find_the_degree = the shape is shown with its
+		// root marked and its other positions unlabelled, and the student taps the asked degree.
+		Drill DiagramShapeDrill `json:"drill"`
+
+		// Options For name_the_shape: every member of the shape's family, in the catalog's
+		// order, whichever of them exist at this root. The names never mention the root,
+		// so the root shown never gives the answer away. Empty for find_the_degree.
+		Options []struct {
+			// Name The member's name in the student's language, such as "A shape".
+			Name string `json:"name"`
+
+			// Shape The member's key, sent back as the answer.
+			Shape string `json:"shape"`
+		} `json:"options"`
+
+		// ShapeFamily The shape's family in the practice drill catalog, such as caged-grip.
+		ShapeFamily string `json:"shape_family"`
+	} `json:"diagram_shape,omitempty"`
+
 	// EstimatedSeconds About how long the item takes, used to fit the session to its minutes. An exercise
 	// takes its estimated_duration_seconds, or 30 seconds without one.
 	EstimatedSeconds int `json:"estimated_seconds"`
@@ -3755,6 +3832,9 @@ type PracticeSessionItem struct {
 	// - exercise:<exercise id> — an authored exercise.
 	// - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
 	// - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+	// - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+	//   family, or finding one of its degrees. One diagram is one item: the same shape in
+	//   another key has other positions, so it is another item.
 	//
 	// Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
 	// grader, and its golden cases.
@@ -3827,10 +3907,10 @@ type PracticeSessionPlan struct {
 	// PracticeSessionId New identifier for this session, carried by every practice.* event it produces.
 	PracticeSessionId openapi_types.UUID `json:"practice_session_id"`
 
-	// TapCheckDue True when the plan has a fretboard cell and the student has done no tap check in
-	// the last 30 days, or never. The client then offers the tap check before the first
-	// item; the student may skip it, and their answers are then judged on the whole
-	// latency.
+	// TapCheckDue True when the plan has a fretboard cell or a diagram shape and the student has
+	// done no tap check in the last 30 days, or never. The client then offers the tap
+	// check before the first item; the student may skip it, and their answers are then
+	// judged on the whole latency.
 	TapCheckDue bool `json:"tap_check_due"`
 }
 
@@ -4115,6 +4195,11 @@ type SetCurrentPathRequest struct {
 	// StudentPathId A non-archived standalone StudentPath already belonging to the caller, to make current.
 	StudentPathId *openapi_types.UUID `json:"student_path_id,omitempty"`
 }
+
+// ShapeInterval A diagram position's interval code, as in Position.interval. In a find the degree
+// response, the degree that was asked: one of the shape's intervals other than R, since
+// the root is shown.
+type ShapeInterval string
 
 // SkillProgress How one skill improved over the last 7 days, with both values so the student sees
 // where they started (for example accuracy 0.72 → 0.86).
