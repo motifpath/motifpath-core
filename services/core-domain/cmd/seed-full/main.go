@@ -76,6 +76,7 @@ type services struct {
 	knowledge   ports.KnowledgeNodeRepository
 	instrument  *application.InstrumentService
 	diagram     *application.DiagramService
+	songChart   *application.SongChartService
 }
 
 func run() error {
@@ -212,6 +213,7 @@ func wireServices(res resources) (services, seedDeps) {
 		knowledge:   knowledgeRepo,
 		instrument:  application.NewInstrumentService(instrumentRepo, voiceRepo, languageRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID),
 		diagram:     application.NewDiagramService(diagramRepo, instrumentRepo, knowledgeRepo, languageRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now),
+		songChart:   application.NewSongChartService(repo.NewEntSongChartRepository(entClient), repo.NewEntChordCatalogRepository(entClient), diagramRepo, languageRepo, newID, now),
 	}
 
 	return svc, seedDeps{
@@ -327,6 +329,13 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 		return fmt.Errorf("seed standalone paths: %w", err)
 	}
 	log.Println("seeded standalone paths: current, and archived-while-course-active")
+
+	songCharts, err := seedSongCharts(ctx, svc.songChart, deps.synthAdmin)
+	if err != nil {
+		return fmt.Errorf("seed song charts: %w", err)
+	}
+	log.Printf("seeded %d public-domain song charts by %q (published then corrected, published then withdrawn, and a draft with N.C., a slash chord without its bass and an unparsed symbol):", len(songCharts), deps.synthAdmin.DisplayName)
+	logSongChartPreviews(songCharts)
 
 	if adminIsFresh {
 		if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, videoIntermediateChallenge.ID, res.mongoDB); err != nil {
