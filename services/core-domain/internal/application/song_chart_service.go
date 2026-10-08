@@ -356,19 +356,15 @@ func (s *SongChartService) ImportChordPro(ctx context.Context, caller domain.Use
 	if err := requireAdmin(caller); err != nil {
 		return ChordProImportResult{}, err
 	}
-	if utf8.RuneCountInString(text) > domain.MaxChordProTextLength {
-		return ChordProImportResult{}, domain.NewValidationError("body", "must be at most 100000 characters")
+	imported, err := readChordPro(text)
+	if err != nil {
+		return ChordProImportResult{}, err
 	}
 	chart, err := s.charts.GetByID(ctx, id)
 	if err != nil {
 		return ChordProImportResult{}, err
 	}
-	imported := domain.ImportChordPro(text)
-	body, err := checkedImportBody(imported.Body)
-	if err != nil {
-		return ChordProImportResult{}, err
-	}
-	in := importedInput(chart.Draft, imported.Metadata, body)
+	in := importedInput(chart.Draft, imported.Metadata, imported.Body)
 	draft, err := s.buildDraft(ctx, caller, chart.Draft.RightsConfirmation, in, s.now())
 	if err != nil {
 		return ChordProImportResult{}, err
@@ -378,6 +374,32 @@ func (s *SongChartService) ImportChordPro(ctx context.Context, caller domain.Use
 		return ChordProImportResult{}, err
 	}
 	return ChordProImportResult{Chart: chart, Warnings: imported.Warnings}, nil
+}
+
+// ReadChordPro reads ChordPro text as a song chart and saves nothing: the
+// details the text sets, the lyrics with their chords, and what was skipped.
+// Anchors carry only their written symbols; they are resolved when the chart
+// is saved.
+func (s *SongChartService) ReadChordPro(_ context.Context, caller domain.User, text string) (domain.ChordProImport, error) {
+	if err := requireAdmin(caller); err != nil {
+		return domain.ChordProImport{}, err
+	}
+	return readChordPro(text)
+}
+
+// readChordPro reads text within an import's bounds, with a body that holds
+// a lyric line and fits a chart's document.
+func readChordPro(text string) (domain.ChordProImport, error) {
+	if utf8.RuneCountInString(text) > domain.MaxChordProTextLength {
+		return domain.ChordProImport{}, domain.NewValidationError("body", "must be at most 100000 characters")
+	}
+	imported := domain.ImportChordPro(text)
+	body, err := checkedImportBody(imported.Body)
+	if err != nil {
+		return domain.ChordProImport{}, err
+	}
+	imported.Body = body
+	return imported, nil
 }
 
 // checkedImportBody checks an imported body against the bounds of the
