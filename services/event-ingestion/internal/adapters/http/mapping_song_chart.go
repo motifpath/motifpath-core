@@ -14,8 +14,8 @@ func toSongChartEvent(eventType domain.EventType, body *generated.TrackingEvent)
 	if eventType == domain.EventTypeSongChartChordViewed {
 		return toSongChartChordViewedEvent(eventType, body)
 	}
-	if eventType == domain.EventTypeSongChartSectionCompleted {
-		return toSongChartSectionCompletedEvent(eventType, body)
+	if eventType == domain.EventTypeSongChartCompleted {
+		return toSongChartCompletedEvent(eventType, body)
 	}
 	return toSongChartOpenedEvent(eventType, body)
 }
@@ -72,8 +72,8 @@ func toSongChartChordViewedEvent(eventType domain.EventType, body *generated.Tra
 	}, nil
 }
 
-func toSongChartSectionCompletedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {
-	v, err := body.AsSongChartSectionCompletedEvent()
+func toSongChartCompletedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {
+	v, err := body.AsSongChartCompletedEvent()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", domain.ErrInvalidEventType, err)
 	}
@@ -85,14 +85,7 @@ func toSongChartSectionCompletedEvent(eventType domain.EventType, body *generate
 	if err != nil {
 		return nil, err
 	}
-	// Section 0 is the first section, so only the field's absence is missing.
-	if err := requirePresent(body, "section_index"); err != nil {
-		return nil, err
-	}
-	if v.SectionIndex < 0 {
-		return nil, fmt.Errorf("%w: section_index", domain.ErrInvalidField)
-	}
-	return domain.SongChartSectionCompletedEvent{TrackingEventBase: base, SongChartContext: chart, SectionIndex: v.SectionIndex}, nil
+	return domain.SongChartCompletedEvent{TrackingEventBase: base, SongChartContext: chart}, nil
 }
 
 // toDomainSongChartContext reads the context every song_chart event requires.

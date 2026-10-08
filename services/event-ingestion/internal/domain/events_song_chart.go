@@ -33,13 +33,11 @@ type SongChartChordViewedEvent struct {
 
 func (e SongChartChordViewedEvent) Base() TrackingEventBase { return e.TrackingEventBase }
 
-// SongChartSectionCompletedEvent is emitted when a student marks a section of
-// a song chart as played. SectionIndex numbers the sections from 0 in
-// document order.
-type SongChartSectionCompletedEvent struct {
+// SongChartCompletedEvent is emitted when a student marks a song chart as
+// played, once per opening.
+type SongChartCompletedEvent struct {
 	TrackingEventBase
 	SongChartContext SongChartContext
-	SectionIndex     int
 }
 
-func (e SongChartSectionCompletedEvent) Base() TrackingEventBase { return e.TrackingEventBase }
+func (e SongChartCompletedEvent) Base() TrackingEventBase { return e.TrackingEventBase }

@@ -167,9 +167,9 @@ func TestToWireEvent_SongChartEvents(t *testing.T) {
 			want: `{` + wireBaseJSON + `,"event_type":"song_chart.chord_viewed",` + chartJSON + `,"anchor_id":"a3","chord_definition_id":"55555555-5555-4555-8555-555555555555","chord_voicing_id":"66666666-6666-4666-8666-666666666666"}`,
 		},
 		{
-			name:  "section completed on the first section keeps its index",
-			event: domain.SongChartSectionCompletedEvent{TrackingEventBase: practiceWireBase(domain.EventTypeSongChartSectionCompleted), SongChartContext: chart, SectionIndex: 0},
-			want:  `{` + wireBaseJSON + `,"event_type":"song_chart.section_completed",` + chartJSON + `,"section_index":0}`,
+			name:  "completed",
+			event: domain.SongChartCompletedEvent{TrackingEventBase: practiceWireBase(domain.EventTypeSongChartCompleted), SongChartContext: chart},
+			want:  `{` + wireBaseJSON + `,"event_type":"song_chart.completed",` + chartJSON + `}`,
 		},
 	}
 	for _, tt := range cases {

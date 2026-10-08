@@ -23,7 +23,7 @@ func TestIngestEventService_Ingest_HappyPath(t *testing.T) {
 		domain.EventTypeExerciseEnded,
 		domain.EventTypeSongChartOpened,
 		domain.EventTypeSongChartChordViewed,
-		domain.EventTypeSongChartSectionCompleted,
+		domain.EventTypeSongChartCompleted,
 	}
 
 	for _, eventType := range eventTypes {

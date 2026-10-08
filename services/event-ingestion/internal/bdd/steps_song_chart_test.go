@@ -25,7 +25,6 @@ type songChartEvent struct {
 	AnchorID          string            `json:"anchor_id,omitempty"`
 	ChordDefinitionID string            `json:"chord_definition_id,omitempty"`
 	ChordVoicingID    string            `json:"chord_voicing_id,omitempty"`
-	SectionIndex      *int              `json:"section_index,omitempty"`
 }
 
 type songChartContext struct {
@@ -50,9 +49,12 @@ func registerSongChartSteps(sc *godog.ScenarioContext, w *world) {
 			e.ChordVoicingID = deterministicUUID("voicing", voicing).String()
 			return w.submitSongChart(e)
 		})
-	sc.Step(`^"([^"]+)" submits a song_chart\.section_completed event for section (-?\d+) of revision (\d+) of song chart "([^"]+)"$`, func(name string, section, revision int, chart string) error {
-		e := newSongChartEvent(name, "song_chart.section_completed", chart, revision)
-		e.SectionIndex = &section
+	sc.Step(`^"([^"]+)" submits a song_chart\.completed event for revision (\d+) of song chart "([^"]+)"$`, func(name string, revision int, chart string) error {
+		return w.submitSongChart(newSongChartEvent(name, "song_chart.completed", chart, revision))
+	})
+	sc.Step(`^"([^"]+)" submits a song_chart\.completed event with the song chart context omitted$`, func(name string) error {
+		e := newSongChartEvent(name, "song_chart.completed", "asa-branca", 2)
+		e.SongChartContext = nil
 		return w.submitSongChart(e)
 	})
 	sc.Step(`^"([^"]+)" submits the same song_chart\.opened event again with identifier "([^"]+)"$`, func(string, string) error {
