@@ -203,7 +203,7 @@ func wireServices(res resources) (services, seedDeps) {
 
 	svc := services{
 		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
-		content:     application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now),
+		content:     application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), newID, now),
 		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, newID, now),
 		studentPath: studentPathService,
 		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now),

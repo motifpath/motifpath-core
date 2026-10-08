@@ -2051,7 +2051,7 @@ func (f *fakeSongChartRepository) List(_ context.Context, filter domain.SongChar
 		if filter.Status != nil && c.Status != *filter.Status {
 			continue
 		}
-		if filter.Q != "" && !containsFold(c.Draft.Title, filter.Q) && !containsFold(c.Draft.Artist, filter.Q) {
+		if filter.Q != "" && !chartMatches(c, filter.Q) {
 			continue
 		}
 		matched = append(matched, c)
@@ -2063,6 +2063,16 @@ func (f *fakeSongChartRepository) List(_ context.Context, filter domain.SongChar
 		return matched[i].ID < matched[j].ID
 	})
 	return paginate(matched, page), nil
+}
+
+// chartMatches is whether q is in the draft's title or artist, or the
+// published revision's.
+func chartMatches(c domain.SongChart, q string) bool {
+	if containsFold(c.Draft.Title, q) || containsFold(c.Draft.Artist, q) {
+		return true
+	}
+	p := c.PublishedRevision
+	return p != nil && (containsFold(p.Title, q) || containsFold(p.Artist, q))
 }
 
 func (f *fakeSongChartRepository) Save(_ context.Context, chart domain.SongChart) error {

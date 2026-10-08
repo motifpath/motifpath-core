@@ -23,6 +23,7 @@ type ContentService struct {
 	now         func() time.Time
 	instruments ports.InstrumentRepository
 	voices      ports.VoiceRepository
+	songCharts  ports.SongChartRepository
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -31,8 +32,28 @@ func (s *ContentService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts}
+}
+
+// checkEmbeddedSongCharts refuses lesson content that embeds a song chart
+// learners could never read: one that doesn't exist, or was never published.
+// A chart published and withdrawn since is accepted, so content embedding it
+// can still be saved; it shows to nobody until it's published again.
+func (s *ContentService) checkEmbeddedSongCharts(ctx context.Context, doc *domain.PromptDocument) error {
+	if doc == nil {
+		return nil
+	}
+	for _, id := range doc.EmbeddedSongChartIDs() {
+		chart, err := s.songCharts.GetByID(ctx, id)
+		if errors.Is(err, domain.ErrNotFound) || (err == nil && chart.PublishedRevision == nil) {
+			return domain.NewValidationError("rich_content", "a songChart node's songChartId must name a published song chart")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PublishContentNode snapshots the content node identified by id into a new,
@@ -150,6 +171,9 @@ func (s *ContentService) CreateContentNode(ctx context.Context, caller domain.Us
 	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent), nil); err != nil {
 		return domain.ContentNode{}, err
 	}
+	if err := s.checkEmbeddedSongCharts(ctx, input.RichContent); err != nil {
+		return domain.ContentNode{}, err
+	}
 	if err := s.nodes.Create(ctx, node); err != nil {
 		return domain.ContentNode{}, err
 	}
@@ -205,6 +229,9 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(input.RichContent), storedPlaybacksOf(embeddedRefs(existing.RichContent)...)); err != nil {
+		return domain.ContentNode{}, err
+	}
+	if err := s.checkEmbeddedSongCharts(ctx, input.RichContent); err != nil {
 		return domain.ContentNode{}, err
 	}
 	if err := s.checkLinkedExercisesFit(ctx, updated); err != nil {
@@ -273,6 +300,9 @@ func (s *ContentService) CreateExpandedContent(
 	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent), nil); err != nil {
 		return domain.ExpandedContent{}, err
 	}
+	if err := s.checkEmbeddedSongCharts(ctx, richContent); err != nil {
+		return domain.ExpandedContent{}, err
+	}
 	if err := s.expanded.Create(ctx, item); err != nil {
 		return domain.ExpandedContent{}, err
 	}
@@ -336,6 +366,9 @@ func (s *ContentService) UpdateExpandedContent(
 		return domain.ExpandedContent{}, err
 	}
 	if err := checkEmbeddedPlaybacks(ctx, s.diagramRefRepos(), "rich_content", embeddedRefs(richContent), stored); err != nil {
+		return domain.ExpandedContent{}, err
+	}
+	if err := s.checkEmbeddedSongCharts(ctx, richContent); err != nil {
 		return domain.ExpandedContent{}, err
 	}
 

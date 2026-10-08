@@ -165,7 +165,7 @@ func validateRichTextExpandedContent(mediaURL *string, richContent *PromptDocume
 	if richContent == nil {
 		errs = append(errs, FieldError{Field: "rich_content", Reason: "is required when content_type is rich_text"})
 	} else {
-		for _, docErr := range validatePromptDocument(*richContent, true) {
+		for _, docErr := range validatePromptDocument(*richContent, lessonContent) {
 			errs = append(errs, FieldError{Field: "rich_content", Reason: docErr.Reason})
 		}
 	}

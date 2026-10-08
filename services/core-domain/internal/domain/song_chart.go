@@ -141,11 +141,14 @@ func (w AnchorWarning) BlocksPublication() bool {
 	return w.Kind != AnchorBassNotInCatalog
 }
 
-// SongChartRevisionSummary is which revision learners are served.
+// SongChartRevisionSummary is which revision learners are served, and the
+// song as it shows them: what a teacher picking a chart to embed sees.
 type SongChartRevisionSummary struct {
 	Number      int
 	Title       string
+	Artist      string
 	Language    string
+	ConcertKey  *string
 	PublishedBy string
 	PublishedAt time.Time
 }
@@ -170,7 +173,8 @@ type SongChart struct {
 }
 
 // SongChartFilter narrows a list of song charts. Q matches the draft's title
-// or artist, ignoring case and accents; Status, when set, is the chart's.
+// or artist, or the latest published revision's, ignoring case and accents;
+// Status, when set, is the chart's.
 type SongChartFilter struct {
 	Q      string
 	Status *SongChartStatus
@@ -258,7 +262,9 @@ func (c SongChart) Publish(by string, at time.Time) (SongChart, SongChartRevisio
 	}
 	c.Status = SongChartPublished
 	c.Withdrawal = nil
-	c.PublishedRevision = &SongChartRevisionSummary{Number: number, Title: d.Title, Language: d.Language, PublishedBy: by, PublishedAt: at}
+	c.PublishedRevision = &SongChartRevisionSummary{
+		Number: number, Title: d.Title, Artist: d.Artist, Language: d.Language, ConcertKey: d.ConcertKey, PublishedBy: by, PublishedAt: at,
+	}
 	return c, rev, nil
 }
 

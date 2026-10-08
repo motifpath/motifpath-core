@@ -179,6 +179,20 @@ func (_c *SongChartCreate) SetNillablePublishedTitle(v *string) *SongChartCreate
 	return _c
 }
 
+// SetPublishedArtist sets the "published_artist" field.
+func (_c *SongChartCreate) SetPublishedArtist(v string) *SongChartCreate {
+	_c.mutation.SetPublishedArtist(v)
+	return _c
+}
+
+// SetNillablePublishedArtist sets the "published_artist" field if the given value is not nil.
+func (_c *SongChartCreate) SetNillablePublishedArtist(v *string) *SongChartCreate {
+	if v != nil {
+		_c.SetPublishedArtist(*v)
+	}
+	return _c
+}
+
 // SetPublishedLanguage sets the "published_language" field.
 func (_c *SongChartCreate) SetPublishedLanguage(v string) *SongChartCreate {
 	_c.mutation.SetPublishedLanguage(v)
@@ -189,6 +203,20 @@ func (_c *SongChartCreate) SetPublishedLanguage(v string) *SongChartCreate {
 func (_c *SongChartCreate) SetNillablePublishedLanguage(v *string) *SongChartCreate {
 	if v != nil {
 		_c.SetPublishedLanguage(*v)
+	}
+	return _c
+}
+
+// SetPublishedConcertKey sets the "published_concert_key" field.
+func (_c *SongChartCreate) SetPublishedConcertKey(v string) *SongChartCreate {
+	_c.mutation.SetPublishedConcertKey(v)
+	return _c
+}
+
+// SetNillablePublishedConcertKey sets the "published_concert_key" field if the given value is not nil.
+func (_c *SongChartCreate) SetNillablePublishedConcertKey(v *string) *SongChartCreate {
+	if v != nil {
+		_c.SetPublishedConcertKey(*v)
 	}
 	return _c
 }
@@ -483,9 +511,17 @@ func (_c *SongChartCreate) createSpec() (*SongChart, *sqlgraph.CreateSpec) {
 		_spec.SetField(songchart.FieldPublishedTitle, field.TypeString, value)
 		_node.PublishedTitle = &value
 	}
+	if value, ok := _c.mutation.PublishedArtist(); ok {
+		_spec.SetField(songchart.FieldPublishedArtist, field.TypeString, value)
+		_node.PublishedArtist = &value
+	}
 	if value, ok := _c.mutation.PublishedLanguage(); ok {
 		_spec.SetField(songchart.FieldPublishedLanguage, field.TypeString, value)
 		_node.PublishedLanguage = &value
+	}
+	if value, ok := _c.mutation.PublishedConcertKey(); ok {
+		_spec.SetField(songchart.FieldPublishedConcertKey, field.TypeString, value)
+		_node.PublishedConcertKey = &value
 	}
 	if value, ok := _c.mutation.PublishedBy(); ok {
 		_spec.SetField(songchart.FieldPublishedBy, field.TypeUUID, value)

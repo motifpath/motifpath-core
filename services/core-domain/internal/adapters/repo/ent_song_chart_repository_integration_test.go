@@ -198,4 +198,17 @@ func TestEntSongChartRepository_List(t *testing.T) {
 			assert.Equal(t, []string{published.ID}, ids(page), q)
 		}
 	})
+
+	t.Run("a search matches the published title and artist too, once the draft is retitled", func(t *testing.T) {
+		retitled := publishedChart
+		retitled.Draft.Title, retitled.Draft.Artist = "Retitled", "Someone else"
+		require.NoError(t, charts.Save(ctx, retitled))
+
+		for _, q := range []string{"aguas", "jobim", "retitled"} {
+			page, err := charts.List(ctx, domain.SongChartFilter{Q: q}, domain.PageRequest{Limit: 20})
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{published.ID}, ids(page), q)
+		}
+	})
 }

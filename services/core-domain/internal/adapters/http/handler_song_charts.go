@@ -69,6 +69,9 @@ func (h *Handler) ListSongCharts(ctx context.Context, request generated.ListSong
 	ids := make([]string, 0, len(result.Items))
 	for _, c := range result.Items {
 		ids = append(ids, c.Draft.UpdatedBy)
+		if c.PublishedRevision != nil {
+			ids = append(ids, c.PublishedRevision.PublishedBy)
+		}
 	}
 	names, err := h.loadUserNames(ctx, ids)
 	if err != nil {
@@ -412,9 +415,8 @@ func (h *Handler) toGeneratedSongChart(ctx context.Context, chart domain.SongCha
 		out.Draft.RightsConfirmation = &generated.RightsConfirmation{ConfirmedBy: names.ref(c.ConfirmedBy), ConfirmedAt: c.ConfirmedAt}
 	}
 	if r := chart.PublishedRevision; r != nil {
-		out.PublishedRevision = &generated.SongChartRevisionSummary{
-			RevisionNumber: r.Number, Title: r.Title, Language: r.Language, PublishedBy: names.ref(r.PublishedBy), PublishedAt: r.PublishedAt,
-		}
+		summary := toGeneratedRevisionSummary(*r, names)
+		out.PublishedRevision = &summary
 	}
 	if w := chart.Withdrawal; w != nil {
 		out.Withdrawal = &generated.SongChartWithdrawal{WithdrawnBy: names.ref(w.WithdrawnBy), WithdrawnAt: w.WithdrawnAt, Reason: w.Reason}
@@ -428,11 +430,20 @@ func toGeneratedSongChartSummary(c domain.SongChart, names userNames) generated.
 		Status: generated.SongChartStatus(c.Status), RightsConfirmed: c.Draft.RightsConfirmation != nil,
 		UpdatedBy: names.ref(c.Draft.UpdatedBy), UpdatedAt: c.Draft.UpdatedAt,
 	}
-	if c.PublishedRevision != nil {
-		n := c.PublishedRevision.Number
+	if r := c.PublishedRevision; r != nil {
+		n := r.Number
 		out.PublishedRevisionNumber = &n
+		summary := toGeneratedRevisionSummary(*r, names)
+		out.PublishedRevision = &summary
 	}
 	return out
+}
+
+func toGeneratedRevisionSummary(r domain.SongChartRevisionSummary, names userNames) generated.SongChartRevisionSummary {
+	return generated.SongChartRevisionSummary{
+		RevisionNumber: r.Number, Title: r.Title, Artist: r.Artist, Language: r.Language, ConcertKey: r.ConcertKey,
+		PublishedBy: names.ref(r.PublishedBy), PublishedAt: r.PublishedAt,
+	}
 }
 
 func toGeneratedAnchorWarnings(warnings []domain.AnchorWarning) []generated.SongChartAnchorWarning {

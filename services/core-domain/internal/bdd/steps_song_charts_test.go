@@ -37,6 +37,10 @@ type songChartWorld struct {
 	anchor string
 	// before is the chart as it was before the last import.
 	before *generated.SongChart
+	// articleIDs and articleCharts are the articles a scenario set up, by
+	// title, and the chart each embeds.
+	articleIDs    map[string]uuid.UUID
+	articleCharts map[string]uuid.UUID
 }
 
 func registerSongChartSteps(sc *godog.ScenarioContext, w *world) {
@@ -240,7 +244,7 @@ func draftInput(title, language string, doc domain.SongChartDocument, rightsConf
 
 func (w *world) charts() *songChartWorld {
 	if w.songCharts == nil {
-		w.songCharts = &songChartWorld{idByTitle: map[string]string{}}
+		w.songCharts = &songChartWorld{idByTitle: map[string]string{}, articleIDs: map[string]uuid.UUID{}, articleCharts: map[string]uuid.UUID{}}
 	}
 	return w.songCharts
 }

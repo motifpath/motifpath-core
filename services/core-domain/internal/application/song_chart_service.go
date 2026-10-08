@@ -145,9 +145,11 @@ func (s *SongChartService) Get(ctx context.Context, caller domain.User, id strin
 	return s.charts.GetByID(ctx, id)
 }
 
-// List returns a page of charts for authoring.
+// List returns a page of charts. Admins list every chart, to author them;
+// teachers list only the published ones, to embed them in lesson content,
+// and must ask for that status. Students list none.
 func (s *SongChartService) List(ctx context.Context, caller domain.User, filter domain.SongChartFilter, page domain.PageRequest) (domain.Page[domain.SongChart], error) {
-	if err := requireAdmin(caller); err != nil {
+	if err := canList(caller, filter); err != nil {
 		return domain.Page[domain.SongChart]{}, err
 	}
 	// Nothing checks an enum query parameter before it gets here, so an
@@ -156,6 +158,19 @@ func (s *SongChartService) List(ctx context.Context, caller domain.User, filter 
 		return domain.Page[domain.SongChart]{}, domain.NewValidationError("status", "must be draft, published or withdrawn")
 	}
 	return s.charts.List(ctx, filter, page)
+}
+
+func canList(caller domain.User, filter domain.SongChartFilter) error {
+	switch caller.Role {
+	case domain.RoleAdmin:
+		return nil
+	case domain.RoleTeacher:
+		if filter.Status != nil && *filter.Status == domain.SongChartPublished {
+			return nil
+		}
+	case domain.RoleStudent:
+	}
+	return domain.ErrForbidden
 }
 
 // Publish publishes the draft as the chart's next revision. Its chords are

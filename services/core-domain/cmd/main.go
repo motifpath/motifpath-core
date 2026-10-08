@@ -293,7 +293,8 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	practiceReferences := repo.NewMongoPracticeReferenceWriter(mongoClient.Database(cfg.mongoDatabase), now)
 
 	identityService := application.NewIdentityService(userRepo, languageRepo, newID, now)
-	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, newID, now)
+	songChartRepo := repo.NewEntSongChartRepository(entClient)
+	contentService := application.NewContentService(nodeRepo, expandedRepo, knowledgeNodeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, songChartRepo, newID, now)
 	challengeService := application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now)
 	exerciseService := application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeNodeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, practiceReferences, newID, now, mathrand.Shuffle)
 	knowledgeNodeService := application.NewKnowledgeNodeService(knowledgeNodeRepo, instrumentRepo, languageRepo, newID)
@@ -314,7 +315,7 @@ func buildHandler(ctx context.Context, cfg config, entClient *ent.Client, sqlDB 
 	practiceSummaryService := application.NewPracticeSummaryService(instrumentRepo, studentPathRepo, courseEnrollmentRepo, pathRepo, courseVersionRepo, nodeRepo, rollupService, practiceActivity, now)
 	chordCatalogRepo := repo.NewEntChordCatalogRepository(entClient)
 	chordCatalogService := application.NewChordCatalogService(chordCatalogRepo)
-	songChartService := application.NewSongChartService(repo.NewEntSongChartRepository(entClient), chordCatalogRepo, diagramRepo, languageRepo, newID, now)
+	songChartService := application.NewSongChartService(songChartRepo, chordCatalogRepo, diagramRepo, languageRepo, newID, now)
 
 	return appHTTP.NewHandler(identityService, contentService, challengeService, exerciseService, knowledgeNodeService, knowledgeEdgeService, mediaService, pathService, application.NewPathCatalogService(pathRepo, userRepo), studentPathService,
 		courseService, courseEnrollmentService, instrumentService, voiceService, diagramService, practiceSessionService, practiceSummaryService, chordCatalogService, songChartService, learningGraphPinger, completionReader), nil

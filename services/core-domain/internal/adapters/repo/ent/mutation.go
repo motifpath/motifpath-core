@@ -38138,7 +38138,9 @@ type SongChartMutation struct {
 	published_revision_number    *int
 	addpublished_revision_number *int
 	published_title              *string
+	published_artist             *string
 	published_language           *string
+	published_concert_key        *string
 	published_by                 *uuid.UUID
 	published_at                 *time.Time
 	withdrawn_by                 *uuid.UUID
@@ -39073,6 +39075,55 @@ func (m *SongChartMutation) ResetPublishedTitle() {
 	delete(m.clearedFields, songchart.FieldPublishedTitle)
 }
 
+// SetPublishedArtist sets the "published_artist" field.
+func (m *SongChartMutation) SetPublishedArtist(s string) {
+	m.published_artist = &s
+}
+
+// PublishedArtist returns the value of the "published_artist" field in the mutation.
+func (m *SongChartMutation) PublishedArtist() (r string, exists bool) {
+	v := m.published_artist
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedArtist returns the old "published_artist" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedArtist(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedArtist is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedArtist requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedArtist: %w", err)
+	}
+	return oldValue.PublishedArtist, nil
+}
+
+// ClearPublishedArtist clears the value of the "published_artist" field.
+func (m *SongChartMutation) ClearPublishedArtist() {
+	m.published_artist = nil
+	m.clearedFields[songchart.FieldPublishedArtist] = struct{}{}
+}
+
+// PublishedArtistCleared returns if the "published_artist" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedArtistCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedArtist]
+	return ok
+}
+
+// ResetPublishedArtist resets all changes to the "published_artist" field.
+func (m *SongChartMutation) ResetPublishedArtist() {
+	m.published_artist = nil
+	delete(m.clearedFields, songchart.FieldPublishedArtist)
+}
+
 // SetPublishedLanguage sets the "published_language" field.
 func (m *SongChartMutation) SetPublishedLanguage(s string) {
 	m.published_language = &s
@@ -39120,6 +39171,55 @@ func (m *SongChartMutation) PublishedLanguageCleared() bool {
 func (m *SongChartMutation) ResetPublishedLanguage() {
 	m.published_language = nil
 	delete(m.clearedFields, songchart.FieldPublishedLanguage)
+}
+
+// SetPublishedConcertKey sets the "published_concert_key" field.
+func (m *SongChartMutation) SetPublishedConcertKey(s string) {
+	m.published_concert_key = &s
+}
+
+// PublishedConcertKey returns the value of the "published_concert_key" field in the mutation.
+func (m *SongChartMutation) PublishedConcertKey() (r string, exists bool) {
+	v := m.published_concert_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublishedConcertKey returns the old "published_concert_key" field's value of the SongChart entity.
+// If the SongChart object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongChartMutation) OldPublishedConcertKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublishedConcertKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublishedConcertKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublishedConcertKey: %w", err)
+	}
+	return oldValue.PublishedConcertKey, nil
+}
+
+// ClearPublishedConcertKey clears the value of the "published_concert_key" field.
+func (m *SongChartMutation) ClearPublishedConcertKey() {
+	m.published_concert_key = nil
+	m.clearedFields[songchart.FieldPublishedConcertKey] = struct{}{}
+}
+
+// PublishedConcertKeyCleared returns if the "published_concert_key" field was cleared in this mutation.
+func (m *SongChartMutation) PublishedConcertKeyCleared() bool {
+	_, ok := m.clearedFields[songchart.FieldPublishedConcertKey]
+	return ok
+}
+
+// ResetPublishedConcertKey resets all changes to the "published_concert_key" field.
+func (m *SongChartMutation) ResetPublishedConcertKey() {
+	m.published_concert_key = nil
+	delete(m.clearedFields, songchart.FieldPublishedConcertKey)
 }
 
 // SetPublishedBy sets the "published_by" field.
@@ -39455,7 +39555,7 @@ func (m *SongChartMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SongChartMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 26)
 	if m.status != nil {
 		fields = append(fields, songchart.FieldStatus)
 	}
@@ -39510,8 +39610,14 @@ func (m *SongChartMutation) Fields() []string {
 	if m.published_title != nil {
 		fields = append(fields, songchart.FieldPublishedTitle)
 	}
+	if m.published_artist != nil {
+		fields = append(fields, songchart.FieldPublishedArtist)
+	}
 	if m.published_language != nil {
 		fields = append(fields, songchart.FieldPublishedLanguage)
+	}
+	if m.published_concert_key != nil {
+		fields = append(fields, songchart.FieldPublishedConcertKey)
 	}
 	if m.published_by != nil {
 		fields = append(fields, songchart.FieldPublishedBy)
@@ -39572,8 +39678,12 @@ func (m *SongChartMutation) Field(name string) (ent.Value, bool) {
 		return m.PublishedRevisionNumber()
 	case songchart.FieldPublishedTitle:
 		return m.PublishedTitle()
+	case songchart.FieldPublishedArtist:
+		return m.PublishedArtist()
 	case songchart.FieldPublishedLanguage:
 		return m.PublishedLanguage()
+	case songchart.FieldPublishedConcertKey:
+		return m.PublishedConcertKey()
 	case songchart.FieldPublishedBy:
 		return m.PublishedBy()
 	case songchart.FieldPublishedAt:
@@ -39629,8 +39739,12 @@ func (m *SongChartMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldPublishedRevisionNumber(ctx)
 	case songchart.FieldPublishedTitle:
 		return m.OldPublishedTitle(ctx)
+	case songchart.FieldPublishedArtist:
+		return m.OldPublishedArtist(ctx)
 	case songchart.FieldPublishedLanguage:
 		return m.OldPublishedLanguage(ctx)
+	case songchart.FieldPublishedConcertKey:
+		return m.OldPublishedConcertKey(ctx)
 	case songchart.FieldPublishedBy:
 		return m.OldPublishedBy(ctx)
 	case songchart.FieldPublishedAt:
@@ -39776,12 +39890,26 @@ func (m *SongChartMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPublishedTitle(v)
 		return nil
+	case songchart.FieldPublishedArtist:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedArtist(v)
+		return nil
 	case songchart.FieldPublishedLanguage:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPublishedLanguage(v)
+		return nil
+	case songchart.FieldPublishedConcertKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublishedConcertKey(v)
 		return nil
 	case songchart.FieldPublishedBy:
 		v, ok := value.(uuid.UUID)
@@ -39908,8 +40036,14 @@ func (m *SongChartMutation) ClearedFields() []string {
 	if m.FieldCleared(songchart.FieldPublishedTitle) {
 		fields = append(fields, songchart.FieldPublishedTitle)
 	}
+	if m.FieldCleared(songchart.FieldPublishedArtist) {
+		fields = append(fields, songchart.FieldPublishedArtist)
+	}
 	if m.FieldCleared(songchart.FieldPublishedLanguage) {
 		fields = append(fields, songchart.FieldPublishedLanguage)
+	}
+	if m.FieldCleared(songchart.FieldPublishedConcertKey) {
+		fields = append(fields, songchart.FieldPublishedConcertKey)
 	}
 	if m.FieldCleared(songchart.FieldPublishedBy) {
 		fields = append(fields, songchart.FieldPublishedBy)
@@ -39961,8 +40095,14 @@ func (m *SongChartMutation) ClearField(name string) error {
 	case songchart.FieldPublishedTitle:
 		m.ClearPublishedTitle()
 		return nil
+	case songchart.FieldPublishedArtist:
+		m.ClearPublishedArtist()
+		return nil
 	case songchart.FieldPublishedLanguage:
 		m.ClearPublishedLanguage()
+		return nil
+	case songchart.FieldPublishedConcertKey:
+		m.ClearPublishedConcertKey()
 		return nil
 	case songchart.FieldPublishedBy:
 		m.ClearPublishedBy()
@@ -40041,8 +40181,14 @@ func (m *SongChartMutation) ResetField(name string) error {
 	case songchart.FieldPublishedTitle:
 		m.ResetPublishedTitle()
 		return nil
+	case songchart.FieldPublishedArtist:
+		m.ResetPublishedArtist()
+		return nil
 	case songchart.FieldPublishedLanguage:
 		m.ResetPublishedLanguage()
+		return nil
+	case songchart.FieldPublishedConcertKey:
+		m.ResetPublishedConcertKey()
 		return nil
 	case songchart.FieldPublishedBy:
 		m.ResetPublishedBy()

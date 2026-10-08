@@ -309,6 +309,26 @@ func (_u *SongChartUpdate) ClearPublishedTitle() *SongChartUpdate {
 	return _u
 }
 
+// SetPublishedArtist sets the "published_artist" field.
+func (_u *SongChartUpdate) SetPublishedArtist(v string) *SongChartUpdate {
+	_u.mutation.SetPublishedArtist(v)
+	return _u
+}
+
+// SetNillablePublishedArtist sets the "published_artist" field if the given value is not nil.
+func (_u *SongChartUpdate) SetNillablePublishedArtist(v *string) *SongChartUpdate {
+	if v != nil {
+		_u.SetPublishedArtist(*v)
+	}
+	return _u
+}
+
+// ClearPublishedArtist clears the value of the "published_artist" field.
+func (_u *SongChartUpdate) ClearPublishedArtist() *SongChartUpdate {
+	_u.mutation.ClearPublishedArtist()
+	return _u
+}
+
 // SetPublishedLanguage sets the "published_language" field.
 func (_u *SongChartUpdate) SetPublishedLanguage(v string) *SongChartUpdate {
 	_u.mutation.SetPublishedLanguage(v)
@@ -326,6 +346,26 @@ func (_u *SongChartUpdate) SetNillablePublishedLanguage(v *string) *SongChartUpd
 // ClearPublishedLanguage clears the value of the "published_language" field.
 func (_u *SongChartUpdate) ClearPublishedLanguage() *SongChartUpdate {
 	_u.mutation.ClearPublishedLanguage()
+	return _u
+}
+
+// SetPublishedConcertKey sets the "published_concert_key" field.
+func (_u *SongChartUpdate) SetPublishedConcertKey(v string) *SongChartUpdate {
+	_u.mutation.SetPublishedConcertKey(v)
+	return _u
+}
+
+// SetNillablePublishedConcertKey sets the "published_concert_key" field if the given value is not nil.
+func (_u *SongChartUpdate) SetNillablePublishedConcertKey(v *string) *SongChartUpdate {
+	if v != nil {
+		_u.SetPublishedConcertKey(*v)
+	}
+	return _u
+}
+
+// ClearPublishedConcertKey clears the value of the "published_concert_key" field.
+func (_u *SongChartUpdate) ClearPublishedConcertKey() *SongChartUpdate {
+	_u.mutation.ClearPublishedConcertKey()
 	return _u
 }
 
@@ -622,11 +662,23 @@ func (_u *SongChartUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PublishedTitleCleared() {
 		_spec.ClearField(songchart.FieldPublishedTitle, field.TypeString)
 	}
+	if value, ok := _u.mutation.PublishedArtist(); ok {
+		_spec.SetField(songchart.FieldPublishedArtist, field.TypeString, value)
+	}
+	if _u.mutation.PublishedArtistCleared() {
+		_spec.ClearField(songchart.FieldPublishedArtist, field.TypeString)
+	}
 	if value, ok := _u.mutation.PublishedLanguage(); ok {
 		_spec.SetField(songchart.FieldPublishedLanguage, field.TypeString, value)
 	}
 	if _u.mutation.PublishedLanguageCleared() {
 		_spec.ClearField(songchart.FieldPublishedLanguage, field.TypeString)
+	}
+	if value, ok := _u.mutation.PublishedConcertKey(); ok {
+		_spec.SetField(songchart.FieldPublishedConcertKey, field.TypeString, value)
+	}
+	if _u.mutation.PublishedConcertKeyCleared() {
+		_spec.ClearField(songchart.FieldPublishedConcertKey, field.TypeString)
 	}
 	if value, ok := _u.mutation.PublishedBy(); ok {
 		_spec.SetField(songchart.FieldPublishedBy, field.TypeUUID, value)
@@ -1000,6 +1052,26 @@ func (_u *SongChartUpdateOne) ClearPublishedTitle() *SongChartUpdateOne {
 	return _u
 }
 
+// SetPublishedArtist sets the "published_artist" field.
+func (_u *SongChartUpdateOne) SetPublishedArtist(v string) *SongChartUpdateOne {
+	_u.mutation.SetPublishedArtist(v)
+	return _u
+}
+
+// SetNillablePublishedArtist sets the "published_artist" field if the given value is not nil.
+func (_u *SongChartUpdateOne) SetNillablePublishedArtist(v *string) *SongChartUpdateOne {
+	if v != nil {
+		_u.SetPublishedArtist(*v)
+	}
+	return _u
+}
+
+// ClearPublishedArtist clears the value of the "published_artist" field.
+func (_u *SongChartUpdateOne) ClearPublishedArtist() *SongChartUpdateOne {
+	_u.mutation.ClearPublishedArtist()
+	return _u
+}
+
 // SetPublishedLanguage sets the "published_language" field.
 func (_u *SongChartUpdateOne) SetPublishedLanguage(v string) *SongChartUpdateOne {
 	_u.mutation.SetPublishedLanguage(v)
@@ -1017,6 +1089,26 @@ func (_u *SongChartUpdateOne) SetNillablePublishedLanguage(v *string) *SongChart
 // ClearPublishedLanguage clears the value of the "published_language" field.
 func (_u *SongChartUpdateOne) ClearPublishedLanguage() *SongChartUpdateOne {
 	_u.mutation.ClearPublishedLanguage()
+	return _u
+}
+
+// SetPublishedConcertKey sets the "published_concert_key" field.
+func (_u *SongChartUpdateOne) SetPublishedConcertKey(v string) *SongChartUpdateOne {
+	_u.mutation.SetPublishedConcertKey(v)
+	return _u
+}
+
+// SetNillablePublishedConcertKey sets the "published_concert_key" field if the given value is not nil.
+func (_u *SongChartUpdateOne) SetNillablePublishedConcertKey(v *string) *SongChartUpdateOne {
+	if v != nil {
+		_u.SetPublishedConcertKey(*v)
+	}
+	return _u
+}
+
+// ClearPublishedConcertKey clears the value of the "published_concert_key" field.
+func (_u *SongChartUpdateOne) ClearPublishedConcertKey() *SongChartUpdateOne {
+	_u.mutation.ClearPublishedConcertKey()
 	return _u
 }
 
@@ -1343,11 +1435,23 @@ func (_u *SongChartUpdateOne) sqlSave(ctx context.Context) (_node *SongChart, er
 	if _u.mutation.PublishedTitleCleared() {
 		_spec.ClearField(songchart.FieldPublishedTitle, field.TypeString)
 	}
+	if value, ok := _u.mutation.PublishedArtist(); ok {
+		_spec.SetField(songchart.FieldPublishedArtist, field.TypeString, value)
+	}
+	if _u.mutation.PublishedArtistCleared() {
+		_spec.ClearField(songchart.FieldPublishedArtist, field.TypeString)
+	}
 	if value, ok := _u.mutation.PublishedLanguage(); ok {
 		_spec.SetField(songchart.FieldPublishedLanguage, field.TypeString, value)
 	}
 	if _u.mutation.PublishedLanguageCleared() {
 		_spec.ClearField(songchart.FieldPublishedLanguage, field.TypeString)
+	}
+	if value, ok := _u.mutation.PublishedConcertKey(); ok {
+		_spec.SetField(songchart.FieldPublishedConcertKey, field.TypeString, value)
+	}
+	if _u.mutation.PublishedConcertKeyCleared() {
+		_spec.ClearField(songchart.FieldPublishedConcertKey, field.TypeString)
 	}
 	if value, ok := _u.mutation.PublishedBy(); ok {
 		_spec.SetField(songchart.FieldPublishedBy, field.TypeUUID, value)
