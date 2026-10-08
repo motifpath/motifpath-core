@@ -726,7 +726,8 @@ func (w *world) rejectionIdentifiesVoicingField() error {
 func (w *world) refusedAsNotAdmin() error {
 	switch w.lastResp.(type) {
 	case generated.CreateSongChart403JSONResponse, generated.PublishSongChart403JSONResponse, generated.ListSongCharts403JSONResponse,
-		generated.ImportSongChartChordPro403JSONResponse, generated.ExportSongChartChordPro403JSONResponse:
+		generated.ImportSongChartChordPro403JSONResponse, generated.ExportSongChartChordPro403JSONResponse,
+		generated.ReadSongChartChordPro403JSONResponse:
 		return nil
 	}
 	return fmt.Errorf("expected a refusal because only admins author song charts, got %#v (err=%v)", w.lastResp, w.lastErr)
