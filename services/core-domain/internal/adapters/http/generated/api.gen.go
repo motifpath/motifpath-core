@@ -742,6 +742,12 @@ const (
 	StudentPathItemContentTypeVideo   StudentPathItemContentType = "video"
 )
 
+// Defines values for StudentPathItemLockReason.
+const (
+	StudentPathItemLockReasonLanguage     StudentPathItemLockReason = "language"
+	StudentPathItemLockReasonPreviousStep StudentPathItemLockReason = "previous_step"
+)
+
 // Defines values for StudentPathItemStatus.
 const (
 	Completed  StudentPathItemStatus = "completed"
@@ -5059,6 +5065,12 @@ type StudentPathLevel string
 
 // StudentPathItem A content node in the student's learning path with their current progress state.
 type StudentPathItem struct {
+	// AvailableLanguages The languages the student can open this item in. Present only
+	// when lock_reason is language. Holds the content node's languages
+	// when the node lacks the caller's locale, and otherwise the
+	// languages of the first required exercise that lacks it.
+	AvailableLanguages *[]Language `json:"available_languages,omitempty"`
+
 	// ContentNodeId The ID of the content node at this position.
 	ContentNodeId openapi_types.UUID `json:"content_node_id"`
 
@@ -5068,6 +5080,16 @@ type StudentPathItem struct {
 	// ContentType Media format of the content node.
 	ContentType StudentPathItemContentType `json:"content_type"`
 
+	// LockReason Why the item is locked. Present only when status is locked.
+	// previous_step — an earlier item isn't completed yet.
+	// language — every earlier item is completed, but this item (its
+	// content node or a required exercise) has no version in the
+	// caller's locale. The student can open it in one of
+	// available_languages, and finishing it completes the item and
+	// unlocks the next. Only the item at current_position can have
+	// this reason: when both reasons apply, it is previous_step.
+	LockReason *StudentPathItemLockReason `json:"lock_reason,omitempty"`
+
 	// Position 1-based position of this item within the learning path.
 	Position int `json:"position"`
 
@@ -5076,7 +5098,7 @@ type StudentPathItem struct {
 
 	// Status The student's current progress state for this item. completed — finished.
 	// in_progress — started but not finished. not_started — not yet reached.
-	// locked — a preceding item must be completed first.
+	// locked — not available yet; lock_reason says why.
 	Status StudentPathItemStatus `json:"status"`
 
 	// Title Title of the content node.
@@ -5086,9 +5108,19 @@ type StudentPathItem struct {
 // StudentPathItemContentType Media format of the content node.
 type StudentPathItemContentType string
 
+// StudentPathItemLockReason Why the item is locked. Present only when status is locked.
+// previous_step — an earlier item isn't completed yet.
+// language — every earlier item is completed, but this item (its
+// content node or a required exercise) has no version in the
+// caller's locale. The student can open it in one of
+// available_languages, and finishing it completes the item and
+// unlocks the next. Only the item at current_position can have
+// this reason: when both reasons apply, it is previous_step.
+type StudentPathItemLockReason string
+
 // StudentPathItemStatus The student's current progress state for this item. completed — finished.
 // in_progress — started but not finished. not_started — not yet reached.
-// locked — a preceding item must be completed first.
+// locked — not available yet; lock_reason says why.
 type StudentPathItemStatus string
 
 // StudentPathView The student's current learning path with per-item progress state.

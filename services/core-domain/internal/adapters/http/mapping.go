@@ -575,7 +575,7 @@ func toStudentPath(sp domain.StudentPath, names userNames, completed int) genera
 }
 
 func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
-	return generated.StudentPathItem{
+	result := generated.StudentPathItem{
 		Position:             item.Position,
 		ContentNodeId:        mustUUID(item.ContentNodeID),
 		ContentNodeVersionId: mustUUID(item.ContentNodeVersionID),
@@ -584,6 +584,15 @@ func toStudentPathItem(item domain.StudentPathItem) generated.StudentPathItem {
 		Status:               generated.StudentPathItemStatus(item.Status),
 		SectionLabel:         item.SectionLabel,
 	}
+	if item.LockReason != nil {
+		reason := generated.StudentPathItemLockReason(*item.LockReason)
+		result.LockReason = &reason
+	}
+	if item.AvailableLanguages != nil {
+		languages := toGeneratedLanguages(item.AvailableLanguages)
+		result.AvailableLanguages = &languages
+	}
+	return result
 }
 
 func toStudentPathView(v application.StudentPathView) generated.StudentPathView {

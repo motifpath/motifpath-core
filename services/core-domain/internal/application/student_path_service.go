@@ -58,24 +58,25 @@ func NewStudentPathService(
 	}
 }
 
-// resolveLanguageLocks reports, per content_node_id in nodeIDs, whether it
-// must be locked because locale matches neither the node's own language
-// tags nor those of any exercise linked to it as a path exercise. A node id
+// resolveLanguageLocks reports, per content_node_id in nodeIDs that locale
+// can't access, the languages it can be opened in instead: the node's own
+// languages when they don't match locale, and otherwise those of the first
+// exercise linked to it as a path exercise that doesn't match. A node id
 // with no matching ContentNode record is left out of the result entirely
 // (never locked by this check) rather than treated as a mismatch — path
 // items in tests and any other caller that never separately registered the
 // referenced ContentNode should not be penalized for data this check simply
 // has no visibility into.
-func (s *StudentPathService) resolveLanguageLocks(ctx context.Context, nodeIDs []string, locale string) (map[string]bool, error) {
+func (s *StudentPathService) resolveLanguageLocks(ctx context.Context, nodeIDs []string, locale string) (map[string][]domain.Language, error) {
 	nodes, err := s.contentNodes.GetByIDs(ctx, nodeIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	langLocked := map[string]bool{}
+	langLocks := map[string][]domain.Language{}
 	for id, node := range nodes {
 		if !domain.HasMatchingLanguage(node.Languages, locale) {
-			langLocked[id] = true
+			langLocks[id] = node.Languages
 			continue
 		}
 
@@ -85,12 +86,12 @@ func (s *StudentPathService) resolveLanguageLocks(ctx context.Context, nodeIDs [
 		}
 		for _, ex := range pathExercises {
 			if !domain.HasMatchingLanguage(ex.Languages, locale) {
-				langLocked[id] = true
+				langLocks[id] = ex.Languages
 				break
 			}
 		}
 	}
-	return langLocked, nil
+	return langLocks, nil
 }
 
 // resolveLatestVersionIDs looks up the latest published ContentNodeVersion
@@ -403,12 +404,12 @@ func (s *StudentPathService) composeView(ctx context.Context, caller domain.User
 		return StudentPathView{}, err
 	}
 
-	langLocked, err := s.resolveLanguageLocks(ctx, nodeIDs, caller.Locale.Code)
+	langLocks, err := s.resolveLanguageLocks(ctx, nodeIDs, caller.Locale.Code)
 	if err != nil {
 		return StudentPathView{}, err
 	}
 
-	viewItems, currentPosition := domain.BuildStudentPathItems(items, raw, langLocked)
+	viewItems, currentPosition := domain.BuildStudentPathItems(items, raw, langLocks)
 	for i := range viewItems {
 		viewItems[i].ContentNodeVersionID = versionByNode[viewItems[i].ContentNodeID]
 	}

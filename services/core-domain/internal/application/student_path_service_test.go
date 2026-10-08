@@ -291,7 +291,7 @@ func TestStudentPathService_GetMyPath(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrNotFound)
 	})
 
-	t.Run("a node whose content has no matching-language tag for the student's locale is locked", func(t *testing.T) {
+	t.Run("a node whose content has no matching-language tag for the student's locale is locked for language, with the node's languages", func(t *testing.T) {
 		users := newFakeUserRepository()
 		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
 		paths := newFakeLearningPathRepository()
@@ -310,6 +310,35 @@ func TestStudentPathService_GetMyPath(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.CompletionStatusLocked, view.Items[0].Status)
+		require.NotNil(t, view.Items[0].LockReason)
+		assert.Equal(t, domain.LockReasonLanguage, *view.Items[0].LockReason)
+		assert.Equal(t, []domain.Language{{Code: "pt_BR"}}, view.Items[0].AvailableLanguages)
+	})
+
+	t.Run("a node whose required exercise lacks the student's locale is locked for language, with the exercise's languages", func(t *testing.T) {
+		users := newFakeUserRepository()
+		users.put(domain.User{ID: "alice", Role: domain.RoleStudent})
+		paths := newFakeLearningPathRepository()
+		paths.put(threeItemTemplate())
+		studentPaths := newFakeStudentPathRepository()
+		versions := publishedVersions("node-01", "node-02", "node-03")
+		state := newFakeStudentLearningStateRepository()
+		nodes := newFakeContentNodeRepository()
+		nodes.put(domain.ContentNode{ID: "node-01", Languages: []domain.Language{{Code: "pt_BR"}}})
+		exercises := newFakeExerciseRepository()
+		exercises.put(domain.Exercise{ID: "exercise-1", Languages: []domain.Language{{Code: "en"}}, ContentNodeIDs: []string{"node-01"}})
+		svc := newStudentPathServiceWithContent(users, paths, studentPaths, versions, state, nodes, exercises, newFakeCompletionStateReader())
+
+		_, _, err := svc.AssignLearningPath(context.Background(), teacherCaller(), "alice", "path-1")
+		require.NoError(t, err)
+
+		view, err := svc.GetMyPath(context.Background(), domain.User{ID: "alice", Role: domain.RoleStudent, Locale: domain.Language{Code: "pt_BR"}})
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.CompletionStatusLocked, view.Items[0].Status)
+		require.NotNil(t, view.Items[0].LockReason)
+		assert.Equal(t, domain.LockReasonLanguage, *view.Items[0].LockReason)
+		assert.Equal(t, []domain.Language{{Code: "en"}}, view.Items[0].AvailableLanguages)
 	})
 
 	t.Run("a student whose current pointer is a course enrollment sees that checkpoint's path, with course fields set", func(t *testing.T) {
