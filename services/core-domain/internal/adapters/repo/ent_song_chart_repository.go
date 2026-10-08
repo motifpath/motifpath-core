@@ -80,14 +80,19 @@ func (r *EntSongChartRepository) List(ctx context.Context, filter domain.SongCha
 		query = query.Where(songchart.StatusEQ(songchart.Status(*filter.Status)))
 	}
 	if filter.Q != "" {
-		candidates, err := query.Clone().Select(songchart.FieldID, songchart.FieldTitle, songchart.FieldArtist).All(ctx)
+		candidates, err := query.Clone().
+			Select(songchart.FieldID, songchart.FieldTitle, songchart.FieldArtist, songchart.FieldPublishedTitle, songchart.FieldPublishedArtist).
+			All(ctx)
 		if err != nil {
 			return domain.Page[domain.SongChart]{}, err
 		}
 		matched := []uuid.UUID{}
 		for _, c := range candidates {
-			if domain.ContainsLoosely(c.Title, filter.Q) || domain.ContainsLoosely(c.Artist, filter.Q) {
-				matched = append(matched, c.ID)
+			for _, text := range []string{c.Title, c.Artist, deref(c.PublishedTitle), deref(c.PublishedArtist)} {
+				if text != "" && domain.ContainsLoosely(text, filter.Q) {
+					matched = append(matched, c.ID)
+					break
+				}
 			}
 		}
 		query = query.Where(songchart.IDIn(matched...))
@@ -189,15 +194,20 @@ func setDraftOptionals(update *ent.SongChartUpdateOne, d domain.SongChartDraft) 
 
 func setPublishedSummary(update *ent.SongChartUpdateOne, summary *domain.SongChartRevisionSummary) error {
 	if summary == nil {
-		update.ClearPublishedRevisionNumber().ClearPublishedTitle().ClearPublishedLanguage().ClearPublishedBy().ClearPublishedAt()
+		update.ClearPublishedRevisionNumber().ClearPublishedTitle().ClearPublishedArtist().ClearPublishedLanguage().
+			ClearPublishedConcertKey().ClearPublishedBy().ClearPublishedAt()
 		return nil
 	}
 	by, err := uuid.Parse(summary.PublishedBy)
 	if err != nil {
 		return err
 	}
-	update.SetPublishedRevisionNumber(summary.Number).SetPublishedTitle(summary.Title).
-		SetPublishedLanguage(summary.Language).SetPublishedBy(by).SetPublishedAt(summary.PublishedAt)
+	update.SetPublishedRevisionNumber(summary.Number).SetPublishedTitle(summary.Title).SetPublishedArtist(summary.Artist).
+		SetPublishedLanguage(summary.Language).SetNillablePublishedConcertKey(summary.ConcertKey).
+		SetPublishedBy(by).SetPublishedAt(summary.PublishedAt)
+	if summary.ConcertKey == nil {
+		update.ClearPublishedConcertKey()
+	}
 	return nil
 }
 
@@ -384,7 +394,8 @@ func toDomainSongChart(row *ent.SongChart) (domain.SongChart, error) {
 	}
 	if row.PublishedRevisionNumber != nil {
 		chart.PublishedRevision = &domain.SongChartRevisionSummary{
-			Number: *row.PublishedRevisionNumber, Title: deref(row.PublishedTitle), Language: deref(row.PublishedLanguage),
+			Number: *row.PublishedRevisionNumber, Title: deref(row.PublishedTitle), Artist: deref(row.PublishedArtist),
+			Language: deref(row.PublishedLanguage), ConcertKey: row.PublishedConcertKey,
 			PublishedBy: uuidString(row.PublishedBy), PublishedAt: derefTime(row.PublishedAt),
 		}
 	}

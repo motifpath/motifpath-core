@@ -558,10 +558,60 @@ func TestSongChartService_List(t *testing.T) {
 		assert.Equal(t, "status", valErr.Fields[0].Field)
 	})
 
-	t.Run("a teacher cannot list song charts", func(t *testing.T) {
-		_, err := newSongChartFixture().service.List(ctx, teacherCaller(), domain.SongChartFilter{}, domain.PageRequest{Limit: 20})
+	t.Run("a teacher lists the published charts, to embed them", func(t *testing.T) {
+		f := newSongChartFixture()
+		published, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		_, _ = f.service.Publish(ctx, adminCaller(), published.ID)
+		_, _ = f.service.Create(ctx, adminCaller(), asaBranca())
+		status := domain.SongChartPublished
+
+		page, err := f.service.List(ctx, teacherCaller(), domain.SongChartFilter{Status: &status}, domain.PageRequest{Limit: 20})
+
+		require.NoError(t, err)
+		require.Len(t, page.Items, 1)
+		assert.Equal(t, "Luiz Gonzaga", page.Items[0].PublishedRevision.Artist)
+	})
+
+	teacherRefusals := []struct {
+		name   string
+		status *domain.SongChartStatus
+	}{
+		{name: "without choosing a status", status: nil},
+		{name: "asking for drafts", status: ptr(domain.SongChartDraftStatus)},
+		{name: "asking for withdrawn charts", status: ptr(domain.SongChartWithdrawn)},
+	}
+	for _, tt := range teacherRefusals {
+		t.Run("a teacher cannot list charts learners can't read, "+tt.name, func(t *testing.T) {
+			_, err := newSongChartFixture().service.List(ctx, teacherCaller(), domain.SongChartFilter{Status: tt.status}, domain.PageRequest{Limit: 20})
+
+			require.ErrorIs(t, err, domain.ErrForbidden)
+		})
+	}
+
+	t.Run("a student cannot list song charts", func(t *testing.T) {
+		status := domain.SongChartPublished
+
+		_, err := newSongChartFixture().service.List(ctx, studentCaller(), domain.SongChartFilter{Status: &status}, domain.PageRequest{Limit: 20})
 
 		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+
+	t.Run("a search finds a chart by its published title while its draft is retitled", func(t *testing.T) {
+		f := newSongChartFixture()
+		chart, _ := f.service.Create(ctx, adminCaller(), asaBranca())
+		_, _ = f.service.Publish(ctx, adminCaller(), chart.ID)
+		retitled := asaBranca()
+		retitled.Title = "Retitled"
+		retitled.Artist = "Someone else"
+		_, err := f.service.UpdateDraft(ctx, adminCaller(), chart.ID, retitled)
+		require.NoError(t, err)
+		status := domain.SongChartPublished
+
+		page, err := f.service.List(ctx, teacherCaller(), domain.SongChartFilter{Q: "gonzaga", Status: &status}, domain.PageRequest{Limit: 20})
+
+		require.NoError(t, err)
+		require.Len(t, page.Items, 1)
+		assert.Equal(t, "Asa Branca", page.Items[0].PublishedRevision.Title)
 	})
 }
 

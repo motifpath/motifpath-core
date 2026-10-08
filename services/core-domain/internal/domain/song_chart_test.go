@@ -214,7 +214,10 @@ func TestSongChart_Publish(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, domain.SongChartPublished, chart.Status)
 		assert.Equal(t, 1, rev.Number)
-		assert.Equal(t, &domain.SongChartRevisionSummary{Number: 1, Title: "Asa Branca", Language: "pt_BR", PublishedBy: "rui", PublishedAt: publishedAt}, chart.PublishedRevision)
+		key := "G"
+		assert.Equal(t, &domain.SongChartRevisionSummary{
+			Number: 1, Title: "Asa Branca", Artist: "Luiz Gonzaga", Language: "pt_BR", ConcertKey: &key, PublishedBy: "rui", PublishedAt: publishedAt,
+		}, chart.PublishedRevision)
 		assert.Equal(t, "rui", rev.PublishedBy)
 		assert.Equal(t, publishedAt, rev.PublishedAt)
 		assert.Equal(t, domain.RightsConfirmation{ConfirmedBy: "ana", ConfirmedAt: confirmedAt}, rev.RightsConfirmation)
