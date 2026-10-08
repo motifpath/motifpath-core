@@ -261,6 +261,39 @@ func (e NameTheShapeResponseResponseType) Valid() bool {
 	}
 }
 
+// Defines values for NotAnsweredResponseReason.
+const (
+	FailedToLoad NotAnsweredResponseReason = "failed_to_load"
+	Unavailable  NotAnsweredResponseReason = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the NotAnsweredResponseReason enum.
+func (e NotAnsweredResponseReason) Valid() bool {
+	switch e {
+	case FailedToLoad:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for NotAnsweredResponseResponseType.
+const (
+	NotAnswered NotAnsweredResponseResponseType = "not_answered"
+)
+
+// Valid indicates whether the value is a known member of the NotAnsweredResponseResponseType enum.
+func (e NotAnsweredResponseResponseType) Valid() bool {
+	switch e {
+	case NotAnswered:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for OptionChoiceResponseResponseType.
 const (
 	OptionChoice OptionChoiceResponseResponseType = "option_choice"
@@ -980,8 +1013,18 @@ type LessonStartedEvent struct {
 // LessonStartedEventEventType defines model for LessonStartedEvent.EventType.
 type LessonStartedEventEventType string
 
-// NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note.
+// NameTheNoteResponse Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
+// among four choices.
 type NameTheNoteResponse struct {
+	// Choices The four notes the student picked from, in the order shown: the cell's note and
+	// three near notes (a semitone below, a semitone above, and the note at the same fret
+	// on an adjacent string, or a note a tone away when that one repeats). They must be
+	// four different pitches and include both the cell's note and the note named; otherwise
+	// the answer is rejected. Kept with the evidence, so a wrong pick among four can be
+	// weighed against the chance of guessing it. Absent only for an answer given on the
+	// earlier twelve-note keypad.
+	Choices *[]string `json:"choices,omitempty"`
+
 	// LatencyMs Milliseconds from the moment the cell was shown to the answer.
 	LatencyMs int `json:"latency_ms"`
 
@@ -1014,6 +1057,29 @@ type NameTheShapeResponse struct {
 // NameTheShapeResponseResponseType Discriminator. The student named the shape shown.
 type NameTheShapeResponseResponseType string
 
+// NotAnsweredResponse Sent instead of an answer when an item couldn't be answered: its sound or image failed to
+// load and the student skipped it, or it can't be shown on this device. It fits every item
+// kind. It is never graded and yields no evidence, so it changes no accuracy, response time,
+// level or review schedule; the event is kept so items that fail can be found. The item's
+// options stay locked while its stimulus is missing, so it never carries a guess.
+type NotAnsweredResponse struct {
+	// Reason Why the item wasn't answered. failed_to_load = its sound or image didn't load, and
+	// the student skipped it instead of trying again; unavailable = it can't be shown on
+	// this device, so skipping was the only way on.
+	Reason NotAnsweredResponseReason `json:"reason"`
+
+	// ResponseType Discriminator. The item was skipped without an answer.
+	ResponseType NotAnsweredResponseResponseType `json:"response_type"`
+}
+
+// NotAnsweredResponseReason Why the item wasn't answered. failed_to_load = its sound or image didn't load, and
+// the student skipped it instead of trying again; unavailable = it can't be shown on
+// this device, so skipping was the only way on.
+type NotAnsweredResponseReason string
+
+// NotAnsweredResponseResponseType Discriminator. The item was skipped without an answer.
+type NotAnsweredResponseResponseType string
+
 // NotFoundError Returned when the requested resource does not exist.
 type NotFoundError struct {
 	// Message Human-readable description of what was not found.
@@ -1024,15 +1090,18 @@ type NotFoundError struct {
 // correct option takes one selection; an exercise with several correct options takes
 // several, and is right only when the selection matches its correct options exactly.
 type OptionChoiceResponse struct {
-	// AudioMs Milliseconds of audio the exercise asks the student to hear once before answering:
-	// the length of the exercise's sound for a listening exercise, or the lengths of all
-	// its sound options added together when the options are sounds. Hearing it is not
-	// part of the time spent knowing the answer, so it is taken off the latency before
-	// the answer is judged against the drill's fluent time. Replays are not taken off.
-	// Absent for exercises without audio.
+	// AudioMs Milliseconds of audio a listening exercise asks the student to hear once before
+	// answering: the length of its sound. Hearing it is not part of the time spent knowing
+	// the answer, so it is taken off the latency before the answer is judged against the
+	// drill's fluent time. Replays are not taken off. Absent for exercises without audio,
+	// and for exercises whose options are sounds, whose latency already starts after the
+	// last clip played.
 	AudioMs *int `json:"audio_ms,omitempty"`
 
-	// LatencyMs Milliseconds from the moment the exercise was shown to the answer.
+	// LatencyMs Milliseconds from the moment the exercise was shown to the answer. When the options
+	// are sounds, it runs instead from the end of the last clip the student played to
+	// Check: listening is not answering. A clip still playing at Check ends there, so the
+	// latency is 0; with no clip played, it runs from the moment the exercise was shown.
 	LatencyMs int `json:"latency_ms"`
 
 	// OptionIds The options selected, in any order.
@@ -1194,7 +1263,8 @@ type PracticeResponse struct {
 
 // PracticeSessionEndedEvent defines model for PracticeSessionEndedEvent.
 type PracticeSessionEndedEvent struct {
-	// AnsweredCount How many items the student answered in the session.
+	// AnsweredCount How many items the student answered in the session. Items sent as not answered
+	// (skipped because they couldn't be shown) are not counted.
 	AnsweredCount int `json:"answered_count"`
 
 	// EventId Client-generated unique identifier for this event occurrence. The Aggregation Worker
@@ -2097,6 +2167,40 @@ func (t *PracticeResponse) MergeFindTheDegreeResponse(v FindTheDegreeResponse) e
 	return err
 }
 
+// AsNotAnsweredResponse returns the union data inside the PracticeResponse as a NotAnsweredResponse
+func (t PracticeResponse) AsNotAnsweredResponse() (NotAnsweredResponse, error) {
+	var body NotAnsweredResponse
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromNotAnsweredResponse overwrites any union data inside the PracticeResponse as the provided NotAnsweredResponse
+func (t *PracticeResponse) FromNotAnsweredResponse(v NotAnsweredResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"not_answered"}`))
+	t.union = b
+	return err
+}
+
+// MergeNotAnsweredResponse performs a merge with any union data inside the PracticeResponse, using the provided NotAnsweredResponse
+func (t *PracticeResponse) MergeNotAnsweredResponse(v NotAnsweredResponse) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	b, err = runtime.JSONMerge(b, []byte(`{"response_type":"not_answered"}`))
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t PracticeResponse) Discriminator() (string, error) {
 	var discriminator struct {
 		Discriminator string `json:"response_type"`
@@ -2119,6 +2223,8 @@ func (t PracticeResponse) ValueByDiscriminator() (interface{}, error) {
 		return t.AsNameTheNoteResponse()
 	case "name_the_shape":
 		return t.AsNameTheShapeResponse()
+	case "not_answered":
+		return t.AsNotAnsweredResponse()
 	case "option_choice":
 		return t.AsOptionChoiceResponse()
 	case "self_rating":

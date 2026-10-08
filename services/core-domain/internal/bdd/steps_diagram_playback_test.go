@@ -848,9 +848,9 @@ var (
 type diagramRefPlayback = struct {
 	Direction  *generated.DiagramRefPlaybackDirection `json:"direction,omitempty"`
 	Loop       *bool                                  `json:"loop,omitempty"`
-	PlaybackId *openapi_types.UUID                    `json:"playback_id"`
-	TempoBpm   *int                                   `json:"tempo_bpm"`
-	VoiceId    *string                                `json:"voice_id"`
+	PlaybackId *openapi_types.UUID                    `json:"playback_id,omitempty"`
+	TempoBpm   *int                                   `json:"tempo_bpm,omitempty"`
+	VoiceId    *string                                `json:"voice_id,omitempty"`
 }
 
 // playbackFrom reads how a step says diagramSlug plays: "with no

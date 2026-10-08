@@ -93,7 +93,7 @@ func TestDiagramOwnershipMapping(t *testing.T) {
 
 	t.Run("list parameters map onto the diagram filter", func(t *testing.T) {
 		instrument, skill, concept, creator := uuid.New(), uuid.New(), uuid.New(), uuid.New()
-		kind := generated.Custom
+		kind := generated.ListDiagramsParamsKindCustom
 		name, root := "pentatonic", "A"
 
 		got, err := diagramListFilter(generated.ListDiagramsParams{
