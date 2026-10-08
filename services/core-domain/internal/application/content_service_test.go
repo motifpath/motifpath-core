@@ -28,7 +28,7 @@ func newContentServiceWithVersions(nodes *fakeContentNodeRepository, expanded *f
 }
 
 func newContentServiceWithDiagrams(nodes *fakeContentNodeRepository, expanded *fakeExpandedContentRepository, knowledge *fakeKnowledgeNodeRepository, versions *fakeContentNodeVersionRepository, diagrams *fakeDiagramRepository) *application.ContentService {
-	return application.NewContentService(nodes, expanded, knowledge, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
+	return application.NewContentService(nodes, expanded, knowledge, versions, diagrams, seededInstrumentRepository(), newFakeVoiceRepository(), newFakeSongChartRepository(), idSequence(), func() time.Time { return fixedCreatedAt })
 }
 
 // seededKnowledgeNodeRepository returns a fake pre-populated with the ids

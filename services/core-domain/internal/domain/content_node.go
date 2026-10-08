@@ -230,7 +230,7 @@ func validateContentNodeBody(contentType ContentType, mediaURL *string, richCont
 		if richContent == nil {
 			errs = append(errs, FieldError{Field: "rich_content", Reason: "is required when content_type is article"})
 		} else {
-			for _, docErr := range validatePromptDocument(*richContent, true) {
+			for _, docErr := range validatePromptDocument(*richContent, lessonContent) {
 				errs = append(errs, FieldError{Field: "rich_content", Reason: docErr.Reason})
 			}
 		}

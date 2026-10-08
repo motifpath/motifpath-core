@@ -187,6 +187,7 @@ func run(completed int, current string) error {
 		repo.NewEntDiagramRepository(conns.ent),
 		repo.NewEntInstrumentRepository(conns.ent),
 		repo.NewEntVoiceRepository(conns.ent),
+		repo.NewEntSongChartRepository(conns.ent),
 		newID, now,
 	)
 

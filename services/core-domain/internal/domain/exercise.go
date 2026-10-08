@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"regexp"
+	"time"
+)
 
 // ExerciseType identifies the kind of practice interaction. Every type is
 // checked the same way: option selection — the student's selected option
@@ -69,6 +72,10 @@ const (
 	// prompt — a diagram is not a content type of its own, it is a resource
 	// embedded into content that already has a format.
 	PromptNodeTypeDiagram PromptNodeType = "diagram"
+	// PromptNodeTypeSongChart embeds a published song chart, named by its
+	// PromptNodeAttrs.SongChartID. Only lesson content may hold one: an
+	// article's body and rich expanded content, never an exercise.
+	PromptNodeTypeSongChart PromptNodeType = "songChart"
 )
 
 // PromptNodeAttrs holds the type-specific attributes a PromptNode may
@@ -87,6 +94,8 @@ type PromptNodeAttrs struct {
 	// diagram — exactly one is set, never both.
 	DiagramRef      *DiagramRef      `json:"diagramRef,omitempty"`
 	DiagramStackRef *DiagramStackRef `json:"diagramStackRef,omitempty"`
+	// SongChartID names a songChart PromptNode's song chart.
+	SongChartID *string `json:"songChartId,omitempty"`
 }
 
 // PromptNode is a single node in a PromptDocument's tree. Container node
@@ -314,7 +323,7 @@ func validateExerciseContent(title string, prompt PromptDocument, exerciseType E
 	if title == "" {
 		errs = append(errs, FieldError{Field: "title", Reason: "must not be empty"})
 	}
-	errs = append(errs, validatePromptDocument(prompt, false)...)
+	errs = append(errs, validatePromptDocument(prompt, exercisePrompt)...)
 	if len(skillIDs) == 0 {
 		errs = append(errs, FieldError{Field: "skill_ids", Reason: "must not be empty"})
 	}
@@ -344,7 +353,7 @@ func validateRemediationTargets(targets []RemediationTarget) []FieldError {
 		case hasNode == hasRich:
 			errs = append(errs, FieldError{Field: "remediation_targets", Reason: "each target must carry exactly one of content_node_id or rich_content"})
 		case hasRich:
-			for _, docErr := range validatePromptDocument(*target.RichContent, true) {
+			for _, docErr := range validatePromptDocument(*target.RichContent, remediationContent) {
 				errs = append(errs, FieldError{Field: "remediation_targets", Reason: docErr.Reason})
 			}
 		}
@@ -352,15 +361,30 @@ func validateRemediationTargets(targets []RemediationTarget) []FieldError {
 	return errs
 }
 
-// validatePromptDocument checks that prompt is a well-formed document
-// (a "doc" root with at least one block node) using only the node and mark
-// types the given surface's editor can actually produce. allowMediaNodes
-// permits PromptNodeTypeAudio/Video — offered by the rich_text
-// ExpandedContent and remediation-target editors, but never by the
-// exercise-prompt authoring toolbar, so an exercise's own Prompt must
-// reject them even though this validation function is shared across all
-// three surfaces.
-func validatePromptDocument(prompt PromptDocument, allowMediaNodes bool) []FieldError {
+// promptSurface is what a place that holds a PromptDocument allows beyond
+// text, tables and images and inline diagrams, which every place allows.
+type promptSurface struct {
+	// media allows audio and video nodes.
+	media bool
+	// songCharts allows songChart nodes.
+	songCharts bool
+}
+
+var (
+	// exercisePrompt is an exercise's own prompt: its authoring toolbar
+	// offers neither audio, video nor song charts.
+	exercisePrompt = promptSurface{}
+	// remediationContent is the rich content an exercise points a student
+	// to after a wrong answer.
+	remediationContent = promptSurface{media: true}
+	// lessonContent is an article's body and rich expanded content: the
+	// lesson itself, which may embed song charts.
+	lessonContent = promptSurface{media: true, songCharts: true}
+)
+
+// validatePromptDocument checks a PromptDocument's structure, and that it
+// holds only the node types surface allows.
+func validatePromptDocument(prompt PromptDocument, surface promptSurface) []FieldError {
 	if prompt.Type != "doc" {
 		return []FieldError{{Field: "prompt", Reason: "must be a structured document with type \"doc\""}}
 	}
@@ -368,7 +392,7 @@ func validatePromptDocument(prompt PromptDocument, allowMediaNodes bool) []Field
 		return []FieldError{{Field: "prompt", Reason: "must not be empty"}}
 	}
 	for _, node := range prompt.Content {
-		if reason := promptNodeError(node, allowMediaNodes); reason != "" {
+		if reason := promptNodeError(node, surface); reason != "" {
 			return []FieldError{{Field: "prompt", Reason: reason}}
 		}
 	}
@@ -377,18 +401,22 @@ func validatePromptDocument(prompt PromptDocument, allowMediaNodes bool) []Field
 
 // promptNodeError reports the reason node (and, recursively, its content
 // and marks) is invalid, or "" if it's valid.
-func promptNodeError(node PromptNode, allowMediaNodes bool) string {
+func promptNodeError(node PromptNode, surface promptSurface) string {
 	switch node.Type {
 	case PromptNodeTypeHeading, PromptNodeTypeParagraph, PromptNodeTypeText,
 		PromptNodeTypeBulletList, PromptNodeTypeOrderedList, PromptNodeTypeListItem,
 		PromptNodeTypeTable, PromptNodeTypeTableRow, PromptNodeTypeTableHeader, PromptNodeTypeTableCell,
 		PromptNodeTypeImage:
 	case PromptNodeTypeAudio, PromptNodeTypeVideo:
-		if !allowMediaNodes {
+		if !surface.media {
 			return "contains an unsupported node type \"" + string(node.Type) + "\""
 		}
 	case PromptNodeTypeDiagram:
 		if reason := diagramPromptNodeError(node.Attrs); reason != "" {
+			return reason
+		}
+	case PromptNodeTypeSongChart:
+		if reason := songChartPromptNodeError(node.Attrs, surface); reason != "" {
 			return reason
 		}
 	default:
@@ -396,7 +424,7 @@ func promptNodeError(node PromptNode, allowMediaNodes bool) string {
 	}
 
 	for _, child := range node.Content {
-		if reason := promptNodeError(child, allowMediaNodes); reason != "" {
+		if reason := promptNodeError(child, surface); reason != "" {
 			return reason
 		}
 	}
@@ -406,6 +434,39 @@ func promptNodeError(node PromptNode, allowMediaNodes bool) string {
 		}
 	}
 	return ""
+}
+
+// songChartPromptNodeError reports why a songChart node is invalid where it
+// is, or "" if it's valid: only lesson content embeds song charts, and the
+// node names its chart by a UUID.
+func songChartPromptNodeError(attrs *PromptNodeAttrs, surface promptSurface) string {
+	if !surface.songCharts {
+		return "contains an unsupported node type \"songChart\": only lesson content embeds song charts"
+	}
+	if attrs == nil || attrs.SongChartID == nil || !uuidPattern.MatchString(*attrs.SongChartID) {
+		return "a songChart node must name its song chart by songChartId, a UUID"
+	}
+	return ""
+}
+
+// uuidPattern is a UUID in its canonical text form.
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// EmbeddedSongChartIDs lists the song charts the document's songChart nodes
+// name, in document order.
+func (d PromptDocument) EmbeddedSongChartIDs() []string {
+	var ids []string
+	var walk func(nodes []PromptNode)
+	walk = func(nodes []PromptNode) {
+		for _, node := range nodes {
+			if node.Type == PromptNodeTypeSongChart && node.Attrs != nil && node.Attrs.SongChartID != nil {
+				ids = append(ids, *node.Attrs.SongChartID)
+			}
+			walk(node.Content)
+		}
+	}
+	walk(d.Content)
+	return ids
 }
 
 // diagramPromptNodeError reports the reason a diagram PromptNode's attrs are

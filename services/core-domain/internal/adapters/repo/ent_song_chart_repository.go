@@ -80,20 +80,9 @@ func (r *EntSongChartRepository) List(ctx context.Context, filter domain.SongCha
 		query = query.Where(songchart.StatusEQ(songchart.Status(*filter.Status)))
 	}
 	if filter.Q != "" {
-		candidates, err := query.Clone().
-			Select(songchart.FieldID, songchart.FieldTitle, songchart.FieldArtist, songchart.FieldPublishedTitle, songchart.FieldPublishedArtist).
-			All(ctx)
+		matched, err := chartsMatching(ctx, query.Clone(), filter.Q)
 		if err != nil {
 			return domain.Page[domain.SongChart]{}, err
-		}
-		matched := []uuid.UUID{}
-		for _, c := range candidates {
-			for _, text := range []string{c.Title, c.Artist, deref(c.PublishedTitle), deref(c.PublishedArtist)} {
-				if text != "" && domain.ContainsLoosely(text, filter.Q) {
-					matched = append(matched, c.ID)
-					break
-				}
-			}
 		}
 		query = query.Where(songchart.IDIn(matched...))
 	}
@@ -190,6 +179,34 @@ func setDraftOptionals(update *ent.SongChartUpdateOne, d domain.SongChartDraft) 
 	} else {
 		update.ClearTimeSignature()
 	}
+}
+
+// chartsMatching is the ids of the charts in query whose draft title or
+// artist, or published title or artist, contains q, ignoring case and
+// accents.
+func chartsMatching(ctx context.Context, query *ent.SongChartQuery, q string) ([]uuid.UUID, error) {
+	candidates, err := query.
+		Select(songchart.FieldID, songchart.FieldTitle, songchart.FieldArtist, songchart.FieldPublishedTitle, songchart.FieldPublishedArtist).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	matched := []uuid.UUID{}
+	for _, c := range candidates {
+		if containsAnyLoosely(q, c.Title, c.Artist, deref(c.PublishedTitle), deref(c.PublishedArtist)) {
+			matched = append(matched, c.ID)
+		}
+	}
+	return matched, nil
+}
+
+func containsAnyLoosely(q string, texts ...string) bool {
+	for _, text := range texts {
+		if text != "" && domain.ContainsLoosely(text, q) {
+			return true
+		}
+	}
+	return false
 }
 
 func setPublishedSummary(update *ent.SongChartUpdateOne, summary *domain.SongChartRevisionSummary) error {
