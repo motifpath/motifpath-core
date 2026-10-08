@@ -23,8 +23,8 @@ generate: check-oapi-codegen
 		.bundled/event-ingestion-service.yaml
 	npx --yes @redocly/cli bundle $(SPECS_DIR)/openapi/core-domain-service.yaml \
 		-o .bundled/core-domain-service.yaml
-	@# oapi-codegen 2.4 doesn't parse OpenAPI 3.1's nullable forms; the script
-	@# rewrites only this local, gitignored bundle (see its comments).
+	@# The script types the few tri-state fields the spec alone can't express;
+	@# it rewrites only this local, gitignored bundle (see its comments).
 	@perl scripts/openapi-compat.pl .bundled/core-domain-service.yaml
 	oapi-codegen -config services/core-domain/oapi-codegen.yaml \
 		.bundled/core-domain-service.yaml
