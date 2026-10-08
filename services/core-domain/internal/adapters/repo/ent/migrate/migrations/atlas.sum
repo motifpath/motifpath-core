@@ -1,4 +1,4 @@
-h1:gSNezLBHFZgdCo1vaf/zHtEnSDMLhfppuxtJwXMYnNc=
+h1:xCiYzvIS9XDWv6JwUzb0t1MFbGGyjJW6GsY3R5pzhN4=
 20261006144122_baseline_schema.up.sql h1:FsvNNbr+gQponfZsXY/lSdGDyE9qu9VAIIqtLqbvmi0=
 20261006144123_baseline_reference_data.up.sql h1:0tpMpgKiioTZKTkRqQIBkM57wfMOVO9elwdDGEv0hwM=
 20261006223929_diagram_purpose.up.sql h1:oiutSsL1fJh709CQQ86nMocfwgdIC1XlIiTmwj74cZA=
@@ -7,3 +7,4 @@ h1:gSNezLBHFZgdCo1vaf/zHtEnSDMLhfppuxtJwXMYnNc=
 20261007095406_diagram_shapes.up.sql h1:pBuQjK7+cIBfaKdG61kcjOs2ueLK0dlLdGNjtvDpqCQ=
 20261007095407_diagram_shapes_reference_data.up.sql h1:0mqJfqZIQiadlmfK/0qtig9XIU+OsE35JSJRq1ssbdI=
 20261007150417_song_charts.up.sql h1:DCgn7NuaPPm1i8qyM26hXQHzguJcT5yR0ut93tSQ1bs=
+20261008104300_song_chart_published_artist.up.sql h1:VrlrYHedabxEON4ZrzCOxB0jJA38SyPU9HFqTxsX50Q=

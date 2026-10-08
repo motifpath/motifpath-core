@@ -50,8 +50,12 @@ const (
 	FieldPublishedRevisionNumber = "published_revision_number"
 	// FieldPublishedTitle holds the string denoting the published_title field in the database.
 	FieldPublishedTitle = "published_title"
+	// FieldPublishedArtist holds the string denoting the published_artist field in the database.
+	FieldPublishedArtist = "published_artist"
 	// FieldPublishedLanguage holds the string denoting the published_language field in the database.
 	FieldPublishedLanguage = "published_language"
+	// FieldPublishedConcertKey holds the string denoting the published_concert_key field in the database.
+	FieldPublishedConcertKey = "published_concert_key"
 	// FieldPublishedBy holds the string denoting the published_by field in the database.
 	FieldPublishedBy = "published_by"
 	// FieldPublishedAt holds the string denoting the published_at field in the database.
@@ -96,7 +100,9 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldPublishedRevisionNumber,
 	FieldPublishedTitle,
+	FieldPublishedArtist,
 	FieldPublishedLanguage,
+	FieldPublishedConcertKey,
 	FieldPublishedBy,
 	FieldPublishedAt,
 	FieldWithdrawnBy,
@@ -237,9 +243,19 @@ func ByPublishedTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublishedTitle, opts...).ToFunc()
 }
 
+// ByPublishedArtist orders the results by the published_artist field.
+func ByPublishedArtist(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPublishedArtist, opts...).ToFunc()
+}
+
 // ByPublishedLanguage orders the results by the published_language field.
 func ByPublishedLanguage(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPublishedLanguage, opts...).ToFunc()
+}
+
+// ByPublishedConcertKey orders the results by the published_concert_key field.
+func ByPublishedConcertKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPublishedConcertKey, opts...).ToFunc()
 }
 
 // ByPublishedBy orders the results by the published_by field.

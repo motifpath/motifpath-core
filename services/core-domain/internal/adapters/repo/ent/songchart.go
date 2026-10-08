@@ -56,8 +56,12 @@ type SongChart struct {
 	PublishedRevisionNumber *int `json:"published_revision_number,omitempty"`
 	// PublishedTitle holds the value of the "published_title" field.
 	PublishedTitle *string `json:"published_title,omitempty"`
+	// PublishedArtist holds the value of the "published_artist" field.
+	PublishedArtist *string `json:"published_artist,omitempty"`
 	// PublishedLanguage holds the value of the "published_language" field.
 	PublishedLanguage *string `json:"published_language,omitempty"`
+	// PublishedConcertKey holds the value of the "published_concert_key" field.
+	PublishedConcertKey *string `json:"published_concert_key,omitempty"`
 	// PublishedBy holds the value of the "published_by" field.
 	PublishedBy *uuid.UUID `json:"published_by,omitempty"`
 	// PublishedAt holds the value of the "published_at" field.
@@ -103,7 +107,7 @@ func (*SongChart) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case songchart.FieldCapoFret, songchart.FieldTempoBpm, songchart.FieldPublishedRevisionNumber:
 			values[i] = new(sql.NullInt64)
-		case songchart.FieldStatus, songchart.FieldTitle, songchart.FieldArtist, songchart.FieldLanguage, songchart.FieldConcertKey, songchart.FieldBody, songchart.FieldPublishedTitle, songchart.FieldPublishedLanguage, songchart.FieldWithdrawalReason:
+		case songchart.FieldStatus, songchart.FieldTitle, songchart.FieldArtist, songchart.FieldLanguage, songchart.FieldConcertKey, songchart.FieldBody, songchart.FieldPublishedTitle, songchart.FieldPublishedArtist, songchart.FieldPublishedLanguage, songchart.FieldPublishedConcertKey, songchart.FieldWithdrawalReason:
 			values[i] = new(sql.NullString)
 		case songchart.FieldCreatedAt, songchart.FieldRightsConfirmedAt, songchart.FieldUpdatedAt, songchart.FieldPublishedAt, songchart.FieldWithdrawnAt:
 			values[i] = new(sql.NullTime)
@@ -248,12 +252,26 @@ func (_m *SongChart) assignValues(columns []string, values []any) error {
 				_m.PublishedTitle = new(string)
 				*_m.PublishedTitle = value.String
 			}
+		case songchart.FieldPublishedArtist:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field published_artist", values[i])
+			} else if value.Valid {
+				_m.PublishedArtist = new(string)
+				*_m.PublishedArtist = value.String
+			}
 		case songchart.FieldPublishedLanguage:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field published_language", values[i])
 			} else if value.Valid {
 				_m.PublishedLanguage = new(string)
 				*_m.PublishedLanguage = value.String
+			}
+		case songchart.FieldPublishedConcertKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field published_concert_key", values[i])
+			} else if value.Valid {
+				_m.PublishedConcertKey = new(string)
+				*_m.PublishedConcertKey = value.String
 			}
 		case songchart.FieldPublishedBy:
 			if value, ok := values[i].(*sql.NullScanner); !ok {
@@ -397,8 +415,18 @@ func (_m *SongChart) String() string {
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
+	if v := _m.PublishedArtist; v != nil {
+		builder.WriteString("published_artist=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
 	if v := _m.PublishedLanguage; v != nil {
 		builder.WriteString("published_language=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.PublishedConcertKey; v != nil {
+		builder.WriteString("published_concert_key=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

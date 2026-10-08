@@ -131,9 +131,19 @@ func PublishedTitle(v string) predicate.SongChart {
 	return predicate.SongChart(sql.FieldEQ(FieldPublishedTitle, v))
 }
 
+// PublishedArtist applies equality check predicate on the "published_artist" field. It's identical to PublishedArtistEQ.
+func PublishedArtist(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEQ(FieldPublishedArtist, v))
+}
+
 // PublishedLanguage applies equality check predicate on the "published_language" field. It's identical to PublishedLanguageEQ.
 func PublishedLanguage(v string) predicate.SongChart {
 	return predicate.SongChart(sql.FieldEQ(FieldPublishedLanguage, v))
+}
+
+// PublishedConcertKey applies equality check predicate on the "published_concert_key" field. It's identical to PublishedConcertKeyEQ.
+func PublishedConcertKey(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEQ(FieldPublishedConcertKey, v))
 }
 
 // PublishedBy applies equality check predicate on the "published_by" field. It's identical to PublishedByEQ.
@@ -1001,6 +1011,81 @@ func PublishedTitleContainsFold(v string) predicate.SongChart {
 	return predicate.SongChart(sql.FieldContainsFold(FieldPublishedTitle, v))
 }
 
+// PublishedArtistEQ applies the EQ predicate on the "published_artist" field.
+func PublishedArtistEQ(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEQ(FieldPublishedArtist, v))
+}
+
+// PublishedArtistNEQ applies the NEQ predicate on the "published_artist" field.
+func PublishedArtistNEQ(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldNEQ(FieldPublishedArtist, v))
+}
+
+// PublishedArtistIn applies the In predicate on the "published_artist" field.
+func PublishedArtistIn(vs ...string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldIn(FieldPublishedArtist, vs...))
+}
+
+// PublishedArtistNotIn applies the NotIn predicate on the "published_artist" field.
+func PublishedArtistNotIn(vs ...string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldNotIn(FieldPublishedArtist, vs...))
+}
+
+// PublishedArtistGT applies the GT predicate on the "published_artist" field.
+func PublishedArtistGT(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldGT(FieldPublishedArtist, v))
+}
+
+// PublishedArtistGTE applies the GTE predicate on the "published_artist" field.
+func PublishedArtistGTE(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldGTE(FieldPublishedArtist, v))
+}
+
+// PublishedArtistLT applies the LT predicate on the "published_artist" field.
+func PublishedArtistLT(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldLT(FieldPublishedArtist, v))
+}
+
+// PublishedArtistLTE applies the LTE predicate on the "published_artist" field.
+func PublishedArtistLTE(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldLTE(FieldPublishedArtist, v))
+}
+
+// PublishedArtistContains applies the Contains predicate on the "published_artist" field.
+func PublishedArtistContains(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldContains(FieldPublishedArtist, v))
+}
+
+// PublishedArtistHasPrefix applies the HasPrefix predicate on the "published_artist" field.
+func PublishedArtistHasPrefix(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldHasPrefix(FieldPublishedArtist, v))
+}
+
+// PublishedArtistHasSuffix applies the HasSuffix predicate on the "published_artist" field.
+func PublishedArtistHasSuffix(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldHasSuffix(FieldPublishedArtist, v))
+}
+
+// PublishedArtistIsNil applies the IsNil predicate on the "published_artist" field.
+func PublishedArtistIsNil() predicate.SongChart {
+	return predicate.SongChart(sql.FieldIsNull(FieldPublishedArtist))
+}
+
+// PublishedArtistNotNil applies the NotNil predicate on the "published_artist" field.
+func PublishedArtistNotNil() predicate.SongChart {
+	return predicate.SongChart(sql.FieldNotNull(FieldPublishedArtist))
+}
+
+// PublishedArtistEqualFold applies the EqualFold predicate on the "published_artist" field.
+func PublishedArtistEqualFold(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEqualFold(FieldPublishedArtist, v))
+}
+
+// PublishedArtistContainsFold applies the ContainsFold predicate on the "published_artist" field.
+func PublishedArtistContainsFold(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldContainsFold(FieldPublishedArtist, v))
+}
+
 // PublishedLanguageEQ applies the EQ predicate on the "published_language" field.
 func PublishedLanguageEQ(v string) predicate.SongChart {
 	return predicate.SongChart(sql.FieldEQ(FieldPublishedLanguage, v))
@@ -1074,6 +1159,81 @@ func PublishedLanguageEqualFold(v string) predicate.SongChart {
 // PublishedLanguageContainsFold applies the ContainsFold predicate on the "published_language" field.
 func PublishedLanguageContainsFold(v string) predicate.SongChart {
 	return predicate.SongChart(sql.FieldContainsFold(FieldPublishedLanguage, v))
+}
+
+// PublishedConcertKeyEQ applies the EQ predicate on the "published_concert_key" field.
+func PublishedConcertKeyEQ(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEQ(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyNEQ applies the NEQ predicate on the "published_concert_key" field.
+func PublishedConcertKeyNEQ(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldNEQ(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyIn applies the In predicate on the "published_concert_key" field.
+func PublishedConcertKeyIn(vs ...string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldIn(FieldPublishedConcertKey, vs...))
+}
+
+// PublishedConcertKeyNotIn applies the NotIn predicate on the "published_concert_key" field.
+func PublishedConcertKeyNotIn(vs ...string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldNotIn(FieldPublishedConcertKey, vs...))
+}
+
+// PublishedConcertKeyGT applies the GT predicate on the "published_concert_key" field.
+func PublishedConcertKeyGT(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldGT(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyGTE applies the GTE predicate on the "published_concert_key" field.
+func PublishedConcertKeyGTE(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldGTE(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyLT applies the LT predicate on the "published_concert_key" field.
+func PublishedConcertKeyLT(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldLT(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyLTE applies the LTE predicate on the "published_concert_key" field.
+func PublishedConcertKeyLTE(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldLTE(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyContains applies the Contains predicate on the "published_concert_key" field.
+func PublishedConcertKeyContains(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldContains(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyHasPrefix applies the HasPrefix predicate on the "published_concert_key" field.
+func PublishedConcertKeyHasPrefix(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldHasPrefix(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyHasSuffix applies the HasSuffix predicate on the "published_concert_key" field.
+func PublishedConcertKeyHasSuffix(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldHasSuffix(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyIsNil applies the IsNil predicate on the "published_concert_key" field.
+func PublishedConcertKeyIsNil() predicate.SongChart {
+	return predicate.SongChart(sql.FieldIsNull(FieldPublishedConcertKey))
+}
+
+// PublishedConcertKeyNotNil applies the NotNil predicate on the "published_concert_key" field.
+func PublishedConcertKeyNotNil() predicate.SongChart {
+	return predicate.SongChart(sql.FieldNotNull(FieldPublishedConcertKey))
+}
+
+// PublishedConcertKeyEqualFold applies the EqualFold predicate on the "published_concert_key" field.
+func PublishedConcertKeyEqualFold(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldEqualFold(FieldPublishedConcertKey, v))
+}
+
+// PublishedConcertKeyContainsFold applies the ContainsFold predicate on the "published_concert_key" field.
+func PublishedConcertKeyContainsFold(v string) predicate.SongChart {
+	return predicate.SongChart(sql.FieldContainsFold(FieldPublishedConcertKey, v))
 }
 
 // PublishedByEQ applies the EQ predicate on the "published_by" field.

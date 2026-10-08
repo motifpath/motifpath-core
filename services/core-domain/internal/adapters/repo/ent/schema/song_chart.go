@@ -100,7 +100,15 @@ func (SongChart) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
+		field.String("published_artist").
+			Optional().
+			Nillable(),
+
 		field.String("published_language").
+			Optional().
+			Nillable(),
+
+		field.String("published_concert_key").
 			Optional().
 			Nillable(),
 
