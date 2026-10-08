@@ -302,6 +302,31 @@ func (h *Handler) ImportSongChartChordPro(ctx context.Context, request generated
 	return nil, err
 }
 
+func (h *Handler) ReadSongChartChordPro(ctx context.Context, request generated.ReadSongChartChordProRequestObject) (generated.ReadSongChartChordProResponseObject, error) {
+	caller, ok := h.resolveCaller(ctx)
+	if !ok {
+		return generated.ReadSongChartChordPro401JSONResponse(unauthorizedError()), nil
+	}
+	var text string
+	if request.Body != nil {
+		text = *request.Body
+	}
+	reading, err := h.songChart.ReadChordPro(ctx, caller, text)
+	if err == nil {
+		out, mapErr := toGeneratedChordProReading(reading)
+		return generated.ReadSongChartChordPro200JSONResponse(out), mapErr
+	}
+	kind, valErr := classify(err)
+	switch kind {
+	case errKindValidation:
+		return generated.ReadSongChartChordPro400JSONResponse(validationErrorResponse(valErr)), nil
+	case errKindForbidden:
+		return generated.ReadSongChartChordPro403JSONResponse(forbiddenError(onlyAdminsAuthorSongCharts)), nil
+	case errKindNotFound, errKindOther:
+	}
+	return nil, err
+}
+
 // ── Mapping ──────────────────────────────────────────────────────────────────
 
 // toSongChartInput reads a draft from the request. The body is read through
@@ -478,4 +503,14 @@ func toGeneratedChordProWarnings(warnings []domain.ChordProWarning) []generated.
 		out[i] = generated.ChordProImportWarning{Line: w.Line, Kind: generated.ChordProImportWarningKind(w.Kind), Text: w.Text}
 	}
 	return out
+}
+
+func toGeneratedChordProReading(reading domain.ChordProImport) (generated.SongChartChordProReading, error) {
+	body, err := toGeneratedSongChartDocument(reading.Body)
+	m := reading.Metadata
+	return generated.SongChartChordProReading{
+		Title: m.Title, Artist: m.Artist, ConcertKey: m.ConcertKey, CapoFret: m.CapoFret, TempoBpm: m.TempoBPM,
+		TimeSignature: toGeneratedTimeSignature(m.TimeSignature), Body: body,
+		ImportWarnings: toGeneratedChordProWarnings(reading.Warnings),
+	}, err
 }

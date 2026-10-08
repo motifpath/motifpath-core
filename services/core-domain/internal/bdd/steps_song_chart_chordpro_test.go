@@ -56,6 +56,32 @@ func registerSongChartChordProSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^the draft is unchanged$`, w.draftUnchanged)
 	sc.Step(`^the draft's rights are still confirmed by "([^"]+)"$`, w.rightsConfirmedBy)
 	sc.Step(`^the ChordPro is:$`, func(want *godog.DocString) error { return w.chordProIs(want.Content + "\n") })
+
+	// Reading ChordPro without saving it
+	sc.Step(`^"([^"]+)" reads the ChordPro:$`, func(caller string, text *godog.DocString) error {
+		return w.readsChordPro(caller, text.Content)
+	})
+	sc.Step(`^"([^"]+)" reads ChordPro that has no title directive$`, func(caller string) error {
+		return w.readsChordPro(caller, "{artist: Luiz Gonzaga}\n[G]Quando olhei a terra ardendo\n")
+	})
+	sc.Step(`^"([^"]+)" reads ChordPro whose line 2 is "([^"]+)"$`, func(caller, line string) error {
+		return w.readsChordPro(caller, "{title: Asa Branca}\n"+line+"\n[G]Quando olhei a terra ardendo\n")
+	})
+	sc.Step(`^"([^"]+)" reads ChordPro that has only directives$`, func(caller string) error {
+		return w.readsChordPro(caller, "{title: Asa Branca}\n{artist: Luiz Gonzaga}\n")
+	})
+	sc.Step(`^"([^"]+)" reads ChordPro that has only a line "([^"]+)"$`, func(caller, line string) error {
+		return w.readsChordPro(caller, line+"\n")
+	})
+	sc.Step(`^the reading is titled "([^"]+)" by "([^"]+)", with a capo on fret (\d+)$`, w.readingTitledWithCapo)
+	sc.Step(`^the reading has one verse with the line "([^"]+)", with chords written "([^"]+)" and "([^"]+)"$`, w.readingHasOneVerse)
+	sc.Step(`^the reading reported no warnings$`, func() error { return w.readingReported(nil) })
+	sc.Step(`^the reading reported the warning "([^"]+)" on line (\d+)$`, func(kind string, line int) error {
+		return w.readingReported([]generated.ChordProImportWarning{{Line: line, Kind: generated.ChordProImportWarningKind(kind)}})
+	})
+	sc.Step(`^the reading has no title$`, w.readingHasNoTitle)
+	sc.Step(`^the reading is refused as invalid$`, w.requestRejectedInvalid)
+	sc.Step(`^no song chart is created$`, w.noSongChartCreated)
 }
 
 // ── Given ────────────────────────────────────────────────────────────────────
@@ -237,6 +263,104 @@ func (w *world) chordProIs(want string) error {
 	}
 	if string(got) != want {
 		return fmt.Errorf("expected the ChordPro\n%s\ngot\n%s", want, got)
+	}
+	return nil
+}
+
+// ── Reading ChordPro without saving it ───────────────────────────────────────
+
+func (w *world) readsChordPro(caller, text string) error {
+	w.lastResp, w.lastErr = w.handler.ReadSongChartChordPro(w.identityCtx(caller), generated.ReadSongChartChordProRequestObject{Body: &text})
+	return w.lastErr
+}
+
+func (w *world) lastReading() (generated.SongChartChordProReading, error) {
+	if resp, ok := w.lastResp.(generated.ReadSongChartChordPro200JSONResponse); ok {
+		return generated.SongChartChordProReading(resp), nil
+	}
+	return generated.SongChartChordProReading{}, fmt.Errorf("expected a reading, got %#v (err=%v)", w.lastResp, w.lastErr)
+}
+
+func (w *world) readingTitledWithCapo(title, artist string, capo int) error {
+	r, err := w.lastReading()
+	if err != nil {
+		return err
+	}
+	if r.Title == nil || *r.Title != title || r.Artist == nil || *r.Artist != artist || r.CapoFret == nil || *r.CapoFret != capo {
+		return fmt.Errorf("expected %q by %q with a capo on fret %d, got %v by %v with %v", title, artist, capo, r.Title, r.Artist, r.CapoFret)
+	}
+	return nil
+}
+
+func (w *world) readingHasOneVerse(line, first, second string) error {
+	r, err := w.lastReading()
+	if err != nil {
+		return err
+	}
+	doc, err := fromGeneratedDocument(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(doc.Sections) != 1 || doc.Sections[0].Kind != domain.SectionVerse || len(doc.Sections[0].Lines) != 1 {
+		return fmt.Errorf("expected one verse of one line, got %+v", doc)
+	}
+	var text strings.Builder
+	var written []string
+	for _, run := range doc.Sections[0].Lines[0].Runs {
+		text.WriteString(run.Text)
+		if run.Anchor != nil {
+			written = append(written, run.Anchor.WrittenSymbol)
+			if run.Anchor.ChordDefinitionID != nil {
+				return fmt.Errorf("expected %q unresolved in a reading, got %s", run.Anchor.WrittenSymbol, *run.Anchor.ChordDefinitionID)
+			}
+		}
+	}
+	if text.String() != line || !reflect.DeepEqual(written, []string{first, second}) {
+		return fmt.Errorf("expected %q with chords %q and %q, got %q with %v", line, first, second, text.String(), written)
+	}
+	return nil
+}
+
+func (w *world) readingReported(want []generated.ChordProImportWarning) error {
+	r, err := w.lastReading()
+	if err != nil {
+		return err
+	}
+	if len(r.ImportWarnings) != len(want) {
+		return fmt.Errorf("expected the warnings %+v, got %+v", want, r.ImportWarnings)
+	}
+	for i := range want {
+		if r.ImportWarnings[i].Kind != want[i].Kind || r.ImportWarnings[i].Line != want[i].Line {
+			return fmt.Errorf("expected the warnings %+v, got %+v", want, r.ImportWarnings)
+		}
+	}
+	return nil
+}
+
+func (w *world) readingHasNoTitle() error {
+	r, err := w.lastReading()
+	if err != nil {
+		return err
+	}
+	if r.Title != nil {
+		return fmt.Errorf("expected no title, got %q", *r.Title)
+	}
+	return nil
+}
+
+// noSongChartCreated checks that the charts listed are exactly those the
+// scenario set up.
+func (w *world) noSongChartCreated() error {
+	resp, err := w.handler.ListSongCharts(w.adminCtx(songChartSeeder), generated.ListSongChartsRequestObject{})
+	if err != nil {
+		return err
+	}
+	page, ok := resp.(generated.ListSongCharts200JSONResponse)
+	if !ok {
+		return fmt.Errorf("listing song charts: %#v", resp)
+	}
+	if want := len(w.charts().idByTitle); page.Total != want {
+		return fmt.Errorf("expected %d song charts, the ones set up, got %d", want, page.Total)
 	}
 	return nil
 }

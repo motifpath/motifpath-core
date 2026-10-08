@@ -814,3 +814,48 @@ func TestSongChartService_ExportChordPro(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrForbidden)
 	})
 }
+
+func TestSongChartService_ReadChordPro(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns what the text describes and saves nothing", func(t *testing.T) {
+		f := newSongChartFixture()
+
+		got, err := f.service.ReadChordPro(ctx, adminCaller(), "{title: Asa Branca}\n{capo: 2}\n[G]Quando olhei\n{define: G}\n")
+
+		require.NoError(t, err)
+		assert.Equal(t, ptr("Asa Branca"), got.Metadata.Title)
+		assert.Nil(t, got.Metadata.Artist, "a detail the text doesn't set is not set")
+		assert.Equal(t, ptr(2), got.Metadata.CapoFret)
+		require.Len(t, got.Body.Anchors(), 1)
+		assert.Equal(t, "G", got.Body.Anchors()[0].Anchor.WrittenSymbol)
+		assert.Nil(t, got.Body.Anchors()[0].Anchor.ChordDefinitionID, "anchors are resolved when the chart is saved")
+		assert.Equal(t, []domain.ChordProWarning{{Line: 4, Kind: domain.ChordProUnsupportedDirective, Text: "{define: G}"}}, got.Warnings)
+		assert.Empty(t, f.charts.charts, "nothing is saved")
+	})
+
+	refusals := []struct {
+		name      string
+		text      string
+		wantField string
+	}{
+		{name: "text with no lyric line", text: "{title: Song}\n", wantField: "body"},
+		{name: "text longer than a reading takes", text: "[G]" + strings.Repeat("a", domain.MaxChordProTextLength), wantField: "body"},
+		{name: "a chord symbol longer than a chart holds", text: "[" + strings.Repeat("G", domain.MaxChordSymbolLength+1) + "]La\n", wantField: "body/content/0/content/0/content/0/marks/0/attrs/writtenSymbol"},
+	}
+	for _, tt := range refusals {
+		t.Run("refuses "+tt.name, func(t *testing.T) {
+			_, err := newSongChartFixture().service.ReadChordPro(ctx, adminCaller(), tt.text)
+
+			var valErr *domain.ValidationError
+			require.ErrorAs(t, err, &valErr)
+			assert.Equal(t, tt.wantField, valErr.Fields[0].Field)
+		})
+	}
+
+	t.Run("a teacher cannot read ChordPro as a chart", func(t *testing.T) {
+		_, err := newSongChartFixture().service.ReadChordPro(ctx, teacherCaller(), "[G]La\n")
+
+		require.ErrorIs(t, err, domain.ErrForbidden)
+	})
+}
