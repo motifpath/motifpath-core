@@ -1,9 +1,21 @@
 SERVICES := services/core-domain services/event-ingestion services/aggregation-worker
 SPECS_DIR := ../motifpath-specs
 
-.PHONY: generate generate\:ent migrate\:diff test test\:bdd test\:int lint dev db\:reset db\:full-reset
+.PHONY: generate check-oapi-codegen generate\:ent migrate\:diff test test\:bdd test\:int lint dev db\:reset db\:full-reset
 
-generate:
+# The committed stubs are only reproducible with the oapi-codegen version
+# pinned in mise.toml, so generate refuses any other binary on the PATH.
+OAPI_CODEGEN_VERSION := $(shell sed -n 's|^"go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen" = "\(.*\)"$$|\1|p' mise.toml)
+
+check-oapi-codegen:
+	@actual=$$(oapi-codegen -version 2>/dev/null | tail -1); \
+	if [ "$$actual" != "v$(OAPI_CODEGEN_VERSION)" ]; then \
+		echo "oapi-codegen $${actual:-not found} on the PATH, v$(OAPI_CODEGEN_VERSION) required (mise.toml)."; \
+		echo "Run: mise install && mise exec -- make generate"; \
+		exit 1; \
+	fi
+
+generate: check-oapi-codegen
 	@mkdir -p .bundled
 	npx --yes @redocly/cli bundle $(SPECS_DIR)/openapi/event-ingestion-service.yaml \
 		-o .bundled/event-ingestion-service.yaml
