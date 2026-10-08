@@ -585,6 +585,7 @@ const (
 	PromptNodeTypeListItem    PromptNodeType = "listItem"
 	PromptNodeTypeOrderedList PromptNodeType = "orderedList"
 	PromptNodeTypeParagraph   PromptNodeType = "paragraph"
+	PromptNodeTypeSongChart   PromptNodeType = "songChart"
 	PromptNodeTypeTable       PromptNodeType = "table"
 	PromptNodeTypeTableCell   PromptNodeType = "tableCell"
 	PromptNodeTypeTableHeader PromptNodeType = "tableHeader"
@@ -4231,7 +4232,14 @@ type PromptNode struct {
 	// content; the exercise-prompt authoring toolbar does not offer
 	// audio/video, but does offer diagram — a diagram can be embedded
 	// inline in any PromptDocument, including an exercise's own
-	// prompt.
+	// prompt. songChart embeds a published song chart, and is
+	// available only in lesson content: an article's body and
+	// rich_text expanded content. Its attrs hold songChartId, the
+	// chart's id (a UUID). It always shows the chart's latest
+	// published revision; a chart withdrawn after it was embedded
+	// shows to nobody. A songChart node naming a chart that doesn't
+	// exist, or was never published, is refused when the content is
+	// saved.
 	Type PromptNodeType `json:"type"`
 }
 
@@ -4240,7 +4248,14 @@ type PromptNode struct {
 // content; the exercise-prompt authoring toolbar does not offer
 // audio/video, but does offer diagram — a diagram can be embedded
 // inline in any PromptDocument, including an exercise's own
-// prompt.
+// prompt. songChart embeds a published song chart, and is
+// available only in lesson content: an article's body and
+// rich_text expanded content. Its attrs hold songChartId, the
+// chart's id (a UUID). It always shows the chart's latest
+// published revision; a chart withdrawn after it was embedded
+// shows to nobody. A songChart node naming a chart that doesn't
+// exist, or was never published, is refused when the content is
+// saved.
 type PromptNodeType string
 
 // RegisterUserRequest Payload for registering a new MotifPath user.
@@ -4835,6 +4850,12 @@ type SongChartRevision struct {
 
 // SongChartRevisionSummary Which revision learners are served, and who published it.
 type SongChartRevisionSummary struct {
+	// Artist The revision's artist.
+	Artist string `json:"artist"`
+
+	// ConcertKey The key the revision's song sounds in; null when not stated.
+	ConcertKey *string `json:"concert_key"`
+
 	// Language The revision's Language.code.
 	Language string `json:"language"`
 
@@ -4899,6 +4920,11 @@ type SongChartSummary struct {
 
 	// Language The draft's Language.code.
 	Language string `json:"language"`
+
+	// PublishedRevision The latest published revision, as learners read it; null when
+	// the chart was never published. A teacher picking a chart to
+	// embed sees this, not the draft.
+	PublishedRevision *SongChartRevisionSummary `json:"published_revision"`
 
 	// PublishedRevisionNumber The latest published revision's number; null when never published.
 	PublishedRevisionNumber *int `json:"published_revision_number"`
@@ -5985,7 +6011,8 @@ type ListSongChartsParams struct {
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
 	// Q Case- and accent-insensitive substring match against the
-	// draft's title and artist.
+	// draft's title and artist, and against the latest published
+	// revision's title and artist.
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
 
 	// Status Restricts the results to charts with this status.
