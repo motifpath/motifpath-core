@@ -29,6 +29,10 @@ func registerStudentPathViewSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^the response contains all three items in order$`, w.responseContainsThreeItemsInOrder)
 	sc.Step(`^"([^"]+)" has status "([^"]+)"$`, w.nodeHasStatus)
+	sc.Step(`^"([^"]+)" has status "([^"]+)" with lock_reason "([^"]+)"$`, w.nodeHasStatusWithLockReason)
+	sc.Step(`^"([^"]+)" has no lock_reason$`, w.nodeHasNoLockReason)
+	sc.Step(`^"([^"]+)" has available_languages "([^"]+)"$`, w.nodeHasAvailableLanguage)
+	sc.Step(`^"([^"]+)" has no available_languages$`, w.nodeHasNoAvailableLanguages)
 	sc.Step(`^"([^"]+)"'s new copy of "([^"]+)" shows status "([^"]+)"$`, w.nodeHasStatus2)
 	sc.Step(`^all three items have status "([^"]+)"$`, w.allItemsHaveStatus)
 	sc.Step(`^the current_position is (\d+)$`, w.currentPositionIs)
@@ -109,6 +113,70 @@ func (w *world) nodeHasStatus(nodeSlug, status string) error {
 		}
 	}
 	return fmt.Errorf("no item found for content node %q", nodeSlug)
+}
+
+// pathItem returns the last path view's item for nodeSlug.
+func (w *world) pathItem(nodeSlug string) (generated.StudentPathItem, error) {
+	resp, err := w.studentPathView()
+	if err != nil {
+		return generated.StudentPathItem{}, err
+	}
+	for _, item := range resp.Items {
+		if item.ContentNodeId == nodeID(nodeSlug) {
+			return item, nil
+		}
+	}
+	return generated.StudentPathItem{}, fmt.Errorf("no item found for content node %q", nodeSlug)
+}
+
+func (w *world) nodeHasStatusWithLockReason(nodeSlug, status, reason string) error {
+	if err := w.nodeHasStatus(nodeSlug, status); err != nil {
+		return err
+	}
+	item, err := w.pathItem(nodeSlug)
+	if err != nil {
+		return err
+	}
+	if item.LockReason == nil {
+		return fmt.Errorf("expected %q to have lock_reason %q, got none", nodeSlug, reason)
+	}
+	if string(*item.LockReason) != reason {
+		return fmt.Errorf("expected %q to have lock_reason %q, got %q", nodeSlug, reason, *item.LockReason)
+	}
+	return nil
+}
+
+func (w *world) nodeHasNoLockReason(nodeSlug string) error {
+	item, err := w.pathItem(nodeSlug)
+	if err != nil {
+		return err
+	}
+	if item.LockReason != nil {
+		return fmt.Errorf("expected %q to have no lock_reason, got %q", nodeSlug, *item.LockReason)
+	}
+	return nil
+}
+
+func (w *world) nodeHasAvailableLanguage(nodeSlug, code string) error {
+	item, err := w.pathItem(nodeSlug)
+	if err != nil {
+		return err
+	}
+	if item.AvailableLanguages == nil || len(*item.AvailableLanguages) != 1 || (*item.AvailableLanguages)[0].Code != code {
+		return fmt.Errorf("expected %q to have available_languages [%q], got %#v", nodeSlug, code, item.AvailableLanguages)
+	}
+	return nil
+}
+
+func (w *world) nodeHasNoAvailableLanguages(nodeSlug string) error {
+	item, err := w.pathItem(nodeSlug)
+	if err != nil {
+		return err
+	}
+	if item.AvailableLanguages != nil {
+		return fmt.Errorf("expected %q to have no available_languages, got %#v", nodeSlug, *item.AvailableLanguages)
+	}
+	return nil
 }
 
 // nodeHasStatus2 backs the content-node-versioning.feature phrasing

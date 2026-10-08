@@ -85,45 +85,70 @@ func twoNodeItems() []domain.LearningPathItem {
 }
 
 func TestBuildStudentPathItems_LanguageLocking(t *testing.T) {
+	english := []domain.Language{{Code: "en"}}
+
 	t.Run("prerequisite met and language available leaves the item unlocked", func(t *testing.T) {
-		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string]bool{})
+		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string][]domain.Language{})
 
 		assert.Equal(t, domain.CompletionStatusNotStarted, items[0].Status)
+		assert.Nil(t, items[0].LockReason)
+		assert.Nil(t, items[0].AvailableLanguages)
 	})
 
-	t.Run("prerequisite met but language missing locks the item", func(t *testing.T) {
-		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string]bool{"node-01": true})
+	t.Run("prerequisite met but language missing locks the item for language, with the languages it has", func(t *testing.T) {
+		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string][]domain.Language{"node-01": english})
 
 		assert.Equal(t, domain.CompletionStatusLocked, items[0].Status)
+		require.NotNil(t, items[0].LockReason)
+		assert.Equal(t, domain.LockReasonLanguage, *items[0].LockReason)
+		assert.Equal(t, english, items[0].AvailableLanguages)
 	})
 
-	t.Run("prerequisite unmet but language available still locks the item", func(t *testing.T) {
+	t.Run("prerequisite unmet but language available locks the item for the previous step", func(t *testing.T) {
 		raw := map[string]domain.CompletionStatus{"node-01": domain.CompletionStatusNotStarted}
-		items, _ := domain.BuildStudentPathItems(twoNodeItems(), raw, map[string]bool{})
+		items, _ := domain.BuildStudentPathItems(twoNodeItems(), raw, map[string][]domain.Language{})
 
 		assert.Equal(t, domain.CompletionStatusLocked, items[1].Status)
+		require.NotNil(t, items[1].LockReason)
+		assert.Equal(t, domain.LockReasonPreviousStep, *items[1].LockReason)
+		assert.Nil(t, items[1].AvailableLanguages)
 	})
 
-	t.Run("language lock on the first item cascades to lock the rest of the path", func(t *testing.T) {
-		items, current := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string]bool{"node-01": true})
+	t.Run("prerequisite unmet and language missing locks the item for the previous step, without languages", func(t *testing.T) {
+		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string][]domain.Language{"node-02": english})
+
+		assert.Equal(t, domain.CompletionStatusLocked, items[1].Status)
+		require.NotNil(t, items[1].LockReason)
+		assert.Equal(t, domain.LockReasonPreviousStep, *items[1].LockReason)
+		assert.Nil(t, items[1].AvailableLanguages)
+	})
+
+	t.Run("language lock on the first item locks the rest for the previous step and stays current", func(t *testing.T) {
+		items, current := domain.BuildStudentPathItems(twoNodeItems(), nil, map[string][]domain.Language{"node-01": english})
 
 		require.Len(t, items, 2)
 		assert.Equal(t, domain.CompletionStatusLocked, items[0].Status)
 		assert.Equal(t, domain.CompletionStatusLocked, items[1].Status)
+		require.NotNil(t, items[1].LockReason)
+		assert.Equal(t, domain.LockReasonPreviousStep, *items[1].LockReason)
 		assert.Equal(t, 1, current)
 	})
 
-	t.Run("an item with no langLocked entry is never locked for language reasons", func(t *testing.T) {
+	t.Run("an item with no language-lock entry is never locked for language reasons", func(t *testing.T) {
 		items, _ := domain.BuildStudentPathItems(twoNodeItems(), nil, nil)
 
 		assert.Equal(t, domain.CompletionStatusNotStarted, items[0].Status)
 	})
 
-	t.Run("a completed item stays completed even if later marked language-locked in the map", func(t *testing.T) {
+	t.Run("a completed item stays completed, with no lock reason, even if language-locked in the map", func(t *testing.T) {
 		raw := map[string]domain.CompletionStatus{"node-01": domain.CompletionStatusCompleted}
-		items, _ := domain.BuildStudentPathItems(twoNodeItems(), raw, map[string]bool{"node-02": true})
+		items, current := domain.BuildStudentPathItems(twoNodeItems(), raw, map[string][]domain.Language{"node-01": english, "node-02": english})
 
 		assert.Equal(t, domain.CompletionStatusCompleted, items[0].Status)
+		assert.Nil(t, items[0].LockReason)
 		assert.Equal(t, domain.CompletionStatusLocked, items[1].Status)
+		require.NotNil(t, items[1].LockReason)
+		assert.Equal(t, domain.LockReasonLanguage, *items[1].LockReason)
+		assert.Equal(t, 2, current)
 	})
 }

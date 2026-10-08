@@ -24,6 +24,7 @@ func registerLocaleSteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" has content available in locale "([^"]+)"$`, w.nodeHasContentInLocale)
 	sc.Step(`^"([^"]+)" has content available only in locale "([^"]+)"$`, w.nodeHasContentInLocale)
 	sc.Step(`^"([^"]+)" has content available in any locale$`, w.nodeHasContentInAnyLocale)
+	sc.Step(`^"([^"]+)" requires an exercise available only in locale "([^"]+)"$`, w.nodeRequiresExerciseInLocale)
 }
 
 // hasLocale sets name's locale preference directly against the repository —
@@ -94,5 +95,21 @@ func (w *world) setNodeLanguages(slug string, languages []domain.Language) error
 	}
 	node.Languages = languages
 	w.nodes.put(node)
+	return nil
+}
+
+// nodeRequiresExerciseInLocale links a new exercise, tagged for exactly one
+// language, to slug's content node.
+func (w *world) nodeRequiresExerciseInLocale(slug, locale string) error {
+	w.exercises.put(domain.Exercise{
+		ID:             exerciseID("required-by-" + slug).String(),
+		Title:          "required by " + slug,
+		Prompt:         domain.NewPlainTextPrompt("prompt"),
+		ExerciseType:   domain.ExerciseTypeTextResponse,
+		Languages:      []domain.Language{{Code: locale}},
+		ChallengeIDs:   []string{},
+		ContentNodeIDs: []string{nodeID(slug).String()},
+		CreatedAt:      fixedNow,
+	})
 	return nil
 }

@@ -90,6 +90,18 @@ const (
 	CompletionStatusLocked     CompletionStatus = "locked"
 )
 
+// LockReason says why a StudentPathItem is locked.
+type LockReason string
+
+const (
+	// LockReasonPreviousStep: an earlier item in the path isn't completed.
+	LockReasonPreviousStep LockReason = "previous_step"
+	// LockReasonLanguage: every earlier item is completed, but this item has
+	// no content in the student's locale. The student can still open it in
+	// one of its AvailableLanguages, and completing it unlocks the next item.
+	LockReasonLanguage LockReason = "language"
+)
+
 // StudentPathItem is a LearningPathItem enriched with the student's current
 // progress on it.
 type StudentPathItem struct {
@@ -101,6 +113,11 @@ type StudentPathItem struct {
 	// SectionLabel is carried through unchanged from the LearningPathItem;
 	// nil means the item is ungrouped.
 	SectionLabel *string
+	// LockReason is set only when Status is CompletionStatusLocked.
+	LockReason *LockReason
+	// AvailableLanguages lists the languages the item can be opened in; set
+	// only when LockReason is LockReasonLanguage.
+	AvailableLanguages []Language
 	// ContentNodeVersionID is the ContentNodeVersion this item was pinned
 	// to at copy time. Left blank by BuildStudentPathItems itself (it has
 	// no version information to work from); the caller fills it in from
@@ -118,21 +135,24 @@ type StudentPathItem struct {
 // treated as not_started, mirroring CompletionStateRepository.GetStatus's
 // own found=false handling in the aggregation-worker.
 //
-// langLocked is keyed by content_node_id and holds true for items the
-// caller's resolved locale cannot access — no language edge on the item's
-// ContentNode (or a required Exercise) matches the locale, and neither has
-// an "any" edge. This composes with, not replaces, prerequisite-based
-// locking: an item not yet completed is locked if either reason applies.
-// It never revokes access to an item the student has already completed,
-// even if the locale check would otherwise fail it — completing a node
-// while it was available must not later hide it behind a locale change.
+// langLocks is keyed by content_node_id and holds, for each item the
+// caller's resolved locale cannot access, the languages it can be opened in
+// instead — no language edge on the item's ContentNode (or a required
+// Exercise) matches the locale, and neither has an "any" edge. A
+// language-locked item is still locked, but only it is: the student can
+// open it in one of those languages, and completing it unlocks the next
+// item like any other completion. It never revokes access to an item the
+// student has already completed — completing a node while it was available
+// must not later hide it behind a locale change.
 //
-// An item is locked unless every earlier item in the path is completed —
-// position 1 is never locked by the prerequisite rule (there is no earlier
-// item to block it), though it can still be locked by langLocked.
+// An item is locked for the previous step unless every earlier item in the
+// path is completed — position 1 never is (there is no earlier item to
+// block it). That reason wins over a language lock, because it's the one
+// the student can act on first, so only the first not-completed item can
+// be locked for language.
 // current_position is the 1-based position of the first item that is not
 // completed, or the path's last position if every item is completed.
-func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionStatus, langLocked map[string]bool) ([]StudentPathItem, int) {
+func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionStatus, langLocks map[string][]Language) ([]StudentPathItem, int) {
 	result := make([]StudentPathItem, len(items))
 	priorCompleted := true
 	currentPosition := 1
@@ -143,20 +163,29 @@ func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionSt
 		if !ok {
 			status = CompletionStatusNotStarted
 		}
-		if !priorCompleted {
+
+		var lockReason *LockReason
+		var availableLanguages []Language
+		languages, langLocked := langLocks[item.ContentNodeID]
+		switch {
+		case !priorCompleted:
 			status = CompletionStatusLocked
-		}
-		if status != CompletionStatusCompleted && langLocked[item.ContentNodeID] {
+			lockReason = lockReasonPtr(LockReasonPreviousStep)
+		case status != CompletionStatusCompleted && langLocked:
 			status = CompletionStatusLocked
+			lockReason = lockReasonPtr(LockReasonLanguage)
+			availableLanguages = languages
 		}
 
 		result[i] = StudentPathItem{
-			Position:      item.Position,
-			ContentNodeID: item.ContentNodeID,
-			Title:         item.Title,
-			ContentType:   item.ContentType,
-			Status:        status,
-			SectionLabel:  item.SectionLabel,
+			Position:           item.Position,
+			ContentNodeID:      item.ContentNodeID,
+			Title:              item.Title,
+			ContentType:        item.ContentType,
+			Status:             status,
+			SectionLabel:       item.SectionLabel,
+			LockReason:         lockReason,
+			AvailableLanguages: availableLanguages,
 		}
 
 		if !foundCurrent && status != CompletionStatusCompleted {
@@ -171,4 +200,8 @@ func BuildStudentPathItems(items []LearningPathItem, raw map[string]CompletionSt
 	}
 
 	return result, currentPosition
+}
+
+func lockReasonPtr(reason LockReason) *LockReason {
+	return &reason
 }
