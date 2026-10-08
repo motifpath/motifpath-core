@@ -257,8 +257,8 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 	case domain.EventTypeSongChartChordViewed:
 		return domain.SongChartChordViewedEvent{TrackingEventBase: base, SongChartContext: songChartRead,
 			AnchorID: "a3", ChordDefinitionID: "chord-g", ChordVoicingID: "voicing-g-open"}
-	case domain.EventTypeSongChartSectionCompleted:
-		return domain.SongChartSectionCompletedEvent{TrackingEventBase: base, SongChartContext: songChartRead, SectionIndex: 0}
+	case domain.EventTypeSongChartCompleted:
+		return domain.SongChartCompletedEvent{TrackingEventBase: base, SongChartContext: songChartRead}
 	default:
 		panic("unhandled event type in test helper: " + string(eventType))
 	}

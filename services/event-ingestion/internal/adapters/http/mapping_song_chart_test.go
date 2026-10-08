@@ -45,10 +45,10 @@ func TestToDomainEvent_SongChartEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "section completed, the first section",
-			eventType: "song_chart.section_completed",
-			fields:    testChartContext + `,"section_index":0`,
-			want:      domain.SongChartSectionCompletedEvent{SongChartContext: testChartReference, SectionIndex: 0},
+			name:      "completed",
+			eventType: "song_chart.completed",
+			fields:    testChartContext,
+			want:      domain.SongChartCompletedEvent{SongChartContext: testChartReference},
 		},
 	}
 	for _, tt := range cases {
@@ -72,7 +72,7 @@ func withoutBase(event domain.TrackingEvent) domain.TrackingEvent {
 	case domain.SongChartChordViewedEvent:
 		e.TrackingEventBase = domain.TrackingEventBase{}
 		return e
-	case domain.SongChartSectionCompletedEvent:
+	case domain.SongChartCompletedEvent:
 		e.TrackingEventBase = domain.TrackingEventBase{}
 		return e
 	}
@@ -109,8 +109,8 @@ func TestToDomainEvent_SongChartEventsRejected(t *testing.T) {
 		{name: "chord viewed with an anchor id too long", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"anchor_id":%q,"chord_definition_id":%q,"chord_voicing_id":%q`, strings.Repeat("a", 65), testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "anchor_id"},
 		{name: "chord viewed without the chord", eventType: "song_chart.chord_viewed", fields: viewed("chord_definition_id"), wantErr: domain.ErrMissingRequiredField, wantField: "chord_definition_id"},
 		{name: "chord viewed without the voicing", eventType: "song_chart.chord_viewed", fields: viewed("chord_voicing_id"), wantErr: domain.ErrMissingRequiredField, wantField: "chord_voicing_id"},
-		{name: "section completed without the section", eventType: "song_chart.section_completed", fields: testChartContext, wantErr: domain.ErrMissingRequiredField, wantField: "section_index"},
-		{name: "section completed with a negative section", eventType: "song_chart.section_completed", fields: testChartContext + `,"section_index":-1`, wantErr: domain.ErrInvalidField, wantField: "section_index"},
+		{name: "completed without a song chart context", eventType: "song_chart.completed", fields: "", wantErr: domain.ErrMissingRequiredField, wantField: "song_chart_context"},
+		{name: "a section_completed event, no longer an event type", eventType: "song_chart.section_completed", fields: testChartContext + `,"section_index":0`, wantErr: domain.ErrInvalidEventType, wantField: "song_chart.section_completed"},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

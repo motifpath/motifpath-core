@@ -31,10 +31,9 @@ func TestMongoEventRepository_FindByEventID_RoundTripsSongChartEvents(t *testing
 			ChordDefinitionID: "66666666-6666-4666-8666-666666666666",
 			ChordVoicingID:    "77777777-7777-4777-8777-777777777777",
 		},
-		domain.SongChartSectionCompletedEvent{
-			TrackingEventBase: practiceBase("b1000000-0000-4000-8000-000000000003", domain.EventTypeSongChartSectionCompleted, practiceStudentID, practiceAt),
+		domain.SongChartCompletedEvent{
+			TrackingEventBase: practiceBase("b1000000-0000-4000-8000-000000000003", domain.EventTypeSongChartCompleted, practiceStudentID, practiceAt),
 			SongChartContext:  songChartRead,
-			SectionIndex:      4,
 		},
 	}
 
@@ -51,13 +50,12 @@ func TestMongoEventRepository_FindByEventID_RoundTripsSongChartEvents(t *testing
 	}
 }
 
-func TestMongoEventRepository_Save_WritesTheFirstSectionsIndex(t *testing.T) {
+func TestMongoEventRepository_Save_WritesTheSongChartContext(t *testing.T) {
 	repo := setupMongoRepository(t)
 	ctx := context.Background()
-	event := domain.SongChartSectionCompletedEvent{
-		TrackingEventBase: practiceBase("b2000000-0000-4000-8000-000000000001", domain.EventTypeSongChartSectionCompleted, practiceStudentID, practiceAt),
+	event := domain.SongChartCompletedEvent{
+		TrackingEventBase: practiceBase("b2000000-0000-4000-8000-000000000001", domain.EventTypeSongChartCompleted, practiceStudentID, practiceAt),
 		SongChartContext:  songChartRead,
-		SectionIndex:      0,
 	}
 
 	_, _, err := repo.Save(ctx, event)
@@ -65,10 +63,9 @@ func TestMongoEventRepository_Save_WritesTheFirstSectionsIndex(t *testing.T) {
 
 	raw, err := repo.collection.FindOne(ctx, bson.D{{Key: "event_id", Value: event.EventID}}).Raw()
 	require.NoError(t, err)
-	index, err := raw.LookupErr("section_index")
-	require.NoError(t, err, "section 0 is stored, not left out as a zero value")
-	assert.EqualValues(t, 0, index.AsInt64())
 	var chart bson.M
 	require.NoError(t, bson.Unmarshal(raw.Lookup("song_chart_context").Document(), &chart))
 	assert.Equal(t, bson.M{"song_chart_id": songChartRead.SongChartID, "revision_number": int32(2)}, chart)
+	_, err = raw.LookupErr("section_index")
+	assert.Error(t, err, "a completed song has no section")
 }

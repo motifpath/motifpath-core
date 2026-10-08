@@ -42,13 +42,11 @@ type wireEvent struct {
 	MedianTapMs       *int                  `json:"median_tap_ms,omitempty"`
 	TapCount          *int                  `json:"tap_count,omitempty"`
 
-	// song_chart.* fields. section_index is a pointer, so the first section,
-	// 0, is still carried.
+	// song_chart.* fields.
 	SongChartContext  *songChartContextWire `json:"song_chart_context,omitempty"`
 	AnchorID          string                `json:"anchor_id,omitempty"`
 	ChordDefinitionID string                `json:"chord_definition_id,omitempty"`
 	ChordVoicingID    string                `json:"chord_voicing_id,omitempty"`
-	SectionIndex      *int                  `json:"section_index,omitempty"`
 }
 
 type songChartContextWire struct {
@@ -152,7 +150,7 @@ func toWireEvent(event domain.TrackingEvent) wireEvent {
 	case domain.PracticeTapCheckCompletedEvent:
 		w.MedianTapMs = &e.MedianTapMs
 		w.TapCount = &e.TapCount
-	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartSectionCompletedEvent:
+	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartCompletedEvent:
 		addSongChartWire(&w, event)
 	}
 
@@ -202,9 +200,8 @@ func addSongChartWire(w *wireEvent, event domain.TrackingEvent) {
 		w.AnchorID = e.AnchorID
 		w.ChordDefinitionID = e.ChordDefinitionID
 		w.ChordVoicingID = e.ChordVoicingID
-	case domain.SongChartSectionCompletedEvent:
+	case domain.SongChartCompletedEvent:
 		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
-		w.SectionIndex = &e.SectionIndex
 	}
 }
 

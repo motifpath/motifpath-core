@@ -44,13 +44,11 @@ type eventDocument struct {
 	MedianTapMs       *int                 `bson:"median_tap_ms,omitempty"`
 	TapCount          *int                 `bson:"tap_count,omitempty"`
 
-	// song_chart.* fields. section_index is a pointer, so the first section,
-	// 0, is still stored.
+	// song_chart.* fields.
 	SongChartContext  *songChartContextDoc `bson:"song_chart_context,omitempty"`
 	AnchorID          string               `bson:"anchor_id,omitempty"`
 	ChordDefinitionID string               `bson:"chord_definition_id,omitempty"`
 	ChordVoicingID    string               `bson:"chord_voicing_id,omitempty"`
-	SectionIndex      *int                 `bson:"section_index,omitempty"`
 }
 
 type songChartContextDoc struct {
@@ -155,7 +153,7 @@ func toDocument(event domain.TrackingEvent, receivedAt time.Time) eventDocument 
 	case domain.PracticeTapCheckCompletedEvent:
 		doc.MedianTapMs = &e.MedianTapMs
 		doc.TapCount = &e.TapCount
-	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartSectionCompletedEvent:
+	case domain.SongChartOpenedEvent, domain.SongChartChordViewedEvent, domain.SongChartCompletedEvent:
 		addSongChartDoc(&doc, event)
 	}
 
@@ -230,12 +228,8 @@ func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
 			ChordDefinitionID: doc.ChordDefinitionID,
 			ChordVoicingID:    doc.ChordVoicingID,
 		}, nil
-	case domain.EventTypeSongChartSectionCompleted:
-		return domain.SongChartSectionCompletedEvent{
-			TrackingEventBase: base,
-			SongChartContext:  fromSongChartContextDoc(doc.SongChartContext),
-			SectionIndex:      derefInt(doc.SectionIndex),
-		}, nil
+	case domain.EventTypeSongChartCompleted:
+		return domain.SongChartCompletedEvent{TrackingEventBase: base, SongChartContext: fromSongChartContextDoc(doc.SongChartContext)}, nil
 	default:
 		return nil, fmt.Errorf("%w: %q", domain.ErrInvalidEventType, doc.EventType)
 	}
@@ -392,9 +386,8 @@ func addSongChartDoc(doc *eventDocument, event domain.TrackingEvent) {
 		doc.AnchorID = e.AnchorID
 		doc.ChordDefinitionID = e.ChordDefinitionID
 		doc.ChordVoicingID = e.ChordVoicingID
-	case domain.SongChartSectionCompletedEvent:
+	case domain.SongChartCompletedEvent:
 		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
-		doc.SectionIndex = &e.SectionIndex
 	}
 }
 
