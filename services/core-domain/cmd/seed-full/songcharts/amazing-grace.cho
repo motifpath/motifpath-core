@@ -1,0 +1,12 @@
+{title: Amazing Grace}
+{artist: John Newton}
+{key: G}
+{time: 3/4}
+{tempo: 80}
+
+{start_of_verse}
+[G]Amazing [G7]grace, how [C]sweet the [G]sound
+That [G]saved a wretch like [D]me
+I [G]once was [G7]lost, but [C]now am [G]found
+Was [Em]blind, but [D]now I [G]see
+{end_of_verse}

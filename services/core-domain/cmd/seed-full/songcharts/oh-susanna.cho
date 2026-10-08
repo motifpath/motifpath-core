@@ -1,0 +1,15 @@
+{title: Oh! Susanna}
+{artist: Stephen Foster}
+{key: C}
+{time: 2/4}
+
+{start_of_verse}
+I [C]come from Alabama with my [G]banjo on my knee
+I'm [C]goin' to Louisiana, my [G]true love for to [C]see
+{end_of_verse}
+
+{start_of_chorus}
+{comment: Brightly}
+Oh! [F]Susanna, oh [C]don't you cry for [G]me
+For I [C]come from Alabama with my [G]banjo on my [C]knee
+{end_of_chorus}
