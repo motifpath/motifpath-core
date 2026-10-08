@@ -3905,6 +3905,16 @@ type PracticeNodeProgress struct {
 
 // PracticeOverview The home's overview, across all of the student's instruments.
 type PracticeOverview struct {
+	// DayStreakBest The longest run of consecutive practice days the student has ever had, in the
+	// given time zone. Never less than day_streak_current.
+	DayStreakBest int `json:"day_streak_best"`
+
+	// DayStreakCurrent How many consecutive calendar days, in the given time zone, were practice days
+	// (the same days practice_days_last_7 counts), ending today, or ending yesterday
+	// while the student has not practised yet today. 0 when neither today nor
+	// yesterday was a practice day.
+	DayStreakCurrent int `json:"day_streak_current"`
+
 	// Instruments One card per instrument of the student, inferred from the paths and courses
 	// they're enrolled in, in the order their summaries are tabbed.
 	Instruments []PracticeInstrumentCard `json:"instruments"`
@@ -3914,11 +3924,26 @@ type PracticeOverview struct {
 	// reset.
 	LearningDaysLast7 int `json:"learning_days_last_7"`
 
+	// MinutesPractisedLast7 Whole minutes practised in sessions that started on the last 7 calendar days,
+	// today included, in the given time zone, on any instrument or without one. Each
+	// session counts from its start to its last practice event, including a session
+	// left early or abandoned. The sum is rounded down to whole minutes.
+	MinutesPractisedLast7 int `json:"minutes_practised_last_7"`
+
+	// MinutesPractisedPrevious7 The same measure as minutes_practised_last_7, for the 7 calendar days before
+	// those, so the home can show the change against the week before.
+	MinutesPractisedPrevious7 int `json:"minutes_practised_previous_7"`
+
 	// PracticeDaysLast7 On how many of the last 7 calendar days, in the given time zone, the student
 	// finished a practice session on any instrument, or without one: ended without
 	// leaving early, and not abandoned (no practice event for the session's planned
 	// minutes plus 15). Never a streak: a missed day is never a reset.
 	PracticeDaysLast7 int `json:"practice_days_last_7"`
+
+	// SkillsUpLast7 How many skills, counted once per instrument, have at least one improved measure
+	// in that instrument's progress this week (accuracy, fluency or best clean tempo
+	// higher now than 7 days ago). Concepts are not counted.
+	SkillsUpLast7 int `json:"skills_up_last_7"`
 }
 
 // PracticePickReason Why the session composer put an item in a session, shown to the student.
@@ -4540,6 +4565,40 @@ type SongChartChordProImport struct {
 	// SongChart A song chart as admins see it: its draft and what learners are
 	// served.
 	SongChart SongChart `json:"song_chart"`
+}
+
+// SongChartChordProReading What a ChordPro text describes, read without saving anything. Each
+// detail is null when the text doesn't set it.
+type SongChartChordProReading struct {
+	// Artist The artist the text sets with {artist}.
+	Artist *string `json:"artist"`
+
+	// Body The body of a song chart: lyrics with chords anchored to the words
+	// they fall on, as ProseMirror JSON from the song chart editor. It is
+	// its own document type, not a PromptDocument: it holds only
+	// sections, lyric lines and comments, and its only mark is the
+	// chordAnchor. Lines are kept as written; the reader lays chords out
+	// over the words itself, so the document never holds spaces that
+	// exist only to line chords up.
+	Body SongChartDocument `json:"body"`
+
+	// CapoFret The capo fret the text sets with {capo}.
+	CapoFret *int `json:"capo_fret"`
+
+	// ConcertKey The key the text sets with {key}.
+	ConcertKey *string `json:"concert_key"`
+
+	// ImportWarnings What the reading skipped, in line order; empty when it read everything.
+	ImportWarnings []ChordProImportWarning `json:"import_warnings"`
+
+	// TempoBpm The tempo the text sets with {tempo}.
+	TempoBpm *int `json:"tempo_bpm"`
+
+	// TimeSignature The meter the text sets with {time}.
+	TimeSignature *TimeSignature `json:"time_signature"`
+
+	// Title The title the text sets with {title} or {t}.
+	Title *string `json:"title"`
 }
 
 // SongChartComment A performance note between lines (e.g. "Repeat twice", "Slower").
@@ -5933,6 +5992,9 @@ type ListSongChartsParams struct {
 	Status *SongChartStatus `form:"status,omitempty" json:"status,omitempty"`
 }
 
+// ReadSongChartChordProTextBody defines parameters for ReadSongChartChordPro.
+type ReadSongChartChordProTextBody = string
+
 // ImportSongChartChordProTextBody defines parameters for ImportSongChartChordPro.
 type ImportSongChartChordProTextBody = string
 
@@ -6025,6 +6087,9 @@ type CreateMediaUploadUrlJSONRequestBody = CreateMediaUploadUrlRequest
 
 // CreateSongChartJSONRequestBody defines body for CreateSongChart for application/json ContentType.
 type CreateSongChartJSONRequestBody = SongChartDraftInput
+
+// ReadSongChartChordProTextRequestBody defines body for ReadSongChartChordPro for text/plain ContentType.
+type ReadSongChartChordProTextRequestBody = ReadSongChartChordProTextBody
 
 // UpdateSongChartDraftJSONRequestBody defines body for UpdateSongChartDraft for application/json ContentType.
 type UpdateSongChartDraftJSONRequestBody = SongChartDraftInput
@@ -6336,6 +6401,9 @@ type ServerInterface interface {
 	// Start a new song chart
 	// (POST /song-charts)
 	CreateSongChart(w http.ResponseWriter, r *http.Request)
+	// Read ChordPro text as a song chart, without saving it
+	// (POST /song-charts/chordpro/read)
+	ReadSongChartChordPro(w http.ResponseWriter, r *http.Request)
 	// Get a song chart with its draft
 	// (GET /song-charts/{song_chart_id})
 	GetSongChart(w http.ResponseWriter, r *http.Request, songChartId SongChartId)
@@ -6849,6 +6917,12 @@ func (_ Unimplemented) ListSongCharts(w http.ResponseWriter, r *http.Request, pa
 // Start a new song chart
 // (POST /song-charts)
 func (_ Unimplemented) CreateSongChart(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Read ChordPro text as a song chart, without saving it
+// (POST /song-charts/chordpro/read)
+func (_ Unimplemented) ReadSongChartChordPro(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -9699,6 +9773,26 @@ func (siw *ServerInterfaceWrapper) CreateSongChart(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ReadSongChartChordPro operation middleware
+func (siw *ServerInterfaceWrapper) ReadSongChartChordPro(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReadSongChartChordPro(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetSongChart operation middleware
 func (siw *ServerInterfaceWrapper) GetSongChart(w http.ResponseWriter, r *http.Request) {
 
@@ -10733,6 +10827,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/song-charts", wrapper.CreateSongChart)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/song-charts/chordpro/read", wrapper.ReadSongChartChordPro)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/song-charts/{song_chart_id}", wrapper.GetSongChart)
@@ -14042,6 +14139,50 @@ func (response CreateSongChart403JSONResponse) VisitCreateSongChartResponse(w ht
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ReadSongChartChordProRequestObject struct {
+	Body *ReadSongChartChordProTextRequestBody
+}
+
+type ReadSongChartChordProResponseObject interface {
+	VisitReadSongChartChordProResponse(w http.ResponseWriter) error
+}
+
+type ReadSongChartChordPro200JSONResponse SongChartChordProReading
+
+func (response ReadSongChartChordPro200JSONResponse) VisitReadSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReadSongChartChordPro400JSONResponse ValidationError
+
+func (response ReadSongChartChordPro400JSONResponse) VisitReadSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReadSongChartChordPro401JSONResponse UnauthorizedError
+
+func (response ReadSongChartChordPro401JSONResponse) VisitReadSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ReadSongChartChordPro403JSONResponse ForbiddenError
+
+func (response ReadSongChartChordPro403JSONResponse) VisitReadSongChartChordProResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type GetSongChartRequestObject struct {
 	SongChartId SongChartId `json:"song_chart_id"`
 }
@@ -15467,6 +15608,9 @@ type StrictServerInterface interface {
 	// Start a new song chart
 	// (POST /song-charts)
 	CreateSongChart(ctx context.Context, request CreateSongChartRequestObject) (CreateSongChartResponseObject, error)
+	// Read ChordPro text as a song chart, without saving it
+	// (POST /song-charts/chordpro/read)
+	ReadSongChartChordPro(ctx context.Context, request ReadSongChartChordProRequestObject) (ReadSongChartChordProResponseObject, error)
 	// Get a song chart with its draft
 	// (GET /song-charts/{song_chart_id})
 	GetSongChart(ctx context.Context, request GetSongChartRequestObject) (GetSongChartResponseObject, error)
@@ -17573,6 +17717,38 @@ func (sh *strictHandler) CreateSongChart(w http.ResponseWriter, r *http.Request)
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateSongChartResponseObject); ok {
 		if err := validResponse.VisitCreateSongChartResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReadSongChartChordPro operation middleware
+func (sh *strictHandler) ReadSongChartChordPro(w http.ResponseWriter, r *http.Request) {
+	var request ReadSongChartChordProRequestObject
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't read body: %w", err))
+		return
+	}
+	body := ReadSongChartChordProTextRequestBody(data)
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReadSongChartChordPro(ctx, request.(ReadSongChartChordProRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReadSongChartChordPro")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReadSongChartChordProResponseObject); ok {
+		if err := validResponse.VisitReadSongChartChordProResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

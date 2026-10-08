@@ -302,6 +302,15 @@ func (h *Handler) ImportSongChartChordPro(ctx context.Context, request generated
 	return nil, err
 }
 
+// errChordProReadingNotYetServed answers the ChordPro reading, which this
+// service doesn't implement yet; its scenarios are still marked as work in
+// progress in the spec.
+var errChordProReadingNotYetServed = errors.New("reading ChordPro without saving is not implemented yet")
+
+func (h *Handler) ReadSongChartChordPro(context.Context, generated.ReadSongChartChordProRequestObject) (generated.ReadSongChartChordProResponseObject, error) {
+	return nil, errChordProReadingNotYetServed
+}
+
 // ── Mapping ──────────────────────────────────────────────────────────────────
 
 // toSongChartInput reads a draft from the request. The body is read through
