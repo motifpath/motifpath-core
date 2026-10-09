@@ -38,4 +38,6 @@ type TrackingEvent struct {
 	SessionEnd *PracticeSessionEnd
 	// TapCheck is set on a practice.tap_check_completed event.
 	TapCheck *TapCheck
+	// SongChartCompletion is set on a song_chart.completed event.
+	SongChartCompletion *SongChartCompletion
 }

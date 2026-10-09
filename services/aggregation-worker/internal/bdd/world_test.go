@@ -137,6 +137,20 @@ func (f *fakeTapChecks) Insert(_ context.Context, c domain.TapCheck) (bool, erro
 	return true, nil
 }
 
+// fakeSongChartCompletions keeps song chart completions; no worker scenario reads
+// them yet.
+type fakeSongChartCompletions struct {
+	stored []domain.SongChartCompletion
+}
+
+func (f *fakeSongChartCompletions) Insert(_ context.Context, c domain.SongChartCompletion) (bool, error) {
+	if slices.ContainsFunc(f.stored, func(s domain.SongChartCompletion) bool { return s.EventID == c.EventID }) {
+		return false, nil
+	}
+	f.stored = append(f.stored, c)
+	return true, nil
+}
+
 type fakeCompletion struct {
 	statuses map[string]domain.CompletionStatus
 }
@@ -298,7 +312,7 @@ func newWorld() *world {
 	}
 	w.service = application.NewPracticeEvidenceService(w.reference, w.evidence, w.states, w.history, slog.New(w.logs))
 	w.events = application.NewProcessEventService(&fakeCompletion{statuses: map[string]domain.CompletionStatus{}}, w.service,
-		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks))
+		application.NewActivityService(w.sessionRecords, w.learning, w.tapChecks, &fakeSongChartCompletions{}))
 	return w
 }
 

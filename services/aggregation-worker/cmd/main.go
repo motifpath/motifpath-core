@@ -172,9 +172,15 @@ func newEventService(ctx context.Context, db *mongo.Database, logger *slog.Logge
 	if err := tapCheckRepo.EnsureIndexes(ctx); err != nil {
 		return nil, nil, fmt.Errorf("ensure tap check indexes: %w", err)
 	}
+	songChartRepo := repo.NewMongoSongChartCompletionRepository(db)
+	// Fatal on failure: the unique event_id index is what keeps a redelivered
+	// song chart completion once.
+	if err := songChartRepo.EnsureIndexes(ctx); err != nil {
+		return nil, nil, fmt.Errorf("ensure song chart completion indexes: %w", err)
+	}
 
 	service := application.NewProcessEventService(completionRepo, practice,
-		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo))
+		application.NewActivityService(sessionRepo, learningRepo, tapCheckRepo, songChartRepo))
 	return completionRepo, service, nil
 }
 
