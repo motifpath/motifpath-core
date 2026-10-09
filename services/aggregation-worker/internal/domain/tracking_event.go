@@ -7,8 +7,8 @@ package domain
 import "time"
 
 // EventType identifies which tracking event a message represents. The worker
-// acts on the lesson and practice events it names; any other is accepted without
-// error and changes nothing.
+// acts on the lesson, practice and song chart completion events it names; any
+// other is accepted without error and changes nothing.
 type EventType string
 
 const (
