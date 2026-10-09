@@ -25,6 +25,7 @@ type fakePracticeActivity struct {
 	sessions    map[string][]fakePracticeSession
 	completions map[string][]time.Time
 	snapshots   map[string][]fakeItemSnapshot
+	songs       map[string][]domain.SongChartCompletion
 }
 
 // fakePracticeSession is one session as the worker records it: endedAt

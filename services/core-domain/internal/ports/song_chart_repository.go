@@ -14,6 +14,10 @@ type SongChartRepository interface {
 	Create(ctx context.Context, chart domain.SongChart) error
 	// GetByID returns the chart with id, or domain.ErrNotFound.
 	GetByID(ctx context.Context, id string) (domain.SongChart, error)
+	// ExistingIDs returns those of ids that name a chart, whatever its
+	// status, in no particular order. An id that isn't a valid chart id is
+	// simply not among them.
+	ExistingIDs(ctx context.Context, ids []string) ([]string, error)
 	// List returns the charts matching filter, most recently updated first,
 	// then by id.
 	List(ctx context.Context, filter domain.SongChartFilter, page domain.PageRequest) (domain.Page[domain.SongChart], error)

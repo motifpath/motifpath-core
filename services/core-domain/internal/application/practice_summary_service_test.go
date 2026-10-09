@@ -20,7 +20,13 @@ type fakePracticeActivityReader struct {
 	completions []time.Time
 	snapshots   map[string]domain.PracticeItemSnapshot
 	snapshotsAt time.Time
+	songs       []domain.SongChartCompletion
+	songsErr    error
 	err         error
+}
+
+func (f *fakePracticeActivityReader) SongChartCompletions(_ context.Context, _ string) ([]domain.SongChartCompletion, error) {
+	return f.songs, f.songsErr
 }
 
 func (f *fakePracticeActivityReader) FinishedSessions(_ context.Context, _ string, since time.Time) ([]domain.FinishedPracticeSession, error) {
@@ -57,19 +63,21 @@ func (f *fakePracticeActivityReader) SnapshotsAt(_ context.Context, _ string, it
 // summaryFixture is a practice fixture with a summary service over it.
 type summaryFixture struct {
 	*practiceFixture
-	svc      *application.PracticeSummaryService
-	activity *fakePracticeActivityReader
+	svc        *application.PracticeSummaryService
+	activity   *fakePracticeActivityReader
+	songCharts *fakeSongChartRepository
 }
 
 func newSummaryFixture(t *testing.T) *summaryFixture {
 	f := &summaryFixture{
 		practiceFixture: newPracticeFixture(t),
 		activity:        &fakePracticeActivityReader{snapshots: map[string]domain.PracticeItemSnapshot{}},
+		songCharts:      newFakeSongChartRepository(),
 	}
 	now := func() time.Time { return f.now }
 	rollup := application.NewKnowledgeRollupService(f.knowledgeNodes, f.edges, practiceItemSource{f: f.practiceFixture}, f.states, now)
 	f.svc = application.NewPracticeSummaryService(
-		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, rollup, f.activity, now,
+		f.instruments, f.studentPaths, f.enrollments, f.learningPaths, f.courseVersions, f.contentNodes, rollup, f.activity, f.songCharts, now,
 	)
 	return f
 }
@@ -250,6 +258,90 @@ func TestPracticeSummaryService_Overview(t *testing.T) {
 		require.ErrorAs(t, err, &valErr)
 		require.Len(t, valErr.Fields, 1)
 		assert.Equal(t, "time_zone", valErr.Fields[0].Field)
+	})
+}
+
+func TestPracticeSummaryService_OverviewSongsPlayed(t *testing.T) {
+	const asaBranca, amazingGrace, missing = "chart-asa-branca", "chart-amazing-grace", "chart-that-does-not-exist"
+	// 15:00 UTC on Monday 5 October is noon in São Paulo; the last 7 days
+	// there began at midnight on Tuesday 29 September.
+	now := time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
+	daysAgo := func(days int) time.Time { return now.AddDate(0, 0, -days) }
+	played := func(chartID string, at time.Time) domain.SongChartCompletion {
+		return domain.SongChartCompletion{SongChartID: chartID, CompletedAt: at}
+	}
+	cases := []struct {
+		name      string
+		charts    []domain.SongChart
+		played    []domain.SongChartCompletion
+		wantTotal int
+		wantLast7 int
+	}{
+		{
+			name:      "each chart marked as played counts",
+			charts:    []domain.SongChart{{ID: asaBranca}, {ID: amazingGrace}},
+			played:    []domain.SongChartCompletion{played(asaBranca, daysAgo(0)), played(amazingGrace, daysAgo(0))},
+			wantTotal: 2, wantLast7: 2,
+		},
+		{
+			name:      "a song first played this week counts in this week's songs",
+			charts:    []domain.SongChart{{ID: asaBranca}, {ID: amazingGrace}},
+			played:    []domain.SongChartCompletion{played(asaBranca, daysAgo(10)), played(amazingGrace, daysAgo(1))},
+			wantTotal: 2, wantLast7: 1,
+		},
+		{
+			name:      "marking the same chart again counts it once, from when it was first played",
+			charts:    []domain.SongChart{{ID: asaBranca}},
+			played:    []domain.SongChartCompletion{played(asaBranca, daysAgo(0)), played(asaBranca, daysAgo(10))},
+			wantTotal: 1, wantLast7: 0,
+		},
+		{
+			name:      "a chart withdrawn after it was played still counts",
+			charts:    []domain.SongChart{{ID: asaBranca, Status: domain.SongChartWithdrawn}},
+			played:    []domain.SongChartCompletion{played(asaBranca, daysAgo(0))},
+			wantTotal: 1, wantLast7: 1,
+		},
+		{
+			name:      "a chart that doesn't exist is not counted",
+			played:    []domain.SongChartCompletion{played(missing, daysAgo(0))},
+			wantTotal: 0, wantLast7: 0,
+		},
+		{
+			name:      "the first day of the last 7, in the student's time zone, is this week",
+			charts:    []domain.SongChart{{ID: asaBranca}, {ID: amazingGrace}},
+			played:    []domain.SongChartCompletion{played(asaBranca, time.Date(2026, 9, 29, 3, 0, 0, 0, time.UTC)), played(amazingGrace, time.Date(2026, 9, 29, 2, 59, 0, 0, time.UTC))},
+			wantTotal: 2, wantLast7: 1,
+		},
+		{
+			name:      "a student who has played no song starts at zero",
+			wantTotal: 0, wantLast7: 0,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newSummaryFixture(t)
+			f.now = now
+			for _, chart := range c.charts {
+				require.NoError(t, f.songCharts.Create(context.Background(), chart))
+			}
+			f.activity.songs = c.played
+
+			got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+			require.NoError(t, err)
+			assert.Equal(t, c.wantTotal, got.SongsPlayedTotal)
+			assert.Equal(t, c.wantLast7, got.SongsPlayedLast7)
+		})
+	}
+
+	t.Run("a failure reading the completions is returned", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		boom := errors.New("connection refused")
+		f.activity.songsErr = boom
+
+		_, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		assert.ErrorIs(t, err, boom)
 	})
 }
 

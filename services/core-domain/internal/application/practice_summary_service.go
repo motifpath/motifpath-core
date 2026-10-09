@@ -25,6 +25,7 @@ type PracticeSummaryService struct {
 	learning    studentLearning
 	rollup      *KnowledgeRollupService
 	activity    ports.PracticeActivityReader
+	songCharts  ports.SongChartRepository
 	now         func() time.Time
 }
 
@@ -37,6 +38,7 @@ func NewPracticeSummaryService(
 	contentNodes ports.ContentNodeRepository,
 	rollup *KnowledgeRollupService,
 	activity ports.PracticeActivityReader,
+	songCharts ports.SongChartRepository,
 	now func() time.Time,
 ) *PracticeSummaryService {
 	return &PracticeSummaryService{
@@ -45,9 +47,10 @@ func NewPracticeSummaryService(
 			studentPaths: studentPaths, enrollments: enrollments, contentNodes: contentNodes,
 			learningPaths: learningPaths, courseVersions: courseVersions, instruments: instruments,
 		},
-		rollup:   rollup,
-		activity: activity,
-		now:      now,
+		rollup:     rollup,
+		activity:   activity,
+		songCharts: songCharts,
+		now:        now,
 	}
 }
 
@@ -77,6 +80,8 @@ type PracticeSummary struct {
 type PracticeOverview struct {
 	PracticeDaysLast7 int
 	LearningDaysLast7 int
+	SongsPlayedTotal  int
+	SongsPlayedLast7  int
 	Instruments       []PracticeInstrumentCard
 }
 
@@ -186,9 +191,10 @@ func describeNodes(view domain.KnowledgeView) (map[string]domain.KnowledgeNode, 
 }
 
 // Overview returns caller's practice overview, counting days in timeZone
-// (empty: UTC): practice days on any instrument, learning days, and one
-// card per instrument of the student with its practice days and its top
-// next step. An unknown time zone is a validation error on time_zone.
+// (empty: UTC): practice days on any instrument, learning days, songs
+// played, and one card per instrument of the student with its practice
+// days and its top next step. An unknown time zone is a validation error
+// on time_zone.
 func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.User, timeZone string) (PracticeOverview, error) {
 	loc, err := practiceLocation(timeZone)
 	if err != nil {
@@ -217,9 +223,15 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	for i, session := range sessions {
 		ends[i] = session.EndedAt
 	}
+	songs, err := s.songsPlayed(ctx, caller.ID, now, loc)
+	if err != nil {
+		return PracticeOverview{}, err
+	}
 	overview := PracticeOverview{
 		PracticeDaysLast7: domain.DaysInLast7(ends, now, loc),
 		LearningDaysLast7: domain.DaysInLast7(completions, now, loc),
+		SongsPlayedTotal:  songs.Total,
+		SongsPlayedLast7:  songs.Last7,
 	}
 	for _, id := range instrumentIDs {
 		view, err := s.rollup.Map(ctx, caller.ID, id)
@@ -233,6 +245,30 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 		overview.Instruments = append(overview.Instruments, card)
 	}
 	return overview, nil
+}
+
+// songsPlayed counts the song charts studentID has marked as played that
+// still exist: a played mark can name a chart that never existed, since the
+// reader's events are taken as sent.
+func (s *PracticeSummaryService) songsPlayed(ctx context.Context, studentID string, now time.Time, loc *time.Location) (domain.SongsPlayed, error) {
+	completions, err := s.activity.SongChartCompletions(ctx, studentID)
+	if err != nil || len(completions) == 0 {
+		return domain.SongsPlayed{}, err
+	}
+	ids := make([]string, 0, len(completions))
+	for _, c := range completions {
+		ids = append(ids, c.SongChartID)
+	}
+	slices.Sort(ids)
+	existing, err := s.songCharts.ExistingIDs(ctx, slices.Compact(ids))
+	if err != nil {
+		return domain.SongsPlayed{}, err
+	}
+	exists := make(map[string]bool, len(existing))
+	for _, id := range existing {
+		exists[id] = true
+	}
+	return domain.CountSongsPlayed(completions, exists, now, loc), nil
 }
 
 // progress lists how the leaf skills in view improved since start, most

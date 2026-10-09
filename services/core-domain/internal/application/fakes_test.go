@@ -2043,6 +2043,18 @@ func (f *fakeSongChartRepository) GetByID(_ context.Context, id string) (domain.
 	return chart, nil
 }
 
+func (f *fakeSongChartRepository) ExistingIDs(_ context.Context, ids []string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for _, id := range ids {
+		if _, ok := f.charts[id]; ok {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeSongChartRepository) List(_ context.Context, filter domain.SongChartFilter, page domain.PageRequest) (domain.Page[domain.SongChart], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

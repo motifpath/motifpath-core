@@ -165,6 +165,8 @@ func toGeneratedPracticeOverview(overview application.PracticeOverview) generate
 	out := generated.PracticeOverview{
 		PracticeDaysLast7: overview.PracticeDaysLast7,
 		LearningDaysLast7: overview.LearningDaysLast7,
+		SongsPlayedTotal:  overview.SongsPlayedTotal,
+		SongsPlayedLast7:  overview.SongsPlayedLast7,
 		Instruments:       make([]generated.PracticeInstrumentCard, len(overview.Instruments)),
 	}
 	for i, card := range overview.Instruments {

@@ -314,7 +314,7 @@ func newWorld() *world {
 	w.summaryNow = fixedNow
 	summaryNow := func() time.Time { return w.summaryNow }
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
-	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, summaryNow)
+	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
 
 	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
 		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now), w.pgPinger, w.mongoPinger)

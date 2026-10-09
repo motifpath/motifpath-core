@@ -99,3 +99,15 @@ func (f *fakeSongChartRepo) GetRevision(_ context.Context, chartID string, numbe
 	}
 	return domain.SongChartRevision{}, domain.ErrNotFound
 }
+
+func (f *fakeSongChartRepo) ExistingIDs(_ context.Context, ids []string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for _, id := range ids {
+		if _, ok := f.charts[id]; ok {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}

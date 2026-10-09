@@ -51,6 +51,13 @@ type practiceItemSnapshotDocument struct {
 	BestCleanBPM *int    `bson:"best_clean_bpm"`
 }
 
+// songChartCompletionDocument holds the fields this service reads from a
+// `song_chart_completions` document.
+type songChartCompletionDocument struct {
+	SongChartID string    `bson:"song_chart_id"`
+	CompletedAt time.Time `bson:"completed_at"`
+}
+
 // tapCheckDocument holds the fields this service reads from a
 // `tap_checks` document.
 type tapCheckDocument struct {
@@ -58,21 +65,24 @@ type tapCheckDocument struct {
 }
 
 // MongoPracticeActivityReader reads the `practice_sessions`,
-// `learning_activity`, `practice_item_history` and `tap_checks`
-// collections the Aggregation Worker owns. It never writes to them.
+// `learning_activity`, `practice_item_history`, `tap_checks` and
+// `song_chart_completions` collections the Aggregation Worker owns. It
+// never writes to them.
 type MongoPracticeActivityReader struct {
-	sessions  *mongo.Collection
-	learning  *mongo.Collection
-	history   *mongo.Collection
-	tapChecks *mongo.Collection
+	sessions   *mongo.Collection
+	learning   *mongo.Collection
+	history    *mongo.Collection
+	tapChecks  *mongo.Collection
+	songCharts *mongo.Collection
 }
 
 func NewMongoPracticeActivityReader(db *mongo.Database) *MongoPracticeActivityReader {
 	return &MongoPracticeActivityReader{
-		sessions:  db.Collection("practice_sessions"),
-		learning:  db.Collection("learning_activity"),
-		history:   db.Collection("practice_item_history"),
-		tapChecks: db.Collection("tap_checks"),
+		sessions:   db.Collection("practice_sessions"),
+		learning:   db.Collection("learning_activity"),
+		history:    db.Collection("practice_item_history"),
+		tapChecks:  db.Collection("tap_checks"),
+		songCharts: db.Collection("song_chart_completions"),
 	}
 }
 
@@ -212,4 +222,24 @@ func (r *MongoPracticeActivityReader) SnapshotsAt(ctx context.Context, studentID
 		return nil, err
 	}
 	return result, nil
+}
+
+// SongChartCompletions reads every played mark of studentID's, on the
+// worker's student_id + completed_at index.
+func (r *MongoPracticeActivityReader) SongChartCompletions(ctx context.Context, studentID string) ([]domain.SongChartCompletion, error) {
+	cursor, err := r.songCharts.Find(ctx, bson.D{{Key: "student_id", Value: studentID}})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var completions []domain.SongChartCompletion
+	for cursor.Next(ctx) {
+		var doc songChartCompletionDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		completions = append(completions, domain.SongChartCompletion{SongChartID: doc.SongChartID, CompletedAt: doc.CompletedAt.UTC()})
+	}
+	return completions, cursor.Err()
 }
