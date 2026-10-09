@@ -8,7 +8,7 @@ on:
 
 env:
   GO_VERSION: '1.27'
-  GOLANGCI_LINT_VERSION: v2.13.1
+  GOLANGCI_LINT_VERSION: v2.14.0
   # internal/application packages, per module — the coverage-gated unit test set.
   APP_MODULES: >-
     ./services/core-domain/internal/application/...
