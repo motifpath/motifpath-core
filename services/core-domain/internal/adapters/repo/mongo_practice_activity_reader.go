@@ -35,6 +35,13 @@ type practiceSessionEndDocument struct {
 	LeftEarly bool      `bson:"left_early"`
 }
 
+// practiceSessionSpanDocument holds the times this service reads from a
+// `practice_sessions` document to measure how long it was practised.
+type practiceSessionSpanDocument struct {
+	StartedAt   time.Time `bson:"started_at"`
+	LastEventAt time.Time `bson:"last_event_at"`
+}
+
 // learningActivityDocument holds the fields this service reads from a
 // `learning_activity` document.
 type learningActivityDocument struct {
@@ -167,6 +174,29 @@ func (r *MongoPracticeActivityReader) FinishedSessions(ctx context.Context, stud
 		sessions = append(sessions, session)
 	}
 	return sessions, cursor.Err()
+}
+
+func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
+	// A session whose start hasn't arrived has a null started_at, which
+	// $gte never matches.
+	cursor, err := r.sessions.Find(ctx, bson.D{
+		{Key: "student_id", Value: studentID},
+		{Key: "started_at", Value: bson.D{{Key: "$gte", Value: since}}},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var spans []domain.PracticeSessionSpan
+	for cursor.Next(ctx) {
+		var doc practiceSessionSpanDocument
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		spans = append(spans, domain.PracticeSessionSpan{StartedAt: doc.StartedAt.UTC(), LastEventAt: doc.LastEventAt.UTC()})
+	}
+	return spans, cursor.Err()
 }
 
 func (r *MongoPracticeActivityReader) CompletionTimes(ctx context.Context, studentID string, since time.Time) ([]time.Time, error) {

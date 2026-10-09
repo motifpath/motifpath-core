@@ -2,6 +2,7 @@ package domain
 
 import (
 	"cmp"
+	"maps"
 	"slices"
 	"time"
 )
@@ -35,6 +36,73 @@ func DaysInLast7(times []time.Time, now time.Time, loc *time.Location) int {
 	return len(days)
 }
 
+// Previous7DaysStart is when the 7 calendar days before the last 7 began at
+// now in loc: local midnight thirteen days before the local today.
+func Previous7DaysStart(now time.Time, loc *time.Location) time.Time {
+	y, m, d := now.In(loc).Date()
+	return time.Date(y, m, d-(2*summaryDays-1), 0, 0, 0, 0, loc)
+}
+
+// MinutesPractised is the whole minutes practised in the sessions among
+// spans that started at or after from and before to: each counts from its
+// start to its latest event, and the total rounds down. A latest event
+// before the start, by a clock out of step, counts nothing.
+func MinutesPractised(spans []PracticeSessionSpan, from, to time.Time) int {
+	var total time.Duration
+	for _, s := range spans {
+		if s.StartedAt.Before(from) || !s.StartedAt.Before(to) {
+			continue
+		}
+		total += max(s.LastEventAt.Sub(s.StartedAt), 0)
+	}
+	return int(total / time.Minute)
+}
+
+// DayStreaks counts runs of consecutive calendar days in loc on which at
+// least one of ends falls. The current run ends today, or yesterday while
+// today has none yet, so a day not over never breaks it; best is the
+// longest run ever. A day after today, by a clock running ahead, is left
+// out.
+func DayStreaks(ends []time.Time, now time.Time, loc *time.Location) (current, best int) {
+	today := localDate(now, loc)
+	days := map[time.Time]bool{}
+	for _, t := range ends {
+		if day := localDate(t, loc); !day.After(today) {
+			days[day] = true
+		}
+	}
+	sorted := slices.SortedFunc(maps.Keys(days), time.Time.Compare)
+	run := 0
+	for i, day := range sorted {
+		if i > 0 && nextDay(sorted[i-1]).Equal(day) {
+			run++
+		} else {
+			run = 1
+		}
+		best = max(best, run)
+	}
+	day := today
+	if !days[day] {
+		day = day.AddDate(0, 0, -1)
+	}
+	for days[day] {
+		current++
+		day = day.AddDate(0, 0, -1)
+	}
+	return current, best
+}
+
+// localDate is t's calendar date in loc, as midnight UTC so that dates
+// compare and step by whole days whatever loc's offsets do.
+func localDate(t time.Time, loc *time.Location) time.Time {
+	y, m, d := t.In(loc).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+func nextDay(date time.Time) time.Time {
+	return date.AddDate(0, 0, 1)
+}
+
 // FinishedPracticeSession is a practice session the student finished:
 // ended without leaving early. A session that was abandoned never ended,
 // so it is never finished.
@@ -43,6 +111,14 @@ type FinishedPracticeSession struct {
 	// head.
 	InstrumentID *string
 	EndedAt      time.Time
+}
+
+// PracticeSessionSpan is when a practice session started and when its
+// latest practice event arrived, whatever became of the session: finished,
+// left early, abandoned or still open.
+type PracticeSessionSpan struct {
+	StartedAt   time.Time
+	LastEventAt time.Time
 }
 
 // PracticeItemSnapshot is a student's state on one practice item as it

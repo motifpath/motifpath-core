@@ -118,6 +118,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerPracticeSessionSteps(sc, w)
 	registerPracticeSummarySteps(sc, w)
 	registerSongsPlayedSteps(sc, w)
+	registerPracticeOverviewEffortSteps(sc, w)
 	registerNodeLevelSteps(sc, w)
 	registerFretboardCellSteps(sc, w)
 	registerDiagramShapeSteps(sc, w)

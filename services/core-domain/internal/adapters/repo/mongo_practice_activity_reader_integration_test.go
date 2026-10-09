@@ -66,6 +66,49 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("session spans are every session started since, however it ended", func(t *testing.T) {
+		session := func(studentID, id string, startedAt *time.Time, lastEventAt time.Time, end any) bson.D {
+			var started any
+			if startedAt != nil {
+				started = *startedAt
+			}
+			return bson.D{
+				{Key: "student_id", Value: studentID},
+				{Key: "practice_session_id", Value: id},
+				{Key: "started_at", Value: started},
+				{Key: "instrument_id", Value: "guitar"},
+				{Key: "minutes", Value: 10},
+				{Key: "planned_items", Value: bson.A{}},
+				{Key: "last_event_at", Value: lastEventAt},
+				{Key: "end", Value: end},
+				{Key: "updated_at", Value: lastEventAt},
+			}
+		}
+		end := func(endedAt time.Time, leftEarly bool) bson.D {
+			return bson.D{{Key: "event_id", Value: "e"}, {Key: "ended_at", Value: endedAt}, {Key: "left_early", Value: leftEarly}, {Key: "answered_count", Value: 3}}
+		}
+		started := func(day, hour int) *time.Time { t := at(day, hour); return &t }
+		minute := func(day, hour, minute int) time.Time { return at(day, hour).Add(time.Duration(minute) * time.Minute) }
+		_, err := db.Collection("practice_sessions").InsertMany(ctx, []any{
+			session("carol", "finished", started(4, 9), minute(4, 9, 12), end(minute(4, 9, 12), false)),
+			session("carol", "left-early", started(4, 18), minute(4, 18, 6), end(minute(4, 18, 6), true)),
+			session("carol", "abandoned", started(5, 18), minute(5, 18, 4), nil),
+			session("carol", "start-not-arrived", nil, minute(5, 19, 3), nil),
+			session("carol", "too-old", started(1, 9), minute(1, 9, 20), end(minute(1, 9, 20), false)),
+			session("dave", "someone-else", started(4, 9), minute(4, 9, 30), nil),
+		})
+		require.NoError(t, err)
+
+		got, err := reader.SessionSpans(ctx, "carol", at(2, 0))
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.PracticeSessionSpan{
+			{StartedAt: at(4, 9), LastEventAt: minute(4, 9, 12)},
+			{StartedAt: at(4, 18), LastEventAt: minute(4, 18, 6)},
+			{StartedAt: at(5, 18), LastEventAt: minute(5, 18, 4)},
+		}, got)
+	})
+
 	t.Run("completion times are each completion since", func(t *testing.T) {
 		completion := func(eventID, studentID string, completedAt time.Time) bson.D {
 			return bson.D{{Key: "event_id", Value: eventID}, {Key: "student_id", Value: studentID}, {Key: "content_node_id", Value: "node-1"}, {Key: "completed_at", Value: completedAt}}

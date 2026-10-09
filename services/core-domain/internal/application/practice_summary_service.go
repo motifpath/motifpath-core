@@ -78,11 +78,17 @@ type PracticeSummary struct {
 
 // PracticeOverview is the practice home's first view, across instruments.
 type PracticeOverview struct {
-	PracticeDaysLast7 int
-	LearningDaysLast7 int
-	SongsPlayedTotal  int
-	SongsPlayedLast7  int
-	Instruments       []PracticeInstrumentCard
+	PracticeDaysLast7         int
+	LearningDaysLast7         int
+	MinutesPractisedLast7     int
+	MinutesPractisedPrevious7 int
+	DayStreakCurrent          int
+	DayStreakBest             int
+	// SkillsUpLast7 counts each skill once per instrument it improved on.
+	SkillsUpLast7    int
+	SongsPlayedTotal int
+	SongsPlayedLast7 int
+	Instruments      []PracticeInstrumentCard
 }
 
 // PracticeInstrumentCard is one instrument at a glance.
@@ -191,10 +197,11 @@ func describeNodes(view domain.KnowledgeView) (map[string]domain.KnowledgeNode, 
 }
 
 // Overview returns caller's practice overview, counting days in timeZone
-// (empty: UTC): practice days on any instrument, learning days, songs
-// played, and one card per instrument of the student with its practice
-// days and its top next step. An unknown time zone is a validation error
-// on time_zone.
+// (empty: UTC): practice days on any instrument, learning days, minutes
+// practised this week and the week before, the current and best day
+// streaks, skills up, songs played, and one card per instrument of the
+// student with its practice days and its top next step. An unknown time
+// zone is a validation error on time_zone.
 func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.User, timeZone string) (PracticeOverview, error) {
 	loc, err := practiceLocation(timeZone)
 	if err != nil {
@@ -210,11 +217,18 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	}
 	now := s.now()
 	start := domain.Last7DaysStart(now, loc)
-	sessions, err := s.activity.FinishedSessions(ctx, caller.ID, start)
+	previousStart := domain.Previous7DaysStart(now, loc)
+	// Every finished session ever, since the best streak can lie anywhere
+	// in the student's history.
+	sessions, err := s.activity.FinishedSessions(ctx, caller.ID, time.Time{})
 	if err != nil {
 		return PracticeOverview{}, err
 	}
 	completions, err := s.activity.CompletionTimes(ctx, caller.ID, start)
+	if err != nil {
+		return PracticeOverview{}, err
+	}
+	spans, err := s.activity.SessionSpans(ctx, caller.ID, previousStart)
 	if err != nil {
 		return PracticeOverview{}, err
 	}
@@ -227,17 +241,27 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 	if err != nil {
 		return PracticeOverview{}, err
 	}
+	streak, bestStreak := domain.DayStreaks(ends, now, loc)
 	overview := PracticeOverview{
-		PracticeDaysLast7: domain.DaysInLast7(ends, now, loc),
-		LearningDaysLast7: domain.DaysInLast7(completions, now, loc),
-		SongsPlayedTotal:  songs.Total,
-		SongsPlayedLast7:  songs.Last7,
+		PracticeDaysLast7:         domain.DaysInLast7(ends, now, loc),
+		LearningDaysLast7:         domain.DaysInLast7(completions, now, loc),
+		MinutesPractisedLast7:     domain.MinutesPractised(spans, start, endOfToday(now, loc)),
+		MinutesPractisedPrevious7: domain.MinutesPractised(spans, previousStart, start),
+		DayStreakCurrent:          streak,
+		DayStreakBest:             bestStreak,
+		SongsPlayedTotal:          songs.Total,
+		SongsPlayedLast7:          songs.Last7,
 	}
 	for _, id := range instrumentIDs {
 		view, err := s.rollup.Map(ctx, caller.ID, id)
 		if err != nil {
 			return PracticeOverview{}, err
 		}
+		progress, err := s.progress(ctx, caller.ID, view, start)
+		if err != nil {
+			return PracticeOverview{}, err
+		}
+		overview.SkillsUpLast7 += skillsUp(progress)
 		card := PracticeInstrumentCard{InstrumentID: id, PracticeDaysLast7: domain.DaysInLast7(sessionEnds(sessions, &id), now, loc)}
 		if steps := domain.RankNextSteps(view, pathSkillIDs); len(steps) > 0 {
 			card.TopNextStep = &steps[0]
@@ -296,6 +320,22 @@ func (s *PracticeSummaryService) progress(ctx context.Context, studentID string,
 	}
 	domain.RankSkillProgress(lines)
 	return lines, nil
+}
+
+// skillsUp counts the distinct skills among progress lines: a skill with
+// several improved measures is one skill up.
+func skillsUp(progress []domain.SkillProgress) int {
+	skills := map[string]bool{}
+	for _, line := range progress {
+		skills[line.NodeID] = true
+	}
+	return len(skills)
+}
+
+// endOfToday is the local midnight that ends now's day in loc.
+func endOfToday(now time.Time, loc *time.Location) time.Time {
+	y, m, d := now.In(loc).Date()
+	return time.Date(y, m, d+1, 0, 0, 0, 0, loc)
 }
 
 // sessionEnds lists when the sessions with instrumentID in hand (nil: in

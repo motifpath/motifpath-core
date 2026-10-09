@@ -18,6 +18,11 @@ type PracticeActivityReader interface {
 	// at or after since without leaving early.
 	FinishedSessions(ctx context.Context, studentID string, since time.Time) ([]domain.FinishedPracticeSession, error)
 
+	// SessionSpans returns the start and latest event of each of the
+	// student's practice sessions that started at or after since, however
+	// they ended. A session whose start hasn't arrived is left out.
+	SessionSpans(ctx context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error)
+
 	// CompletionTimes returns when the student completed a content node,
 	// once per completion, at or after since.
 	CompletionTimes(ctx context.Context, studentID string, since time.Time) ([]time.Time, error)

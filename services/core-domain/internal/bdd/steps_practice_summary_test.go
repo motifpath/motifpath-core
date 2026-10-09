@@ -29,9 +29,12 @@ type fakePracticeActivity struct {
 }
 
 // fakePracticeSession is one session as the worker records it: endedAt
-// is nil until it ends, which an abandoned session never does.
+// is nil until it ends, which an abandoned session never does, and
+// startedAt is nil until its start arrives.
 type fakePracticeSession struct {
 	instrumentID *string
+	startedAt    *time.Time
+	lastEventAt  time.Time
 	endedAt      *time.Time
 	leftEarly    bool
 }
@@ -54,6 +57,18 @@ func (f *fakePracticeActivity) FinishedSessions(_ context.Context, studentID str
 	for _, s := range f.sessions[studentID] {
 		if s.endedAt != nil && !s.leftEarly && !s.endedAt.Before(since) {
 			out = append(out, domain.FinishedPracticeSession{InstrumentID: s.instrumentID, EndedAt: *s.endedAt})
+		}
+	}
+	return out, nil
+}
+
+func (f *fakePracticeActivity) SessionSpans(_ context.Context, studentID string, since time.Time) ([]domain.PracticeSessionSpan, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []domain.PracticeSessionSpan
+	for _, s := range f.sessions[studentID] {
+		if s.startedAt != nil && !s.startedAt.Before(since) {
+			out = append(out, domain.PracticeSessionSpan{StartedAt: *s.startedAt, LastEventAt: s.lastEventAt})
 		}
 	}
 	return out, nil
