@@ -5640,6 +5640,16 @@ type PracticeOverview struct {
 	// in that instrument's progress this week (accuracy, fluency or best clean tempo
 	// higher now than 7 days ago). Concepts are not counted.
 	SkillsUpLast7 int `json:"skills_up_last_7"`
+
+	// SongsPlayedLast7 How many of the songs counted in songs_played_total were first marked as played on
+	// the last 7 calendar days, today included, in the given time zone. Never more than
+	// songs_played_total.
+	SongsPlayedLast7 int `json:"songs_played_last_7"`
+
+	// SongsPlayedTotal How many distinct song charts the student has ever marked as played with the
+	// reader's "I played it", on any instrument. Marking the same chart again counts
+	// once, and a chart withdrawn later still counts.
+	SongsPlayedTotal int `json:"songs_played_total"`
 }
 
 // PracticePickReason Why the session composer put an item in a session, shown to the student.
