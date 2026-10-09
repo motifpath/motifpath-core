@@ -645,14 +645,28 @@ func TestContentService_CreateExpandedContent(t *testing.T) {
 		assertHasField(t, valErr, "trigger_at_paragraph")
 	})
 
-	t.Run("article node without duration_ms is rejected", func(t *testing.T) {
+	// duration_ms is deprecated: an article item stays under its paragraph.
+	t.Run("article node without duration_ms is accepted", func(t *testing.T) {
+		nodes := newFakeContentNodeRepository()
+		nodes.put(articleNode("node-1"))
+		svc := newContentService(nodes, newFakeExpandedContentRepository())
+
+		item, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
+			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
+			nil, nil, intPtr(3), nil, nil)
+
+		require.NoError(t, err)
+		assert.Nil(t, item.DurationMS)
+	})
+
+	t.Run("article node with duration_ms zero is rejected", func(t *testing.T) {
 		nodes := newFakeContentNodeRepository()
 		nodes.put(articleNode("node-1"))
 		svc := newContentService(nodes, newFakeExpandedContentRepository())
 
 		_, err := svc.CreateExpandedContent(context.Background(), teacherCaller(), "node-1",
 			domain.ExpandedContentTypeImage, strPtr("https://cdn.example.com/img.png"), nil, nil, nil,
-			nil, nil, intPtr(3), nil, nil)
+			nil, nil, intPtr(3), intPtr(0), nil)
 
 		var valErr *domain.ValidationError
 		require.True(t, errors.As(err, &valErr))
