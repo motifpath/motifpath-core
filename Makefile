@@ -3,9 +3,14 @@ SPECS_DIR := ../motifpath-specs
 
 .PHONY: generate check-oapi-codegen generate\:ent migrate\:diff test test\:bdd test\:int lint dev db\:reset db\:full-reset
 
-# The committed stubs are only reproducible with the oapi-codegen version
-# pinned in mise.toml, so generate refuses any other binary on the PATH.
-OAPI_CODEGEN_VERSION := $(shell sed -n 's|^"go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen" = "\(.*\)"$$|\1|p' mise.toml)
+# The committed stubs are only reproducible with the oapi-codegen and
+# @redocly/cli versions pinned in mise.toml: generate refuses any other
+# oapi-codegen on the PATH and runs the pinned redocly through npx.
+mise_pin = $(shell sed -n 's|^"$(1)" = "\(.*\)"$$|\1|p' mise.toml)
+OAPI_CODEGEN_VERSION := $(call mise_pin,go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen)
+REDOCLY_CLI_VERSION := $(call mise_pin,npm:@redocly/cli)
+# The pin is deliberate, so its "update available" banner is noise.
+REDOCLY := REDOCLY_SUPPRESS_UPDATE_NOTICE=true npx --yes @redocly/cli@$(REDOCLY_CLI_VERSION)
 
 check-oapi-codegen:
 	@actual=$$(oapi-codegen -version 2>/dev/null | tail -1); \
@@ -16,12 +21,13 @@ check-oapi-codegen:
 	fi
 
 generate: check-oapi-codegen
+	@test -n "$(REDOCLY_CLI_VERSION)" || { echo "@redocly/cli pin not found in mise.toml."; exit 1; }
 	@mkdir -p .bundled
-	npx --yes @redocly/cli bundle $(SPECS_DIR)/openapi/event-ingestion-service.yaml \
+	$(REDOCLY) bundle $(SPECS_DIR)/openapi/event-ingestion-service.yaml \
 		-o .bundled/event-ingestion-service.yaml
 	oapi-codegen -config services/event-ingestion/oapi-codegen.yaml \
 		.bundled/event-ingestion-service.yaml
-	npx --yes @redocly/cli bundle $(SPECS_DIR)/openapi/core-domain-service.yaml \
+	$(REDOCLY) bundle $(SPECS_DIR)/openapi/core-domain-service.yaml \
 		-o .bundled/core-domain-service.yaml
 	@# The script types the few tri-state fields the spec alone can't express;
 	@# it rewrites only this local, gitignored bundle (see its comments).

@@ -160,6 +160,9 @@ jobs:
           test -n "$version" || { echo "oapi-codegen pin not found in mise.toml"; exit 1; }
           go install "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v$version"
 
+      - name: Test the bundle rewrite script
+        run: prove scripts/openapi-compat.t
+
       - name: Regenerate the stubs
         run: make generate SPECS_DIR="$GITHUB_WORKSPACE/_specs"
 

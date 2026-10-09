@@ -16,6 +16,9 @@ node = "26"
 "go:github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen" = "2.8.0"
 "go:github.com/bokwoon95/wgo" = "0.7.1"
 "go:github.com/f1bonacc1/process-compose" = "1.122.0"
+# Bundles the OpenAPI specs for `make generate`, which runs this exact version
+# through npx: another bundler version can change the generated stubs.
+"npm:@redocly/cli" = "2.54.2"
 
 [env]
 # process-compose's own API defaults to port 8080, which collides with
