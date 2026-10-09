@@ -313,6 +313,12 @@ func TestPracticeSummaryService_OverviewSongsPlayed(t *testing.T) {
 			wantTotal: 2, wantLast7: 1,
 		},
 		{
+			name:      "a first mark dated after today, by a clock running ahead, is played but not this week",
+			charts:    []domain.SongChart{{ID: asaBranca}},
+			played:    []domain.SongChartCompletion{played(asaBranca, time.Date(2026, 10, 6, 3, 0, 0, 0, time.UTC))},
+			wantTotal: 1, wantLast7: 0,
+		},
+		{
 			name:      "a student who has played no song starts at zero",
 			wantTotal: 0, wantLast7: 0,
 		},
