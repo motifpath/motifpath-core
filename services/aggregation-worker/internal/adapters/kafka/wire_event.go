@@ -9,7 +9,8 @@ import (
 // message. It intentionally does not model the full event schema — see the
 // Event Ingestion Service's own wireEvent for that — because this worker only
 // derives state from lesson events (content_context.content_node_id) and
-// practice events (sessions, the item answered and the raw response).
+// practice events (sessions, the item answered and the raw response), and the song
+// chart a song_chart.completed event names.
 type wireEvent struct {
 	EventID        string    `json:"event_id"`
 	EventType      string    `json:"event_type"`
@@ -34,6 +35,10 @@ type wireEvent struct {
 
 	MedianTapMs int `json:"median_tap_ms,omitempty"`
 	TapCount    int `json:"tap_count,omitempty"`
+
+	SongChartContext *struct {
+		SongChartID string `json:"song_chart_id"`
+	} `json:"song_chart_context,omitempty"`
 }
 
 // feltRatingWire is how a timed drill felt to the student in a session.

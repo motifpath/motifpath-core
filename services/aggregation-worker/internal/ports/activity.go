@@ -33,3 +33,11 @@ type LearningActivityRepository interface {
 	// event id is already stored.
 	Insert(ctx context.Context, a domain.LearningActivity) (inserted bool, err error)
 }
+
+// SongChartCompletionRepository stores each time a student marked a song chart
+// as played, once per event id. Completions are never modified or deleted.
+type SongChartCompletionRepository interface {
+	// Insert stores c and reports false, without error, when a completion with
+	// its event id is already stored.
+	Insert(ctx context.Context, c domain.SongChartCompletion) (inserted bool, err error)
+}

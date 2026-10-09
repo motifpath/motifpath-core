@@ -191,3 +191,39 @@ func TestMongoPracticeItemHistoryRepository(t *testing.T) {
 	assert.EqualValues(t, 90, mon["best_clean_bpm"])
 	assert.EqualValues(t, domain.PracticeRulesVersion, mon["rules_version"])
 }
+
+func TestMongoSongChartCompletionRepository(t *testing.T) {
+	ctx := context.Background()
+	db := mongoDatabase(t)
+	repo := NewMongoSongChartCompletionRepository(db)
+	require.NoError(t, repo.EnsureIndexes(ctx))
+	completion := domain.SongChartCompletion{
+		EventID: "e0000000-0000-4000-8000-0000000000a1", StudentID: studentA,
+		SongChartID: "c0000000-0000-4000-8000-0000000000a1", CompletedAt: time.Date(2026, 10, 6, 20, 0, 0, 0, time.UTC),
+	}
+
+	inserted, err := repo.Insert(ctx, completion)
+	require.NoError(t, err)
+	assert.True(t, inserted)
+
+	again := completion
+	again.EventID = "e0000000-0000-4000-8000-0000000000a2"
+	again.CompletedAt = completion.CompletedAt.AddDate(0, 0, 1)
+	inserted, err = repo.Insert(ctx, again)
+	require.NoError(t, err)
+	assert.True(t, inserted, "marking a chart as played again is another completion")
+
+	inserted, err = repo.Insert(ctx, completion)
+	require.NoError(t, err)
+	assert.False(t, inserted, "a redelivered event is stored once")
+
+	var docs []bson.M
+	cursor, err := db.Collection("song_chart_completions").Find(ctx, bson.D{})
+	require.NoError(t, err)
+	require.NoError(t, cursor.All(ctx, &docs))
+	require.Len(t, docs, 2)
+	assert.Equal(t, completion.EventID, docs[0]["event_id"])
+	assert.Equal(t, studentA, docs[0]["student_id"])
+	assert.Equal(t, completion.SongChartID, docs[0]["song_chart_id"])
+	assert.Equal(t, bson.NewDateTimeFromTime(completion.CompletedAt), docs[0]["completed_at"])
+}

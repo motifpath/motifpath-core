@@ -121,6 +121,16 @@ type tapCheckDocument struct {
 	TapCount    int       `bson:"tap_count"`
 }
 
+// songChartCompletionDocument is a `song_chart_completions` document: one time a
+// student marked a song chart as played, never modified once stored. Core Domain
+// counts a student's songs played from these.
+type songChartCompletionDocument struct {
+	EventID     string    `bson:"event_id"`
+	StudentID   string    `bson:"student_id"`
+	SongChartID string    `bson:"song_chart_id"`
+	CompletedAt time.Time `bson:"completed_at"`
+}
+
 // practiceItemSnapshotDocument is a `practice_item_history` document: an item's
 // state at the end of a UTC day it was practised on, stored as its midnight. level
 // is the earned level, before the reader applies any lapse.

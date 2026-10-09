@@ -168,6 +168,15 @@ func toDomainEvent(w wireEvent) domain.TrackingEvent {
 			MedianTapMs: w.MedianTapMs,
 			TapCount:    w.TapCount,
 		}
+	case domain.EventTypeSongChartCompleted:
+		if w.SongChartContext != nil {
+			event.SongChartCompletion = &domain.SongChartCompletion{
+				EventID:     w.EventID,
+				StudentID:   w.StudentID,
+				SongChartID: w.SongChartContext.SongChartID,
+				CompletedAt: w.OccurredAt,
+			}
+		}
 	case domain.EventTypeLessonStarted, domain.EventTypeLessonResumed, domain.EventTypeLessonCompleted:
 		// A lesson event carries only its content node, set above.
 	}

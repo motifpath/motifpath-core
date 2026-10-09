@@ -217,3 +217,35 @@ func TestToDomainEvent_OtherEventsCarryNoTapCheck(t *testing.T) {
 
 	assert.Nil(t, toDomainEvent(wire).TapCheck)
 }
+
+func TestToDomainEvent_ASongChartCompletionCarriesItsChart(t *testing.T) {
+	wire, err := decodeWireEvent([]byte(`{"event_id":"11111111-1111-4111-8111-111111111111","event_type":"song_chart.completed","student_id":"s","occurred_at":"2026-10-06T20:00:00Z","song_chart_context":{"song_chart_id":"22222222-2222-4222-8222-222222222222","revision_number":2}}`))
+	require.NoError(t, err)
+
+	event := toDomainEvent(wire)
+
+	assert.Equal(t, &domain.SongChartCompletion{
+		EventID:     "11111111-1111-4111-8111-111111111111",
+		StudentID:   "s",
+		SongChartID: "22222222-2222-4222-8222-222222222222",
+		CompletedAt: time.Date(2026, 10, 6, 20, 0, 0, 0, time.UTC),
+	}, event.SongChartCompletion)
+}
+
+func TestToDomainEvent_SongChartEventsWithoutACompletionCarryNone(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+	}{
+		{"a completion without its song chart context", `{"event_type":"song_chart.completed","student_id":"s"}`},
+		{"a song chart opened", `{"event_type":"song_chart.opened","student_id":"s","song_chart_context":{"song_chart_id":"c","revision_number":1}}`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			wire, err := decodeWireEvent([]byte(c.payload))
+			require.NoError(t, err)
+
+			assert.Nil(t, toDomainEvent(wire).SongChartCompletion)
+		})
+	}
+}

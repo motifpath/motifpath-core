@@ -9,7 +9,8 @@ import (
 
 // PracticeActivityReader reads a student's raw practice and learning
 // activity from the Aggregation Worker's MongoDB collections:
-// `practice_sessions`, `learning_activity` and `practice_item_history`. It
+// `practice_sessions`, `learning_activity`, `practice_item_history` and
+// `song_chart_completions`. It
 // is read-only from this service's perspective — the worker is the only
 // writer.
 type PracticeActivityReader interface {
@@ -26,4 +27,8 @@ type PracticeActivityReader interface {
 	// day whose end is nearest to at, so up to 12 hours before or after
 	// it. An item with no snapshot by then is absent from the result.
 	SnapshotsAt(ctx context.Context, studentID string, itemKeys []string, at time.Time) (map[string]domain.PracticeItemSnapshot, error)
+
+	// SongChartCompletions returns every time the student marked a song
+	// chart as played, whatever has become of the chart since.
+	SongChartCompletions(ctx context.Context, studentID string) ([]domain.SongChartCompletion, error)
 }

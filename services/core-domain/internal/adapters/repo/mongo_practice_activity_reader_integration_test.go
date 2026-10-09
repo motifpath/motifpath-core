@@ -122,6 +122,36 @@ func TestMongoPracticeActivityReader_ReadsAggregationWorkerShape(t *testing.T) {
 		assert.Empty(t, none)
 	})
 
+	t.Run("song chart completions are every played mark of the student's", func(t *testing.T) {
+		completion := func(studentID, eventID, chartID string, completedAt time.Time) bson.D {
+			return bson.D{
+				{Key: "event_id", Value: eventID},
+				{Key: "student_id", Value: studentID},
+				{Key: "song_chart_id", Value: chartID},
+				{Key: "completed_at", Value: completedAt},
+			}
+		}
+		_, err := db.Collection("song_chart_completions").InsertMany(ctx, []any{
+			completion("alice", "s1", "chart-1", at(1, 20)),
+			completion("alice", "s2", "chart-1", at(4, 20)),
+			completion("alice", "s3", "chart-2", at(5, 20)),
+			completion("bob", "s4", "chart-3", at(5, 20)),
+		})
+		require.NoError(t, err)
+
+		got, err := reader.SongChartCompletions(ctx, "alice")
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []domain.SongChartCompletion{
+			{SongChartID: "chart-1", CompletedAt: at(1, 20)},
+			{SongChartID: "chart-1", CompletedAt: at(4, 20)},
+			{SongChartID: "chart-2", CompletedAt: at(5, 20)},
+		}, got)
+
+		got, err = reader.SongChartCompletions(ctx, "carol")
+		require.NoError(t, err)
+		assert.Empty(t, got, "a student who never marked a chart as played has none")
+	})
+
 	t.Run("the newest tap check is the one with the latest done_at", func(t *testing.T) {
 		tapCheck := func(studentID, eventID string, doneAt time.Time) bson.D {
 			return bson.D{

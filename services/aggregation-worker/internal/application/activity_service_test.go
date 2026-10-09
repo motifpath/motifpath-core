@@ -46,6 +46,24 @@ func (f *fakeSessions) Put(_ context.Context, s domain.PracticeSession) error {
 	return nil
 }
 
+type fakeSongChartCompletions struct {
+	stored    []domain.SongChartCompletion
+	insertErr error
+}
+
+func (f *fakeSongChartCompletions) Insert(_ context.Context, c domain.SongChartCompletion) (bool, error) {
+	if f.insertErr != nil {
+		return false, f.insertErr
+	}
+	for _, s := range f.stored {
+		if s.EventID == c.EventID {
+			return false, nil
+		}
+	}
+	f.stored = append(f.stored, c)
+	return true, nil
+}
+
 type fakeTapChecks struct {
 	stored    []domain.TapCheck
 	insertErr error
@@ -145,21 +163,22 @@ func lessonCompletedEvent(eventID string, at time.Time) domain.TrackingEvent {
 }
 
 func newActivity() *application.ActivityService {
-	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{})
+	return application.NewActivityService(newFakeSessions(), &fakeLearning{}, &fakeTapChecks{}, &fakeSongChartCompletions{})
 }
 
 type activityFixture struct {
 	sessions  *fakeSessions
 	learning  *fakeLearning
 	tapChecks *fakeTapChecks
+	songs     *fakeSongChartCompletions
 	practice  *practiceFixture
 	service   *application.ProcessEventService
 }
 
 func newActivityFixture() *activityFixture {
-	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, practice: newPracticeFixture()}
+	f := &activityFixture{sessions: newFakeSessions(), learning: &fakeLearning{}, tapChecks: &fakeTapChecks{}, songs: &fakeSongChartCompletions{}, practice: newPracticeFixture()}
 	f.service = application.NewProcessEventService(newFakeRepository(), f.practice.service,
-		application.NewActivityService(f.sessions, f.learning, f.tapChecks))
+		application.NewActivityService(f.sessions, f.learning, f.tapChecks, f.songs))
 	return f
 }
 
@@ -344,6 +363,8 @@ func TestActivityService_ReturnsStorageFailuresForARetry(t *testing.T) {
 			lessonCompletedEvent("e0000000-0000-4000-8000-0000000000c1", clock(19, 30))},
 		{"keeping a tap check", func(f *activityFixture) { f.tapChecks.insertErr = boom },
 			tapCheckEvent("e0000000-0000-4000-8000-0000000000f1", clock(9, 0), 320)},
+		{"keeping a song chart completion", func(f *activityFixture) { f.songs.insertErr = boom },
+			songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0))},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -443,6 +464,73 @@ func TestActivityService_KeepsEveryTapCheck(t *testing.T) {
 			f.handle(t, c.events...)
 
 			assert.Equal(t, c.want, f.tapChecks.stored)
+		})
+	}
+}
+
+const (
+	asaBranca    = "c0000000-0000-4000-8000-0000000000a1"
+	amazingGrace = "c0000000-0000-4000-8000-0000000000a2"
+)
+
+func songChartCompletedEvent(eventID, songChartID string, at time.Time) domain.TrackingEvent {
+	return domain.TrackingEvent{
+		EventType:           domain.EventTypeSongChartCompleted,
+		EventID:             eventID,
+		StudentID:           alice,
+		OccurredAt:          at,
+		SongChartCompletion: &domain.SongChartCompletion{EventID: eventID, StudentID: alice, SongChartID: songChartID, CompletedAt: at},
+	}
+}
+
+func TestActivityService_KeepsEverySongChartCompletion(t *testing.T) {
+	cases := []struct {
+		name   string
+		events []domain.TrackingEvent
+		want   []domain.SongChartCompletion
+	}{
+		{
+			name:   "marking a chart as played is kept with the chart and when",
+			events: []domain.TrackingEvent{songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0))},
+			want: []domain.SongChartCompletion{
+				{EventID: "e0000000-0000-4000-8000-0000000000a1", StudentID: alice, SongChartID: asaBranca, CompletedAt: clock(20, 0)},
+			},
+		},
+		{
+			name: "marking the same chart again is another completion",
+			events: []domain.TrackingEvent{
+				songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0).AddDate(0, 0, -10)),
+				songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a2", asaBranca, clock(20, 0)),
+				songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a3", amazingGrace, clock(20, 5)),
+			},
+			want: []domain.SongChartCompletion{
+				{EventID: "e0000000-0000-4000-8000-0000000000a1", StudentID: alice, SongChartID: asaBranca, CompletedAt: clock(20, 0).AddDate(0, 0, -10)},
+				{EventID: "e0000000-0000-4000-8000-0000000000a2", StudentID: alice, SongChartID: asaBranca, CompletedAt: clock(20, 0)},
+				{EventID: "e0000000-0000-4000-8000-0000000000a3", StudentID: alice, SongChartID: amazingGrace, CompletedAt: clock(20, 5)},
+			},
+		},
+		{
+			name: "the same event delivered twice is kept once",
+			events: []domain.TrackingEvent{
+				songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0)),
+				songChartCompletedEvent("e0000000-0000-4000-8000-0000000000a1", asaBranca, clock(20, 0)),
+			},
+			want: []domain.SongChartCompletion{
+				{EventID: "e0000000-0000-4000-8000-0000000000a1", StudentID: alice, SongChartID: asaBranca, CompletedAt: clock(20, 0)},
+			},
+		},
+		{
+			name:   "a song chart completion without its chart changes nothing",
+			events: []domain.TrackingEvent{{EventType: domain.EventTypeSongChartCompleted, EventID: "e0000000-0000-4000-8000-0000000000a1", StudentID: alice}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newActivityFixture()
+
+			f.handle(t, c.events...)
+
+			assert.Equal(t, c.want, f.songs.stored)
 		})
 	}
 }

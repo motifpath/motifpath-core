@@ -49,6 +49,26 @@ func TestEntSongChartRepository(t *testing.T) {
 	ctx := context.Background()
 	charts := NewEntSongChartRepository(client)
 
+	t.Run("existing ids are those naming a chart, whatever its status", func(t *testing.T) {
+		draft := newSongChart("Asa Branca", fixedAt)
+		withdrawn := newSongChart("Amazing Grace", fixedAt)
+		withdrawn.Status = domain.SongChartWithdrawn
+		require.NoError(t, charts.Create(ctx, draft))
+		require.NoError(t, charts.Create(ctx, withdrawn))
+
+		got, err := charts.ExistingIDs(ctx, []string{draft.ID, withdrawn.ID, uuid.NewString(), "not-a-uuid"})
+
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{draft.ID, withdrawn.ID}, got)
+	})
+
+	t.Run("no ids name no chart", func(t *testing.T) {
+		got, err := charts.ExistingIDs(ctx, nil)
+
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
 	t.Run("a chart round-trips with its whole draft", func(t *testing.T) {
 		chart := newSongChart("Asa Branca", fixedAt)
 

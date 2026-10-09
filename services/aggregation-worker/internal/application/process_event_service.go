@@ -9,8 +9,8 @@ import (
 
 // ProcessEventService routes each tracking event to what it changes: lesson
 // events derive per-student, per-content-node completion status; practice events
-// feed the evidence processor; completions, practice sessions and tap checks are
-// kept as raw activity. Any other event_type is accepted without error and changes nothing.
+// feed the evidence processor; completions, practice sessions, tap checks and song
+// charts marked as played are kept as raw activity. Any other event_type is accepted without error and changes nothing.
 type ProcessEventService struct {
 	repo     ports.CompletionStateRepository
 	practice *PracticeEvidenceService
@@ -42,6 +42,11 @@ func (s *ProcessEventService) Handle(ctx context.Context, event domain.TrackingE
 			return nil
 		}
 		return s.activity.TapCheckCompleted(ctx, *event.TapCheck)
+	case domain.EventTypeSongChartCompleted:
+		if event.SongChartCompletion == nil {
+			return nil
+		}
+		return s.activity.SongChartCompleted(ctx, *event.SongChartCompletion)
 	case domain.EventTypeLessonCompleted:
 		if err := s.activity.LessonCompleted(ctx, domain.LearningActivity{
 			EventID:       event.EventID,

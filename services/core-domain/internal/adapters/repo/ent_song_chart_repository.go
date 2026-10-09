@@ -71,6 +71,27 @@ func (r *EntSongChartRepository) GetByID(ctx context.Context, id string) (domain
 	return toDomainSongChart(row)
 }
 
+func (r *EntSongChartRepository) ExistingIDs(ctx context.Context, ids []string) ([]string, error) {
+	parsed := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			parsed = append(parsed, u)
+		}
+	}
+	if len(parsed) == 0 {
+		return nil, nil
+	}
+	found, err := r.client.SongChart.Query().Where(songchart.IDIn(parsed...)).IDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(found))
+	for i, id := range found {
+		out[i] = id.String()
+	}
+	return out, nil
+}
+
 // List matches Q in Go, over the rows the status filter leaves — the same
 // case- and accent-blind matching as domain.ContainsLoosely — and then
 // pages in SQL over the matching ids, as the diagram library does.
