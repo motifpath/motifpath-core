@@ -17,6 +17,7 @@ import (
 // for one student.
 type fakePracticeActivityReader struct {
 	sessions    []domain.FinishedPracticeSession
+	spans       []domain.PracticeSessionSpan
 	completions []time.Time
 	snapshots   map[string]domain.PracticeItemSnapshot
 	snapshotsAt time.Time
@@ -33,6 +34,16 @@ func (f *fakePracticeActivityReader) FinishedSessions(_ context.Context, _ strin
 	var out []domain.FinishedPracticeSession
 	for _, s := range f.sessions {
 		if !s.EndedAt.Before(since) {
+			out = append(out, s)
+		}
+	}
+	return out, f.err
+}
+
+func (f *fakePracticeActivityReader) SessionSpans(_ context.Context, _ string, since time.Time) ([]domain.PracticeSessionSpan, error) {
+	var out []domain.PracticeSessionSpan
+	for _, s := range f.spans {
+		if !s.StartedAt.Before(since) {
 			out = append(out, s)
 		}
 	}
@@ -348,6 +359,274 @@ func TestPracticeSummaryService_OverviewSongsPlayed(t *testing.T) {
 		_, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
 
 		assert.ErrorIs(t, err, boom)
+	})
+}
+
+func TestPracticeSummaryService_OverviewMinutesPractised(t *testing.T) {
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	require.NoError(t, err)
+	// Noon on Monday 5 October in São Paulo: the last 7 days began at
+	// midnight on Tuesday 29 September, the previous 7 on 22 September.
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, saoPaulo)
+	at := func(day, hour, minute, second int) time.Time {
+		return time.Date(2026, 10, day, hour, minute, second, 0, saoPaulo)
+	}
+	span := func(from, to time.Time) domain.PracticeSessionSpan {
+		return domain.PracticeSessionSpan{StartedAt: from, LastEventAt: to}
+	}
+	cases := []struct {
+		name         string
+		spans        []domain.PracticeSessionSpan
+		wantLast7    int
+		wantPrevious int
+	}{
+		{
+			name:      "every session this week adds up",
+			spans:     []domain.PracticeSessionSpan{span(at(1, 18, 0, 0), at(1, 18, 12, 0)), span(at(3, 19, 0, 0), at(3, 19, 20, 0))},
+			wantLast7: 32,
+		},
+		{
+			name:         "sessions the week before count in the previous 7 days",
+			spans:        []domain.PracticeSessionSpan{span(at(-4, 18, 0, 0), at(-4, 18, 20, 0)), span(at(-7, 18, 0, 0), at(-7, 18, 15, 0))},
+			wantPrevious: 35,
+		},
+		{
+			name:      "a session counts up to its last event, however it ended",
+			spans:     []domain.PracticeSessionSpan{span(at(4, 18, 0, 0), at(4, 18, 4, 0))},
+			wantLast7: 4,
+		},
+		{
+			name:      "the total rounds down to whole minutes",
+			spans:     []domain.PracticeSessionSpan{span(at(4, 18, 0, 0), at(4, 18, 7, 50))},
+			wantLast7: 7,
+		},
+		{
+			name:      "seconds add up across sessions before rounding",
+			spans:     []domain.PracticeSessionSpan{span(at(3, 18, 0, 0), at(3, 18, 7, 30)), span(at(4, 18, 0, 0), at(4, 18, 7, 30))},
+			wantLast7: 15,
+		},
+		{
+			name:         "a session counts in the week it started, in the student's time zone",
+			spans:        []domain.PracticeSessionSpan{span(time.Date(2026, 9, 28, 23, 50, 0, 0, saoPaulo), time.Date(2026, 9, 29, 0, 10, 0, 0, saoPaulo)), span(time.Date(2026, 9, 29, 0, 0, 0, 0, saoPaulo), time.Date(2026, 9, 29, 0, 5, 0, 0, saoPaulo))},
+			wantLast7:    5,
+			wantPrevious: 20,
+		},
+		{
+			name:  "a last event before the start, by a clock out of step, counts nothing",
+			spans: []domain.PracticeSessionSpan{span(at(4, 18, 10, 0), at(4, 18, 0, 0))},
+		},
+		{
+			name:  "a session started after today, by a clock running ahead, counts nothing",
+			spans: []domain.PracticeSessionSpan{span(at(6, 9, 0, 0), at(6, 9, 30, 0))},
+		},
+		{
+			name: "a student who has never practised starts at zero",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newSummaryFixture(t)
+			f.now = now
+			f.activity.spans = c.spans
+
+			got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+			require.NoError(t, err)
+			assert.Equal(t, c.wantLast7, got.MinutesPractisedLast7)
+			assert.Equal(t, c.wantPrevious, got.MinutesPractisedPrevious7)
+		})
+	}
+}
+
+func TestPracticeSummaryService_OverviewDayStreak(t *testing.T) {
+	guitar, bass := practiceGuitar, practiceBass
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	require.NoError(t, err)
+	// Noon on Monday 5 October in São Paulo.
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, saoPaulo)
+	finishedOn := func(days ...int) []domain.FinishedPracticeSession {
+		var sessions []domain.FinishedPracticeSession
+		for _, d := range days {
+			sessions = append(sessions, domain.FinishedPracticeSession{InstrumentID: &guitar, EndedAt: now.AddDate(0, 0, d)})
+		}
+		return sessions
+	}
+	cases := []struct {
+		name        string
+		timeZone    string
+		sessions    []domain.FinishedPracticeSession
+		wantCurrent int
+		wantBest    int
+	}{
+		{
+			name:     "consecutive practice days up to today",
+			sessions: finishedOn(-2, -1, 0), wantCurrent: 3, wantBest: 3,
+		},
+		{
+			name:     "today without practice yet doesn't break the streak",
+			sessions: finishedOn(-4, -3, -2, -1), wantCurrent: 4, wantBest: 4,
+		},
+		{
+			name:     "a missed day ends the current streak and keeps the best one",
+			sessions: finishedOn(-11, -10, -9, -8, -7, -6, -5, -4, -3, -1, 0), wantCurrent: 2, wantBest: 9,
+		},
+		{
+			name:     "neither today nor yesterday practised means no current streak",
+			sessions: finishedOn(-2), wantCurrent: 0, wantBest: 1,
+		},
+		{
+			name: "two instruments on the same day are one streak day",
+			sessions: []domain.FinishedPracticeSession{
+				{InstrumentID: &guitar, EndedAt: now.Add(-2 * time.Hour)},
+				{InstrumentID: &bass, EndedAt: now.Add(-time.Hour)},
+				{EndedAt: now.Add(-30 * time.Minute)},
+			},
+			wantCurrent: 1, wantBest: 1,
+		},
+		{
+			name:     "days follow the student's time zone",
+			timeZone: "America/Sao_Paulo",
+			sessions: []domain.FinishedPracticeSession{
+				{InstrumentID: &guitar, EndedAt: time.Date(2026, 10, 4, 23, 30, 0, 0, saoPaulo)},
+				{InstrumentID: &guitar, EndedAt: now},
+			},
+			wantCurrent: 2, wantBest: 2,
+		},
+		{
+			name:     "the same sessions in UTC fall on one day",
+			timeZone: "UTC",
+			sessions: []domain.FinishedPracticeSession{
+				{InstrumentID: &guitar, EndedAt: time.Date(2026, 10, 4, 23, 30, 0, 0, saoPaulo)},
+				{InstrumentID: &guitar, EndedAt: now},
+			},
+			wantCurrent: 1, wantBest: 1,
+		},
+		{
+			name:     "a day after today, by a clock running ahead, is no streak day",
+			sessions: finishedOn(0, 1, 2), wantCurrent: 1, wantBest: 1,
+		},
+		{
+			name: "a student who has never practised starts at zero",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newSummaryFixture(t)
+			f.now = now
+			f.activity.sessions = c.sessions
+			timeZone := c.timeZone
+			if timeZone == "" {
+				timeZone = "America/Sao_Paulo"
+			}
+
+			got, err := f.svc.Overview(context.Background(), studentCaller(), timeZone)
+
+			require.NoError(t, err)
+			assert.Equal(t, c.wantCurrent, got.DayStreakCurrent)
+			assert.Equal(t, c.wantBest, got.DayStreakBest)
+		})
+	}
+}
+
+func TestPracticeSummaryService_OverviewSkillsUp(t *testing.T) {
+	bpm := func(n int) *int { return &n }
+	now := time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
+
+	t.Run("each improved skill counts once, however many of its measures improved", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "notes-on-low-strings", "root-fifth-groove")
+		f.exercise("e-notes", "notes-on-low-strings", 30, practiceGuitar)
+		f.exercise("e-groove", "root-fifth-groove", 30, practiceBass)
+		notes, groove := domain.ExerciseItemKey("e-notes"), domain.ExerciseItemKey("e-groove")
+		f.stateOf(notes, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9, Fluency: 0.8})
+		f.activity.snapshots[notes] = domain.PracticeItemSnapshot{ItemKey: notes, Counted: 2, Accuracy: 0.7, Fluency: 0.5}
+		f.stateOf(groove, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.8, BestCleanBPM: bpm(90)})
+		f.activity.snapshots[groove] = domain.PracticeItemSnapshot{ItemKey: groove, Counted: 2, Accuracy: 0.8, BestCleanBPM: bpm(80)}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, got.SkillsUpLast7)
+	})
+
+	t.Run("a skill whose items suit every instrument counts once, however many instruments the student plays", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "reading-rhythm")
+		f.exercise("e-rhythm", "reading-rhythm", 30)
+		key := domain.ExerciseItemKey("e-rhythm")
+		f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+		f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, got.SkillsUpLast7)
+	})
+
+	t.Run("a skill that improved on two instruments is one skill up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "reading-rhythm")
+		f.exercise("e-rhythm-guitar", "reading-rhythm", 30, practiceGuitar)
+		f.exercise("e-rhythm-bass", "reading-rhythm", 30, practiceBass)
+		for _, key := range []string{domain.ExerciseItemKey("e-rhythm-guitar"), domain.ExerciseItemKey("e-rhythm-bass")} {
+			f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+			f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+		}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, got.SkillsUpLast7)
+	})
+
+	t.Run("a student without instrument cards still counts their skills up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor(nil, "reading-rhythm")
+		f.exercise("e-rhythm", "reading-rhythm", 30)
+		key := domain.ExerciseItemKey("e-rhythm")
+		f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+		f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		require.Empty(t, got.Instruments)
+		assert.Equal(t, 1, got.SkillsUpLast7)
+	})
+
+	t.Run("a concept that improved is not a skill up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.knowledgeNodes.put(domain.KnowledgeNode{ID: "intervals", Kind: domain.KnowledgeNodeKindConcept, Key: "intervals"})
+		f.onPathFor([]string{practiceGuitar}, "intervals")
+		f.exercise("e-intervals", "intervals", 30, practiceGuitar)
+		key := domain.ExerciseItemKey("e-intervals")
+		f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+		f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, got.SkillsUpLast7)
+	})
+
+	t.Run("a skill that didn't improve is not a skill up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor([]string{practiceGuitar}, "notes-on-low-strings")
+		f.exercise("e-notes", "notes-on-low-strings", 30, practiceGuitar)
+		key := domain.ExerciseItemKey("e-notes")
+		f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.7})
+		f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.7}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, got.SkillsUpLast7)
 	})
 }
 

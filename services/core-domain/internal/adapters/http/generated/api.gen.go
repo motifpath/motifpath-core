@@ -3740,7 +3740,8 @@ type CreateExerciseRequestExerciseType string
 // CreateExpandedContentRequest Payload for attaching an expositive item to a content node. The
 // trigger and hide fields used depend on the parent content node type:
 // video nodes use trigger_at_seconds + hide_at_seconds; article nodes use
-// trigger_at_paragraph + duration_ms. Mixing fields across groups is invalid.
+// trigger_at_paragraph (and the deprecated, optional duration_ms). Mixing
+// fields across groups is invalid.
 // These timing fields apply identically regardless of content_type —
 // timing is a property of when the item appears, independent of what
 // it contains.
@@ -3766,8 +3767,10 @@ type CreateExpandedContentRequest struct {
 	// absent otherwise.
 	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
-	// DurationMs Article nodes only. How long to display this item in milliseconds
-	// after it is triggered. Must be absent for video nodes.
+	// DurationMs Deprecated and optional: an article item stays under its paragraph,
+	// and clients ignore this value. Article nodes only; must be absent
+	// for video nodes.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	DurationMs *int `json:"duration_ms,omitempty"`
 
 	// HideAtSeconds Video nodes only. The video timestamp (in seconds) at which to hide
@@ -4635,7 +4638,9 @@ type ExpandedContent struct {
 	// a single diagram.
 	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
-	// DurationMs Article nodes only. Display duration in milliseconds.
+	// DurationMs Deprecated: an article item stays under its paragraph, and clients
+	// ignore this value. Present only on items created with it.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	DurationMs *int `json:"duration_ms,omitempty"`
 
 	// ExpandedContentId Stable identifier for this expanded content item.
@@ -7160,7 +7165,9 @@ type UpdateExpandedContentRequest struct {
 	// a stack rather than a single diagram; must be absent otherwise.
 	DiagramStackRef *DiagramStackRef `json:"diagram_stack_ref,omitempty"`
 
-	// DurationMs Article nodes only. Must be absent for video nodes.
+	// DurationMs Deprecated and optional: clients ignore it. Article nodes only;
+	// must be absent for video nodes.
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	DurationMs *int `json:"duration_ms,omitempty"`
 
 	// HideAtSeconds Video nodes only. Must be greater than trigger_at_seconds. Must

@@ -163,11 +163,16 @@ func toGeneratedPracticeNextStep(step domain.PracticeNextStep) generated.Practic
 
 func toGeneratedPracticeOverview(overview application.PracticeOverview) generated.PracticeOverview {
 	out := generated.PracticeOverview{
-		PracticeDaysLast7: overview.PracticeDaysLast7,
-		LearningDaysLast7: overview.LearningDaysLast7,
-		SongsPlayedTotal:  overview.SongsPlayedTotal,
-		SongsPlayedLast7:  overview.SongsPlayedLast7,
-		Instruments:       make([]generated.PracticeInstrumentCard, len(overview.Instruments)),
+		PracticeDaysLast7:         overview.PracticeDaysLast7,
+		LearningDaysLast7:         overview.LearningDaysLast7,
+		MinutesPractisedLast7:     overview.MinutesPractisedLast7,
+		MinutesPractisedPrevious7: overview.MinutesPractisedPrevious7,
+		DayStreakCurrent:          overview.DayStreakCurrent,
+		DayStreakBest:             overview.DayStreakBest,
+		SkillsUpLast7:             overview.SkillsUpLast7,
+		SongsPlayedTotal:          overview.SongsPlayedTotal,
+		SongsPlayedLast7:          overview.SongsPlayedLast7,
+		Instruments:               make([]generated.PracticeInstrumentCard, len(overview.Instruments)),
 	}
 	for i, card := range overview.Instruments {
 		out.Instruments[i] = generated.PracticeInstrumentCard{InstrumentId: mustUUID(card.InstrumentID), PracticeDaysLast7: card.PracticeDaysLast7}
