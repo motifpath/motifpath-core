@@ -38,6 +38,79 @@ func TestDaysInLast7(t *testing.T) {
 	}
 }
 
+func TestDaysOfLast7(t *testing.T) {
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	require.NoError(t, err)
+	// Monday 2026-10-05 12:00 in São Paulo.
+	now := time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
+	local := func(month time.Month, day, hour, minute int) time.Time {
+		return time.Date(2026, month, day, hour, minute, 0, 0, saoPaulo)
+	}
+	marked := func(days []domain.CalendarDay) []bool {
+		out := make([]bool, len(days))
+		for i, day := range days {
+			out[i] = day.Marked
+		}
+		return out
+	}
+
+	t.Run("lists the 7 local days, oldest first and today last", func(t *testing.T) {
+		got := domain.DaysOfLast7(nil, now, saoPaulo)
+
+		require.Len(t, got, 7)
+		for i, want := range []time.Time{
+			local(9, 29, 0, 0), local(9, 30, 0, 0), local(10, 1, 0, 0), local(10, 2, 0, 0),
+			local(10, 3, 0, 0), local(10, 4, 0, 0), local(10, 5, 0, 0),
+		} {
+			assert.True(t, want.Equal(got[i].Date), "day %d is %s, got %s", i, want, got[i].Date)
+		}
+		assert.Equal(t, make([]bool, 7), marked(got), "nothing happened, so no day is marked")
+	})
+
+	for _, tc := range []struct {
+		name  string
+		times []time.Time
+		want  []bool
+	}{
+		{name: "two times on one day mark that day once", times: []time.Time{local(10, 5, 8, 0), local(10, 5, 9, 0)}, want: []bool{false, false, false, false, false, false, true}},
+		{name: "a missed day is just unmarked", times: []time.Time{local(9, 29, 9, 0), local(10, 1, 9, 0)}, want: []bool{true, false, true, false, false, false, false}},
+		{name: "the day before the window marks nothing", times: []time.Time{local(9, 28, 23, 59)}, want: make([]bool, 7)},
+		{name: "a time after now's local day marks nothing", times: []time.Time{local(10, 6, 0, 0)}, want: make([]bool, 7)},
+		{name: "a time late on a local day marks that day, whatever the UTC day", times: []time.Time{local(10, 4, 23, 30)}, want: []bool{false, false, false, false, false, true, false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, marked(domain.DaysOfLast7(tc.times, now, saoPaulo)))
+		})
+	}
+
+	t.Run("a daylight saving change still gives 7 calendar days", func(t *testing.T) {
+		newYork, err := time.LoadLocation("America/New_York")
+		require.NoError(t, err)
+		// Clocks fall back on Sunday 2026-11-01; now is Wednesday 2026-11-04 noon.
+		dstNow := time.Date(2026, 11, 4, 17, 0, 0, 0, time.UTC)
+
+		got := domain.DaysOfLast7([]time.Time{time.Date(2026, 11, 1, 23, 30, 0, 0, newYork)}, dstNow, newYork)
+
+		require.Len(t, got, 7)
+		assert.True(t, time.Date(2026, 10, 29, 0, 0, 0, 0, newYork).Equal(got[0].Date))
+		assert.True(t, time.Date(2026, 11, 4, 0, 0, 0, 0, newYork).Equal(got[6].Date))
+		assert.Equal(t, []bool{false, false, false, true, false, false, false}, marked(got))
+	})
+}
+
+func TestDaysInLast7CountsTheMarkedDays(t *testing.T) {
+	now := time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
+	times := []time.Time{now, now.Add(-24 * time.Hour), now.Add(-30 * time.Hour), now.Add(-10 * 24 * time.Hour)}
+
+	marked := 0
+	for _, day := range domain.DaysOfLast7(times, now, time.UTC) {
+		if day.Marked {
+			marked++
+		}
+	}
+	assert.Equal(t, marked, domain.DaysInLast7(times, now, time.UTC))
+}
+
 func TestLast7DaysStart(t *testing.T) {
 	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
 	require.NoError(t, err)

@@ -22,18 +22,43 @@ func Last7DaysStart(now time.Time, loc *time.Location) time.Time {
 // on which at least one of times falls. It is a count, never a streak: a
 // missed day resets nothing.
 func DaysInLast7(times []time.Time, now time.Time, loc *time.Location) int {
-	start := Last7DaysStart(now, loc)
-	y, m, d := now.In(loc).Date()
-	end := time.Date(y, m, d+1, 0, 0, 0, 0, loc)
-	days := map[time.Time]bool{}
-	for _, t := range times {
-		if t.Before(start) || !t.Before(end) {
-			continue
+	count := 0
+	for _, day := range DaysOfLast7(times, now, loc) {
+		if day.Marked {
+			count++
 		}
-		ty, tm, td := t.In(loc).Date()
-		days[time.Date(ty, tm, td, 0, 0, 0, 0, loc)] = true
 	}
-	return len(days)
+	return count
+}
+
+// CalendarDay is one calendar day, at its local midnight, and whether
+// something happened on it.
+type CalendarDay struct {
+	Date   time.Time
+	Marked bool
+}
+
+// DaysOfLast7 lists the last 7 calendar days in loc at now, oldest first
+// and today last, each marked when at least one of times falls on it.
+// An unmarked day only says nothing happened, never that it was missed.
+func DaysOfLast7(times []time.Time, now time.Time, loc *time.Location) []CalendarDay {
+	y, m, d := now.In(loc).Date()
+	days := make([]CalendarDay, summaryDays)
+	index := make(map[time.Time]int, summaryDays)
+	for i := range days {
+		// Stepping by calendar date, not by 24 hours, keeps every day at
+		// local midnight across a daylight saving change.
+		date := time.Date(y, m, d-(summaryDays-1)+i, 0, 0, 0, 0, loc)
+		days[i] = CalendarDay{Date: date}
+		index[date] = i
+	}
+	for _, t := range times {
+		ty, tm, td := t.In(loc).Date()
+		if i, ok := index[time.Date(ty, tm, td, 0, 0, 0, 0, loc)]; ok {
+			days[i].Marked = true
+		}
+	}
+	return days
 }
 
 // Previous7DaysStart is when the 7 calendar days before the last 7 began at
