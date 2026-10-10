@@ -300,13 +300,11 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	if err := seedPlayableCue(ctx, teacher, svc.content, nodes["video-intermediate"].ID, diagrams); err != nil {
 		return fmt.Errorf("seed playable diagram cue: %w", err)
 	}
-	log.Println("seeded a diagram cue that offers Play (the blues lick, 0:11-0:25) on video-intermediate, the admin's current lesson")
+	log.Println("seeded a diagram cue that offers Play (the blues lick, 0:11-0:25) on video-intermediate, a video on the admin's path")
 
 	// Every template a course or standalone path is copied from holds videos
-	// only: the student lesson screen can't show an article yet, so an
-	// article item would leave its path — and a course's last checkpoint —
-	// impossible to finish. The seeded articles stay in the content library
-	// for authoring.
+	// only, which the synthetic students' seeded progress is written for. The
+	// article lessons are on the admin's own path.
 	templateA, templateB, err := seedPathTemplates(ctx, svc, deps, teacher, nodes, diagrams.guitar.ID)
 	if err != nil {
 		return err
@@ -338,13 +336,28 @@ func seedAll(ctx context.Context, svc services, deps seedDeps, res resources, ad
 	logSongChartPreviews(songCharts)
 
 	if adminIsFresh {
-		if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, videoIntermediateChallenge.ID, res.mongoDB); err != nil {
-			return fmt.Errorf("seed admin zero-user state: %w", err)
+		if err := seedAdmin(ctx, svc, deps, admin, courses, nodes, lessons, diagrams, songCharts, videoIntermediateChallenge.ID, res.mongoDB); err != nil {
+			return err
 		}
-		log.Printf("seeded a course enrollment and a standalone path (with a completed, playable node) for admin zero-user %s", admin.ID)
 	}
 
 	log.Println("done")
+	return nil
+}
+
+// seedAdmin seeds the bootstrapped admin's own state: the article lessons of
+// their path, then their course enrollment and standalone path.
+func seedAdmin(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, lessons seededLessons, diagrams seededDiagrams, songCharts []domain.SongChart, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
+	articles, err := seedAdminArticles(ctx, deps.teacher, svc, deps.classifier, diagrams, songCharts, lessons.article)
+	if err != nil {
+		return err
+	}
+	if err := seedAdminZeroUser(ctx, svc, deps, admin, courses, nodes, articles, videoIntermediateChallengeID, mongoDB); err != nil {
+		return fmt.Errorf("seed admin zero-user state: %w", err)
+	}
+	log.Printf("seeded a course enrollment and a standalone path for admin zero-user %s: a done video, a done article with a challenge (review), "+
+		"then the current article %q (paragraph cues; Mark as done), a diagram-first article with a song chart, an article ending in Practise this, "+
+		"video-intermediate, four drill articles, and an article only in Portuguese (language-locked for an English profile)", admin.ID, lessons.article.Title)
 	return nil
 }
 
@@ -542,7 +555,7 @@ func seedContentNodes(ctx context.Context, teacher domain.User, content *applica
 	// resolve to anything, so a node seeded with it can never actually play.
 	// Matches the sample host cmd/seed-lesson-content already relies on.
 	seedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-10s.mp4"
-	// video-intermediate, the admin's current lesson, runs 30 s, so its playable diagram cue fits
+	// video-intermediate, a video on the admin's path, runs 30 s, so its playable diagram cue fits
 	// after its image cues.
 	longSeedVideoURL := "https://samplelib.com/lib/preview/mp4/sample-30s.mp4"
 	specs := contentNodeSpecs()
@@ -878,14 +891,23 @@ func seedStandalonePaths(ctx context.Context, svc services, teacher domain.User,
 	})
 }
 
-// adminPathNodeKeys are the admin's standalone path items, in order: two
-// lessons to watch and practise, then the fretboard-notes articles, so a
-// session in the head has notes to drill, and the CAGED and pentatonic
-// articles, so it has shapes to name and degrees to find.
+// adminPathNodeKeys are the admin's standalone path items, in order: a done
+// video and a done article (a review offering Practise again), then the
+// article lessons a student meets next, each opening the one after it — the
+// cued article (paragraph cues, one past the end; Mark as done), a
+// diagram-first article, an article whose challenge finishes it — then a
+// video to watch and practise, the fretboard-notes articles, so a session in
+// the head has notes to drill, and the CAGED and pentatonic articles, so it
+// has shapes to name and degrees to find. An article only in Portuguese
+// comes last: a language lock holds every step after it.
 var adminPathNodeKeys = []string{
-	"video-beginner", "video-intermediate", "article-notes-root-strings", "article-notes-top-strings",
-	"article-caged-grips", "article-pentatonic-boxes",
+	"video-beginner", "article-review", "article-cues", "article-diagram-first", "article-challenge",
+	"video-intermediate", "article-notes-root-strings", "article-notes-top-strings",
+	"article-caged-grips", "article-pentatonic-boxes", "article-pt-br-only",
 }
+
+// adminPathCompletedKeys are the admin's path items already done.
+var adminPathCompletedKeys = []string{"video-beginner", "article-review"}
 
 // adminPathInstrumentIDs makes the admin's path a guitar path, so the home
 // has a guitar tab with its fretboard map.
@@ -899,22 +921,30 @@ var adminPathInstrumentIDs = []string{acousticGuitarID}
 // Completion is tracked per (student, content node), not per path — so the
 // course enrollment's checkpoint deliberately gets no completion status of
 // its own here, even though "enrolled in a course" is otherwise all this
-// step needs: video-intermediate is also the standalone path's second item
+// step needs: video-intermediate is also an item of the standalone path
 // below, and marking it completed in one context would silently mark it
 // completed in the other too, leaving nothing "current" to open there.
 //
-// The standalone path starts with video-beginner and video-intermediate,
-// and both get timed cues plus their own practice challenge, so the node
-// that ends up completed and the one that ends up current both have
-// something to watch and practice instead of an empty lesson screen.
+// The standalone path is adminPathNodeKeys, with adminPathCompletedKeys
+// done: articles names the article lessons (see seedArticleLessons), the rest
+// come from nodes. video-beginner and video-intermediate both get timed cues
+// plus their own practice challenge, so each has something to watch and
+// practise instead of an empty lesson screen.
 //
 // Every exercise seeded anywhere (video-intermediate's own 5 plus
 // video-beginner's 2) also gets linked into video-intermediate's challenge,
 // on top of whatever challenge it was originally created for — so the admin
-// zero-user's current lesson always has the full practice pool available,
+// zero-user's video-intermediate always has the full practice pool available,
 // not just the handful seeded specifically for it.
-func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
+func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin domain.User, courses seededCourses, nodes map[string]domain.ContentNode, articles map[string]domain.ContentNode, videoIntermediateChallengeID string, mongoDB *mongo.Database) error {
 	teacher, classifier := deps.teacher, deps.classifier
+	pathNodes := make(map[string]domain.ContentNode, len(nodes)+len(articles))
+	for key, node := range nodes {
+		pathNodes[key] = node
+	}
+	for key, node := range articles {
+		pathNodes[key] = node
+	}
 
 	if _, err := svc.enrollment.CreateCourseEnrollment(ctx, admin, courses.single.ID); err != nil {
 		return fmt.Errorf("enroll admin in single-checkpoint course: %w", err)
@@ -935,7 +965,11 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 
 	items := make([]application.PathItemInput, 0, len(adminPathNodeKeys))
 	for _, key := range adminPathNodeKeys {
-		items = append(items, application.PathItemInput{ContentNodeID: nodes[key].ID})
+		node, ok := pathNodes[key]
+		if !ok {
+			return fmt.Errorf("admin's path names %q, which was not seeded", key)
+		}
+		items = append(items, application.PathItemInput{ContentNodeID: node.ID})
 	}
 	adminPath, err := svc.path.CreateLearningPath(ctx, teacher, application.LearningPathInput{Level: domain.DifficultyLevelBeginner, Title: "Admin Zero-User Path", Summary: seedStr("A short path to try the lesson and practice screens."), Language: seedStr("en"), InstrumentIDs: adminPathInstrumentIDs, Items: items})
 	if err != nil {
@@ -947,64 +981,25 @@ func seedAdminZeroUser(ctx context.Context, svc services, deps seedDeps, admin d
 	if _, _, err := svc.studentPath.AssignLearningPath(ctx, teacher, admin.ID, adminPath.ID); err != nil {
 		return fmt.Errorf("assign standalone path to admin: %w", err)
 	}
-	return seedCompletionStatuses(ctx, mongoDB, admin.ID, map[string]string{
-		nodes["video-beginner"].ID: "completed",
-	})
+	completed := make(map[string]string, len(adminPathCompletedKeys))
+	for _, key := range adminPathCompletedKeys {
+		completed[pathNodes[key].ID] = "completed"
+	}
+	return seedCompletionStatuses(ctx, mongoDB, admin.ID, completed)
 }
 
 // seedVideoBeginnerChallenge gives node its own practice challenge with two
 // text_response exercises — mirroring the richer challenge
-// seedExercisesAllTypes already gives video-intermediate, so whichever of
-// the two ends up "current" for the admin zero-user always has exercises to
-// practice, not just a video.
+// seedExercisesAllTypes already gives video-intermediate, so either video on
+// the admin's path has exercises to practise, not just a video. The
+// challenge's subject is the skill video-beginner was seeded with.
 func seedVideoBeginnerChallenge(ctx context.Context, teacher domain.User, challengeSvc *application.ChallengeService, exerciseSvc *application.ExerciseService, classifier *classificationSeeder, node domain.ContentNode) error {
-	// video-beginner was seeded with skill "play-major-scale-open" in
-	// seedContentNodes, so the challenge's subject reuses that same id rather
-	// than an unrelated skill.
-	subjectSkillID, err := classifier.skillID(ctx, "play-major-scale-open")
-	if err != nil {
-		return err
-	}
-	challenge, err := challengeSvc.CreateChallenge(ctx, teacher, node.ID, &subjectSkillID, nil, 70, nil, false, false)
-	if err != nil {
-		return fmt.Errorf("create challenge: %w", err)
-	}
-
-	conceptID, err := classifier.conceptID(ctx, "major-scale")
-	if err != nil {
-		return err
-	}
-	label := func(s string) *string { return &s }
-	specs := []struct {
-		title   string
-		options []domain.Option
-	}{
-		{
-			title: "Which note is the root of a C major scale in open position?",
-			options: []domain.Option{
-				{ID: uuid.NewString(), IsCorrect: true, Label: label("C")},
-				{ID: uuid.NewString(), IsCorrect: false, Label: label("G")},
-			},
-		},
-		{
-			title: "How many notes does a major scale have before it repeats an octave higher?",
-			options: []domain.Option{
-				{ID: uuid.NewString(), IsCorrect: true, Label: label("Seven")},
-				{ID: uuid.NewString(), IsCorrect: false, Label: label("Five")},
-			},
-		},
-	}
-	for _, s := range specs {
-		exercise, err := exerciseSvc.CreateExercise(ctx, teacher, s.title, domain.NewPlainTextPrompt(s.title), domain.ExerciseTypeTextResponse,
-			[]string{subjectSkillID}, []string{conceptID}, nil, nil, nil, nil, s.options, nil, nil, []string{"en"}, forGuitars())
-		if err != nil {
-			return fmt.Errorf("create exercise %q: %w", s.title, err)
-		}
-		if _, err := exerciseSvc.LinkExerciseToChallenge(ctx, teacher, challenge.ID, exercise.ID); err != nil {
-			return fmt.Errorf("link exercise %q to challenge: %w", s.title, err)
-		}
-	}
-	return nil
+	return seedTextChallenge(ctx, teacher, challengeSvc, exerciseSvc, classifier, node,
+		exerciseClassification{skill: "play-major-scale-open", concept: "major-scale"},
+		[]textQuestion{
+			{"Which note is the root of a C major scale in open position?", "C", "G"},
+			{"How many notes does a major scale have before it repeats an octave higher?", "Seven", "Five"},
+		})
 }
 
 // seedTimedCues attaches two short image cues to a video content node, so

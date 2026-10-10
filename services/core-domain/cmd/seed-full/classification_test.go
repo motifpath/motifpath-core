@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,6 +68,9 @@ func TestAdminPathTeachesFindingNotesOnTheFretboard(t *testing.T) {
 
 	var taught []string
 	for _, key := range adminPathNodeKeys {
+		if slices.Contains(articleLessonKeys, key) {
+			continue
+		}
 		skill, ok := skills[key]
 		require.True(t, ok, "admin path item %q is not a seeded content node", key)
 		taught = append(taught, skill)
