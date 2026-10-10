@@ -84,7 +84,8 @@ type PracticeOverview struct {
 	MinutesPractisedPrevious7 int
 	DayStreakCurrent          int
 	DayStreakBest             int
-	// SkillsUpLast7 counts each skill once per instrument it improved on.
+	// SkillsUpLast7 counts each improved skill once, whatever instruments
+	// it improved on.
 	SkillsUpLast7    int
 	SongsPlayedTotal int
 	SongsPlayedLast7 int
@@ -242,6 +243,16 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 		return PracticeOverview{}, err
 	}
 	streak, bestStreak := domain.DayStreaks(ends, now, loc)
+	views := make([]KnowledgeMap, len(instrumentIDs))
+	for i, id := range instrumentIDs {
+		if views[i], err = s.rollup.Map(ctx, caller.ID, id); err != nil {
+			return PracticeOverview{}, err
+		}
+	}
+	skillsUp, err := s.skillsUp(ctx, caller.ID, views, start)
+	if err != nil {
+		return PracticeOverview{}, err
+	}
 	overview := PracticeOverview{
 		PracticeDaysLast7:         domain.DaysInLast7(ends, now, loc),
 		LearningDaysLast7:         domain.DaysInLast7(completions, now, loc),
@@ -249,21 +260,13 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 		MinutesPractisedPrevious7: domain.MinutesPractised(spans, previousStart, start),
 		DayStreakCurrent:          streak,
 		DayStreakBest:             bestStreak,
+		SkillsUpLast7:             skillsUp,
 		SongsPlayedTotal:          songs.Total,
 		SongsPlayedLast7:          songs.Last7,
 	}
-	for _, id := range instrumentIDs {
-		view, err := s.rollup.Map(ctx, caller.ID, id)
-		if err != nil {
-			return PracticeOverview{}, err
-		}
-		progress, err := s.progress(ctx, caller.ID, view, start)
-		if err != nil {
-			return PracticeOverview{}, err
-		}
-		overview.SkillsUpLast7 += skillsUp(progress)
+	for i, id := range instrumentIDs {
 		card := PracticeInstrumentCard{InstrumentID: id, PracticeDaysLast7: domain.DaysInLast7(sessionEnds(sessions, &id), now, loc)}
-		if steps := domain.RankNextSteps(view, pathSkillIDs); len(steps) > 0 {
+		if steps := domain.RankNextSteps(views[i], pathSkillIDs); len(steps) > 0 {
 			card.TopNextStep = &steps[0]
 		}
 		overview.Instruments = append(overview.Instruments, card)
@@ -322,14 +325,28 @@ func (s *PracticeSummaryService) progress(ctx context.Context, studentID string,
 	return lines, nil
 }
 
-// skillsUp counts the distinct skills among progress lines: a skill with
-// several improved measures is one skill up.
-func skillsUp(progress []domain.SkillProgress) int {
-	skills := map[string]bool{}
-	for _, line := range progress {
-		skills[line.NodeID] = true
+// skillsUp counts the distinct skills studentID improved since start, in
+// any of the instruments' views or on the items that suit every
+// instrument: a skill that improved on several instruments, or on several
+// measures, is one skill up, and a student with no instrument still has
+// theirs.
+func (s *PracticeSummaryService) skillsUp(ctx context.Context, studentID string, instrumentViews []KnowledgeMap, start time.Time) (int, error) {
+	// The empty instrument is the items that suit every instrument.
+	everyInstrument, err := s.rollup.Map(ctx, studentID, "")
+	if err != nil {
+		return 0, err
 	}
-	return len(skills)
+	skills := map[string]bool{}
+	for _, view := range append([]KnowledgeMap{everyInstrument}, instrumentViews...) {
+		progress, err := s.progress(ctx, studentID, view, start)
+		if err != nil {
+			return 0, err
+		}
+		for _, line := range progress {
+			skills[line.NodeID] = true
+		}
+	}
+	return len(skills), nil
 }
 
 // endOfToday is the local midnight that ends now's day in loc.

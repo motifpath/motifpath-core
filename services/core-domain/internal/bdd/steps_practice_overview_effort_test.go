@@ -37,6 +37,8 @@ func registerPracticeOverviewEffortSteps(sc *godog.ScenarioContext, w *world) {
 
 	sc.Step(`^"([^"]+)"'s accuracy and fluency on "([^"]+)" on ([a-z-]+) both improved this week$`, w.accuracyAndFluencyImproved)
 	sc.Step(`^"([^"]+)"'s best clean tempo on "([^"]+)" on ([a-z-]+) improved this week$`, w.bestCleanTempoImproved)
+	sc.Step(`^"([^"]+)"'s accuracy on "([^"]+)" on ([a-z-]+) improved this week$`, w.accuracyImprovedOn)
+	sc.Step(`^"([^"]+)"'s accuracy on "([^"]+)", which has items for every instrument, improved this week$`, w.accuracyImprovedOnEveryInstrument)
 	sc.Step(`^no skill of "([^"]+)" improved this week$`, func(string) error { return nil })
 
 	sc.Step(`^the overview shows (\d+) minutes practised in the last 7 days$`, w.overviewShowsMinutesLast7)
@@ -192,9 +194,14 @@ func (w *world) finishedToday(name string) error {
 }
 
 // improvedOn gives name a counted state now and a snapshot from before the
-// last 7 days on a new exercise of skill for instrument.
+// last 7 days on a new exercise of skill for instrument (empty: every
+// instrument).
 func (w *world) improvedOn(name, skill, instrument string, then domain.PracticeItemSnapshot, now domain.PracticeItemState) {
-	key := w.putPracticeExercise(skill+"-improved", skill, instrument)
+	var instruments []string
+	if instrument != "" {
+		instruments = []string{instrument}
+	}
+	key := w.putPracticeExercise(skill+"-"+instrument+"-improved", skill, instruments...)
 	studentID := w.ensureRegistered(name, domain.RoleStudent).String()
 	dueAt := fixedNow.AddDate(0, 0, 3)
 	now.ItemKey, now.RulesVersion, now.Level, now.Counted, now.Box, now.DueAt, now.LastAt =
@@ -209,6 +216,17 @@ func (w *world) accuracyAndFluencyImproved(name, skill, instrument string) error
 		domain.PracticeItemSnapshot{Accuracy: 0.6, Fluency: 0.4},
 		domain.PracticeItemState{Accuracy: 0.8, Fluency: 0.7})
 	return nil
+}
+
+func (w *world) accuracyImprovedOn(name, skill, instrument string) error {
+	w.improvedOn(name, skill, instrument,
+		domain.PracticeItemSnapshot{Accuracy: 0.6},
+		domain.PracticeItemState{Accuracy: 0.8})
+	return nil
+}
+
+func (w *world) accuracyImprovedOnEveryInstrument(name, skill string) error {
+	return w.accuracyImprovedOn(name, skill, "")
 }
 
 func (w *world) bestCleanTempoImproved(name, skill, instrument string) error {

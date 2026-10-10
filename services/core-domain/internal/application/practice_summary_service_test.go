@@ -532,7 +532,7 @@ func TestPracticeSummaryService_OverviewSkillsUp(t *testing.T) {
 	bpm := func(n int) *int { return &n }
 	now := time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
 
-	t.Run("each improved skill counts once per instrument, however many of its measures improved", func(t *testing.T) {
+	t.Run("each improved skill counts once, however many of its measures improved", func(t *testing.T) {
 		f := newSummaryFixture(t)
 		f.now = now
 		f.onPathFor([]string{practiceGuitar, practiceBass}, "notes-on-low-strings", "root-fifth-groove")
@@ -550,7 +550,7 @@ func TestPracticeSummaryService_OverviewSkillsUp(t *testing.T) {
 		assert.Equal(t, 2, got.SkillsUpLast7)
 	})
 
-	t.Run("a skill improved on every instrument counts on each", func(t *testing.T) {
+	t.Run("a skill whose items suit every instrument counts once, however many instruments the student plays", func(t *testing.T) {
 		f := newSummaryFixture(t)
 		f.now = now
 		f.onPathFor([]string{practiceGuitar, practiceBass}, "reading-rhythm")
@@ -562,7 +562,40 @@ func TestPracticeSummaryService_OverviewSkillsUp(t *testing.T) {
 		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
 
 		require.NoError(t, err)
-		assert.Equal(t, 2, got.SkillsUpLast7)
+		assert.Equal(t, 1, got.SkillsUpLast7)
+	})
+
+	t.Run("a skill that improved on two instruments is one skill up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor([]string{practiceGuitar, practiceBass}, "reading-rhythm")
+		f.exercise("e-rhythm-guitar", "reading-rhythm", 30, practiceGuitar)
+		f.exercise("e-rhythm-bass", "reading-rhythm", 30, practiceBass)
+		for _, key := range []string{domain.ExerciseItemKey("e-rhythm-guitar"), domain.ExerciseItemKey("e-rhythm-bass")} {
+			f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+			f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+		}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, got.SkillsUpLast7)
+	})
+
+	t.Run("a student without instrument cards still counts their skills up", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = now
+		f.onPathFor(nil, "reading-rhythm")
+		f.exercise("e-rhythm", "reading-rhythm", 30)
+		key := domain.ExerciseItemKey("e-rhythm")
+		f.stateOf(key, domain.PracticeItemState{Level: domain.KnowledgeLevelAccurate, Counted: 4, Box: 2, DueAt: f.inDays(2), Accuracy: 0.9})
+		f.activity.snapshots[key] = domain.PracticeItemSnapshot{ItemKey: key, Counted: 2, Accuracy: 0.6}
+
+		got, err := f.svc.Overview(context.Background(), studentCaller(), "America/Sao_Paulo")
+
+		require.NoError(t, err)
+		require.Empty(t, got.Instruments)
+		assert.Equal(t, 1, got.SkillsUpLast7)
 	})
 
 	t.Run("a concept that improved is not a skill up", func(t *testing.T) {
