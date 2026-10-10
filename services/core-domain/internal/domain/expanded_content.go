@@ -38,8 +38,8 @@ type ExpandedContent struct {
 
 // NewExpandedContent validates and constructs an ExpandedContent item. The
 // trigger/hide field group required depends on parentType — video nodes use
-// TriggerAtSeconds/HideAtSeconds, article nodes use
-// TriggerAtParagraph/DurationMS — mixing fields from both groups, or
+// TriggerAtSeconds/HideAtSeconds, article nodes use TriggerAtParagraph (and
+// the deprecated, optional DurationMS) — mixing fields from both groups, or
 // omitting the required group, is rejected. Pointers distinguish "field
 // omitted" (nil) from "field present with a zero value", which plain ints
 // can't — this is what lets a video node's stray trigger_at_paragraph be
@@ -242,10 +242,9 @@ func validateArticleTrigger(triggerAtSeconds, hideAtSeconds, triggerAtParagraph,
 	case *triggerAtParagraph < 1:
 		errs = append(errs, FieldError{Field: "trigger_at_paragraph", Reason: "must be at least 1"})
 	}
-	switch {
-	case durationMS == nil:
-		errs = append(errs, FieldError{Field: "duration_ms", Reason: "is required for an article content node"})
-	case *durationMS < 1:
+	// duration_ms is deprecated and optional: an article item stays under its
+	// paragraph, so clients ignore it. A value that is sent must still be valid.
+	if durationMS != nil && *durationMS < 1 {
 		errs = append(errs, FieldError{Field: "duration_ms", Reason: "must be at least 1"})
 	}
 
