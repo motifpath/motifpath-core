@@ -155,7 +155,14 @@ func (r *MongoPracticeActivityReader) FinishedSessions(ctx context.Context, stud
 		{Key: "student_id", Value: studentID},
 		{Key: "end.ended_at", Value: bson.D{{Key: "$gte", Value: since}}},
 		{Key: "end.left_early", Value: false},
-	})
+	}, options.Find().SetProjection(bson.D{
+		// Only what a finished session is read for: the overview reads every
+		// one the student ever had, and the rest of a session (its plan, its
+		// drills) grows with each one.
+		{Key: "instrument_id", Value: 1},
+		{Key: "end.ended_at", Value: 1},
+		{Key: "end.left_early", Value: 1},
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +189,7 @@ func (r *MongoPracticeActivityReader) SessionSpans(ctx context.Context, studentI
 	cursor, err := r.sessions.Find(ctx, bson.D{
 		{Key: "student_id", Value: studentID},
 		{Key: "started_at", Value: bson.D{{Key: "$gte", Value: since}}},
-	})
+	}, options.Find().SetProjection(bson.D{{Key: "started_at", Value: 1}, {Key: "last_event_at", Value: 1}}))
 	if err != nil {
 		return nil, err
 	}
