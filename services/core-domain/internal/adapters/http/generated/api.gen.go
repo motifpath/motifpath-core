@@ -5641,9 +5641,11 @@ type PracticeOverview struct {
 	// minutes plus 15). Never a streak: a missed day is never a reset.
 	PracticeDaysLast7 int `json:"practice_days_last_7"`
 
-	// SkillsUpLast7 How many skills, counted once per instrument, have at least one improved measure
-	// in that instrument's progress this week (accuracy, fluency or best clean tempo
-	// higher now than 7 days ago). Concepts are not counted.
+	// SkillsUpLast7 How many distinct skills have at least one improved measure this week (accuracy,
+	// fluency or best clean tempo higher now than 7 days ago), on any of the student's
+	// instruments or on the items that suit every instrument. A skill that improved on
+	// several instruments counts once, and a student with no instrument cards still
+	// counts theirs. Concepts are not counted.
 	SkillsUpLast7 int `json:"skills_up_last_7"`
 
 	// SongsPlayedLast7 How many of the songs counted in songs_played_total were first marked as played on
