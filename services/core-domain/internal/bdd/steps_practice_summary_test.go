@@ -140,7 +140,6 @@ func registerPracticeSummarySteps(sc *godog.ScenarioContext, w *world) {
 	sc.Step(`^"([^"]+)" started a (\d+)-minute session yesterday and sent nothing for it after the first (\d+) minutes$`, w.abandonedSessionYesterday)
 	sc.Step(`^"([^"]+)" finished a session with "([^"]+)" in hand yesterday$`, w.finishedSessionYesterday)
 	sc.Step(`^"([^"]+)" practised at 23:30 on Monday in "([^"]+)", which is Tuesday in UTC$`, w.practisedLateMonday)
-	sc.Step(`^"([^"]+)" finished a session with "([^"]+)" in hand on Monday and with "([^"]+)" in hand on Tuesday$`, w.finishedOnMondayAndTuesday)
 	sc.Step(`^"([^"]+)" finished a session with "([^"]+)" in hand and another with "([^"]+)" in hand on Monday$`, w.finishedTwoOnMonday)
 	sc.Step(`^"([^"]+)" finished sessions with "([^"]+)" in hand on (\d+) days and with "([^"]+)" in hand on (\d+) days?$`, w.finishedSessionsOnDays)
 	sc.Step(`^"([^"]+)" completed content nodes on (\d+) of the last 7 days$`, w.completedOnDays)
@@ -300,12 +299,6 @@ func (w *world) practisedLateMonday(name, timeZone string) error {
 		return err
 	}
 	w.finishSession(name, "guitar", at)
-	return nil
-}
-
-func (w *world) finishedOnMondayAndTuesday(name, first, second string) error {
-	w.finishSession(name, first, time.Date(monday.Year(), monday.Month(), monday.Day(), 9, 0, 0, 0, w.location()))
-	w.finishSession(name, second, time.Date(tuesday.Year(), tuesday.Month(), tuesday.Day(), 9, 0, 0, 0, w.location()))
 	return nil
 }
 
