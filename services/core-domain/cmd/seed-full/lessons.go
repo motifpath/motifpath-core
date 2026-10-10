@@ -35,7 +35,7 @@ func intervalsRef(diagramID string) *domain.DiagramRef {
 // seededLessons is the content seedDiagramLessons creates.
 type seededLessons struct {
 	video     domain.ContentNode // cues of every kind: image, rich text, diagram
-	article   domain.ContentNode // paragraph pop-ups of every kind, three published versions and unpublished edits
+	article   domain.ContentNode // paragraph pop-ups of every kind (one past the end), three published versions and unpublished edits
 	scenarios domain.ContentNode // one diagram cue per way a student sees an embedded diagram
 }
 
@@ -45,8 +45,8 @@ type seededLessons struct {
 // of the same three kinds. The article is published, edited and published
 // again twice, then edited once more without publishing, so its version
 // history has three versions and its current draft is ahead of the latest.
-// Neither node is placed in a learning path, so no seeded progress depends
-// on them.
+// Neither is placed in a learning path here; the article becomes a step of
+// the admin's path, where it is the article lesson with paragraph cues.
 func seedDiagramLessons(ctx context.Context, teacher domain.User, content *application.ContentService, classifier *classificationSeeder, diagrams seededDiagrams) (seededLessons, error) {
 	skillID, err := classifier.skillID(ctx, "play-pentatonic-positions")
 	if err != nil {
@@ -82,7 +82,8 @@ type lessonExtra struct {
 	rich     *domain.PromptDocument
 	diagram  *domain.DiagramRef
 	// from and to are seconds into a video, or a paragraph and a duration in
-	// milliseconds in an article.
+	// milliseconds in an article. An article pop-up with no duration (to 0)
+	// is one authored after the duration stopped being asked for.
 	from, to int
 	caption  string
 }
@@ -180,7 +181,7 @@ func seedDiagramScenarioVideo(ctx context.Context, teacher domain.User, content 
 }
 
 // seedPlayableCue adds a diagram cue that offers Play to nodeID, a lesson on
-// real students' paths (the admin's current one included), so the player can
+// real students' paths (the admin's included), so the player can
 // be tried where a student meets it: the blues lick, played as authored once
 // through, from 0:11 to 0:25 — after the node's image cues.
 func seedPlayableCue(ctx context.Context, teacher domain.User, content *application.ContentService, nodeID string, diagrams seededDiagrams) error {
@@ -193,29 +194,47 @@ func seedPlayableCue(ctx context.Context, teacher domain.User, content *applicat
 	return nil
 }
 
-// seedDiagramArticle creates an article with an image, a rich-text and a
-// diagram pop-up, publishes three versions of it, then edits it once more
-// without publishing.
-func seedDiagramArticle(ctx context.Context, teacher domain.User, content *application.ContentService, input application.ContentNodeInput, diagramID string) (domain.ContentNode, error) {
-	input.Title, input.ContentType = "Soloing with two pentatonic boxes", domain.ContentTypeArticle
-	input.RichContent = docPtr(paragraphs(
+// soloingBody is the text of the article seedDiagramArticle creates: four
+// paragraphs.
+func soloingBody() domain.PromptDocument {
+	return paragraphs(
 		"Most blues solos in A live in two boxes of the A minor pentatonic.",
 		"Box 1 sits between the 5th and 8th frets, with the root under your first finger.",
 		"Box 2 starts where box 1 ends, from the 7th to the 10th fret.",
 		"Slide between them on the 3rd string to connect the two.",
-	))
+	)
+}
+
+// soloingPopups are its paragraph pop-ups: an image, a rich-text note and a
+// diagram under the first three paragraphs, authored with a duration as
+// older content was, and a note without one that names a paragraph past the
+// last, so it shows at the end of the text.
+func soloingPopups(diagramID string) []lessonExtra {
+	return []lessonExtra{
+		{domain.ExpandedContentTypeImage, stringPtr("https://placehold.co/640x360/png?text=Blues+in+A"), nil, nil, 1, 5000, "A 12-bar blues in A"},
+		{domain.ExpandedContentTypeRichText, nil, docPtr(headedParagraph("Why the root matters", "Landing on the root at the end of a phrase makes it sound resolved.")), nil, 2, 5000, "Why the root matters"},
+		{domain.ExpandedContentTypeDiagram, nil, nil, intervalsRef(diagramID), 3, 5000, "Box 2"},
+		{domain.ExpandedContentTypeRichText, nil, docPtr(headedParagraph("Before you go on", "Play both boxes slowly, once up and once down, before the next step.")), nil, 9, 0, "Before you go on"},
+	}
+}
+
+// seedDiagramArticle creates soloingBody's article with soloingPopups,
+// publishes three versions of it, then edits it once more without
+// publishing.
+func seedDiagramArticle(ctx context.Context, teacher domain.User, content *application.ContentService, input application.ContentNodeInput, diagramID string) (domain.ContentNode, error) {
+	input.Title, input.ContentType = "Soloing with two pentatonic boxes", domain.ContentTypeArticle
+	input.RichContent = docPtr(soloingBody())
 	article, err := content.CreateContentNode(ctx, teacher, input)
 	if err != nil {
 		return domain.ContentNode{}, fmt.Errorf("create diagram article: %w", err)
 	}
-	popups := []lessonExtra{
-		{domain.ExpandedContentTypeImage, stringPtr("https://placehold.co/640x360/png?text=Blues+in+A"), nil, nil, 1, 5000, "A 12-bar blues in A"},
-		{domain.ExpandedContentTypeRichText, nil, docPtr(headedParagraph("Why the root matters", "Landing on the root at the end of a phrase makes it sound resolved.")), nil, 2, 5000, "Why the root matters"},
-		{domain.ExpandedContentTypeDiagram, nil, nil, intervalsRef(diagramID), 3, 5000, "Box 2"},
-	}
-	for _, popup := range popups {
-		paragraph, duration, caption := popup.from, popup.to, popup.caption
-		if _, err := content.CreateExpandedContent(ctx, teacher, article.ID, popup.kind, popup.mediaURL, popup.rich, popup.diagram, nil, nil, nil, &paragraph, &duration, &caption); err != nil {
+	for _, popup := range soloingPopups(diagramID) {
+		paragraph, caption := popup.from, popup.caption
+		var duration *int
+		if popup.to != 0 {
+			duration = &popup.to
+		}
+		if _, err := content.CreateExpandedContent(ctx, teacher, article.ID, popup.kind, popup.mediaURL, popup.rich, popup.diagram, nil, nil, nil, &paragraph, duration, &caption); err != nil {
 			return domain.ContentNode{}, fmt.Errorf("create %s pop-up: %w", popup.kind, err)
 		}
 	}

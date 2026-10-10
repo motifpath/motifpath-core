@@ -83,7 +83,8 @@ NEVER access the database directly from the domain layer.
 - `make db:reset`      → wipe the local dev Postgres, re-migrate from scratch, and repopulate via
   `cmd/seed-full` (every `CourseStatus`, every `CourseEnrollmentStatus`, standalone paths current
   and archived, every `ExerciseType`, a diagram library of demo basic templates and two
-  teachers' custom diagrams, lessons with cues, pop-ups and a version history, and three public-domain song charts: published
+  teachers' custom diagrams, lessons with cues, pop-ups and a version history, a bootstrapped admin's path that walks
+  through every article-lesson state (review, paragraph cues, diagram-first, Practise this, language-locked), and three public-domain song charts: published
   with a corrected draft, withdrawn, and a draft whose chords don't all resolve; their preview links are logged). Reference
   data — languages, voices, the catalog instruments, the knowledge map, the basic guitar
   diagram catalog, the practice drill catalog and the chord catalog — comes only from migrations, with fixed IDs; seeds look it up (knowledge
