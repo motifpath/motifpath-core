@@ -93,6 +93,7 @@ func toGeneratedPracticeSummary(summary application.PracticeSummary) generated.P
 		InstrumentId:         uuidPtrFromStringPtr(summary.InstrumentID),
 		StudentInstrumentIds: make([]openapi_types.UUID, len(summary.StudentInstrumentIDs)),
 		PracticeDaysLast7:    summary.PracticeDaysLast7,
+		Last7Days:            make([]generated.PracticeDay, len(summary.Last7Days)),
 		ProgressThisWeek:     make([]generated.SkillProgress, len(summary.Progress)),
 		NextSteps:            make([]generated.PracticeNextStep, len(summary.NextSteps)),
 		NextStepsTotal:       summary.NextStepsTotal,
@@ -100,6 +101,9 @@ func toGeneratedPracticeSummary(summary application.PracticeSummary) generated.P
 	}
 	for i, id := range summary.StudentInstrumentIDs {
 		out.StudentInstrumentIds[i] = mustUUID(id)
+	}
+	for i, day := range summary.Last7Days {
+		out.Last7Days[i] = generated.PracticeDay{Date: openapi_types.Date{Time: day.Date}, Practised: day.Marked}
 	}
 	for i, line := range summary.Progress {
 		out.ProgressThisWeek[i] = generated.SkillProgress{
@@ -172,7 +176,11 @@ func toGeneratedPracticeOverview(overview application.PracticeOverview) generate
 		SkillsUpLast7:             overview.SkillsUpLast7,
 		SongsPlayedTotal:          overview.SongsPlayedTotal,
 		SongsPlayedLast7:          overview.SongsPlayedLast7,
+		Last7Days:                 make([]generated.ActivityDay, len(overview.Last7Days)),
 		Instruments:               make([]generated.PracticeInstrumentCard, len(overview.Instruments)),
+	}
+	for i, day := range overview.Last7Days {
+		out.Last7Days[i] = generated.ActivityDay{Date: openapi_types.Date{Time: day.Date}, Practised: day.Practised, Learned: day.Learned}
 	}
 	for i, card := range overview.Instruments {
 		out.Instruments[i] = generated.PracticeInstrumentCard{InstrumentId: mustUUID(card.InstrumentID), PracticeDaysLast7: card.PracticeDaysLast7}

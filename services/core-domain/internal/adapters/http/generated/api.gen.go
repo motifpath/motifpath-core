@@ -2611,6 +2611,20 @@ func (e ListLearningPathsParamsStatus) Valid() bool {
 	}
 }
 
+// ActivityDay One calendar day of the student's last 7, across instruments.
+type ActivityDay struct {
+	// Date The calendar day, in the time zone asked for.
+	Date openapi_types.Date `json:"date"`
+
+	// Learned Whether the student completed at least one content node on this day, by the
+	// rule learning_days_last_7 counts.
+	Learned bool `json:"learned"`
+
+	// Practised Whether the student finished a practice session on this day, on any instrument
+	// or without one, by the rule practice_days_last_7 counts.
+	Practised bool `json:"practised"`
+}
+
 // AssignLearningPathRequest Payload for assigning a learning path to a student.
 type AssignLearningPathRequest struct {
 	// LearningPathId The ID of the learning path to assign. Must exist in the system and be published.
@@ -5476,6 +5490,16 @@ type PathDetailLevel string
 // where C4 is middle C (e.g. "E2", "F#3", "Bb4").
 type Pitch = string
 
+// PracticeDay One calendar day of an instrument's last 7, and whether the student practised it.
+type PracticeDay struct {
+	// Date The calendar day, in the time zone asked for.
+	Date openapi_types.Date `json:"date"`
+
+	// Practised Whether the student finished a practice session with the summarised instrument
+	// in hand on this day, by the rule practice_days_last_7 counts.
+	Practised bool `json:"practised"`
+}
+
 // PracticeInstrumentCard One instrument at a glance, linking to its practice summary.
 type PracticeInstrumentCard struct {
 	// InstrumentId The instrument.
@@ -5619,6 +5643,13 @@ type PracticeOverview struct {
 	// Instruments One card per instrument of the student, inferred from the paths and courses
 	// they're enrolled in, in the order their summaries are tabbed.
 	Instruments []PracticeInstrumentCard `json:"instruments"`
+
+	// Last7Days The last 7 calendar days, one entry each, oldest first and today last, in the
+	// given time zone, so a day row can show which days they were. practised and
+	// learned follow practice_days_last_7's and learning_days_last_7's rules, so the
+	// days marked match those counts. Never a streak: a day only says whether it
+	// happened, never that one was missed.
+	Last7Days []ActivityDay `json:"last_7_days"`
 
 	// LearningDaysLast7 On how many of the last 7 calendar days, in the given time zone, the student
 	// completed at least one content node. Never a streak: a missed day is never a
@@ -5846,6 +5877,13 @@ type PracticeSummary struct {
 
 	// InstrumentId The instrument summarised, or null for nodes that suit any instrument only.
 	InstrumentId *openapi_types.UUID `json:"instrument_id"`
+
+	// Last7Days The same last 7 calendar days, one entry each, oldest first and today last, in
+	// the given time zone, so a day row can show which days they were. practised
+	// follows practice_days_last_7's rule, so as many days are practised as
+	// practice_days_last_7 counts. Never a streak: a day only says whether it
+	// happened, never that one was missed.
+	Last7Days []PracticeDay `json:"last_7_days"`
 
 	// NextSteps The top three next steps, in order.
 	NextSteps []PracticeNextStep `json:"next_steps"`

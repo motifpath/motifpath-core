@@ -60,6 +60,9 @@ type PracticeSummary struct {
 	InstrumentID         *string
 	StudentInstrumentIDs []string
 	PracticeDaysLast7    int
+	// Last7Days lists the same days, oldest first and today last, each
+	// marked when it was a practice day.
+	Last7Days []domain.CalendarDay
 	// Progress lists the skills that improved in the last 7 days, most
 	// improved first.
 	Progress []domain.SkillProgress
@@ -89,7 +92,27 @@ type PracticeOverview struct {
 	SkillsUpLast7    int
 	SongsPlayedTotal int
 	SongsPlayedLast7 int
-	Instruments      []PracticeInstrumentCard
+	// Last7Days lists the days PracticeDaysLast7 and LearningDaysLast7
+	// count, oldest first and today last.
+	Last7Days   []ActivityDay
+	Instruments []PracticeInstrumentCard
+}
+
+// ActivityDay is one calendar day across instruments: whether it was a
+// practice day, and whether it was a learning day.
+type ActivityDay struct {
+	Date      time.Time
+	Practised bool
+	Learned   bool
+}
+
+// activityDays pairs the practice and learning marks of the same 7 days.
+func activityDays(practised, learned []domain.CalendarDay) []ActivityDay {
+	days := make([]ActivityDay, len(practised))
+	for i, day := range practised {
+		days[i] = ActivityDay{Date: day.Date, Practised: day.Marked, Learned: learned[i].Marked}
+	}
+	return days
 }
 
 // PracticeInstrumentCard is one instrument at a glance.
@@ -156,10 +179,12 @@ func (s *PracticeSummaryService) Summary(ctx context.Context, caller domain.User
 
 	steps := domain.RankNextSteps(view, pathSkillIDs)
 	nodes, children := describeNodes(view)
+	ends := sessionEnds(sessions, instrumentID)
 	return PracticeSummary{
 		InstrumentID:         instrumentID,
 		StudentInstrumentIDs: instrumentIDs,
-		PracticeDaysLast7:    domain.DaysInLast7(sessionEnds(sessions, instrumentID), now, loc),
+		PracticeDaysLast7:    domain.DaysInLast7(ends, now, loc),
+		Last7Days:            domain.DaysOfLast7(ends, now, loc),
 		Progress:             progress,
 		NextSteps:            steps[:min(topNextSteps, len(steps))],
 		NextStepsTotal:       len(steps),
@@ -263,6 +288,7 @@ func (s *PracticeSummaryService) Overview(ctx context.Context, caller domain.Use
 		SkillsUpLast7:             skillsUp,
 		SongsPlayedTotal:          songs.Total,
 		SongsPlayedLast7:          songs.Last7,
+		Last7Days:                 activityDays(domain.DaysOfLast7(ends, now, loc), domain.DaysOfLast7(completions, now, loc)),
 	}
 	for i, id := range instrumentIDs {
 		card := PracticeInstrumentCard{InstrumentID: id, PracticeDaysLast7: domain.DaysInLast7(sessionEnds(sessions, &id), now, loc)}

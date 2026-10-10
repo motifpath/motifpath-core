@@ -136,6 +136,28 @@ func TestPracticeSummaryService_Summary(t *testing.T) {
 		assert.Equal(t, 2, got.PracticeDaysLast7)
 	})
 
+	t.Run("the last 7 days list which days the instrument was practised, today last", func(t *testing.T) {
+		f := newSummaryFixture(t)
+		f.now = time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC) // Monday noon in São Paulo
+		bass := practiceBass
+		f.activity.sessions = []domain.FinishedPracticeSession{
+			{InstrumentID: &guitar, EndedAt: time.Date(2026, 10, 5, 13, 0, 0, 0, time.UTC)},
+			{InstrumentID: &guitar, EndedAt: time.Date(2026, 10, 3, 2, 30, 0, 0, time.UTC)}, // Friday 23:30 local
+			{InstrumentID: &bass, EndedAt: time.Date(2026, 10, 4, 13, 0, 0, 0, time.UTC)},
+		}
+
+		got := f.summary(t, &guitar, "America/Sao_Paulo")
+
+		require.Len(t, got.Last7Days, 7)
+		assert.True(t, time.Date(2026, 9, 29, 0, 0, 0, 0, saoPaulo).Equal(got.Last7Days[0].Date), "oldest first")
+		assert.True(t, time.Date(2026, 10, 5, 0, 0, 0, 0, saoPaulo).Equal(got.Last7Days[6].Date), "today last")
+		practised := make([]bool, 7)
+		for i, day := range got.Last7Days {
+			practised[i] = day.Marked
+		}
+		assert.Equal(t, []bool{false, false, false, true, false, false, true}, practised, "Friday and today, not bass's Sunday")
+	})
+
 	t.Run("progress compares each skill now with its state when the last 7 days began", func(t *testing.T) {
 		f := newSummaryFixture(t)
 		f.now = time.Date(2026, 10, 5, 15, 0, 0, 0, time.UTC)
@@ -258,6 +280,18 @@ func TestPracticeSummaryService_Overview(t *testing.T) {
 		assert.Equal(t, 1, got.Instruments[1].PracticeDaysLast7)
 		require.NotNil(t, got.Instruments[1].TopNextStep)
 		assert.Equal(t, "skill-1", got.Instruments[1].TopNextStep.Node.ID)
+
+		saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+		require.NoError(t, err)
+		require.Len(t, got.Last7Days, 7)
+		assert.True(t, time.Date(2026, 9, 29, 0, 0, 0, 0, saoPaulo).Equal(got.Last7Days[0].Date), "oldest first")
+		assert.True(t, time.Date(2026, 10, 5, 0, 0, 0, 0, saoPaulo).Equal(got.Last7Days[6].Date), "today last")
+		practised, learned := make([]bool, 7), make([]bool, 7)
+		for i, day := range got.Last7Days {
+			practised[i], learned[i] = day.Practised, day.Learned
+		}
+		assert.Equal(t, []bool{false, false, false, false, false, true, true}, practised, "Sunday on bass, today on both, marked once")
+		assert.Equal(t, []bool{false, false, true, true, false, false, false}, learned, "Thursday and Friday")
 	})
 
 	t.Run("an unknown time zone is rejected on time_zone", func(t *testing.T) {
