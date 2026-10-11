@@ -20,12 +20,26 @@ type SongChartOpenedEvent struct {
 
 func (e SongChartOpenedEvent) Base() TrackingEventBase { return e.TrackingEventBase }
 
+// ChordViewSource is where in a song chart a student tapped the chord they viewed.
+type ChordViewSource string
+
+const (
+	// ChordViewSourceLyrics is a chord over the lyrics: one anchor was tapped.
+	ChordViewSourceLyrics ChordViewSource = "lyrics"
+	// ChordViewSourceStrip is a chord in the song's chord strip, which stands
+	// for every anchor of that chord, so no single anchor was tapped.
+	ChordViewSourceStrip ChordViewSource = "strip"
+)
+
 // SongChartChordViewedEvent is emitted when a student taps a chord in a song
-// chart and its voicing sheet opens: the anchor tapped, the catalog chord it
-// resolves to and the voicing the sheet opened on.
+// chart and its chord card opens: where the tap was, the anchor tapped (only
+// from the lyrics), the catalog chord it resolves to and the voicing the card
+// opened on.
 type SongChartChordViewedEvent struct {
 	TrackingEventBase
-	SongChartContext  SongChartContext
+	SongChartContext SongChartContext
+	Source           ChordViewSource
+	// AnchorID is empty when Source is ChordViewSourceStrip.
 	AnchorID          string
 	ChordDefinitionID string
 	ChordVoicingID    string

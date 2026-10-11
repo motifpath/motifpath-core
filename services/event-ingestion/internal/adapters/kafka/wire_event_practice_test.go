@@ -159,12 +159,20 @@ func TestToWireEvent_SongChartEvents(t *testing.T) {
 			want:  `{` + wireBaseJSON + `,"event_type":"song_chart.opened",` + chartJSON + `}`,
 		},
 		{
-			name: "chord viewed",
+			name: "chord viewed from the lyrics",
 			event: domain.SongChartChordViewedEvent{
-				TrackingEventBase: practiceWireBase(domain.EventTypeSongChartChordViewed), SongChartContext: chart,
+				TrackingEventBase: practiceWireBase(domain.EventTypeSongChartChordViewed), SongChartContext: chart, Source: domain.ChordViewSourceLyrics,
 				AnchorID: "a3", ChordDefinitionID: "55555555-5555-4555-8555-555555555555", ChordVoicingID: "66666666-6666-4666-8666-666666666666",
 			},
-			want: `{` + wireBaseJSON + `,"event_type":"song_chart.chord_viewed",` + chartJSON + `,"anchor_id":"a3","chord_definition_id":"55555555-5555-4555-8555-555555555555","chord_voicing_id":"66666666-6666-4666-8666-666666666666"}`,
+			want: `{` + wireBaseJSON + `,"event_type":"song_chart.chord_viewed",` + chartJSON + `,"source":"lyrics","anchor_id":"a3","chord_definition_id":"55555555-5555-4555-8555-555555555555","chord_voicing_id":"66666666-6666-4666-8666-666666666666"}`,
+		},
+		{
+			name: "chord viewed from the strip",
+			event: domain.SongChartChordViewedEvent{
+				TrackingEventBase: practiceWireBase(domain.EventTypeSongChartChordViewed), SongChartContext: chart, Source: domain.ChordViewSourceStrip,
+				ChordDefinitionID: "55555555-5555-4555-8555-555555555555", ChordVoicingID: "66666666-6666-4666-8666-666666666666",
+			},
+			want: `{` + wireBaseJSON + `,"event_type":"song_chart.chord_viewed",` + chartJSON + `,"source":"strip","chord_definition_id":"55555555-5555-4555-8555-555555555555","chord_voicing_id":"66666666-6666-4666-8666-666666666666"}`,
 		},
 		{
 			name:  "completed",
