@@ -49,11 +49,9 @@ func toSongChartChordViewedEvent(eventType domain.EventType, body *generated.Tra
 	if err != nil {
 		return nil, err
 	}
-	if err := requirePresent(body, "anchor_id"); err != nil {
+	source, anchorID, err := toChordViewOrigin(body, v)
+	if err != nil {
 		return nil, err
-	}
-	if n := utf8.RuneCountInString(v.AnchorId); n == 0 || n > domain.MaxSongChartAnchorIDLength {
-		return nil, fmt.Errorf("%w: anchor_id", domain.ErrInvalidField)
 	}
 	chordID, err := requireUUID(v.ChordDefinitionId, "chord_definition_id")
 	if err != nil {
@@ -66,10 +64,37 @@ func toSongChartChordViewedEvent(eventType domain.EventType, body *generated.Tra
 	return domain.SongChartChordViewedEvent{
 		TrackingEventBase: base,
 		SongChartContext:  chart,
-		AnchorID:          v.AnchorId,
+		Source:            source,
+		AnchorID:          anchorID,
 		ChordDefinitionID: chordID,
 		ChordVoicingID:    voicingID,
 	}, nil
+}
+
+// toChordViewOrigin reads where a chord view came from. A tap over the lyrics
+// names its anchor; a tap in the chord strip stands for every anchor of the
+// chord, so it must not name one.
+func toChordViewOrigin(body *generated.TrackingEvent, v generated.SongChartChordViewedEvent) (domain.ChordViewSource, string, error) {
+	if err := requirePresent(body, "source"); err != nil {
+		return "", "", err
+	}
+	if !v.Source.Valid() {
+		return "", "", fmt.Errorf("%w: source", domain.ErrInvalidField)
+	}
+	source := domain.ChordViewSource(v.Source)
+	if source == domain.ChordViewSourceStrip {
+		if v.AnchorId != nil {
+			return "", "", fmt.Errorf("%w: anchor_id is not sent from the strip", domain.ErrInvalidField)
+		}
+		return source, "", nil
+	}
+	if v.AnchorId == nil {
+		return "", "", fmt.Errorf("%w: anchor_id", domain.ErrMissingRequiredField)
+	}
+	if n := utf8.RuneCountInString(*v.AnchorId); n == 0 || n > domain.MaxSongChartAnchorIDLength {
+		return "", "", fmt.Errorf("%w: anchor_id", domain.ErrInvalidField)
+	}
+	return source, *v.AnchorId, nil
 }
 
 func toSongChartCompletedEvent(eventType domain.EventType, body *generated.TrackingEvent) (domain.TrackingEvent, error) {

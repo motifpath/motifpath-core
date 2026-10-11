@@ -44,6 +44,7 @@ type wireEvent struct {
 
 	// song_chart.* fields.
 	SongChartContext  *songChartContextWire `json:"song_chart_context,omitempty"`
+	Source            string                `json:"source,omitempty"`
 	AnchorID          string                `json:"anchor_id,omitempty"`
 	ChordDefinitionID string                `json:"chord_definition_id,omitempty"`
 	ChordVoicingID    string                `json:"chord_voicing_id,omitempty"`
@@ -197,6 +198,7 @@ func addSongChartWire(w *wireEvent, event domain.TrackingEvent) {
 		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
 	case domain.SongChartChordViewedEvent:
 		w.SongChartContext = toSongChartContextWire(e.SongChartContext)
+		w.Source = string(e.Source)
 		w.AnchorID = e.AnchorID
 		w.ChordDefinitionID = e.ChordDefinitionID
 		w.ChordVoicingID = e.ChordVoicingID

@@ -27,7 +27,15 @@ func TestMongoEventRepository_FindByEventID_RoundTripsSongChartEvents(t *testing
 		domain.SongChartChordViewedEvent{
 			TrackingEventBase: practiceBase("b1000000-0000-4000-8000-000000000002", domain.EventTypeSongChartChordViewed, practiceStudentID, practiceAt),
 			SongChartContext:  songChartRead,
+			Source:            domain.ChordViewSourceLyrics,
 			AnchorID:          "a3",
+			ChordDefinitionID: "66666666-6666-4666-8666-666666666666",
+			ChordVoicingID:    "77777777-7777-4777-8777-777777777777",
+		},
+		domain.SongChartChordViewedEvent{
+			TrackingEventBase: practiceBase("b1000000-0000-4000-8000-000000000004", domain.EventTypeSongChartChordViewed, practiceStudentID, practiceAt),
+			SongChartContext:  songChartRead,
+			Source:            domain.ChordViewSourceStrip,
 			ChordDefinitionID: "66666666-6666-4666-8666-666666666666",
 			ChordVoicingID:    "77777777-7777-4777-8777-777777777777",
 		},
@@ -68,4 +76,27 @@ func TestMongoEventRepository_Save_WritesTheSongChartContext(t *testing.T) {
 	assert.Equal(t, bson.M{"song_chart_id": songChartRead.SongChartID, "revision_number": int32(2)}, chart)
 	_, err = raw.LookupErr("section_index")
 	assert.Error(t, err, "a completed song has no section")
+}
+
+func TestMongoEventRepository_FindByEventID_ReadsAChordViewStoredWithoutASourceAsFromTheLyrics(t *testing.T) {
+	repo := setupMongoRepository(t)
+	ctx := context.Background()
+	event := domain.SongChartChordViewedEvent{
+		TrackingEventBase: practiceBase("b3000000-0000-4000-8000-000000000001", domain.EventTypeSongChartChordViewed, practiceStudentID, practiceAt),
+		SongChartContext:  songChartRead,
+		Source:            domain.ChordViewSourceLyrics,
+		AnchorID:          "a3",
+		ChordDefinitionID: "66666666-6666-4666-8666-666666666666",
+		ChordVoicingID:    "77777777-7777-4777-8777-777777777777",
+	}
+	_, _, err := repo.Save(ctx, event)
+	require.NoError(t, err)
+	// Chord views stored before the strip existed have no source.
+	_, err = repo.collection.UpdateOne(ctx, bson.D{{Key: "event_id", Value: event.EventID}}, bson.D{{Key: "$unset", Value: bson.D{{Key: "source", Value: ""}}}})
+	require.NoError(t, err)
+
+	found, err := repo.FindByEventID(ctx, event.EventID)
+
+	require.NoError(t, err)
+	assert.Equal(t, event, found)
 }
