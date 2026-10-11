@@ -34,6 +34,12 @@ const (
 	FieldThumbnailURL = "thumbnail_url"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
+	// FieldLatestPublishedVersion holds the string denoting the latest_published_version field in the database.
+	FieldLatestPublishedVersion = "latest_published_version"
+	// FieldHasUnpublishedChanges holds the string denoting the has_unpublished_changes field in the database.
+	FieldHasUnpublishedChanges = "has_unpublished_changes"
 	// EdgePathExercises holds the string denoting the path_exercises edge name in mutations.
 	EdgePathExercises = "path_exercises"
 	// EdgeLanguages holds the string denoting the languages edge name in mutations.
@@ -130,6 +136,9 @@ var Columns = []string{
 	FieldReviewState,
 	FieldThumbnailURL,
 	FieldCreatedAt,
+	FieldUpdatedAt,
+	FieldLatestPublishedVersion,
+	FieldHasUnpublishedChanges,
 }
 
 var (
@@ -163,6 +172,10 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
+	// DefaultHasUnpublishedChanges holds the default value on creation for the "has_unpublished_changes" field.
+	DefaultHasUnpublishedChanges bool
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -294,6 +307,21 @@ func ByThumbnailURL(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByLatestPublishedVersion orders the results by the latest_published_version field.
+func ByLatestPublishedVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLatestPublishedVersion, opts...).ToFunc()
+}
+
+// ByHasUnpublishedChanges orders the results by the has_unpublished_changes field.
+func ByHasUnpublishedChanges(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldHasUnpublishedChanges, opts...).ToFunc()
 }
 
 // ByPathExercisesCount orders the results by path_exercises count.

@@ -1,6 +1,8 @@
 package repo
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/motifpath/core-domain/internal/adapters/repo/ent"
@@ -68,4 +70,13 @@ func nodeIDsOf(nodes []domain.KnowledgeNode) []string {
 // instruments, the shape toDomainKnowledgeNode expects.
 func withNodeInstruments(q *ent.KnowledgeNodeQuery) {
 	q.WithInstruments()
+}
+
+// updatedAtOr is updatedAt, or createdAt for a value built before it carried
+// a last change — a record is last changed when it was created until edited.
+func updatedAtOr(updatedAt, createdAt time.Time) time.Time {
+	if updatedAt.IsZero() {
+		return createdAt
+	}
+	return updatedAt
 }

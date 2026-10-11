@@ -82,11 +82,11 @@ func TestEntLearningPathRepository_Publishing(t *testing.T) {
 			Items: []domain.LearningPathItem{{Position: 1, ContentNodeID: node.ID, Title: node.Title, ContentType: node.ContentType}},
 		}))
 
-		published, err := f.paths.ListCreatorIDs(f.ctx, domain.LearningPathFilter{Status: domain.LearningPathStatusPublished})
+		published, err := listCreatorIDs(f.paths.ListCreatorCounts(f.ctx, domain.LearningPathFilter{Status: domain.LearningPathStatusPublished}))
 		require.NoError(t, err)
 		assert.Equal(t, []string{teacher}, published)
 
-		all, err := f.paths.ListCreatorIDs(f.ctx, domain.LearningPathFilter{})
+		all, err := listCreatorIDs(f.paths.ListCreatorCounts(f.ctx, domain.LearningPathFilter{}))
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{teacher, otherTeacher}, all)
 	})

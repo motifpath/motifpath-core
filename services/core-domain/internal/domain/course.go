@@ -59,7 +59,10 @@ type Course struct {
 	Status       CourseStatus
 	CreatedBy    string
 	CreatedAt    time.Time
-	Checkpoints  []CourseCheckpoint
+	// UpdatedAt is when the course was created or last changed: its
+	// details, its live draft, publishing or retiring.
+	UpdatedAt   time.Time
+	Checkpoints []CourseCheckpoint
 }
 
 // CourseFields are the parts of a course its author writes, as given to
@@ -147,6 +150,7 @@ func NewCourse(id, createdBy string, fields CourseFields, languages []string, cr
 		Status:        CourseStatusDraft,
 		CreatedBy:     createdBy,
 		CreatedAt:     createdAt,
+		UpdatedAt:     createdAt,
 		Checkpoints:   built,
 	}, nil
 }

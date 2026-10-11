@@ -20,12 +20,13 @@ type CourseService struct {
 	users       ports.UserRepository
 	languages   ports.LanguageRepository
 	instruments ports.InstrumentRepository
+	knowledge   ports.KnowledgeNodeRepository
 	newID       func() string
 	now         func() time.Time
 }
 
-func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *CourseService {
-	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, newID: newID, now: now}
+func NewCourseService(paths ports.LearningPathRepository, courses ports.CourseRepository, versions ports.CourseVersionRepository, users ports.UserRepository, languages ports.LanguageRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *CourseService {
+	return &CourseService{paths: paths, courses: courses, versions: versions, users: users, languages: languages, instruments: instruments, knowledge: knowledge, newID: newID, now: now}
 }
 
 // CheckpointInput is one checkpoint the caller wants in a new or replaced
@@ -116,6 +117,19 @@ func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, fil
 		filter.CreatedBy = caller.ID
 	}
 	filter.PublishedView = false
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.Course]{}, domain.SortValidationError()
+	}
+	return s.list(ctx, filter, page)
+}
+
+// list widens filter's skills and concepts to their subtrees and lists.
+func (s *CourseService) list(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
+	var err error
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.Course]{}, err
+	}
 	return s.courses.List(ctx, filter, page)
 }
 
@@ -125,7 +139,7 @@ func (s *CourseService) ListCourses(ctx context.Context, caller domain.User, fil
 // for every caller whatever their role — anyone can learn — so it takes no
 // caller, and a status in filter never widens it beyond published.
 func (s *CourseService) ListCatalogCourses(ctx context.Context, filter domain.CourseListFilter, page domain.PageRequest) (domain.Page[domain.Course], error) {
-	return s.courses.List(ctx, catalogCourseFilter(filter), page)
+	return s.list(ctx, catalogCourseFilter(filter), page)
 }
 
 // catalogCourseFilter narrows filter to what the learner catalog shows: published courses only,
@@ -134,6 +148,7 @@ func catalogCourseFilter(filter domain.CourseListFilter) domain.CourseListFilter
 	published := domain.CourseStatusPublished
 	filter.Status = &published
 	filter.PublishedView = true
+	filter.Sort = domain.ListSortTitle
 	return filter
 }
 
@@ -170,7 +185,7 @@ func (s *CourseService) ListCatalogCreators(ctx context.Context, nameQuery strin
 // creatorsNamed returns the distinct creators of the courses matching
 // filter, named and ordered by namedCreators.
 func (s *CourseService) creatorsNamed(ctx context.Context, filter domain.CourseListFilter, nameQuery string) ([]CourseCreator, error) {
-	ids, err := s.courses.ListCreatorIDs(ctx, filter)
+	ids, err := s.courses.ListCreatorCounts(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +236,7 @@ func (s *CourseService) ReplaceCourse(ctx context.Context, caller domain.User, i
 		return domain.Course{}, err
 	}
 	replaced.Status = existing.Status
+	replaced.UpdatedAt = s.now()
 
 	if err := s.courses.Replace(ctx, replaced); err != nil {
 		return domain.Course{}, err
@@ -262,10 +278,12 @@ func (s *CourseService) PublishCourse(ctx context.Context, caller domain.User, i
 		return domain.CourseVersion{}, err
 	}
 
-	if course.Status == domain.CourseStatusDraft {
-		if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished); err != nil {
-			return domain.CourseVersion{}, err
-		}
+	status := course.Status
+	if status == domain.CourseStatusDraft {
+		status = domain.CourseStatusPublished
+	}
+	if err := s.courses.UpdateStatus(ctx, id, status, s.now()); err != nil {
+		return domain.CourseVersion{}, err
 	}
 
 	return version, nil
@@ -306,7 +324,7 @@ func (s *CourseService) RetireCourse(ctx context.Context, caller domain.User, id
 		return domain.Course{}, err
 	}
 
-	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusRetired); err != nil {
+	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusRetired, s.now()); err != nil {
 		return domain.Course{}, err
 	}
 	course.Status = domain.CourseStatusRetired
@@ -331,7 +349,7 @@ func (s *CourseService) ReactivateCourse(ctx context.Context, caller domain.User
 		return domain.Course{}, domain.NewValidationError("status", "only a retired course can be reactivated")
 	}
 
-	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished); err != nil {
+	if err := s.courses.UpdateStatus(ctx, id, domain.CourseStatusPublished, s.now()); err != nil {
 		return domain.Course{}, err
 	}
 	course.Status = domain.CourseStatusPublished

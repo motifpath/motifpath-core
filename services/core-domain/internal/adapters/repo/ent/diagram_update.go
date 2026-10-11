@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -147,6 +148,20 @@ func (_u *DiagramUpdate) SetNillableDefaultPlaybackID(v *string) *DiagramUpdate 
 // ClearDefaultPlaybackID clears the value of the "default_playback_id" field.
 func (_u *DiagramUpdate) ClearDefaultPlaybackID() *DiagramUpdate {
 	_u.mutation.ClearDefaultPlaybackID()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *DiagramUpdate) SetUpdatedAt(v time.Time) *DiagramUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *DiagramUpdate) SetNillableUpdatedAt(v *time.Time) *DiagramUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
 	return _u
 }
 
@@ -562,6 +577,9 @@ func (_u *DiagramUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DefaultPlaybackIDCleared() {
 		_spec.ClearField(diagram.FieldDefaultPlaybackID, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(diagram.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.CompatibleInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1120,6 +1138,20 @@ func (_u *DiagramUpdateOne) ClearDefaultPlaybackID() *DiagramUpdateOne {
 	return _u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *DiagramUpdateOne) SetUpdatedAt(v time.Time) *DiagramUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *DiagramUpdateOne) SetNillableUpdatedAt(v *time.Time) *DiagramUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
 // AddCompatibleInstrumentIDs adds the "compatible_instruments" edge to the Instrument entity by IDs.
 func (_u *DiagramUpdateOne) AddCompatibleInstrumentIDs(ids ...uuid.UUID) *DiagramUpdateOne {
 	_u.mutation.AddCompatibleInstrumentIDs(ids...)
@@ -1562,6 +1594,9 @@ func (_u *DiagramUpdateOne) sqlSave(ctx context.Context) (_node *Diagram, err er
 	}
 	if _u.mutation.DefaultPlaybackIDCleared() {
 		_spec.ClearField(diagram.FieldDefaultPlaybackID, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(diagram.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.CompatibleInstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{

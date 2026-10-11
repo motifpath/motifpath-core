@@ -158,6 +158,20 @@ func (_c *DiagramCreate) SetNillableCreatedAt(v *time.Time) *DiagramCreate {
 	return _c
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *DiagramCreate) SetUpdatedAt(v time.Time) *DiagramCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *DiagramCreate) SetNillableUpdatedAt(v *time.Time) *DiagramCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *DiagramCreate) SetID(v uuid.UUID) *DiagramCreate {
 	_c.mutation.SetID(v)
@@ -367,6 +381,10 @@ func (_c *DiagramCreate) defaults() {
 		v := diagram.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := diagram.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := diagram.DefaultID()
 		_c.mutation.SetID(v)
@@ -418,6 +436,9 @@ func (_c *DiagramCreate) check() error {
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Diagram.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Diagram.updated_at"`)}
 	}
 	if len(_c.mutation.InstrumentIDs()) == 0 {
 		return &ValidationError{Name: "instrument", err: errors.New(`ent: missing required edge "Diagram.instrument"`)}
@@ -500,6 +521,10 @@ func (_c *DiagramCreate) createSpec() (*Diagram, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(diagram.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(diagram.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.InstrumentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

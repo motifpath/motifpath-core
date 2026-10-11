@@ -145,7 +145,7 @@ func TestEntExerciseRepository_List_PagesAndFilters(t *testing.T) {
 	}
 	exerciseID := func(e domain.Exercise) string { return e.ID }
 
-	t.Run("orders by id and pages with a total", func(t *testing.T) {
+	t.Run("orders by title and pages with a total", func(t *testing.T) {
 		first, err := repo.List(ctx, domain.ExerciseFilter{}, domain.PageRequest{Limit: 3, Offset: 0})
 		require.NoError(t, err)
 		second, err := repo.List(ctx, domain.ExerciseFilter{}, domain.PageRequest{Limit: 3, Offset: 3})
@@ -154,13 +154,14 @@ func TestEntExerciseRepository_List_PagesAndFilters(t *testing.T) {
 		assert.Equal(t, 5, first.Total)
 		assert.Len(t, first.Items, 3)
 		assert.Len(t, second.Items, 2)
-		all := append(titlesOf(first.Items, exerciseID), titlesOf(second.Items, exerciseID)...)
-		assert.ElementsMatch(t, ids, all)
-		assert.IsIncreasing(t, all)
+		assert.ElementsMatch(t, ids, append(titlesOf(first.Items, exerciseID), titlesOf(second.Items, exerciseID)...))
+		exerciseTitle := func(e domain.Exercise) string { return e.Title }
+		assert.Equal(t, []string{"Exercise 0", "Exercise 1", "Exercise 2", "Exercise 3", "Exercise 4"},
+			append(titlesOf(first.Items, exerciseTitle), titlesOf(second.Items, exerciseTitle)...))
 	})
 
 	t.Run("the skill filter narrows the total, not just the page", func(t *testing.T) {
-		got, err := repo.List(ctx, domain.ExerciseFilter{SkillID: skill.ID}, domain.PageRequest{Limit: 1})
+		got, err := repo.List(ctx, domain.ExerciseFilter{SkillIDs: []string{skill.ID}}, domain.PageRequest{Limit: 1})
 
 		require.NoError(t, err)
 		assert.Equal(t, 3, got.Total)
@@ -199,7 +200,7 @@ func TestEntExerciseRepository_List_TextLanguageConceptAndCreatorFilters(t *test
 		want   []domain.Exercise
 	}{
 		{name: "title search ignores case", filter: domain.ExerciseFilter{Query: "TRIAD"}, want: []domain.Exercise{bobsTriad, carolsTriad, legacy}},
-		{name: "by concept", filter: domain.ExerciseFilter{ConceptID: fifth.ID}, want: []domain.Exercise{carolsFifth}},
+		{name: "by concept", filter: domain.ExerciseFilter{ConceptIDs: []string{fifth.ID}}, want: []domain.Exercise{carolsFifth}},
 		{name: "by language", filter: domain.ExerciseFilter{Language: "pt_BR"}, want: []domain.Exercise{carolsTriad, carolsFifth}},
 		{name: "by creator, never matching an exercise with no recorded creator", filter: domain.ExerciseFilter{CreatedBy: bob}, want: []domain.Exercise{bobsTriad}},
 		{name: "filters combine", filter: domain.ExerciseFilter{Query: "triad", CreatedBy: carol}, want: []domain.Exercise{carolsTriad}},
@@ -229,7 +230,7 @@ func TestEntExerciseRepository_List_TextLanguageConceptAndCreatorFilters(t *test
 	})
 
 	t.Run("creator ids are distinct and skip exercises with none", func(t *testing.T) {
-		got, err := repo.ListCreatorIDs(ctx)
+		got, err := listCreatorIDs(repo.ListCreatorCounts(ctx))
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{bob, carol}, got)

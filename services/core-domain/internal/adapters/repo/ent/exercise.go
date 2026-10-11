@@ -40,6 +40,8 @@ type Exercise struct {
 	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ExerciseQuery when eager-loading is set.
 	Edges        ExerciseEdges `json:"edges"`
@@ -207,7 +209,7 @@ func (*Exercise) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case exercise.FieldTitle, exercise.FieldPrompt, exercise.FieldExerciseType, exercise.FieldImageURL, exercise.FieldAudioURL, exercise.FieldRemediationTargets, exercise.FieldDiagramRef, exercise.FieldDiagramStackRef:
 			values[i] = new(sql.NullString)
-		case exercise.FieldCreatedAt:
+		case exercise.FieldCreatedAt, exercise.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case exercise.FieldID:
 			values[i] = new(uuid.UUID)
@@ -304,6 +306,12 @@ func (_m *Exercise) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
+			}
+		case exercise.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -452,6 +460,9 @@ func (_m *Exercise) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

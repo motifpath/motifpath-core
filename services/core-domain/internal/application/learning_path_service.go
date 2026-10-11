@@ -21,10 +21,11 @@ type LearningPathService struct {
 	newID          func() string
 	now            func() time.Time
 	instruments    ports.InstrumentRepository
+	knowledge      ports.KnowledgeNodeRepository
 }
 
-func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, users ports.UserRepository, instruments ports.InstrumentRepository, newID func() string, now func() time.Time) *LearningPathService {
-	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, users: users, newID: newID, now: now, instruments: instruments}
+func NewLearningPathService(nodes ports.ContentNodeRepository, paths ports.LearningPathRepository, courseVersions ports.CourseVersionRepository, versions ports.ContentNodeVersionRepository, languages ports.LanguageRepository, users ports.UserRepository, instruments ports.InstrumentRepository, knowledge ports.KnowledgeNodeRepository, newID func() string, now func() time.Time) *LearningPathService {
+	return &LearningPathService{nodes: nodes, paths: paths, courseVersions: courseVersions, versions: versions, languages: languages, users: users, newID: newID, now: now, instruments: instruments, knowledge: knowledge}
 }
 
 // PathItemInput is one item the caller wants in a new learning path: the
@@ -115,10 +116,15 @@ func (s *LearningPathService) ListLearningPaths(ctx context.Context, caller doma
 		filter.CreatedBy = caller.ID
 	}
 	if !filter.Sort.Valid() {
-		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("sort", "must be one of: title, updated")
+		return domain.Page[domain.LearningPath]{}, domain.SortValidationError()
 	}
 	if filter.Status != "" && !filter.Status.Valid() {
 		return domain.Page[domain.LearningPath]{}, domain.NewValidationError("status", "must be one of: draft, published")
+	}
+	var err error
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.LearningPath]{}, err
 	}
 	return s.paths.List(ctx, filter, page)
 }
@@ -137,7 +143,7 @@ func (s *LearningPathService) ListLearningPathCreators(ctx context.Context, call
 	if caller.Role == domain.RoleTeacher {
 		filter.CreatedBy = caller.ID
 	}
-	ids, err := s.paths.ListCreatorIDs(ctx, filter)
+	ids, err := s.paths.ListCreatorCounts(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -117,6 +118,20 @@ func (_u *CourseUpdate) SetNillableThumbnailURL(v *string) *CourseUpdate {
 // ClearThumbnailURL clears the value of the "thumbnail_url" field.
 func (_u *CourseUpdate) ClearThumbnailURL() *CourseUpdate {
 	_u.mutation.ClearThumbnailURL()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *CourseUpdate) SetUpdatedAt(v time.Time) *CourseUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableUpdatedAt(v *time.Time) *CourseUpdate {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
 	return _u
 }
 
@@ -271,6 +286,9 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ThumbnailURLCleared() {
 		_spec.ClearField(course.FieldThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(course.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -484,6 +502,20 @@ func (_u *CourseUpdateOne) ClearThumbnailURL() *CourseUpdateOne {
 	return _u
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *CourseUpdateOne) SetUpdatedAt(v time.Time) *CourseUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableUpdatedAt(v *time.Time) *CourseUpdateOne {
+	if v != nil {
+		_u.SetUpdatedAt(*v)
+	}
+	return _u
+}
+
 // AddInstrumentIDs adds the "instruments" edge to the Instrument entity by IDs.
 func (_u *CourseUpdateOne) AddInstrumentIDs(ids ...uuid.UUID) *CourseUpdateOne {
 	_u.mutation.AddInstrumentIDs(ids...)
@@ -665,6 +697,9 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if _u.mutation.ThumbnailURLCleared() {
 		_spec.ClearField(course.FieldThumbnailURL, field.TypeString)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(course.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.InstrumentsCleared() {
 		edge := &sqlgraph.EdgeSpec{

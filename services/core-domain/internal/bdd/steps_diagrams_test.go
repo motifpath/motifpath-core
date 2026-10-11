@@ -5,8 +5,8 @@ package bdd
 import (
 	"fmt"
 	"reflect"
-	"slices"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -268,7 +268,7 @@ func (w *world) aDiagramExistsOnWithPositions(slug, instrumentName string, table
 			return fmt.Errorf("fret %q is not a number: %w", fretCell, err)
 		}
 		positions = append(positions, domain.Position{
-			ID: deterministicUUID("position", fmt.Sprintf("%s-%d", slug, row)).String(),
+			ID:       deterministicUUID("position", fmt.Sprintf("%s-%d", slug, row)).String(),
 			Interval: interval, NoteName: note, String: &str, Fret: &fret,
 		})
 	}
@@ -1064,6 +1064,7 @@ func (w *world) listsDiagramsInLanguage(_, language string) error {
 // last step fetched.
 func (w *world) responseListsBefore(first, second string) error {
 	var ids []uuid.UUID
+	var titles []string
 	var idOf func(slug string) uuid.UUID
 	switch resp := w.lastResp.(type) {
 	case generated.ListDiagrams200JSONResponse:
@@ -1076,12 +1077,31 @@ func (w *world) responseListsBefore(first, second string) error {
 			ids = append(ids, p.LearningPathId)
 		}
 		idOf = pathID
+	case generated.ListContentNodes200JSONResponse:
+		for _, n := range resp.Items {
+			ids = append(ids, n.ContentNodeId)
+			titles = append(titles, n.Title)
+		}
+		idOf = nodeID
+	case generated.ListExercises200JSONResponse:
+		for _, e := range resp.Items {
+			ids = append(ids, e.ExerciseId)
+			titles = append(titles, e.Title)
+		}
+		idOf = exerciseID
+	case generated.ListCourses200JSONResponse:
+		for _, c := range resp.Items {
+			ids = append(ids, c.CourseId)
+			titles = append(titles, c.Title)
+		}
+		idOf = func(slug string) uuid.UUID { return w.courseIDBySlug[slug] }
 	default:
-		return fmt.Errorf("expected a diagram or learning path list, got %#v (err=%v)", w.lastResp, w.lastErr)
+		return fmt.Errorf("expected a list response, got %#v (err=%v)", w.lastResp, w.lastErr)
 	}
-	indexOf := func(slug string) int {
+	// A name is an item's slug or, where the list carries one, its title.
+	indexOf := func(name string) int {
 		for i, id := range ids {
-			if id == idOf(slug) {
+			if id == idOf(name) || (i < len(titles) && titles[i] == name) {
 				return i
 			}
 		}

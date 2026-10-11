@@ -172,6 +172,9 @@ var (
 		{Name: "review_state", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "overridden"}, Default: "pending"},
 		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "latest_published_version", Type: field.TypeInt, Nullable: true},
+		{Name: "has_unpublished_changes", Type: field.TypeBool, Default: true},
 	}
 	// ContentNodesTable holds the schema information for the "content_nodes" table.
 	ContentNodesTable = &schema.Table{
@@ -389,6 +392,7 @@ var (
 		{Name: "thumbnail_url", Type: field.TypeString, Nullable: true},
 		{Name: "created_by", Type: field.TypeUUID},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// CoursesTable holds the schema information for the "courses" table.
 	CoursesTable = &schema.Table{
@@ -532,6 +536,7 @@ var (
 		{Name: "playbacks", Type: field.TypeJSON},
 		{Name: "default_playback_id", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "instrument_id", Type: field.TypeUUID},
 	}
 	// DiagramsTable holds the schema information for the "diagrams" table.
@@ -542,7 +547,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "diagrams_instruments_instrument",
-				Columns:    []*schema.Column{DiagramsColumns[12]},
+				Columns:    []*schema.Column{DiagramsColumns[13]},
 				RefColumns: []*schema.Column{InstrumentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -786,6 +791,7 @@ var (
 		{Name: "diagram_stack_ref", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "created_by", Type: field.TypeUUID, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// ExercisesTable holds the schema information for the "exercises" table.
 	ExercisesTable = &schema.Table{

@@ -65,7 +65,7 @@ func (h *Handler) ListCatalogPathCreators(ctx context.Context, request generated
 	if err != nil {
 		return nil, err
 	}
-	return generated.ListCatalogPathCreators200JSONResponse(toUserRefs(creators)), nil
+	return generated.ListCatalogPathCreators200JSONResponse(toCreatorRefs(creators)), nil
 }
 
 // catalogPathListFilter maps GET /catalog/paths' query parameters onto the

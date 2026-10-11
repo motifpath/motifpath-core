@@ -75,6 +75,7 @@ func (r *EntDiagramRepository) Create(ctx context.Context, d domain.Diagram) err
 		SetPlaybacks(entPlaybacks(d.Playbacks)).
 		SetNillableDefaultPlaybackID(d.DefaultPlaybackID).
 		SetCreatedAt(d.CreatedAt).
+		SetUpdatedAt(updatedAtOr(d.UpdatedAt, d.CreatedAt)).
 		AddCompatibleInstrumentIDs(compatibleInstrumentIDs...).
 		AddSkillIDs(skillIDs...).
 		AddConceptIDs(conceptIDs...).
@@ -127,8 +128,7 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 	if err != nil {
 		return domain.Page[domain.Diagram]{}, err
 	}
-	rows, err := withDiagramEdges(query).
-		Order(byResolvedName(filter.Locale), ent.Asc(diagram.FieldID)).
+	rows, err := withDiagramEdges(query.Order(diagramOrder(filter)...)).
 		Limit(page.Limit).
 		Offset(page.Offset).
 		All(ctx)
@@ -142,24 +142,36 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 	return domain.Page[domain.Diagram]{Items: items, Total: total}, nil
 }
 
-// ListCreatorIDs returns the distinct created_by of every diagram matching
-// filter, using the same predicates as List.
-func (r *EntDiagramRepository) ListCreatorIDs(ctx context.Context, filter domain.DiagramListFilter) ([]string, error) {
+// diagramOrder is the order a listing is returned in: by the name the
+// caller reads, or for sort updated the most recent change first, then id.
+// Order appends to a query, so exactly one of the two is chosen here.
+func diagramOrder(filter domain.DiagramListFilter) []diagram.OrderOption {
+	if filter.Sort == domain.ListSortUpdated {
+		return []diagram.OrderOption{ent.Desc(diagram.FieldUpdatedAt), ent.Asc(diagram.FieldID)}
+	}
+	return []diagram.OrderOption{byResolvedName(filter.Locale), ent.Asc(diagram.FieldID)}
+}
+
+// ListCreatorCounts returns each distinct created_by of the diagrams
+// matching filter, using the same predicates as List, with how many of them
+// they created.
+func (r *EntDiagramRepository) ListCreatorCounts(ctx context.Context, filter domain.DiagramListFilter) ([]domain.CreatorCount, error) {
 	query, err := r.filteredQuery(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	var rows []struct {
 		CreatedBy uuid.UUID `json:"created_by"`
+		Count     int       `json:"count"`
 	}
-	if err := query.Unique(true).Select(diagram.FieldCreatedBy).Scan(ctx, &rows); err != nil {
+	if err := query.GroupBy(diagram.FieldCreatedBy).Aggregate(ent.Count()).Scan(ctx, &rows); err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(rows))
+	counts := make([]domain.CreatorCount, len(rows))
 	for i, row := range rows {
-		ids[i] = row.CreatedBy.String()
+		counts[i] = domain.CreatorCount{UserID: row.CreatedBy.String(), Count: row.Count}
 	}
-	return ids, nil
+	return counts, nil
 }
 
 // filteredQuery selects the diagrams matching filter. Every field but Name
@@ -236,8 +248,12 @@ func diagramListPredicates(filter domain.DiagramListFilter) ([]predicate.Diagram
 		}},
 		{filter.CreatedBy, diagram.CreatedBy},
 		{filter.InstrumentID, func(id uuid.UUID) predicate.Diagram { return diagram.HasCompatibleInstrumentsWith(instrument.ID(id)) }},
-		{filter.SkillID, func(id uuid.UUID) predicate.Diagram { return diagram.HasSkillsWith(knowledgenode.ID(id)) }},
-		{filter.ConceptID, func(id uuid.UUID) predicate.Diagram { return diagram.HasConceptsWith(knowledgenode.ID(id)) }},
+	}
+	if len(filter.SkillIDs) > 0 {
+		predicates = append(predicates, diagram.HasSkillsWith(knowledgenode.IDIn(parseUUIDsSkippingInvalid(filter.SkillIDs)...)))
+	}
+	if len(filter.ConceptIDs) > 0 {
+		predicates = append(predicates, diagram.HasConceptsWith(knowledgenode.IDIn(parseUUIDsSkippingInvalid(filter.ConceptIDs)...)))
 	}
 	if filter.RootNote != "" {
 		predicates = append(predicates, diagram.RootNoteEQ(filter.RootNote))
@@ -294,6 +310,7 @@ func (r *EntDiagramRepository) Update(ctx context.Context, d domain.Diagram) err
 	}
 	update := tx.Diagram.UpdateOneID(id).
 		SetNames(d.Names).
+		SetUpdatedAt(updatedAtOr(d.UpdatedAt, d.CreatedAt)).
 		SetNillableRootNote(d.RootNote).
 		SetNillableColor(d.Color).
 		SetLabelDisplay(diagram.LabelDisplay(d.LabelDisplay)).
@@ -475,6 +492,7 @@ func toDomainDiagram(row *ent.Diagram) domain.Diagram {
 		Skills:            domainKnowledgeNodesFromEdges(row.Edges.Skills),
 		Concepts:          domainKnowledgeNodesFromEdges(row.Edges.Concepts),
 		CreatedAt:         row.CreatedAt,
+		UpdatedAt:         row.UpdatedAt,
 		Shape:             toDomainDiagramShape(row.Edges.Shape),
 	}
 }

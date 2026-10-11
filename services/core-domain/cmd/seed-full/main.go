@@ -204,10 +204,10 @@ func wireServices(res resources) (services, seedDeps) {
 
 	svc := services{
 		identity:    application.NewIdentityService(userRepo, languageRepo, newID, now),
-		content:     application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), newID, now),
-		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, newID, now),
+		content:     application.NewContentService(nodeRepo, expandedRepo, knowledgeRepo, contentNodeVersionRepo, diagramRepo, instrumentRepo, voiceRepo, repo.NewEntSongChartRepository(entClient), userRepo, newID, now),
+		path:        application.NewLearningPathService(nodeRepo, pathRepo, courseVersionRepo, contentNodeVersionRepo, languageRepo, userRepo, instrumentRepo, knowledgeRepo, newID, now),
 		studentPath: studentPathService,
-		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, newID, now),
+		course:      application.NewCourseService(pathRepo, courseRepo, courseVersionRepo, userRepo, languageRepo, instrumentRepo, knowledgeRepo, newID, now),
 		enrollment:  application.NewCourseEnrollmentService(courseRepo, courseVersionRepo, pathRepo, studentPathRepo, courseEnrollmentRepo, studentPathService, studentLearningStateRepo, completionReader, newID, now),
 		challenge:   application.NewChallengeService(nodeRepo, challengeRepo, exerciseRepo, newID, now),
 		exercise:    application.NewExerciseService(challengeRepo, exerciseRepo, nodeRepo, knowledgeRepo, diagramRepo, instrumentRepo, voiceRepo, userRepo, repo.NewMongoPracticeReferenceWriter(res.mongoDB, now), newID, now, rand.Shuffle),

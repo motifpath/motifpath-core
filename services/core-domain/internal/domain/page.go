@@ -51,25 +51,75 @@ type Page[T any] struct {
 }
 
 // ContentNodeFilter narrows a content node listing. A zero-valued field
-// means "no filter" on that dimension. SkillID/ConceptID match a node whose
-// linked ids contain that exact id — not its ancestors or descendants. Query
-// is a case-insensitive substring match against the node's title.
+// means "no filter" on that dimension. SkillIDs/ConceptIDs keep a node whose
+// linked ids contain any of them; the application widens each id to its
+// whole subtree before the repository sees it. Query is a case-insensitive
+// substring match against the node's title.
 type ContentNodeFilter struct {
 	ContentType ContentType
-	SkillID     string
-	ConceptID   string
+	SkillIDs    []string
+	ConceptIDs  []string
 	Difficulty  DifficultyLevel
 	Query       string
 	// InstrumentID keeps nodes for that instrument and nodes for every
 	// instrument (no instruments listed).
 	InstrumentID string
+	// CreatedBy keeps nodes created by that user.
+	CreatedBy string
+	// Language keeps nodes available in that language code; a
+	// language-agnostic node never matches.
+	Language string
+	// Status keeps nodes in that publishing state; empty keeps every state.
+	Status ContentNodeStatus
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
+}
+
+// ContentNodeStatus is where a content node stands in publishing, as a list
+// filters it.
+type ContentNodeStatus string
+
+const (
+	// ContentNodeStatusDraft is a node that has never been published.
+	ContentNodeStatusDraft ContentNodeStatus = "draft"
+	// ContentNodeStatusPublished is a published node that matches its
+	// latest version.
+	ContentNodeStatusPublished ContentNodeStatus = "published"
+	// ContentNodeStatusUnpublishedChanges is a published node that now
+	// differs from its latest version.
+	ContentNodeStatusUnpublishedChanges ContentNodeStatus = "unpublished_changes"
+)
+
+// Valid reports whether s is a status this service knows; the zero value
+// means every status.
+func (s ContentNodeStatus) Valid() bool {
+	switch s {
+	case "", ContentNodeStatusDraft, ContentNodeStatusPublished, ContentNodeStatusUnpublishedChanges:
+		return true
+	}
+	return false
+}
+
+// Matches reports whether node is in status s; the zero value matches every
+// node.
+func (s ContentNodeStatus) Matches(node ContentNode) bool {
+	switch s {
+	case ContentNodeStatusDraft:
+		return node.LatestPublishedVersion == nil
+	case ContentNodeStatusPublished:
+		return node.LatestPublishedVersion != nil && !node.HasUnpublishedChanges
+	case ContentNodeStatusUnpublishedChanges:
+		return node.LatestPublishedVersion != nil && node.HasUnpublishedChanges
+	}
+	return true
 }
 
 // ExerciseFilter narrows an exercise listing. A zero-valued field means "no
 // filter" on that dimension.
 type ExerciseFilter struct {
-	SkillID      string
-	ConceptID    string
+	// SkillIDs/ConceptIDs keep exercises linked to any of them.
+	SkillIDs     []string
+	ConceptIDs   []string
 	ExerciseType ExerciseType
 	// Language keeps exercises available in that language code.
 	Language string
@@ -81,6 +131,8 @@ type ExerciseFilter struct {
 	// InstrumentIDs keeps exercises for at least one of these instruments,
 	// plus exercises for every instrument; empty applies no filter.
 	InstrumentIDs []string
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
 }
 
 // LearningPathFilter narrows a learning path listing. Query is a
@@ -107,23 +159,29 @@ type LearningPathFilter struct {
 	// status.
 	Status LearningPathStatus
 	// Sort orders the results; the zero value orders by title.
-	Sort LearningPathSort
+	Sort ListSort
 }
 
-// LearningPathSort is the order a learning path listing is returned in.
-type LearningPathSort string
+// ListSort is the order an authoring list is returned in.
+type ListSort string
 
 const (
-	// LearningPathSortTitle orders by title, then id.
-	LearningPathSortTitle LearningPathSort = "title"
-	// LearningPathSortUpdated orders by most recently updated first, then id.
-	LearningPathSortUpdated LearningPathSort = "updated"
+	// ListSortTitle orders by title (a diagram's by the name the caller
+	// reads), then id.
+	ListSortTitle ListSort = "title"
+	// ListSortUpdated orders by most recently changed first, then id.
+	ListSortUpdated ListSort = "updated"
 )
 
 // Valid reports whether s is a sort order this service knows; the zero
 // value means the default, title.
-func (s LearningPathSort) Valid() bool {
-	return s == "" || s == LearningPathSortTitle || s == LearningPathSortUpdated
+func (s ListSort) Valid() bool {
+	return s == "" || s == ListSortTitle || s == ListSortUpdated
+}
+
+// SortValidationError is the error every list returns for an unknown sort.
+func SortValidationError() error {
+	return NewValidationError("sort", "must be one of: title, updated")
 }
 
 // CourseListFilter narrows a course catalog listing. A zero-valued field
@@ -151,12 +209,13 @@ type CourseListFilter struct {
 	// instrument (no instruments listed).
 	InstrumentID  string
 	PublishedView bool
+	// Sort orders the results; the zero value orders by title.
+	Sort ListSort
 }
 
 // DiagramListFilter narrows a diagram library listing. A zero-valued field
 // means "no filter" on that dimension, and every set field must match.
-// SkillID/ConceptID match a diagram whose linked ids contain that exact id —
-// not its ancestors or descendants.
+// SkillIDs/ConceptIDs keep a diagram whose linked ids contain any of them.
 //
 // VisibleTo, when set, is the role scoping a teacher's listing gets: only
 // basic diagrams, plus custom diagrams created by that user id, match.
@@ -170,8 +229,8 @@ type CourseListFilter struct {
 // results by the name that caller sees (see LocalizedText.Resolve).
 type DiagramListFilter struct {
 	InstrumentID string
-	SkillID      string
-	ConceptID    string
+	SkillIDs     []string
+	ConceptIDs   []string
 	Kind         DiagramKind
 	Purpose      DiagramPurposeFilter
 	CreatedBy    string
@@ -180,6 +239,9 @@ type DiagramListFilter struct {
 	Name         string
 	RootNote     string
 	Locale       string
+	// Sort orders the results; the zero value orders by the name the
+	// caller reads.
+	Sort ListSort
 }
 
 // Matches reports whether d satisfies every set field of f — the
@@ -213,10 +275,7 @@ func (f DiagramListFilter) matchesContent(d Diagram) bool {
 	if f.InstrumentID != "" && !slices.Contains(instrumentIDs, f.InstrumentID) {
 		return false
 	}
-	if f.SkillID != "" && !slices.Contains(d.SkillIDs(), f.SkillID) {
-		return false
-	}
-	if f.ConceptID != "" && !slices.Contains(d.ConceptIDs(), f.ConceptID) {
+	if !ContainsAny(d.SkillIDs(), f.SkillIDs) || !ContainsAny(d.ConceptIDs(), f.ConceptIDs) {
 		return false
 	}
 	if f.RootNote != "" && (d.RootNote == nil || *d.RootNote != f.RootNote) {
@@ -245,4 +304,25 @@ func (f DiagramListFilter) matchesName(d Diagram) bool {
 func ContainsLoosely(text, query string) bool {
 	start, _ := search.New(language.Und, search.Loose).IndexString(text, query)
 	return start >= 0
+}
+
+// ContainsAny reports whether ids holds any of wanted; an empty wanted is no
+// filter and always matches.
+func ContainsAny(ids, wanted []string) bool {
+	if len(wanted) == 0 {
+		return true
+	}
+	for _, id := range wanted {
+		if slices.Contains(ids, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// CreatorCount is one author of a list's items and how many of them the
+// caller can see.
+type CreatorCount struct {
+	UserID string
+	Count  int
 }

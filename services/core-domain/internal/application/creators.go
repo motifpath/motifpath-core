@@ -13,36 +13,42 @@ import (
 )
 
 // Creator is a user who created at least one item of a list, with their
-// current display name — one option of that list's creator filter.
+// current display name and how many of the list's items they created that
+// the caller can see — one option of that list's creator filter.
 type Creator struct {
 	UserID      string
 	DisplayName string
+	ItemCount   int
 }
 
-// namedCreators turns creator ids into Creators with their current display
-// names, keeping only those whose name contains nameQuery when it is
+// namedCreators turns creator counts into Creators with their current
+// display names, keeping only those whose name contains nameQuery when it is
 // non-empty. Matching and ordering both ignore case and accents, the way a
 // person reads a list of names; equal names fall back to user id. An id
 // without a user record is an error, never a nameless entry.
-func namedCreators(ctx context.Context, users ports.UserRepository, ids []string, nameQuery string) ([]Creator, error) {
+func namedCreators(ctx context.Context, users ports.UserRepository, counts []domain.CreatorCount, nameQuery string) ([]Creator, error) {
 	creators := []Creator{}
-	if len(ids) == 0 {
+	if len(counts) == 0 {
 		return creators, nil
+	}
+	ids := make([]string, len(counts))
+	for i, c := range counts {
+		ids[i] = c.UserID
 	}
 	names, err := users.GetDisplayNames(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, id := range ids {
-		name, ok := names[id]
+	for _, c := range counts {
+		name, ok := names[c.UserID]
 		if !ok {
-			return nil, fmt.Errorf("display name for creator %s: %w", id, domain.ErrNotFound)
+			return nil, fmt.Errorf("display name for creator %s: %w", c.UserID, domain.ErrNotFound)
 		}
 		if nameQuery != "" && !domain.ContainsLoosely(name, nameQuery) {
 			continue
 		}
-		creators = append(creators, Creator{UserID: id, DisplayName: name})
+		creators = append(creators, Creator{UserID: c.UserID, DisplayName: name, ItemCount: c.Count})
 	}
 
 	collator := collate.New(language.Und)

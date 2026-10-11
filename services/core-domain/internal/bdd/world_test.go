@@ -294,15 +294,15 @@ func newWorld() *world {
 	now := func() time.Time { return fixedNow }
 
 	identity := application.NewIdentityService(w.users, newFakeLanguageRepo(), newID, now)
-	content := application.NewContentService(w.nodes, w.expanded, w.knowledge, w.versions, w.diagrams, w.instruments, w.voices, w.songChartRepo, newID, now)
+	content := application.NewContentService(w.nodes, w.expanded, w.knowledge, w.versions, w.diagrams, w.instruments, w.voices, w.songChartRepo, w.users, newID, now)
 	challenge := application.NewChallengeService(w.nodes, w.challenges, w.exercises, newID, now)
 	exercise := application.NewExerciseService(w.challenges, w.exercises, w.nodes, w.knowledge, w.diagrams, w.instruments, w.voices, w.users, discardPracticeReferences{}, newID, now, noShuffle)
 	knowledgeNode := application.NewKnowledgeNodeService(w.knowledge, w.instruments, newFakeLanguageRepo(), newID)
 	knowledgeEdge := application.NewKnowledgeEdgeService(w.knowledgeEdges, w.knowledge, newID)
 	media := application.NewMediaService(w.exercises, &fakeMediaStorage{}, newID)
-	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, newID, now)
+	path := application.NewLearningPathService(w.nodes, w.paths, w.courseVersions, w.versions, newFakeLanguageRepo(), w.users, w.instruments, w.knowledge, newID, now)
 	studentPath := application.NewStudentPathService(w.users, w.paths, w.studentPaths, w.versions, w.learningState, w.courseEnrollments, w.courseVersions, w.nodes, w.exercises, w.completion, newID, now)
-	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, newID, now)
+	course := application.NewCourseService(w.paths, w.courses, w.courseVersions, w.users, newFakeLanguageRepo(), w.instruments, w.knowledge, newID, now)
 	courseEnrollment := application.NewCourseEnrollmentService(w.courses, w.courseVersions, w.paths, w.studentPaths, w.courseEnrollments, studentPath, w.learningState, w.completion, newID, now)
 
 	instrument := application.NewInstrumentService(w.instruments, w.voices, newFakeLanguageRepo(), discardPracticeReferences{}, newID)
@@ -320,7 +320,7 @@ func newWorld() *world {
 	summaryRollup := application.NewKnowledgeRollupService(w.knowledge, w.knowledgeEdges, w.practiceItems, w.practiceStates, summaryNow)
 	practiceSummary := application.NewPracticeSummaryService(w.instruments, w.studentPaths, w.courseEnrollments, w.paths, w.courseVersions, w.nodes, summaryRollup, w.practiceActivity, w.songChartRepo, summaryNow)
 
-	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
+	w.handler = appHTTP.NewHandler(identity, content, challenge, exercise, knowledgeNode, knowledgeEdge, media, path, application.NewPathCatalogService(w.paths, w.users, w.knowledge), studentPath, course, courseEnrollment, instrument, voice, diagram, practiceSession, practiceSummary, application.NewChordCatalogService(w.chords),
 		application.NewSongChartService(w.songChartRepo, w.chords, w.diagrams, newFakeLanguageRepo(), newID, now),
 		application.NewAppConfigService(w.appConfig, now, application.NewStartingPointsKey(w.instruments, newFakeLanguageRepo(), w.paths, w.courses)),
 		application.NewStartingPointsService(w.appConfig, newFakeLanguageRepo(), w.paths, w.courses),

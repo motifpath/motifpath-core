@@ -77,6 +77,11 @@ func (Exercise) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+
+		// updated_at is when the exercise was created or last edited; authoring
+		// lists sort by it.
+		field.Time("updated_at").
+			Default(time.Now),
 	}
 }
 

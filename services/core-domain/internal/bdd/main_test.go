@@ -80,6 +80,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	registerDisplayNameSteps(sc, w)
 	registerLocaleSteps(sc, w)
 	registerContentNodeSteps(sc, w)
+	registerAuthoringListSteps(sc, w)
 	registerKnowledgeNodeSteps(sc, w)
 	registerKnowledgeEdgeSteps(sc, w)
 	registerClassificationInstrumentSteps(sc, w)

@@ -228,26 +228,27 @@ func (r *EntLearningPathRepository) List(ctx context.Context, filter domain.Lear
 	return domain.Page[domain.LearningPath]{Items: result, Total: total}, nil
 }
 
-func (r *EntLearningPathRepository) ListCreatorIDs(ctx context.Context, filter domain.LearningPathFilter) ([]string, error) {
+func (r *EntLearningPathRepository) ListCreatorCounts(ctx context.Context, filter domain.LearningPathFilter) ([]domain.CreatorCount, error) {
 	predicates, err := learningPathListPredicates(filter)
 	if err != nil {
 		return nil, err
 	}
 	var rows []struct {
 		TeacherID uuid.UUID `json:"teacher_id"`
+		Count     int       `json:"count"`
 	}
 	if err := r.client.LearningPath.Query().
 		Where(predicates...).
-		Unique(true).
-		Select(learningpath.FieldTeacherID).
+		GroupBy(learningpath.FieldTeacherID).
+		Aggregate(ent.Count()).
 		Scan(ctx, &rows); err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(rows))
+	counts := make([]domain.CreatorCount, len(rows))
 	for i, row := range rows {
-		ids[i] = row.TeacherID.String()
+		counts[i] = domain.CreatorCount{UserID: row.TeacherID.String(), Count: row.Count}
 	}
-	return ids, nil
+	return counts, nil
 }
 
 // contentNodesForItems batch-fetches the content nodes referenced by
@@ -554,8 +555,8 @@ func classifiedItemMatches(skillIDs, conceptIDs []uuid.UUID) predicate.LearningP
 
 // learningPathListOrder orders by title, or by most recent update first when
 // sort asks for it; id breaks ties either way.
-func learningPathListOrder(sort domain.LearningPathSort) []learningpath.OrderOption {
-	if sort == domain.LearningPathSortUpdated {
+func learningPathListOrder(sort domain.ListSort) []learningpath.OrderOption {
+	if sort == domain.ListSortUpdated {
 		return []learningpath.OrderOption{learningpath.ByUpdatedAt(sql.OrderDesc()), learningpath.ByID()}
 	}
 	return []learningpath.OrderOption{learningpath.ByTitle(), learningpath.ByID()}

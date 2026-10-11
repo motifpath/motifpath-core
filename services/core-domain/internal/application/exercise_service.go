@@ -414,6 +414,14 @@ func (s *ExerciseService) ListExercises(ctx context.Context, caller domain.User,
 	if !canManageContent(caller.Role) {
 		return domain.Page[domain.Exercise]{}, domain.ErrForbidden
 	}
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.Exercise]{}, domain.SortValidationError()
+	}
+	var err error
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.Exercise]{}, err
+	}
 	return s.exercises.List(ctx, filter, page)
 }
 
@@ -426,7 +434,7 @@ func (s *ExerciseService) ListExerciseCreators(ctx context.Context, caller domai
 	if !canManageContent(caller.Role) {
 		return nil, domain.ErrForbidden
 	}
-	ids, err := s.exercises.ListCreatorIDs(ctx)
+	ids, err := s.exercises.ListCreatorCounts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -480,6 +488,7 @@ func (s *ExerciseService) UpdateExercise(ctx context.Context, caller domain.User
 		}
 	}
 
+	updated.UpdatedAt = s.now()
 	if err := s.exercises.Update(ctx, updated); err != nil {
 		return domain.Exercise{}, err
 	}

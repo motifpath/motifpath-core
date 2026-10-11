@@ -56,12 +56,13 @@ type ExerciseRepository interface {
 	ListByContentNodeID(ctx context.Context, contentNodeID string) ([]domain.Exercise, error)
 
 	// List returns one page of the exercises in the whole pool matching
-	// filter, ordered by id, with the count of all matches across pages.
+	// filter, in filter.Sort's order, with the count of all matches across pages.
 	List(ctx context.Context, filter domain.ExerciseFilter, page domain.PageRequest) (domain.Page[domain.Exercise], error)
 
-	// ListCreatorIDs returns the distinct CreatedBy of every exercise in the
-	// pool, in no particular order, skipping exercises with none recorded.
-	ListCreatorIDs(ctx context.Context) ([]string, error)
+	// ListCreatorCounts returns each distinct CreatedBy of the exercises in
+	// the pool with how many exercises they created, in no particular order,
+	// skipping exercises with none recorded.
+	ListCreatorCounts(ctx context.Context) ([]domain.CreatorCount, error)
 
 	// Update replaces exercise's title, prompt, skill/concept links,
 	// image_url, audio_url, options, and estimated_duration_seconds. exercise.ID

@@ -24,6 +24,7 @@ type ContentService struct {
 	instruments ports.InstrumentRepository
 	voices      ports.VoiceRepository
 	songCharts  ports.SongChartRepository
+	users       ports.UserRepository
 }
 
 // diagramRefRepos are the repositories a diagram reference is checked
@@ -32,8 +33,8 @@ func (s *ContentService) diagramRefRepos() diagramRefRepos {
 	return diagramRefRepos{diagrams: s.diagrams, instruments: s.instruments, voices: s.voices}
 }
 
-func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, newID func() string, now func() time.Time) *ContentService {
-	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts}
+func NewContentService(nodes ports.ContentNodeRepository, expanded ports.ExpandedContentRepository, knowledge ports.KnowledgeNodeRepository, versions ports.ContentNodeVersionRepository, diagrams ports.DiagramRepository, instruments ports.InstrumentRepository, voices ports.VoiceRepository, songCharts ports.SongChartRepository, users ports.UserRepository, newID func() string, now func() time.Time) *ContentService {
+	return &ContentService{nodes: nodes, expanded: expanded, knowledge: knowledge, versions: versions, diagrams: diagrams, newID: newID, now: now, instruments: instruments, voices: voices, songCharts: songCharts, users: users}
 }
 
 // checkEmbeddedSongCharts refuses lesson content that embeds a song chart
@@ -84,6 +85,9 @@ func (s *ContentService) PublishContentNode(ctx context.Context, caller domain.U
 
 	version := domain.NewContentNodeVersionSnapshot(s.newID(), node, nextVersionNumber, caller.ID, s.now())
 	if err := s.versions.Create(ctx, version); err != nil {
+		return domain.ContentNodeVersion{}, err
+	}
+	if err := s.nodes.MarkPublished(ctx, id, version.VersionNumber); err != nil {
 		return domain.ContentNodeVersion{}, err
 	}
 	return version, nil
@@ -190,14 +194,44 @@ func (s *ContentService) GetContentNode(ctx context.Context, id string) (domain.
 }
 
 // ListContentNodes returns one page of the content nodes from the library
-// matching filter (a zero-valued field means "no filter"). Only teachers and admins may list content nodes — the
-// library is an authoring surface, unlike GetContentNode which any
-// authenticated user may call for a specific known id.
+// matching filter (a zero-valued field means "no filter"); a skill or
+// concept also matches everything classified below it. Only teachers and
+// admins may list content nodes — the library is an authoring surface,
+// unlike GetContentNode which any authenticated user may call for a
+// specific known id.
 func (s *ContentService) ListContentNodes(ctx context.Context, caller domain.User, filter domain.ContentNodeFilter, page domain.PageRequest) (domain.Page[domain.ContentNode], error) {
 	if !canManageContent(caller.Role) {
 		return domain.Page[domain.ContentNode]{}, domain.ErrForbidden
 	}
+	if !filter.Sort.Valid() {
+		return domain.Page[domain.ContentNode]{}, domain.SortValidationError()
+	}
+	if !filter.Status.Valid() {
+		return domain.Page[domain.ContentNode]{}, domain.NewValidationError("status", "must be one of: draft, published, unpublished_changes")
+	}
+	var err error
+	filter.SkillIDs, filter.ConceptIDs, err = withClassificationSubtrees(ctx, s.knowledge, filter.SkillIDs, filter.ConceptIDs)
+	if err != nil {
+		return domain.Page[domain.ContentNode]{}, err
+	}
 	return s.nodes.List(ctx, filter, page)
+}
+
+// ListContentNodeCreators returns the distinct creators of the content nodes
+// in the library, each with how many nodes they created, so a picker can
+// offer a complete creator filter without paging. Only teachers and admins
+// may list them, as with the library itself. A non-empty nameQuery keeps
+// only the creators whose display name contains it; see namedCreators for
+// matching and ordering.
+func (s *ContentService) ListContentNodeCreators(ctx context.Context, caller domain.User, nameQuery string) ([]Creator, error) {
+	if !canManageContent(caller.Role) {
+		return nil, domain.ErrForbidden
+	}
+	counts, err := s.nodes.ListCreatorCounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return namedCreators(ctx, s.users, counts, nameQuery)
 }
 
 // UpdateContentNode replaces the given content node's title and
@@ -238,6 +272,13 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 		return domain.ContentNode{}, err
 	}
 
+	updated.UpdatedAt = s.now()
+	latest, err := s.latestVersion(ctx, id)
+	if err != nil {
+		return domain.ContentNode{}, err
+	}
+	updated.HasUnpublishedChanges = domain.ContentNodeHasUnpublishedChanges(updated, latest)
+
 	if err := s.nodes.Update(ctx, updated); err != nil {
 		return domain.ContentNode{}, err
 	}
@@ -245,6 +286,19 @@ func (s *ContentService) UpdateContentNode(ctx context.Context, caller domain.Us
 	// only carry the request-supplied ids until read back with their rows
 	// (Name/ParentID) joined in — same convention CreateContentNode follows.
 	return s.nodes.GetByID(ctx, updated.ID)
+}
+
+// latestVersion returns the content node's latest published version, or nil
+// if it has never been published.
+func (s *ContentService) latestVersion(ctx context.Context, id string) (*domain.ContentNodeVersion, error) {
+	latest, err := s.versions.GetLatestByContentNodeID(ctx, id)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &latest, nil
 }
 
 // checkLinkedExercisesFit returns a domain.ErrConflict unless every exercise

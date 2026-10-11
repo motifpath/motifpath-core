@@ -46,6 +46,8 @@ type Diagram struct {
 	DefaultPlaybackID *string `json:"default_playback_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DiagramQuery when eager-loading is set.
 	Edges        DiagramEdges `json:"edges"`
@@ -182,7 +184,7 @@ func (*Diagram) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case diagram.FieldKind, diagram.FieldPurpose, diagram.FieldRootNote, diagram.FieldLabelDisplay, diagram.FieldColor, diagram.FieldMode, diagram.FieldDefaultPlaybackID:
 			values[i] = new(sql.NullString)
-		case diagram.FieldCreatedAt:
+		case diagram.FieldCreatedAt, diagram.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case diagram.FieldID, diagram.FieldInstrumentID, diagram.FieldCreatedBy:
 			values[i] = new(uuid.UUID)
@@ -286,6 +288,12 @@ func (_m *Diagram) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
+			}
+		case diagram.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -416,6 +424,9 @@ func (_m *Diagram) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

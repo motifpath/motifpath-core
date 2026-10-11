@@ -247,6 +247,8 @@ type Exercise struct {
 	// an exercise created before creators were recorded. Fixed at creation.
 	CreatedBy string
 	CreatedAt time.Time
+	// UpdatedAt is when the exercise was created or last edited.
+	UpdatedAt time.Time
 }
 
 // NewExercise validates and constructs a standalone Exercise, not yet linked
@@ -281,6 +283,7 @@ func NewExercise(id, title string, prompt PromptDocument, exerciseType ExerciseT
 		ContentNodeIDs:           []string{},
 		Languages:                languagesFromCodes(languageCodes),
 		CreatedAt:                createdAt,
+		UpdatedAt:                createdAt,
 	}, nil
 }
 

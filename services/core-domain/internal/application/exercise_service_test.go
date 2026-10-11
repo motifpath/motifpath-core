@@ -910,7 +910,7 @@ func TestExerciseService_ListExercises(t *testing.T) {
 		exercises.put(domain.Exercise{ID: "picking-drill-01", Skills: []domain.KnowledgeNode{{ID: "skill-2"}}})
 		svc := newExerciseService(newFakeChallengeRepository(), exercises)
 
-		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{SkillID: "skill-2"}, firstPage)
+		got, err := svc.ListExercises(context.Background(), teacherCaller(), domain.ExerciseFilter{SkillIDs: []string{"skill-2"}}, firstPage)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"picking-drill-01"}, idsOf(got.Items))
@@ -942,7 +942,7 @@ func TestExerciseService_ListExercises(t *testing.T) {
 			want   []string
 		}{
 			{name: "title search ignores case", filter: domain.ExerciseFilter{Query: "TRIAD"}, want: []string{"bobs-triad", "carols-triad", "legacy-triad"}},
-			{name: "by concept", filter: domain.ExerciseFilter{ConceptID: "concept-2"}, want: []string{"carols-picking", "carols-triad"}},
+			{name: "by concept", filter: domain.ExerciseFilter{ConceptIDs: []string{"concept-2"}}, want: []string{"carols-picking", "carols-triad"}},
 			{name: "by language", filter: domain.ExerciseFilter{Language: "pt"}, want: []string{"carols-picking", "carols-triad"}},
 			{name: "by creator, never matching an exercise with no recorded creator", filter: domain.ExerciseFilter{CreatedBy: "teacher-1"}, want: []string{"bobs-triad"}},
 			{name: "filters combine", filter: domain.ExerciseFilter{Query: "triad", CreatedBy: "teacher-2"}, want: []string{"carols-triad"}},
@@ -1020,7 +1020,7 @@ func TestExerciseService_ListExerciseCreators(t *testing.T) {
 			got, err := svc.ListExerciseCreators(ctx, tt.caller, tt.query)
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, withoutCounts(got))
 		})
 	}
 

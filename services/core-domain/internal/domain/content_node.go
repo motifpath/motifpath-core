@@ -103,6 +103,15 @@ type ContentNode struct {
 	// ThumbnailURL is the image shown for the node; nil means none.
 	ThumbnailURL *string
 	CreatedAt    time.Time
+	// UpdatedAt is when the node was created or last edited.
+	UpdatedAt time.Time
+	// LatestPublishedVersion is the version_number last published, or nil
+	// for a node never published.
+	LatestPublishedVersion *int
+	// HasUnpublishedChanges is true when the node differs from its latest
+	// published version in anything a version records, or nothing has been
+	// published yet.
+	HasUnpublishedChanges bool
 }
 
 // ContentNodeFields are the parts of a content node its author writes, as
@@ -169,6 +178,9 @@ func NewContentNode(id, teacherID string, contentType ContentType, fields Conten
 		InstrumentIDs: fields.InstrumentIDs,
 		ThumbnailURL:  fields.ThumbnailURL,
 		CreatedAt:     createdAt,
+		UpdatedAt:     createdAt,
+
+		HasUnpublishedChanges: true,
 	}, nil
 }
 

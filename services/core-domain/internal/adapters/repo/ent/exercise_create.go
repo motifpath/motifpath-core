@@ -163,6 +163,20 @@ func (_c *ExerciseCreate) SetNillableCreatedAt(v *time.Time) *ExerciseCreate {
 	return _c
 }
 
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *ExerciseCreate) SetUpdatedAt(v time.Time) *ExerciseCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *ExerciseCreate) SetNillableUpdatedAt(v *time.Time) *ExerciseCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ExerciseCreate) SetID(v uuid.UUID) *ExerciseCreate {
 	_c.mutation.SetID(v)
@@ -411,6 +425,10 @@ func (_c *ExerciseCreate) defaults() {
 		v := exercise.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := exercise.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := exercise.DefaultID()
 		_c.mutation.SetID(v)
@@ -435,6 +453,9 @@ func (_c *ExerciseCreate) check() error {
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Exercise.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Exercise.updated_at"`)}
 	}
 	return nil
 }
@@ -514,6 +535,10 @@ func (_c *ExerciseCreate) createSpec() (*Exercise, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(exercise.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(exercise.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.ChallengesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

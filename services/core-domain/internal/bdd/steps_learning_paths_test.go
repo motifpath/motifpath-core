@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
@@ -638,7 +639,7 @@ func (w *world) courseHasBeenRetired(courseSlug string) error {
 	if !ok {
 		return fmt.Errorf("no course was seeded for slug %q", courseSlug)
 	}
-	return w.courses.UpdateStatus(context.Background(), courseID.String(), domain.CourseStatusRetired)
+	return w.courses.UpdateStatus(context.Background(), courseID.String(), domain.CourseStatusRetired, time.Now())
 }
 
 func (w *world) deletesLearningPath(name, slug string) error {

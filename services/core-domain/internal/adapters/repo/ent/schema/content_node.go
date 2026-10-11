@@ -60,6 +60,22 @@ func (ContentNode) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+
+		// updated_at is when the node was created or last edited; authoring
+		// lists sort by it.
+		field.Time("updated_at").
+			Default(time.Now),
+
+		// latest_published_version is the version_number last published;
+		// NULL for a node never published.
+		field.Int("latest_published_version").
+			Optional().
+			Nillable(),
+
+		// has_unpublished_changes is true when the node differs from its
+		// latest published version, or nothing has been published yet.
+		field.Bool("has_unpublished_changes").
+			Default(true),
 	}
 }
 

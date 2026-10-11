@@ -32,6 +32,8 @@ const (
 	FieldCreatedBy = "created_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
 	// EdgeInstruments holds the string denoting the instruments edge name in mutations.
 	EdgeInstruments = "instruments"
 	// EdgeCourseInstruments holds the string denoting the course_instruments edge name in mutations.
@@ -63,6 +65,7 @@ var Columns = []string{
 	FieldThumbnailURL,
 	FieldCreatedBy,
 	FieldCreatedAt,
+	FieldUpdatedAt,
 }
 
 var (
@@ -86,6 +89,8 @@ var (
 	DefaultLanguage string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
+	DefaultUpdatedAt func() time.Time
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
@@ -189,6 +194,11 @@ func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByCreatedAt orders the results by the created_at field.
 func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
 // ByInstrumentsCount orders the results by instruments count.

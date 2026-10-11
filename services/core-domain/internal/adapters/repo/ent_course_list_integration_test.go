@@ -83,7 +83,7 @@ func (f courseListFixture) publish(course domain.Course, title string, level dom
 		TitleSnapshot: title, SummarySnapshot: course.Summary, LevelSnapshot: level,
 		Checkpoints: versionCheckpointsOf(snapshot...), PublishedAt: fixedAt, AvailableForNewEnrollments: true,
 	}))
-	require.NoError(f.t, f.courses.UpdateStatus(f.ctx, course.ID, domain.CourseStatusPublished))
+	require.NoError(f.t, f.courses.UpdateStatus(f.ctx, course.ID, domain.CourseStatusPublished, fixedAt))
 }
 
 func (f courseListFixture) list(filter domain.CourseListFilter, page domain.PageRequest) domain.Page[domain.Course] {
@@ -292,7 +292,7 @@ func TestEntCourseRepository_List_FiltersByClassification(t *testing.T) {
 	})
 }
 
-func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
+func TestEntCourseRepository_ListCreatorCounts(t *testing.T) {
 	f := newCourseListFixture(t)
 	path := f.pathWith(nil, nil)
 	bob, carol, dave := uuid.NewString(), uuid.NewString(), uuid.NewString()
@@ -302,7 +302,7 @@ func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
 	f.draft("Strumming Basics", "", domain.DifficultyLevelBeginner, carol, path)
 	retired := f.draft("Theory Primer", "", domain.DifficultyLevelBeginner, dave, path)
 	f.publish(retired, "Theory Primer", domain.DifficultyLevelBeginner, path)
-	require.NoError(t, f.courses.UpdateStatus(f.ctx, retired.ID, domain.CourseStatusRetired))
+	require.NoError(t, f.courses.UpdateStatus(f.ctx, retired.ID, domain.CourseStatusRetired, fixedAt))
 
 	published := domain.CourseStatusPublished
 	tests := []struct {
@@ -317,7 +317,7 @@ func TestEntCourseRepository_ListCreatorIDs(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := f.courses.ListCreatorIDs(f.ctx, tc.filter)
+			got, err := listCreatorIDs(f.courses.ListCreatorCounts(f.ctx, tc.filter))
 
 			require.NoError(t, err)
 			assert.NotNil(t, got)
@@ -360,7 +360,7 @@ func TestEntCourseRepository_Language(t *testing.T) {
 			PublishedAt: fixedAt, AvailableForNewEnrollments: true,
 		}
 		require.NoError(t, f.versions.Create(f.ctx, version))
-		require.NoError(t, f.courses.UpdateStatus(f.ctx, portuguese.ID, domain.CourseStatusPublished))
+		require.NoError(t, f.courses.UpdateStatus(f.ctx, portuguese.ID, domain.CourseStatusPublished, fixedAt))
 
 		got, err := f.versions.GetLatestByCourseID(f.ctx, portuguese.ID)
 		require.NoError(t, err)

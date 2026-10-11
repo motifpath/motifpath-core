@@ -53,6 +53,11 @@ func (Course) Fields() []ent.Field {
 		field.Time("created_at").
 			Immutable().
 			Default(time.Now),
+
+		// updated_at is when the course was created or last changed — its details, its live draft, publishing or retiring; authoring
+		// lists sort by it.
+		field.Time("updated_at").
+			Default(time.Now),
 	}
 }
 
