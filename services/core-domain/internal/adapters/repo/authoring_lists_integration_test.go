@@ -214,12 +214,16 @@ func TestEntDiagramRepository_AuthoringSortAndCounts(t *testing.T) {
 	repo := NewEntDiagramRepository(client)
 	older := seedDiagram(t, ctx, client, "Guitar A")
 	newer := seedDiagram(t, ctx, client, "Guitar B")
+	// Named so their name order is the opposite of their change order: a
+	// listing sorted by change must not fall back on names.
 	for _, d := range []struct {
 		diagram domain.Diagram
+		name    string
 		at      time.Time
-	}{{older, earlierAt}, {newer, laterAt}} {
+	}{{older, "A older", earlierAt}, {newer, "Z newer", laterAt}} {
 		got, err := repo.GetByID(ctx, d.diagram.ID)
 		require.NoError(t, err)
+		got.Names = domain.LocalizedText{"en": d.name}
 		got.UpdatedAt = d.at
 		require.NoError(t, repo.Update(ctx, got))
 	}

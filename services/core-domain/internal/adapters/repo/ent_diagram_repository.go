@@ -128,11 +128,7 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 	if err != nil {
 		return domain.Page[domain.Diagram]{}, err
 	}
-	order := query.Order(byResolvedName(filter.Locale), ent.Asc(diagram.FieldID))
-	if filter.Sort == domain.ListSortUpdated {
-		order = query.Order(ent.Desc(diagram.FieldUpdatedAt), ent.Asc(diagram.FieldID))
-	}
-	rows, err := withDiagramEdges(order).
+	rows, err := withDiagramEdges(query.Order(diagramOrder(filter)...)).
 		Limit(page.Limit).
 		Offset(page.Offset).
 		All(ctx)
@@ -144,6 +140,16 @@ func (r *EntDiagramRepository) List(ctx context.Context, filter domain.DiagramLi
 		items[i] = toDomainDiagram(row)
 	}
 	return domain.Page[domain.Diagram]{Items: items, Total: total}, nil
+}
+
+// diagramOrder is the order a listing is returned in: by the name the
+// caller reads, or for sort updated the most recent change first, then id.
+// Order appends to a query, so exactly one of the two is chosen here.
+func diagramOrder(filter domain.DiagramListFilter) []diagram.OrderOption {
+	if filter.Sort == domain.ListSortUpdated {
+		return []diagram.OrderOption{ent.Desc(diagram.FieldUpdatedAt), ent.Asc(diagram.FieldID)}
+	}
+	return []diagram.OrderOption{byResolvedName(filter.Locale), ent.Asc(diagram.FieldID)}
 }
 
 // ListCreatorCounts returns each distinct created_by of the diagrams
