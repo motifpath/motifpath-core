@@ -256,7 +256,7 @@ func newEventWithID(eventType domain.EventType, eventID string) domain.TrackingE
 		return domain.SongChartOpenedEvent{TrackingEventBase: base, SongChartContext: songChartRead}
 	case domain.EventTypeSongChartChordViewed:
 		return domain.SongChartChordViewedEvent{TrackingEventBase: base, SongChartContext: songChartRead,
-			AnchorID: "a3", ChordDefinitionID: "chord-g", ChordVoicingID: "voicing-g-open"}
+			Source: domain.ChordViewSourceLyrics, AnchorID: "a3", ChordDefinitionID: "chord-g", ChordVoicingID: "voicing-g-open"}
 	case domain.EventTypeSongChartCompleted:
 		return domain.SongChartCompletedEvent{TrackingEventBase: base, SongChartContext: songChartRead}
 	default:

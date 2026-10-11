@@ -46,6 +46,7 @@ type eventDocument struct {
 
 	// song_chart.* fields.
 	SongChartContext  *songChartContextDoc `bson:"song_chart_context,omitempty"`
+	Source            string               `bson:"source,omitempty"`
 	AnchorID          string               `bson:"anchor_id,omitempty"`
 	ChordDefinitionID string               `bson:"chord_definition_id,omitempty"`
 	ChordVoicingID    string               `bson:"chord_voicing_id,omitempty"`
@@ -224,6 +225,7 @@ func fromDocument(doc eventDocument) (domain.TrackingEvent, error) {
 		return domain.SongChartChordViewedEvent{
 			TrackingEventBase: base,
 			SongChartContext:  fromSongChartContextDoc(doc.SongChartContext),
+			Source:            fromChordViewSourceDoc(doc.Source),
 			AnchorID:          doc.AnchorID,
 			ChordDefinitionID: doc.ChordDefinitionID,
 			ChordVoicingID:    doc.ChordVoicingID,
@@ -383,12 +385,22 @@ func addSongChartDoc(doc *eventDocument, event domain.TrackingEvent) {
 		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
 	case domain.SongChartChordViewedEvent:
 		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
+		doc.Source = string(e.Source)
 		doc.AnchorID = e.AnchorID
 		doc.ChordDefinitionID = e.ChordDefinitionID
 		doc.ChordVoicingID = e.ChordVoicingID
 	case domain.SongChartCompletedEvent:
 		doc.SongChartContext = toSongChartContextDoc(e.SongChartContext)
 	}
+}
+
+// fromChordViewSourceDoc reads a chord view's source. Views stored before the
+// chord strip existed have none, and could only have come from the lyrics.
+func fromChordViewSourceDoc(source string) domain.ChordViewSource {
+	if source == "" {
+		return domain.ChordViewSourceLyrics
+	}
+	return domain.ChordViewSource(source)
 }
 
 func toSongChartContextDoc(c domain.SongChartContext) *songChartContextDoc {

@@ -37,11 +37,19 @@ func TestToDomainEvent_SongChartEvents(t *testing.T) {
 			want:      domain.SongChartOpenedEvent{SongChartContext: testChartReference},
 		},
 		{
-			name:      "chord viewed",
+			name:      "chord viewed from the lyrics",
 			eventType: "song_chart.chord_viewed",
-			fields:    testChartContext + fmt.Sprintf(`,"anchor_id":"a3","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID),
+			fields:    testChartContext + fmt.Sprintf(`,"source":"lyrics","anchor_id":"a3","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID),
 			want: domain.SongChartChordViewedEvent{
-				SongChartContext: testChartReference, AnchorID: "a3", ChordDefinitionID: testChordID, ChordVoicingID: testVoicingID,
+				SongChartContext: testChartReference, Source: domain.ChordViewSourceLyrics, AnchorID: "a3", ChordDefinitionID: testChordID, ChordVoicingID: testVoicingID,
+			},
+		},
+		{
+			name:      "chord viewed from the strip, without an anchor",
+			eventType: "song_chart.chord_viewed",
+			fields:    testChartContext + fmt.Sprintf(`,"source":"strip","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID),
+			want: domain.SongChartChordViewedEvent{
+				SongChartContext: testChartReference, Source: domain.ChordViewSourceStrip, ChordDefinitionID: testChordID, ChordVoicingID: testVoicingID,
 			},
 		},
 		{
@@ -82,13 +90,14 @@ func withoutBase(event domain.TrackingEvent) domain.TrackingEvent {
 func TestToDomainEvent_SongChartEventsRejected(t *testing.T) {
 	viewed := func(omit string) string {
 		fields := map[string]string{
+			"source":              `"lyrics"`,
 			"anchor_id":           `"a3"`,
 			"chord_definition_id": fmt.Sprintf("%q", testChordID),
 			"chord_voicing_id":    fmt.Sprintf("%q", testVoicingID),
 		}
 		delete(fields, omit)
 		out := testChartContext
-		for _, key := range []string{"anchor_id", "chord_definition_id", "chord_voicing_id"} {
+		for _, key := range []string{"source", "anchor_id", "chord_definition_id", "chord_voicing_id"} {
 			if v, ok := fields[key]; ok {
 				out += fmt.Sprintf(`,%q:%s`, key, v)
 			}
@@ -105,8 +114,12 @@ func TestToDomainEvent_SongChartEventsRejected(t *testing.T) {
 		{name: "opened without a song chart context", eventType: "song_chart.opened", fields: "", wantErr: domain.ErrMissingRequiredField, wantField: "song_chart_context"},
 		{name: "a context without the chart", eventType: "song_chart.opened", fields: `,"song_chart_context":{"revision_number":2}`, wantErr: domain.ErrMissingRequiredField, wantField: "song_chart_context.song_chart_id"},
 		{name: "a context at revision 0", eventType: "song_chart.opened", fields: fmt.Sprintf(`,"song_chart_context":{"song_chart_id":%q,"revision_number":0}`, testSongChartID), wantErr: domain.ErrInvalidField, wantField: "song_chart_context.revision_number"},
-		{name: "chord viewed without the anchor", eventType: "song_chart.chord_viewed", fields: viewed("anchor_id"), wantErr: domain.ErrMissingRequiredField, wantField: "anchor_id"},
-		{name: "chord viewed with an anchor id too long", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"anchor_id":%q,"chord_definition_id":%q,"chord_voicing_id":%q`, strings.Repeat("a", 65), testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "anchor_id"},
+		{name: "chord viewed without the source", eventType: "song_chart.chord_viewed", fields: viewed("source"), wantErr: domain.ErrMissingRequiredField, wantField: "source"},
+		{name: "chord viewed from an unknown source", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"source":"sidebar","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "source"},
+		{name: "chord viewed from the lyrics without the anchor", eventType: "song_chart.chord_viewed", fields: viewed("anchor_id"), wantErr: domain.ErrMissingRequiredField, wantField: "anchor_id"},
+		{name: "chord viewed from the lyrics with an empty anchor", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"source":"lyrics","anchor_id":"","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "anchor_id"},
+		{name: "chord viewed with an anchor id too long", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"source":"lyrics","anchor_id":%q,"chord_definition_id":%q,"chord_voicing_id":%q`, strings.Repeat("a", 65), testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "anchor_id"},
+		{name: "chord viewed from the strip with an anchor", eventType: "song_chart.chord_viewed", fields: testChartContext + fmt.Sprintf(`,"source":"strip","anchor_id":"a3","chord_definition_id":%q,"chord_voicing_id":%q`, testChordID, testVoicingID), wantErr: domain.ErrInvalidField, wantField: "anchor_id"},
 		{name: "chord viewed without the chord", eventType: "song_chart.chord_viewed", fields: viewed("chord_definition_id"), wantErr: domain.ErrMissingRequiredField, wantField: "chord_definition_id"},
 		{name: "chord viewed without the voicing", eventType: "song_chart.chord_viewed", fields: viewed("chord_voicing_id"), wantErr: domain.ErrMissingRequiredField, wantField: "chord_voicing_id"},
 		{name: "completed without a song chart context", eventType: "song_chart.completed", fields: "", wantErr: domain.ErrMissingRequiredField, wantField: "song_chart_context"},

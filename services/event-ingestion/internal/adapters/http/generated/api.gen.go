@@ -561,6 +561,24 @@ func (e SongChartChordViewedEventEventType) Valid() bool {
 	}
 }
 
+// Defines values for SongChartChordViewedEventSource.
+const (
+	Lyrics SongChartChordViewedEventSource = "lyrics"
+	Strip  SongChartChordViewedEventSource = "strip"
+)
+
+// Valid indicates whether the value is a known member of the SongChartChordViewedEventSource enum.
+func (e SongChartChordViewedEventSource) Valid() bool {
+	switch e {
+	case Lyrics:
+		return true
+	case Strip:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SongChartCompletedEventEventType.
 const (
 	SongChartCompletedEventEventTypeSongChartCompleted SongChartCompletedEventEventType = "song_chart.completed"
@@ -1450,8 +1468,10 @@ type ShapeInterval string
 
 // SongChartChordViewedEvent defines model for SongChartChordViewedEvent.
 type SongChartChordViewedEvent struct {
-	// AnchorId The anchorId of the chord the student tapped.
-	AnchorId string `json:"anchor_id"`
+	// AnchorId The anchorId of the chord the student tapped. Required when source is lyrics;
+	// absent when source is strip, since a strip chord stands for every anchor of
+	// that chord.
+	AnchorId *string `json:"anchor_id,omitempty"`
 
 	// ChordDefinitionId The catalog chord the tapped anchor resolves to.
 	ChordDefinitionId openapi_types.UUID `json:"chord_definition_id"`
@@ -1479,6 +1499,10 @@ type SongChartChordViewedEvent struct {
 	// event, so a reading is tied to the exact lyrics and chords the student saw.
 	SongChartContext SongChartContext `json:"song_chart_context"`
 
+	// Source Where the student tapped the chord: over the lyrics, or in the "Chords in this
+	// song" strip under the chart's header.
+	Source SongChartChordViewedEventSource `json:"source"`
+
 	// StudentId ID of the authenticated student who generated this event. Used as the Kafka
 	// partition key — guarantees ordered delivery of all events for a given student
 	// to the same partition and consumer.
@@ -1487,6 +1511,10 @@ type SongChartChordViewedEvent struct {
 
 // SongChartChordViewedEventEventType defines model for SongChartChordViewedEvent.EventType.
 type SongChartChordViewedEventEventType string
+
+// SongChartChordViewedEventSource Where the student tapped the chord: over the lyrics, or in the "Chords in this
+// song" strip under the chart's header.
+type SongChartChordViewedEventSource string
 
 // SongChartCompletedEvent defines model for SongChartCompletedEvent.
 type SongChartCompletedEvent struct {
